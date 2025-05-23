@@ -54,7 +54,7 @@ On Linux and Windows platforms, you can upgrade or replace Xray-core yourself. Y
 
 ### Linux
 
-Replace `OneXray/libXray.so` with the compiled product of libXray `linux_so/libXray.so`.
+Replace `OneXray/lib/libXray.so` with the compiled product of libXray `linux_so/libXray.so`.
 
 ### Windows
 

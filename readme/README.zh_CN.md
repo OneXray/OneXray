@@ -53,7 +53,7 @@ sudo apt remove onexray
 
 ### Linux
 
-将 `OneXray/libXray.so` 替换为 libXray 的编译产物 `linux_so/libXray.so` 。
+将 `OneXray/lib/libXray.so` 替换为 libXray 的编译产物 `linux_so/libXray.so` 。
 
 ### Windows
 
