@@ -52,3 +52,9 @@ Replace `OneXray/libXray.so` with the compiled product of libXray `linux_so/libX
 ### Windows
 
 Replace `OneXray/libXray.dll` with the compiled product of libXray `windows_dll/libXray.dll`.
+
+## Questions and Answers
+
+### Why is there no self-installable pkg or dmg package?
+
+When distributing packages outside the Mac App Store, you need to use the **Developer ID Installer** and **Developer ID Application** certificates. Unfortunately, these two certificates do not support signing Network Extension plugins.

@@ -42,8 +42,7 @@ sudo setcap cap_net_admin+epi onexray/bin/route
 
 ## 内核升级
 
-在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core 。您可按照 [libXray](https://github.com/XTLS/libXray) 中
-的指引，使用 build 脚本进行编译。
+在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core 。您可按照 [libXray](https://github.com/XTLS/libXray) 中的指引，使用 build 脚本进行编译。
 
 ### Linux
 
@@ -52,3 +51,10 @@ sudo setcap cap_net_admin+epi onexray/bin/route
 ### Windows
 
 将 `OneXray/libXray.dll` 替换为 libXray 的编译产物 `windows_dll/libXray.dll` 。
+
+## 问答
+
+### 为何没有可自行安装的 pkg 或 dmg 包？
+
+当在 Mac App Store 之外分发软件包时，需要用到 **Developer ID Installer** 和 **Developer ID Application** 证书，很不幸，这两种
+证书不支持对 Network Extension 插件进行签名。
