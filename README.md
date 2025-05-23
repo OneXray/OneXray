@@ -37,8 +37,15 @@ If you use the zip package, you need to make the following settings to use OneXr
 Please confirm the directory before executing the command.
 
 ```shell
-sudo setcap cap_net_admin+epi onexray/bin/tun
-sudo setcap cap_net_admin+epi onexray/bin/route
+sudo setcap cap_net_admin+epi OneXray/bin/tun
+sudo setcap cap_net_admin+epi OneXray/bin/route
+```
+
+If you use the deb package, you can use the following commands to install and uninstall.
+
+```shell
+sudo apt install ./OneXray-linux-x86_64.deb
+sudo apt remove onexray
 ```
 
 ## Kernel Upgrade

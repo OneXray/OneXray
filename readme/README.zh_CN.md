@@ -36,8 +36,15 @@
 执行指令前请确认目录。
 
 ```shell
-sudo setcap cap_net_admin+epi onexray/bin/tun
-sudo setcap cap_net_admin+epi onexray/bin/route
+sudo setcap cap_net_admin+epi OneXray/bin/tun
+sudo setcap cap_net_admin+epi OneXray/bin/route
+```
+
+若您使用 deb 包，您可使用如下指令进行安装和卸载。
+
+```shell
+sudo apt install ./OneXray-linux-x86_64.deb
+sudo apt remove onexray
 ```
 
 ## 内核升级
