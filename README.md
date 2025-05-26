@@ -71,9 +71,6 @@ When distributing packages outside the Mac App Store, you need to use the **Deve
 If this project is helpful to you, you can consider contributing to this project in the following ways.
 
 1. Give this project a star.
-
 2. Translate the app's UI text [l10n](https://github.com/OneXray/l10n) .
-
 3. Translate the app's documentation [onexray.com](https://github.com/OneXray/onexray.com) .
-
 4. Share your routing settings [Routing](https://github.com/OneXray/Routing) .
