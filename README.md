@@ -14,8 +14,8 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 | ---------------- | ------------------------------------------- | -------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Windows          | Windows 10, Windows 11                      | x86_64               | exe                         | [OneXray-windows-amd64.exe](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)         |
 | Windows          | Windows 10, Windows 11                      | x86_64               | zip                         | [OneXray-windows-amd64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip)         |
-| Android          | Android 9.0 and above                       | arm64, x86_64        | aab                         | [Google Play Store](https://play.google.com/store/apps/details?id=net.yuandev.onexray)                                     |
-| Android          | Android 9.0 and above                       | arm64, x86_64        | apk                         | [OneXray-android-universal.apk](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Android          | Android 8.0 and above                       | arm32, arm64, x86_64 | aab                         | [Google Play Store](https://play.google.com/store/apps/details?id=net.yuandev.onexray)                                     |
+| Android          | Android 8.0 and above                       | arm32, arm64, x86_64 | apk                         | [OneXray-android-universal.apk](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
 | iOS              | iOS 15.0 and above                          | arm64                | ipa                         | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                            |
 | iOS              | iOS 15.0 and above                          | arm64                | ipa                         | [OneXray-ios.ipa](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa)                             |
 | macOS            | macOS 12.0 and above                        | Apple silicon, Intel | pkg                         | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                        |
@@ -48,6 +48,14 @@ If you use the deb package, you can use the following commands to install and un
 sudo apt install ./OneXray-linux-x86_64.deb
 sudo apt remove onexray
 ```
+
+If your device is arm64 and is used in a Chinese environment, please install the Noto font.
+
+```shell
+sudo apt install fonts-noto-cjk fonts-noto-cjk-extra
+```
+
+If your desktop environment is gnome, please install the [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) extension.
 
 ### Kernel Upgrade
 

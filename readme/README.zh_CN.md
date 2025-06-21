@@ -12,8 +12,8 @@
 | -------- | ------------------------------------- | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Windows  | Windows 10, Windows 11                | x86_64               | exe        | [OneXray-windows-amd64.exe](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)         |
 | Windows  | Windows 10, Windows 11                | x86_64               | zip        | [OneXray-windows-amd64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip)         |
-| Android  | Android 9.0 及以上                    | arm64, x86_64        | aab        | [Google Play Store](https://play.google.com/store/apps/details?id=net.yuandev.onexray)                                     |
-| Android  | Android 9.0 及以上                    | arm64, x86_64        | apk        | [OneXray-android-universal.apk](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Android  | Android 8.0 及以上                    | arm32, arm64, x86_64 | aab        | [Google Play Store](https://play.google.com/store/apps/details?id=net.yuandev.onexray)                                     |
+| Android  | Android 8.0 及以上                    | arm32, arm64, x86_64 | apk        | [OneXray-android-universal.apk](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
 | iOS      | iOS 15.0 及以上                       | arm64                | ipa        | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                            |
 | iOS      | iOS 15.0 及以上                       | arm64                | ipa        | [OneXray-ios.ipa](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa)                             |
 | macOS    | macOS 12.0 及以上                     | Apple silicon, Intel | pkg        | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                        |
@@ -47,6 +47,14 @@ sudo setcap cap_net_admin+epi OneXray/bin/route
 sudo apt install ./OneXray-linux-x86_64.deb
 sudo apt remove onexray
 ```
+
+若您的设备为 arm64 且在中文环境下使用，请安装 Noto 字体。
+
+```shell
+sudo apt install fonts-noto-cjk fonts-noto-cjk-extra
+```
+
+若您的桌面环境为 gnome，请安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) 扩展。
 
 ### 内核升级
 
