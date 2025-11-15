@@ -51,6 +51,8 @@ sudo apt remove onexray
 
 If your desktop environment is gnome, please install the [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) extension.
 
+If your machine's CPU architecture is Arm64, switching the language to a CJK language (Chinese, Japanese, or Korean) will cause OneXray to reset the interface language to English.
+
 ### Kernel Upgrade
 
 On Linux and Windows platforms, you can upgrade or replace Xray-core yourself. You can compile it using the build script according to the instructions in [libXray](https://github.com/XTLS/libXray).

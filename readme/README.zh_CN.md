@@ -50,6 +50,8 @@ sudo apt remove onexray
 
 若您的桌面环境为 gnome，请安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) 扩展。
 
+若您的机器 CPU 架构为 Arm64，当您将语言切换为 CJK（中文，日文，韩文）时，OneXray 会将界面语言修正为英文。
+
 ### 内核升级
 
 在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core 。您可按照 [libXray](https://github.com/XTLS/libXray) 中的指引，使用 build 脚本进行编译。
