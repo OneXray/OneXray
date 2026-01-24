@@ -19,10 +19,10 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 | iOS              | iOS 15.0 and above     | arm64                | ipa                         | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                            |
 | iOS              | iOS 15.0 and above     | arm64                | ipa                         | [OneXray-ios.ipa](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa)                             |
 | macOS            | macOS 12.0 and above   | Apple silicon, Intel | pkg                         | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                        |
-| Linux            | GLIBC >= 2.36          | x86_64               | deb                         | [OneXray-linux-x86_64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)           |
-| Linux            | GLIBC >= 2.36          | x86_64               | zip                         | [OneXray-linux-x86_64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)           |
-| Linux            | GLIBC >= 2.36          | arm64                | deb                         | [OneXray-linux-aarch64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)         |
-| Linux            | GLIBC >= 2.36          | arm64                | zip                         | [OneXray-linux-aarch64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip)         |
+| Linux            | GLIBC >= 2.39          | x86_64               | deb                         | [OneXray-linux-x86_64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)           |
+| Linux            | GLIBC >= 2.39          | x86_64               | zip                         | [OneXray-linux-x86_64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)           |
+| Linux            | GLIBC >= 2.39          | arm64                | deb                         | [OneXray-linux-aarch64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)         |
+| Linux            | GLIBC >= 2.39          | arm64                | zip                         | [OneXray-linux-aarch64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip)         |
 
 ## Notes
 
@@ -80,6 +80,5 @@ When distributing packages outside the Mac App Store, you need to use the **Deve
 If this project is helpful to you, you can consider contributing to this project in the following ways.
 
 1. Give this project a star.
-2. Translate the app's UI text [l10n](https://github.com/OneXray/l10n) .
-3. Translate the app's documentation [onexray.com](https://github.com/OneXray/onexray.com) .
-4. Share your routing settings [Routing](https://github.com/OneXray/Routing) .
+2. Translate the app's documentation [onexray.com](https://github.com/OneXray/onexray.com) .
+3. Share your routing settings [Routing](https://github.com/OneXray/Routing) .

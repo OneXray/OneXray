@@ -17,10 +17,10 @@
 | iOS      | iOS 15.0 及以上        | arm64                | ipa        | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                            |
 | iOS      | iOS 15.0 及以上        | arm64                | ipa        | [OneXray-ios.ipa](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa)                             |
 | macOS    | macOS 12.0 及以上      | Apple silicon, Intel | pkg        | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                        |
-| Linux    | GLIBC >= 2.36          | x86_64               | deb        | [OneXray-linux-x86_64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)           |
-| Linux    | GLIBC >= 2.36          | x86_64               | zip        | [OneXray-linux-x86_64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)           |
-| Linux    | GLIBC >= 2.36          | arm64                | deb        | [OneXray-linux-aarch64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)         |
-| Linux    | GLIBC >= 2.36          | arm64                | zip        | [OneXray-linux-aarch64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)          |
+| Linux    | GLIBC >= 2.39          | x86_64               | deb        | [OneXray-linux-x86_64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)           |
+| Linux    | GLIBC >= 2.39          | x86_64               | zip        | [OneXray-linux-x86_64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)           |
+| Linux    | GLIBC >= 2.39          | arm64                | deb        | [OneXray-linux-aarch64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)         |
+| Linux    | GLIBC >= 2.39          | arm64                | zip        | [OneXray-linux-aarch64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)          |
 
 ## 使用注意
 
@@ -80,6 +80,5 @@ sudo apt remove onexray
 若本项目对您有所帮助，您可考虑通过以下方式对本项目进行贡献。
 
 1. 给本项目一个 star 。
-2. 翻译 App 的 UI 文本 [l10n](https://github.com/OneXray/l10n) 。
-3. 翻译 App 的文档 [onexray.com](https://github.com/OneXray/onexray.com) 。
-4. 分享您的路由设置 [Routing](https://github.com/OneXray/Routing) 。
+2. 翻译 App 的文档 [onexray.com](https://github.com/OneXray/onexray.com) 。
+3. 分享您的路由设置 [Routing](https://github.com/OneXray/Routing) 。
