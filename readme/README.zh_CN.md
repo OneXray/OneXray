@@ -6,6 +6,8 @@
 
 [文档站](https://onexray.com)
 
+[First Run 指南](./FIRST_RUN.zh_CN.md)
+
 ## 下载
 
 | 操作系统 | 版本                   | CPU 架构             | 安装包格式 | 下载链接                                                                                                                   |
@@ -66,13 +68,6 @@ sudo apt remove onexray
 将 `OneXray/libXray.dll` 替换为 libXray 的编译产物 `windows_dll/libXray.dll` 。
 
 将 `OneXray/bin/OneXrayCore.exe` 替换为 libXray 的编译产物 `bin/xray.exe` 。
-
-## 问答
-
-### 为何没有可自行安装的 pkg 或 dmg 包？
-
-当在 Mac App Store 之外分发软件包时，需要用到 **Developer ID Installer** 和 **Developer ID Application** 证书，很不幸，这两种
-证书不支持对 Network Extension 插件进行签名。
 
 ## 贡献
 

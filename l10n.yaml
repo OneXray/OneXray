@@ -1,0 +1,2 @@
+output-dir: lib/l10n/localizations
+untranslated-messages-file: desiredFileName.txt

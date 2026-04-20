@@ -1,0 +1,2 @@
+json_key_file("./fastlane/playservice.json")
+package_name("net.yuandev.onexray")

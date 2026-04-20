@@ -1,0 +1,106 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Xcode user state (breakpoints, window positions, user-scoped schemes)
+**/xcuserdata/
+*.xcuserstate
+
+# Environment variables / local secrets
+.env
+.env.*
+!.env.example
+
+# Signing material (broad patterns — catches stray drops)
+*.p8
+*.p12
+*.cer
+*.pem
+*.jks
+*.keystore
+*.mobileprovision
+*.provisionprofile
+**/AuthKey_*
+
+# Android signing passwords
+android/key.properties
+android/app/key.properties
+
+# Firebase / Google Services (any path)
+**/GoogleService-Info.plist
+**/google-services.json
+firebase.json
+lib/firebase_options.dart
+
+# Fastlane artifacts (but Fastfiles themselves stay public)
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/test_output/
+**/fastlane/screenshots/
+**/fastlane/metadata/
+
+# my ignore
+/assets/dat
+/android/app/libs
+*.xcframework
+linux/app/
+windows/app/
+generated_bindings.dart
+desiredFileName.txt
+dist/
+test/
+lib/l10n/localizations/
+android/fastlane/playservice.json
+android/keystore/
+ios/fastlane/AuthKey.p8
+macos/fastlane/AuthKey.p8
+macos_se/fastlane/AuthKey.p8
+ios/Flutter/AdMob.xcconfig
+swift/AppStore/GoogleService-Info.plist
+swift/macOSSE/GoogleService-Info.plist
+
+# ai
+.cursor/
+.ai/

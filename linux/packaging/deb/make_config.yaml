@@ -1,0 +1,26 @@
+display_name: OneXray
+package_name: OneXray
+maintainer:
+  name: YuanDevLLC
+  email: yuan@yuandev.net
+priority: optional
+section: x11
+installed_size: 6604
+dependencies:
+  - procps
+  - libcap2-bin
+  - libayatana-appindicator3-1
+essential: false
+icon: assets/logo.png
+postinstall_scripts:
+  - echo "Thanks using our app!"
+  - setcap cap_net_admin+epi /usr/share/OneXray/bin/OneXrayCore
+postuninstall_scripts:
+  - echo "Goodbye!"
+keywords:
+  - OneXray
+  - Xray
+generic_name: OneXray
+categories:
+  - Netowrk
+startup_notify: true

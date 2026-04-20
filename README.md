@@ -8,6 +8,8 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 
 [Documentation](https://onexray.com)
 
+[First Run](./readme/FIRST_RUN.md)
+
 ## Download
 
 | Operating System | Version                | CPU Architecture     | Installation Package Format | Download Link                                                                                                              |
@@ -67,12 +69,6 @@ Replace `OneXray/bin/OneXrayCore` with the compiled product of libXray `bin/xray
 Replace `OneXray/libXray.dll` with the compiled product of libXray `windows_dll/libXray.dll`.
 
 Replace `OneXray/bin/OneXrayCore.exe` with the compiled product of libXray `bin/xray.exe`.
-
-## Questions and Answers
-
-### Why is there no self-installable pkg or dmg package?
-
-When distributing packages outside the Mac App Store, you need to use the **Developer ID Installer** and **Developer ID Application** certificates. Unfortunately, these two certificates do not support signing Network Extension plugins.
 
 ## Contribution
 

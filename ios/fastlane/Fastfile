@@ -1,0 +1,34 @@
+skip_docs
+
+default_platform :ios
+
+platform :ios do
+  lane :deploy do
+    build_app(
+        skip_build_archive: true,
+        archive_path: "../build/ios/archive/Runner.xcarchive",
+        output_directory: '../../output',
+        output_name: 'OneXray-ios',
+        export_options: {
+          method: 'app-store',
+          provisioningProfiles: {
+            'net.yuandev.onexray' => 'OneXrayiOS',
+            'net.yuandev.onexray.tun' => 'OneXrayTuniOS'
+          }
+        })
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch('FASTLANE_ASC_KEY_ID'),
+      issuer_id: ENV.fetch('FASTLANE_ASC_ISSUER_ID'),
+      key_filepath: './fastlane/AuthKey.p8'
+    )
+    upload_to_testflight(
+      api_key: api_key
+    )
+  end
+
+  after_all do |lane|
+  end
+
+  error do |lane, exception|
+  end
+end

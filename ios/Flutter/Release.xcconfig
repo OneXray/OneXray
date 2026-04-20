@@ -1,0 +1,10 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+#include "Generated.xcconfig"
+
+// AdMob iOS App ID — referenced from Info.plist as $(ADMOB_APP_ID_IOS). The
+// default below is Google's official iOS test App ID; the real value is
+// written to AdMob.xcconfig (gitignored) by build_scripts/app/apple.py from
+// the ADMOB_APP_ID_IOS env var. `#include?` silently skips the file when it
+// doesn't exist.
+ADMOB_APP_ID_IOS = ca-app-pub-3940256099942544~1458002511
+#include? "AdMob.xcconfig"

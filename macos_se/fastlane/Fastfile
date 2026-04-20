@@ -1,0 +1,56 @@
+skip_docs
+
+default_platform :mac
+
+platform :mac do
+  lane :deploy do
+    output_dir = File.expand_path('../../output', Dir.pwd)
+    product_name = 'OneXraySE'
+    app_path = File.join(output_dir, "#{product_name}.app")
+    zip_path = File.join(output_dir, 'OneXray-macos-universal.zip')
+
+    bundle_id = 'net.yuandev.onexray.se'
+    team_id = '2CKAULFA9J'
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch('FASTLANE_ASC_KEY_ID'),
+      issuer_id: ENV.fetch('FASTLANE_ASC_ISSUER_ID'),
+      key_filepath: './fastlane/AuthKey.p8'
+    )
+
+    # Build .app with Developer ID signing.
+    build_app(
+      scheme: 'Runner',
+      configuration: 'Release',
+      output_directory: output_dir,
+      export_options: {
+        method: 'developer-id',
+        signingStyle: 'manual',
+        teamID: team_id,
+        provisioningProfiles: {
+          'net.yuandev.onexray.se' => 'OneXraySEmacOS',
+          'net.yuandev.onexray.se.tun' => 'OneXraySETunmacOS'
+        }
+      }
+    )
+
+    # Notarize and staple the .app (fastlane zips internally for notarytool submission).
+    notarize(
+      package: app_path,
+      bundle_id: bundle_id,
+      api_key: api_key,
+      print_log: true
+    )
+
+    # Package the stapled .app into a zip for distribution.
+    # ditto preserves bundle symlinks / extended attributes; zip -r would corrupt the code signature.
+    sh "rm -f \"#{zip_path}\""
+    sh "/usr/bin/ditto -c -k --keepParent \"#{app_path}\" \"#{zip_path}\""
+  end
+
+  after_all do |lane|
+  end
+
+  error do |lane, exception|
+  end
+end
