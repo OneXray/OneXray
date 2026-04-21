@@ -4,7 +4,7 @@ default_platform :mac
 
 platform :mac do
   lane :deploy do
-    output_dir = File.expand_path('../../output', Dir.pwd)
+    output_dir = File.expand_path('../../../output', __dir__)
     product_name = 'OneXraySE'
     app_path = File.join(output_dir, "#{product_name}.app")
     zip_path = File.join(output_dir, 'OneXray-macos-universal.zip')

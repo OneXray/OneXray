@@ -7,7 +7,7 @@ platform :ios do
     build_app(
         skip_build_archive: true,
         archive_path: "../build/ios/archive/Runner.xcarchive",
-        output_directory: '../../output',
+        output_directory: File.expand_path('../../../output', __dir__),
         output_name: 'OneXray-ios',
         export_options: {
           method: 'app-store',
