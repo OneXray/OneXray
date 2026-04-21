@@ -10,7 +10,7 @@ platform :android do
     )
     download_universal_apk_from_google_play(
         version_code: ##version_code##,
-        destination: "../../../output/OneXray-android-universal.apk",
+        destination: "../../output/OneXray-android-universal.apk",
     )
   end
 end

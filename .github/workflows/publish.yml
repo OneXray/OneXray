@@ -73,201 +73,6 @@ env:
 
 jobs:
   # =================================================================
-  # iOS — uploads to App Store Connect (TestFlight) via fastlane
-  # =================================================================
-  ios:
-    runs-on: macos-26
-    timeout-minutes: 60
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
-    defaults:
-      run:
-        working-directory: OneXray
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          path: OneXray
-
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
-          path: libXray
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Setup Flutter
-        run: bash build_scripts/setup_flutter.sh
-
-      - name: Install FlutterFire CLI
-        run: |
-          dart pub global activate flutterfire_cli
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-
-      - name: Install Python build deps
-        run: pip install pyyaml requests typer
-
-      - name: Restore Firebase configs
-        env:
-          FIREBASE_JSON_B64: ${{ secrets.FIREBASE_JSON_BASE64 }}
-          FIREBASE_OPTIONS_B64: ${{ secrets.FIREBASE_OPTIONS_DART_BASE64 }}
-          IOS_GSI_PLIST_B64: ${{ secrets.APPLE_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
-        run: |
-          echo "$FIREBASE_JSON_B64" | base64 -d > firebase.json
-          echo "$FIREBASE_OPTIONS_B64" | base64 -d > lib/firebase_options.dart
-          echo "$IOS_GSI_PLIST_B64" | base64 -d > swift/AppStore/GoogleService-Info.plist
-
-      - name: Restore App Store Connect API key
-        env:
-          ASC_KEY_B64: ${{ secrets.FASTLANE_ASC_KEY_BASE64 }}
-        run: echo "$ASC_KEY_B64" | base64 -d > ios/fastlane/AuthKey.p8
-
-      - name: Print certs.p12 SHA-256
-        env:
-          APPLE_CERTS_P12_B64: ${{ secrets.APPLE_CERTS_P12_BASE64 }}
-        run: printf '%s' "$APPLE_CERTS_P12_B64" | base64 -d | shasum -a 256 | awk '{print $1}'
-
-      - uses: apple-actions/import-codesign-certs@v6
-        with:
-          p12-file-base64: ${{ secrets.APPLE_CERTS_P12_BASE64 }}
-          p12-password: ${{ secrets.APPLE_CERTS_P12_PASSWORD }}
-          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
-
-      - name: Print signing identities
-        run: security find-identity -v -p codesigning
-
-      - uses: apple-actions/download-provisioning-profiles@v5
-        with:
-          bundle-id: net.yuandev.onexray
-          profile-type: IOS_APP_STORE
-          issuer-id: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          api-private-key: ${{ secrets.FASTLANE_ASC_KEY_PEM }}
-      - uses: apple-actions/download-provisioning-profiles@v5
-        with:
-          bundle-id: net.yuandev.onexray.tun
-          profile-type: IOS_APP_STORE
-          issuer-id: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          api-private-key: ${{ secrets.FASTLANE_ASC_KEY_PEM }}
-
-      - name: Build & upload
-        env:
-          FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          ADMOB_APP_ID_IOS: ${{ secrets.ADMOB_APP_ID_IOS }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
-        run: python3 build_scripts/main.py OneXray ios
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: ios
-          path: output/OneXray-ios*.ipa
-          if-no-files-found: error
-
-  # =================================================================
-  # macOS (MAS) — universal binary, uploads to App Store Connect
-  # =================================================================
-  macos:
-    runs-on: macos-26
-    timeout-minutes: 60
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
-    defaults:
-      run:
-        working-directory: OneXray
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          path: OneXray
-
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
-          path: libXray
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Setup Flutter
-        run: bash build_scripts/setup_flutter.sh
-
-      - name: Install FlutterFire CLI
-        run: |
-          dart pub global activate flutterfire_cli
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-
-      - name: Install Python build deps
-        run: pip install pyyaml requests typer
-
-      - name: Restore Firebase configs
-        env:
-          FIREBASE_JSON_B64: ${{ secrets.FIREBASE_JSON_BASE64 }}
-          FIREBASE_OPTIONS_B64: ${{ secrets.FIREBASE_OPTIONS_DART_BASE64 }}
-          MACOS_GSI_PLIST_B64: ${{ secrets.APPLE_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
-        run: |
-          echo "$FIREBASE_JSON_B64" | base64 -d > firebase.json
-          echo "$FIREBASE_OPTIONS_B64" | base64 -d > lib/firebase_options.dart
-          echo "$MACOS_GSI_PLIST_B64" | base64 -d > swift/AppStore/GoogleService-Info.plist
-
-      - name: Restore App Store Connect API key
-        env:
-          ASC_KEY_B64: ${{ secrets.FASTLANE_ASC_KEY_BASE64 }}
-        run: echo "$ASC_KEY_B64" | base64 -d > macos/fastlane/AuthKey.p8
-
-      - name: Print certs.p12 SHA-256
-        env:
-          APPLE_CERTS_P12_B64: ${{ secrets.APPLE_CERTS_P12_BASE64 }}
-        run: printf '%s' "$APPLE_CERTS_P12_B64" | base64 -d | shasum -a 256 | awk '{print $1}'
-
-      - uses: apple-actions/import-codesign-certs@v6
-        with:
-          p12-file-base64: ${{ secrets.APPLE_CERTS_P12_BASE64 }}
-          p12-password: ${{ secrets.APPLE_CERTS_P12_PASSWORD }}
-          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
-
-      - name: Print signing identities
-        run: security find-identity -v -p codesigning
-
-      - uses: apple-actions/download-provisioning-profiles@v5
-        with:
-          bundle-id: net.yuandev.onexray
-          profile-type: MAC_APP_STORE
-          issuer-id: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          api-private-key: ${{ secrets.FASTLANE_ASC_KEY_PEM }}
-      - uses: apple-actions/download-provisioning-profiles@v5
-        with:
-          bundle-id: net.yuandev.onexray.tun
-          profile-type: MAC_APP_STORE
-          issuer-id: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          api-private-key: ${{ secrets.FASTLANE_ASC_KEY_PEM }}
-
-      - name: Build & upload
-        env:
-          FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          FASTLANE_MAS_INSTALLER_CERT: ${{ secrets.FASTLANE_MAS_INSTALLER_CERT }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
-        run: python3 build_scripts/main.py OneXray macos
-
-  # =================================================================
   # macOS SE (Developer ID) — universal binary, Developer ID signed
   #   + notarized + zipped
   # =================================================================
@@ -324,19 +129,11 @@ jobs:
           ASC_KEY_B64: ${{ secrets.FASTLANE_ASC_KEY_BASE64 }}
         run: echo "$ASC_KEY_B64" | base64 -d > macos_se/fastlane/AuthKey.p8
 
-      - name: Print certs.p12 SHA-256
-        env:
-          APPLE_CERTS_P12_B64: ${{ secrets.APPLE_CERTS_P12_BASE64 }}
-        run: printf '%s' "$APPLE_CERTS_P12_B64" | base64 -d | shasum -a 256 | awk '{print $1}'
-
       - uses: apple-actions/import-codesign-certs@v6
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTS_P12_BASE64 }}
           p12-password: ${{ secrets.APPLE_CERTS_P12_PASSWORD }}
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
-
-      - name: Print signing identities
-        run: security find-identity -v -p codesigning
 
       - uses: apple-actions/download-provisioning-profiles@v5
         with:
@@ -620,7 +417,7 @@ jobs:
   # =================================================================
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ ios, macos_se, android, windows, linux ]
+    needs: [ macos_se, android, windows, linux ]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

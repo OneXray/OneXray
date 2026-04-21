@@ -17,7 +17,6 @@ PROJECT_CONFIG = {
         "core.bin.dst.file.linux": "app/OneXrayCore",
         "core.bin.src.file.windows": "bin/xray.exe",
         "core.bin.dst.file.windows": "app/OneXrayCore.exe",
-        "tun.dst.dir": "../swift/tunnel",
         "app.release.dir.android": "../build/app/outputs",
         "app.release.dir.linux": "../dist",
         "app.release.dir.windows": "../dist",
