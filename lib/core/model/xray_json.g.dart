@@ -183,6 +183,7 @@ XrayInboundSniffing _$XrayInboundSniffingFromJson(
   Map<String, dynamic> json,
 ) => XrayInboundSniffing(
   json['enabled'] as bool?,
+  json['routeOnly'] as bool?,
   (json['destOverride'] as List<dynamic>?)?.map((e) => e as String).toList(),
   (json['domainsExcluded'] as List<dynamic>?)?.map((e) => e as String).toList(),
 );
@@ -191,6 +192,7 @@ Map<String, dynamic> _$XrayInboundSniffingToJson(
   XrayInboundSniffing instance,
 ) => <String, dynamic>{
   'enabled': ?instance.enabled,
+  'routeOnly': ?instance.routeOnly,
   'destOverride': ?instance.destOverride,
   'domainsExcluded': ?instance.domainsExcluded,
 };

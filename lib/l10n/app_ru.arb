@@ -44,6 +44,7 @@
   "helpURL": "Только HTTPS",
   "helpOrder": "Моб: долгое; ПК: перетянуть",
   "switchEnabled": "Вкл.",
+  "switchRouteOnly": "Только маршрутизация",
   "resultSuccess": "OK",
   "runningAndWait": "Ждите...",
   "actionResult": "{action} {result}",

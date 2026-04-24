@@ -55,6 +55,10 @@ class InboundSniffingController extends Cubit<InboundSniffingCubitState> {
     state.sniffingState.enabled = value; emit(state.bumped());
   }
 
+  void updateRouteOnly(bool value) {
+    state.sniffingState.routeOnly = value; emit(state.bumped());
+  }
+
   void updateDestOverride(bool selected, InboundSniffingDestOverride value) {
     if (selected) {
         state.sniffingState.destOverride.add(value);
