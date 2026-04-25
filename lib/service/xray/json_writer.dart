@@ -14,6 +14,7 @@ extension XrayJsonWriter on XrayJson {
   Future<String> test() async {
     final configPath = await FileTool.makeCacheFile(ConfigFileType.json);
     await _writeToPath(configPath);
+    await FileTool.checkDir(VpnConstants.runDir);
 
     final res = await AppHostApi().testXray(VpnConstants.datDir, configPath);
     ygLogger(configPath);
