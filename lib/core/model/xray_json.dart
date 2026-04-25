@@ -189,10 +189,11 @@ class XrayInbound {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayInboundSniffing {
   bool? enabled;
+  bool? routeOnly;
   List<String>? destOverride;
   List<String>? domainsExcluded;
 
-  XrayInboundSniffing(this.enabled, this.destOverride, this.domainsExcluded);
+  XrayInboundSniffing(this.enabled, this.routeOnly, this.destOverride, this.domainsExcluded);
 
   factory XrayInboundSniffing.fromJson(Map<String, dynamic> json) =>
       _$XrayInboundSniffingFromJson(json);

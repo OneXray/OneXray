@@ -44,6 +44,7 @@ class InboundSniffingPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _enableSection(context, controller, state),
+                  _routeOnlySection(context, controller, state),
                   _destOverrideSection(context, controller, state),
                   _domainsExcludedSection(context, controller, state),
                 ],
@@ -68,6 +69,24 @@ class InboundSniffingPage extends StatelessWidget {
           Switch(
             value: state.sniffingState.enabled,
             onChanged: (value) => controller.updateEnabled(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _routeOnlySection(
+    BuildContext context,
+    InboundSniffingController controller, InboundSniffingCubitState state) {
+    return SectionView(
+      title: "",
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(AppLocalizations.of(context)!.switchRouteOnly),
+          Switch(
+            value: state.sniffingState.routeOnly,
+            onChanged: (value) => controller.updateRouteOnly(value),
           ),
         ],
       ),

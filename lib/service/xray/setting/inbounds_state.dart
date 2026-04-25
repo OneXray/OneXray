@@ -101,6 +101,7 @@ enum InboundSniffingDestOverride {
 
 class InboundSniffingState {
   var enabled = true;
+  var routeOnly = false;
   var destOverride = <InboundSniffingDestOverride>{
     InboundSniffingDestOverride.http,
     InboundSniffingDestOverride.tls,
@@ -121,6 +122,9 @@ class InboundSniffingState {
     if (sniffing.enabled != null) {
       enabled = sniffing.enabled!;
     }
+    if (sniffing.routeOnly != null) {
+      routeOnly = sniffing.routeOnly!;
+    }
     if (EmptyTool.checkList(sniffing.destOverride)) {
       destOverride = InboundSniffingDestOverride.fromStrings(
         sniffing.destOverride!,
@@ -134,6 +138,7 @@ class InboundSniffingState {
   XrayInboundSniffing get xrayJson {
     final sniffing = XrayInboundSniffingStandard.standard;
     sniffing.enabled = enabled;
+    sniffing.routeOnly = routeOnly;
     if (destOverride.isNotEmpty) {
       sniffing.destOverride = InboundSniffingDestOverride.toStrings(
         destOverride,

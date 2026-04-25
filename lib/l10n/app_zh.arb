@@ -43,6 +43,7 @@
   "helpURL": "仅支持 https 链接，其他链接可能无法加载。",
   "helpOrder": "移动平台长按排序。桌面平台拖动尾部按钮排序。",
   "switchEnabled": "开启",
+  "switchRouteOnly": "仅路由",
   "resultSuccess": "成功",
   "resultFailed": "失败",
   "runningAndWait": "更新中，请稍后",

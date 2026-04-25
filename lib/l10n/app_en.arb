@@ -43,6 +43,7 @@
   "helpURL": "Only support https URL, other URL may fail to load",
   "helpOrder": "On mobile platform, long press to reorder. On desktop platform, drag trailing icon to reorder.",
   "switchEnabled": "enabled",
+  "switchRouteOnly": "route only",
   "resultSuccess": "successfully",
   "resultFailed": "failed",
   "runningAndWait": "Something is running, please wait",
