@@ -1,0 +1,11 @@
+<resources>
+    <string name="quick_settings_tile_label">OneXray</string>
+    <string name="quick_settings_tile_status_connected">متصل</string>
+    <string name="quick_settings_tile_status_connecting">در حال اتصال</string>
+    <string name="quick_settings_tile_status_disconnected">قطع شده</string>
+    <string name="quick_settings_tile_status_disconnecting">در حال قطع اتصال</string>
+    <string name="quick_settings_tile_status_open_app">باز کردن برنامه</string>
+    <string name="notification_vpn_connected">VPN متصل است</string>
+    <string name="notification_action_open">باز کردن</string>
+    <string name="notification_action_disconnect">قطع اتصال</string>
+</resources>

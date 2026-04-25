@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -36,6 +37,8 @@ class OneVpnService : VpnService() {
         const val IPV6_ADDRESS = "fc00::1"
         const val ACTION_VPN_STATUS: String = "net.yuandev.onexray.VPN_STATUS"
         const val EXTRA_RUNNING: String = "running"
+        const val NOTIFICATION_OPEN_REQUEST_CODE = 1
+        const val NOTIFICATION_STOP_REQUEST_CODE = 2
     }
 
     private var tunnel: ParcelFileDescriptor? = null
@@ -49,6 +52,7 @@ class OneVpnService : VpnService() {
             putExtra(EXTRA_RUNNING, running)
         }
         sendBroadcast(intent)
+        VpnController.requestTileRefresh(this)
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -148,15 +152,7 @@ class OneVpnService : VpnService() {
     }
 
     private fun makeNotification(): Notification {
-        val pendingIntent: PendingIntent =
-            Intent(this, MainActivity::class.java).let { notificationIntent ->
-                PendingIntent.getActivity(
-                    this, 0, notificationIntent,
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            }
-
-        val appName = "OneXray"
+        val appName = getString(R.string.quick_settings_tile_label)
         val channelId = "net.yuandev.onexray"
         val channel = NotificationChannel(
             channelId,
@@ -169,12 +165,44 @@ class OneVpnService : VpnService() {
         )
         notificationManager.createNotificationChannel(channel)
 
+        val openPendingIntent = PendingIntent.getActivity(
+            this,
+            NOTIFICATION_OPEN_REQUEST_CODE,
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val stopPendingIntent = PendingIntent.getService(
+            this,
+            NOTIFICATION_STOP_REQUEST_CODE,
+            Intent(this, OneVpnService::class.java).apply {
+                action = ACTION_STOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         return Notification.Builder(this, channelId)
             .setContentTitle(appName)
-            .setContentText(appName)
+            .setContentText(getString(R.string.notification_vpn_connected))
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(openPendingIntent)
             .setTicker(appName)
+            .setOngoing(true)
+            .addAction(
+                Notification.Action.Builder(
+                    Icon.createWithResource(this, R.mipmap.ic_launcher),
+                    getString(R.string.notification_action_open),
+                    openPendingIntent
+                ).build()
+            )
+            .addAction(
+                Notification.Action.Builder(
+                    Icon.createWithResource(this, R.drawable.pause_light),
+                    getString(R.string.notification_action_disconnect),
+                    stopPendingIntent
+                ).build()
+            )
             .build()
     }
 

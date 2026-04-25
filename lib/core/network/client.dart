@@ -50,19 +50,22 @@ class NetClient {
 
   Future<GeoLocation> connectivityTest(String port, String url) async {
     _proxyPort = port;
-    final location = await _geoLocation();
-    try {
-      final start = DateTime.now().millisecondsSinceEpoch;
-      final res = await _proxyClient.get(_geoIPUrl);
-      final statusCode = res.statusCode;
-      if (statusCode != null) {
-        if (statusCode >= 200 && statusCode <= 300) {
+    var location = GeoLocationStandard.standard;
+    final retryCount = 3;
+    for (var i = 0; i < retryCount; i++) {
+      try {
+        final start = DateTime.now().millisecondsSinceEpoch;
+        location = await _geoLocation();
+        if (location.ipAddress != null) {
           final end = DateTime.now().millisecondsSinceEpoch;
           location.delay = end - start;
+          break;
+        } else {
+          await Future.delayed(Duration(seconds: 2));
         }
+      } catch (e) {
+        ygLogger("$e");
       }
-    } catch (e) {
-      ygLogger("$e");
     }
     return location;
   }

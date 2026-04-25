@@ -4,8 +4,6 @@ import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,7 +18,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import libXray.LibXray
-import net.yuandev.onexray.vpn.OneVpnService
+import net.yuandev.onexray.vpn.VpnController
 import kotlin.time.Duration.Companion.seconds
 
 class AppHostApi(
@@ -37,36 +35,6 @@ class AppHostApi(
                 onVpnStatusChanged(false)
             }
         }
-
-
-    private fun readVpnRunning(): Boolean {
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val network = connectivityManager.activeNetwork ?: return false
-        val caps = connectivityManager.getNetworkCapabilities(network) ?: return false
-        if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-            return false
-        }
-        val linkProperties = connectivityManager.getLinkProperties(network) ?: return false
-        val name = linkProperties.interfaceName ?: return false
-        if (!name.startsWith("tun")) {
-            return false
-        }
-
-        var ipv4Match = false
-        var ipv6Match = false
-        val addresses = linkProperties.linkAddresses
-        for (address in addresses) {
-            address.address?.hostAddress?.let { host ->
-                if (host == OneVpnService.IPV4_ADDRESS) {
-                    ipv4Match = true
-                }
-                if (host == OneVpnService.IPV6_ADDRESS) {
-                    ipv6Match = true
-                }
-            }
-        }
-        return ipv4Match || ipv6Match
-    }
 
     fun onVpnStatusChanged(running: Boolean) {
         XLog.d("AppHostApi: onVpnStatusChanged running=$running")
@@ -85,7 +53,7 @@ class AppHostApi(
     fun onInit(api: AppFlutterApi) {
         XLog.init()
         flutterApi = api
-        onVpnStatusChanged(readVpnRunning())
+        onVpnStatusChanged(VpnController.readVpnRunning(context))
     }
 
     fun onDestroy() {
@@ -112,8 +80,7 @@ class AppHostApi(
         XLog.d("AppHostApi: startVpn called")
         scope.launch {
             flutterApi?.vpnStatusChanged(VpnStatus.CONNECTING)
-            val intent = Intent(context, OneVpnService::class.java)
-            intent.action = OneVpnService.ACTION_START
+            val intent = VpnController.buildStartIntent(context)
             val prepare = VpnService.prepare(context)
             if (prepare != null) {
                 startVpnIntent = intent
@@ -133,8 +100,7 @@ class AppHostApi(
                 VpnStatus.DISCONNECTED -> flutterApi?.refreshVpnStatus()
                 VpnStatus.CONNECTED -> {
                     flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTING)
-                    val intent = Intent(context, OneVpnService::class.java)
-                    intent.action = OneVpnService.ACTION_STOP
+                    val intent = VpnController.buildStopIntent(context)
                     context.startService(intent)
                 }
 

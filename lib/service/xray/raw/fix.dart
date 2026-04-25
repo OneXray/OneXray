@@ -23,7 +23,6 @@ class XrayRawFix {
       tunSettingState.bindInterface = "";
     }
 
-    fixInboundsTun(jsonMap);
     fixInboundsPort(jsonMap, ports);
     fixLog(jsonMap);
     fixMetrics(jsonMap);

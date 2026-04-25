@@ -1,0 +1,11 @@
+<resources>
+    <string name="quick_settings_tile_label">OneXray</string>
+    <string name="quick_settings_tile_status_connected">已连接</string>
+    <string name="quick_settings_tile_status_connecting">连接中</string>
+    <string name="quick_settings_tile_status_disconnected">已断开</string>
+    <string name="quick_settings_tile_status_disconnecting">断开中</string>
+    <string name="quick_settings_tile_status_open_app">打开应用</string>
+    <string name="notification_vpn_connected">VPN 已连接</string>
+    <string name="notification_action_open">打开</string>
+    <string name="notification_action_disconnect">断开</string>
+</resources>

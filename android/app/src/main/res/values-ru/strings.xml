@@ -1,0 +1,11 @@
+<resources>
+    <string name="quick_settings_tile_label">OneXray</string>
+    <string name="quick_settings_tile_status_connected">Подключено</string>
+    <string name="quick_settings_tile_status_connecting">Подключение</string>
+    <string name="quick_settings_tile_status_disconnected">Отключено</string>
+    <string name="quick_settings_tile_status_disconnecting">Отключение</string>
+    <string name="quick_settings_tile_status_open_app">Открыть приложение</string>
+    <string name="notification_vpn_connected">VPN подключен</string>
+    <string name="notification_action_open">Открыть</string>
+    <string name="notification_action_disconnect">Отключить</string>
+</resources>
