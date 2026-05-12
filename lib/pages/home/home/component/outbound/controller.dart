@@ -22,10 +22,12 @@ class HomeOutboundState {
     required this.configs,
   });
 
-  factory HomeOutboundState.initial() => HomeOutboundState(
-        xraySettingName: appLocalizationsNoContext().settingNotSet,
-        configs: const [],
-      );
+  factory HomeOutboundState.initial({
+    int xraySettingId = DBConstants.defaultId,
+  }) => HomeOutboundState(
+    xraySettingName: _initialXraySettingName(xraySettingId),
+    configs: const [],
+  );
 
   HomeOutboundState copyWith({
     String? xraySettingName,
@@ -38,8 +40,24 @@ class HomeOutboundState {
   }
 }
 
+String _initialXraySettingName(int xraySettingId) {
+  switch (xraySettingId) {
+    case DBConstants.defaultId:
+      return appLocalizationsNoContext().settingNotSet;
+    case XraySettingSimple.simpleId:
+      return appLocalizationsNoContext().xraySettingListPageSimple;
+    default:
+      return "";
+  }
+}
+
 class HomeOutboundController extends Cubit<HomeOutboundState> {
-  HomeOutboundController() : super(HomeOutboundState.initial()) {
+  HomeOutboundController()
+    : super(
+        HomeOutboundState.initial(
+          xraySettingId: AppEventBus.instance.state.xraySettingId,
+        ),
+      ) {
     _asyncInit();
   }
 
@@ -55,10 +73,13 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
   }
 
   Future<void> _listenXraySetting() async {
-    final xraySettingId = await PreferencesKey().readXraySettingId();
-    _readXraySetting(xraySettingId);
-
     final eventBus = AppEventBus.instance;
+    var xraySettingId = eventBus.state.xraySettingId;
+    if (xraySettingId == DBConstants.defaultId) {
+      xraySettingId = await PreferencesKey().readXraySettingId();
+    }
+    await _readXraySetting(xraySettingId);
+
     _xraySettingSubscription = eventBus.stream
         .map((s) => s.xraySettingId)
         .distinct()
@@ -68,12 +89,19 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
   Future<void> _readXraySetting(int id) async {
     switch (id) {
       case DBConstants.defaultId:
-        emit(state.copyWith(
-          xraySettingName: appLocalizationsNoContext().settingNotSet,
-        ));
+        emit(
+          state.copyWith(
+            xraySettingName: appLocalizationsNoContext().settingNotSet,
+          ),
+        );
         break;
       case XraySettingSimple.simpleId:
-        emit(state.copyWith(xraySettingName: XraySettingSimple.simpleName));
+        emit(
+          state.copyWith(
+            xraySettingName:
+                appLocalizationsNoContext().xraySettingListPageSimple,
+          ),
+        );
         break;
       default:
         final db = AppDatabase();
@@ -81,9 +109,11 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
         if (xraySettingData != null) {
           emit(state.copyWith(xraySettingName: xraySettingData.name));
         } else {
-          emit(state.copyWith(
-            xraySettingName: appLocalizationsNoContext().settingNotSet,
-          ));
+          emit(
+            state.copyWith(
+              xraySettingName: appLocalizationsNoContext().settingNotSet,
+            ),
+          );
         }
         break;
     }

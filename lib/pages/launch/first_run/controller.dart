@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_setting/interface.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
@@ -70,10 +71,11 @@ class FirstRunController extends Cubit<FirstRunState> {
   }
 
   Future<void> _initSimpleSetting() async {
-    await PreferencesKey().saveXraySettingId(XraySettingSimple.simpleId);
     final simple = XraySettingSimple();
     simple.routing.directSet = state.country;
+    await PreferencesKey().saveXraySettingId(XraySettingSimple.simpleId);
     await simple.saveToPreferences();
+    AppEventBus.instance.updateXraySettingId(XraySettingSimple.simpleId);
   }
 
   Future<void> _initTunSetting() async {
