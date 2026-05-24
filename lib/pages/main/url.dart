@@ -17,10 +17,6 @@ import 'package:onexray/pages/home/share/page.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/home/xray/outbound/page.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
-import 'package:onexray/pages/home/xray/outbound/xhttp/download_settings/page.dart';
-import 'package:onexray/pages/home/xray/outbound/xhttp/download_settings/params.dart';
-import 'package:onexray/pages/home/xray/outbound/xhttp/page.dart';
-import 'package:onexray/pages/home/xray/outbound/xhttp/params.dart';
 import 'package:onexray/pages/home/xray/raw/page.dart';
 import 'package:onexray/pages/home/xray/raw/params.dart';
 import 'package:onexray/pages/home/xray/raw_edit/page.dart';
@@ -294,17 +290,6 @@ abstract final class RouterPath {
         path: RouterPath.outboundUI,
         builder: (_, state) =>
             OutboundUIPage(params: state.extra as OutboundUIParams),
-      ),
-      GoRoute(
-        path: RouterPath.outboundXhttp,
-        builder: (_, state) =>
-            OutboundXhttpPage(params: state.extra as OutboundXhttpParams),
-      ),
-      GoRoute(
-        path: RouterPath.xhttpDownloadSettings,
-        builder: (_, state) => XhttpDownloadSettingsPage(
-          params: state.extra as XhttpDownloadSettingsParams,
-        ),
       ),
       GoRoute(
         path: RouterPath.xrayRaw,

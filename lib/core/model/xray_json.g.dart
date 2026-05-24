@@ -653,26 +653,7 @@ XrayXhttpSettings _$XrayXhttpSettingsFromJson(Map<String, dynamic> json) =>
       json['host'] as String?,
       json['path'] as String?,
       json['mode'] as String?,
-      (json['headers'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(k, e as String),
-      ),
-      json['xPaddingBytes'] as String?,
-      json['noGRPCHeader'] as bool?,
-      json['scMaxEachPostBytes'] as String?,
-      json['scMinPostsIntervalMs'] as String?,
-      json['xmux'] == null
-          ? null
-          : XrayXhttpSettingsXmux.fromJson(
-              json['xmux'] as Map<String, dynamic>,
-            ),
-      json['downloadSettings'] == null
-          ? null
-          : XrayStreamSettings.fromJson(
-              json['downloadSettings'] as Map<String, dynamic>,
-            ),
-      json['extra'] == null
-          ? null
-          : XrayXhttpSettings.fromJson(json['extra'] as Map<String, dynamic>),
+      json['extra'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$XrayXhttpSettingsToJson(XrayXhttpSettings instance) =>
@@ -680,37 +661,8 @@ Map<String, dynamic> _$XrayXhttpSettingsToJson(XrayXhttpSettings instance) =>
       'host': ?instance.host,
       'path': ?instance.path,
       'mode': ?instance.mode,
-      'headers': ?instance.headers,
-      'xPaddingBytes': ?instance.xPaddingBytes,
-      'noGRPCHeader': ?instance.noGRPCHeader,
-      'scMaxEachPostBytes': ?instance.scMaxEachPostBytes,
-      'scMinPostsIntervalMs': ?instance.scMinPostsIntervalMs,
-      'xmux': ?instance.xmux?.toJson(),
-      'downloadSettings': ?instance.downloadSettings?.toJson(),
-      'extra': ?instance.extra?.toJson(),
+      'extra': ?instance.extra,
     };
-
-XrayXhttpSettingsXmux _$XrayXhttpSettingsXmuxFromJson(
-  Map<String, dynamic> json,
-) => XrayXhttpSettingsXmux(
-  json['maxConcurrency'] as String?,
-  json['maxConnections'] as String?,
-  json['cMaxReuseTimes'] as String?,
-  json['hMaxReusableSecs'] as String?,
-  json['hMaxRequestTimes'] as String?,
-  (json['hKeepAlivePeriod'] as num?)?.toInt(),
-);
-
-Map<String, dynamic> _$XrayXhttpSettingsXmuxToJson(
-  XrayXhttpSettingsXmux instance,
-) => <String, dynamic>{
-  'maxConcurrency': ?instance.maxConcurrency,
-  'maxConnections': ?instance.maxConnections,
-  'cMaxReuseTimes': ?instance.cMaxReuseTimes,
-  'hMaxReusableSecs': ?instance.hMaxReusableSecs,
-  'hMaxRequestTimes': ?instance.hMaxRequestTimes,
-  'hKeepAlivePeriod': ?instance.hKeepAlivePeriod,
-};
 
 XrayHysteriaSettings _$XrayHysteriaSettingsFromJson(
   Map<String, dynamic> json,

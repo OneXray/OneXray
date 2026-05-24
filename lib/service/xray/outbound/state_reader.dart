@@ -6,7 +6,6 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/xhttp/state_reader.dart';
 
 extension OutboundStateReader on OutboundState {
   bool readFromDbData(CoreConfigData outbound) {
@@ -482,10 +481,8 @@ extension OutboundStateReader on OutboundState {
       xhttpMode = mode;
     }
     // extra
-    if (settings.extra != null) {
-      if (!xhttpExtra.readFromXrayJson(settings.extra!)) {
-        return false;
-      }
+    if (settings.extra != null && EmptyTool.checkMap(settings.extra)) {
+      xhttpExtra = settings.extra!;
     }
 
     return true;

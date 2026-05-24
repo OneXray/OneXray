@@ -2,8 +2,6 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/xhttp/state_validator.dart';
-import 'package:onexray/service/xray/outbound/xhttp/state_writer.dart';
 import 'package:onexray/service/xray/standard.dart';
 
 extension OutboundStateWriter on OutboundState {
@@ -287,13 +285,8 @@ extension OutboundStateWriter on OutboundState {
     }
     xhttpSettings.mode = xhttpMode.name;
 
-    if (!xhttpExtra.isBlank) {
-      xhttpSettings.extra = xhttpExtra.xrayJson;
-
-      // fix stream-one can not use downloadSettings
-      if (xhttpMode == XhttpMode.streamOne) {
-        xhttpSettings.extra?.downloadSettings = null;
-      }
+    if (xhttpExtra.isNotEmpty) {
+      xhttpSettings.extra = xhttpExtra;
     }
 
     return xhttpSettings;

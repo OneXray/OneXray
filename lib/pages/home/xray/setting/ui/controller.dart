@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/json.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/xray/raw_edit/params.dart';
 import 'package:onexray/pages/home/xray/setting/dns/params.dart';
 import 'package:onexray/pages/home/xray/setting/fake_dns/params.dart';
@@ -68,7 +69,10 @@ class XraySettingUIController {
     final xrayJson = _xraySettingState.xrayJson;
     final jsonMap = xrayJson.toJson();
     final text = JsonTool.encoderForFile.convert(jsonMap);
-    final params = XrayRawEditParams(text);
+    final params = XrayRawEditParams(
+      AppLocalizations.of(context)!.xraySettingUIPageTitle,
+      text,
+    );
     final newText = await context.push<String>(
       RouterPath.xrayRawEdit,
       extra: params,

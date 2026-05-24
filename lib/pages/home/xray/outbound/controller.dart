@@ -5,8 +5,8 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
-import 'package:onexray/pages/home/xray/outbound/xhttp/params.dart';
 import 'package:onexray/pages/home/xray/raw_edit/params.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/alert.dart';
@@ -20,7 +20,6 @@ import 'package:onexray/service/xray/outbound/state_ping.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
-import 'package:onexray/service/xray/outbound/xhttp/state.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/standard.dart';
 
@@ -35,10 +34,8 @@ class OutboundUIState {
     this.version = 0,
   });
 
-  factory OutboundUIState.initial() => OutboundUIState(
-        outboundState: OutboundState(),
-        dialerProxies: const [],
-      );
+  factory OutboundUIState.initial() =>
+      OutboundUIState(outboundState: OutboundState(), dialerProxies: const []);
 
   OutboundUIState copyWith({
     OutboundState? outboundState,
@@ -139,11 +136,13 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     final dialerProxies = _fixDialerProxies(outboundState);
     _initInputs(outboundState);
     _initInput(outboundState);
-    emit(state.copyWith(
-      outboundState: outboundState,
-      dialerProxies: dialerProxies,
-      version: state.version + 1,
-    ));
+    emit(
+      state.copyWith(
+        outboundState: outboundState,
+        dialerProxies: dialerProxies,
+        version: state.version + 1,
+      ),
+    );
   }
 
   List<String> _fixDialerProxies(OutboundState outboundState) {
@@ -219,7 +218,8 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     hysteriaUpController.text = outboundState.hysteriaUp;
     hysteriaDownController.text = outboundState.hysteriaDown;
     hysteriaUdphopPortController.text = outboundState.hysteriaUdphopPort;
-    hysteriaUdphopIntervalController.text = outboundState.hysteriaUdphopInterval;
+    hysteriaUdphopIntervalController.text =
+        outboundState.hysteriaUdphopInterval;
 
     serverNameController.text = outboundState.serverName;
     pinnedPeerCertSha256Controller.text = outboundState.pinnedPeerCertSha256;
@@ -239,7 +239,10 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     xrayJson.outbounds = [state.outboundState.xrayJson];
     final jsonMap = xrayJson.toJson();
     final text = JsonTool.encoderForFile.convert(jsonMap);
-    final params = XrayRawEditParams(text);
+    final params = XrayRawEditParams(
+      AppLocalizations.of(context)!.outboundPageTitle,
+      text,
+    );
     final newText = await context.push<String>(
       RouterPath.xrayRawEdit,
       extra: params,
@@ -373,16 +376,19 @@ class OutboundUIController extends Cubit<OutboundUIState> {
   }
 
   Future<void> editXhttpExtra(BuildContext context) async {
-    final params = OutboundXhttpParams(
-      state.outboundState.xhttpMode,
-      state.outboundState.xhttpExtra,
+    final xhttpExtra = state.outboundState.xhttpExtra;
+    final text = JsonTool.encoderForFile.convert(xhttpExtra);
+    final params = XrayRawEditParams(
+      AppLocalizations.of(context)!.outboundUIPageXhttpExtra,
+      text,
     );
-    final xhttpExtra = await context.push<XhttpExtraState>(
-      RouterPath.outboundXhttp,
+    final newText = await context.push<String>(
+      RouterPath.xrayRawEdit,
       extra: params,
     );
-    if (xhttpExtra != null) {
-      state.outboundState.xhttpExtra = xhttpExtra;
+    if (newText != null) {
+      state.outboundState.xhttpExtra =
+          JsonTool.decoder.convert(newText) as Map<String, dynamic>;
       emit(state.bumped());
     }
   }
@@ -396,7 +402,10 @@ class OutboundUIController extends Cubit<OutboundUIState> {
   Future<void> editFinalMask(BuildContext context) async {
     final finalMask = state.outboundState.finalMask;
     final text = JsonTool.encoderForFile.convert(finalMask);
-    final params = XrayRawEditParams(text);
+    final params = XrayRawEditParams(
+      AppLocalizations.of(context)!.outboundUIPageFinalmask,
+      text,
+    );
     final newText = await context.push<String>(
       RouterPath.xrayRawEdit,
       extra: params,
@@ -570,7 +579,8 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     outboundState.hysteriaUp = hysteriaUpController.text;
     outboundState.hysteriaDown = hysteriaDownController.text;
     outboundState.hysteriaUdphopPort = hysteriaUdphopPortController.text;
-    outboundState.hysteriaUdphopInterval = hysteriaUdphopIntervalController.text;
+    outboundState.hysteriaUdphopInterval =
+        hysteriaUdphopIntervalController.text;
 
     outboundState.serverName = serverNameController.text;
     outboundState.pinnedPeerCertSha256 = pinnedPeerCertSha256Controller.text;

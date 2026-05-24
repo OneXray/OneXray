@@ -1,6 +1,5 @@
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
-import 'package:onexray/service/xray/outbound/xhttp/state.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 
 class OutboundState {
@@ -41,7 +40,7 @@ class OutboundState {
   var xhttpHost = "";
   var xhttpPath = "";
   var xhttpMode = XhttpMode.auto;
-  var xhttpExtra = XhttpExtraState();
+  var xhttpExtra = <String, dynamic>{};
 
   var kcpHeaderType = KcpHeaderType.none;
   var kcpHeaderDomain = "";

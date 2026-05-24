@@ -646,57 +646,14 @@ class XrayXhttpSettings {
   String? host;
   String? path;
   String? mode;
-  Map<String, String>? headers;
-  String? xPaddingBytes;
-  bool? noGRPCHeader;
-  String? scMaxEachPostBytes;
-  String? scMinPostsIntervalMs;
-  XrayXhttpSettingsXmux? xmux;
-  XrayStreamSettings? downloadSettings;
-  XrayXhttpSettings? extra;
+  Map<String, dynamic>? extra;
 
-  XrayXhttpSettings(
-    this.host,
-    this.path,
-    this.mode,
-    this.headers,
-    this.xPaddingBytes,
-    this.noGRPCHeader,
-    this.scMaxEachPostBytes,
-    this.scMinPostsIntervalMs,
-    this.xmux,
-    this.downloadSettings,
-    this.extra,
-  );
+  XrayXhttpSettings(this.host, this.path, this.mode, this.extra);
 
   factory XrayXhttpSettings.fromJson(Map<String, dynamic> json) =>
       _$XrayXhttpSettingsFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayXhttpSettingsToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class XrayXhttpSettingsXmux {
-  String? maxConcurrency;
-  String? maxConnections;
-  String? cMaxReuseTimes;
-  String? hMaxReusableSecs;
-  String? hMaxRequestTimes;
-  int? hKeepAlivePeriod;
-
-  XrayXhttpSettingsXmux(
-    this.maxConcurrency,
-    this.maxConnections,
-    this.cMaxReuseTimes,
-    this.hMaxReusableSecs,
-    this.hMaxRequestTimes,
-    this.hKeepAlivePeriod,
-  );
-
-  factory XrayXhttpSettingsXmux.fromJson(Map<String, dynamic> json) =>
-      _$XrayXhttpSettingsXmuxFromJson(json);
-
-  Map<String, dynamic> toJson() => _$XrayXhttpSettingsXmuxToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

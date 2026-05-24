@@ -5,7 +5,6 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
-import 'package:onexray/service/xray/outbound/xhttp/state_validator.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/standard.dart';
 import 'package:tuple/tuple.dart';
@@ -56,7 +55,6 @@ extension OutboundStateValidator on OutboundState {
 
     xhttpHost = xhttpHost.removeWhitespace;
     xhttpPath = xhttpPath.removeWhitespace;
-    xhttpExtra.removeWhitespace();
 
     kcpHeaderDomain = kcpHeaderDomain.removeWhitespace;
     kcpSeed = kcpSeed.removeWhitespace;

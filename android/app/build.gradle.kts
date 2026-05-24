@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
@@ -7,8 +6,6 @@ plugins {
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     // END: FlutterFire Configuration
-    id("kotlin-android")
-    kotlin("android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("org.jetbrains.kotlin.plugin.serialization")
@@ -27,7 +24,7 @@ val keystoreProperties: Properties? = if (keystoreFile.exists()) {
 
 android {
     namespace = "net.yuandev.onexray"
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = "29.0.14206865"
 
     compileOptions {
@@ -76,7 +73,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.fromTarget("17")
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
@@ -92,14 +89,14 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
 
     implementation("com.google.android.play:integrity:1.6.0")
-    implementation("com.google.android.gms:play-services-ads:25.1.0")
+    implementation("com.google.android.gms:play-services-ads:25.3.0")
 
     implementation("androidx.datastore:datastore:1.2.1")
 
-    val kotlinxCoroutinesVersion = "1.10.2"
+    val kotlinxCoroutinesVersion = "1.11.0"
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxCoroutinesVersion")
 
     implementation("com.github.getActivity:XXPermissions:21.3")
     implementation("com.elvishew:xlog:1.11.1")

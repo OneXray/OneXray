@@ -33,9 +33,7 @@ class _XrayRawEditPageState extends State<XrayRawEditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.outboundPageTitle),
-      ),
+      appBar: AppBar(title: Text(widget.params.title)),
       body: SafeArea(child: _body(context)),
     );
   }
