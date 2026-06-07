@@ -83,6 +83,8 @@
   "homePageOpenSettings": "Нет прав. Открыть?",
   "homePageSubscriptionDeleteWarning": "Удалить все?",
   "homePageSubscriptionCleanWarning": "Очистить недост.?",
+  "homePageWaitForApprovalTitle": "Ожидание одобрения сетевого расширения",
+  "homePageWaitForApprovalTips": "Пожалуйста, одобрите сетевое расширение OneXray в системных настройках. Вы можете следовать этим шагам: Системные настройки -> Общие -> Элементы входа и расширения -> По приложению -> OneXraySE -> Сетевое расширение -> Включить разрешение",
   "homeOutboundViewXraySetting": "Xray",
   "homeOutboundViewNoOutbound": "Нет",
   "homeOutboundViewNoValidConfig": "Нет валидн.",

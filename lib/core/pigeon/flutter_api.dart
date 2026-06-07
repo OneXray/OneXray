@@ -17,4 +17,12 @@ class AppFlutterApi extends BridgeFlutterApi {
     ygLogger("vpnStatusChanged ${status.name}");
     vpnStatusController.add(status);
   }
+
+  final refreshVpnController = StreamController<RefreshVpnResult>.broadcast();
+
+  @override
+  Future<void> refreshVpn(RefreshVpnResult result) async {
+    ygLogger("refreshVpn ${result.name}");
+    refreshVpnController.add(result);
+  }
 }

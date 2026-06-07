@@ -84,6 +84,8 @@
     "homePageOpenSettings": "مجوز رد شده است. تنظیمات را برای اجازه دادن باز کنید؟",
     "homePageSubscriptionDeleteWarning": "این کار همه پیکربندی‌های این لینک اشتراک را حذف می‌کند",
     "homePageSubscriptionCleanWarning": "این کار همه پیکربندی‌های غیرقابل دسترس این لینک اشتراک را حذف می‌کند",
+    "homePageWaitForApprovalTitle": "در انتظار تأیید توسعه شبکه",
+    "homePageWaitForApprovalTips": "لطفاً توسعه شبکه OneXray را در تنظیمات سیستم تأیید کنید. می‌توانید این مراحل را دنبال کنید: تنظیمات سیستم -> عمومی -> آیتم‌ها و توسعه‌ها -> بر اساس برنامه -> OneXraySE -> توسعه شبکه -> فعال کردن مجوز",
     "homeOutboundViewXraySetting": "تنظیمات Xray",
     "homeOutboundViewNoOutbound": "بدون پیکربندی",
     "homeOutboundViewNoValidConfig": "پیکربندی معتبری یافت نشد",

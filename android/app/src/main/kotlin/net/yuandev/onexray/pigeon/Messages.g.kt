@@ -208,6 +208,18 @@ enum class VpnStatus(val raw: Int) {
   }
 }
 
+enum class RefreshVpnResult(val raw: Int) {
+  INSTALLED(0),
+  NOT_INSTALLED(1),
+  WAIT_FOR_APPROVAL(2);
+
+  companion object {
+    fun ofRaw(raw: Int): RefreshVpnResult? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 /** Generated class from Pigeon that represents data sent in messages. */
 data class AndroidAppInfo (
   val name: String,
@@ -254,6 +266,11 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         }
       }
       130.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          RefreshVpnResult.ofRaw(it.toInt())
+        }
+      }
+      131.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           AndroidAppInfo.fromList(it)
         }
@@ -267,8 +284,12 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(129)
         writeValue(stream, value.raw.toLong())
       }
-      is AndroidAppInfo -> {
+      is RefreshVpnResult -> {
         stream.write(130)
+        writeValue(stream, value.raw.toLong())
+      }
+      is AndroidAppInfo -> {
+        stream.write(131)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -682,6 +703,23 @@ class BridgeFlutterApi(private val binaryMessenger: BinaryMessenger, private val
     val channelName = "dev.flutter.pigeon.onexray.BridgeFlutterApi.vpnStatusChanged$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(MessagesPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  fun refreshVpn(resultArg: RefreshVpnResult, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.onexray.BridgeFlutterApi.refreshVpn$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(resultArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

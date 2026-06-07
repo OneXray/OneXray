@@ -114,6 +114,12 @@ enum VpnStatus {
   connected,
 }
 
+enum RefreshVpnResult {
+  installed,
+  notInstalled,
+  waitForApproval,
+}
+
 class AndroidAppInfo {
   AndroidAppInfo({
     required this.name,
@@ -170,8 +176,11 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is VpnStatus) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    }    else if (value is AndroidAppInfo) {
+    }    else if (value is RefreshVpnResult) {
       buffer.putUint8(130);
+      writeValue(buffer, value.index);
+    }    else if (value is AndroidAppInfo) {
+      buffer.putUint8(131);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -185,6 +194,9 @@ class _PigeonCodec extends StandardMessageCodec {
         final value = readValue(buffer) as int?;
         return value == null ? null : VpnStatus.values[value];
       case 130:
+        final value = readValue(buffer) as int?;
+        return value == null ? null : RefreshVpnResult.values[value];
+      case 131:
         return AndroidAppInfo.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -569,6 +581,8 @@ abstract class BridgeFlutterApi {
 
   Future<void> vpnStatusChanged(VpnStatus status);
 
+  Future<void> refreshVpn(RefreshVpnResult result);
+
   static void setUp(BridgeFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
@@ -583,6 +597,27 @@ abstract class BridgeFlutterApi {
           final VpnStatus arg_status = args[0]! as VpnStatus;
           try {
             await api.vpnStatusChanged(arg_status);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.onexray.BridgeFlutterApi.refreshVpn$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final RefreshVpnResult arg_result = args[0]! as RefreshVpnResult;
+          try {
+            await api.refreshVpn(arg_result);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

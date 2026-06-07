@@ -6,6 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/network/model.dart';
+import 'package:onexray/core/pigeon/flutter_api.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
 import 'package:onexray/pages/home/xray/raw/params.dart';
@@ -36,14 +41,17 @@ class HomeController extends Cubit<HomeState> {
   final BuildContext context;
   final TabController tabController;
 
-  HomeController(this.context, this.tabController) : super(HomeState.initial()) {
+  HomeController(this.context, this.tabController)
+    : super(HomeState.initial()) {
     _asyncInit();
   }
 
   late final StreamSubscription<void> _toastSubscription;
+  late final StreamSubscription<void> _refreshVpnSubscription;
 
   Future<void> _asyncInit() async {
     _initToastStream();
+    _initRefreshVpnStream();
     final id = await PreferencesKey().readLastConfigId();
     emit(state.copyWith(configId: id));
     await BackgroundTaskService().checkSubscriptionUpdate();
@@ -58,6 +66,25 @@ class HomeController extends Cubit<HomeState> {
   void _showToast(String message) {
     if (context.mounted) {
       ContextAlert.showToast(context, message);
+    }
+  }
+
+  void _initRefreshVpnStream() {
+    _refreshVpnSubscription = AppFlutterApi().refreshVpnController.stream
+        .listen((result) => _handleRefreshVpn(result));
+  }
+
+  void _handleRefreshVpn(RefreshVpnResult result) async {
+    final useSystemExtension = await AppHostApi().useSystemExtension();
+    if (AppPlatform.isMacOS && useSystemExtension) {
+      if (result == RefreshVpnResult.waitForApproval && context.mounted) {
+        ygLogger("VPN is waiting for approval, showing alert dialog");
+        ContextAlert.showOKDialog(
+          context,
+          "System Extension Approval",
+          "VPN is waiting for approval, showing alert dialog",
+        );
+      }
     }
   }
 
@@ -184,6 +211,7 @@ class HomeController extends Cubit<HomeState> {
   @override
   Future<void> close() {
     _toastSubscription.cancel();
+    _refreshVpnSubscription.cancel();
     return super.close();
   }
 }

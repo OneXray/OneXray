@@ -31,10 +31,22 @@ class ContextAlert {
     int delay,
   ) async {
     final content = PingService().parsePingResponse(delay);
+    await showOKDialog(
+      context,
+      AppLocalizations.of(context)!.outboundPageRealPingResult,
+      content,
+    );
+  }
+
+  static Future<void> showOKDialog(
+    BuildContext context,
+    String title,
+    String content,
+  ) async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.outboundPageRealPingResult),
+        title: Text(title),
         content: Text(content),
         actions: [
           TextButton(

@@ -84,6 +84,8 @@
   "homePageOpenSettings": "权限被禁止，跳转至设置以打开权限？",
   "homePageSubscriptionDeleteWarning": "这将删除所有来自该订阅的配置",
   "homePageSubscriptionCleanWarning": "这将删除所有来自该订阅的不可达配置",
+  "homePageWaitForApprovalTitle": "等待批准网络扩展",
+  "homePageWaitForApprovalTips": "请在系统设置的网络扩展中批准 OneXray 的网络扩展权限。可按照以下步骤操作：系统设置 -> 通用 -> 登录项与扩展 -> 按 App -> OneXraySE -> 网络扩展 -> 打开权限",
   "homeOutboundViewXraySetting": "Xray 设置",
   "homeOutboundViewNoOutbound": "暂无配置",
   "homeOutboundViewNoValidConfig": "未读取到有效配置",
