@@ -139,6 +139,7 @@ class XrayRoutingRule {
   List<String>? inboundTag;
   List<String>? protocol;
   Map<String, String>? attrs;
+  List<String>? process;
   String? outboundTag;
   String? ruleTag;
 
@@ -155,6 +156,7 @@ class XrayRoutingRule {
     this.inboundTag,
     this.protocol,
     this.attrs,
+    this.process,
     this.outboundTag,
     this.ruleTag,
   );

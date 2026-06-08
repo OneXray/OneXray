@@ -52,6 +52,9 @@ class LogState {
   var dnsLog = false;
   var maskAddress = XrayLogMaskAddress.none;
 
+  var access = XrayStateConstants.accessLogPath;
+  var error = XrayStateConstants.errorLogPath;
+
   void readFromXrayJson(XrayJson xrayJson) {
     final log = xrayJson.log;
     if (log == null) {
@@ -76,8 +79,12 @@ class LogState {
 
   XrayLog get xrayJson {
     final log = XrayLogStandard.standard;
-    log.access = XrayStateConstants.accessLogPath;
-    log.error = XrayStateConstants.errorLogPath;
+    if (access.isNotEmpty) {
+      log.access = access;
+    }
+    if (error.isNotEmpty) {
+      log.error = error;
+    }
     log.logLevel = logLevel.name;
     log.dnsLog = dnsLog;
     if (maskAddress != XrayLogMaskAddress.none) {

@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule/controller.dart';
@@ -53,6 +54,8 @@ class RoutingRulePage extends StatelessWidget {
                   _portSection(context, controller, state),
                   _sourceIPSection(context, controller, state),
                   _localIPSection(context, controller, state),
+                  if (AppPlatform.isWindows || AppPlatform.isLinux)
+                    _processSection(context, controller, state),
                   _protocolSection(context, controller, state),
                   _attrSection(context, controller, state),
                   _tagSection(context, controller, state),
@@ -348,6 +351,56 @@ class RoutingRulePage extends StatelessWidget {
     return SectionView(
       title: AppLocalizations.of(context)!.routingRulePageProtocol,
       child: _protocol(context, controller, state),
+    );
+  }
+
+  Widget _processSection(
+    BuildContext context,
+    RoutingRuleController controller,
+    RoutingRuleCubitState state,
+  ) {
+    final processViews = state.ruleState.process
+        .mapIndexed(
+          (index, process) => Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller.processControllers[index],
+                  decoration: InputDecoration(
+                    label: Text(
+                      AppLocalizations.of(context)!.routingRulePageProcess,
+                    ),
+                    hintText: AppLocalizations.of(
+                      context,
+                    )!.routingRulePageProcessExample,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => controller.deleteProcess(context, index),
+                icon: Icon(Icons.delete),
+              ),
+            ],
+          ),
+        )
+        .toList();
+    return SectionView(
+      title: "",
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(AppLocalizations.of(context)!.routingRulePageProcess),
+              IconButton(
+                onPressed: () => controller.appendProcess(),
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+          if (processViews.isNotEmpty) Column(children: processViews),
+        ],
+      ),
     );
   }
 

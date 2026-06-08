@@ -1,8 +1,10 @@
+import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
+import 'package:onexray/service/xray/setting/log_state.dart';
 
 class XrayRawFix {
   static Future<void> fixConfig(
@@ -23,8 +25,10 @@ class XrayRawFix {
       tunSettingState.bindInterface = "";
     }
 
+    final disableLog = await AppHostApi().useSystemExtension();
+
     fixInboundsPort(jsonMap, ports);
-    fixLog(jsonMap);
+    fixLog(jsonMap, disableLog: disableLog);
     fixMetrics(jsonMap);
   }
 
@@ -129,7 +133,14 @@ class XrayRawFix {
     jsonMap.remove("stats");
   }
 
-  static void fixLog(Map<String, dynamic> jsonMap) {
+  static void fixLog(Map<String, dynamic> jsonMap, {bool disableLog = false}) {
+    if (disableLog) {
+      jsonMap["log"] = <String, dynamic>{
+        "loglevel": XrayLogLevel.none.name,
+        "dnsLog": false,
+      };
+      return;
+    }
     final Map<String, dynamic>? log = jsonMap["log"];
     if (log == null) {
       return;

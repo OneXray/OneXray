@@ -1,9 +1,12 @@
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
+import 'package:onexray/service/xray/setting/log_state.dart';
 import 'package:onexray/service/xray/setting/state.dart';
 import 'package:onexray/service/xray/setting/state_reader.dart';
 import 'package:onexray/service/xray/standard.dart';
@@ -47,6 +50,7 @@ extension XraySettingStateWriter on XraySettingState {
     }
 
     fixInboundsPort(ports);
+    await _fixSystemExtensionLogs();
   }
 
   void _fixSettingInterface(String interface) {
@@ -85,5 +89,16 @@ extension XraySettingStateWriter on XraySettingState {
     xrayJson.inbounds?.removeWhere(
       (inbound) => inbound.tag == RoutingInboundTag.tunIn.name,
     );
+  }
+
+  Future<void> _fixSystemExtensionLogs() async {
+    final useSystemExtension = await AppHostApi().useSystemExtension();
+    if (AppPlatform.isMacOS && useSystemExtension) {
+      log.access = "";
+      log.error = "";
+      log.logLevel = XrayLogLevel.none;
+      log.dnsLog = false;
+      log.maskAddress = XrayLogMaskAddress.none;
+    }
   }
 }

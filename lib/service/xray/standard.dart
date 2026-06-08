@@ -39,6 +39,7 @@ extension XrayRoutingRuleStandard on XrayRoutingRule {
     null,
     null,
     null,
+    null,
   );
 }
 

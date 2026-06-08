@@ -56,7 +56,8 @@ enum LanguageCode {
   en("en"),
   ru("ru"),
   fa("fa"),
-  zh("zh");
+  zh("zh"),
+  zhHant("zh_Hant");
 
   const LanguageCode(this.name);
 
@@ -75,6 +76,8 @@ enum LanguageCode {
         return appLocalizationsNoContext().languagePagePersian;
       case LanguageCode.zh:
         return appLocalizationsNoContext().languagePageChinese;
+      case LanguageCode.zhHant:
+        return appLocalizationsNoContext().languagePageTraditionalChinese;
     }
   }
 
@@ -95,12 +98,17 @@ enum LanguageCode {
     Locale current;
     switch (this) {
       case LanguageCode.system:
-        final deviceLocale =
-            WidgetsBinding.instance.platformDispatcher.locale;
+        final deviceLocale = WidgetsBinding.instance.platformDispatcher.locale;
         current = deviceLocale;
         break;
       default:
-        current = Locale(name);
+        current = switch (this) {
+          LanguageCode.zhHant => const Locale.fromSubtags(
+            languageCode: "zh",
+            scriptCode: "Hant",
+          ),
+          _ => Locale(name),
+        };
         break;
     }
     return _checkCJKLocale(current);
@@ -127,9 +135,10 @@ enum LanguageCode {
         return TextDirection.rtl;
       case LanguageCode.zh:
         return TextDirection.ltr;
+      case LanguageCode.zhHant:
+        return TextDirection.ltr;
       case LanguageCode.system:
-        final locale =
-            WidgetsBinding.instance.platformDispatcher.locale;
+        final locale = WidgetsBinding.instance.platformDispatcher.locale;
         final rtlLanguages = <String>[
           'ar', // Arabic
           'fa', // Persian

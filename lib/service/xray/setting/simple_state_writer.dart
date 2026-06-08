@@ -85,7 +85,7 @@ extension XraySettingSimpleWriter on XraySettingSimple {
 
     final servers = <DnsServerState>[];
     if (fakeDns) {
-      servers.add(_fakeDnsServer(state.queryStrategy, domain));
+      servers.add(_fakeDnsServer(state.queryStrategy));
     }
     servers.add(server);
     if (routing.localDns) {
@@ -100,14 +100,10 @@ extension XraySettingSimpleWriter on XraySettingSimple {
     return state;
   }
 
-  DnsServerState _fakeDnsServer(
-    DnsQueryStrategy queryStrategy,
-    List<String> domain,
-  ) {
+  DnsServerState _fakeDnsServer(DnsQueryStrategy queryStrategy) {
     final server = DnsServerState();
     server.address = "fakedns";
     server.queryStrategy = queryStrategy;
-    server.domains = domain;
     return server;
   }
 

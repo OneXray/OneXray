@@ -49,9 +49,9 @@ class XraySettingSimplePage extends StatelessWidget {
               child: Column(
                 children: [
                   _logSection(context, controller, state),
-                  _fakeDnsSection(context, controller, state),
                   _chainProxySection(context, controller, state),
                   _routingSection(context, controller, state),
+                  _fakeDnsSection(context, controller, state),
                   _dnsSection(context, controller, state),
                 ],
               ),
