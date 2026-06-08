@@ -300,6 +300,7 @@ class TunSettingUIPage extends StatelessWidget {
       ),
       if (ruleViews.isNotEmpty)
         ReorderableListView(
+          buildDefaultDragHandles: false,
           shrinkWrap: true,
           onReorderItem: (int oldIndex, int newIndex) =>
               controller.sortOnDemandRule(
@@ -317,15 +318,27 @@ class TunSettingUIPage extends StatelessWidget {
     OnDemandRuleState rule,
     int index,
   ) {
-    return SettingRow(
+    return ReorderableDelayedDragStartListener(
       key: Key("$index"),
-      onTap: () => controller.editOnDemandRule(context, index),
-      title: rule.interfaceType.name,
-      subtitleWidget: Row(children: [TagView(tag: rule.mode.name)]),
-      trailing: IconMenuPicker(
-        icon: Icons.more_vert,
-        menus: [IconMenuId.delete],
-        callback: (menuId) => controller.moreAction(menuId, index),
+      index: index,
+      child: SettingRow(
+        onTap: () => controller.editOnDemandRule(context, index),
+        title: rule.interfaceType.name,
+        subtitleWidget: Row(children: [TagView(tag: rule.mode.name)]),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconMenuPicker(
+              icon: Icons.more_vert,
+              menus: [IconMenuId.delete],
+              callback: (menuId) => controller.moreAction(menuId, index),
+            ),
+            ReorderDragHandle(
+              index: index,
+              tooltip: AppLocalizations.of(context)!.helpOrder,
+            ),
+          ],
+        ),
       ),
     );
   }

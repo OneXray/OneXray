@@ -8,7 +8,6 @@ import 'package:onexray/pages/home/xray/outbound/controller.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart' show SectionLevel;
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -196,9 +195,8 @@ class OutboundUIPage extends StatelessWidget {
   }
 
   Widget _vlessReverse(BuildContext context, OutboundUIController controller) {
-    return SettingSection(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageReverse,
-      level: SectionLevel.second,
       children: [_vlessReverseTag(context, controller)],
     );
   }
@@ -469,9 +467,8 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SettingSection(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageRawHeader,
-      level: SectionLevel.second,
       children: [
         _rawHeaderType(context, controller, state),
         if (state.outboundState.rawHeaderType == RawHeaderType.http)
@@ -621,9 +618,8 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SettingSection(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageKcpHeader,
-      level: SectionLevel.second,
       children: [
         _kcpHeaderType(context, controller, state),
         _kcpHeaderDomain(context, controller),
@@ -819,9 +815,8 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return SettingSection(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageHysteriaUdphop,
-      level: SectionLevel.second,
       children: [
         _hysteriaUdphopPort(context, controller),
         _hysteriaUdphopInterval(context, controller),

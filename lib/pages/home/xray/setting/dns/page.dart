@@ -96,6 +96,7 @@ class DnsPage extends StatelessWidget {
         ),
         if (serverViews.isNotEmpty)
           ReorderableListView(
+            buildDefaultDragHandles: false,
             shrinkWrap: true,
             onReorderItem: (int oldIndex, int newIndex) =>
                 controller.sortServer(
@@ -115,15 +116,27 @@ class DnsPage extends StatelessWidget {
     int serverIndex,
   ) {
     final queryStrategy = server.queryStrategy;
-    return SettingRow(
+    return ReorderableDelayedDragStartListener(
       key: Key("$serverIndex"),
-      onTap: () => controller.editServer(context, serverIndex),
-      title: server.address,
-      subtitleWidget: Row(children: [TagView(tag: queryStrategy.name)]),
-      trailing: IconMenuPicker(
-        icon: Icons.more_vert,
-        menus: [IconMenuId.delete],
-        callback: (menuId) => controller.moreAction(menuId, serverIndex),
+      index: serverIndex,
+      child: SettingRow(
+        onTap: () => controller.editServer(context, serverIndex),
+        title: server.address,
+        subtitleWidget: Row(children: [TagView(tag: queryStrategy.name)]),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconMenuPicker(
+              icon: Icons.more_vert,
+              menus: [IconMenuId.delete],
+              callback: (menuId) => controller.moreAction(menuId, serverIndex),
+            ),
+            ReorderDragHandle(
+              index: serverIndex,
+              tooltip: AppLocalizations.of(context)!.helpOrder,
+            ),
+          ],
+        ),
       ),
     );
   }

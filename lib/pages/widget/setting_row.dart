@@ -7,40 +7,78 @@ class SettingSection extends StatelessWidget {
   final String title;
   final List<Widget> children;
   final bool separated;
-  final SectionLevel level;
 
   const SettingSection({
     super.key,
     required this.title,
     required this.children,
     this.separated = true,
-    this.level = SectionLevel.none,
   });
 
   @override
   Widget build(BuildContext context) {
     return SectionView(
       title: title,
-      level: level,
-      child: Column(children: _buildChildren(context)),
+      child: Column(
+        children: _buildSettingChildren(context, children, separated),
+      ),
     );
   }
+}
 
-  List<Widget> _buildChildren(BuildContext context) {
-    if (!separated || children.length < 2) {
-      return children;
-    }
-    final views = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      if (i > 0) {
-        views.add(
-          Divider(height: 1, indent: 16, color: ColorManager.border(context)),
-        );
-      }
-      views.add(children[i]);
-    }
-    return views;
+class SettingSubsection extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  final bool separated;
+
+  const SettingSubsection({
+    super.key,
+    required this.title,
+    required this.children,
+    this.separated = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (title.isNotEmpty)
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 4),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: ColorManager.formTitle(context),
+              ),
+            ),
+          ),
+        ..._buildSettingChildren(context, children, separated),
+      ],
+    );
   }
+}
+
+List<Widget> _buildSettingChildren(
+  BuildContext context,
+  List<Widget> children,
+  bool separated,
+) {
+  if (!separated || children.length < 2) {
+    return children;
+  }
+  final views = <Widget>[];
+  for (var i = 0; i < children.length; i++) {
+    if (i > 0) {
+      views.add(
+        Divider(height: 1, indent: 16, color: ColorManager.border(context)),
+      );
+    }
+    views.add(children[i]);
+  }
+  return views;
 }
 
 class SettingRow extends StatelessWidget {
@@ -165,6 +203,39 @@ class SettingRow extends StatelessWidget {
 
   IconThemeData _iconTheme(BuildContext context) {
     return IconThemeData(size: 20, color: ColorManager.secondaryText(context));
+  }
+}
+
+class ReorderDragHandle extends StatelessWidget {
+  final int index;
+  final String tooltip;
+
+  const ReorderDragHandle({
+    super.key,
+    required this.index,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ReorderableDragStartListener(
+      index: index,
+      child: Tooltip(
+        message: tooltip,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.grab,
+          child: SizedBox(
+            width: 40,
+            height: 48,
+            child: Icon(
+              Icons.drag_handle,
+              size: 20,
+              color: ColorManager.secondaryText(context),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

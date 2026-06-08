@@ -8,7 +8,6 @@ import 'package:onexray/pages/home/xray/setting/routing/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart' show SectionLevel;
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
@@ -117,11 +116,7 @@ class RoutingPage extends StatelessWidget {
           (index, rule) => _systemRuleCell(context, controller, rule, index),
         )
         .toList();
-    return SettingSection(
-      title: "",
-      level: SectionLevel.second,
-      children: ruleViews,
-    );
+    return SettingSubsection(title: "", children: ruleViews);
   }
 
   Widget _systemRuleCell(
@@ -147,12 +142,12 @@ class RoutingPage extends StatelessWidget {
           (index, rule) => _customRuleCell(context, controller, rule, index),
         )
         .toList();
-    return SettingSection(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.helpOrder,
-      level: SectionLevel.second,
       separated: false,
       children: [
         ReorderableListView(
+          buildDefaultDragHandles: false,
           shrinkWrap: true,
           onReorderItem: (int oldIndex, int newIndex) =>
               controller.sortCustomRule(
@@ -171,15 +166,28 @@ class RoutingPage extends StatelessWidget {
     RoutingRuleState rule,
     int ruleIndex,
   ) {
-    return SettingRow(
+    return ReorderableDelayedDragStartListener(
       key: Key("$ruleIndex"),
-      onTap: () => controller.editCustomRule(context, ruleIndex),
-      title: rule.ruleTag,
-      subtitleWidget: Row(children: [TagView(tag: rule.uiTag)]),
-      trailing: IconMenuPicker(
-        icon: Icons.more_vert,
-        menus: [IconMenuId.delete],
-        callback: (menuId) => controller.ruleMoreAction(menuId, ruleIndex),
+      index: ruleIndex,
+      child: SettingRow(
+        onTap: () => controller.editCustomRule(context, ruleIndex),
+        title: rule.ruleTag,
+        subtitleWidget: Row(children: [TagView(tag: rule.uiTag)]),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconMenuPicker(
+              icon: Icons.more_vert,
+              menus: [IconMenuId.delete],
+              callback: (menuId) =>
+                  controller.ruleMoreAction(menuId, ruleIndex),
+            ),
+            ReorderDragHandle(
+              index: ruleIndex,
+              tooltip: AppLocalizations.of(context)!.helpOrder,
+            ),
+          ],
+        ),
       ),
     );
   }
