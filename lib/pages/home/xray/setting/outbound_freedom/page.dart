@@ -7,8 +7,7 @@ import 'package:onexray/pages/home/xray/setting/outbound_freedom/controller.dart
 import 'package:onexray/pages/home/xray/setting/outbound_freedom/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class OutboundFreedomPage extends StatelessWidget {
   final OutboundFreedomParams params;
@@ -23,17 +22,23 @@ class OutboundFreedomPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<OutboundFreedomController>();
           return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.outboundFreedomPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
+            appBar: AppBar(
+              title: Text(
+                AppLocalizations.of(context)!.outboundFreedomPageTitle,
+              ),
+            ),
+            body: SafeArea(child: _body(context, controller, state)),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, OutboundFreedomController controller, OutboundFreedomCubitState state) {
+  Widget _body(
+    BuildContext context,
+    OutboundFreedomController controller,
+    OutboundFreedomCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -57,42 +62,44 @@ class OutboundFreedomPage extends StatelessWidget {
 
   Widget _protocolSection(
     BuildContext context,
-    OutboundFreedomController controller, OutboundFreedomCubitState state) {
-    return SectionView(
+    OutboundFreedomController controller,
+    OutboundFreedomCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundFreedomPageProtocol,
-            detail: state.freedomState.protocol.name,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundFreedomPageTag,
-            detail: state.freedomState.tag.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundFreedomPageProtocol,
+          value: state.freedomState.protocol.name,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundFreedomPageTag,
+          value: state.freedomState.tag.name,
+        ),
+      ],
     );
   }
 
   Widget _sockoptSection(
     BuildContext context,
-    OutboundFreedomController controller, OutboundFreedomCubitState state) {
-    return SectionView(
+    OutboundFreedomController controller,
+    OutboundFreedomCubitState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundFreedomPageSockopt,
-      child: Column(children: [_interface(context, controller, state)]),
+      children: [_interface(context, controller, state)],
     );
   }
 
   Widget _interface(
     BuildContext context,
-    OutboundFreedomController controller, OutboundFreedomCubitState state) {
-    return InkWell(
+    OutboundFreedomController controller,
+    OutboundFreedomCubitState state,
+  ) {
+    return NavigationSettingRow(
+      title: AppLocalizations.of(context)!.outboundFreedomPageInterface,
+      value: state.freedomState.interface,
       onTap: () => controller.editInterface(context),
-      child: TextRow(
-        title: AppLocalizations.of(context)!.outboundFreedomPageInterface,
-        detail: state.freedomState.interface,
-      ),
     );
   }
 

@@ -5,7 +5,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/theme/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 
 class ThemePage extends StatelessWidget {
@@ -55,15 +55,18 @@ class ThemePage extends StatelessWidget {
     ThemeController controller,
   ) {
     final children = ThemeCode.values
-        .map((e) => RadioListTile(value: e, title: Text("$e")))
+        .map(
+          (e) => SettingRow(
+            title: "$e",
+            onTap: () => controller.updateThemeCode(e),
+            trailing: Radio<ThemeCode>(value: e),
+          ),
+        )
         .toList();
-    return SectionView(
-      title: "",
-      child: RadioGroup<ThemeCode>(
-        groupValue: state.themeCode,
-        onChanged: (value) => controller.updateThemeCode(value),
-        child: Column(children: children),
-      ),
+    return RadioGroup<ThemeCode>(
+      groupValue: state.themeCode,
+      onChanged: (value) => controller.updateThemeCode(value),
+      child: SettingSection(title: "", children: children),
     );
   }
 

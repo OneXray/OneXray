@@ -8,7 +8,7 @@ import 'package:onexray/pages/home/component/config_row/selectable_view.dart';
 import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/home/home/component/outbound/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
-import 'package:onexray/pages/widget/text_action_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class HomeOutboundView extends StatelessWidget {
   const HomeOutboundView({super.key});
@@ -50,9 +50,9 @@ class HomeOutboundView extends StatelessWidget {
   ) {
     return ColoredBox(
       color: ColorManager.surface(context),
-      child: TextActionRow(
+      child: NavigationSettingRow(
         title: AppLocalizations.of(context)!.homeOutboundViewXraySetting,
-        detail: state.xraySettingName,
+        value: state.xraySettingName,
         onTap: () => controller.gotoXraySetting(context),
       ),
     );

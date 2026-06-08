@@ -6,6 +6,7 @@ import 'package:onexray/pages/geo_data/select/params.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatSelectPage extends StatelessWidget {
@@ -55,10 +56,21 @@ class GeoDatSelectPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, GeoDatSelectController controller) {
-    return TextField(
-      controller: controller.searchController,
-      decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
-      onChanged: (value) => controller.keywordChanged(value),
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
+      child: TextField(
+        controller: controller.searchController,
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          isDense: true,
+        ),
+        onChanged: (value) => controller.keywordChanged(value),
+      ),
     );
   }
 
@@ -73,8 +85,7 @@ class GeoDatSelectPage extends StatelessWidget {
       );
     } else {
       return ListView.separated(
-        itemBuilder: (ctx, index) =>
-            _itemRow(ctx, controller, state, index),
+        itemBuilder: (ctx, index) => _itemRow(ctx, controller, state, index),
         itemCount: state.geoDatCodes.length,
         separatorBuilder: (_, _) => const Divider(),
       );
@@ -89,11 +100,15 @@ class GeoDatSelectPage extends StatelessWidget {
   ) {
     final code = state.geoDatCodes[index];
     final count = code.ruleCount ?? 0;
-    return CheckboxListTile(
-      value: state.selections.contains(code.code),
-      onChanged: (value) => controller.updateSelections(value, code.code),
-      title: Text(code.code ?? ""),
-      subtitle: Row(children: [TagView(tag: "$count")]),
+    final selected = state.selections.contains(code.code);
+    return SettingRow(
+      title: code.code ?? "",
+      subtitleWidget: Row(children: [TagView(tag: "$count")]),
+      onTap: () => controller.updateSelections(!selected, code.code),
+      trailing: Checkbox(
+        value: selected,
+        onChanged: (value) => controller.updateSelections(value, code.code),
+      ),
     );
   }
 

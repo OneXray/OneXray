@@ -5,8 +5,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/ping/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/ping/state.dart';
 
 class PingPage extends StatelessWidget {
@@ -55,20 +54,17 @@ class PingPage extends StatelessWidget {
     PingPageState state,
     PingController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _timeout(context, state, controller),
-          _concurrency(context, state, controller),
-          _url(context, state, controller),
-          if (state.pingState.url == PingUrl.custom)
-            _customUrl(context, controller)
-          else
-            _realUrl(context, state),
-        ],
-      ),
+      children: [
+        _timeout(context, state, controller),
+        _concurrency(context, state, controller),
+        _url(context, state, controller),
+        if (state.pingState.url == PingUrl.custom)
+          _customUrl(context, controller)
+        else
+          _realUrl(context, state),
+      ],
     );
   }
 
@@ -77,21 +73,14 @@ class PingPage extends StatelessWidget {
     PingPageState state,
     PingController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.pingPageTimeout),
-        Expanded(
-          child: Slider(
-            min: PingTimeout.min,
-            max: PingTimeout.max,
-            divisions: PingTimeout.divisions,
-            label: state.pingState.timeout.round().toString(),
-            value: state.pingState.timeout,
-            onChanged: (value) => controller.updateTimeout(value),
-          ),
-        ),
-      ],
+    return SliderSettingRow(
+      title: AppLocalizations.of(context)!.pingPageTimeout,
+      min: PingTimeout.min,
+      max: PingTimeout.max,
+      divisions: PingTimeout.divisions,
+      label: state.pingState.timeout.round().toString(),
+      value: state.pingState.timeout,
+      onChanged: (value) => controller.updateTimeout(value),
     );
   }
 
@@ -100,21 +89,14 @@ class PingPage extends StatelessWidget {
     PingPageState state,
     PingController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.pingPageConcurrency),
-        Expanded(
-          child: Slider(
-            min: PingConcurrency.min,
-            max: PingConcurrency.max,
-            divisions: PingConcurrency.divisions,
-            label: state.pingState.concurrency.round().toString(),
-            value: state.pingState.concurrency,
-            onChanged: (value) => controller.updateConcurrency(value),
-          ),
-        ),
-      ],
+    return SliderSettingRow(
+      title: AppLocalizations.of(context)!.pingPageConcurrency,
+      min: PingConcurrency.min,
+      max: PingConcurrency.max,
+      divisions: PingConcurrency.divisions,
+      label: state.pingState.concurrency.round().toString(),
+      value: state.pingState.concurrency,
+      onChanged: (value) => controller.updateConcurrency(value),
     );
   }
 
@@ -123,33 +105,23 @@ class PingPage extends StatelessWidget {
     PingPageState state,
     PingController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.pingPageUrl),
-        TextMenuPicker(
-          title: state.pingState.url.name,
-          selections: PingUrl.names,
-          callback: (value) => controller.updateUrl(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.pingPageUrl,
+      value: state.pingState.url.name,
+      selections: PingUrl.names,
+      onSelected: (value) => controller.updateUrl(value),
     );
   }
 
   Widget _realUrl(BuildContext context, PingPageState state) {
-    return Text(
-      state.pingState.url.url,
-      style: Theme.of(context).textTheme.bodySmall,
-    );
+    return SettingRow(title: state.pingState.url.url, titleMaxLines: 3);
   }
 
   Widget _customUrl(BuildContext context, PingController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.customUrlController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.pingPageUrl),
-        hintText: AppLocalizations.of(context)!.pingPageUrl,
-      ),
+      label: AppLocalizations.of(context)!.pingPageUrl,
+      hintText: AppLocalizations.of(context)!.pingPageUrl,
     );
   }
 

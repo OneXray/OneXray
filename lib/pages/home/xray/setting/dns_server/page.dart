@@ -7,8 +7,7 @@ import 'package:onexray/pages/home/xray/setting/dns_server/controller.dart';
 import 'package:onexray/pages/home/xray/setting/dns_server/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 
 class DnsServerPage extends StatelessWidget {
@@ -24,17 +23,21 @@ class DnsServerPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<DnsServerController>();
           return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.dnsServerPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.dnsServerPageTitle),
+            ),
+            body: SafeArea(child: _body(context, controller, state)),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, DnsServerController controller, DnsServerCubitState state) {
+  Widget _body(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -58,86 +61,76 @@ class DnsServerPage extends StatelessWidget {
     );
   }
 
-  Widget _addressSection(BuildContext context, DnsServerController controller, DnsServerCubitState state) {
-    return SectionView(
+  Widget _addressSection(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _address(context, controller),
-          _port(context, controller),
-          _skipFallback(context, controller, state),
-        ],
-      ),
-    );
-  }
-
-  Widget _address(BuildContext context, DnsServerController controller) {
-    return TextField(
-      controller: controller.addressController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.dnsServerPageAddress),
-        hintText: AppLocalizations.of(context)!.dnsServerPageAddressExample,
-      ),
-    );
-  }
-
-  Widget _port(BuildContext context, DnsServerController controller) {
-    return TextField(
-      controller: controller.portController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.dnsServerPagePort),
-        hintText: AppLocalizations.of(context)!.dnsServerPagePortExample,
-      ),
-    );
-  }
-
-  Widget _skipFallback(BuildContext context, DnsServerController controller, DnsServerCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(AppLocalizations.of(context)!.dnsServerPageSkipFallback),
-        Switch(
-          value: state.serverState.skipFallback,
-          onChanged: (value) => controller.updateSkipFallback(value),
-        ),
+        _address(context, controller),
+        _port(context, controller),
+        _skipFallback(context, controller, state),
       ],
     );
   }
 
-  Widget _domainsSection(BuildContext context, DnsServerController controller, DnsServerCubitState state) {
+  Widget _address(BuildContext context, DnsServerController controller) {
+    return TextFieldSettingRow(
+      controller: controller.addressController,
+      label: AppLocalizations.of(context)!.dnsServerPageAddress,
+      hintText: AppLocalizations.of(context)!.dnsServerPageAddressExample,
+    );
+  }
+
+  Widget _port(BuildContext context, DnsServerController controller) {
+    return TextFieldSettingRow(
+      controller: controller.portController,
+      label: AppLocalizations.of(context)!.dnsServerPagePort,
+      hintText: AppLocalizations.of(context)!.dnsServerPagePortExample,
+    );
+  }
+
+  Widget _skipFallback(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.dnsServerPageSkipFallback,
+      value: state.serverState.skipFallback,
+      onChanged: (value) => controller.updateSkipFallback(value),
+    );
+  }
+
+  Widget _domainsSection(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
     final domainsViews = state.serverState.domains
         .mapIndexed(
-          (index, host) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.domainsControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.dnsServerPageDomain,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.dnsServerPageDomainExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteDomains(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.domainsControllers[index],
+            label: AppLocalizations.of(context)!.dnsServerPageDomain,
+            hintText: AppLocalizations.of(context)!.dnsServerPageDomainExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteDomains(context, index),
+              icon: Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
+      separated: false,
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.dnsServerPageDomains,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(AppLocalizations.of(context)!.dnsServerPageDomains),
-              const Spacer(),
               IconButton(
                 onPressed: () => controller.appendDomains(),
                 icon: const Icon(Icons.add),
@@ -148,46 +141,39 @@ class DnsServerPage extends StatelessWidget {
               ),
             ],
           ),
-          if (domainsViews.isNotEmpty) Column(children: domainsViews),
-        ],
-      ),
+        ),
+        if (domainsViews.isNotEmpty) Column(children: domainsViews),
+      ],
     );
   }
 
   Widget _expectedIPsSection(
     BuildContext context,
-    DnsServerController controller, DnsServerCubitState state) {
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
     final expectedIPsViews = state.serverState.expectedIPs
         .mapIndexed(
-          (index, host) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.expectedIPsControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(AppLocalizations.of(context)!.dnsServerPageIp),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.dnsServerPageIpExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteExpectedIPs(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.expectedIPsControllers[index],
+            label: AppLocalizations.of(context)!.dnsServerPageIp,
+            hintText: AppLocalizations.of(context)!.dnsServerPageIpExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteExpectedIPs(context, index),
+              icon: Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
+      separated: false,
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.dnsServerPageExpectedIPs,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(AppLocalizations.of(context)!.dnsServerPageExpectedIPs),
-              const Spacer(),
               IconButton(
                 onPressed: () => controller.appendExpectedIPs(),
                 icon: const Icon(Icons.add),
@@ -198,46 +184,39 @@ class DnsServerPage extends StatelessWidget {
               ),
             ],
           ),
-          if (expectedIPsViews.isNotEmpty) Column(children: expectedIPsViews),
-        ],
-      ),
+        ),
+        if (expectedIPsViews.isNotEmpty) Column(children: expectedIPsViews),
+      ],
     );
   }
 
   Widget _unexpectedIPsSection(
     BuildContext context,
-    DnsServerController controller, DnsServerCubitState state) {
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
     final unexpectedIPsViews = state.serverState.unexpectedIPs
         .mapIndexed(
-          (index, host) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.unexpectedIPsControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(AppLocalizations.of(context)!.dnsServerPageIp),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.dnsServerPageIpExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteUnexpectedIPs(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.unexpectedIPsControllers[index],
+            label: AppLocalizations.of(context)!.dnsServerPageIp,
+            hintText: AppLocalizations.of(context)!.dnsServerPageIpExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteUnexpectedIPs(context, index),
+              icon: Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
+      separated: false,
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.dnsServerPageUnexpectedIPs,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(AppLocalizations.of(context)!.dnsServerPageUnexpectedIPs),
-              const Spacer(),
               IconButton(
                 onPressed: () => controller.appendUnexpectedIPs(),
                 icon: const Icon(Icons.add),
@@ -248,76 +227,70 @@ class DnsServerPage extends StatelessWidget {
               ),
             ],
           ),
-          if (unexpectedIPsViews.isNotEmpty)
-            Column(children: unexpectedIPsViews),
-        ],
-      ),
+        ),
+        if (unexpectedIPsViews.isNotEmpty) Column(children: unexpectedIPsViews),
+      ],
     );
   }
 
   Widget _queryStrategySection(
     BuildContext context,
-    DnsServerController controller, DnsServerCubitState state) {
-    return SectionView(
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _queryStrategy(context, controller, state),
-          _tag(context, controller),
-          _disableCache(context, controller, state),
-          _finalQuery(context, controller, state),
-        ],
-      ),
+      children: [
+        _queryStrategy(context, controller, state),
+        _tag(context, controller),
+        _disableCache(context, controller, state),
+        _finalQuery(context, controller, state),
+      ],
     );
   }
 
-  Widget _queryStrategy(BuildContext context, DnsServerController controller, DnsServerCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.dnsServerPageQueryStrategy),
-        TextMenuPicker(
-          title: state.serverState.queryStrategy.name,
-          selections: DnsQueryStrategy.names,
-          callback: (value) => controller.updateQueryStrategy(value),
-        ),
-      ],
+  Widget _queryStrategy(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.dnsServerPageQueryStrategy,
+      value: state.serverState.queryStrategy.name,
+      selections: DnsQueryStrategy.names,
+      onSelected: (value) => controller.updateQueryStrategy(value),
     );
   }
 
   Widget _tag(BuildContext context, DnsServerController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.tagController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.dnsServerPageTag),
-        hintText: AppLocalizations.of(context)!.dnsServerPageTag,
-      ),
+      label: AppLocalizations.of(context)!.dnsServerPageTag,
+      hintText: AppLocalizations.of(context)!.dnsServerPageTag,
     );
   }
 
-  Widget _disableCache(BuildContext context, DnsServerController controller, DnsServerCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.dnsServerPageDisableCache),
-        Switch(
-          value: state.serverState.disableCache,
-          onChanged: (value) => controller.updateDisableCache(value),
-        ),
-      ],
+  Widget _disableCache(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.dnsServerPageDisableCache,
+      value: state.serverState.disableCache,
+      onChanged: (value) => controller.updateDisableCache(value),
     );
   }
 
-  Widget _finalQuery(BuildContext context, DnsServerController controller, DnsServerCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.dnsServerPageFinalQuery),
-        Switch(
-          value: state.serverState.finalQuery,
-          onChanged: (value) => controller.updateFinalQuery(value),
-        ),
-      ],
+  Widget _finalQuery(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.dnsServerPageFinalQuery,
+      value: state.serverState.finalQuery,
+      onChanged: (value) => controller.updateFinalQuery(value),
     );
   }
 

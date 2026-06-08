@@ -5,8 +5,7 @@ import 'package:onexray/pages/geo_data/add/controller.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/geo_data/enum.dart';
@@ -57,26 +56,21 @@ class GeoDatAddPage extends StatelessWidget {
     GeoDatAddController controller,
     GeoDatAddState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.geoDatAddPageSection,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _name(context, controller),
-          _type(context, controller, state),
-          _url(context, controller),
-        ],
-      ),
+      children: [
+        _name(context, controller),
+        _type(context, controller, state),
+        _url(context, controller),
+      ],
     );
   }
 
   Widget _name(BuildContext context, GeoDatAddController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.nameController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.geoDatAddPageName),
-        hintText: AppLocalizations.of(context)!.geoDatAddPageName,
-      ),
+      label: AppLocalizations.of(context)!.geoDatAddPageName,
+      hintText: AppLocalizations.of(context)!.geoDatAddPageName,
     );
   }
 
@@ -85,27 +79,20 @@ class GeoDatAddPage extends StatelessWidget {
     GeoDatAddController controller,
     GeoDatAddState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.geoDatAddPageType),
-        TextMenuPicker<GeoDataType>(
-          title: state.type.name,
-          selections: GeoDataType.values,
-          callback: (value) => controller.updateType(value),
-        ),
-      ],
+    return SelectSettingRow<GeoDataType>(
+      title: AppLocalizations.of(context)!.geoDatAddPageType,
+      value: state.type.name,
+      selections: GeoDataType.values,
+      onSelected: (value) => controller.updateType(value),
     );
   }
 
   Widget _url(BuildContext context, GeoDatAddController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.urlController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.geoDatAddPageUrl),
-        hintText: AppLocalizations.of(context)!.geoDatAddPageUrlExample,
-        helperText: AppLocalizations.of(context)!.helpURL,
-      ),
+      label: AppLocalizations.of(context)!.geoDatAddPageUrl,
+      hintText: AppLocalizations.of(context)!.geoDatAddPageUrlExample,
+      helperText: AppLocalizations.of(context)!.helpURL,
     );
   }
 

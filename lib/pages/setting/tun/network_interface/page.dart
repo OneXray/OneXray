@@ -6,6 +6,7 @@ import 'package:onexray/pages/setting/tun/network_interface/controller.dart';
 import 'package:onexray/pages/setting/tun/network_interface/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class NetworkInterfacePage extends StatelessWidget {
   final NetworkInterfaceParams params;
@@ -21,8 +22,9 @@ class NetworkInterfacePage extends StatelessWidget {
           final controller = context.read<NetworkInterfaceController>();
           return Scaffold(
             appBar: AppBar(
-              title:
-                  Text(AppLocalizations.of(context)!.networkInterfacePageTitle),
+              title: Text(
+                AppLocalizations.of(context)!.networkInterfacePageTitle,
+              ),
             ),
             body: SafeArea(child: _body(context, state, controller)),
           );
@@ -71,17 +73,16 @@ class NetworkInterfacePage extends StatelessWidget {
     }
   }
 
-  Widget _cell(
-    BuildContext context,
-    NetworkInterfaceState state,
-    int index,
-  ) {
+  Widget _cell(BuildContext context, NetworkInterfaceState state, int index) {
     final interface = state.interfaceList[index];
     final address = interface.addresses.map((e) => e.address).join("\n");
-    return RadioListTile(
-      value: interface.name,
-      title: Text(interface.name),
-      subtitle: Text(address),
+    return SettingRow(
+      title: interface.name,
+      subtitle: address,
+      onTap: () => context.read<NetworkInterfaceController>().updateInterface(
+        interface.name,
+      ),
+      trailing: Radio<String>(value: interface.name),
     );
   }
 

@@ -3,7 +3,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/share/controller.dart';
 import 'package:onexray/pages/home/share/params.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -43,85 +43,75 @@ class SharePage extends StatelessWidget {
 
   Widget _linkSection(BuildContext context, ShareState state) {
     final controller = context.read<ShareController>();
-    return SectionView(
-      title: state.linkSection,
-      child: Column(
-        children: [
-          if (state.linkQrcodeSuccess)
-            _linkQrcodeSection(context, controller),
-          _linkUrlSection(context, controller),
-        ],
-      ),
+    return Column(
+      children: [
+        if (state.linkQrcodeSuccess)
+          _linkQrcodeSection(context, controller, state.linkSection),
+        _linkUrlSection(context, controller, state.linkSection),
+      ],
     );
   }
 
-  Widget _linkQrcodeSection(BuildContext context, ShareController controller) {
-    return SectionView(
-      title: AppLocalizations.of(context)!.sharePageQRCode,
-      level: SectionLevel.second,
-      child: Column(
-        children: [
-          if (!AppPlatform.isLinux)
-            ListTile(
-              onTap: () => controller.shareLinkQrcode(context),
-              title: Text(AppLocalizations.of(context)!.sharePageShareQRCode),
-            ),
-          ListTile(
-            onTap: () => controller.saveLinkQrcode(context),
-            title: Text(AppLocalizations.of(context)!.sharePageSaveQRCode),
+  Widget _linkQrcodeSection(
+    BuildContext context,
+    ShareController controller,
+    String sectionTitle,
+  ) {
+    return SettingSection(
+      title: "$sectionTitle / ${AppLocalizations.of(context)!.sharePageQRCode}",
+      children: [
+        if (!AppPlatform.isLinux)
+          NavigationSettingRow(
+            title: AppLocalizations.of(context)!.sharePageShareQRCode,
+            onTap: () => controller.shareLinkQrcode(context),
           ),
-          ListTile(
-            onTap: () => controller.showLinkQrcode(context),
-            title: Text(AppLocalizations.of(context)!.sharePageShowQRCode),
-          ),
-        ],
-      ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.sharePageSaveQRCode,
+          onTap: () => controller.saveLinkQrcode(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.sharePageShowQRCode,
+          onTap: () => controller.showLinkQrcode(context),
+        ),
+      ],
     );
   }
 
-  Widget _linkUrlSection(BuildContext context, ShareController controller) {
-    return SectionView(
-      title: AppLocalizations.of(context)!.sharePageLink,
-      level: SectionLevel.second,
-      child: Column(
-        children: [
-          ListTile(
-            onTap: () => controller.shareLinkUrl(context),
-            title: Text(AppLocalizations.of(context)!.sharePageShareLink),
-          ),
-          ListTile(
-            onTap: () => controller.copyLinkUrl(context),
-            title: Text(AppLocalizations.of(context)!.sharePageCopyLink),
-          ),
-        ],
-      ),
+  Widget _linkUrlSection(
+    BuildContext context,
+    ShareController controller,
+    String sectionTitle,
+  ) {
+    return SettingSection(
+      title: "$sectionTitle / ${AppLocalizations.of(context)!.sharePageLink}",
+      children: [
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.sharePageShareLink,
+          onTap: () => controller.shareLinkUrl(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.sharePageCopyLink,
+          onTap: () => controller.copyLinkUrl(context),
+        ),
+      ],
     );
   }
 
   Widget _appSection(BuildContext context, ShareState state) {
     final controller = context.read<ShareController>();
-    return SectionView(
-      title: AppLocalizations.of(context)!.sharePageAppLink,
-      child: _appUrlSection(context, controller),
-    );
-  }
-
-  Widget _appUrlSection(BuildContext context, ShareController controller) {
-    return SectionView(
-      title: AppLocalizations.of(context)!.sharePageLink,
-      level: SectionLevel.second,
-      child: Column(
-        children: [
-          ListTile(
-            onTap: () => controller.shareAppUrl(context),
-            title: Text(AppLocalizations.of(context)!.sharePageShareLink),
-          ),
-          ListTile(
-            onTap: () => controller.copyAppUrl(context),
-            title: Text(AppLocalizations.of(context)!.sharePageCopyLink),
-          ),
-        ],
-      ),
+    return SettingSection(
+      title:
+          "${AppLocalizations.of(context)!.sharePageAppLink} / ${AppLocalizations.of(context)!.sharePageLink}",
+      children: [
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.sharePageShareLink,
+          onTap: () => controller.shareAppUrl(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.sharePageCopyLink,
+          onTap: () => controller.copyAppUrl(context),
+        ),
+      ],
     );
   }
 }

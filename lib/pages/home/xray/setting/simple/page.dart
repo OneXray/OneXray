@@ -5,8 +5,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/simple/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/simple_state.dart';
@@ -68,18 +67,15 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.logPageTitle,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(AppLocalizations.of(context)!.xraySettingSimplePageEnableLog),
-          Switch(
-            value: state.xraySetting.enableLog,
-            onChanged: (value) => controller.updateEnableLog(value),
-          ),
-        ],
-      ),
+      children: [
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingSimplePageEnableLog,
+          value: state.xraySetting.enableLog,
+          onChanged: (value) => controller.updateEnableLog(value),
+        ),
+      ],
     );
   }
 
@@ -88,20 +84,17 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.xraySettingSimplePageRouting,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _domainStrategy(context, controller, state),
-          _queryStrategy(context, controller, state),
-          _directSet(context, controller, state),
-          _appleDirect(context, controller, state),
-          _localDirect(context, controller, state),
-          _enableIPRule(context, controller, state),
-          _localDns(context, controller, state),
-        ],
-      ),
+      children: [
+        _domainStrategy(context, controller, state),
+        _queryStrategy(context, controller, state),
+        _directSet(context, controller, state),
+        _appleDirect(context, controller, state),
+        _localDirect(context, controller, state),
+        _enableIPRule(context, controller, state),
+        _localDns(context, controller, state),
+      ],
     );
   }
 
@@ -110,18 +103,15 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.fakeDnsPageTitle,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(AppLocalizations.of(context)!.xraySettingSimplePageFakeDns),
-          Switch(
-            value: state.xraySetting.fakeDns,
-            onChanged: (value) => controller.updateFakeDns(value),
-          ),
-        ],
-      ),
+      children: [
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingSimplePageFakeDns,
+          value: state.xraySetting.fakeDns,
+          onChanged: (value) => controller.updateFakeDns(value),
+        ),
+      ],
     );
   }
 
@@ -133,46 +123,22 @@ class XraySettingSimplePage extends StatelessWidget {
     final chainProxyName = state.chainProxyName.isEmpty
         ? AppLocalizations.of(context)!.chainProxyPageDisabled
         : state.chainProxyName;
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.xraySettingSimplePageChainProxy,
-      child: InkWell(
-        onTap: () => controller.editChainProxy(context),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.symmetric(vertical: 6),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Text(
-                  AppLocalizations.of(context)!.xraySettingSimplePageChainProxy,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.xraySettingSimplePageChainProxy,
+          value: chainProxyName,
+          onTap: () => controller.editChainProxy(context),
+          showChevron: state.xraySetting.chainProxyOutboundId == null,
+          trailing: state.xraySetting.chainProxyOutboundId == null
+              ? null
+              : IconButton(
+                  onPressed: () => controller.clearChainProxy(),
+                  icon: const Icon(Icons.clear),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  chainProxyName,
-                  textAlign: TextAlign.end,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SizedBox(
-                width: kMinInteractiveDimension,
-                height: kMinInteractiveDimension,
-                child: state.xraySetting.chainProxyOutboundId != null
-                    ? IconButton(
-                        onPressed: () => controller.clearChainProxy(),
-                        icon: const Icon(Icons.clear),
-                      )
-                    : const Center(child: Icon(Icons.chevron_right)),
-              ),
-            ],
-          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -181,16 +147,11 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.xraySettingSimplePageDomainStrategy),
-        TextMenuPicker(
-          title: state.xraySetting.routing.domainStrategy.name,
-          selections: RoutingDomainStrategy.simpleStrategy,
-          callback: (value) => controller.updateDomainStrategy(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.xraySettingSimplePageDomainStrategy,
+      value: state.xraySetting.routing.domainStrategy.name,
+      selections: RoutingDomainStrategy.simpleStrategy,
+      onSelected: (value) => controller.updateDomainStrategy(value),
     );
   }
 
@@ -199,16 +160,11 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.xraySettingSimplePageQueryStrategy),
-        TextMenuPicker(
-          title: state.xraySetting.routing.queryStrategy.name,
-          selections: DnsQueryStrategy.names,
-          callback: (value) => controller.updateQueryStrategy(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.xraySettingSimplePageQueryStrategy,
+      value: state.xraySetting.routing.queryStrategy.name,
+      selections: DnsQueryStrategy.names,
+      onSelected: (value) => controller.updateQueryStrategy(value),
     );
   }
 
@@ -217,16 +173,11 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.xraySettingSimplePageDirectSet),
-        TextMenuPicker(
-          title: state.xraySetting.routing.directSet.name,
-          selections: SimpleCountry.names,
-          callback: (value) => controller.updateDirectSet(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.xraySettingSimplePageDirectSet,
+      value: state.xraySetting.routing.directSet.name,
+      selections: SimpleCountry.names,
+      onSelected: (value) => controller.updateDirectSet(value),
     );
   }
 
@@ -235,15 +186,10 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.xraySettingSimplePageAppleDirect),
-        Switch(
-          value: state.xraySetting.routing.appleDirect,
-          onChanged: (value) => controller.updateAppleDirect(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.xraySettingSimplePageAppleDirect,
+      value: state.xraySetting.routing.appleDirect,
+      onChanged: (value) => controller.updateAppleDirect(value),
     );
   }
 
@@ -252,15 +198,10 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.xraySettingSimplePageLocalDirect),
-        Switch(
-          value: state.xraySetting.routing.localDirect,
-          onChanged: (value) => controller.updateLocalDirect(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.xraySettingSimplePageLocalDirect,
+      value: state.xraySetting.routing.localDirect,
+      onChanged: (value) => controller.updateLocalDirect(value),
     );
   }
 
@@ -269,15 +210,10 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.xraySettingSimplePageEnableIPRule),
-        Switch(
-          value: state.xraySetting.routing.enableIPRule,
-          onChanged: (value) => controller.updateEnableIPRule(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.xraySettingSimplePageEnableIPRule,
+      value: state.xraySetting.routing.enableIPRule,
+      onChanged: (value) => controller.updateEnableIPRule(value),
     );
   }
 
@@ -286,15 +222,10 @@ class XraySettingSimplePage extends StatelessWidget {
     XraySettingSimpleController controller,
     XraySettingSimpleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.xraySettingSimplePageLocalDns),
-        Switch(
-          value: state.xraySetting.routing.localDns,
-          onChanged: (value) => controller.updateLocalDns(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.xraySettingSimplePageLocalDns,
+      value: state.xraySetting.routing.localDns,
+      onChanged: (value) => controller.updateLocalDns(value),
     );
   }
 
@@ -306,12 +237,12 @@ class XraySettingSimplePage extends StatelessWidget {
     final children = SimpleDns.values
         .map((e) => _simpleDns(controller, state, e))
         .toList();
-    return SectionView(
-      title: AppLocalizations.of(context)!.xraySettingSimplePageDns,
-      child: RadioGroup<int>(
-        groupValue: state.xraySetting.dns.id,
-        onChanged: (value) => controller.updateDnsId(value),
-        child: Column(children: children),
+    return RadioGroup<int>(
+      groupValue: state.xraySetting.dns.id,
+      onChanged: (value) => controller.updateDnsId(value),
+      child: SettingSection(
+        title: AppLocalizations.of(context)!.xraySettingSimplePageDns,
+        children: children,
       ),
     );
   }
@@ -322,15 +253,16 @@ class XraySettingSimplePage extends StatelessWidget {
     SimpleDns dns,
   ) {
     final queryStrategy = state.xraySetting.routing.queryStrategy;
-    return RadioListTile(
-      value: dns.id,
-      title: Text(dns.address),
-      subtitle: Row(
+    return SettingRow(
+      title: dns.address,
+      subtitleWidget: Row(
         children: [
           TagView(tag: dns.outbound.name),
           TagView(tag: queryStrategy.name),
         ],
       ),
+      onTap: () => controller.updateDnsId(dns.id),
+      trailing: Radio<int>(value: dns.id),
     );
   }
 

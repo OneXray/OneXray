@@ -8,6 +8,7 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
 class BackupPage extends StatelessWidget {
@@ -67,8 +68,7 @@ class BackupPage extends StatelessWidget {
         groupValue: state.selection,
         onChanged: (value) => controller.updateSelection(value),
         child: ListView.separated(
-          itemBuilder: (ctx, index) =>
-              _itemRow(ctx, state, controller, index),
+          itemBuilder: (ctx, index) => _itemRow(ctx, state, controller, index),
           itemCount: state.files.length,
           separatorBuilder: (_, _) => const Divider(),
         ),
@@ -83,19 +83,25 @@ class BackupPage extends StatelessWidget {
     int index,
   ) {
     final file = state.files[index];
-    return RadioListTile(
-      toggleable: true,
-      value: file.name,
-      title: Text(file.name),
-      subtitle: DateView(date: file.timestamp!),
-      secondary: IconMenuPicker(
-        icon: Icons.more_vert,
-        menus: [
-          if (!AppPlatform.isLinux) IconMenuId.share,
-          IconMenuId.save,
-          IconMenuId.delete,
+    final selected = state.selection == file.name;
+    return SettingRow(
+      title: file.name,
+      subtitleWidget: DateView(date: file.timestamp!),
+      onTap: () => controller.updateSelection(selected ? null : file.name),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Radio<String>(value: file.name, toggleable: true),
+          IconMenuPicker(
+            icon: Icons.more_vert,
+            menus: [
+              if (!AppPlatform.isLinux) IconMenuId.share,
+              IconMenuId.save,
+              IconMenuId.delete,
+            ],
+            callback: (menuId) => controller.moreAction(context, file, menuId),
+          ),
         ],
-        callback: (menuId) => controller.moreAction(context, file, menuId),
       ),
     );
   }

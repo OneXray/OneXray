@@ -4,10 +4,9 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/subscription/edit/controller.dart';
 import 'package:onexray/pages/subscription/edit/params.dart';
-import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class SubscriptionEditPage extends StatelessWidget {
   final SubscriptionEditParams params;
@@ -22,8 +21,9 @@ class SubscriptionEditPage extends StatelessWidget {
           final controller = context.read<SubscriptionEditController>();
           return Scaffold(
             appBar: AppBar(
-              title:
-                  Text(AppLocalizations.of(context)!.subscriptionAddPageTitle),
+              title: Text(
+                AppLocalizations.of(context)!.subscriptionAddPageTitle,
+              ),
             ),
             body: SafeArea(child: _body(context, controller, state)),
           );
@@ -43,15 +43,9 @@ class SubscriptionEditPage extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: SectionView(
+              child: SettingSection(
                 title: AppLocalizations.of(context)!.subscriptionAddPageSection,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _name(context, controller),
-                    _url(context, state),
-                  ],
-                ),
+                children: [_name(context, controller), _url(context, state)],
               ),
             ),
           ),
@@ -62,29 +56,18 @@ class SubscriptionEditPage extends StatelessWidget {
   }
 
   Widget _name(BuildContext context, SubscriptionEditController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.nameController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.subscriptionAddPageName),
-        hintText: AppLocalizations.of(context)!.subscriptionAddPageName,
-      ),
+      label: AppLocalizations.of(context)!.subscriptionAddPageName,
+      hintText: AppLocalizations.of(context)!.subscriptionAddPageName,
     );
   }
 
   Widget _url(BuildContext context, SubscriptionEditState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Text(
-          AppLocalizations.of(context)!.subscriptionAddPageUrl,
-          style: TextStyle(
-            fontSize: 12,
-            color: ColorManager.secondaryText(context),
-          ),
-        ),
-        Text(state.url),
-      ],
+    return SettingRow(
+      title: AppLocalizations.of(context)!.subscriptionAddPageUrl,
+      value: state.url,
+      valueMaxLines: 3,
     );
   }
 

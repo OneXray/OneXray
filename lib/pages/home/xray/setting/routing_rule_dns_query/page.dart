@@ -6,9 +6,7 @@ import 'package:onexray/pages/home/xray/setting/routing_rule_dns_query/controlle
 import 'package:onexray/pages/home/xray/setting/routing_rule_dns_query/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class RoutingRuleDnsQueryPage extends StatelessWidget {
   final RoutingRuleDnsQueryParams params;
@@ -19,21 +17,31 @@ class RoutingRuleDnsQueryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => RoutingRuleDnsQueryController(params),
-      child: BlocBuilder<RoutingRuleDnsQueryController, RoutingRuleDnsQueryCubitState>(
-        builder: (context, state) {
-          final controller = context.read<RoutingRuleDnsQueryController>();
-          return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.routingRulePageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
-        },
-      ),
+      child:
+          BlocBuilder<
+            RoutingRuleDnsQueryController,
+            RoutingRuleDnsQueryCubitState
+          >(
+            builder: (context, state) {
+              final controller = context.read<RoutingRuleDnsQueryController>();
+              return Scaffold(
+                appBar: AppBar(
+                  title: Text(
+                    AppLocalizations.of(context)!.routingRulePageTitle,
+                  ),
+                ),
+                body: SafeArea(child: _body(context, controller, state)),
+              );
+            },
+          ),
     );
   }
 
-  Widget _body(BuildContext context, RoutingRuleDnsQueryController controller, RoutingRuleDnsQueryCubitState state) {
+  Widget _body(
+    BuildContext context,
+    RoutingRuleDnsQueryController controller,
+    RoutingRuleDnsQueryCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -57,52 +65,53 @@ class RoutingRuleDnsQueryPage extends StatelessWidget {
 
   Widget _inboundTagSection(
     BuildContext context,
-    RoutingRuleDnsQueryController controller, RoutingRuleDnsQueryCubitState state) {
+    RoutingRuleDnsQueryController controller,
+    RoutingRuleDnsQueryCubitState state,
+  ) {
     final views = state.ruleState.inboundTag
-        .map((e) => Text(e))
+        .map((tag) => SettingRow(title: tag))
         .toList();
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.routingRulePageInboundTag,
-      child: Column(children: views),
+      children: views,
     );
   }
 
   Widget _tagSection(
     BuildContext context,
-    RoutingRuleDnsQueryController controller, RoutingRuleDnsQueryCubitState state) {
-    return SectionView(
+    RoutingRuleDnsQueryController controller,
+    RoutingRuleDnsQueryCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _outboundTag(context, controller, state),
-          _ruleTag(context, controller, state),
-        ],
-      ),
+      children: [
+        _outboundTag(context, controller, state),
+        _ruleTag(context, controller, state),
+      ],
     );
   }
 
   Widget _outboundTag(
     BuildContext context,
-    RoutingRuleDnsQueryController controller, RoutingRuleDnsQueryCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.routingRulePageOutboundTag),
-        TextMenuPicker(
-          title: state.ruleState.outboundTag,
-          selections: state.outboundTags,
-          callback: (value) => controller.updateOutboundTag(value),
-        ),
-      ],
+    RoutingRuleDnsQueryController controller,
+    RoutingRuleDnsQueryCubitState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.routingRulePageOutboundTag,
+      value: state.ruleState.outboundTag,
+      selections: state.outboundTags,
+      onSelected: (value) => controller.updateOutboundTag(value),
     );
   }
 
   Widget _ruleTag(
     BuildContext context,
-    RoutingRuleDnsQueryController controller, RoutingRuleDnsQueryCubitState state) {
-    return TextRow(
+    RoutingRuleDnsQueryController controller,
+    RoutingRuleDnsQueryCubitState state,
+  ) {
+    return SettingRow(
       title: AppLocalizations.of(context)!.routingRulePageRuleTag,
-      detail: state.ruleState.ruleTag,
+      value: state.ruleState.ruleTag,
     );
   }
 

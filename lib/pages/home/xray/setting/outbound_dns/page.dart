@@ -6,9 +6,7 @@ import 'package:onexray/pages/home/xray/setting/outbound_dns/controller.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_dns/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 
 class OutboundDnsPage extends StatelessWidget {
@@ -24,17 +22,21 @@ class OutboundDnsPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<OutboundDnsController>();
           return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.outboundDnsPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.outboundDnsPageTitle),
+            ),
+            body: SafeArea(child: _body(context, controller, state)),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, OutboundDnsController controller, OutboundDnsCubitState state) {
+  Widget _body(
+    BuildContext context,
+    OutboundDnsController controller,
+    OutboundDnsCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -58,108 +60,103 @@ class OutboundDnsPage extends StatelessWidget {
 
   Widget _protocolSection(
     BuildContext context,
-    OutboundDnsController controller, OutboundDnsCubitState state) {
-    return SectionView(
+    OutboundDnsController controller,
+    OutboundDnsCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundDnsPageProtocol,
-            detail: state.dnsState.protocol.name,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundDnsPageTag,
-            detail: state.dnsState.tag.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundDnsPageProtocol,
+          value: state.dnsState.protocol.name,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundDnsPageTag,
+          value: state.dnsState.tag.name,
+        ),
+      ],
     );
   }
 
   Widget _settingSection(
     BuildContext context,
-    OutboundDnsController controller, OutboundDnsCubitState state) {
-    return SectionView(
+    OutboundDnsController controller,
+    OutboundDnsCubitState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundDnsPageSettings,
-      child: Column(
-        children: [
-          _network(context, controller, state),
-          _address(context, controller),
-          _port(context, controller),
-          _nonIPQuery(context, controller, state),
-        ],
-      ),
+      children: [
+        _network(context, controller, state),
+        _address(context, controller),
+        _port(context, controller),
+        _nonIPQuery(context, controller, state),
+      ],
     );
   }
 
-  Widget _network(BuildContext context, OutboundDnsController controller, OutboundDnsCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundDnsPageNetwork),
-        TextMenuPicker(
-          title: state.dnsState.network.name,
-          selections: DnsNetwork.names,
-          callback: (value) => controller.updateNetwork(value),
-        ),
-      ],
+  Widget _network(
+    BuildContext context,
+    OutboundDnsController controller,
+    OutboundDnsCubitState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundDnsPageNetwork,
+      value: state.dnsState.network.name,
+      selections: DnsNetwork.names,
+      onSelected: (value) => controller.updateNetwork(value),
     );
   }
 
   Widget _address(BuildContext context, OutboundDnsController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.addressController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundDnsPageAddress),
-        hintText: AppLocalizations.of(context)!.outboundDnsPageAddress,
-      ),
+      label: AppLocalizations.of(context)!.outboundDnsPageAddress,
+      hintText: AppLocalizations.of(context)!.outboundDnsPageAddress,
     );
   }
 
   Widget _port(BuildContext context, OutboundDnsController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.portController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundDnsPagePort),
-        hintText: AppLocalizations.of(context)!.outboundDnsPagePort,
-      ),
+      label: AppLocalizations.of(context)!.outboundDnsPagePort,
+      hintText: AppLocalizations.of(context)!.outboundDnsPagePort,
     );
   }
 
-  Widget _nonIPQuery(BuildContext context, OutboundDnsController controller, OutboundDnsCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundDnsPageNonIPQuery),
-        TextMenuPicker(
-          title: state.dnsState.nonIPQuery.name,
-          selections: DnsNonIPQuery.names,
-          callback: (value) => controller.updateNonIPQuery(value),
-        ),
-      ],
+  Widget _nonIPQuery(
+    BuildContext context,
+    OutboundDnsController controller,
+    OutboundDnsCubitState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundDnsPageNonIPQuery,
+      value: state.dnsState.nonIPQuery.name,
+      selections: DnsNonIPQuery.names,
+      onSelected: (value) => controller.updateNonIPQuery(value),
     );
   }
 
   Widget _sockoptSection(
     BuildContext context,
-    OutboundDnsController controller, OutboundDnsCubitState state) {
-    return SectionView(
+    OutboundDnsController controller,
+    OutboundDnsCubitState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundDnsPageSockopt,
-      child: _sockopt(context, controller, state),
+      children: [_sockopt(context, controller, state)],
     );
   }
 
-  Widget _sockopt(BuildContext context, OutboundDnsController controller, OutboundDnsCubitState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundDnsPageDialerProxy),
-        TextMenuPicker(
-          title: state.dnsState.dialerProxy,
-          selections: state.outboundTags,
-          callback: (value) => controller.updateDialerProxy(value),
-        ),
-      ],
+  Widget _sockopt(
+    BuildContext context,
+    OutboundDnsController controller,
+    OutboundDnsCubitState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundDnsPageDialerProxy,
+      value: state.dnsState.dialerProxy,
+      selections: state.outboundTags,
+      onSelected: (value) => controller.updateDialerProxy(value),
     );
   }
 

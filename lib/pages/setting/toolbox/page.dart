@@ -1,7 +1,7 @@
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/toolbox/controller.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -44,22 +44,15 @@ class ToolboxPage extends StatelessWidget {
     ToolboxState state,
     ToolboxController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.toolboxPageHideDockIcon),
-              Switch(
-                value: state.hideDockIcon,
-                onChanged: (value) => controller.updateHideDockIcon(value),
-              ),
-            ],
-          ),
-        ],
-      ),
+      children: [
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.toolboxPageHideDockIcon,
+          value: state.hideDockIcon,
+          onChanged: (value) => controller.updateHideDockIcon(value),
+        ),
+      ],
     );
   }
 }

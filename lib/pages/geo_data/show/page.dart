@@ -4,6 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/geo_data/show/controller.dart';
 import 'package:onexray/pages/geo_data/show/params.dart';
 import 'package:onexray/pages/global/constants.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatShowPage extends StatelessWidget {
@@ -42,10 +43,21 @@ class GeoDatShowPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, GeoDatShowController controller) {
-    return TextField(
-      controller: controller.searchController,
-      decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
-      onChanged: (value) => controller.keywordChanged(value),
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
+      child: TextField(
+        controller: controller.searchController,
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          isDense: true,
+        ),
+        onChanged: (value) => controller.keywordChanged(value),
+      ),
     );
   }
 
@@ -63,16 +75,12 @@ class GeoDatShowPage extends StatelessWidget {
     }
   }
 
-  Widget _itemRow(
-    BuildContext context,
-    GeoDatShowState state,
-    int index,
-  ) {
+  Widget _itemRow(BuildContext context, GeoDatShowState state, int index) {
     final code = state.geoDatCodes[index];
     final count = code.ruleCount ?? 0;
-    return ListTile(
-      title: Text(code.code ?? ""),
-      subtitle: Row(children: [TagView(tag: "$count")]),
+    return SettingRow(
+      title: code.code ?? "",
+      subtitleWidget: Row(children: [TagView(tag: "$count")]),
     );
   }
 }

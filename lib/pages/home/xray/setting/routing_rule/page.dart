@@ -8,8 +8,7 @@ import 'package:onexray/pages/home/xray/setting/routing_rule/controller.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/routing_rule_state.dart';
 
 class RoutingRulePage extends StatelessWidget {
@@ -74,39 +73,30 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
+    final title = AppLocalizations.of(context)!.routingRulePageDomain;
     final domainViews = state.ruleState.domain
         .mapIndexed(
-          (index, host) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.domainControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.routingRulePageDomain,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.routingRulePageDomainExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteDomain(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.domainControllers[index],
+            label: title,
+            hintText: AppLocalizations.of(
+              context,
+            )!.routingRulePageDomainExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteDomain(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
+      children: [
+        SettingRow(
+          title: title,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(AppLocalizations.of(context)!.routingRulePageDomain),
-              const Spacer(),
               IconButton(
                 onPressed: () => controller.appendDomain(),
                 icon: const Icon(Icons.add),
@@ -117,9 +107,9 @@ class RoutingRulePage extends StatelessWidget {
               ),
             ],
           ),
-          if (domainViews.isNotEmpty) Column(children: domainViews),
-        ],
-      ),
+        ),
+        ...domainViews,
+      ],
     );
   }
 
@@ -128,39 +118,28 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
+    final title = AppLocalizations.of(context)!.routingRulePageIp;
     final ipViews = state.ruleState.ip
         .mapIndexed(
-          (index, host) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.ipControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.routingRulePageIp,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.routingRulePageIpExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteIp(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.ipControllers[index],
+            label: title,
+            hintText: AppLocalizations.of(context)!.routingRulePageIpExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteIp(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
+      children: [
+        SettingRow(
+          title: title,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(AppLocalizations.of(context)!.routingRulePageIp),
-              const Spacer(),
               IconButton(
                 onPressed: () => controller.appendIp(),
                 icon: const Icon(Icons.add),
@@ -171,9 +150,9 @@ class RoutingRulePage extends StatelessWidget {
               ),
             ],
           ),
-          if (ipViews.isNotEmpty) Column(children: ipViews),
-        ],
-      ),
+        ),
+        ...ipViews,
+      ],
     );
   }
 
@@ -182,46 +161,38 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _port(context, controller),
-          _sourcePort(context, controller),
-          _localPort(context, controller),
-          _network(context, controller, state),
-        ],
-      ),
+      children: [
+        _port(context, controller),
+        _sourcePort(context, controller),
+        _localPort(context, controller),
+        _network(context, controller, state),
+      ],
     );
   }
 
   Widget _port(BuildContext context, RoutingRuleController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.portController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.routingRulePagePort),
-        hintText: AppLocalizations.of(context)!.routingRulePagePortExample,
-      ),
+      label: AppLocalizations.of(context)!.routingRulePagePort,
+      hintText: AppLocalizations.of(context)!.routingRulePagePortExample,
     );
   }
 
   Widget _sourcePort(BuildContext context, RoutingRuleController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.sourcePortController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.routingRulePageSourcePort),
-        hintText: AppLocalizations.of(context)!.routingRulePagePortExample,
-      ),
+      label: AppLocalizations.of(context)!.routingRulePageSourcePort,
+      hintText: AppLocalizations.of(context)!.routingRulePagePortExample,
     );
   }
 
   Widget _localPort(BuildContext context, RoutingRuleController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.localPortController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.routingRulePageLocalPort),
-        hintText: AppLocalizations.of(context)!.routingRulePagePortExample,
-      ),
+      label: AppLocalizations.of(context)!.routingRulePageLocalPort,
+      hintText: AppLocalizations.of(context)!.routingRulePagePortExample,
     );
   }
 
@@ -230,16 +201,11 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.routingRulePageNetwork),
-        TextMenuPicker(
-          title: state.ruleState.network.name,
-          selections: RoutingRuleNetwork.names,
-          callback: (value) => controller.updateNetwork(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.routingRulePageNetwork,
+      value: state.ruleState.network.name,
+      selections: RoutingRuleNetwork.names,
+      onSelected: (value) => controller.updateNetwork(value),
     );
   }
 
@@ -248,48 +214,32 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
+    final title = AppLocalizations.of(context)!.routingRulePageSourceIP;
     final sourceViews = state.ruleState.sourceIP
         .mapIndexed(
-          (index, path) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.sourceIPControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.routingRulePageSourceIP,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.routingRulePageIpExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteSourceIP(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, path) => TextFieldActionSettingRow(
+            controller: controller.sourceIPControllers[index],
+            label: title,
+            hintText: AppLocalizations.of(context)!.routingRulePageIpExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteSourceIP(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.routingRulePageSourceIP),
-              IconButton(
-                onPressed: () => controller.appendSourceIP(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
+      children: [
+        SettingRow(
+          title: title,
+          trailing: IconButton(
+            onPressed: () => controller.appendSourceIP(),
+            icon: const Icon(Icons.add),
           ),
-          if (sourceViews.isNotEmpty) Column(children: sourceViews),
-        ],
-      ),
+        ),
+        ...sourceViews,
+      ],
     );
   }
 
@@ -298,48 +248,32 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
+    final title = AppLocalizations.of(context)!.routingRulePageLocalIP;
     final sourceViews = state.ruleState.localIP
         .mapIndexed(
-          (index, path) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.localIPControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.routingRulePageLocalIP,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.routingRulePageIpExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteLocalIP(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, path) => TextFieldActionSettingRow(
+            controller: controller.localIPControllers[index],
+            label: title,
+            hintText: AppLocalizations.of(context)!.routingRulePageIpExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteLocalIP(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.routingRulePageLocalIP),
-              IconButton(
-                onPressed: () => controller.appendLocalIP(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
+      children: [
+        SettingRow(
+          title: title,
+          trailing: IconButton(
+            onPressed: () => controller.appendLocalIP(),
+            icon: const Icon(Icons.add),
           ),
-          if (sourceViews.isNotEmpty) Column(children: sourceViews),
-        ],
-      ),
+        ),
+        ...sourceViews,
+      ],
     );
   }
 
@@ -348,9 +282,21 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.routingRulePageProtocol,
-      child: _protocol(context, controller, state),
+      separated: false,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: _protocol(context, controller, state),
+          ),
+        ),
+      ],
     );
   }
 
@@ -359,48 +305,34 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
+    final title = AppLocalizations.of(context)!.routingRulePageProcess;
     final processViews = state.ruleState.process
         .mapIndexed(
-          (index, process) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.processControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.routingRulePageProcess,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.routingRulePageProcessExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteProcess(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, process) => TextFieldActionSettingRow(
+            controller: controller.processControllers[index],
+            label: title,
+            hintText: AppLocalizations.of(
+              context,
+            )!.routingRulePageProcessExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteProcess(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.routingRulePageProcess),
-              IconButton(
-                onPressed: () => controller.appendProcess(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
+      children: [
+        SettingRow(
+          title: title,
+          trailing: IconButton(
+            onPressed: () => controller.appendProcess(),
+            icon: const Icon(Icons.add),
           ),
-          if (processViews.isNotEmpty) Column(children: processViews),
-        ],
-      ),
+        ),
+        ...processViews,
+      ],
     );
   }
 
@@ -432,40 +364,31 @@ class RoutingRulePage extends StatelessWidget {
   ) {
     final attrViews = <Widget>[];
     for (final attr in state.ruleAttrs) {
-      final key = TextField(
+      final key = TextFieldSettingRow(
         controller: attr.key,
-        decoration: InputDecoration(
-          label: Text(AppLocalizations.of(context)!.routingRulePageAttrsKey),
-          hintText: AppLocalizations.of(context)!.routingRulePageAttrsKey,
-        ),
+        label: AppLocalizations.of(context)!.routingRulePageAttrsKey,
+        hintText: AppLocalizations.of(context)!.routingRulePageAttrsKey,
       );
-      final value = TextField(
+      final value = TextFieldSettingRow(
         controller: attr.value,
-        decoration: InputDecoration(
-          label: Text(AppLocalizations.of(context)!.routingRulePageAttrsValue),
-          hintText: AppLocalizations.of(context)!.routingRulePageAttrsValue,
-        ),
+        label: AppLocalizations.of(context)!.routingRulePageAttrsValue,
+        hintText: AppLocalizations.of(context)!.routingRulePageAttrsValue,
       );
       attrViews.add(key);
       attrViews.add(value);
     }
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.routingRulePageAttrs),
-              IconButton(
-                onPressed: () => controller.appendAttr(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.routingRulePageAttrs,
+          trailing: IconButton(
+            onPressed: () => controller.appendAttr(),
+            icon: const Icon(Icons.add),
           ),
-          if (attrViews.isNotEmpty) Column(children: attrViews),
-        ],
-      ),
+        ),
+        ...attrViews,
+      ],
     );
   }
 
@@ -474,14 +397,12 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _outboundTag(context, controller, state),
-          _ruleTag(context, controller),
-        ],
-      ),
+      children: [
+        _outboundTag(context, controller, state),
+        _ruleTag(context, controller),
+      ],
     );
   }
 
@@ -490,26 +411,19 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleController controller,
     RoutingRuleCubitState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.routingRulePageOutboundTag),
-        TextMenuPicker(
-          title: state.ruleState.outboundTag,
-          selections: state.outboundTags,
-          callback: (value) => controller.updateOutboundTag(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.routingRulePageOutboundTag,
+      value: state.ruleState.outboundTag,
+      selections: state.outboundTags,
+      onSelected: (value) => controller.updateOutboundTag(value),
     );
   }
 
   Widget _ruleTag(BuildContext context, RoutingRuleController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.ruleTagController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.routingRulePageRuleTag),
-        hintText: AppLocalizations.of(context)!.routingRulePageRuleTag,
-      ),
+      label: AppLocalizations.of(context)!.routingRulePageRuleTag,
+      hintText: AppLocalizations.of(context)!.routingRulePageRuleTag,
     );
   }
 

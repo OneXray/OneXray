@@ -5,7 +5,7 @@ import 'package:onexray/pages/home/xray/setting/inbounds/controller.dart';
 import 'package:onexray/pages/home/xray/setting/inbounds/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class InboundsPage extends StatefulWidget {
   final InboundsParams params;
@@ -48,22 +48,18 @@ class _InboundsPageState extends State<InboundsPage> {
   }
 
   Widget _editSection(BuildContext context) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          ListTile(
-            onTap: () => controller.editTun(context),
-            title: Text(AppLocalizations.of(context)!.inboundsPageTun),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editPing(context),
-            title: Text(AppLocalizations.of(context)!.inboundsPagePing),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-        ],
-      ),
+      children: [
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.inboundsPageTun,
+          onTap: () => controller.editTun(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.inboundsPagePing,
+          onTap: () => controller.editPing(context),
+        ),
+      ],
     );
   }
 

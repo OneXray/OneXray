@@ -5,7 +5,7 @@ import 'package:onexray/pages/home/xray/setting/ui/controller.dart';
 import 'package:onexray/pages/home/xray/setting/ui/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class XraySettingUIPage extends StatefulWidget {
   final XraySettingUIParams params;
@@ -66,64 +66,46 @@ class _XraySettingUIPageState extends State<XraySettingUIPage> {
   }
 
   Widget _nameSection(BuildContext context) {
-    return SectionView(title: "", child: _name(context));
+    return SettingSection(title: "", children: [_name(context)]);
   }
 
   Widget _name(BuildContext context) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.nameController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.xraySettingUIPageName),
-        hintText: AppLocalizations.of(context)!.xraySettingUIPageName,
-      ),
+      label: AppLocalizations.of(context)!.xraySettingUIPageName,
+      hintText: AppLocalizations.of(context)!.xraySettingUIPageName,
     );
   }
 
   Widget _editSection(BuildContext context) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          ListTile(
-            onTap: () => controller.editLog(context),
-            title: Text(AppLocalizations.of(context)!.xraySettingUIPageEditLog),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editDns(context),
-            title: Text(AppLocalizations.of(context)!.xraySettingUIPageEditDns),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editFakeDns(context),
-            title: Text(
-              AppLocalizations.of(context)!.xraySettingUIPageEditFakeDns,
-            ),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editRouting(context),
-            title: Text(
-              AppLocalizations.of(context)!.xraySettingUIPageEditRouting,
-            ),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editInbounds(context),
-            title: Text(
-              AppLocalizations.of(context)!.xraySettingUIPageEditInbounds,
-            ),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editOutbounds(context),
-            title: Text(
-              AppLocalizations.of(context)!.xraySettingUIPageEditOutbounds,
-            ),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-        ],
-      ),
+      children: [
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingUIPageEditLog,
+          onTap: () => controller.editLog(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingUIPageEditDns,
+          onTap: () => controller.editDns(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingUIPageEditFakeDns,
+          onTap: () => controller.editFakeDns(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingUIPageEditRouting,
+          onTap: () => controller.editRouting(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingUIPageEditInbounds,
+          onTap: () => controller.editInbounds(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.xraySettingUIPageEditOutbounds,
+          onTap: () => controller.editOutbounds(context),
+        ),
+      ],
     );
   }
 

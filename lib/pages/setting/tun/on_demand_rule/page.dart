@@ -7,8 +7,7 @@ import 'package:onexray/pages/setting/tun/on_demand_rule/controller.dart';
 import 'package:onexray/pages/setting/tun/on_demand_rule/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/tun_setting/enum.dart';
 
 class OnDemandRulePage extends StatelessWidget {
@@ -66,14 +65,12 @@ class OnDemandRulePage extends StatelessWidget {
     OnDemandRulePageState state,
     OnDemandRuleController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _mode(context, state, controller),
-          _interfaceType(context, state, controller),
-        ],
-      ),
+      children: [
+        _mode(context, state, controller),
+        _interfaceType(context, state, controller),
+      ],
     );
   }
 
@@ -82,16 +79,11 @@ class OnDemandRulePage extends StatelessWidget {
     OnDemandRulePageState state,
     OnDemandRuleController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.onDemandRulePageMode),
-        TextMenuPicker(
-          title: state.ruleState.mode.name,
-          selections: OnDemandRuleMode.names,
-          callback: (value) => controller.updateMode(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.onDemandRulePageMode,
+      value: state.ruleState.mode.name,
+      selections: OnDemandRuleMode.names,
+      onSelected: (value) => controller.updateMode(value),
     );
   }
 
@@ -100,16 +92,11 @@ class OnDemandRulePage extends StatelessWidget {
     OnDemandRulePageState state,
     OnDemandRuleController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.onDemandRulePageInterfaceType),
-        TextMenuPicker(
-          title: state.ruleState.interfaceType.name,
-          selections: OnDemandRuleInterfaceType.names,
-          callback: (value) => controller.updateInterfaceType(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.onDemandRulePageInterfaceType,
+      value: state.ruleState.interfaceType.name,
+      selections: OnDemandRuleInterfaceType.names,
+      onSelected: (value) => controller.updateInterfaceType(value),
     );
   }
 
@@ -120,46 +107,29 @@ class OnDemandRulePage extends StatelessWidget {
   ) {
     final ssidsViews = state.ssids
         .mapIndexed(
-          (index, ssid) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.ssidControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.onDemandRulePageSSID,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.onDemandRulePageSSID,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteSsid(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, ssid) => TextFieldActionSettingRow(
+            controller: controller.ssidControllers[index],
+            label: AppLocalizations.of(context)!.onDemandRulePageSSID,
+            hintText: AppLocalizations.of(context)!.onDemandRulePageSSID,
+            trailing: IconButton(
+              onPressed: () => controller.deleteSsid(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(AppLocalizations.of(context)!.onDemandRulePageSSID),
-              const Spacer(),
-              IconButton(
-                onPressed: () => controller.appendSsid(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.onDemandRulePageSSID,
+          trailing: IconButton(
+            onPressed: () => controller.appendSsid(),
+            icon: const Icon(Icons.add),
           ),
-          if (ssidsViews.isNotEmpty) Column(children: ssidsViews),
-        ],
-      ),
+        ),
+        ...ssidsViews,
+      ],
     );
   }
 
