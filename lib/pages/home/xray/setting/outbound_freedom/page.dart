@@ -54,7 +54,8 @@ class OutboundFreedomPage extends StatelessWidget {
               ),
             ),
           ),
-          _bottomButton(context, controller),
+          if (AppPlatform.isLinux || AppPlatform.isWindows)
+            _bottomButton(context, controller),
         ],
       ),
     );

@@ -75,7 +75,7 @@ class SubUpdatePage extends StatelessWidget {
     SubUpdateController controller,
   ) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.subUpdatePageGeoData,
+      title: AppLocalizations.of(context)!.geoDataListPageTitle,
       children: [
         _geoDataEnable(context, state, controller),
         if (state.subUpdateState.geoDataEnable)
