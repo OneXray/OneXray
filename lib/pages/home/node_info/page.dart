@@ -67,6 +67,7 @@ class NodeInfoPage extends StatelessWidget {
         SettingRow(
           title: AppLocalizations.of(context)!.nodeInfoPageIP,
           value: ipAddress,
+          valueMaxLines: 4,
         ),
         SettingRow(
           title: AppLocalizations.of(context)!.nodeInfoPageIPVersion,
