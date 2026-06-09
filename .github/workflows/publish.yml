@@ -16,14 +16,13 @@
 #     FASTLANE_ASC_KEY_ID               App Store Connect API key id
 #     FASTLANE_ASC_ISSUER_ID            ASC issuer id (UUID)
 #     FASTLANE_ASC_KEY_BASE64           base64-encoded .p8 contents
-#     FASTLANE_ASC_KEY_PEM              raw .p8 contents (for apple-actions/download-provisioning-profiles,
-#                                       which takes a string input — cannot be base64'd)
 #     FASTLANE_MAS_INSTALLER_CERT       full subject of the 3rd Party Mac Developer Installer cert
-#     APPLE_CERTS_P12_BASE64            base64 of a .p12 bundle containing ALL Apple code-signing certs
-#                                       (Apple Distribution, 3rd Party Mac Developer Application,
-#                                        Developer ID Application, 3rd Party Mac Developer Installer)
-#     APPLE_CERTS_P12_PASSWORD          password used when exporting the .p12
-#     KEYCHAIN_PASSWORD                 any non-empty string; used for the temporary build keychain
+#     APPLE_DISTRIBUTION_P12_BASE64     base64 of the Apple Distribution .p12
+#                                       (shared by iOS and Mac App Store app signing)
+#     APPLE_MAC_INSTALLER_P12_BASE64    base64 of the 3rd Party Mac Developer Installer .p12
+#     APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64
+#                                       base64 of the Developer ID Application .p12
+#     KEYCHAIN_PASSWORD                 password used by the .p12 files and temporary build keychain
 #
 #   Android:
 #     ANDROID_KEYSTORE_BASE64           base64 of the upload keystore (.jks)
@@ -134,26 +133,16 @@ jobs:
           ASC_KEY_B64: ${{ secrets.FASTLANE_ASC_KEY_BASE64 }}
         run: echo "$ASC_KEY_B64" | base64 -d > macos_se/fastlane/AuthKey.p8
 
-      - uses: apple-actions/import-codesign-certs@v6
+      - name: Import Developer ID Application certificate
+        uses: apple-actions/import-codesign-certs@v6
         with:
-          p12-file-base64: ${{ secrets.APPLE_CERTS_P12_BASE64 }}
-          p12-password: ${{ secrets.APPLE_CERTS_P12_PASSWORD }}
+          p12-file-base64: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+          p12-password: ${{ secrets.KEYCHAIN_PASSWORD }}
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
+          keychain: signing_temp
 
-      - uses: apple-actions/download-provisioning-profiles@v5
-        with:
-          bundle-id: net.yuandev.onexray.se
-          profile-type: MAC_APP_DIRECT
-          issuer-id: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          api-private-key: ${{ secrets.FASTLANE_ASC_KEY_PEM }}
-      - uses: apple-actions/download-provisioning-profiles@v5
-        with:
-          bundle-id: net.yuandev.onexray.se.tun
-          profile-type: MAC_APP_DIRECT
-          issuer-id: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.FASTLANE_ASC_KEY_ID }}
-          api-private-key: ${{ secrets.FASTLANE_ASC_KEY_PEM }}
+      - name: Verify code signing identities
+        run: security find-identity -v -p codesigning
 
       - name: Build, notarize & staple
         env:

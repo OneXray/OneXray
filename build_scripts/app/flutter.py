@@ -100,6 +100,10 @@ class FlutterBuilder(Builder):
         run_command([dart_command(), "run", "ffigen"])
 
     def build_app(self):
+        if self.system == "ios" or self.system == "macos":
+            self.builder.build_app()
+            return
+
         root_dir = os.path.join(self.project_dir, "..")
         os.chdir(root_dir)
         cmd = [
@@ -112,10 +116,9 @@ class FlutterBuilder(Builder):
 
         self.builder.build_app()
 
-    # Names of environment variables that are forwarded to `flutter build` as
-    # --dart-define=<NAME>=<VALUE>. Add here (and to `.env.example`) whenever
-    # the Dart code starts reading a new `String.fromEnvironment` key that
-    # should not be committed in the source.
+    # Names of environment variables that are forwarded to non-Apple
+    # `flutter build` commands as --dart-define=<NAME>=<VALUE>. Keep the Apple
+    # Fastfiles in sync because they own iOS/macOS Flutter builds.
     DART_DEFINE_ENV_VARS = (
         "ADMOB_AD_UNIT_ID_ANDROID",
         "ADMOB_AD_UNIT_ID_IOS",
