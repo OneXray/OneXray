@@ -7,6 +7,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/tun/ui/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
@@ -321,12 +322,11 @@ class TunSettingUIPage extends StatelessWidget {
     return ReorderableDelayedDragStartListener(
       key: Key("$index"),
       index: index,
-      child: SettingRow(
+      child: DataListRow(
         onTap: () => controller.editOnDemandRule(context, index),
         title: rule.interfaceType.name,
-        subtitleWidget: Row(children: [TagView(tag: rule.mode.name)]),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        tags: [TagView(tag: rule.mode.name)],
+        trailing: ActionCluster(
           children: [
             IconMenuPicker(
               icon: Icons.more_vert,

@@ -8,6 +8,7 @@ import 'package:onexray/pages/home/xray/setting/routing_rule/controller.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/routing_rule_state.dart';
 
@@ -45,20 +46,22 @@ class RoutingRulePage extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _domainSection(context, controller, state),
-                  _ipSection(context, controller, state),
-                  _portSection(context, controller, state),
-                  _sourceIPSection(context, controller, state),
-                  _localIPSection(context, controller, state),
-                  if (AppPlatform.isWindows || AppPlatform.isLinux)
-                    _processSection(context, controller, state),
-                  _protocolSection(context, controller, state),
-                  _attrSection(context, controller, state),
-                  _tagSection(context, controller, state),
-                ],
+              child: ResponsiveContent(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _domainSection(context, controller, state),
+                    _ipSection(context, controller, state),
+                    _portSection(context, controller, state),
+                    _sourceIPSection(context, controller, state),
+                    _localIPSection(context, controller, state),
+                    if (AppPlatform.isWindows || AppPlatform.isLinux)
+                      _processSection(context, controller, state),
+                    _protocolSection(context, controller, state),
+                    _attrSection(context, controller, state),
+                    _tagSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
           ),
@@ -90,7 +93,7 @@ class RoutingRulePage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionDomain,
       children: [
         SettingRow(
           title: title,
@@ -133,7 +136,7 @@ class RoutingRulePage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionIp,
       children: [
         SettingRow(
           title: title,
@@ -162,7 +165,7 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleCubitState state,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionPort,
       children: [
         _port(context, controller),
         _sourcePort(context, controller),
@@ -229,7 +232,7 @@ class RoutingRulePage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionSourceIP,
       children: [
         SettingRow(
           title: title,
@@ -263,7 +266,7 @@ class RoutingRulePage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionLocalIP,
       children: [
         SettingRow(
           title: title,
@@ -322,7 +325,7 @@ class RoutingRulePage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionProcess,
       children: [
         SettingRow(
           title: title,
@@ -378,7 +381,7 @@ class RoutingRulePage extends StatelessWidget {
       attrViews.add(value);
     }
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionAttr,
       children: [
         SettingRow(
           title: AppLocalizations.of(context)!.routingRulePageAttrs,
@@ -398,7 +401,7 @@ class RoutingRulePage extends StatelessWidget {
     RoutingRuleCubitState state,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingRulePageSectionOutput,
       children: [
         _outboundTag(context, controller, state),
         _ruleTag(context, controller),

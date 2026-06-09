@@ -82,9 +82,14 @@ class GeoDataService {
     return res;
   }
 
-  Future<bool> updateGeoDat(GeoDataData geoDat) async {
+  Future<bool> updateGeoDat(
+    GeoDataData geoDat, {
+    bool updateDownloading = true,
+  }) async {
     final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
+    if (updateDownloading) {
+      eventBus.updateDownloading(true);
+    }
 
     final cacheDir = await FileTool.makeCacheDir();
     var res = await _downloadFile(geoDat.url, geoDat.name, cacheDir);
@@ -110,14 +115,21 @@ class GeoDataService {
     }
     await FileTool.deleteDirIfExists(cacheDir);
 
-    eventBus.updateDownloading(false);
+    if (updateDownloading) {
+      eventBus.updateDownloading(false);
+    }
 
     return res;
   }
 
-  Future<void> refreshSystemGeoDat(List<GeoDataData> systemGeo) async {
+  Future<void> refreshSystemGeoDat(
+    List<GeoDataData> systemGeo, {
+    bool updateDownloading = true,
+  }) async {
     final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
+    if (updateDownloading) {
+      eventBus.updateDownloading(true);
+    }
     final cacheDir = await FileTool.makeCacheDir();
     var res = false;
     for (final geoDat in systemGeo) {
@@ -142,7 +154,9 @@ class GeoDataService {
       await FileTool.copyDir(cacheDir, VpnConstants.datDir);
     }
     await FileTool.deleteDirIfExists(cacheDir);
-    eventBus.updateDownloading(false);
+    if (updateDownloading) {
+      eventBus.updateDownloading(false);
+    }
   }
 
   Future<bool> _downloadFile(String url, String name, String cacheDir) async {

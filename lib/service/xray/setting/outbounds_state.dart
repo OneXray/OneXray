@@ -97,7 +97,7 @@ class OutboundDnsState {
   var network = DnsNetwork.tcp;
   var address = "";
   var port = "";
-  var nonIPQuery = DnsNonIPQuery.reject;
+  var nonIPQuery = DnsNonIPQuery.skip;
   var dialerProxy = RoutingOutboundTag.direct.name;
 
   void removeWhitespace() {

@@ -6,9 +6,9 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/backup/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
 class BackupPage extends StatelessWidget {
@@ -60,8 +60,8 @@ class BackupPage extends StatelessWidget {
     BackupController controller,
   ) {
     if (state.files.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.backupPageNoFiles),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.backupPageNoFiles,
       );
     } else {
       return RadioGroup<String>(
@@ -84,12 +84,11 @@ class BackupPage extends StatelessWidget {
   ) {
     final file = state.files[index];
     final selected = state.selection == file.name;
-    return SettingRow(
+    return DataListRow(
       title: file.name,
-      subtitleWidget: DateView(date: file.timestamp!),
+      meta: DateView(date: file.timestamp!),
       onTap: () => controller.updateSelection(selected ? null : file.name),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      trailing: ActionCluster(
         children: [
           Radio<String>(value: file.name, toggleable: true),
           IconMenuPicker(

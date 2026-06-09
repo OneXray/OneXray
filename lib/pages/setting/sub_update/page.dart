@@ -40,13 +40,10 @@ class SubUpdatePage extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: SettingSection(
-                title: "",
+              child: Column(
                 children: [
-                  _enable(context, state, controller),
-                  if (state.subUpdateState.enable)
-                    _interval(context, state, controller),
-                  _autoPing(context, state, controller),
+                  _subscriptionSection(context, state, controller),
+                  _geoDataSection(context, state, controller),
                 ],
               ),
             ),
@@ -54,6 +51,36 @@ class SubUpdatePage extends StatelessWidget {
           _bottomButton(context, controller),
         ],
       ),
+    );
+  }
+
+  Widget _subscriptionSection(
+    BuildContext context,
+    SubUpdatePageState state,
+    SubUpdateController controller,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.subUpdatePageSubscription,
+      children: [
+        _enable(context, state, controller),
+        if (state.subUpdateState.enable) _interval(context, state, controller),
+        _autoPing(context, state, controller),
+      ],
+    );
+  }
+
+  Widget _geoDataSection(
+    BuildContext context,
+    SubUpdatePageState state,
+    SubUpdateController controller,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.subUpdatePageGeoData,
+      children: [
+        _geoDataEnable(context, state, controller),
+        if (state.subUpdateState.geoDataEnable)
+          _geoDataInterval(context, state, controller),
+      ],
     );
   }
 
@@ -91,6 +118,31 @@ class SubUpdatePage extends StatelessWidget {
       title: AppLocalizations.of(context)!.subUpdatePageAutoPing,
       value: state.subUpdateState.autoPing,
       onChanged: (value) => controller.updateAutoPing(value),
+    );
+  }
+
+  Widget _geoDataEnable(
+    BuildContext context,
+    SubUpdatePageState state,
+    SubUpdateController controller,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.subUpdatePageEnable,
+      value: state.subUpdateState.geoDataEnable,
+      onChanged: (value) => controller.updateGeoDataEnable(value),
+    );
+  }
+
+  Widget _geoDataInterval(
+    BuildContext context,
+    SubUpdatePageState state,
+    SubUpdateController controller,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.subUpdatePageInterval,
+      value: "${state.subUpdateState.geoDataInterval}",
+      selections: SubUpdateInterval.values,
+      onSelected: (value) => controller.updateGeoDataInterval(value),
     );
   }
 

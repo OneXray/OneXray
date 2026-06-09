@@ -3,33 +3,78 @@ import 'package:flutter/material.dart';
 import 'package:onexray/pages/theme/color.dart';
 
 abstract final class AppTheme {
+  static const _primarySeed = Color(0xFF2563EB);
+
   static ThemeData get light {
-    final ColorScheme schemeLight = SeedColorScheme.fromSeeds(
-      brightness: Brightness.light,
-      primaryKey: Colors.blue,
-    );
-    return ThemeData(
-      brightness: Brightness.light,
-      colorScheme: schemeLight,
-      useMaterial3: true,
-      scaffoldBackgroundColor: ColorManager.scaffoldBackground(
-        Brightness.light,
-      ),
-      dividerTheme: DividerThemeData(space: 1),
-    );
+    return _build(Brightness.light, AppColorTokens.light);
   }
 
   static ThemeData get dark {
-    final ColorScheme schemeLight = SeedColorScheme.fromSeeds(
-      brightness: Brightness.dark,
-      primaryKey: Colors.blue,
-    );
+    return _build(Brightness.dark, AppColorTokens.dark);
+  }
+
+  static ThemeData _build(Brightness brightness, AppColorTokens colors) {
+    final colorScheme =
+        SeedColorScheme.fromSeeds(
+          brightness: brightness,
+          primaryKey: _primarySeed,
+        ).copyWith(
+          surface: colors.surface,
+          onSurface: colors.primaryText,
+          outline: colors.surfaceBorder,
+          outlineVariant: colors.surfaceBorder,
+        );
     return ThemeData(
-      brightness: Brightness.dark,
-      colorScheme: schemeLight,
+      brightness: brightness,
+      colorScheme: colorScheme,
       useMaterial3: true,
-      scaffoldBackgroundColor: ColorManager.scaffoldBackground(Brightness.dark),
-      dividerTheme: DividerThemeData(space: 1),
+      extensions: [colors],
+      scaffoldBackgroundColor: colors.pageBackground,
+      appBarTheme: AppBarTheme(
+        backgroundColor: colors.surface,
+        foregroundColor: colors.primaryText,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerTheme: DividerThemeData(
+        space: 1,
+        thickness: 1,
+        color: colors.surfaceBorder,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          foregroundColor: colorScheme.onPrimary,
+          backgroundColor: colorScheme.primary,
+          disabledForegroundColor: colors.secondaryText,
+          disabledBackgroundColor: colors.secondaryButtonBackground,
+          shape: const StadiumBorder(),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        fillColor: colors.tagBackground,
+        prefixIconColor: colors.secondaryText,
+        suffixIconColor: colors.secondaryText,
+        labelStyle: TextStyle(color: colors.secondaryText),
+        floatingLabelStyle: TextStyle(color: colors.interactiveText),
+        hintStyle: TextStyle(color: colors.secondaryText),
+        helperStyle: TextStyle(color: colors.secondaryText),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        textStyle: TextStyle(color: colors.primaryText),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: colors.interactiveText,
+        unselectedLabelColor: colors.secondaryText,
+        indicatorColor: colors.interactiveText,
+        dividerColor: colors.surfaceBorder,
+      ),
+      iconTheme: IconThemeData(color: colors.secondaryText),
     );
   }
 }

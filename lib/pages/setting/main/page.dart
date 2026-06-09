@@ -4,6 +4,8 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/main/controller.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class SettingPage extends StatelessWidget {
@@ -35,30 +37,26 @@ class SettingPage extends StatelessWidget {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _tunSection(context, state, controller),
-            _backupSection(context, controller),
-            _aboutSection(context, controller),
-            _footerTips(context),
-          ],
+        child: ResponsiveContent(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _networkSection(context, controller),
+              _dataSection(context, state, controller),
+              _appSection(context, controller),
+              _supportSection(context, controller),
+              _versionSection(context, state),
+              _footerTips(context),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _tunSection(
-    BuildContext context,
-    SettingState state,
-    SettingController controller,
-  ) {
-    final appVersion =
-        "${AppLocalizations.of(context)!.settingPageAppVersion}${state.appVersion}";
-    final xrayVersion =
-        "${AppLocalizations.of(context)!.settingPageXrayVersion}${state.xrayVersion}";
+  Widget _networkSection(BuildContext context, SettingController controller) {
     return SettingSection(
-      title: "$appVersion\n$xrayVersion",
+      title: AppLocalizations.of(context)!.settingPageSectionNetwork,
       children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.tunSettingUIPageTitle,
@@ -68,6 +66,22 @@ class SettingPage extends StatelessWidget {
           title: AppLocalizations.of(context)!.pingPageTitle,
           onTap: () => controller.gotoPing(context),
         ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.logPageTitle,
+          onTap: () => controller.gotoLog(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _dataSection(
+    BuildContext context,
+    SettingState state,
+    SettingController controller,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.settingPageSectionData,
+      children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.subUpdatePageTitle,
           onTap: () => controller.gotoSubUpdate(context),
@@ -81,17 +95,25 @@ class SettingPage extends StatelessWidget {
             title: AppLocalizations.of(context)!.settingPageEnhancedRouting,
             onTap: () => controller.openEnhancedRouting(context),
           ),
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.logPageTitle,
-          onTap: () => controller.gotoLog(context),
+        SettingRow(
+          title: AppLocalizations.of(context)!.appUpdateCheck,
+          onTap: state.checkingUpdate
+              ? null
+              : () => controller.checkUpdate(context),
+          trailing: state.checkingUpdate
+              ? const SizedBox.square(
+                  dimension: 24,
+                  child: CircularProgressIndicator(),
+                )
+              : const Icon(Icons.system_update),
         ),
       ],
     );
   }
 
-  Widget _backupSection(BuildContext context, SettingController controller) {
+  Widget _appSection(BuildContext context, SettingController controller) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.settingPageSectionApp,
       children: [
         _backup(context, controller),
         if (AppPlatform.isIOS) _appIcon(context, controller),
@@ -137,9 +159,9 @@ class SettingPage extends StatelessWidget {
     );
   }
 
-  Widget _aboutSection(BuildContext context, SettingController controller) {
+  Widget _supportSection(BuildContext context, SettingController controller) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.settingPageSectionSupport,
       children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPageDoc,
@@ -178,6 +200,22 @@ class SettingPage extends StatelessWidget {
     );
   }
 
+  Widget _versionSection(BuildContext context, SettingState state) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.settingPageSectionVersion,
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.settingPageAppVersion,
+          value: state.appVersion,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.settingPageXrayVersion,
+          value: state.xrayVersion,
+        ),
+      ],
+    );
+  }
+
   Widget _footerTips(BuildContext context) {
     return Padding(
       padding: const EdgeInsetsDirectional.only(
@@ -187,7 +225,10 @@ class SettingPage extends StatelessWidget {
       ),
       child: Text(
         AppLocalizations.of(context)!.settingPageFooterTips,
-        style: const TextStyle(fontSize: 12.0, color: Colors.grey),
+        style: TextStyle(
+          fontSize: 12,
+          color: ColorManager.secondaryText(context),
+        ),
       ),
     );
   }

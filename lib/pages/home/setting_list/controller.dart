@@ -12,6 +12,7 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/home/xray/setting/ui/params.dart';
 import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/pages/widget/config_query_filter.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/xray/setting/simple_state.dart';
@@ -20,28 +21,33 @@ class XraySettingListState {
   final int xraySettingId;
   final List<ConfigQueryRow> simpleConfigs;
   final List<ConfigQueryRow> configs;
+  final String query;
 
   const XraySettingListState({
     required this.xraySettingId,
     required this.simpleConfigs,
     required this.configs,
+    required this.query,
   });
 
   factory XraySettingListState.initial() => const XraySettingListState(
-        xraySettingId: DBConstants.defaultId,
-        simpleConfigs: [],
-        configs: [],
-      );
+    xraySettingId: DBConstants.defaultId,
+    simpleConfigs: [],
+    configs: [],
+    query: "",
+  );
 
   XraySettingListState copyWith({
     int? xraySettingId,
     List<ConfigQueryRow>? simpleConfigs,
     List<ConfigQueryRow>? configs,
+    String? query,
   }) {
     return XraySettingListState(
       xraySettingId: xraySettingId ?? this.xraySettingId,
       simpleConfigs: simpleConfigs ?? this.simpleConfigs,
       configs: configs ?? this.configs,
+      query: query ?? this.query,
     );
   }
 }
@@ -52,6 +58,9 @@ class XraySettingListController extends Cubit<XraySettingListState> {
   }
 
   StreamSubscription<List<ConfigQueryRow>>? _configsSubscription;
+  final searchController = TextEditingController();
+  var _allSimpleConfigs = <ConfigQueryRow>[];
+  var _allConfigs = <ConfigQueryRow>[];
 
   Future<void> _readData() async {
     await _readXraySettingId();
@@ -66,9 +75,12 @@ class XraySettingListController extends Cubit<XraySettingListState> {
 
   void _queryXraySettingList() {
     final db = AppDatabase();
-    _configsSubscription = db.coreConfigDao.allSettingRowsStream().listen(
-      (data) => emit(state.copyWith(configs: data)),
-    );
+    _configsSubscription = db.coreConfigDao.allSettingRowsStream().listen((
+      data,
+    ) {
+      _allConfigs = data;
+      _emitFilteredConfigs();
+    });
   }
 
   void _initSimpleConfigs() {
@@ -92,7 +104,8 @@ class XraySettingListController extends Cubit<XraySettingListState> {
     );
     final simpleConfig = ConfigItem(config, ConfigQueryRowType.config);
 
-    emit(state.copyWith(simpleConfigs: [simpleSub, simpleConfig]));
+    _allSimpleConfigs = [simpleSub, simpleConfig];
+    _emitFilteredConfigs();
   }
 
   void updateXraySettingId(BuildContext context, int? id) {
@@ -109,8 +122,26 @@ class XraySettingListController extends Cubit<XraySettingListState> {
 
   Future<void> refreshData() async {
     final db = AppDatabase();
-    final newList = await db.coreConfigDao.allSettingRows;
-    emit(state.copyWith(configs: newList));
+    _allConfigs = await db.coreConfigDao.allSettingRows;
+    _emitFilteredConfigs();
+  }
+
+  void updateSearchQuery(String value) {
+    _emitFilteredConfigs(query: value);
+  }
+
+  void _emitFilteredConfigs({String? query}) {
+    final nextQuery = query ?? state.query;
+    emit(
+      state.copyWith(
+        simpleConfigs: ConfigQueryFilter.filterRows(
+          _allSimpleConfigs,
+          nextQuery,
+        ),
+        configs: ConfigQueryFilter.filterRows(_allConfigs, nextQuery),
+        query: nextQuery,
+      ),
+    );
   }
 
   Future<void> moreAction(
@@ -173,6 +204,7 @@ class XraySettingListController extends Cubit<XraySettingListState> {
 
   @override
   Future<void> close() {
+    searchController.dispose();
     _configsSubscription?.cancel();
     return super.close();
   }

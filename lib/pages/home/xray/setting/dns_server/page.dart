@@ -7,6 +7,7 @@ import 'package:onexray/pages/home/xray/setting/dns_server/controller.dart';
 import 'package:onexray/pages/home/xray/setting/dns_server/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 
@@ -44,14 +45,16 @@ class DnsServerPage extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _addressSection(context, controller, state),
-                  _domainsSection(context, controller, state),
-                  _expectedIPsSection(context, controller, state),
-                  _unexpectedIPsSection(context, controller, state),
-                  _queryStrategySection(context, controller, state),
-                ],
+              child: ResponsiveContent(
+                child: Column(
+                  children: [
+                    _addressSection(context, controller, state),
+                    _domainsSection(context, controller, state),
+                    _expectedIPsSection(context, controller, state),
+                    _unexpectedIPsSection(context, controller, state),
+                    _queryStrategySection(context, controller, state),
+                  ],
+                ),
               ),
             ),
           ),
@@ -67,7 +70,7 @@ class DnsServerPage extends StatelessWidget {
     DnsServerCubitState state,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.dnsServerPageSectionAddress,
       children: [
         _address(context, controller),
         _port(context, controller),
@@ -123,7 +126,7 @@ class DnsServerPage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.dnsServerPageSectionDomains,
       separated: false,
       children: [
         SettingRow(
@@ -166,7 +169,7 @@ class DnsServerPage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.dnsServerPageSectionExpectedIPs,
       separated: false,
       children: [
         SettingRow(
@@ -209,7 +212,7 @@ class DnsServerPage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.dnsServerPageSectionUnexpectedIPs,
       separated: false,
       children: [
         SettingRow(
@@ -239,7 +242,7 @@ class DnsServerPage extends StatelessWidget {
     DnsServerCubitState state,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.dnsServerPageSectionPolicy,
       children: [
         _queryStrategy(context, controller, state),
         _tag(context, controller),

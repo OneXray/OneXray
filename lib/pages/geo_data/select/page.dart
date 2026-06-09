@@ -6,7 +6,7 @@ import 'package:onexray/pages/geo_data/select/params.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatSelectPage extends StatelessWidget {
@@ -56,21 +56,9 @@ class GeoDatSelectPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, GeoDatSelectController controller) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
-      child: TextField(
-        controller: controller.searchController,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          isDense: true,
-        ),
-        onChanged: (value) => controller.keywordChanged(value),
-      ),
+    return ListSearchField(
+      controller: controller.searchController,
+      onChanged: (value) => controller.keywordChanged(value),
     );
   }
 
@@ -80,8 +68,8 @@ class GeoDatSelectPage extends StatelessWidget {
     GeoDatSelectState state,
   ) {
     if (state.geoDatCodes.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.geoDatCodesPageNoCodes),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
       );
     } else {
       return ListView.separated(
@@ -101,9 +89,9 @@ class GeoDatSelectPage extends StatelessWidget {
     final code = state.geoDatCodes[index];
     final count = code.ruleCount ?? 0;
     final selected = state.selections.contains(code.code);
-    return SettingRow(
+    return DataListRow(
       title: code.code ?? "",
-      subtitleWidget: Row(children: [TagView(tag: "$count")]),
+      tags: [TagView(tag: "$count")],
       onTap: () => controller.updateSelections(!selected, code.code),
       trailing: Checkbox(
         value: selected,

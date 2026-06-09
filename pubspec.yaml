@@ -28,6 +28,7 @@ dependencies:
   path: ^1.9.1
   collection: ^1.19.1
   crypto: ^3.0.7
+  pub_semver: ^2.2.0
   # i18n
   intl: ^0.20.2
   # async

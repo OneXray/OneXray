@@ -41,7 +41,7 @@ class SecondaryBottomButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: callback,
         style: ElevatedButton.styleFrom(
-          foregroundColor: ColorManager.formTitle(context),
+          foregroundColor: ColorManager.secondaryButtonForeground(context),
           backgroundColor: ColorManager.secondaryButtonBackground(context),
           shape: StadiumBorder(),
         ),

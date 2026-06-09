@@ -5,6 +5,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/simple/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
@@ -45,14 +46,16 @@ class XraySettingSimplePage extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _logSection(context, controller, state),
-                  _chainProxySection(context, controller, state),
-                  _routingSection(context, controller, state),
-                  _fakeDnsSection(context, controller, state),
-                  _dnsSection(context, controller, state),
-                ],
+              child: ResponsiveContent(
+                child: Column(
+                  children: [
+                    _logSection(context, controller, state),
+                    _chainProxySection(context, controller, state),
+                    _routingSection(context, controller, state),
+                    _fakeDnsSection(context, controller, state),
+                    _dnsSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
           ),

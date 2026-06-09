@@ -6,6 +6,7 @@ import 'package:onexray/pages/home/component/config_row/enum.dart';
 import 'package:onexray/pages/home/component/config_row/view.dart';
 import 'package:onexray/pages/home/outbound_select/controller.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 
 class OutboundSelectPage extends StatelessWidget {
   final OutboundSelectParams params;
@@ -39,7 +40,21 @@ class OutboundSelectPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: _configList(context, controller, state),
+      child: Column(
+        children: [
+          if (state.configs.isNotEmpty || state.query.isNotEmpty)
+            _search(context, controller),
+          Expanded(child: _configList(context, controller, state)),
+        ],
+      ),
+    );
+  }
+
+  Widget _search(BuildContext context, OutboundSelectController controller) {
+    return ListSearchField(
+      controller: controller.searchController,
+      hintText: AppLocalizations.of(context)!.listSearchHint,
+      onChanged: (value) => controller.updateSearchQuery(value),
     );
   }
 
@@ -49,8 +64,8 @@ class OutboundSelectPage extends StatelessWidget {
     OutboundSelectState state,
   ) {
     if (state.configs.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.homeOutboundViewNoOutbound),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.homeOutboundViewNoOutbound,
       );
     }
     return ListView.separated(

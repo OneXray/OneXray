@@ -24,7 +24,6 @@ abstract final class ServiceManager {
     }
     await WindowService().asyncInit();
     AnalyticsService().init();
-    await BackgroundTaskService().asyncInit();
     ToastService().init();
   }
 

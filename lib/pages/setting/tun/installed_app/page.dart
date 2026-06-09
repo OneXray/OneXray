@@ -6,7 +6,7 @@ import 'package:onexray/pages/setting/tun/installed_app/controller.dart';
 import 'package:onexray/pages/setting/tun/installed_app/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 
 class InstalledAppPage extends StatelessWidget {
   final InstalledAppParams params;
@@ -57,21 +57,9 @@ class InstalledAppPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, InstalledAppController controller) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
-      child: TextField(
-        controller: controller.searchController,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          isDense: true,
-        ),
-        onChanged: (value) => controller.keywordChanged(value),
-      ),
+    return ListSearchField(
+      controller: controller.searchController,
+      onChanged: (value) => controller.keywordChanged(value),
     );
   }
 
@@ -81,8 +69,8 @@ class InstalledAppPage extends StatelessWidget {
     InstalledAppController controller,
   ) {
     if (state.apps.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.installedAppPageNoApp),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.installedAppPageNoApp,
       );
     } else {
       return ListView.separated(
@@ -101,7 +89,7 @@ class InstalledAppPage extends StatelessWidget {
   ) {
     final app = state.apps[index];
     final selected = state.selections.contains(app.packageName);
-    return SettingRow(
+    return DataListRow(
       title: app.name,
       subtitle: app.packageName,
       onTap: () => controller.updateSelections(!selected, app.packageName),

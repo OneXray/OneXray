@@ -39,7 +39,7 @@ class SectionView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: ColorManager.formTitle(context),
+                  color: ColorManager.sectionTitle(context),
                 ),
               ),
             ),

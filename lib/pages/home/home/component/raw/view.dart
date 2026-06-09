@@ -7,20 +7,18 @@ import 'package:onexray/pages/home/component/ad_row/view.dart';
 import 'package:onexray/pages/home/component/config_row/selectable_view.dart';
 import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/home/home/component/raw/controller.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 
 class HomeRawView extends StatelessWidget {
   const HomeRawView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => HomeRawController(),
-      child: BlocBuilder<HomeRawController, HomeRawState>(
-        builder: (context, state) {
-          final controller = context.read<HomeRawController>();
-          return _body(context, controller, state);
-        },
-      ),
+    return BlocBuilder<HomeRawController, HomeRawState>(
+      builder: (context, state) {
+        final controller = context.read<HomeRawController>();
+        return _body(context, controller, state);
+      },
     );
   }
 
@@ -31,7 +29,20 @@ class HomeRawView extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: _configList(context, controller, state),
+      child: Column(
+        children: [
+          if (state.searching) _search(context, controller),
+          Expanded(child: _configList(context, controller, state)),
+        ],
+      ),
+    );
+  }
+
+  Widget _search(BuildContext context, HomeRawController controller) {
+    return ListSearchField(
+      controller: controller.searchController,
+      hintText: AppLocalizations.of(context)!.listSearchHint,
+      onChanged: (value) => controller.updateSearchQuery(value),
     );
   }
 
@@ -41,8 +52,8 @@ class HomeRawView extends StatelessWidget {
     HomeRawState state,
   ) {
     if (state.configs.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.homeOutboundViewNoOutbound),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.homeOutboundViewNoOutbound,
       );
     } else {
       return ListView.separated(

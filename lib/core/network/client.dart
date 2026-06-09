@@ -99,6 +99,16 @@ class NetClient {
     }
   }
 
+  Future<Map<String, dynamic>?> getJson(String url) async {
+    try {
+      final res = await _downloadClient.get<Map<String, dynamic>>(url);
+      return res.data;
+    } catch (e) {
+      ygLogger("$e");
+      return null;
+    }
+  }
+
   Future<bool> downloadFile(String url, String savePath) async {
     try {
       await _downloadClient.download(url, savePath);

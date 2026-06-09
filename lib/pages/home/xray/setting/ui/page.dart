@@ -5,6 +5,7 @@ import 'package:onexray/pages/home/xray/setting/ui/controller.dart';
 import 'package:onexray/pages/home/xray/setting/ui/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class XraySettingUIPage extends StatefulWidget {
@@ -22,7 +23,14 @@ class _XraySettingUIPageState extends State<XraySettingUIPage> {
   @override
   void initState() {
     super.initState();
-    controller = XraySettingUIController(widget.params);
+    controller = XraySettingUIController(
+      widget.params,
+      onChanged: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+    );
   }
 
   @override
@@ -54,8 +62,10 @@ class _XraySettingUIPageState extends State<XraySettingUIPage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                children: [_nameSection(context), _editSection(context)],
+              child: ResponsiveContent(
+                child: Column(
+                  children: [_nameSection(context), _editSection(context)],
+                ),
               ),
             ),
           ),
@@ -83,26 +93,33 @@ class _XraySettingUIPageState extends State<XraySettingUIPage> {
       children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.xraySettingUIPageEditLog,
+          value: controller.logSummary(context),
           onTap: () => controller.editLog(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.xraySettingUIPageEditDns,
+          value: controller.dnsSummary(context),
           onTap: () => controller.editDns(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.xraySettingUIPageEditFakeDns,
+          value: controller.fakeDnsSummary(context),
+          valueMaxLines: 1,
           onTap: () => controller.editFakeDns(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.xraySettingUIPageEditRouting,
+          value: controller.routingSummary(context),
           onTap: () => controller.editRouting(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.xraySettingUIPageEditInbounds,
+          value: controller.inboundsSummary(context),
           onTap: () => controller.editInbounds(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.xraySettingUIPageEditOutbounds,
+          value: controller.outboundsSummary(context),
           onTap: () => controller.editOutbounds(context),
         ),
       ],

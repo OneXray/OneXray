@@ -7,7 +7,9 @@ import 'package:onexray/pages/home/xray/setting/routing/controller.dart';
 import 'package:onexray/pages/home/xray/setting/routing/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
@@ -47,11 +49,13 @@ class RoutingPage extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _routingSection(context, controller, state),
-                  _ruleSection(context, controller, state),
-                ],
+              child: ResponsiveContent(
+                child: Column(
+                  children: [
+                    _routingSection(context, controller, state),
+                    _ruleSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
           ),
@@ -67,7 +71,7 @@ class RoutingPage extends StatelessWidget {
     RoutingCubitState state,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.routingPageSectionStrategy,
       children: [
         SelectSettingRow(
           title: AppLocalizations.of(context)!.routingPageDomainStrategy,
@@ -84,19 +88,10 @@ class RoutingPage extends StatelessWidget {
     RoutingController controller,
     RoutingCubitState state,
   ) {
-    return SettingSection(
-      title: "",
+    return Column(
       children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.routingPageRules,
-          trailing: IconButton(
-            onPressed: () => controller.appendCustomRule(),
-            icon: const Icon(Icons.add),
-          ),
-        ),
         _systemRuleSection(context, controller, state),
-        if (state.routingState.customRules.isNotEmpty)
-          _customRuleSection(context, controller, state),
+        _customRuleSection(context, controller, state),
       ],
     );
   }
@@ -116,7 +111,10 @@ class RoutingPage extends StatelessWidget {
           (index, rule) => _systemRuleCell(context, controller, rule, index),
         )
         .toList();
-    return SettingSubsection(title: "", children: ruleViews);
+    return SettingSection(
+      title: AppLocalizations.of(context)!.routingPageSectionSystemRules,
+      children: ruleViews,
+    );
   }
 
   Widget _systemRuleCell(
@@ -142,20 +140,27 @@ class RoutingPage extends StatelessWidget {
           (index, rule) => _customRuleCell(context, controller, rule, index),
         )
         .toList();
-    return SettingSubsection(
-      title: AppLocalizations.of(context)!.helpOrder,
-      separated: false,
+    return SettingSection(
+      title: AppLocalizations.of(context)!.routingPageSectionCustomRules,
       children: [
-        ReorderableListView(
-          buildDefaultDragHandles: false,
-          shrinkWrap: true,
-          onReorderItem: (int oldIndex, int newIndex) =>
-              controller.sortCustomRule(
-                oldIndex,
-                _legacyReorderNewIndex(oldIndex, newIndex),
-              ),
-          children: ruleViews,
+        SettingRow(
+          title: AppLocalizations.of(context)!.routingPageRules,
+          trailing: IconButton(
+            onPressed: () => controller.appendCustomRule(),
+            icon: const Icon(Icons.add),
+          ),
         ),
+        if (ruleViews.isNotEmpty)
+          ReorderableListView(
+            buildDefaultDragHandles: false,
+            shrinkWrap: true,
+            onReorderItem: (int oldIndex, int newIndex) =>
+                controller.sortCustomRule(
+                  oldIndex,
+                  _legacyReorderNewIndex(oldIndex, newIndex),
+                ),
+            children: ruleViews,
+          ),
       ],
     );
   }
@@ -169,12 +174,11 @@ class RoutingPage extends StatelessWidget {
     return ReorderableDelayedDragStartListener(
       key: Key("$ruleIndex"),
       index: ruleIndex,
-      child: SettingRow(
+      child: DataListRow(
         onTap: () => controller.editCustomRule(context, ruleIndex),
         title: rule.ruleTag,
-        subtitleWidget: Row(children: [TagView(tag: rule.uiTag)]),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        tags: [TagView(tag: rule.uiTag)],
+        trailing: ActionCluster(
           children: [
             IconMenuPicker(
               icon: Icons.more_vert,

@@ -4,7 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/geo_data/show/controller.dart';
 import 'package:onexray/pages/geo_data/show/params.dart';
 import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatShowPage extends StatelessWidget {
@@ -43,28 +43,16 @@ class GeoDatShowPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, GeoDatShowController controller) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
-      child: TextField(
-        controller: controller.searchController,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          isDense: true,
-        ),
-        onChanged: (value) => controller.keywordChanged(value),
-      ),
+    return ListSearchField(
+      controller: controller.searchController,
+      onChanged: (value) => controller.keywordChanged(value),
     );
   }
 
   Widget _geoDataList(BuildContext context, GeoDatShowState state) {
     if (state.geoDatCodes.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.geoDatCodesPageNoCodes),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
       );
     } else {
       return ListView.separated(
@@ -78,9 +66,9 @@ class GeoDatShowPage extends StatelessWidget {
   Widget _itemRow(BuildContext context, GeoDatShowState state, int index) {
     final code = state.geoDatCodes[index];
     final count = code.ruleCount ?? 0;
-    return SettingRow(
+    return DataListRow(
       title: code.code ?? "",
-      subtitleWidget: Row(children: [TagView(tag: "$count")]),
+      tags: [TagView(tag: "$count")],
     );
   }
 }

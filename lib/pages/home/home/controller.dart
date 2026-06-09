@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
@@ -26,14 +27,18 @@ import 'package:permission_handler/permission_handler.dart';
 
 class HomeState {
   final int configId;
+  final String configName;
 
-  const HomeState({required this.configId});
+  const HomeState({required this.configId, required this.configName});
 
   factory HomeState.initial() =>
-      const HomeState(configId: DBConstants.defaultId);
+      const HomeState(configId: DBConstants.defaultId, configName: "");
 
-  HomeState copyWith({int? configId}) {
-    return HomeState(configId: configId ?? this.configId);
+  HomeState copyWith({int? configId, String? configName}) {
+    return HomeState(
+      configId: configId ?? this.configId,
+      configName: configName ?? this.configName,
+    );
   }
 }
 
@@ -54,7 +59,9 @@ class HomeController extends Cubit<HomeState> {
     _initRefreshVpnStream();
     final id = await PreferencesKey().readLastConfigId();
     emit(state.copyWith(configId: id));
-    await BackgroundTaskService().checkSubscriptionUpdate();
+    await _updateConfigName(id);
+    await BackgroundTaskService().asyncInit();
+    await BackgroundTaskService().checkDataUpdate();
   }
 
   void _initToastStream() {
@@ -185,8 +192,24 @@ class HomeController extends Cubit<HomeState> {
     context.push(RouterPath.nodeInfo);
   }
 
+  Future<void> _updateConfigName(int value) async {
+    final configName = await _readConfigName(value);
+    if (!isClosed && state.configId == value) {
+      emit(state.copyWith(configName: configName));
+    }
+  }
+
+  Future<String> _readConfigName(int id) async {
+    if (id == DBConstants.defaultId) {
+      return "";
+    }
+    final config = await AppDatabase().coreConfigDao.searchRow(id);
+    return config?.name ?? "";
+  }
+
   void updateConfigId(BuildContext context, int value) {
-    emit(state.copyWith(configId: value));
+    emit(state.copyWith(configId: value, configName: ""));
+    unawaited(_updateConfigName(value));
   }
 
   Future<void> startVpn(BuildContext context) async {

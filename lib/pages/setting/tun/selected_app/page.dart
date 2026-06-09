@@ -6,8 +6,8 @@ import 'package:onexray/pages/setting/tun/selected_app/controller.dart';
 import 'package:onexray/pages/setting/tun/selected_app/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
 
 class SelectedAppPage extends StatelessWidget {
   final SelectedAppParams params;
@@ -62,8 +62,8 @@ class SelectedAppPage extends StatelessWidget {
     SelectedAppController controller,
   ) {
     if (state.apps.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.selectedAppPageNoApp),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.selectedAppPageNoApp,
       );
     } else {
       return ListView.separated(
@@ -81,7 +81,7 @@ class SelectedAppPage extends StatelessWidget {
     int index,
   ) {
     final app = state.apps[index];
-    return SettingRow(
+    return DataListRow(
       title: app.name,
       subtitle: app.packageName,
       trailing: IconMenuPicker(

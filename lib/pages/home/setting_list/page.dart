@@ -8,6 +8,7 @@ import 'package:onexray/pages/home/component/config_row/enum.dart';
 import 'package:onexray/pages/home/component/config_row/view.dart';
 import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/home/setting_list/controller.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
@@ -25,7 +26,8 @@ class XraySettingListPage extends StatelessWidget {
           return Scaffold(
             appBar: AppBar(
               title: Text(
-                  AppLocalizations.of(context)!.xraySettingListPageTitle),
+                AppLocalizations.of(context)!.xraySettingListPageTitle,
+              ),
               actions: [
                 IconButton(
                   onPressed: () => controller.addXraySetting(context),
@@ -49,10 +51,22 @@ class XraySettingListPage extends StatelessWidget {
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
         children: [
+          if (state.simpleConfigs.isNotEmpty ||
+              state.configs.isNotEmpty ||
+              state.query.isNotEmpty)
+            _search(context, controller),
           Expanded(child: _xraySettingList(context, controller, state)),
           _bottomButton(context, controller),
         ],
       ),
+    );
+  }
+
+  Widget _search(BuildContext context, XraySettingListController controller) {
+    return ListSearchField(
+      controller: controller.searchController,
+      hintText: AppLocalizations.of(context)!.listSearchHint,
+      onChanged: (value) => controller.updateSearchQuery(value),
     );
   }
 
@@ -61,9 +75,13 @@ class XraySettingListPage extends StatelessWidget {
     XraySettingListController controller,
     XraySettingListState state,
   ) {
+    if (state.configs.isEmpty && state.simpleConfigs.isEmpty) {
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.homeOutboundViewNoOutbound,
+      );
+    }
     return ListView.separated(
-      itemBuilder: (ctx, index) =>
-          _itemRow(ctx, controller, state, index),
+      itemBuilder: (ctx, index) => _itemRow(ctx, controller, state, index),
       itemCount: state.configs.length + state.simpleConfigs.length,
       separatorBuilder: (_, _) => const Divider(),
     );
@@ -75,10 +93,15 @@ class XraySettingListPage extends StatelessWidget {
     XraySettingListState state,
     int index,
   ) {
-    if (index >= 0 && index < 2) {
+    if (index >= 0 && index < state.simpleConfigs.length) {
       return _simpleCell(context, controller, state, index);
     } else {
-      return _cell(context, controller, state, index - 2);
+      return _cell(
+        context,
+        controller,
+        state,
+        index - state.simpleConfigs.length,
+      );
     }
   }
 

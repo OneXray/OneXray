@@ -51,7 +51,7 @@ class SettingSubsection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: ColorManager.formTitle(context),
+                color: ColorManager.sectionTitle(context),
               ),
             ),
           ),
@@ -131,7 +131,7 @@ class SettingRow extends StatelessWidget {
             ],
             if (trailing != null) ...[
               const SizedBox(width: 8),
-              trailing!,
+              IconTheme.merge(data: _iconTheme(context), child: trailing!),
             ] else if (showChevron) ...[
               const SizedBox(width: 8),
               IconTheme.merge(
@@ -227,11 +227,7 @@ class ReorderDragHandle extends StatelessWidget {
           child: SizedBox(
             width: 40,
             height: 48,
-            child: Icon(
-              Icons.drag_handle,
-              size: 20,
-              color: ColorManager.secondaryText(context),
-            ),
+            child: Icon(Icons.drag_handle, size: 20),
           ),
         ),
       ),
@@ -485,6 +481,7 @@ class NavigationSettingRow extends StatelessWidget {
   final String? value;
   final String? subtitle;
   final Widget? subtitleWidget;
+  final int valueMaxLines;
   final VoidCallback onTap;
 
   const NavigationSettingRow({
@@ -493,6 +490,7 @@ class NavigationSettingRow extends StatelessWidget {
     this.value,
     this.subtitle,
     this.subtitleWidget,
+    this.valueMaxLines = 1,
     required this.onTap,
   });
 
@@ -503,6 +501,7 @@ class NavigationSettingRow extends StatelessWidget {
       value: value,
       subtitle: subtitle,
       subtitleWidget: subtitleWidget,
+      valueMaxLines: valueMaxLines,
       onTap: onTap,
       showChevron: true,
     );

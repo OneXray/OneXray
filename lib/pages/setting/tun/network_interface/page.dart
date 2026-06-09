@@ -6,7 +6,7 @@ import 'package:onexray/pages/setting/tun/network_interface/controller.dart';
 import 'package:onexray/pages/setting/tun/network_interface/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 
 class NetworkInterfacePage extends StatelessWidget {
   final NetworkInterfaceParams params;
@@ -55,10 +55,8 @@ class NetworkInterfacePage extends StatelessWidget {
     NetworkInterfaceController controller,
   ) {
     if (state.interfaceList.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocalizations.of(context)!.networkInterfacePageNoInterface,
-        ),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.networkInterfacePageNoInterface,
       );
     } else {
       return RadioGroup<String>(
@@ -76,7 +74,7 @@ class NetworkInterfacePage extends StatelessWidget {
   Widget _cell(BuildContext context, NetworkInterfaceState state, int index) {
     final interface = state.interfaceList[index];
     final address = interface.addresses.map((e) => e.address).join("\n");
-    return SettingRow(
+    return DataListRow(
       title: interface.name,
       subtitle: address,
       onTap: () => context.read<NetworkInterfaceController>().updateInterface(

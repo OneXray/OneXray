@@ -7,7 +7,9 @@ import 'package:onexray/pages/home/xray/setting/dns/controller.dart';
 import 'package:onexray/pages/home/xray/setting/dns/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/setting/dns_server_state.dart';
@@ -47,12 +49,14 @@ class DnsPage extends StatelessWidget {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _hostsSection(context, controller),
-                  _serversSection(context, controller, state),
-                  _tagSection(context, controller, state),
-                ],
+              child: ResponsiveContent(
+                child: Column(
+                  children: [
+                    _hostsSection(context, controller),
+                    _serversSection(context, controller, state),
+                    _tagSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
           ),
@@ -64,7 +68,7 @@ class DnsPage extends StatelessWidget {
 
   Widget _hostsSection(BuildContext context, DnsController controller) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.dnsPageSectionHosts,
       children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.dnsPageHosts,
@@ -85,7 +89,7 @@ class DnsPage extends StatelessWidget {
         )
         .toList();
     return SettingSection(
-      title: AppLocalizations.of(context)!.helpOrder,
+      title: AppLocalizations.of(context)!.dnsPageSectionServers,
       children: [
         SettingRow(
           title: AppLocalizations.of(context)!.dnsPageServers,
@@ -119,12 +123,11 @@ class DnsPage extends StatelessWidget {
     return ReorderableDelayedDragStartListener(
       key: Key("$serverIndex"),
       index: serverIndex,
-      child: SettingRow(
+      child: DataListRow(
         onTap: () => controller.editServer(context, serverIndex),
         title: server.address,
-        subtitleWidget: Row(children: [TagView(tag: queryStrategy.name)]),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        tags: [TagView(tag: queryStrategy.name)],
+        trailing: ActionCluster(
           children: [
             IconMenuPicker(
               icon: Icons.more_vert,
@@ -147,7 +150,7 @@ class DnsPage extends StatelessWidget {
     DnsCubitState state,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.dnsPageSectionPolicy,
       children: [
         _tag(context, controller, state),
         _queryStrategy(context, controller, state),
