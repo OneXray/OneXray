@@ -8,7 +8,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GO_VERSION: "1.26.2"
+  GO_VERSION: "stable"
+  XCODE_VERSION: "latest-stable"
   PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
   LIBXRAY_REF: main
@@ -21,8 +22,6 @@ jobs:
   ios:
     runs-on: macos-26
     timeout-minutes: 60
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
     defaults:
       run:
         working-directory: OneXray
@@ -37,9 +36,15 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
+          check-latest: true
 
       - uses: actions/setup-python@v6
         with:
@@ -114,8 +119,6 @@ jobs:
   macos:
     runs-on: macos-26
     timeout-minutes: 60
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
     defaults:
       run:
         working-directory: OneXray
@@ -130,9 +133,15 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
+          check-latest: true
 
       - uses: actions/setup-python@v6
         with:
