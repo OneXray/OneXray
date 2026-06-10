@@ -9,23 +9,15 @@ import 'package:onexray/service/xray/setting/outbounds_state.dart';
 
 class OutboundDnsCubitState {
   final OutboundDnsState dnsState;
-  final List<String> outboundTags;
   final int version;
 
-  OutboundDnsCubitState({
-    required this.dnsState,
-    List<String>? outboundTags,
-    this.version = 0,
-  }) : outboundTags = outboundTags ?? <String>[];
+  OutboundDnsCubitState({required this.dnsState, this.version = 0});
 
   factory OutboundDnsCubitState.initial() =>
       OutboundDnsCubitState(dnsState: OutboundDnsState());
 
-  OutboundDnsCubitState bumped() => OutboundDnsCubitState(
-    dnsState: dnsState,
-    outboundTags: outboundTags,
-    version: version + 1,
-  );
+  OutboundDnsCubitState bumped() =>
+      OutboundDnsCubitState(dnsState: dnsState, version: version + 1);
 }
 
 class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
@@ -58,13 +50,7 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
     _initInput(initS);
     _initRuleInputs(initS);
     _initBlockTypeInputs(initS);
-    emit(
-      OutboundDnsCubitState(
-        dnsState: initS,
-        outboundTags: List.of(params.outboundTags),
-        version: 1,
-      ),
-    );
+    emit(OutboundDnsCubitState(dnsState: initS, version: 1));
   }
 
   void _initInput(OutboundDnsState state) {
@@ -157,11 +143,6 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
   void deleteBlockType(int index) {
     state.dnsState.blockTypes.removeAt(index);
     blockTypeControllers.removeAt(index).dispose();
-    emit(state.bumped());
-  }
-
-  void updateDialerProxy(String value) {
-    state.dnsState.dialerProxy = value;
     emit(state.bumped());
   }
 

@@ -99,7 +99,6 @@ class OutboundDnsState {
   var port = "";
   var rules = defaultRules;
   var blockTypes = <int>[];
-  var dialerProxy = RoutingOutboundTag.direct.name;
 
   static List<XrayOutboundDnsRule> get defaultRules => [
     XrayOutboundDnsRule("hijack", "1,28", null, null),
@@ -131,14 +130,6 @@ class OutboundDnsState {
       settings.blockTypes = blockTypes;
     }
     outbound.settings = settings.toJson();
-
-    if (dialerProxy.isNotEmpty) {
-      final sockopt = XraySockoptStandard.standard;
-      sockopt.dialerProxy = dialerProxy;
-      final streamSettings = XrayStreamSettingsStandard.standard;
-      streamSettings.sockopt = sockopt;
-      outbound.streamSettings = streamSettings;
-    }
 
     return outbound;
   }
@@ -199,7 +190,6 @@ class OutboundsState {
         }
       }
     }
-    fixDnsDialerProxy();
   }
 
   void _readFreedomOutbound(XrayOutbound outbound) {
@@ -263,19 +253,6 @@ class OutboundsState {
     } else {
       dns.rules = OutboundDnsState.defaultRules;
       dns.blockTypes = <int>[];
-    }
-    if (EmptyTool.checkString(outbound.streamSettings?.sockopt?.dialerProxy)) {
-      final dialerProxy = outbound.streamSettings!.sockopt!.dialerProxy!;
-      dns.dialerProxy = dialerProxy;
-    }
-  }
-
-  void fixDnsDialerProxy() {
-    final dialerProxy = outboundTags
-        .where((e) => e == dns.dialerProxy)
-        .toList();
-    if (dialerProxy.isEmpty) {
-      dns.dialerProxy = RoutingOutboundTag.direct.name;
     }
   }
 

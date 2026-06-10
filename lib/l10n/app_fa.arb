@@ -276,8 +276,6 @@
     "outboundDnsPageBlockType": "نوع پرس‌وجو qType",
     "outboundDnsPageBlockTypeExample": "65",
     "outboundDnsPageTag": "tag",
-    "outboundDnsPageSockopt": "sockopt",
-    "outboundDnsPageDialerProxy": "dialerProxy",
     "outboundPageRealPing": "پینگ واقعی",
     "outboundPageRealPingResult": "نتیجه پینگ واقعی",
     "outboundPageTitle": "Xray Outbound",

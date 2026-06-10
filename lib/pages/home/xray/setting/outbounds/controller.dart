@@ -67,16 +67,7 @@ class OutboundsController extends Cubit<OutboundsCubitState> {
   }
 
   Future<void> editDns(BuildContext context) async {
-    final dnsOutboundTags = state.outboundsState.outboundTags
-        .where(
-          (e) =>
-              e.isNotEmpty &&
-              e != RoutingOutboundTag.fragment.name &&
-              e != RoutingOutboundTag.block.name,
-        )
-        .toList();
-
-    final params = OutboundDnsParams(state.outboundsState.dns, dnsOutboundTags);
+    final params = OutboundDnsParams(state.outboundsState.dns);
     final dns = await context.push<OutboundDnsState>(
       RouterPath.outboundDns,
       extra: params,
@@ -120,7 +111,6 @@ class OutboundsController extends Cubit<OutboundsCubitState> {
 
   void deleteChainProxy() {
     state.outboundsState.chainProxy = null;
-    state.outboundsState.fixDnsDialerProxy();
     emit(state.bumped());
   }
 

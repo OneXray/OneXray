@@ -276,8 +276,6 @@
   "outboundDnsPageBlockType": "Тип запроса qType",
   "outboundDnsPageBlockTypeExample": "65",
   "outboundDnsPageTag": "tag",
-  "outboundDnsPageSockopt": "sockopt",
-  "outboundDnsPageDialerProxy": "dialerProxy",
   "outboundPageRealPing": "Тест соединения",
   "outboundPageRealPingResult": "Результат теста",
   "outboundPageTitle": "Xray узлы",

@@ -276,8 +276,6 @@
   "outboundDnsPageBlockType": "查询类型 qType",
   "outboundDnsPageBlockTypeExample": "65",
   "outboundDnsPageTag": "tag",
-  "outboundDnsPageSockopt": "sockopt",
-  "outboundDnsPageDialerProxy": "dialerProxy",
   "outboundPageRealPing": "真连接测试",
   "outboundPageRealPingResult": "真连接测试结果",
   "outboundPageTitle": "Xray 节点",

@@ -276,8 +276,6 @@
   "outboundDnsPageBlockType": "qType",
   "outboundDnsPageBlockTypeExample": "65",
   "outboundDnsPageTag": "tag",
-  "outboundDnsPageSockopt": "sockopt",
-  "outboundDnsPageDialerProxy": "dialerProxy",
   "outboundPageRealPing": "Real Ping",
   "outboundPageRealPingResult": "Real ping result",
   "outboundPageTitle": "Xray Outbound",
