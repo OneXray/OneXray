@@ -22,12 +22,16 @@ class GeoDataListState {
   final List<GeoDataData> geoDataList;
   final GeoDataListType type;
   final GeoDatCodesMode mode;
+  final String query;
+  final bool searching;
 
   const GeoDataListState({
     required this.systemGeoDataList,
     required this.geoDataList,
     required this.type,
     required this.mode,
+    required this.query,
+    required this.searching,
   });
 
   factory GeoDataListState.initial(GeoDataListParams params) =>
@@ -36,6 +40,8 @@ class GeoDataListState {
         geoDataList: const [],
         type: params.type,
         mode: params.mode,
+        query: "",
+        searching: false,
       );
 
   GeoDataListState copyWith({
@@ -43,12 +49,16 @@ class GeoDataListState {
     List<GeoDataData>? geoDataList,
     GeoDataListType? type,
     GeoDatCodesMode? mode,
+    String? query,
+    bool? searching,
   }) {
     return GeoDataListState(
       systemGeoDataList: systemGeoDataList ?? this.systemGeoDataList,
       geoDataList: geoDataList ?? this.geoDataList,
       type: type ?? this.type,
       mode: mode ?? this.mode,
+      query: query ?? this.query,
+      searching: searching ?? this.searching,
     );
   }
 }
@@ -61,9 +71,12 @@ class GeoDataListController extends Cubit<GeoDataListState> {
 
   final selection = <String, Set<String>>{};
   StreamSubscription<List<GeoDataData>>? _geoDataSubscription;
+  final searchController = TextEditingController();
+  var _allGeoDataList = <GeoDataData>[];
 
   @override
   Future<void> close() {
+    searchController.dispose();
     _geoDataSubscription?.cancel();
     return super.close();
   }
@@ -105,8 +118,53 @@ class GeoDataListController extends Cubit<GeoDataListState> {
     }
     _geoDataSubscription?.cancel();
     _geoDataSubscription = stream.listen((data) {
-      emit(state.copyWith(geoDataList: data));
+      _allGeoDataList = data;
+      _emitFilteredGeoDataList();
     });
+  }
+
+  void updateSearchQuery(String value) {
+    _emitFilteredGeoDataList(query: value);
+  }
+
+  void toggleSearch() {
+    if (state.searching) {
+      searchController.clear();
+      _emitFilteredGeoDataList(query: "", searching: false);
+    } else {
+      emit(state.copyWith(searching: true));
+    }
+  }
+
+  void _emitFilteredGeoDataList({String? query, bool? searching}) {
+    final nextQuery = query ?? state.query;
+    emit(
+      state.copyWith(
+        geoDataList: _filterRows(_allGeoDataList, nextQuery),
+        query: nextQuery,
+        searching: searching,
+      ),
+    );
+  }
+
+  List<GeoDataData> filterSystemGeoDataList() {
+    return _filterRows(state.systemGeoDataList, state.query);
+  }
+
+  List<GeoDataData> _filterRows(List<GeoDataData> rows, String query) {
+    final keyword = query.trim().toLowerCase();
+    if (keyword.isEmpty) {
+      return rows;
+    }
+    return rows.where((row) => _matches(row, keyword)).toList();
+  }
+
+  bool _matches(GeoDataData row, String keyword) {
+    return row.name.toLowerCase().contains(keyword) ||
+        row.type.toLowerCase().contains(keyword) ||
+        row.url.toLowerCase().contains(keyword) ||
+        "${row.categoryCount}".contains(keyword) ||
+        "${row.ruleCount}".contains(keyword);
   }
 
   void addGeoData(BuildContext context) {

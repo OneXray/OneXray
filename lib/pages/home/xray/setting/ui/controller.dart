@@ -16,6 +16,7 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/xray/setting/dns_state.dart';
+import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/fake_dns_state.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
@@ -160,37 +161,36 @@ class XraySettingUIController {
 
   String logSummary(BuildContext context) {
     final log = _xraySettingState.log;
-    final parts = <String>[log.logLevel.name];
-    if (log.dnsLog) {
-      parts.add("dnsLog");
-    }
-    if (log.maskAddress != XrayLogMaskAddress.none) {
-      parts.add(log.maskAddress.name);
-    }
-    return parts.join(" · ");
+    return log.logLevel.name;
   }
 
   String dnsSummary(BuildContext context) {
     final dns = _xraySettingState.dns;
-    return "${dns.servers.length} ${AppLocalizations.of(context)!.dnsPageServers} · ${dns.queryStrategy.name}";
+    return dns.queryStrategy.name;
   }
 
   String fakeDnsSummary(BuildContext context) {
-    final fakeDns = _xraySettingState.fakeDns;
-    return "${fakeDns.ipv4.ipPool} · ${fakeDns.ipv6.ipPool}";
+    final queryStrategy = _xraySettingState.dns.queryStrategy;
+    switch (queryStrategy) {
+      case DnsQueryStrategy.useIP:
+        return "IPv4 + IPv6";
+      case DnsQueryStrategy.useIPv4:
+        return "IPv4";
+      case DnsQueryStrategy.useIPv6:
+        return "IPv6";
+    }
   }
 
   String routingSummary(BuildContext context) {
     final routing = _xraySettingState.routing;
-    return "${routing.customRules.length} ${AppLocalizations.of(context)!.routingPageSectionCustomRules} · ${routing.domainStrategy.name}";
+    return routing.domainStrategy.name;
   }
 
   String inboundsSummary(BuildContext context) {
     final sniffing = _xraySettingState.inbounds.tun.sniffing;
-    final status = sniffing.enabled
+    return sniffing.enabled
         ? AppLocalizations.of(context)!.switchEnabled
         : AppLocalizations.of(context)!.chainProxyPageDisabled;
-    return "Tun · Ping · Sniffing $status";
   }
 
   String outboundsSummary(BuildContext context) {

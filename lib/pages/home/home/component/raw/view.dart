@@ -53,7 +53,10 @@ class HomeRawView extends StatelessWidget {
   ) {
     if (state.configs.isEmpty) {
       return ListEmptyView(
-        message: AppLocalizations.of(context)!.homeOutboundViewNoOutbound,
+        message: state.query.isEmpty
+            ? AppLocalizations.of(context)!.homeOutboundViewNoOutbound
+            : AppLocalizations.of(context)!.listNoSearchResult,
+        icon: state.query.isEmpty ? Icons.data_object : Icons.search_off,
       );
     } else {
       return ListView.separated(

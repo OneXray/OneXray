@@ -94,11 +94,17 @@ class OutboundBlackHoleState {
 class OutboundDnsState {
   final protocol = XrayOutboundProtocol.dns;
   final tag = RoutingOutboundTag.dnsOut;
-  var network = DnsNetwork.tcp;
+  var network = DnsNetwork.none;
   var address = "";
   var port = "";
-  var nonIPQuery = DnsNonIPQuery.skip;
+  var rules = defaultRules;
+  var blockTypes = <int>[];
   var dialerProxy = RoutingOutboundTag.direct.name;
+
+  static List<XrayOutboundDnsRule> get defaultRules => [
+    XrayOutboundDnsRule("hijack", "1,28", null, null),
+    XrayOutboundDnsRule("direct", null, null, null),
+  ];
 
   void removeWhitespace() {
     address = address.removeWhitespace;
@@ -119,7 +125,11 @@ class OutboundDnsState {
     if (port.isNotEmpty) {
       settings.port = int.tryParse(port);
     }
-    settings.nonIPQuery = nonIPQuery.name;
+    if (rules.isNotEmpty) {
+      settings.rules = rules;
+    } else if (blockTypes.isNotEmpty) {
+      settings.blockTypes = blockTypes;
+    }
     outbound.settings = settings.toJson();
 
     if (dialerProxy.isNotEmpty) {
@@ -244,11 +254,15 @@ class OutboundsState {
     if (settings.port != null) {
       dns.port = "${settings.port!}";
     }
-    if (EmptyTool.checkString(settings.nonIPQuery)) {
-      final nonIPQuery = DnsNonIPQuery.fromString(settings.nonIPQuery!);
-      if (nonIPQuery != null) {
-        dns.nonIPQuery = nonIPQuery;
-      }
+    if (EmptyTool.checkList(settings.rules)) {
+      dns.rules = settings.rules!;
+      dns.blockTypes = <int>[];
+    } else if (EmptyTool.checkList(settings.blockTypes)) {
+      dns.rules = <XrayOutboundDnsRule>[];
+      dns.blockTypes = settings.blockTypes!;
+    } else {
+      dns.rules = OutboundDnsState.defaultRules;
+      dns.blockTypes = <int>[];
     }
     if (EmptyTool.checkString(outbound.streamSettings?.sockopt?.dialerProxy)) {
       final dialerProxy = outbound.streamSettings!.sockopt!.dialerProxy!;

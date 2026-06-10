@@ -113,7 +113,12 @@ extension XrayOutboundFreedomNoisesStandard on XrayOutboundFreedomNoises {
 
 extension XrayOutboundDnsStandard on XrayOutboundDns {
   static XrayOutboundDns get standard =>
-      XrayOutboundDns(null, null, null, null);
+      XrayOutboundDns(null, null, null, null, null);
+}
+
+extension XrayOutboundDnsRuleStandard on XrayOutboundDnsRule {
+  static XrayOutboundDnsRule get standard =>
+      XrayOutboundDnsRule(null, null, null, null);
 }
 
 extension XrayStreamSettingsStandard on XrayStreamSettings {

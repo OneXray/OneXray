@@ -475,8 +475,30 @@ final class VpnService {
     final locale =
         DurationLocale.fromLanguageCode(languageCode) ??
         EnglishDurationLocale();
-    final text = duration.pretty(locale: locale);
+    final text = _formatDuration(duration, locale);
     final eventBus = AppEventBus.instance;
     eventBus.updateLocationDuration(text);
+  }
+
+  String _formatDuration(Duration duration, DurationLocale locale) {
+    if (duration.inHours >= 1) {
+      return duration.pretty(
+        locale: locale,
+        tersity: DurationTersity.hour,
+        upperTersity: DurationTersity.hour,
+      );
+    }
+    if (duration.inMinutes >= 1) {
+      return duration.pretty(
+        locale: locale,
+        tersity: DurationTersity.minute,
+        upperTersity: DurationTersity.minute,
+      );
+    }
+    return duration.pretty(
+      locale: locale,
+      tersity: DurationTersity.second,
+      upperTersity: DurationTersity.second,
+    );
   }
 }

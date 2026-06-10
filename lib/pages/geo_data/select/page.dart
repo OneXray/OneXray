@@ -91,7 +91,16 @@ class GeoDatSelectPage extends StatelessWidget {
     final selected = state.selections.contains(code.code);
     return DataListRow(
       title: code.code ?? "",
-      tags: [TagView(tag: "$count")],
+      tags: [
+        TagView(
+          tag: AppLocalizations.of(context)!.geoDataListPageRuleCount(count),
+        ),
+      ],
+      tone: selected ? DataListRowTone.selected : DataListRowTone.normal,
+      statusLabel: selected
+          ? AppLocalizations.of(context)!.listStatusSelected
+          : null,
+      statusIcon: selected ? Icons.check : null,
       onTap: () => controller.updateSelections(!selected, code.code),
       trailing: Checkbox(
         value: selected,

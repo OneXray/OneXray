@@ -7,6 +7,7 @@ import 'package:onexray/pages/home/component/subscription_row/controller.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
@@ -38,7 +39,8 @@ class SubscriptionRowView extends StatelessWidget {
         ? Icons.expand_less
         : Icons.expand_more;
     return DataListRow(
-      title: "${item.subscription.name} (${item.count})",
+      title: item.subscription.name,
+      tags: [TagView(tag: "${item.count}")],
       meta: item.subscription.id > DBConstants.defaultId
           ? DateView(date: item.subscription.timestamp)
           : null,

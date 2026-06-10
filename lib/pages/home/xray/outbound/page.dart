@@ -218,7 +218,7 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIState state,
   ) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageVMess,
+      title: AppLocalizations.of(context)!.outboundUIPageShadowsocks,
       children: [
         _address(context, controller),
         _port(context, controller),

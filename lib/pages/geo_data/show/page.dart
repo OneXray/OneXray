@@ -68,7 +68,11 @@ class GeoDatShowPage extends StatelessWidget {
     final count = code.ruleCount ?? 0;
     return DataListRow(
       title: code.code ?? "",
-      tags: [TagView(tag: "$count")],
+      tags: [
+        TagView(
+          tag: AppLocalizations.of(context)!.geoDataListPageRuleCount(count),
+        ),
+      ],
     );
   }
 }

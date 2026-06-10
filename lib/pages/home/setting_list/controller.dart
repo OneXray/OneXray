@@ -22,12 +22,14 @@ class XraySettingListState {
   final List<ConfigQueryRow> simpleConfigs;
   final List<ConfigQueryRow> configs;
   final String query;
+  final bool searching;
 
   const XraySettingListState({
     required this.xraySettingId,
     required this.simpleConfigs,
     required this.configs,
     required this.query,
+    required this.searching,
   });
 
   factory XraySettingListState.initial() => const XraySettingListState(
@@ -35,6 +37,7 @@ class XraySettingListState {
     simpleConfigs: [],
     configs: [],
     query: "",
+    searching: false,
   );
 
   XraySettingListState copyWith({
@@ -42,12 +45,14 @@ class XraySettingListState {
     List<ConfigQueryRow>? simpleConfigs,
     List<ConfigQueryRow>? configs,
     String? query,
+    bool? searching,
   }) {
     return XraySettingListState(
       xraySettingId: xraySettingId ?? this.xraySettingId,
       simpleConfigs: simpleConfigs ?? this.simpleConfigs,
       configs: configs ?? this.configs,
       query: query ?? this.query,
+      searching: searching ?? this.searching,
     );
   }
 }
@@ -130,7 +135,16 @@ class XraySettingListController extends Cubit<XraySettingListState> {
     _emitFilteredConfigs(query: value);
   }
 
-  void _emitFilteredConfigs({String? query}) {
+  void toggleSearch() {
+    if (state.searching) {
+      searchController.clear();
+      _emitFilteredConfigs(query: "", searching: false);
+    } else {
+      emit(state.copyWith(searching: true));
+    }
+  }
+
+  void _emitFilteredConfigs({String? query, bool? searching}) {
     final nextQuery = query ?? state.query;
     emit(
       state.copyWith(
@@ -140,6 +154,7 @@ class XraySettingListController extends Cubit<XraySettingListState> {
         ),
         configs: ConfigQueryFilter.filterRows(_allConfigs, nextQuery),
         query: nextQuery,
+        searching: searching,
       ),
     );
   }

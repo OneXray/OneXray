@@ -56,7 +56,6 @@ class HomeOutboundView extends StatelessWidget {
     return DataListRow(
       title: AppLocalizations.of(context)!.homeOutboundViewXraySetting,
       subtitle: state.xraySettingName,
-      leading: const Icon(Icons.tune),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => controller.gotoXraySetting(context),
     );
@@ -69,7 +68,10 @@ class HomeOutboundView extends StatelessWidget {
   ) {
     if (state.configs.isEmpty) {
       return ListEmptyView(
-        message: AppLocalizations.of(context)!.homeOutboundViewNoOutbound,
+        message: state.query.isEmpty
+            ? AppLocalizations.of(context)!.homeOutboundViewNoOutbound
+            : AppLocalizations.of(context)!.listNoSearchResult,
+        icon: state.query.isEmpty ? Icons.hub_outlined : Icons.search_off,
       );
     } else {
       return ListView.separated(

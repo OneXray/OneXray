@@ -418,14 +418,36 @@ class XrayOutboundDns {
   String? network;
   String? address;
   int? port;
-  String? nonIPQuery;
+  List<XrayOutboundDnsRule>? rules;
+  List<int>? blockTypes;
 
-  XrayOutboundDns(this.network, this.address, this.port, this.nonIPQuery);
+  XrayOutboundDns(
+    this.network,
+    this.address,
+    this.port,
+    this.rules,
+    this.blockTypes,
+  );
 
   factory XrayOutboundDns.fromJson(Map<String, dynamic> json) =>
       _$XrayOutboundDnsFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayOutboundDnsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayOutboundDnsRule {
+  String? action;
+  String? qType;
+  Object? domain;
+  int? rCode;
+
+  XrayOutboundDnsRule(this.action, this.qType, this.domain, this.rCode);
+
+  factory XrayOutboundDnsRule.fromJson(Map<String, dynamic> json) =>
+      _$XrayOutboundDnsRuleFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayOutboundDnsRuleToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

@@ -32,6 +32,10 @@ class GeoDataListPage extends StatelessWidget {
               title: Text(AppLocalizations.of(context)!.geoDataListPageTitle),
               actions: [
                 IconButton(
+                  onPressed: () => controller.toggleSearch(),
+                  icon: Icon(state.searching ? Icons.close : Icons.search),
+                ),
+                IconButton(
                   onPressed: () => controller.addGeoData(context),
                   icon: const Icon(Icons.add),
                 ),
@@ -62,10 +66,16 @@ class GeoDataListPage extends StatelessWidget {
   ) {
     switch (state.mode) {
       case GeoDatCodesMode.show:
-        return _geoDataList(context, controller, state);
+        return Column(
+          children: [
+            if (state.searching) _search(context, controller),
+            Expanded(child: _geoDataList(context, controller, state)),
+          ],
+        );
       case GeoDatCodesMode.select:
         return Column(
           children: [
+            if (state.searching) _search(context, controller),
             Expanded(child: _geoDataList(context, controller, state)),
             _bottomButton(context, controller),
           ],
@@ -78,80 +88,60 @@ class GeoDataListPage extends StatelessWidget {
     GeoDataListController controller,
     GeoDataListState state,
   ) {
+    final systemGeoDataList = controller.filterSystemGeoDataList();
+    if (state.query.isNotEmpty &&
+        systemGeoDataList.isEmpty &&
+        state.geoDataList.isEmpty) {
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.listNoSearchResult,
+        icon: Icons.search_off,
+      );
+    }
+    final rows = <Widget>[
+      _systemHeader(context, controller, systemGeoDataList.length),
+      ...systemGeoDataList.map(
+        (data) => _systemCell(context, controller, data),
+      ),
+      _customHeader(context, controller, state.geoDataList.length),
+      if (state.geoDataList.isEmpty)
+        DataListInlineEmptyRow(
+          message: state.query.isEmpty
+              ? AppLocalizations.of(context)!.geoDataListPageEmptyCustom
+              : AppLocalizations.of(context)!.listNoSearchResult,
+          icon: state.query.isEmpty
+              ? Icons.folder_off_outlined
+              : Icons.search_off,
+        )
+      else
+        ...state.geoDataList.map(
+          (data) => _customCell(context, controller, data),
+        ),
+    ];
     return ListView.separated(
-      itemBuilder: (ctx, index) => _itemRow(ctx, controller, state, index),
-      itemCount: state.geoDataList.length + state.systemGeoDataList.length + 2,
+      itemBuilder: (ctx, index) => rows[index],
+      itemCount: rows.length,
       separatorBuilder: (_, _) => const Divider(),
     );
   }
 
-  Widget _itemRow(
-    BuildContext context,
-    GeoDataListController controller,
-    GeoDataListState state,
-    int index,
-  ) {
-    if (state.systemGeoDataList.isEmpty) {
-      switch (index) {
-        case 0:
-          return _systemHeader(context, controller);
-        case 1:
-          return _customHeader(context, controller);
-        default:
-          return _customCell(context, controller, state.geoDataList[index - 2]);
-      }
-    } else {
-      switch (state.type) {
-        case GeoDataListType.full:
-          return _fullItemRow(context, controller, state, index);
-        case GeoDataListType.domain:
-        case GeoDataListType.ip:
-          return _selectItemRow(context, controller, state, index);
-      }
-    }
+  Widget _search(BuildContext context, GeoDataListController controller) {
+    return ListSearchField(
+      controller: controller.searchController,
+      hintText: AppLocalizations.of(context)!.listSearchHint,
+      onChanged: (value) => controller.updateSearchQuery(value),
+    );
   }
 
-  Widget _fullItemRow(
+  Widget _systemHeader(
     BuildContext context,
     GeoDataListController controller,
-    GeoDataListState state,
-    int index,
+    int count,
   ) {
-    switch (index) {
-      case 0:
-        return _systemHeader(context, controller);
-      case 1:
-        return _systemCell(context, controller, state.systemGeoDataList[0]);
-      case 2:
-        return _systemCell(context, controller, state.systemGeoDataList[1]);
-      case 3:
-        return _customHeader(context, controller);
-      default:
-        return _customCell(context, controller, state.geoDataList[index - 4]);
-    }
-  }
-
-  Widget _selectItemRow(
-    BuildContext context,
-    GeoDataListController controller,
-    GeoDataListState state,
-    int index,
-  ) {
-    switch (index) {
-      case 0:
-        return _systemHeader(context, controller);
-      case 1:
-        return _systemCell(context, controller, state.systemGeoDataList[0]);
-      case 2:
-        return _customHeader(context, controller);
-      default:
-        return _customCell(context, controller, state.geoDataList[index - 3]);
-    }
-  }
-
-  Widget _systemHeader(BuildContext context, GeoDataListController controller) {
     return DataListSectionHeader(
-      title: AppLocalizations.of(context)!.geoDataListPageSystem,
+      title: _sectionTitle(
+        AppLocalizations.of(context)!.geoDataListPageSystem,
+        count,
+      ),
       trailing: BlocBuilder<AppEventBus, AppEventBusState>(
         builder: (context, state) =>
             _systemRefreshButton(context, controller, state),
@@ -182,15 +172,23 @@ class GeoDataListPage extends StatelessWidget {
   ) {
     return DataListRow(
       title: data.name,
-      tags: _tags(data),
+      subtitle: data.url.isEmpty ? null : data.url,
+      tags: _tags(context, data),
       meta: DateView(date: data.timestamp),
       onTap: () => controller.gotoGeoData(context, data),
     );
   }
 
-  Widget _customHeader(BuildContext context, GeoDataListController controller) {
+  Widget _customHeader(
+    BuildContext context,
+    GeoDataListController controller,
+    int count,
+  ) {
     return DataListSectionHeader(
-      title: AppLocalizations.of(context)!.geoDataListPageCustom,
+      title: _sectionTitle(
+        AppLocalizations.of(context)!.geoDataListPageCustom,
+        count,
+      ),
       trailing: BlocBuilder<AppEventBus, AppEventBusState>(
         builder: (context, state) => _customRefreshButton(state),
       ),
@@ -225,7 +223,8 @@ class GeoDataListPage extends StatelessWidget {
   ) {
     return DataListRow(
       title: data.name,
-      tags: _tags(data),
+      subtitle: data.url.isEmpty ? null : data.url,
+      tags: _tags(context, data),
       meta: DateView(date: data.timestamp),
       onTap: () => controller.gotoGeoData(context, data),
       trailing: IconMenuPicker(
@@ -236,19 +235,44 @@ class GeoDataListPage extends StatelessWidget {
     );
   }
 
-  List<TagView> _tags(GeoDataData data) {
+  String _sectionTitle(String title, int count) {
+    return "$title ($count)";
+  }
+
+  List<TagView> _tags(BuildContext context, GeoDataData data) {
     final tags = <TagView>[];
     final type = GeoDataType.fromString(data.type);
     if (type != null) {
-      tags.add(TagView(tag: type.name));
+      tags.add(TagView(tag: _typeName(context, type)));
     }
     if (data.categoryCount > 0) {
-      tags.add(TagView(tag: "${data.categoryCount}"));
+      tags.add(
+        TagView(
+          tag: AppLocalizations.of(
+            context,
+          )!.geoDataListPageCategoryCount(data.categoryCount),
+        ),
+      );
     }
     if (data.ruleCount > 0) {
-      tags.add(TagView(tag: "${data.ruleCount}"));
+      tags.add(
+        TagView(
+          tag: AppLocalizations.of(
+            context,
+          )!.geoDataListPageRuleCount(data.ruleCount),
+        ),
+      );
     }
     return tags;
+  }
+
+  String _typeName(BuildContext context, GeoDataType type) {
+    switch (type) {
+      case GeoDataType.domain:
+        return AppLocalizations.of(context)!.geoDataListPageTypeDomain;
+      case GeoDataType.ip:
+        return AppLocalizations.of(context)!.geoDataListPageTypeIp;
+    }
   }
 
   Widget _bottomButton(BuildContext context, GeoDataListController controller) {

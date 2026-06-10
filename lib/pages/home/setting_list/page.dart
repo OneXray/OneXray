@@ -30,6 +30,10 @@ class XraySettingListPage extends StatelessWidget {
               ),
               actions: [
                 IconButton(
+                  onPressed: () => controller.toggleSearch(),
+                  icon: Icon(state.searching ? Icons.close : Icons.search),
+                ),
+                IconButton(
                   onPressed: () => controller.addXraySetting(context),
                   icon: const Icon(Icons.add),
                 ),
@@ -51,10 +55,7 @@ class XraySettingListPage extends StatelessWidget {
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
         children: [
-          if (state.simpleConfigs.isNotEmpty ||
-              state.configs.isNotEmpty ||
-              state.query.isNotEmpty)
-            _search(context, controller),
+          if (state.searching) _search(context, controller),
           Expanded(child: _xraySettingList(context, controller, state)),
           _bottomButton(context, controller),
         ],
@@ -75,83 +76,83 @@ class XraySettingListPage extends StatelessWidget {
     XraySettingListController controller,
     XraySettingListState state,
   ) {
-    if (state.configs.isEmpty && state.simpleConfigs.isEmpty) {
+    final rows = _rows(context, controller, state);
+    if (rows.isEmpty) {
       return ListEmptyView(
-        message: AppLocalizations.of(context)!.homeOutboundViewNoOutbound,
+        message: state.query.isEmpty
+            ? AppLocalizations.of(context)!.xraySettingListPageEmpty
+            : AppLocalizations.of(context)!.listNoSearchResult,
+        icon: state.query.isEmpty ? Icons.tune : Icons.search_off,
+        actionLabel: state.query.isEmpty
+            ? AppLocalizations.of(context)!.buttonAdd
+            : null,
+        actionIcon: Icons.add,
+        onAction: state.query.isEmpty
+            ? () => controller.addXraySetting(context)
+            : null,
       );
     }
     return ListView.separated(
-      itemBuilder: (ctx, index) => _itemRow(ctx, controller, state, index),
-      itemCount: state.configs.length + state.simpleConfigs.length,
+      itemBuilder: (ctx, index) => rows[index],
+      itemCount: rows.length,
       separatorBuilder: (_, _) => const Divider(),
     );
   }
 
-  Widget _itemRow(
+  List<Widget> _rows(
     BuildContext context,
     XraySettingListController controller,
     XraySettingListState state,
-    int index,
   ) {
-    if (index >= 0 && index < state.simpleConfigs.length) {
-      return _simpleCell(context, controller, state, index);
-    } else {
-      return _cell(
-        context,
-        controller,
-        state,
-        index - state.simpleConfigs.length,
+    final rows = <Widget>[];
+    final simpleConfigs = state.simpleConfigs.whereType<ConfigItem>().toList();
+    if (simpleConfigs.isNotEmpty) {
+      rows.add(
+        DataListSectionHeader(
+          title: _sectionTitle(
+            AppLocalizations.of(context)!.xraySettingListPageSimple,
+            simpleConfigs.length,
+          ),
+        ),
+      );
+      rows.addAll(
+        simpleConfigs.map(
+          (row) => _simpleConfigRow(context, controller, state, row),
+        ),
       );
     }
-  }
 
-  Widget _simpleCell(
-    BuildContext context,
-    XraySettingListController controller,
-    XraySettingListState state,
-    int index,
-  ) {
-    final row = state.simpleConfigs[index];
-    switch (row.rowType) {
-      case ConfigQueryRowType.subscription:
-        final item = row as SubscriptionItem;
-        return SubscriptionRowView(
-          item: item,
-          pingCallback: null,
-          expandCallback: null,
-        );
-      case ConfigQueryRowType.config:
-        return _simpleConfigRow(context, controller, state, row);
-      case ConfigQueryRowType.ads:
-        return GoogleAdsRow();
+    if (state.configs.isNotEmpty) {
+      rows.add(
+        DataListSectionHeader(
+          title: _sectionTitle(
+            AppLocalizations.of(context)!.xraySettingListPageCustom,
+            _configCount(state.configs),
+          ),
+        ),
+      );
+      rows.addAll(
+        state.configs.map((row) => _customRow(context, controller, state, row)),
+      );
     }
+    return rows;
   }
 
-  Widget _simpleConfigRow(
+  String _sectionTitle(String title, int count) {
+    return "$title ($count)";
+  }
+
+  int _configCount(List<ConfigQueryRow> rows) {
+    final count = rows.whereType<ConfigItem>().length;
+    return count == 0 ? rows.length : count;
+  }
+
+  Widget _customRow(
     BuildContext context,
     XraySettingListController controller,
     XraySettingListState state,
     ConfigQueryRow row,
   ) {
-    final item = row as ConfigItem;
-    final data = item.config;
-    return ConfigRowView(
-      data: data,
-      status: data.id == state.xraySettingId
-          ? ConfigRowStatus.selected
-          : ConfigRowStatus.unselected,
-      moreMenus: [IconMenuId.edit],
-      tapCallback: () => controller.updateXraySettingId(context, data.id),
-    );
-  }
-
-  Widget _cell(
-    BuildContext context,
-    XraySettingListController controller,
-    XraySettingListState state,
-    int index,
-  ) {
-    final row = state.configs[index];
     switch (row.rowType) {
       case ConfigQueryRowType.subscription:
         return _subscriptionRow(context, controller, row);
@@ -172,6 +173,23 @@ class XraySettingListPage extends StatelessWidget {
       item: item,
       pingCallback: null,
       expandCallback: () => controller.refreshData(),
+    );
+  }
+
+  Widget _simpleConfigRow(
+    BuildContext context,
+    XraySettingListController controller,
+    XraySettingListState state,
+    ConfigItem item,
+  ) {
+    final data = item.config;
+    return ConfigRowView(
+      data: data,
+      status: data.id == state.xraySettingId
+          ? ConfigRowStatus.selected
+          : ConfigRowStatus.unselected,
+      moreMenus: [IconMenuId.edit],
+      tapCallback: () => controller.updateXraySettingId(context, data.id),
     );
   }
 

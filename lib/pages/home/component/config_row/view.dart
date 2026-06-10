@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/component/config_row/enum.dart';
 import 'package:onexray/pages/home/component/config_row/controller.dart';
 import 'package:onexray/pages/widget/data_list.dart';
@@ -34,6 +35,8 @@ class ConfigRowView extends StatelessWidget {
       title: data.name,
       tags: tags,
       tone: _tone,
+      statusLabel: _statusLabel(context),
+      statusIcon: _statusIcon,
       onTap: tapCallback,
       trailing: moreMenus.isEmpty
           ? null
@@ -44,6 +47,28 @@ class ConfigRowView extends StatelessWidget {
                   controller.moreAction(context, data, menuId),
             ),
     );
+  }
+
+  String? _statusLabel(BuildContext context) {
+    switch (status) {
+      case ConfigRowStatus.unselected:
+        return null;
+      case ConfigRowStatus.selected:
+        return AppLocalizations.of(context)!.listStatusSelected;
+      case ConfigRowStatus.running:
+        return AppLocalizations.of(context)!.listStatusRunning;
+    }
+  }
+
+  IconData? get _statusIcon {
+    switch (status) {
+      case ConfigRowStatus.unselected:
+        return null;
+      case ConfigRowStatus.selected:
+        return Icons.check;
+      case ConfigRowStatus.running:
+        return Icons.radio_button_checked;
+    }
   }
 
   DataListRowTone get _tone {

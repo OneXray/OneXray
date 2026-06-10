@@ -53,21 +53,90 @@ class ListSearchField extends StatelessWidget {
 
 class ListEmptyView extends StatelessWidget {
   final String message;
+  final IconData? icon;
+  final String? actionLabel;
+  final IconData? actionIcon;
+  final VoidCallback? onAction;
 
-  const ListEmptyView({super.key, required this.message});
+  const ListEmptyView({
+    super.key,
+    required this.message,
+    this.icon,
+    this.actionLabel,
+    this.actionIcon,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsetsDirectional.all(24),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
-            color: ColorManager.secondaryText(context),
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 36, color: ColorManager.secondaryText(context)),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: ColorManager.secondaryText(context),
+              ),
+            ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: onAction,
+                icon: Icon(actionIcon ?? Icons.add),
+                label: Text(actionLabel!),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DataListInlineEmptyRow extends StatelessWidget {
+  final String message;
+  final IconData icon;
+
+  const DataListInlineEmptyRow({
+    super.key,
+    required this.message,
+    this.icon = Icons.inbox_outlined,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ColorManager.surface(context),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: ColorManager.secondaryText(context)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: ColorManager.secondaryText(context),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -124,8 +193,9 @@ class DataListRow extends StatelessWidget {
   final Widget? subtitleWidget;
   final List<Widget> tags;
   final Widget? meta;
-  final Widget? leading;
   final Widget? trailing;
+  final String? statusLabel;
+  final IconData? statusIcon;
   final VoidCallback? onTap;
   final DataListRowTone tone;
   final int titleMaxLines;
@@ -138,8 +208,9 @@ class DataListRow extends StatelessWidget {
     this.subtitleWidget,
     this.tags = const [],
     this.meta,
-    this.leading,
     this.trailing,
+    this.statusLabel,
+    this.statusIcon,
     this.onTap,
     this.tone = DataListRowTone.normal,
     this.titleMaxLines = 1,
@@ -157,14 +228,19 @@ class DataListRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            if (leading != null) ...[
-              IconTheme.merge(data: _iconTheme(context), child: leading!),
-              const SizedBox(width: 12),
-            ],
             Expanded(child: _mainContent(context)),
             if (trailing != null) ...[
               const SizedBox(width: 8),
-              IconTheme.merge(data: _iconTheme(context), child: trailing!),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 48),
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: IconTheme.merge(
+                    data: _iconTheme(context),
+                    child: trailing!,
+                  ),
+                ),
+              ),
             ],
           ],
         ),
@@ -172,7 +248,29 @@ class DataListRow extends StatelessWidget {
     );
     return Material(
       color: _background(context),
-      child: onTap == null ? content : InkWell(onTap: onTap, child: content),
+      child: Stack(
+        children: [
+          if (tone != DataListRowTone.normal)
+            PositionedDirectional(
+              start: 0,
+              top: 0,
+              bottom: 0,
+              child: ColoredBox(
+                color: _accentColor(context),
+                child: const SizedBox(width: 4),
+              ),
+            ),
+          onTap == null
+              ? content
+              : InkWell(
+                  onTap: onTap,
+                  hoverColor: _hoverColor(context),
+                  focusColor: _hoverColor(context),
+                  mouseCursor: SystemMouseCursors.click,
+                  child: content,
+                ),
+        ],
+      ),
     );
   }
 
@@ -181,14 +279,27 @@ class DataListRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          maxLines: titleMaxLines,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 15,
-            color: ColorManager.primaryText(context),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                maxLines: titleMaxLines,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: tone == DataListRowTone.normal
+                      ? FontWeight.normal
+                      : FontWeight.bold,
+                  color: ColorManager.primaryText(context),
+                ),
+              ),
+            ),
+            if (statusLabel != null) ...[
+              const SizedBox(width: 8),
+              _statusBadge(context),
+            ],
+          ],
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 2),
@@ -214,6 +325,36 @@ class DataListRow extends StatelessWidget {
     );
   }
 
+  Widget _statusBadge(BuildContext context) {
+    return Container(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 6,
+        vertical: 2,
+      ),
+      decoration: ShapeDecoration(
+        color: _accentColor(context),
+        shape: const StadiumBorder(),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (statusIcon != null) ...[
+            Icon(statusIcon, size: 12, color: _onAccentColor(context)),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            statusLabel!,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: _onAccentColor(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _background(BuildContext context) {
     switch (tone) {
       case DataListRowTone.normal:
@@ -223,6 +364,34 @@ class DataListRow extends StatelessWidget {
       case DataListRowTone.running:
         return ColorManager.running(context);
     }
+  }
+
+  Color _accentColor(BuildContext context) {
+    switch (tone) {
+      case DataListRowTone.normal:
+      case DataListRowTone.selected:
+        return Theme.of(context).colorScheme.primary;
+      case DataListRowTone.running:
+        return Theme.of(context).brightness == Brightness.light
+            ? const Color(0xFF15803D)
+            : const Color(0xFF86EFAC);
+    }
+  }
+
+  Color _onAccentColor(BuildContext context) {
+    switch (tone) {
+      case DataListRowTone.normal:
+      case DataListRowTone.selected:
+        return Theme.of(context).colorScheme.onPrimary;
+      case DataListRowTone.running:
+        return Theme.of(context).brightness == Brightness.light
+            ? Colors.white
+            : const Color(0xFF052E16);
+    }
+  }
+
+  Color _hoverColor(BuildContext context) {
+    return Theme.of(context).colorScheme.primary.withValues(alpha: 0.08);
   }
 
   IconThemeData _iconTheme(BuildContext context) {

@@ -48,6 +48,9 @@
   "resultFailed": "failed",
   "runningAndWait": "Something is running, please wait",
   "listSearchHint": "Search",
+  "listNoSearchResult": "No matching results",
+  "listStatusSelected": "Selected",
+  "listStatusRunning": "Running",
   "menuBarStartVpn": "Start VPN",
   "menuBarStopVpn": "Stop VPN",
   "menuBarShowApp": "Show OneXray",
@@ -99,6 +102,7 @@
   "xraySettingListPageTitle": "Xray Setting",
   "xraySettingListPageSimple": "Simple",
   "xraySettingListPageCustom": "Custom",
+  "xraySettingListPageEmpty": "No Xray settings",
   "xraySettingSimplePageTitle": "Simple",
   "xraySettingSimplePageEnableLog": "Enable Log",
   "xraySettingSimplePageRouting": "Routing",
@@ -258,7 +262,19 @@
   "outboundDnsPageNetwork": "network",
   "outboundDnsPageAddress": "address",
   "outboundDnsPagePort": "port",
-  "outboundDnsPageNonIPQuery": "nonIPQuery",
+  "outboundDnsPageRules": "rules",
+  "outboundDnsPageRule": "rule",
+  "outboundDnsPageRuleAction": "action",
+  "outboundDnsPageRuleQType": "qType",
+  "outboundDnsPageRuleQTypeExample": "1,28,65",
+  "outboundDnsPageRuleDomain": "domain",
+  "outboundDnsPageRuleDomainExample": "domain:example.com, geosite:cn",
+  "outboundDnsPageRuleRCode": "rCode",
+  "outboundDnsPageRuleRCodeExample": "5",
+  "outboundDnsPageBlockTypes": "blockTypes",
+  "outboundDnsPageBlockTypesHint": "Only written when rules is empty",
+  "outboundDnsPageBlockType": "qType",
+  "outboundDnsPageBlockTypeExample": "65",
   "outboundDnsPageTag": "tag",
   "outboundDnsPageSockopt": "sockopt",
   "outboundDnsPageDialerProxy": "dialerProxy",
@@ -456,6 +472,25 @@
   "geoDataListPageTitle": "Rule Set",
   "geoDataListPageSystem": "System",
   "geoDataListPageCustom": "Custom",
+  "geoDataListPageEmptyCustom": "No custom rule sets",
+  "geoDataListPageTypeDomain": "Domain",
+  "geoDataListPageTypeIp": "IP",
+  "geoDataListPageCategoryCount": "{count} categories",
+  "@geoDataListPageCategoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "geoDataListPageRuleCount": "{count} rules",
+  "@geoDataListPageRuleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "geoDatCodesPageNoCodes": "No Rule Set Data",
   "geoDatAddPageTitle": "Rule Set",
   "geoDatAddPageSection": "Support v2fly geosite and geoip",
