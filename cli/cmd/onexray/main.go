@@ -19,7 +19,7 @@ import (
 
 const (
 	apiVersion = "v1"
-	cliVersion = "0.1.0"
+	cliVersion = "26.6.1"
 
 	authScheme = "Bearer"
 
