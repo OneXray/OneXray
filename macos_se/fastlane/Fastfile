@@ -2,6 +2,18 @@ skip_docs
 
 default_platform :mac
 
+def flutter_build_args(*args)
+  defines = []
+  [
+    'ADMOB_AD_UNIT_ID_ANDROID',
+    'ADMOB_AD_UNIT_ID_IOS'
+  ].each do |name|
+    value = ENV[name]
+    defines << "--dart-define=#{name}=#{value}" unless value.to_s.empty?
+  end
+  ['flutter', 'build', *args, *defines]
+end
+
 platform :mac do
   lane :deploy do
     output_dir = File.expand_path('../../../output', __dir__)
@@ -17,6 +29,25 @@ platform :mac do
       issuer_id: ENV.fetch('FASTLANE_ASC_ISSUER_ID'),
       key_filepath: './fastlane/AuthKey.p8'
     )
+
+    [
+      ['net.yuandev.onexray.se', 'OneXraySEmacOS'],
+      ['net.yuandev.onexray.se.tun', 'OneXraySETunmacOS']
+    ].each do |app_identifier, provisioning_name|
+      get_provisioning_profile(
+        api_key: api_key,
+        app_identifier: app_identifier,
+        provisioning_name: provisioning_name,
+        developer_id: true,
+        ignore_profiles_with_different_name: true,
+        platform: 'macos',
+        readonly: true
+      )
+    end
+
+    Dir.chdir('..') do
+      sh(*flutter_build_args('macos'))
+    end
 
     # Build .app with Developer ID signing.
     build_app(

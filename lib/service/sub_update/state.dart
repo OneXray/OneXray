@@ -5,8 +5,6 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/localizations/service.dart';
 
 enum SubUpdateInterval {
-  sixHours(6),
-  twelveHours(12),
   oneDay(24),
   threeDays(72),
   oneWeek(168);
@@ -15,12 +13,15 @@ enum SubUpdateInterval {
 
   final int value;
 
-  static SubUpdateInterval fromInt(int value) {
+  static SubUpdateInterval fromInt(
+    int value, {
+    SubUpdateInterval fallback = SubUpdateInterval.oneDay,
+  }) {
     final interval = SubUpdateInterval.values.firstWhereOrNull(
       (e) => e.value == value,
     );
     if (interval == null) {
-      return SubUpdateInterval.oneDay;
+      return fallback;
     }
     return interval;
   }
@@ -28,10 +29,6 @@ enum SubUpdateInterval {
   @override
   String toString() {
     switch (this) {
-      case SubUpdateInterval.sixHours:
-        return appLocalizationsNoContext().subUpdatePageInterval6Hours;
-      case SubUpdateInterval.twelveHours:
-        return appLocalizationsNoContext().subUpdatePageInterval12Hours;
       case SubUpdateInterval.oneDay:
         return appLocalizationsNoContext().subUpdatePageIntervalOneDay;
       case SubUpdateInterval.threeDays:
@@ -46,6 +43,8 @@ class SubUpdateState {
   var enable = false;
   var interval = SubUpdateInterval.oneDay;
   var autoPing = false;
+  var geoDataEnable = true;
+  var geoDataInterval = SubUpdateInterval.oneWeek;
 
   Future<void> readFromPreferences() async {
     final jsonMap = await PreferencesKey().readSubUpdate();
@@ -62,10 +61,25 @@ class SubUpdateState {
     if (subUpdateJson.autoPing != null) {
       autoPing = subUpdateJson.autoPing!;
     }
+    if (subUpdateJson.geoDataEnabled != null) {
+      geoDataEnable = subUpdateJson.geoDataEnabled!;
+    }
+    if (subUpdateJson.geoDataInterval != null) {
+      geoDataInterval = SubUpdateInterval.fromInt(
+        subUpdateJson.geoDataInterval!,
+        fallback: SubUpdateInterval.oneWeek,
+      );
+    }
   }
 
   Future<void> saveToPreferences() async {
-    final subUpdateJson = SubUpdateJson(enable, interval.value, autoPing);
+    final subUpdateJson = SubUpdateJson(
+      enable,
+      interval.value,
+      autoPing,
+      geoDataEnable,
+      geoDataInterval.value,
+    );
     await PreferencesKey().saveSubUpdate(subUpdateJson.toJson());
   }
 }

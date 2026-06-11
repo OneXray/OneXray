@@ -7,8 +7,7 @@ import 'package:onexray/pages/home/xray/setting/outbound_fragment/controller.dar
 import 'package:onexray/pages/home/xray/setting/outbound_fragment/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class OutboundFragmentPage extends StatelessWidget {
   final OutboundFragmentParams params;
@@ -19,21 +18,28 @@ class OutboundFragmentPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => OutboundFragmentController(params),
-      child: BlocBuilder<OutboundFragmentController, OutboundFragmentCubitState>(
-        builder: (context, state) {
-          final controller = context.read<OutboundFragmentController>();
-          return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.outboundFragmentPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
-        },
-      ),
+      child:
+          BlocBuilder<OutboundFragmentController, OutboundFragmentCubitState>(
+            builder: (context, state) {
+              final controller = context.read<OutboundFragmentController>();
+              return Scaffold(
+                appBar: AppBar(
+                  title: Text(
+                    AppLocalizations.of(context)!.outboundFragmentPageTitle,
+                  ),
+                ),
+                body: SafeArea(child: _body(context, controller, state)),
+              );
+            },
+          ),
     );
   }
 
-  Widget _body(BuildContext context, OutboundFragmentController controller, OutboundFragmentCubitState state) {
+  Widget _body(
+    BuildContext context,
+    OutboundFragmentController controller,
+    OutboundFragmentCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -59,17 +65,17 @@ class OutboundFragmentPage extends StatelessWidget {
 
   Widget _protocolSection(
     BuildContext context,
-    OutboundFragmentController controller, OutboundFragmentCubitState state) {
-    return SectionView(
+    OutboundFragmentController controller,
+    OutboundFragmentCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundFragmentPageProtocol,
-            detail: state.fragmentState.protocol.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundFragmentPageProtocol,
+          value: state.fragmentState.protocol.name,
+        ),
+      ],
     );
   }
 
@@ -77,35 +83,29 @@ class OutboundFragmentPage extends StatelessWidget {
     BuildContext context,
     OutboundFragmentController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundFragmentPageSettings,
-      child: Column(
-        children: [
-          _packets(context, controller),
-          _length(context, controller),
-          _interval(context, controller),
-        ],
-      ),
+      children: [
+        _packets(context, controller),
+        _length(context, controller),
+        _interval(context, controller),
+      ],
     );
   }
 
   Widget _packets(BuildContext context, OutboundFragmentController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.packetsController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundFragmentPagePackets),
-        hintText: AppLocalizations.of(context)!.outboundFragmentPagePackets,
-      ),
+      label: AppLocalizations.of(context)!.outboundFragmentPagePackets,
+      hintText: AppLocalizations.of(context)!.outboundFragmentPagePackets,
     );
   }
 
   Widget _length(BuildContext context, OutboundFragmentController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.lengthController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundFragmentPageLength),
-        hintText: AppLocalizations.of(context)!.outboundFragmentPageLength,
-      ),
+      label: AppLocalizations.of(context)!.outboundFragmentPageLength,
+      hintText: AppLocalizations.of(context)!.outboundFragmentPageLength,
     );
   }
 
@@ -113,49 +113,49 @@ class OutboundFragmentPage extends StatelessWidget {
     BuildContext context,
     OutboundFragmentController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.intervalController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundFragmentPageInterval),
-        hintText: AppLocalizations.of(context)!.outboundFragmentPageInterval,
-      ),
+      label: AppLocalizations.of(context)!.outboundFragmentPageInterval,
+      hintText: AppLocalizations.of(context)!.outboundFragmentPageInterval,
     );
   }
 
   Widget _tagSection(
     BuildContext context,
-    OutboundFragmentController controller, OutboundFragmentCubitState state) {
-    return SectionView(
+    OutboundFragmentController controller,
+    OutboundFragmentCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundFragmentPageTag,
-            detail: state.fragmentState.tag.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundFragmentPageTag,
+          value: state.fragmentState.tag.name,
+        ),
+      ],
     );
   }
 
   Widget _sockoptSection(
     BuildContext context,
-    OutboundFragmentController controller, OutboundFragmentCubitState state) {
-    return SectionView(
+    OutboundFragmentController controller,
+    OutboundFragmentCubitState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundFragmentPageSockopt,
-      child: Column(children: [_interface(context, controller, state)]),
+      children: [_interface(context, controller, state)],
     );
   }
 
   Widget _interface(
     BuildContext context,
-    OutboundFragmentController controller, OutboundFragmentCubitState state) {
-    return InkWell(
+    OutboundFragmentController controller,
+    OutboundFragmentCubitState state,
+  ) {
+    return NavigationSettingRow(
+      title: AppLocalizations.of(context)!.outboundFragmentPageInterface,
+      value: state.fragmentState.interface,
       onTap: () => controller.editInterface(context),
-      child: TextRow(
-        title: AppLocalizations.of(context)!.outboundFragmentPageInterface,
-        detail: state.fragmentState.interface,
-      ),
     );
   }
 

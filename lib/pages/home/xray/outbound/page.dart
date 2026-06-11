@@ -8,9 +8,7 @@ import 'package:onexray/pages/home/xray/outbound/controller.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
@@ -44,7 +42,11 @@ class OutboundUIPage extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context, OutboundUIController controller, OutboundUIState state) {
+  Widget _body(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -75,16 +77,14 @@ class OutboundUIPage extends StatelessWidget {
   }
 
   Widget _nameSection(BuildContext context, OutboundUIController controller) {
-    return SectionView(title: "", child: _name(context, controller));
+    return SettingSection(title: "", children: [_name(context, controller)]);
   }
 
   Widget _name(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.nameController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageName),
-        hintText: AppLocalizations.of(context)!.outboundUIPageName,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageName,
+      hintText: AppLocalizations.of(context)!.outboundUIPageName,
     );
   }
 
@@ -93,20 +93,22 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(title: "", child: _protocol(context, controller, state));
+    return SettingSection(
+      title: "",
+      children: [_protocol(context, controller, state)],
+    );
   }
 
-  Widget _protocol(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageProtocol),
-        TextMenuPicker(
-          title: state.outboundState.protocol.name,
-          selections: XrayOutboundProtocol.outbounds,
-          callback: (value) => controller.updateProtocol(value),
-        ),
-      ],
+  Widget _protocol(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageProtocol,
+      value: state.outboundState.protocol.name,
+      selections: XrayOutboundProtocol.outbounds,
+      onSelected: (value) => controller.updateProtocol(value),
     );
   }
 
@@ -134,48 +136,40 @@ class OutboundUIPage extends StatelessWidget {
   }
 
   Widget _address(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.addressController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageAddress),
-        hintText: AppLocalizations.of(context)!.outboundUIPageAddressExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageAddress,
+      hintText: AppLocalizations.of(context)!.outboundUIPageAddressExample,
     );
   }
 
   Widget _port(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.portController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePort),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePortExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePort,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePortExample,
     );
   }
 
   Widget _vlessSection(BuildContext context, OutboundUIController controller) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageVLESS,
-      child: Column(
-        children: [
-          _address(context, controller),
-          _port(context, controller),
-          _vlessId(context, controller),
-          _vlessEncryption(context, controller),
-          _vlessFlow(context, controller),
-          _vlessReverse(context, controller),
-        ],
-      ),
+      children: [
+        _address(context, controller),
+        _port(context, controller),
+        _vlessId(context, controller),
+        _vlessEncryption(context, controller),
+        _vlessFlow(context, controller),
+        _vlessReverse(context, controller),
+      ],
     );
   }
 
   Widget _vlessId(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.vlessIdController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageId),
-        hintText: AppLocalizations.of(context)!.outboundUIPageIdExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageId,
+      hintText: AppLocalizations.of(context)!.outboundUIPageIdExample,
     );
   }
 
@@ -183,35 +177,27 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.vlessEncryptionController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageEncryption),
-        hintText: AppLocalizations.of(context)!.outboundUIPageEncryption,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageEncryption,
+      hintText: AppLocalizations.of(context)!.outboundUIPageEncryption,
     );
   }
 
   Widget _vlessFlow(BuildContext context, OutboundUIController controller) {
     final state = context.read<OutboundUIController>().state;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageFlow),
-        TextMenuPicker(
-          title: state.outboundState.vlessFlow.name,
-          selections: VLESSFlow.values,
-          callback: (value) => controller.updateVlessFlow(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageFlow,
+      value: state.outboundState.vlessFlow.name,
+      selections: VLESSFlow.values,
+      onSelected: (value) => controller.updateVlessFlow(value),
     );
   }
 
   Widget _vlessReverse(BuildContext context, OutboundUIController controller) {
-    return SectionView(
-      level: SectionLevel.second,
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageReverse,
-      child: _vlessReverseTag(context, controller),
+      children: [_vlessReverseTag(context, controller)],
     );
   }
 
@@ -219,50 +205,47 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.vlessReverseTagController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageTag),
-        hintText: AppLocalizations.of(context)!.outboundUIPageTag,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageTag,
+      hintText: AppLocalizations.of(context)!.outboundUIPageTag,
     );
   }
 
-  Widget _vmessSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(
-      title: AppLocalizations.of(context)!.outboundUIPageVMess,
-      child: Column(
-        children: [
-          _address(context, controller),
-          _port(context, controller),
-          _vmessId(context, controller),
-          _vmessSecurity(context, controller, state),
-        ],
-      ),
+  Widget _vmessSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.outboundUIPageShadowsocks,
+      children: [
+        _address(context, controller),
+        _port(context, controller),
+        _vmessId(context, controller),
+        _vmessSecurity(context, controller, state),
+      ],
     );
   }
 
   Widget _vmessId(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.vmessIdController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageId),
-        hintText: AppLocalizations.of(context)!.outboundUIPageIdExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageId,
+      hintText: AppLocalizations.of(context)!.outboundUIPageIdExample,
     );
   }
 
-  Widget _vmessSecurity(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageVmessSecurity),
-        TextMenuPicker(
-          title: state.outboundState.vmessSecurity.name,
-          selections: VMessSecurity.values,
-          callback: (value) => controller.updateVmessSecurity(value),
-        ),
-      ],
+  Widget _vmessSecurity(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageVmessSecurity,
+      value: state.outboundState.vmessSecurity.name,
+      selections: VMessSecurity.values,
+      onSelected: (value) => controller.updateVmessSecurity(value),
     );
   }
 
@@ -271,18 +254,16 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageVMess,
-      child: Column(
-        children: [
-          _address(context, controller),
-          _port(context, controller),
-          _shadowsocksMethod(context, controller, state),
-          _shadowsocksPassword(context, controller),
-          _shadowsocksUot(context, controller, state),
-          _shadowsocksUoTVersion(context, controller, state),
-        ],
-      ),
+      children: [
+        _address(context, controller),
+        _port(context, controller),
+        _shadowsocksMethod(context, controller, state),
+        _shadowsocksPassword(context, controller),
+        _shadowsocksUot(context, controller, state),
+        _shadowsocksUoTVersion(context, controller, state),
+      ],
     );
   }
 
@@ -291,16 +272,11 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageMethod),
-        TextMenuPicker(
-          title: state.outboundState.shadowsocksMethod.name,
-          selections: ShadowsocksMethod.values,
-          callback: (value) => controller.updateShadowsocksMethod(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageMethod,
+      value: state.outboundState.shadowsocksMethod.name,
+      selections: ShadowsocksMethod.values,
+      onSelected: (value) => controller.updateShadowsocksMethod(value),
     );
   }
 
@@ -308,12 +284,10 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.shadowsocksPasswordController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePassword),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePassword,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePassword,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePassword,
     );
   }
 
@@ -322,15 +296,10 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageUot),
-        Switch(
-          value: state.outboundState.shadowsocksUot,
-          onChanged: (value) => controller.updateShadowsocksUot(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageUot,
+      value: state.outboundState.shadowsocksUot,
+      onChanged: (value) => controller.updateShadowsocksUot(value),
     );
   }
 
@@ -339,29 +308,22 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageUoTVersion),
-        TextMenuPicker(
-          title: state.outboundState.shadowsocksUotVersion.name,
-          selections: ShadowsocksUoTVersion.values,
-          callback: (value) => controller.updateShadowsocksUotVersion(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageUoTVersion,
+      value: state.outboundState.shadowsocksUotVersion.name,
+      selections: ShadowsocksUoTVersion.values,
+      onSelected: (value) => controller.updateShadowsocksUotVersion(value),
     );
   }
 
   Widget _trojanSection(BuildContext context, OutboundUIController controller) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageTrojan,
-      child: Column(
-        children: [
-          _address(context, controller),
-          _port(context, controller),
-          _trojanPassword(context, controller),
-        ],
-      ),
+      children: [
+        _address(context, controller),
+        _port(context, controller),
+        _trojanPassword(context, controller),
+      ],
     );
   }
 
@@ -369,46 +331,38 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.trojanPasswordController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePassword),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePassword,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePassword,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePassword,
     );
   }
 
   Widget _socksSection(BuildContext context, OutboundUIController controller) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageSocks,
-      child: Column(
-        children: [
-          _address(context, controller),
-          _port(context, controller),
-          _socksUser(context, controller),
-          _socksPass(context, controller),
-        ],
-      ),
+      children: [
+        _address(context, controller),
+        _port(context, controller),
+        _socksUser(context, controller),
+        _socksPass(context, controller),
+      ],
     );
   }
 
   Widget _socksUser(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.socksUserController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageUser),
-        hintText: AppLocalizations.of(context)!.outboundUIPageUser,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageUser,
+      hintText: AppLocalizations.of(context)!.outboundUIPageUser,
     );
   }
 
   Widget _socksPass(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.socksPassController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePass),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePass,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePass,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePass,
     );
   }
 
@@ -417,26 +371,35 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageHysteria,
-      child: Column(
-        children: [
-          _hysteriaVersion(context, controller, state),
-          _address(context, controller),
-          _port(context, controller),
-        ],
-      ),
+      children: [
+        _hysteriaVersion(context, controller, state),
+        _address(context, controller),
+        _port(context, controller),
+      ],
     );
   }
 
-  Widget _tagSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(title: "", child: _tag(context, controller, state));
+  Widget _tagSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
+      title: "",
+      children: [_tag(context, controller, state)],
+    );
   }
 
-  Widget _tag(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return TextRow(
+  Widget _tag(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageTag,
-      detail: state.outboundState.tag,
+      value: state.outboundState.tag,
     );
   }
 
@@ -445,26 +408,22 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [_network(context, controller, state)],
-      ),
+      children: [_network(context, controller, state)],
     );
   }
 
-  Widget _network(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageNetwork),
-        TextMenuPicker(
-          title: state.outboundState.network.name,
-          selections: StreamSettingsNetwork.values,
-          callback: (value) => controller.updateNetwork(value),
-        ),
-      ],
+  Widget _network(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageNetwork,
+      value: state.outboundState.network.name,
+      selections: StreamSettingsNetwork.values,
+      onSelected: (value) => controller.updateNetwork(value),
     );
   }
 
@@ -491,10 +450,15 @@ class OutboundUIPage extends StatelessWidget {
     }
   }
 
-  Widget _rawSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(
+  Widget _rawSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageRawSettings,
-      child: _rawHeaderSection(context, controller, state),
+      separated: false,
+      children: [_rawHeaderSection(context, controller, state)],
     );
   }
 
@@ -503,190 +467,149 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageRawHeader,
-      level: SectionLevel.second,
-      child: Column(
-        children: [
-          _rawHeaderType(context, controller, state),
-          if (state.outboundState.rawHeaderType ==
-              RawHeaderType.http)
-            _rawHeader(context, controller, state),
-        ],
-      ),
-    );
-  }
-
-  Widget _rawHeaderType(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageRawHeaderType),
-        TextMenuPicker(
-          title: state.outboundState.rawHeaderType.name,
-          selections: RawHeaderType.values,
-          callback: (value) => controller.updateRawHeaderType(value),
-        ),
+        _rawHeaderType(context, controller, state),
+        if (state.outboundState.rawHeaderType == RawHeaderType.http)
+          _rawHeader(context, controller, state),
       ],
     );
   }
 
-  Widget _rawHeader(BuildContext context, OutboundUIController controller, OutboundUIState state) {
+  Widget _rawHeaderType(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageRawHeaderType,
+      value: state.outboundState.rawHeaderType.name,
+      selections: RawHeaderType.values,
+      onSelected: (value) => controller.updateRawHeaderType(value),
+    );
+  }
+
+  Widget _rawHeader(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    final pathTitle = AppLocalizations.of(context)!.outboundUIPagePath;
+    final hostTitle = AppLocalizations.of(context)!.outboundUIPageHost;
     final rawPathViews = state.outboundState.rawPath
         .mapIndexed(
-          (index, path) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.rawPathControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.outboundUIPagePath,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.outboundUIPagePathExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteRawPath(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, path) => TextFieldActionSettingRow(
+            controller: controller.rawPathControllers[index],
+            label: pathTitle,
+            hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteRawPath(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
 
     final rawHostViews = state.outboundState.rawHost
         .mapIndexed(
-          (index, host) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.rawHostControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(context)!.outboundUIPageHost,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.outboundUIPageHostExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => controller.deleteRawHost(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.rawHostControllers[index],
+            label: hostTitle,
+            hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteRawHost(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return Column(
+    return SettingSection(
+      title: "",
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(AppLocalizations.of(context)!.outboundUIPagePath),
-            IconButton(
-              onPressed: () => controller.appendRawPath(),
-              icon: const Icon(Icons.add),
-            ),
-          ],
+        SettingRow(
+          title: pathTitle,
+          trailing: IconButton(
+            onPressed: () => controller.appendRawPath(),
+            icon: const Icon(Icons.add),
+          ),
         ),
-        if (rawPathViews.isNotEmpty) Column(children: rawPathViews),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(AppLocalizations.of(context)!.outboundUIPageHost),
-            IconButton(
-              onPressed: () => controller.appendRawHost(),
-              icon: const Icon(Icons.add),
-            ),
-          ],
+        ...rawPathViews,
+        SettingRow(
+          title: hostTitle,
+          trailing: IconButton(
+            onPressed: () => controller.appendRawHost(),
+            icon: const Icon(Icons.add),
+          ),
         ),
-        if (rawHostViews.isNotEmpty) Column(children: rawHostViews),
+        ...rawHostViews,
       ],
     );
   }
 
-  Widget _xhttpSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(
+  Widget _xhttpSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageXhttpSettings,
-      child: Column(
-        children: [
-          _xhttpHost(context, controller),
-          _xhttpPath(context, controller),
-          _xhttpMode(context, controller, state),
-          _xhttpExtra(context, controller),
-        ],
-      ),
+      children: [
+        _xhttpHost(context, controller),
+        _xhttpPath(context, controller),
+        _xhttpMode(context, controller, state),
+        _xhttpExtra(context, controller),
+      ],
     );
   }
 
   Widget _xhttpHost(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.xhttpHostController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageHost),
-        hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHost,
+      hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
     );
   }
 
   Widget _xhttpPath(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.xhttpPathController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePath),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePath,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
     );
   }
 
-  Widget _xhttpMode(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(vertical: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(AppLocalizations.of(context)!.outboundUIPageXhttpMode),
-          TextMenuPicker(
-            title: state.outboundState.xhttpMode.name,
-            selections: XhttpMode.values,
-            callback: (value) => controller.updateXhttpMode(value),
-          ),
-        ],
-      ),
+  Widget _xhttpMode(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageXhttpMode,
+      value: state.outboundState.xhttpMode.name,
+      selections: XhttpMode.values,
+      onSelected: (value) => controller.updateXhttpMode(value),
     );
   }
 
   Widget _xhttpExtra(BuildContext context, OutboundUIController controller) {
-    return InkWell(
+    return NavigationSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageXhttpExtra,
       onTap: () => controller.editXhttpExtra(context),
-      child: Padding(
-        padding: const EdgeInsetsDirectional.symmetric(vertical: 5),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(AppLocalizations.of(context)!.outboundUIPageXhttpExtra),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _kcpSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(
+  Widget _kcpSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageKcpSettings,
-      child: Column(
-        children: [
-          _kcpHeaderSection(context, controller, state),
-          _kcpSeed(context, controller),
-        ],
-      ),
+      children: [
+        _kcpHeaderSection(context, controller, state),
+        _kcpSeed(context, controller),
+      ],
     );
   }
 
@@ -695,29 +618,25 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageKcpHeader,
-      level: SectionLevel.second,
-      child: Column(
-        children: [
-          _kcpHeaderType(context, controller, state),
-          _kcpHeaderDomain(context, controller),
-        ],
-      ),
+      children: [
+        _kcpHeaderType(context, controller, state),
+        _kcpHeaderDomain(context, controller),
+      ],
     );
   }
 
-  Widget _kcpHeaderType(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageKcpHeaderType),
-        TextMenuPicker(
-          title: state.outboundState.kcpHeaderType.name,
-          selections: KcpHeaderType.values,
-          callback: (value) => controller.updateKcpHeaderType(value),
-        ),
-      ],
+  Widget _kcpHeaderType(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageKcpHeaderType,
+      value: state.outboundState.kcpHeaderType.name,
+      selections: KcpHeaderType.values,
+      onSelected: (value) => controller.updateKcpHeaderType(value),
     );
   }
 
@@ -725,60 +644,49 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.kcpHeaderDomainController,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.outboundUIPageKcpHeaderDomain,
-        ),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPageKcpHeaderDomainExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageKcpHeaderDomain,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPageKcpHeaderDomainExample,
     );
   }
 
   Widget _kcpSeed(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.kcpSeedController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageKcpSeed),
-        hintText: AppLocalizations.of(context)!.outboundUIPageKcpSeed,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageKcpSeed,
+      hintText: AppLocalizations.of(context)!.outboundUIPageKcpSeed,
     );
   }
 
-  Widget _grpcSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(
+  Widget _grpcSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageGrpcSettings,
-      child: Column(
-        children: [
-          _grpcAuthority(context, controller),
-          _grpcServiceName(context, controller),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.outboundUIPageGrpcMultiMode),
-              Switch(
-                value: state.outboundState.grpcMultiMode,
-                onChanged: (value) => controller.updateGrpcMultiMode(value),
-              ),
-            ],
-          ),
-        ],
-      ),
+      children: [
+        _grpcAuthority(context, controller),
+        _grpcServiceName(context, controller),
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.outboundUIPageGrpcMultiMode,
+          value: state.outboundState.grpcMultiMode,
+          onChanged: (value) => controller.updateGrpcMultiMode(value),
+        ),
+      ],
     );
   }
 
   Widget _grpcAuthority(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.grpcAuthorityController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageGrpcAuthority),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPageGrpcAuthorityExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageGrpcAuthority,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPageGrpcAuthorityExample,
     );
   }
 
@@ -786,43 +694,33 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.grpcServiceNameController,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.outboundUIPageGrpcServiceName,
-        ),
-        hintText: AppLocalizations.of(context)!.outboundUIPageGrpcServiceName,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageGrpcServiceName,
+      hintText: AppLocalizations.of(context)!.outboundUIPageGrpcServiceName,
     );
   }
 
   Widget _wsSection(BuildContext context, OutboundUIController controller) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageWsSettings,
-      child: Column(
-        children: [_wsPath(context, controller), _wsHost(context, controller)],
-      ),
+      children: [_wsPath(context, controller), _wsHost(context, controller)],
     );
   }
 
   Widget _wsPath(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.wsPathController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePath),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePath,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
     );
   }
 
   Widget _wsHost(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.wsHostController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageHost),
-        hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHost,
+      hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
     );
   }
 
@@ -830,14 +728,12 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageHttpupgradeSettings,
-      child: Column(
-        children: [
-          _httpupgradeHost(context, controller),
-          _httpupgradePath(context, controller),
-        ],
-      ),
+      children: [
+        _httpupgradeHost(context, controller),
+        _httpupgradePath(context, controller),
+      ],
     );
   }
 
@@ -845,12 +741,10 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.httpupgradeHostController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageHost),
-        hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHost,
+      hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
     );
   }
 
@@ -858,12 +752,10 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.httpupgradePathController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePath),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePath,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
     );
   }
 
@@ -872,17 +764,15 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageHysteriaSettings,
-      child: Column(
-        children: [
-          _hysteriaVersion(context, controller, state),
-          _hysteriaAuth(context, controller),
-          _hysteriaUp(context, controller),
-          _hysteriaDown(context, controller),
-          _hysteriaUdphopSection(context, controller),
-        ],
-      ),
+      children: [
+        _hysteriaVersion(context, controller, state),
+        _hysteriaAuth(context, controller),
+        _hysteriaUp(context, controller),
+        _hysteriaDown(context, controller),
+        _hysteriaUdphopSection(context, controller),
+      ],
     );
   }
 
@@ -891,39 +781,33 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return TextRow(
+    return SettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageHysteriaVersion,
-      detail: state.outboundState.hysteriaVersion,
+      value: state.outboundState.hysteriaVersion,
     );
   }
 
   Widget _hysteriaAuth(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.hysteriaAuthController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageHysteriaAuth),
-        hintText: AppLocalizations.of(context)!.outboundUIPageHysteriaAuth,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHysteriaAuth,
+      hintText: AppLocalizations.of(context)!.outboundUIPageHysteriaAuth,
     );
   }
 
   Widget _hysteriaUp(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.hysteriaUpController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageHysteriaUp),
-        hintText: AppLocalizations.of(context)!.outboundUIPageHysteriaUp,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHysteriaUp,
+      hintText: AppLocalizations.of(context)!.outboundUIPageHysteriaUp,
     );
   }
 
   Widget _hysteriaDown(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.hysteriaDownController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageHysteriaDown),
-        hintText: AppLocalizations.of(context)!.outboundUIPageHysteriaDown,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHysteriaDown,
+      hintText: AppLocalizations.of(context)!.outboundUIPageHysteriaDown,
     );
   }
 
@@ -931,15 +815,12 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return SectionView(
+    return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageHysteriaUdphop,
-      level: SectionLevel.second,
-      child: Column(
-        children: [
-          _hysteriaUdphopPort(context, controller),
-          _hysteriaUdphopInterval(context, controller),
-        ],
-      ),
+      children: [
+        _hysteriaUdphopPort(context, controller),
+        _hysteriaUdphopInterval(context, controller),
+      ],
     );
   }
 
@@ -947,16 +828,10 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.hysteriaUdphopPortController,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.outboundUIPageHysteriaUdphopPort,
-        ),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPageHysteriaUdphopPort,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHysteriaUdphopPort,
+      hintText: AppLocalizations.of(context)!.outboundUIPageHysteriaUdphopPort,
     );
   }
 
@@ -964,16 +839,12 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.hysteriaUdphopIntervalController,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.outboundUIPageHysteriaUdphopInterval,
-        ),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPageHysteriaUdphopInterval,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageHysteriaUdphopInterval,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPageHysteriaUdphopInterval,
     );
   }
 
@@ -981,25 +852,14 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageFinalmask,
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () => controller.editFinalMask(context),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.symmetric(vertical: 5),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(AppLocalizations.of(context)!.outboundUIPageFinalmask),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      children: [
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.outboundUIPageFinalmask,
+          onTap: () => controller.editFinalMask(context),
+        ),
+      ],
     );
   }
 
@@ -1008,20 +868,22 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(title: "", child: _security(context, controller, state));
+    return SettingSection(
+      title: "",
+      children: [_security(context, controller, state)],
+    );
   }
 
-  Widget _security(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageSecurity),
-        TextMenuPicker(
-          title: state.outboundState.security.name,
-          selections: StreamSettingsSecurity.values,
-          callback: (value) => controller.updateSecurity(value),
-        ),
-      ],
+  Widget _security(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageSecurity,
+      value: state.outboundState.security.name,
+      selections: StreamSettingsSecurity.values,
+      onSelected: (value) => controller.updateSecurity(value),
     );
   }
 
@@ -1041,48 +903,50 @@ class OutboundUIPage extends StatelessWidget {
   }
 
   Widget _serverName(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.serverNameController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageServerName),
-        hintText: AppLocalizations.of(context)!.outboundUIPageServerNameExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageServerName,
+      hintText: AppLocalizations.of(context)!.outboundUIPageServerNameExample,
     );
   }
 
-  Widget _fingerprint(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _fingerprint(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageFingerprint,
+      value: state.outboundState.fingerprint.name,
+      selections: StreamSettingsSecurityFingerprint.values,
+      onSelected: (value) => controller.updateFingerprint(value),
+    );
+  }
+
+  Widget _tlsSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.outboundUIPageTlsSettings,
       children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageFingerprint),
-        TextMenuPicker(
-          title: state.outboundState.fingerprint.name,
-          selections: StreamSettingsSecurityFingerprint.values,
-          callback: (value) => controller.updateFingerprint(value),
-        ),
+        _serverName(context, controller),
+        _alpn(context, controller, state),
+        _fingerprint(context, controller, state),
+        _pinnedPeerCertSha256(context, controller),
+        _verifyPeerCertByName(context, controller),
+        _echConfigList(context, controller),
+        _echForceQuery(context, controller, state),
       ],
     );
   }
 
-  Widget _tlsSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(
-      title: AppLocalizations.of(context)!.outboundUIPageTlsSettings,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _serverName(context, controller),
-          _alpn(context, controller, state),
-          _fingerprint(context, controller, state),
-          _pinnedPeerCertSha256(context, controller),
-          _verifyPeerCertByName(context, controller),
-          _echConfigList(context, controller),
-          _echForceQuery(context, controller, state),
-        ],
-      ),
-    );
-  }
-
-  Widget _alpn(BuildContext context, OutboundUIController controller, OutboundUIState state) {
+  Widget _alpn(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
     final children = StreamSettingsSecurityALPN.values.map((value) {
       return FilterChip(
         label: Text(value.name),
@@ -1090,12 +954,9 @@ class OutboundUIPage extends StatelessWidget {
         onSelected: (bool selected) => controller.updateAlpn(selected, value),
       );
     }).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageAlpn),
-        Wrap(spacing: 5.0, runSpacing: 5.0, children: children),
-      ],
+    return SettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageAlpn,
+      subtitleWidget: Wrap(spacing: 5.0, runSpacing: 5.0, children: children),
     );
   }
 
@@ -1103,16 +964,12 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.pinnedPeerCertSha256Controller,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.outboundUIPagePinnedPeerCertSha256,
-        ),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPagePinnedPeerCertSha256,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePinnedPeerCertSha256,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPagePinnedPeerCertSha256,
     );
   }
 
@@ -1120,40 +977,33 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.verifyPeerCertByNameController,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.outboundUIPageVerifyPeerCertByName,
-        ),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPageVerifyPeerCertByName,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageVerifyPeerCertByName,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPageVerifyPeerCertByName,
     );
   }
 
   Widget _echConfigList(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.echConfigListController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageEchConfigList),
-        hintText: AppLocalizations.of(context)!.outboundUIPageEchConfigList,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageEchConfigList,
+      hintText: AppLocalizations.of(context)!.outboundUIPageEchConfigList,
     );
   }
 
-  Widget _echForceQuery(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageEchForceQuery),
-        TextMenuPicker(
-          title: state.outboundState.echForceQuery.name,
-          selections: StreamSettingsEchForceQuery.values,
-          callback: (value) => controller.updateEchForceQuery(value),
-        ),
-      ],
+  Widget _echForceQuery(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageEchForceQuery,
+      value: state.outboundState.echForceQuery.name,
+      selections: StreamSettingsEchForceQuery.values,
+      onSelected: (value) => controller.updateEchForceQuery(value),
     );
   }
 
@@ -1162,58 +1012,48 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageRealitySettings,
-      child: Column(
-        children: [
-          _fingerprint(context, controller, state),
-          _serverName(context, controller),
-          _password(context, controller),
-          _shortId(context, controller),
-          _mldsa65Verify(context, controller),
-          _spiderX(context, controller),
-        ],
-      ),
+      children: [
+        _fingerprint(context, controller, state),
+        _serverName(context, controller),
+        _password(context, controller),
+        _shortId(context, controller),
+        _mldsa65Verify(context, controller),
+        _spiderX(context, controller),
+      ],
     );
   }
 
   Widget _password(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.passwordController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPagePassword),
-        hintText: AppLocalizations.of(context)!.outboundUIPagePassword,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPagePassword,
+      hintText: AppLocalizations.of(context)!.outboundUIPagePassword,
     );
   }
 
   Widget _shortId(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.shortIdController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageShortId),
-        hintText: AppLocalizations.of(context)!.outboundUIPageShortId,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageShortId,
+      hintText: AppLocalizations.of(context)!.outboundUIPageShortId,
     );
   }
 
   Widget _mldsa65Verify(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.mldsa65VerifyController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageMldsa65Verify),
-        hintText: AppLocalizations.of(context)!.outboundUIPageMldsa65Verify,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageMldsa65Verify,
+      hintText: AppLocalizations.of(context)!.outboundUIPageMldsa65Verify,
     );
   }
 
   Widget _spiderX(BuildContext context, OutboundUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.spiderXController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageSpiderX),
-        hintText: AppLocalizations.of(context)!.outboundUIPageSpiderX,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageSpiderX,
+      hintText: AppLocalizations.of(context)!.outboundUIPageSpiderX,
     );
   }
 
@@ -1222,121 +1062,107 @@ class OutboundUIPage extends StatelessWidget {
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageSockopt,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _tcpFastOpen(context, controller, state),
-          _dialerProxy(context, controller, state),
-          if (AppPlatform.isLinux || AppPlatform.isWindows)
-            _interface(context, controller, state),
-          _tcpMptcp(context, controller, state),
-        ],
-      ),
-    );
-  }
-
-  Widget _tcpFastOpen(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageTcpFastOpen),
-        Switch(
-          value: state.outboundState.tcpFastOpen,
-          onChanged: (value) => controller.updateTcpFastOpen(value),
-        ),
+        _tcpFastOpen(context, controller, state),
+        _dialerProxy(context, controller, state),
+        if (AppPlatform.isLinux || AppPlatform.isWindows)
+          _interface(context, controller, state),
+        _tcpMptcp(context, controller, state),
       ],
     );
   }
 
-  Widget _dialerProxy(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageDialerProxy),
-        TextMenuPicker<String>(
-          title: state.outboundState.dialerProxy,
-          selections: state.dialerProxies,
-          callback: (value) => controller.updateDialerProxy(value),
-        ),
-      ],
-    );
-  }
-
-  Widget _interface(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return InkWell(
-      onTap: () => controller.editInterface(context),
-      child: TextRow(
-        title: AppLocalizations.of(context)!.outboundUIPageInterface,
-        detail: state.outboundState.interface,
-      ),
-    );
-  }
-
-  Widget _tcpMptcp(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.outboundUIPageTcpMptcp),
-        Switch(
-          value: state.outboundState.tcpMptcp,
-          onChanged: (value) => controller.updateTcpMptcp(value),
-        ),
-      ],
-    );
-  }
-
-  Widget _muxSection(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return SectionView(
-      title: AppLocalizations.of(context)!.outboundUIPageMux,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _muxEnabled(context, controller, state),
-          if (state.outboundState.muxEnabled)
-            _muxSectionBody(context, controller, state),
-        ],
-      ),
-    );
-  }
-
-  Widget _muxEnabled(BuildContext context, OutboundUIController controller, OutboundUIState state) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.switchEnabled),
-        Switch(
-          value: state.outboundState.muxEnabled,
-          onChanged: (value) => controller.updateMuxEnabled(value),
-        ),
-      ],
-    );
-  }
-
-  Widget _muxSectionBody(
+  Widget _tcpFastOpen(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIState state,
   ) {
-    return Column(
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageTcpFastOpen,
+      value: state.outboundState.tcpFastOpen,
+      onChanged: (value) => controller.updateTcpFastOpen(value),
+    );
+  }
+
+  Widget _dialerProxy(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow<String>(
+      title: AppLocalizations.of(context)!.outboundUIPageDialerProxy,
+      value: state.outboundState.dialerProxy,
+      selections: state.dialerProxies,
+      onSelected: (value) => controller.updateDialerProxy(value),
+    );
+  }
+
+  Widget _interface(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return NavigationSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageInterface,
+      value: state.outboundState.interface,
+      onTap: () => controller.editInterface(context),
+    );
+  }
+
+  Widget _tcpMptcp(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageTcpMptcp,
+      value: state.outboundState.tcpMptcp,
+      onChanged: (value) => controller.updateTcpMptcp(value),
+    );
+  }
+
+  Widget _muxSection(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.outboundUIPageMux,
       children: [
-        _muxConcurrency(context, controller),
-        _muxXudpConcurrency(context, controller),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              AppLocalizations.of(context)!.outboundUIPageMuxXudpProxyUDP443,
-            ),
-            TextMenuPicker(
-              title: state.outboundState.muxXudpProxyUDP443.name,
-              selections: MuxXudpProxyUDP443.values,
-              callback: (value) => controller.updateMuxXudpProxyUDP443(value),
-            ),
-          ],
-        ),
+        _muxEnabled(context, controller, state),
+        if (state.outboundState.muxEnabled) ...[
+          _muxConcurrency(context, controller),
+          _muxXudpConcurrency(context, controller),
+          _muxXudpProxyUDP443(context, controller, state),
+        ],
       ],
+    );
+  }
+
+  Widget _muxEnabled(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.switchEnabled,
+      value: state.outboundState.muxEnabled,
+      onChanged: (value) => controller.updateMuxEnabled(value),
+    );
+  }
+
+  Widget _muxXudpProxyUDP443(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageMuxXudpProxyUDP443,
+      value: state.outboundState.muxXudpProxyUDP443.name,
+      selections: MuxXudpProxyUDP443.values,
+      onSelected: (value) => controller.updateMuxXudpProxyUDP443(value),
     );
   }
 
@@ -1344,14 +1170,12 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.muxConcurrencyController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.outboundUIPageMuxConcurrency),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPageMuxConcurrencyExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageMuxConcurrency,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPageMuxConcurrencyExample,
     );
   }
 
@@ -1359,16 +1183,12 @@ class OutboundUIPage extends StatelessWidget {
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.muxXudpConcurrencyController,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.outboundUIPageMuxXudpConcurrency,
-        ),
-        hintText: AppLocalizations.of(
-          context,
-        )!.outboundUIPageMuxXudpConcurrencyExample,
-      ),
+      label: AppLocalizations.of(context)!.outboundUIPageMuxXudpConcurrency,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPageMuxXudpConcurrencyExample,
     );
   }
 

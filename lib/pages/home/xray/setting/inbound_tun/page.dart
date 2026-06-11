@@ -6,8 +6,7 @@ import 'package:onexray/pages/home/xray/setting/inbound_tun/controller.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_tun/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class InboundTunPage extends StatelessWidget {
   final InboundTunParams params;
@@ -22,17 +21,21 @@ class InboundTunPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<InboundTunController>();
           return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.inboundTunPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.inboundTunPageTitle),
+            ),
+            body: SafeArea(child: _body(context, controller, state)),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, InboundTunController controller, InboundTunCubitState state) {
+  Widget _body(
+    BuildContext context,
+    InboundTunController controller,
+    InboundTunCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -55,55 +58,59 @@ class InboundTunPage extends StatelessWidget {
     );
   }
 
-  Widget _listenSection(BuildContext context, InboundTunController controller, InboundTunCubitState state) {
-    return SectionView(
+  Widget _listenSection(
+    BuildContext context,
+    InboundTunController controller,
+    InboundTunCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundTunPageListen,
-            detail: state.tunState.listen,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundTunPageProtocol,
-            detail: state.tunState.protocol.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundTunPageListen,
+          value: state.tunState.listen,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundTunPageProtocol,
+          value: state.tunState.protocol.name,
+        ),
+      ],
     );
   }
 
   Widget _settingsSection(
     BuildContext context,
-    InboundTunController controller, InboundTunCubitState state) {
-    return SectionView(
+    InboundTunController controller,
+    InboundTunCubitState state,
+  ) {
+    return SettingSection(
       title: AppLocalizations.of(context)!.inboundTunPageSettings,
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundTunPageSettingsName,
-            detail: state.tunState.settings.name,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundTunPageSettingsMTU,
-            detail: "${state.tunState.settings.mtu}",
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundTunPageSettingsName,
+          value: state.tunState.settings.name,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundTunPageSettingsMTU,
+          value: "${state.tunState.settings.mtu}",
+        ),
+      ],
     );
   }
 
-  Widget _tagSection(BuildContext context, InboundTunController controller, InboundTunCubitState state) {
-    return SectionView(
+  Widget _tagSection(
+    BuildContext context,
+    InboundTunController controller,
+    InboundTunCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundTunPageTag,
-            detail: state.tunState.tag.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundTunPageTag,
+          value: state.tunState.tag.name,
+        ),
+      ],
     );
   }
 
@@ -111,17 +118,14 @@ class InboundTunPage extends StatelessWidget {
     BuildContext context,
     InboundTunController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          ListTile(
-            onTap: () => controller.editSniffing(context),
-            title: Text(AppLocalizations.of(context)!.inboundTunPageSniffing),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-        ],
-      ),
+      children: [
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.inboundTunPageSniffing,
+          onTap: () => controller.editSniffing(context),
+        ),
+      ],
     );
   }
 

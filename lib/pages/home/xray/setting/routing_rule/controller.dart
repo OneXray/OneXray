@@ -61,6 +61,9 @@ class RoutingRuleController extends Cubit<RoutingRuleCubitState> {
     for (final controller in localIPControllers) {
       controller.dispose();
     }
+    for (final controller in processControllers) {
+      controller.dispose();
+    }
     for (final controller in state.ruleAttrs) {
       controller.key.dispose();
       controller.value.dispose();
@@ -112,6 +115,12 @@ class RoutingRuleController extends Cubit<RoutingRuleCubitState> {
     );
     this.localIPControllers.clear();
     this.localIPControllers.addAll(localIPControllers);
+
+    final processControllers = state.process.map(
+      (e) => TextEditingController(text: e),
+    );
+    this.processControllers.clear();
+    this.processControllers.addAll(processControllers);
   }
 
   List<XrayRuleAttr> _initAttrs(RoutingRuleState ruleState) {
@@ -236,6 +245,21 @@ class RoutingRuleController extends Cubit<RoutingRuleCubitState> {
     emit(state.bumped());
   }
 
+  final processControllers = <TextEditingController>[];
+
+  void appendProcess() {
+    processControllers.add(TextEditingController());
+    state.ruleState.process.add("");
+    emit(state.bumped());
+  }
+
+  void deleteProcess(BuildContext context, int index) {
+    final controller = processControllers.removeAt(index);
+    controller.dispose();
+    state.ruleState.process.removeAt(index);
+    emit(state.bumped());
+  }
+
   void updateInboundTag(bool selected, String value) {
     if (selected) {
       state.ruleState.inboundTag.add(value);
@@ -295,6 +319,7 @@ class RoutingRuleController extends Cubit<RoutingRuleCubitState> {
     state.ip = ipControllers.map((c) => c.text).toList();
     state.sourceIP = sourceIPControllers.map((c) => c.text).toList();
     state.localIP = localIPControllers.map((c) => c.text).toList();
+    state.process = processControllers.map((c) => c.text).toList();
   }
 
   void _mergeAttrs(RoutingRuleState ruleState) {

@@ -6,8 +6,7 @@ import 'package:onexray/pages/home/xray/setting/log/controller.dart';
 import 'package:onexray/pages/home/xray/setting/log/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
 
 class XrayLogPage extends StatelessWidget {
@@ -23,17 +22,21 @@ class XrayLogPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<XrayLogController>();
           return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.xrayLogPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.xrayLogPageTitle),
+            ),
+            body: SafeArea(child: _body(context, controller, state)),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, XrayLogController controller, XrayLogCubitState state) {
+  Widget _body(
+    BuildContext context,
+    XrayLogController controller,
+    XrayLogCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -49,45 +52,32 @@ class XrayLogPage extends StatelessWidget {
     );
   }
 
-  Widget _settingSection(BuildContext context, XrayLogController controller, XrayLogCubitState state) {
-    return SectionView(
+  Widget _settingSection(
+    BuildContext context,
+    XrayLogController controller,
+    XrayLogCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.xrayLogPageLogLevel),
-              TextMenuPicker(
-                title: state.logState.logLevel.name,
-                selections: XrayLogLevel.names,
-                callback: (value) => controller.updateLogLevel(value),
-              ),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.xrayLogPageDnsLog),
-              Switch(
-                value: state.logState.dnsLog,
-                onChanged: (value) => controller.updateDnsLog(value),
-              ),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.xrayLogPageMaskAddress),
-              TextMenuPicker(
-                title: state.logState.maskAddress.name,
-                selections: XrayLogMaskAddress.names,
-                callback: (value) => controller.updateMaskAddress(value),
-              ),
-            ],
-          ),
-        ],
-      ),
+      children: [
+        SelectSettingRow(
+          title: AppLocalizations.of(context)!.xrayLogPageLogLevel,
+          value: state.logState.logLevel.name,
+          selections: XrayLogLevel.names,
+          onSelected: (value) => controller.updateLogLevel(value),
+        ),
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.xrayLogPageDnsLog,
+          value: state.logState.dnsLog,
+          onChanged: (value) => controller.updateDnsLog(value),
+        ),
+        SelectSettingRow(
+          title: AppLocalizations.of(context)!.xrayLogPageMaskAddress,
+          value: state.logState.maskAddress.name,
+          selections: XrayLogMaskAddress.names,
+          onSelected: (value) => controller.updateMaskAddress(value),
+        ),
+      ],
     );
   }
 

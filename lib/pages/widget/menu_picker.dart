@@ -36,7 +36,7 @@ class TextMenuPicker<T extends Object> extends StatelessWidget {
         child: Text(
           displayTitle,
           style: TextStyle(
-            color: ColorManager.formTitle(context),
+            color: ColorManager.interactiveText(context),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -153,6 +153,8 @@ class IconMenuPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = ColorManager.secondaryText(context);
+    final textColor = ColorManager.primaryText(context);
     return PopupMenuButton<IconMenuId>(
       icon: Icon(icon),
       onSelected: (menu) => callback(menu.name),
@@ -162,9 +164,9 @@ class IconMenuPicker extends StatelessWidget {
               value: menu,
               child: Row(
                 children: [
-                  Icon(menu.icon),
+                  Icon(menu.icon, color: iconColor),
                   const SizedBox(width: 12),
-                  Text(menu.title),
+                  Text(menu.title, style: TextStyle(color: textColor)),
                 ],
               ),
             ),

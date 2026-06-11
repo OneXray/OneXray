@@ -7,7 +7,7 @@ import 'package:onexray/pages/home/xray/setting/inbound_sniffing/controller.dart
 import 'package:onexray/pages/home/xray/setting/inbound_sniffing/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 
 class InboundSniffingPage extends StatelessWidget {
@@ -23,17 +23,23 @@ class InboundSniffingPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<InboundSniffingController>();
           return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.inboundSniffingPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
+            appBar: AppBar(
+              title: Text(
+                AppLocalizations.of(context)!.inboundSniffingPageTitle,
+              ),
+            ),
+            body: SafeArea(child: _body(context, controller, state)),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, InboundSniffingController controller, InboundSniffingCubitState state) {
+  Widget _body(
+    BuildContext context,
+    InboundSniffingController controller,
+    InboundSniffingCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -59,43 +65,43 @@ class InboundSniffingPage extends StatelessWidget {
 
   Widget _enableSection(
     BuildContext context,
-    InboundSniffingController controller, InboundSniffingCubitState state) {
-    return SectionView(
+    InboundSniffingController controller,
+    InboundSniffingCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(AppLocalizations.of(context)!.switchEnabled),
-          Switch(
-            value: state.sniffingState.enabled,
-            onChanged: (value) => controller.updateEnabled(value),
-          ),
-        ],
-      ),
+      children: [
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.switchEnabled,
+          value: state.sniffingState.enabled,
+          onChanged: (value) => controller.updateEnabled(value),
+        ),
+      ],
     );
   }
 
   Widget _routeOnlySection(
     BuildContext context,
-    InboundSniffingController controller, InboundSniffingCubitState state) {
-    return SectionView(
+    InboundSniffingController controller,
+    InboundSniffingCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(AppLocalizations.of(context)!.switchRouteOnly),
-          Switch(
-            value: state.sniffingState.routeOnly,
-            onChanged: (value) => controller.updateRouteOnly(value),
-          ),
-        ],
-      ),
+      children: [
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.switchRouteOnly,
+          value: state.sniffingState.routeOnly,
+          onChanged: (value) => controller.updateRouteOnly(value),
+        ),
+      ],
     );
   }
 
   Widget _destOverrideSection(
     BuildContext context,
-    InboundSniffingController controller, InboundSniffingCubitState state) {
+    InboundSniffingController controller,
+    InboundSniffingCubitState state,
+  ) {
     final children = InboundSniffingDestOverride.values.map((value) {
       return FilterChip(
         label: Text(value.name),
@@ -105,65 +111,57 @@ class InboundSniffingPage extends StatelessWidget {
       );
     }).toList();
 
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.inboundSniffingPageDestOverride,
-      child: Wrap(spacing: 5.0, runSpacing: 5.0, children: children),
+      separated: false,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.all(16),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Wrap(spacing: 5.0, runSpacing: 5.0, children: children),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _domainsExcludedSection(
     BuildContext context,
-    InboundSniffingController controller, InboundSniffingCubitState state) {
+    InboundSniffingController controller,
+    InboundSniffingCubitState state,
+  ) {
     final domainsExcludedViews = state.sniffingState.domainsExcluded
         .mapIndexed(
-          (index, host) => Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.domainsExcludedControllers[index],
-                  decoration: InputDecoration(
-                    label: Text(
-                      AppLocalizations.of(
-                        context,
-                      )!.inboundSniffingPageDomainsExcluded,
-                    ),
-                    hintText: AppLocalizations.of(
-                      context,
-                    )!.inboundSniffingPageDomainsExcludedExample,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () =>
-                    controller.deleteDomainsExcluded(context, index),
-                icon: Icon(Icons.delete),
-              ),
-            ],
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.domainsExcludedControllers[index],
+            label: AppLocalizations.of(
+              context,
+            )!.inboundSniffingPageDomainsExcluded,
+            hintText: AppLocalizations.of(
+              context,
+            )!.inboundSniffingPageDomainsExcludedExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteDomainsExcluded(context, index),
+              icon: const Icon(Icons.delete),
+            ),
           ),
         )
         .toList();
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                AppLocalizations.of(
-                  context,
-                )!.inboundSniffingPageDomainsExcluded,
-              ),
-              IconButton(
-                onPressed: () => controller.appendDomainsExcluded(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(
+            context,
+          )!.inboundSniffingPageDomainsExcluded,
+          trailing: IconButton(
+            onPressed: () => controller.appendDomainsExcluded(),
+            icon: const Icon(Icons.add),
           ),
-          if (domainsExcludedViews.isNotEmpty)
-            Column(children: domainsExcludedViews),
-        ],
-      ),
+        ),
+        ...domainsExcludedViews,
+      ],
     );
   }
 

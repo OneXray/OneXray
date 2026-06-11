@@ -7,7 +7,7 @@ class SubUpdatePageState {
   final SubUpdateState subUpdateState;
 
   SubUpdatePageState({SubUpdateState? subUpdateState})
-      : subUpdateState = subUpdateState ?? SubUpdateState();
+    : subUpdateState = subUpdateState ?? SubUpdateState();
 
   SubUpdatePageState _copy() {
     return SubUpdatePageState(subUpdateState: subUpdateState);
@@ -37,6 +37,16 @@ class SubUpdateController extends Cubit<SubUpdatePageState> {
 
   void updateAutoPing(bool value) {
     state.subUpdateState.autoPing = value;
+    emit(state._copy());
+  }
+
+  void updateGeoDataEnable(bool value) {
+    state.subUpdateState.geoDataEnable = value;
+    emit(state._copy());
+  }
+
+  void updateGeoDataInterval(SubUpdateInterval value) {
+    state.subUpdateState.geoDataInterval = value;
     emit(state._copy());
   }
 

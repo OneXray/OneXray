@@ -1,15 +1,16 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/routing/controller.dart';
 import 'package:onexray/pages/home/xray/setting/routing/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/routing_rule_state.dart';
@@ -27,28 +28,34 @@ class RoutingPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<RoutingController>();
           return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.routingPageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.routingPageTitle),
+            ),
+            body: SafeArea(child: _body(context, controller, state)),
+          );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, RoutingController controller, RoutingCubitState state) {
+  Widget _body(
+    BuildContext context,
+    RoutingController controller,
+    RoutingCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _routingSection(context, controller, state),
-                  _ruleSection(context, controller, state),
-                ],
+              child: ResponsiveContent(
+                child: Column(
+                  children: [
+                    _routingSection(context, controller, state),
+                    _ruleSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
           ),
@@ -58,49 +65,42 @@ class RoutingPage extends StatelessWidget {
     );
   }
 
-  Widget _routingSection(BuildContext context, RoutingController controller, RoutingCubitState state) {
-    return SectionView(
-      title: "",
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(AppLocalizations.of(context)!.routingPageDomainStrategy),
-          TextMenuPicker(
-            title: state.routingState.domainStrategy.name,
-            selections: RoutingDomainStrategy.names,
-            callback: (value) => controller.updateDomainStrategy(value),
-          ),
-        ],
-      ),
+  Widget _routingSection(
+    BuildContext context,
+    RoutingController controller,
+    RoutingCubitState state,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.routingPageSectionStrategy,
+      children: [
+        SelectSettingRow(
+          title: AppLocalizations.of(context)!.routingPageDomainStrategy,
+          value: state.routingState.domainStrategy.name,
+          selections: RoutingDomainStrategy.names,
+          onSelected: (value) => controller.updateDomainStrategy(value),
+        ),
+      ],
     );
   }
 
-  Widget _ruleSection(BuildContext context, RoutingController controller, RoutingCubitState state) {
-    return SectionView(
-      title: "",
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.routingPageRules),
-              IconButton(
-                onPressed: () => controller.appendCustomRule(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
-          ),
-          _systemRuleSection(context, controller, state),
-          if (state.routingState.customRules.isNotEmpty)
-            _customRuleSection(context, controller, state),
-        ],
-      ),
+  Widget _ruleSection(
+    BuildContext context,
+    RoutingController controller,
+    RoutingCubitState state,
+  ) {
+    return Column(
+      children: [
+        _systemRuleSection(context, controller, state),
+        _customRuleSection(context, controller, state),
+      ],
     );
   }
 
   Widget _systemRuleSection(
     BuildContext context,
-    RoutingController controller, RoutingCubitState state) {
+    RoutingController controller,
+    RoutingCubitState state,
+  ) {
     final rules = <RoutingRuleState>[
       state.routingState.dnsQueryRule,
       state.routingState.dnsOutRule,
@@ -111,10 +111,9 @@ class RoutingPage extends StatelessWidget {
           (index, rule) => _systemRuleCell(context, controller, rule, index),
         )
         .toList();
-    return SectionView(
-      title: "",
-      level: SectionLevel.second,
-      child: Column(children: ruleViews),
+    return SettingSection(
+      title: AppLocalizations.of(context)!.routingPageSectionSystemRules,
+      children: ruleViews,
     );
   }
 
@@ -124,30 +123,45 @@ class RoutingPage extends StatelessWidget {
     RoutingRuleState rule,
     int ruleIndex,
   ) {
-    return ListTile(
+    return NavigationSettingRow(
       onTap: () => controller.showSystemRule(context, ruleIndex),
-      title: Text(rule.ruleTag),
-      subtitle: Row(children: [TagView(tag: rule.uiTag)]),
+      title: rule.ruleTag,
+      subtitleWidget: Row(children: [TagView(tag: rule.uiTag)]),
     );
   }
 
   Widget _customRuleSection(
     BuildContext context,
-    RoutingController controller, RoutingCubitState state) {
+    RoutingController controller,
+    RoutingCubitState state,
+  ) {
     final ruleViews = state.routingState.customRules
         .mapIndexed(
           (index, rule) => _customRuleCell(context, controller, rule, index),
         )
         .toList();
-    return SectionView(
-      title: AppLocalizations.of(context)!.helpOrder,
-      level: SectionLevel.second,
-      child: ReorderableListView(
-        shrinkWrap: true,
-        onReorder: (int oldIndex, int newIndex) =>
-            controller.sortCustomRule(oldIndex, newIndex),
-        children: ruleViews,
-      ),
+    return SettingSection(
+      title: AppLocalizations.of(context)!.routingPageSectionCustomRules,
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.routingPageRules,
+          trailing: IconButton(
+            onPressed: () => controller.appendCustomRule(),
+            icon: const Icon(Icons.add),
+          ),
+        ),
+        if (ruleViews.isNotEmpty)
+          ReorderableListView(
+            buildDefaultDragHandles: false,
+            shrinkWrap: true,
+            onReorderItem: (int oldIndex, int newIndex) =>
+                controller.sortCustomRule(
+                  oldIndex,
+                  _legacyReorderNewIndex(oldIndex, newIndex),
+                ),
+            children: ruleViews,
+          ),
+      ],
     );
   }
 
@@ -157,20 +171,27 @@ class RoutingPage extends StatelessWidget {
     RoutingRuleState rule,
     int ruleIndex,
   ) {
-    var contentPadding = EdgeInsetsDirectional.symmetric(horizontal: 16);
-    if (AppPlatform.isDesktop) {
-      contentPadding = EdgeInsetsDirectional.only(start: 16, end: 40);
-    }
-    return ListTile(
+    return ReorderableDelayedDragStartListener(
       key: Key("$ruleIndex"),
-      contentPadding: contentPadding,
-      onTap: () => controller.editCustomRule(context, ruleIndex),
-      title: Text(rule.ruleTag),
-      subtitle: Row(children: [TagView(tag: rule.uiTag)]),
-      trailing: IconMenuPicker(
-        icon: Icons.more_vert,
-        menus: [IconMenuId.delete],
-        callback: (menuId) => controller.ruleMoreAction(menuId, ruleIndex),
+      index: ruleIndex,
+      child: DataListRow(
+        onTap: () => controller.editCustomRule(context, ruleIndex),
+        title: rule.ruleTag,
+        tags: [TagView(tag: rule.uiTag)],
+        trailing: ActionCluster(
+          children: [
+            IconMenuPicker(
+              icon: Icons.more_vert,
+              menus: [IconMenuId.delete],
+              callback: (menuId) =>
+                  controller.ruleMoreAction(menuId, ruleIndex),
+            ),
+            ReorderDragHandle(
+              index: ruleIndex,
+              tooltip: AppLocalizations.of(context)!.helpOrder,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -188,5 +209,12 @@ class RoutingPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  int _legacyReorderNewIndex(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) {
+      return newIndex + 1;
+    }
+    return newIndex;
   }
 }

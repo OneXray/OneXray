@@ -79,6 +79,9 @@ abstract class BridgeHostApi {
 
 enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
+// macOS only
+enum RefreshVpnResult { installed, notInstalled, waitForApproval }
+
 class AndroidAppInfo {
   AndroidAppInfo({required this.name, required this.packageName});
 
@@ -90,4 +93,7 @@ class AndroidAppInfo {
 abstract class BridgeFlutterApi {
   @async
   void vpnStatusChanged(VpnStatus status);
+
+  @async
+  void refreshVpn(RefreshVpnResult result);
 }

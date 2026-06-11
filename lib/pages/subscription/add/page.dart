@@ -5,7 +5,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/subscription/add/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
@@ -42,15 +42,12 @@ class _SubscriptionAddPageState extends State<SubscriptionAddPage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: SectionView(
+              child: SettingSection(
                 title: AppLocalizations.of(context)!.subscriptionAddPageSection,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _name(context, controller),
-                    _url(context, controller),
-                  ],
-                ),
+                children: [
+                  _name(context, controller),
+                  _url(context, controller),
+                ],
               ),
             ),
           ),
@@ -61,23 +58,19 @@ class _SubscriptionAddPageState extends State<SubscriptionAddPage> {
   }
 
   Widget _name(BuildContext context, SubscriptionAddController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.nameController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.subscriptionAddPageName),
-        hintText: AppLocalizations.of(context)!.subscriptionAddPageName,
-      ),
+      label: AppLocalizations.of(context)!.subscriptionAddPageName,
+      hintText: AppLocalizations.of(context)!.subscriptionAddPageName,
     );
   }
 
   Widget _url(BuildContext context, SubscriptionAddController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.urlController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.subscriptionAddPageUrl),
-        hintText: AppLocalizations.of(context)!.subscriptionAddPageUrlExample,
-        helperText: AppLocalizations.of(context)!.helpURL,
-      ),
+      label: AppLocalizations.of(context)!.subscriptionAddPageUrl,
+      hintText: AppLocalizations.of(context)!.subscriptionAddPageUrlExample,
+      helperText: AppLocalizations.of(context)!.helpURL,
     );
   }
 

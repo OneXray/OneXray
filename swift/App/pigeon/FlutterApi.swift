@@ -22,7 +22,7 @@ class AppFlutterApi {
             await VPNManager.shared.unregisterStatusObserver()
         }
     }
-    
+
     func vpnStatusChanged() {
         if let status = VPNManager.shared.readStatus() {
             YGLog("readRunningVpn \(status.rawValue)")
@@ -44,6 +44,11 @@ class AppFlutterApi {
         } else {
             flutterApi.vpnStatusChanged(status: .disconnected) { _ in
             }
+        }
+    }
+
+    func refreshVpn(result: RefreshVpnResult) {
+        flutterApi.refreshVpn(result: result) { _ in
         }
     }
 }

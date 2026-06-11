@@ -29,7 +29,8 @@ class AppHostApi: BridgeHostApi {
 
     func readVpnStatus(completion: @escaping (Result<Void, any Error>) -> Void) {
         Task {
-            await VPNManager.shared.refreshVpn()
+            let installed = await VPNManager.shared.refreshVpn()
+            await flutterApi.refreshVpn(result: installed)
             await flutterApi.vpnStatusChanged()
             completion(.success(()))
         }
@@ -37,14 +38,16 @@ class AppHostApi: BridgeHostApi {
     
     func startVpn(completion: @escaping (Result<Void, any Error>) -> Void) {
         Task {
-            _ = await VPNManager.shared.startVpn()
+            let installed = await VPNManager.shared.startVpn()
+            await flutterApi.refreshVpn(result: installed)
             completion(.success(()))
         }
     }
 
     func stopVpn(completion: @escaping (Result<Void, any Error>) -> Void) {
         Task {
-            await VPNManager.shared.stopVpn()
+            let installed = await VPNManager.shared.stopVpn()
+            await flutterApi.refreshVpn(result: installed)
             completion(.success(()))
         }
     }
@@ -157,17 +160,17 @@ class AppHostApi: BridgeHostApi {
         completion(.success(true))
     }
     
-    // android
+    /// android
     func getInstalledApps(completion: @escaping (Result<[AndroidAppInfo], any Error>) -> Void) {
         completion(.success([]))
     }
 
-    // macOS
+    /// macOS
     func useSystemExtension(completion: @escaping (Result<Bool, any Error>) -> Void) {
         completion(.success(Constants.useSystemExtension))
     }
 
-    // iOS
+    /// iOS
     func setAppIcon(appIcon: String, completion: @escaping (Result<Bool, any Error>) -> Void) {
 #if os(iOS)
         var iconName: String? = appIcon

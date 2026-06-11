@@ -1,0 +1,94 @@
+# OneXray
+
+[English](../README.md) | [简体中文](./README.zh_CN.md)
+
+## О приложении
+
+Подписывайтесь на Telegram-канал: [OneXray](https://t.me/OneXrayApp)
+
+[Документация](https://onexray.com)
+
+[Первый запуск](./FIRST_RUN.ru.md)
+
+## Загрузка
+
+| Платформа | Требования | Загрузка |
+| --- | --- | --- |
+| iOS | iOS 15.0 и выше, arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773), [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| macOS | macOS 12.0 и выше, Apple silicon или Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773), [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Android | Android 10.0 и выше, arm32, arm64 или x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows | Windows 10 или Windows 11, x86_64 | [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+
+## Настольный CLI
+
+Настольные пакеты включают CLI `onexray`. CLI подключается к запущенному приложению через локальный Automation API, поэтому перед использованием команд OneXray должен быть открыт.
+
+```shell
+onexray health
+onexray status
+onexray import --file /path/to/import.txt
+onexray import --text 'vless://...'
+cat import.txt | onexray import --file -
+onexray debug session
+onexray vpn start
+onexray vpn start --id 123
+onexray vpn stop
+```
+
+`onexray import` принимает ссылки OneXray URL Scheme, HTTPS URL подписок, Xray share links, многострочный share text, Clash.Meta YAML и Xray JSON text, если такой формат поддерживается встроенным libXray API. `--file` читает текстовые файлы; импорт QR-изображений доступен в интерфейсе приложения.
+
+Точные параметры команд, import payloads, session paths и детали Automation API описаны в [Develop](https://onexray.com/ru/docs/develop/) и [AI Reference](https://onexray.com/ru/docs/reference/).
+
+## Примечания
+
+### iOS
+
+Если у вас нет Apple ID или ваш Apple ID не может скачать OneXray, скачайте **OneXray-ios.ipa** и установите его через [AltStore](https://altstore.io/) или другой сторонний инструмент.
+
+### Linux
+
+Если вы используете ZIP-пакет, выполните следующие настройки для нормальной работы OneXray.
+
+Перед выполнением команды проверьте текущий каталог.
+
+```shell
+sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+```
+
+Если вы используете DEB-пакет, для установки и удаления можно использовать команды:
+
+```shell
+sudo apt install ./OneXray-linux-x86_64.deb
+sudo apt remove onexray
+```
+
+Если ваша среда рабочего стола - GNOME, установите расширение [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator).
+
+Если архитектура процессора вашей машины Arm64, при переключении языка на CJK-язык (китайский, японский или корейский) OneXray сбросит язык интерфейса на английский.
+
+### Обновление ядра
+
+На Linux и Windows вы можете самостоятельно обновить или заменить Xray-core. Его можно собрать build-скриптом по инструкциям из [libXray](https://github.com/XTLS/libXray).
+
+#### Linux
+
+Замените `OneXray/lib/libXray.so` на артефакт libXray `linux_so/libXray.so`.
+
+Замените `OneXray/bin/OneXrayCore` на артефакт libXray `bin/xray`.
+
+#### Windows
+
+Замените `OneXray/libXray.dll` на артефакт libXray `windows_dll/libXray.dll`.
+
+Замените `OneXray/bin/OneXrayCore.exe` на артефакт libXray `bin/xray.exe`.
+
+## Участие
+
+Если проект оказался полезен, вы можете помочь ему следующими способами:
+
+1. Поставить проекту star.
+2. Перевести документацию приложения [onexray.com](https://github.com/OneXray/onexray.com).
+3. Поделиться своими routing settings в [Routing](https://github.com/OneXray/Routing).

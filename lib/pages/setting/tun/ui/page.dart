@@ -7,10 +7,10 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/tun/ui/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
-import 'package:onexray/pages/widget/text_row.dart';
 import 'package:onexray/service/tun_setting/enum.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 
@@ -148,61 +148,48 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (AppPlatform.isLinux || AppPlatform.isWindows)
-            TextRow(
-              title: AppLocalizations.of(context)!.tunSettingUIPageTunName,
-              detail: state.tunSettingState.tunName,
-            ),
-          if (AppPlatform.isLinux) _tunPriority(context, controller),
-          _tunDnsIPv4(context, controller),
-          _tunDnsIPv6(context, controller),
-          if (AppPlatform.isIOS || AppPlatform.isMacOS)
-            _enableDot(context, state, controller),
-          if ((AppPlatform.isIOS || AppPlatform.isMacOS) &&
-              state.tunSettingState.enableDot)
-            _tunDnsServerName(context, controller),
-          _enableIPv6(context, state, controller),
-        ],
-      ),
+      children: [
+        if (AppPlatform.isLinux || AppPlatform.isWindows)
+          SettingRow(
+            title: AppLocalizations.of(context)!.tunSettingUIPageTunName,
+            value: state.tunSettingState.tunName,
+          ),
+        if (AppPlatform.isLinux) _tunPriority(context, controller),
+        _tunDnsIPv4(context, controller),
+        _tunDnsIPv6(context, controller),
+        if (AppPlatform.isIOS || AppPlatform.isMacOS)
+          _enableDot(context, state, controller),
+        if ((AppPlatform.isIOS || AppPlatform.isMacOS) &&
+            state.tunSettingState.enableDot)
+          _tunDnsServerName(context, controller),
+        _enableIPv6(context, state, controller),
+      ],
     );
   }
 
   Widget _tunPriority(BuildContext context, TunSettingUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.tunPriorityController,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.tunSettingUIPageTunPriority),
-        hintText: AppLocalizations.of(context)!.tunSettingUIPageTunPriority,
-      ),
+      label: AppLocalizations.of(context)!.tunSettingUIPageTunPriority,
+      hintText: AppLocalizations.of(context)!.tunSettingUIPageTunPriority,
     );
   }
 
   Widget _tunDnsIPv4(BuildContext context, TunSettingUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.tunDnsIPv4Controller,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv4),
-        hintText: AppLocalizations.of(
-          context,
-        )!.tunSettingUIPageTunDnsIPv4Example,
-      ),
+      label: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv4,
+      hintText: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv4Example,
     );
   }
 
   Widget _tunDnsIPv6(BuildContext context, TunSettingUIController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.tunDnsIPv6Controller,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv6),
-        hintText: AppLocalizations.of(
-          context,
-        )!.tunSettingUIPageTunDnsIPv6Example,
-      ),
+      label: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv6,
+      hintText: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv6Example,
     );
   }
 
@@ -211,15 +198,10 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.tunSettingUIPageTunDnsEnableDot),
-        Switch(
-          value: state.tunSettingState.enableDot,
-          onChanged: (value) => controller.updateEnableDot(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.tunSettingUIPageTunDnsEnableDot,
+      value: state.tunSettingState.enableDot,
+      onChanged: (value) => controller.updateEnableDot(value),
     );
   }
 
@@ -227,16 +209,12 @@ class TunSettingUIPage extends StatelessWidget {
     BuildContext context,
     TunSettingUIController controller,
   ) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller.tunDnsServerNameController,
-      decoration: InputDecoration(
-        label: Text(
-          AppLocalizations.of(context)!.tunSettingUIPageTunDnsServerName,
-        ),
-        hintText: AppLocalizations.of(
-          context,
-        )!.tunSettingUIPageTunDnsServerNameExample,
-      ),
+      label: AppLocalizations.of(context)!.tunSettingUIPageTunDnsServerName,
+      hintText: AppLocalizations.of(
+        context,
+      )!.tunSettingUIPageTunDnsServerNameExample,
     );
   }
 
@@ -245,15 +223,10 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6),
-        Switch(
-          value: state.tunSettingState.enableIPv6,
-          onChanged: (value) => controller.updateEnableIPv6(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6,
+      value: state.tunSettingState.enableIPv6,
+      onChanged: (value) => controller.updateEnableIPv6(value),
     );
   }
 
@@ -262,9 +235,9 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: _interface(context, state, controller),
+      children: [_interface(context, state, controller)],
     );
   }
 
@@ -273,12 +246,10 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return InkWell(
+    return NavigationSettingRow(
+      title: AppLocalizations.of(context)!.tunSettingUIPageInterface,
+      value: state.tunSettingState.bindInterface,
       onTap: () => controller.editInterface(context),
-      child: TextRow(
-        title: AppLocalizations.of(context)!.tunSettingUIPageInterface,
-        detail: state.tunSettingState.bindInterface,
-      ),
     );
   }
 
@@ -287,15 +258,13 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _onDemandEnabled(context, state, controller),
-          if (state.tunSettingState.onDemandEnabled)
-            _onDemandRulesSection(context, state, controller),
-        ],
-      ),
+      children: [
+        _onDemandEnabled(context, state, controller),
+        if (state.tunSettingState.onDemandEnabled)
+          ..._onDemandRulesSection(context, state, controller),
+      ],
     );
   }
 
@@ -304,19 +273,14 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.tunSettingUIPageOnDemandEnabled),
-        Switch(
-          value: state.tunSettingState.onDemandEnabled,
-          onChanged: (value) => controller.updateOnDemandEnabled(value),
-        ),
-      ],
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.tunSettingUIPageOnDemandEnabled,
+      value: state.tunSettingState.onDemandEnabled,
+      onChanged: (value) => controller.updateOnDemandEnabled(value),
     );
   }
 
-  Widget _onDemandRulesSection(
+  List<Widget> _onDemandRulesSection(
     BuildContext context,
     TunSettingUIState state,
     TunSettingUIController controller,
@@ -326,30 +290,27 @@ class TunSettingUIPage extends StatelessWidget {
           (index, rule) => _onDemandRuleCell(context, controller, rule, index),
         )
         .toList();
-    return SectionView(
-      title: AppLocalizations.of(context)!.helpOrder,
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.tunSettingUIPageOnDemandRules),
-              IconButton(
-                onPressed: () => controller.appendOnDemandRule(),
-                icon: const Icon(Icons.add),
-              ),
-            ],
-          ),
-          if (ruleViews.isNotEmpty)
-            ReorderableListView(
-              shrinkWrap: true,
-              onReorder: (int oldIndex, int newIndex) =>
-                  controller.sortOnDemandRule(oldIndex, newIndex),
-              children: ruleViews,
-            ),
-        ],
+    return [
+      SettingRow(
+        title: AppLocalizations.of(context)!.tunSettingUIPageOnDemandRules,
+        subtitle: AppLocalizations.of(context)!.helpOrder,
+        trailing: IconButton(
+          onPressed: () => controller.appendOnDemandRule(),
+          icon: const Icon(Icons.add),
+        ),
       ),
-    );
+      if (ruleViews.isNotEmpty)
+        ReorderableListView(
+          buildDefaultDragHandles: false,
+          shrinkWrap: true,
+          onReorderItem: (int oldIndex, int newIndex) =>
+              controller.sortOnDemandRule(
+                oldIndex,
+                _legacyReorderNewIndex(oldIndex, newIndex),
+              ),
+          children: ruleViews,
+        ),
+    ];
   }
 
   Widget _onDemandRuleCell(
@@ -358,20 +319,26 @@ class TunSettingUIPage extends StatelessWidget {
     OnDemandRuleState rule,
     int index,
   ) {
-    var contentPadding = EdgeInsetsDirectional.symmetric(horizontal: 16);
-    if (AppPlatform.isDesktop) {
-      contentPadding = EdgeInsetsDirectional.only(start: 16, end: 40);
-    }
-    return ListTile(
+    return ReorderableDelayedDragStartListener(
       key: Key("$index"),
-      contentPadding: contentPadding,
-      onTap: () => controller.editOnDemandRule(context, index),
-      title: Text(rule.interfaceType.name),
-      subtitle: Row(children: [TagView(tag: rule.mode.name)]),
-      trailing: IconMenuPicker(
-        icon: Icons.more_vert,
-        menus: [IconMenuId.delete],
-        callback: (menuId) => controller.moreAction(menuId, index),
+      index: index,
+      child: DataListRow(
+        onTap: () => controller.editOnDemandRule(context, index),
+        title: rule.interfaceType.name,
+        tags: [TagView(tag: rule.mode.name)],
+        trailing: ActionCluster(
+          children: [
+            IconMenuPicker(
+              icon: Icons.more_vert,
+              menus: [IconMenuId.delete],
+              callback: (menuId) => controller.moreAction(menuId, index),
+            ),
+            ReorderDragHandle(
+              index: index,
+              tooltip: AppLocalizations.of(context)!.helpOrder,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -381,14 +348,12 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          _perAppVPNMode(context, state, controller),
-          _appList(context, state, controller),
-        ],
-      ),
+      children: [
+        _perAppVPNMode(context, state, controller),
+        _appList(context, state, controller),
+      ],
     );
   }
 
@@ -397,16 +362,11 @@ class TunSettingUIPage extends StatelessWidget {
     TunSettingUIState state,
     TunSettingUIController controller,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNMode),
-        TextMenuPicker(
-          title: state.tunSettingState.perAppVPNMode.name,
-          selections: PerAppVPNMode.names,
-          callback: (value) => controller.updatePerAppVPNMode(value),
-        ),
-      ],
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNMode,
+      value: state.tunSettingState.perAppVPNMode.name,
+      selections: PerAppVPNMode.names,
+      onSelected: (value) => controller.updatePerAppVPNMode(value),
     );
   }
 
@@ -424,15 +384,13 @@ class TunSettingUIPage extends StatelessWidget {
         length = state.tunSettingState.disallowAppList.length;
         break;
     }
-    return ListTile(
+    return NavigationSettingRow(
+      title: AppLocalizations.of(context)!.tunSettingUIPagePerAppVPN,
+      value: AppLocalizations.of(
+        context,
+      )!.tunSettingUIPagePerAppVPNCount("$length"),
+      subtitle: AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNHelp,
       onTap: () => controller.editAppList(context),
-      title: Text(AppLocalizations.of(context)!.tunSettingUIPagePerAppVPN),
-      subtitle: Text(
-        AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNHelp,
-      ),
-      trailing: Text(
-        AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNCount("$length"),
-      ),
     );
   }
 
@@ -452,5 +410,12 @@ class TunSettingUIPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  int _legacyReorderNewIndex(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) {
+      return newIndex + 1;
+    }
+    return newIndex;
   }
 }

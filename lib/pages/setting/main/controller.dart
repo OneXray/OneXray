@@ -6,8 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/app_update/dialog.dart';
 import 'package:onexray/pages/geo_data/list/params.dart';
 import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/doc/helper.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,13 +19,23 @@ import 'package:url_launcher/url_launcher.dart';
 class SettingState {
   final String appVersion;
   final String xrayVersion;
+  final bool checkingUpdate;
 
-  const SettingState({this.appVersion = "", this.xrayVersion = ""});
+  const SettingState({
+    this.appVersion = "",
+    this.xrayVersion = "",
+    this.checkingUpdate = false,
+  });
 
-  SettingState copyWith({String? appVersion, String? xrayVersion}) {
+  SettingState copyWith({
+    String? appVersion,
+    String? xrayVersion,
+    bool? checkingUpdate,
+  }) {
     return SettingState(
       appVersion: appVersion ?? this.appVersion,
       xrayVersion: xrayVersion ?? this.xrayVersion,
+      checkingUpdate: checkingUpdate ?? this.checkingUpdate,
     );
   }
 }
@@ -35,7 +49,9 @@ class SettingController extends Cubit<SettingState> {
     final packageInfo = await PackageInfo.fromPlatform();
     final appVersion = "${packageInfo.version}+${packageInfo.buildNumber}";
     final xrayVersion = await AppHostApi().xrayVersion();
-    emit(state.copyWith(appVersion: appVersion, xrayVersion: xrayVersion));
+    if (!isClosed) {
+      emit(state.copyWith(appVersion: appVersion, xrayVersion: xrayVersion));
+    }
   }
 
   void gotoTunSetting(BuildContext context) {
@@ -71,6 +87,61 @@ class SettingController extends Cubit<SettingState> {
 
   void gotoLog(BuildContext context) {
     context.push(RouterPath.log);
+  }
+
+  Future<void> checkUpdate(BuildContext context) async {
+    if (state.checkingUpdate) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.runningAndWait,
+      );
+      return;
+    }
+    emit(state.copyWith(checkingUpdate: true));
+    try {
+      final result = await AppUpdateService().checkForUpdate();
+      if (!context.mounted) {
+        return;
+      }
+      await _handleUpdateResult(context, result, showUpToDate: true);
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(checkingUpdate: false));
+      }
+    }
+  }
+
+  Future<void> _handleUpdateResult(
+    BuildContext context,
+    AppUpdateCheckResult result, {
+    required bool showUpToDate,
+  }) async {
+    switch (result.status) {
+      case AppUpdateCheckStatus.available:
+        final updateInfo = result.updateInfo;
+        if (updateInfo != null) {
+          await _showUpdateDialog(context, updateInfo);
+        }
+      case AppUpdateCheckStatus.upToDate:
+        if (showUpToDate) {
+          ContextAlert.showToast(
+            context,
+            AppLocalizations.of(context)!.appUpdateAlreadyLatest,
+          );
+        }
+      case AppUpdateCheckStatus.failed:
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.appUpdateCheckFailed,
+        );
+    }
+  }
+
+  Future<void> _showUpdateDialog(
+    BuildContext context,
+    AppUpdateInfo updateInfo,
+  ) async {
+    await AppUpdateDialog.show(context, updateInfo);
   }
 
   void gotoBackup(BuildContext context) {

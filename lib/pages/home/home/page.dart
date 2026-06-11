@@ -3,8 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/app_update/reminder.dart';
 import 'package:onexray/pages/global/constants.dart';
+import 'package:onexray/pages/home/home/component/outbound/controller.dart';
 import 'package:onexray/pages/home/home/component/outbound/view.dart';
+import 'package:onexray/pages/home/home/component/raw/controller.dart';
 import 'package:onexray/pages/home/home/component/raw/view.dart';
 import 'package:onexray/pages/home/home/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -21,41 +24,86 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController =
-      TabController(length: 2, vsync: this);
+  late final TabController _tabController = TabController(
+    length: 2,
+    vsync: this,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController.addListener(_handleTabChanged);
+  }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
+  void _handleTabChanged() {
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => HomeController(context, _tabController),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => HomeController(context, _tabController)),
+        BlocProvider(create: (_) => HomeOutboundController()),
+        BlocProvider(create: (_) => HomeRawController()),
+      ],
       child: BlocBuilder<HomeController, HomeState>(
         builder: (context, homeState) {
           final controller = context.read<HomeController>();
           return BlocBuilder<AppEventBus, AppEventBusState>(
-            builder: (context, eventState) => Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  onPressed: () => controller.gotoSettings(context),
-                  icon: Icon(Icons.settings),
+            builder: (context, eventState) => AppUpdateReminder(
+              child: Scaffold(
+                appBar: AppBar(
+                  leading: IconButton(
+                    onPressed: () => controller.gotoSettings(context),
+                    icon: Icon(Icons.settings),
+                  ),
+                  title: Text(AppLocalizations.of(context)!.homePageTitle),
+                  actions: [
+                    _searchButton(context),
+                    _rightButton(context, controller, eventState),
+                  ],
                 ),
-                title: Text(AppLocalizations.of(context)!.homePageTitle),
-                actions: [
-                  _rightButton(context, controller, eventState),
-                ],
-              ),
-              body: SafeArea(
-                child: _body(context, controller, homeState, eventState),
+                body: SafeArea(
+                  child: _body(context, controller, homeState, eventState),
+                ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _searchButton(BuildContext context) {
+    if (_tabController.index == 0) {
+      return BlocBuilder<HomeOutboundController, HomeOutboundState>(
+        buildWhen: (previous, current) =>
+            previous.searching != current.searching,
+        builder: (context, state) {
+          return IconButton(
+            onPressed: () =>
+                context.read<HomeOutboundController>().toggleSearch(),
+            icon: Icon(state.searching ? Icons.close : Icons.search),
+          );
+        },
+      );
+    }
+    return BlocBuilder<HomeRawController, HomeRawState>(
+      buildWhen: (previous, current) => previous.searching != current.searching,
+      builder: (context, state) {
+        return IconButton(
+          onPressed: () => context.read<HomeRawController>().toggleSearch(),
+          icon: Icon(state.searching ? Icons.close : Icons.search),
+        );
+      },
     );
   }
 
@@ -135,7 +183,14 @@ class _HomePageState extends State<HomePage>
         children: [
           Row(
             children: [
-              Expanded(child: _nodeInfo(context, controller, eventState)),
+              Expanded(
+                child: _connectionInfo(
+                  context,
+                  controller,
+                  homeState,
+                  eventState,
+                ),
+              ),
               _startVpnButton(context, controller, eventState),
             ],
           ),
@@ -150,18 +205,29 @@ class _HomePageState extends State<HomePage>
     AppEventBusState eventState,
   ) {
     if (eventState.vpnLoading) {
-      return const CircularProgressIndicator();
+      return const SizedBox.square(
+        dimension: 56,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 28,
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
     } else {
-      final stop = eventState.runningId == DBConstants.defaultId;
-      final color = stop
+      final disconnected = eventState.runningId == DBConstants.defaultId;
+      final color = disconnected
           ? ColorManager.buttonStop(context)
-          : Theme.of(context).primaryColor;
-      final icon = stop ? Icons.public : Icons.private_connectivity;
+          : Theme.of(context).colorScheme.primary;
+      final foregroundColor = disconnected
+          ? ColorManager.buttonStopForeground(context)
+          : Theme.of(context).colorScheme.onPrimary;
+      final icon = disconnected ? Icons.public : Icons.private_connectivity;
       final style = ElevatedButton.styleFrom(
         padding: EdgeInsetsDirectional.zero,
         backgroundColor: color,
         iconSize: 30,
-        iconColor: Colors.white,
+        iconColor: foregroundColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadiusDirectional.circular(12),
         ),
@@ -178,39 +244,87 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Widget _nodeInfo(
+  Widget _connectionInfo(
     BuildContext context,
     HomeController controller,
+    HomeState homeState,
     AppEventBusState eventState,
   ) {
-    if (eventState.runningId == DBConstants.defaultId) {
-      return SizedBox(height: 1);
-    } else {
-      final location = eventState.location;
-      final text = controller.formatGeoLocation(context, location);
-      return InkWell(
-        onTap: () => controller.gotoNodeInfo(context),
-        child: Padding(
-          padding: EdgeInsetsDirectional.symmetric(
-            horizontal: 10,
-            vertical: 10,
+    final connected = eventState.runningId != DBConstants.defaultId;
+    final statusText = _statusText(context, eventState, connected);
+    final nodeName = homeState.configName.isEmpty
+        ? AppLocalizations.of(context)!.homePageNoSelectedNode
+        : homeState.configName;
+    final detailText = connected
+        ? controller.formatGeoLocation(context, eventState.location)
+        : "${AppLocalizations.of(context)!.homePageCurrentNode}: $nodeName";
+    final content = Padding(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 10,
+        vertical: 8,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            connected ? Icons.private_connectivity : Icons.public,
+            size: 20,
+            color: connected
+                ? Theme.of(context).colorScheme.primary
+                : ColorManager.secondaryText(context),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  text,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  statusText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
                     color: ColorManager.primaryText(context),
                   ),
                 ),
-              ),
-              Icon(Icons.chevron_right),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  detailText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: ColorManager.secondaryText(context),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+          if (connected) const Icon(Icons.chevron_right),
+        ],
+      ),
+    );
+    if (!connected) {
+      return content;
     }
+    return InkWell(
+      onTap: () => controller.gotoNodeInfo(context),
+      child: content,
+    );
+  }
+
+  String _statusText(
+    BuildContext context,
+    AppEventBusState eventState,
+    bool connected,
+  ) {
+    if (eventState.vpnLoading) {
+      return AppLocalizations.of(context)!.homePageStatusConnecting;
+    }
+    if (connected) {
+      return AppLocalizations.of(context)!.homePageStatusConnected;
+    }
+    return AppLocalizations.of(context)!.homePageStatusDisconnected;
   }
 }

@@ -140,6 +140,7 @@ XrayRoutingRule _$XrayRoutingRuleFromJson(Map<String, dynamic> json) =>
       (json['attrs'] as Map<String, dynamic>?)?.map(
         (k, e) => MapEntry(k, e as String),
       ),
+      (json['process'] as List<dynamic>?)?.map((e) => e as String).toList(),
       json['outboundTag'] as String?,
       json['ruleTag'] as String?,
     );
@@ -158,6 +159,7 @@ Map<String, dynamic> _$XrayRoutingRuleToJson(XrayRoutingRule instance) =>
       'inboundTag': ?instance.inboundTag,
       'protocol': ?instance.protocol,
       'attrs': ?instance.attrs,
+      'process': ?instance.process,
       'outboundTag': ?instance.outboundTag,
       'ruleTag': ?instance.ruleTag,
     };
@@ -417,7 +419,12 @@ XrayOutboundDns _$XrayOutboundDnsFromJson(Map<String, dynamic> json) =>
       json['network'] as String?,
       json['address'] as String?,
       (json['port'] as num?)?.toInt(),
-      json['nonIPQuery'] as String?,
+      (json['rules'] as List<dynamic>?)
+          ?.map((e) => XrayOutboundDnsRule.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      (json['blockTypes'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList(),
     );
 
 Map<String, dynamic> _$XrayOutboundDnsToJson(XrayOutboundDns instance) =>
@@ -425,8 +432,26 @@ Map<String, dynamic> _$XrayOutboundDnsToJson(XrayOutboundDns instance) =>
       'network': ?instance.network,
       'address': ?instance.address,
       'port': ?instance.port,
-      'nonIPQuery': ?instance.nonIPQuery,
+      'rules': ?instance.rules?.map((e) => e.toJson()).toList(),
+      'blockTypes': ?instance.blockTypes,
     };
+
+XrayOutboundDnsRule _$XrayOutboundDnsRuleFromJson(Map<String, dynamic> json) =>
+    XrayOutboundDnsRule(
+      json['action'] as String?,
+      json['qType'] as String?,
+      json['domain'],
+      (json['rCode'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$XrayOutboundDnsRuleToJson(
+  XrayOutboundDnsRule instance,
+) => <String, dynamic>{
+  'action': ?instance.action,
+  'qType': ?instance.qType,
+  'domain': ?instance.domain,
+  'rCode': ?instance.rCode,
+};
 
 XrayStreamSettings _$XrayStreamSettingsFromJson(
   Map<String, dynamic> json,

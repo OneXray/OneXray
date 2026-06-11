@@ -109,23 +109,25 @@ enum DnsNetwork {
   }
 }
 
-enum DnsNonIPQuery {
-  skip("skip"),
+enum DnsOutboundRuleAction {
+  direct("direct"),
   drop("drop"),
-  reject("reject");
+  returnAction("return"),
+  hijack("hijack");
 
-  const DnsNonIPQuery(this.name);
+  const DnsOutboundRuleAction(this.name);
 
   final String name;
 
   @override
   String toString() => name;
 
-  static DnsNonIPQuery? fromString(String name) =>
-      DnsNonIPQuery.values.firstWhereOrNull((value) => value.name == name);
+  static DnsOutboundRuleAction? fromString(String name) => DnsOutboundRuleAction
+      .values
+      .firstWhereOrNull((value) => value.name == name);
 
   static List<String> get names {
-    return DnsNonIPQuery.values.map((e) => e.name).toList();
+    return DnsOutboundRuleAction.values.map((e) => e.name).toList();
   }
 }
 

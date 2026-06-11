@@ -103,29 +103,42 @@ class SubscriptionService {
     }
   }
 
-  Future<void> refreshAllSubscription() async {
+  Future<void> refreshAllSubscription({bool updateDownloading = true}) async {
     final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
+    if (updateDownloading) {
+      eventBus.updateDownloading(true);
+    }
 
     final db = AppDatabase();
     final subscriptions = await db.subscriptionDao.allRows;
     for (final subscription in subscriptions) {
       await refreshSubscription(subscription, false);
     }
-    eventBus.updateDownloading(false);
+    if (updateDownloading) {
+      eventBus.updateDownloading(false);
+    }
   }
 
-  Future<void> refreshOutdatedSubscription() async {
+  Future<void> refreshOutdatedSubscription({
+    SubUpdateState? subUpdateState,
+    bool updateDownloading = true,
+  }) async {
     final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
+    if (updateDownloading) {
+      eventBus.updateDownloading(true);
+    }
 
-    final subUpdateState = SubUpdateState();
-    await subUpdateState.readFromPreferences();
-    if (!subUpdateState.enable) {
-      eventBus.updateDownloading(false);
+    final updateState = subUpdateState ?? SubUpdateState();
+    if (subUpdateState == null) {
+      await updateState.readFromPreferences();
+    }
+    if (!updateState.enable) {
+      if (updateDownloading) {
+        eventBus.updateDownloading(false);
+      }
       return;
     }
-    final interval = subUpdateState.interval.value;
+    final interval = updateState.interval.value;
     final subs = await AppDatabase().subscriptionDao.allRows;
     final now = DateTime.now();
     for (final sub in subs) {
@@ -134,7 +147,9 @@ class SubscriptionService {
       }
     }
 
-    eventBus.updateDownloading(false);
+    if (updateDownloading) {
+      eventBus.updateDownloading(false);
+    }
   }
 
   Future<void> _autoPing(int subId) async {

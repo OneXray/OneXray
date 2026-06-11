@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/ads/service.dart';
 import 'package:onexray/service/analytics/service.dart';
+import 'package:onexray/service/automation/service.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/menu/short_cut/service.dart';
 import 'package:onexray/service/menu/tray/service.dart';
@@ -17,6 +18,7 @@ abstract final class ServiceManager {
     await NetClient().asyncInit();
     TrayService().init();
     await VpnService().asyncInit();
+    await AutomationService().asyncInit();
     ShareService().init();
     await NotificationService().asyncInit();
     if (context.mounted) {
@@ -24,12 +26,12 @@ abstract final class ServiceManager {
     }
     await WindowService().asyncInit();
     AnalyticsService().init();
-    await BackgroundTaskService().asyncInit();
     ToastService().init();
   }
 
   static void serviceDispose() {
     AdsService().dispose();
+    AutomationService().dispose();
     TrayService().dispose();
     VpnService().dispose();
     ShareService().dispose();

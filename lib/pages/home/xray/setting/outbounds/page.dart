@@ -6,7 +6,7 @@ import 'package:onexray/pages/home/xray/setting/outbounds/controller.dart';
 import 'package:onexray/pages/home/xray/setting/outbounds/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class OutboundsPage extends StatelessWidget {
   final OutboundsParams params;
@@ -65,57 +65,44 @@ class OutboundsPage extends StatelessWidget {
     final title =
         chainProxy?.name ??
         AppLocalizations.of(context)!.chainProxyPageDisabled;
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.chainProxyPageTitle,
-      child: Column(
-        children: [
-          ListTile(
-            onTap: () => controller.importChainProxy(context),
-            title: Text(title),
-            trailing: const Icon(Icons.chevron_right),
+      children: [
+        NavigationSettingRow(
+          title: title,
+          onTap: () => controller.importChainProxy(context),
+        ),
+        if (chainProxy != null)
+          SettingRow(
+            title: AppLocalizations.of(context)!.chainProxyPageDelete,
+            onTap: () => controller.deleteChainProxy(),
+            trailing: const Icon(Icons.delete),
           ),
-          if (chainProxy != null)
-            ListTile(
-              onTap: () => controller.deleteChainProxy(),
-              title: Text(AppLocalizations.of(context)!.chainProxyPageDelete),
-              trailing: const Icon(Icons.delete),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
   Widget _editSection(BuildContext context, OutboundsController controller) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.outboundsPageSystem,
-      child: Column(
-        children: [
-          ListTile(
-            onTap: () => controller.editFreedom(context),
-            title: Text(AppLocalizations.of(context)!.outboundFreedomPageTitle),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editFragment(context),
-            title: Text(
-              AppLocalizations.of(context)!.outboundFragmentPageTitle,
-            ),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editBlackHole(context),
-            title: Text(
-              AppLocalizations.of(context)!.outboundBlackHolePageTitle,
-            ),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            onTap: () => controller.editDns(context),
-            title: Text(AppLocalizations.of(context)!.outboundDnsPageTitle),
-            trailing: const Icon(Icons.chevron_right),
-          ),
-        ],
-      ),
+      children: [
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.outboundFreedomPageTitle,
+          onTap: () => controller.editFreedom(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.outboundFragmentPageTitle,
+          onTap: () => controller.editFragment(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.outboundBlackHolePageTitle,
+          onTap: () => controller.editBlackHole(context),
+        ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.outboundDnsPageTitle,
+          onTap: () => controller.editDns(context),
+        ),
+      ],
     );
   }
 

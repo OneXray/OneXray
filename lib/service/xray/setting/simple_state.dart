@@ -154,13 +154,4 @@ enum SimpleDns {
   RoutingOutboundTag get outbound {
     return RoutingOutboundTag.proxy;
   }
-
-  String get nonIPQueryDns {
-    switch (this) {
-      case SimpleDns.cloudflareProxy:
-        return _SimpleDnsAddress.cloudflare.name;
-      case SimpleDns.cloudflareDoH:
-        return _SimpleDnsAddress.cloudflareDoH.name;
-    }
-  }
 }

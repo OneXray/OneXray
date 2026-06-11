@@ -51,6 +51,9 @@ class $AssetsDatGen {
   /// File path: assets/dat/geosite.json
   String get geositeJson => 'assets/dat/geosite.json';
 
+  /// File path: assets/dat/matcher.cache
+  String get matcher => 'assets/dat/matcher.cache';
+
   /// File path: assets/dat/timestamp.txt
   String get timestamp => 'assets/dat/timestamp.txt';
 
@@ -60,6 +63,7 @@ class $AssetsDatGen {
     geoipJson,
     geositeDat,
     geositeJson,
+    matcher,
     timestamp,
   ];
 }

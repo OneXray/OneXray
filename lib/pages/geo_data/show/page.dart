@@ -4,6 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/geo_data/show/controller.dart';
 import 'package:onexray/pages/geo_data/show/params.dart';
 import 'package:onexray/pages/global/constants.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatShowPage extends StatelessWidget {
@@ -42,17 +43,16 @@ class GeoDatShowPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, GeoDatShowController controller) {
-    return TextField(
+    return ListSearchField(
       controller: controller.searchController,
-      decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
       onChanged: (value) => controller.keywordChanged(value),
     );
   }
 
   Widget _geoDataList(BuildContext context, GeoDatShowState state) {
     if (state.geoDatCodes.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.geoDatCodesPageNoCodes),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
       );
     } else {
       return ListView.separated(
@@ -63,16 +63,16 @@ class GeoDatShowPage extends StatelessWidget {
     }
   }
 
-  Widget _itemRow(
-    BuildContext context,
-    GeoDatShowState state,
-    int index,
-  ) {
+  Widget _itemRow(BuildContext context, GeoDatShowState state, int index) {
     final code = state.geoDatCodes[index];
     final count = code.ruleCount ?? 0;
-    return ListTile(
-      title: Text(code.code ?? ""),
-      subtitle: Row(children: [TagView(tag: "$count")]),
+    return DataListRow(
+      title: code.code ?? "",
+      tags: [
+        TagView(
+          tag: AppLocalizations.of(context)!.geoDataListPageRuleCount(count),
+        ),
+      ],
     );
   }
 }

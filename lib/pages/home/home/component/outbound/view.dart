@@ -7,22 +7,18 @@ import 'package:onexray/pages/home/component/ad_row/view.dart';
 import 'package:onexray/pages/home/component/config_row/selectable_view.dart';
 import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/home/home/component/outbound/controller.dart';
-import 'package:onexray/pages/theme/color.dart';
-import 'package:onexray/pages/widget/text_action_row.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 
 class HomeOutboundView extends StatelessWidget {
   const HomeOutboundView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => HomeOutboundController(),
-      child: BlocBuilder<HomeOutboundController, HomeOutboundState>(
-        builder: (context, state) {
-          final controller = context.read<HomeOutboundController>();
-          return _body(context, controller, state);
-        },
-      ),
+    return BlocBuilder<HomeOutboundController, HomeOutboundState>(
+      builder: (context, state) {
+        final controller = context.read<HomeOutboundController>();
+        return _body(context, controller, state);
+      },
     );
   }
 
@@ -36,10 +32,19 @@ class HomeOutboundView extends StatelessWidget {
       child: Column(
         children: [
           _xraySetting(context, controller, state),
-          Divider(),
+          const Divider(),
+          if (state.searching) _search(context, controller),
           Expanded(child: _configList(context, controller, state)),
         ],
       ),
+    );
+  }
+
+  Widget _search(BuildContext context, HomeOutboundController controller) {
+    return ListSearchField(
+      controller: controller.searchController,
+      hintText: AppLocalizations.of(context)!.listSearchHint,
+      onChanged: (value) => controller.updateSearchQuery(value),
     );
   }
 
@@ -48,13 +53,11 @@ class HomeOutboundView extends StatelessWidget {
     HomeOutboundController controller,
     HomeOutboundState state,
   ) {
-    return ColoredBox(
-      color: ColorManager.surface(context),
-      child: TextActionRow(
-        title: AppLocalizations.of(context)!.homeOutboundViewXraySetting,
-        detail: state.xraySettingName,
-        onTap: () => controller.gotoXraySetting(context),
-      ),
+    return DataListRow(
+      title: AppLocalizations.of(context)!.homeOutboundViewXraySetting,
+      subtitle: state.xraySettingName,
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => controller.gotoXraySetting(context),
     );
   }
 
@@ -64,8 +67,11 @@ class HomeOutboundView extends StatelessWidget {
     HomeOutboundState state,
   ) {
     if (state.configs.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.homeOutboundViewNoOutbound),
+      return ListEmptyView(
+        message: state.query.isEmpty
+            ? AppLocalizations.of(context)!.homeOutboundViewNoOutbound
+            : AppLocalizations.of(context)!.listNoSearchResult,
+        icon: state.query.isEmpty ? Icons.hub_outlined : Icons.search_off,
       );
     } else {
       return ListView.separated(

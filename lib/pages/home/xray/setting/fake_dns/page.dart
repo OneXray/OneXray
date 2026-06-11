@@ -6,7 +6,7 @@ import 'package:onexray/pages/home/xray/setting/fake_dns/controller.dart';
 import 'package:onexray/pages/home/xray/setting/fake_dns/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class FakeDnsPage extends StatelessWidget {
   final FakeDnsParams params;
@@ -53,47 +53,39 @@ class FakeDnsPage extends StatelessWidget {
   }
 
   Widget _ipv4Section(BuildContext context, FakeDnsController controller) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.fakeDnsPageIPv4,
-      child: Column(
-        children: [
-          _ipPool(context, controller.ipv4IpPoolController),
-          _poolSize(context, controller.ipv4PoolSizeController),
-        ],
-      ),
+      children: [
+        _ipPool(context, controller.ipv4IpPoolController),
+        _poolSize(context, controller.ipv4PoolSizeController),
+      ],
     );
   }
 
   Widget _ipv6Section(BuildContext context, FakeDnsController controller) {
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.fakeDnsPageIPv6,
-      child: Column(
-        children: [
-          _ipPool(context, controller.ipv6IpPoolController),
-          _poolSize(context, controller.ipv6PoolSizeController),
-        ],
-      ),
+      children: [
+        _ipPool(context, controller.ipv6IpPoolController),
+        _poolSize(context, controller.ipv6PoolSizeController),
+      ],
     );
   }
 
   Widget _ipPool(BuildContext context, TextEditingController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.fakeDnsPageIpPool),
-        hintText: AppLocalizations.of(context)!.fakeDnsPageIpPool,
-      ),
+      label: AppLocalizations.of(context)!.fakeDnsPageIpPool,
+      hintText: AppLocalizations.of(context)!.fakeDnsPageIpPool,
     );
   }
 
   Widget _poolSize(BuildContext context, TextEditingController controller) {
-    return TextField(
+    return TextFieldSettingRow(
       controller: controller,
       keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        label: Text(AppLocalizations.of(context)!.fakeDnsPagePoolSize),
-        hintText: AppLocalizations.of(context)!.fakeDnsPagePoolSize,
-      ),
+      label: AppLocalizations.of(context)!.fakeDnsPagePoolSize,
+      hintText: AppLocalizations.of(context)!.fakeDnsPagePoolSize,
     );
   }
 

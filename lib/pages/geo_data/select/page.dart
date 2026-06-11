@@ -6,6 +6,7 @@ import 'package:onexray/pages/geo_data/select/params.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatSelectPage extends StatelessWidget {
@@ -55,9 +56,8 @@ class GeoDatSelectPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, GeoDatSelectController controller) {
-    return TextField(
+    return ListSearchField(
       controller: controller.searchController,
-      decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
       onChanged: (value) => controller.keywordChanged(value),
     );
   }
@@ -68,13 +68,12 @@ class GeoDatSelectPage extends StatelessWidget {
     GeoDatSelectState state,
   ) {
     if (state.geoDatCodes.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.geoDatCodesPageNoCodes),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
       );
     } else {
       return ListView.separated(
-        itemBuilder: (ctx, index) =>
-            _itemRow(ctx, controller, state, index),
+        itemBuilder: (ctx, index) => _itemRow(ctx, controller, state, index),
         itemCount: state.geoDatCodes.length,
         separatorBuilder: (_, _) => const Divider(),
       );
@@ -89,11 +88,24 @@ class GeoDatSelectPage extends StatelessWidget {
   ) {
     final code = state.geoDatCodes[index];
     final count = code.ruleCount ?? 0;
-    return CheckboxListTile(
-      value: state.selections.contains(code.code),
-      onChanged: (value) => controller.updateSelections(value, code.code),
-      title: Text(code.code ?? ""),
-      subtitle: Row(children: [TagView(tag: "$count")]),
+    final selected = state.selections.contains(code.code);
+    return DataListRow(
+      title: code.code ?? "",
+      tags: [
+        TagView(
+          tag: AppLocalizations.of(context)!.geoDataListPageRuleCount(count),
+        ),
+      ],
+      tone: selected ? DataListRowTone.selected : DataListRowTone.normal,
+      statusLabel: selected
+          ? AppLocalizations.of(context)!.listStatusSelected
+          : null,
+      statusIcon: selected ? Icons.check : null,
+      onTap: () => controller.updateSelections(!selected, code.code),
+      trailing: Checkbox(
+        value: selected,
+        onChanged: (value) => controller.updateSelections(value, code.code),
+      ),
     );
   }
 

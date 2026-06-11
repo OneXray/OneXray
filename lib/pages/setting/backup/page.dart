@@ -6,6 +6,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/backup/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -59,16 +60,15 @@ class BackupPage extends StatelessWidget {
     BackupController controller,
   ) {
     if (state.files.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.backupPageNoFiles),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.backupPageNoFiles,
       );
     } else {
       return RadioGroup<String>(
         groupValue: state.selection,
         onChanged: (value) => controller.updateSelection(value),
         child: ListView.separated(
-          itemBuilder: (ctx, index) =>
-              _itemRow(ctx, state, controller, index),
+          itemBuilder: (ctx, index) => _itemRow(ctx, state, controller, index),
           itemCount: state.files.length,
           separatorBuilder: (_, _) => const Divider(),
         ),
@@ -83,19 +83,24 @@ class BackupPage extends StatelessWidget {
     int index,
   ) {
     final file = state.files[index];
-    return RadioListTile(
-      toggleable: true,
-      value: file.name,
-      title: Text(file.name),
-      subtitle: DateView(date: file.timestamp!),
-      secondary: IconMenuPicker(
-        icon: Icons.more_vert,
-        menus: [
-          if (!AppPlatform.isLinux) IconMenuId.share,
-          IconMenuId.save,
-          IconMenuId.delete,
+    final selected = state.selection == file.name;
+    return DataListRow(
+      title: file.name,
+      meta: DateView(date: file.timestamp!),
+      onTap: () => controller.updateSelection(selected ? null : file.name),
+      trailing: ActionCluster(
+        children: [
+          Radio<String>(value: file.name, toggleable: true),
+          IconMenuPicker(
+            icon: Icons.more_vert,
+            menus: [
+              if (!AppPlatform.isLinux) IconMenuId.share,
+              IconMenuId.save,
+              IconMenuId.delete,
+            ],
+            callback: (menuId) => controller.moreAction(context, file, menuId),
+          ),
         ],
-        callback: (menuId) => controller.moreAction(context, file, menuId),
       ),
     );
   }

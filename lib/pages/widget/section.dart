@@ -18,33 +18,14 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-enum SectionLevel { first, second, none }
-
 class SectionView extends StatelessWidget {
   final String title;
   final Widget child;
-  final SectionLevel level;
 
-  const SectionView({
-    super.key,
-    required this.title,
-    required this.child,
-    this.level = SectionLevel.first,
-  });
+  const SectionView({super.key, required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    switch (level) {
-      case SectionLevel.first:
-        return _buildFirstSection(context);
-      case SectionLevel.second:
-        return _buildSecondSection(context);
-      case SectionLevel.none:
-        return _buildNoneSection(context);
-    }
-  }
-
-  Widget _buildFirstSection(BuildContext context) {
     return Padding(
       padding: EdgeInsetsDirectional.all(16),
       child: Column(
@@ -58,61 +39,7 @@ class SectionView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: ColorManager.formTitle(context),
-                ),
-              ),
-            ),
-
-          Material(
-            color: ColorManager.surface(context),
-            shape: _sectionShape(context),
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: EdgeInsetsDirectional.all(16),
-              child: child,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecondSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title.isNotEmpty)
-          Padding(
-            padding: EdgeInsetsDirectional.symmetric(vertical: 8),
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: ColorManager.formTitle(context),
-              ),
-            ),
-          ),
-        child,
-      ],
-    );
-  }
-
-  Widget _buildNoneSection(BuildContext context) {
-    return Padding(
-      padding: EdgeInsetsDirectional.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title.isNotEmpty)
-            Padding(
-              padding: EdgeInsetsDirectional.only(bottom: 8),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: ColorManager.formTitle(context),
+                  color: ColorManager.sectionTitle(context),
                 ),
               ),
             ),

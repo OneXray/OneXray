@@ -4,21 +4,33 @@ import SystemExtensions
 /// Public entry points for managing the bundled packet tunnel system extension.
 /// Each call constructs a one-shot driver around a single OSSystemExtensionRequest;
 /// no state is retained between calls.
-public enum SystemExtensionManager {
-    public static func isInstalled() async -> Bool {
+enum SystemExtensionManager {
+    static func isInstalled() async -> RefreshVpnResult {
         guard let properties = try? await ExtensionRequestDriver().runProperties({ queue in
             OSSystemExtensionRequest.propertiesRequest(forExtensionWithIdentifier: packetTunnelId(), queue: queue)
-        }) else { return false }
-        return properties.contains { !$0.isAwaitingUserApproval && !$0.isUninstalling }
+        }) else { return .notInstalled }
+        let waitForApproval = properties.contains(where: { item in
+            item.isAwaitingUserApproval
+        })
+        if waitForApproval {
+            return .waitForApproval
+        }
+        let success = properties.contains(where: { item in
+            !item.isAwaitingUserApproval && !item.isUninstalling
+        })
+        if success {
+            return .installed
+        }
+        return .notInstalled
     }
 
-    public static func activate(forceReplace: Bool = false) async throws -> OSSystemExtensionRequest.Result? {
+    static func activate(forceReplace: Bool = false) async throws -> OSSystemExtensionRequest.Result? {
         try await ExtensionRequestDriver(forceReplace: forceReplace).runResult { queue in
             OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: packetTunnelId(), queue: queue)
         }
     }
 
-    public static func deactivate() async throws -> OSSystemExtensionRequest.Result? {
+    static func deactivate() async throws -> OSSystemExtensionRequest.Result? {
         try await ExtensionRequestDriver().runResult { queue in
             OSSystemExtensionRequest.deactivationRequest(forExtensionWithIdentifier: packetTunnelId(), queue: queue)
         }
@@ -74,7 +86,8 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
 
     func request(_ request: OSSystemExtensionRequest,
                  actionForReplacingExtension existing: OSSystemExtensionProperties,
-                 withExtension new: OSSystemExtensionProperties) -> OSSystemExtensionRequest.ReplacementAction {
+                 withExtension new: OSSystemExtensionProperties) -> OSSystemExtensionRequest.ReplacementAction
+    {
         if forceReplace { return .replace }
         let identical = existing.bundleIdentifier == new.bundleIdentifier
             && existing.bundleVersion == new.bundleVersion
@@ -99,7 +112,8 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
     }
 
     func request(_ request: OSSystemExtensionRequest,
-                 didFinishWithResult result: OSSystemExtensionRequest.Result) {
+                 didFinishWithResult result: OSSystemExtensionRequest.Result)
+    {
         if case let .result(continuation) = waiter {
             waiter = .none
             continuation.resume(returning: result)
@@ -120,7 +134,8 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
     }
 
     func request(_ request: OSSystemExtensionRequest,
-                 foundProperties properties: [OSSystemExtensionProperties]) {
+                 foundProperties properties: [OSSystemExtensionProperties])
+    {
         if case let .properties(continuation) = waiter {
             waiter = .none
             continuation.resume(returning: properties)

@@ -6,6 +6,7 @@ import 'package:onexray/pages/setting/tun/installed_app/controller.dart';
 import 'package:onexray/pages/setting/tun/installed_app/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 
 class InstalledAppPage extends StatelessWidget {
   final InstalledAppParams params;
@@ -21,8 +22,7 @@ class InstalledAppPage extends StatelessWidget {
           final controller = context.read<InstalledAppController>();
           return Scaffold(
             appBar: AppBar(
-              title:
-                  Text(AppLocalizations.of(context)!.installedAppPageTitle),
+              title: Text(AppLocalizations.of(context)!.installedAppPageTitle),
             ),
             body: SafeArea(child: _body(context, state, controller)),
           );
@@ -57,9 +57,8 @@ class InstalledAppPage extends StatelessWidget {
   }
 
   Widget _search(BuildContext context, InstalledAppController controller) {
-    return TextField(
+    return ListSearchField(
       controller: controller.searchController,
-      decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
       onChanged: (value) => controller.keywordChanged(value),
     );
   }
@@ -70,13 +69,12 @@ class InstalledAppPage extends StatelessWidget {
     InstalledAppController controller,
   ) {
     if (state.apps.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.installedAppPageNoApp),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.installedAppPageNoApp,
       );
     } else {
       return ListView.separated(
-        itemBuilder: (ctx, index) =>
-            _itemRow(ctx, state, controller, index),
+        itemBuilder: (ctx, index) => _itemRow(ctx, state, controller, index),
         itemCount: state.apps.length,
         separatorBuilder: (_, _) => const Divider(),
       );
@@ -90,11 +88,16 @@ class InstalledAppPage extends StatelessWidget {
     int index,
   ) {
     final app = state.apps[index];
-    return CheckboxListTile(
-      value: state.selections.contains(app.packageName),
-      onChanged: (value) => controller.updateSelections(value, app.packageName),
-      title: Text(app.name),
-      subtitle: Text(app.packageName),
+    final selected = state.selections.contains(app.packageName);
+    return DataListRow(
+      title: app.name,
+      subtitle: app.packageName,
+      onTap: () => controller.updateSelections(!selected, app.packageName),
+      trailing: Checkbox(
+        value: selected,
+        onChanged: (value) =>
+            controller.updateSelections(value, app.packageName),
+      ),
     );
   }
 

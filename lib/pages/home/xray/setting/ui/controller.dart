@@ -16,6 +16,7 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/xray/setting/dns_state.dart';
+import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/fake_dns_state.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
@@ -29,7 +30,9 @@ import 'package:onexray/service/xray/setting/state_writer.dart';
 
 class XraySettingUIController {
   final XraySettingUIParams params;
-  XraySettingUIController(this.params) {
+  final VoidCallback? onChanged;
+
+  XraySettingUIController(this.params, {this.onChanged}) {
     _queryXraySetting();
   }
 
@@ -59,6 +62,7 @@ class XraySettingUIController {
   void _updateState(XraySettingState state) {
     _initInputs(state);
     _xraySettingState = state;
+    _notifyChanged();
   }
 
   void _initInputs(XraySettingState state) {
@@ -91,6 +95,7 @@ class XraySettingUIController {
     final log = await context.push<LogState>(RouterPath.xrayLog, extra: params);
     if (log != null) {
       _xraySettingState.log = log;
+      _notifyChanged();
     }
   }
 
@@ -99,6 +104,7 @@ class XraySettingUIController {
     final dns = await context.push<DnsState>(RouterPath.dns, extra: params);
     if (dns != null) {
       _xraySettingState.dns = dns;
+      _notifyChanged();
     }
   }
 
@@ -110,6 +116,7 @@ class XraySettingUIController {
     );
     if (fakeDns != null) {
       _xraySettingState.fakeDns = fakeDns;
+      _notifyChanged();
     }
   }
 
@@ -124,6 +131,7 @@ class XraySettingUIController {
     );
     if (routing != null) {
       _xraySettingState.routing = routing;
+      _notifyChanged();
     }
   }
 
@@ -135,6 +143,7 @@ class XraySettingUIController {
     );
     if (inbounds != null) {
       _xraySettingState.inbounds = inbounds;
+      _notifyChanged();
     }
   }
 
@@ -146,7 +155,50 @@ class XraySettingUIController {
     );
     if (outbounds != null) {
       _xraySettingState.outbounds = outbounds;
+      _notifyChanged();
     }
+  }
+
+  String logSummary(BuildContext context) {
+    final log = _xraySettingState.log;
+    return log.logLevel.name;
+  }
+
+  String dnsSummary(BuildContext context) {
+    final dns = _xraySettingState.dns;
+    return dns.queryStrategy.name;
+  }
+
+  String fakeDnsSummary(BuildContext context) {
+    final queryStrategy = _xraySettingState.dns.queryStrategy;
+    switch (queryStrategy) {
+      case DnsQueryStrategy.useIP:
+        return "IPv4 + IPv6";
+      case DnsQueryStrategy.useIPv4:
+        return "IPv4";
+      case DnsQueryStrategy.useIPv6:
+        return "IPv6";
+    }
+  }
+
+  String routingSummary(BuildContext context) {
+    final routing = _xraySettingState.routing;
+    return routing.domainStrategy.name;
+  }
+
+  String inboundsSummary(BuildContext context) {
+    final sniffing = _xraySettingState.inbounds.tun.sniffing;
+    return sniffing.enabled
+        ? AppLocalizations.of(context)!.switchEnabled
+        : AppLocalizations.of(context)!.chainProxyPageDisabled;
+  }
+
+  String outboundsSummary(BuildContext context) {
+    final chainProxy = _xraySettingState.outbounds.chainProxy;
+    if (chainProxy == null) {
+      return AppLocalizations.of(context)!.chainProxyPageDisabled;
+    }
+    return chainProxy.name;
   }
 
   Future<void> save(BuildContext context) async {
@@ -189,5 +241,9 @@ class XraySettingUIController {
       ContextAlert.showToast(context, tuple.item2);
     }
     return tuple.item1;
+  }
+
+  void _notifyChanged() {
+    onChanged?.call();
   }
 }

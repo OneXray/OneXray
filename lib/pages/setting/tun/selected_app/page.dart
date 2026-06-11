@@ -6,6 +6,7 @@ import 'package:onexray/pages/setting/tun/selected_app/controller.dart';
 import 'package:onexray/pages/setting/tun/selected_app/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 
 class SelectedAppPage extends StatelessWidget {
@@ -61,13 +62,12 @@ class SelectedAppPage extends StatelessWidget {
     SelectedAppController controller,
   ) {
     if (state.apps.isEmpty) {
-      return Center(
-        child: Text(AppLocalizations.of(context)!.selectedAppPageNoApp),
+      return ListEmptyView(
+        message: AppLocalizations.of(context)!.selectedAppPageNoApp,
       );
     } else {
       return ListView.separated(
-        itemBuilder: (ctx, index) =>
-            _itemRow(ctx, state, controller, index),
+        itemBuilder: (ctx, index) => _itemRow(ctx, state, controller, index),
         itemCount: state.apps.length,
         separatorBuilder: (_, _) => const Divider(),
       );
@@ -81,9 +81,9 @@ class SelectedAppPage extends StatelessWidget {
     int index,
   ) {
     final app = state.apps[index];
-    return ListTile(
-      title: Text(app.name),
-      subtitle: Text(app.packageName),
+    return DataListRow(
+      title: app.name,
+      subtitle: app.packageName,
       trailing: IconMenuPicker(
         icon: Icons.more_vert,
         menus: [IconMenuId.delete],
@@ -92,10 +92,7 @@ class SelectedAppPage extends StatelessWidget {
     );
   }
 
-  Widget _bottomButton(
-    BuildContext context,
-    SelectedAppController controller,
-  ) {
+  Widget _bottomButton(BuildContext context, SelectedAppController controller) {
     return BottomView(
       child: Row(
         spacing: 12,

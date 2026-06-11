@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_black_hole/controller.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class OutboundBlackHolePage extends StatelessWidget {
   const OutboundBlackHolePage({super.key});
@@ -30,20 +29,18 @@ class OutboundBlackHolePage extends StatelessWidget {
     BuildContext context,
     OutboundBlackHoleController controller,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundBlackHolePageProtocol,
-            detail: controller.blackHoleState.protocol.name,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.outboundBlackHolePageTag,
-            detail: controller.blackHoleState.tag.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundBlackHolePageProtocol,
+          value: controller.blackHoleState.protocol.name,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.outboundBlackHolePageTag,
+          value: controller.blackHoleState.tag.name,
+        ),
+      ],
     );
   }
 }

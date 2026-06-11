@@ -4,8 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_ping/controller.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_ping/params.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 
 class InboundPingPage extends StatelessWidget {
   final InboundPingParams params;
@@ -53,24 +52,22 @@ class InboundPingPage extends StatelessWidget {
     InboundPingController controller,
     InboundPingCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundPingPageListen,
-            detail: state.httpState.listen,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundPingPagePort,
-            detail: state.httpState.port,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundPingPageProtocol,
-            detail: state.httpState.protocol.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundPingPageListen,
+          value: state.httpState.listen,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundPingPagePort,
+          value: state.httpState.port,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundPingPageProtocol,
+          value: state.httpState.protocol.name,
+        ),
+      ],
     );
   }
 
@@ -79,16 +76,14 @@ class InboundPingPage extends StatelessWidget {
     InboundPingController controller,
     InboundPingCubitState state,
   ) {
-    return SectionView(
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.inboundPingPageTag,
-            detail: state.httpState.tag.name,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundPingPageTag,
+          value: state.httpState.tag.name,
+        ),
+      ],
     );
   }
 }

@@ -96,6 +96,31 @@ class PreferencesKey {
     await _prefs.setInt(_vpnStartTimestamp, timestamp);
   }
 
+  static const _appUpdateLastCheckTimestamp = "appUpdateLastCheckTimestamp";
+
+  Future<DateTime?> readAppUpdateLastCheckTimestamp() async {
+    final value = await _prefs.getInt(_appUpdateLastCheckTimestamp);
+    if (value == null) {
+      return null;
+    }
+    return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+  }
+
+  Future<void> saveAppUpdateLastCheckTimestamp(DateTime date) async {
+    final timestamp = date.millisecondsSinceEpoch ~/ 1000;
+    await _prefs.setInt(_appUpdateLastCheckTimestamp, timestamp);
+  }
+
+  static const _appUpdateSkippedVersion = "appUpdateSkippedVersion";
+
+  Future<String?> readAppUpdateSkippedVersion() async {
+    return _prefs.getString(_appUpdateSkippedVersion);
+  }
+
+  Future<void> saveAppUpdateSkippedVersion(String value) async {
+    await _prefs.setString(_appUpdateSkippedVersion, value);
+  }
+
   static const _pingState = "pingState";
 
   Future<Map<String, dynamic>?> readPingState() async {

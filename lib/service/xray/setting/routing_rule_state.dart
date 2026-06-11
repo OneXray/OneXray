@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/extensions.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/state.dart';
 import 'package:onexray/service/xray/standard.dart';
@@ -73,6 +74,7 @@ class RoutingRuleState {
   var inboundTag = <String>{};
   var protocol = <RoutingRuleProtocol>{};
   var attrs = <String, String>{};
+  var process = <String>[];
   var outboundTag = RoutingOutboundTag.direct.name;
   var balancerTag = "";
   var ruleTag = "custom";
@@ -85,6 +87,7 @@ class RoutingRuleState {
     localPort = localPort.removeWhitespace;
     sourceIP = sourceIP.removeWhitespace;
     localIP = localIP.removeWhitespace;
+    process = process.removeWhitespace;
 
     final newAttrs = <String, String>{};
     attrs.forEach((key, value) {
@@ -140,6 +143,9 @@ class RoutingRuleState {
     if (EmptyTool.checkMap(rule.attrs)) {
       attrs = rule.attrs!;
     }
+    if (EmptyTool.checkList(rule.process)) {
+      process = rule.process!;
+    }
     if (EmptyTool.checkString(rule.outboundTag)) {
       outboundTag = rule.outboundTag!;
     }
@@ -190,6 +196,9 @@ class RoutingRuleState {
     }
     if (attrs.isNotEmpty) {
       rule.attrs = attrs;
+    }
+    if ((AppPlatform.isWindows || AppPlatform.isLinux) && process.isNotEmpty) {
+      rule.process = process;
     }
     if (outboundTag.isNotEmpty) {
       rule.outboundTag = outboundTag;

@@ -6,6 +6,7 @@ import yaml
 from app.android import AndroidBuilder
 from app.apple import AppleBuilder
 from app.builder import Builder
+from app.cli import build_cli, should_build_cli, stage_cli_for_cmake
 from app.command_line import run_command, cp_dir_files, flutter_command, dart_command
 from app.linux import LinuxBuilder
 from app.windows import WindowsBuilder
@@ -28,6 +29,7 @@ class FlutterBuilder(Builder):
             "windows": WindowsBuilder(project, new_system, build_scripts_dir),
         }
         self.builder = builders[self.system]
+        self.cli_path = None
 
         self.build_type = {
             "android": "appbundle",
@@ -74,6 +76,10 @@ class FlutterBuilder(Builder):
 
         self.update_build_number()
         self.pub_get()
+        if should_build_cli(self.system):
+            root_dir = os.path.join(self.project_dir, "..")
+            self.cli_path = build_cli(root_dir, self.system)
+            stage_cli_for_cmake(root_dir, self.system, self.cli_path)
         self.run_ffi_gen()
 
         self.builder.before_build()
@@ -100,6 +106,10 @@ class FlutterBuilder(Builder):
         run_command([dart_command(), "run", "ffigen"])
 
     def build_app(self):
+        if self.system == "ios" or self.system == "macos":
+            self.builder.build_app()
+            return
+
         root_dir = os.path.join(self.project_dir, "..")
         os.chdir(root_dir)
         cmd = [
@@ -112,10 +122,9 @@ class FlutterBuilder(Builder):
 
         self.builder.build_app()
 
-    # Names of environment variables that are forwarded to `flutter build` as
-    # --dart-define=<NAME>=<VALUE>. Add here (and to `.env.example`) whenever
-    # the Dart code starts reading a new `String.fromEnvironment` key that
-    # should not be committed in the source.
+    # Names of environment variables that are forwarded to non-Apple
+    # `flutter build` commands as --dart-define=<NAME>=<VALUE>. Keep the Apple
+    # Fastfiles in sync because they own iOS/macOS Flutter builds.
     DART_DEFINE_ENV_VARS = (
         "ADMOB_AD_UNIT_ID_ANDROID",
         "ADMOB_AD_UNIT_ID_IOS",

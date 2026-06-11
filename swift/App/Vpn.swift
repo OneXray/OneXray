@@ -12,11 +12,11 @@ enum VPNError: Error {
 @MainActor
 class VPNManager {
     static let shared = VPNManager()
-    
+
     var vpn: NETunnelProviderManager?
     private var cancellable: Cancellable?
     private var statusObserver: VPNStatusCallback?
-    private var systemExtensionSetupTask: Task<Bool, Never>?
+    private var systemExtensionSetupTask: Task<RefreshVpnResult, Never>?
 
     init() {
         YGLog("VPNManager init")
@@ -29,21 +29,21 @@ class VPNManager {
                 }
             })
     }
-    
+
     private func runStatusObserver() {
         if let observer = statusObserver {
             observer()
         }
     }
-    
+
     func registerStatusObserver(_ observer: @escaping VPNStatusCallback) {
         statusObserver = observer
     }
-    
+
     func unregisterStatusObserver() {
         statusObserver = nil
     }
-    
+
     private func findVpn() async throws -> NETunnelProviderManager? {
         let managers = try await NETunnelProviderManager.loadAllFromPreferences()
         for vpn in managers {
@@ -55,28 +55,30 @@ class VPNManager {
         }
         return nil
     }
-    
+
     private func newVpn() -> NETunnelProviderManager {
         let serverAddress = vpnServerAddress()
-        
+
         let vpn = NETunnelProviderManager()
         let conf = NETunnelProviderProtocol()
         conf.providerBundleIdentifier = packetTunnelId()
         conf.serverAddress = serverAddress
-        
+
         conf.username = serverAddress
         conf.excludeLocalNetworks = true
-        
+
         vpn.protocolConfiguration = conf
         vpn.localizedDescription = serverAddress
         return vpn
     }
-    
-    func refreshVpn() async {
+
+    func refreshVpn() async -> RefreshVpnResult {
         #if os(macOS)
         if Constants.useSystemExtension {
-            guard await ensureSystemExtensionIfNeeded() else {
-                return
+            let installed = await ensureSystemExtensionIfNeeded()
+            YGLog("ensureSystemExtensionIfNeeded \(installed)")
+            if installed != .installed {
+                return installed
             }
         }
         #endif
@@ -87,22 +89,24 @@ class VPNManager {
                 vpn = newVpn()
                 await saveVpn(vpn: vpn!, tun: TunJson())
             }
+            return .installed
         } catch {
             YGLog(error)
+            return .notInstalled
         }
     }
 
     #if os(macOS)
-    private func ensureSystemExtensionIfNeeded() async -> Bool {
+    private func ensureSystemExtensionIfNeeded() async -> RefreshVpnResult {
         if let existing = systemExtensionSetupTask {
             let cached = await existing.value
-            if cached { return true }
+            if cached == .installed { return cached }
             // Previous attempt returned nil (approval pending) or failed.
             // Re-check current state: the user may have approved in System
             // Settings since then.
             let installed = await SystemExtensionManager.isInstalled()
-            if installed {
-                systemExtensionSetupTask = Task { true }
+            if (installed == .installed) {
+                systemExtensionSetupTask = Task { installed }
             }
             return installed
         }
@@ -111,38 +115,46 @@ class VPNManager {
         return await task.value
     }
 
-    private func runSystemExtensionSetup() async -> Bool {
+    private func runSystemExtensionSetup() async -> RefreshVpnResult {
         #if DEBUG
         let force = true
         #else
         let force = false
         #endif
         do {
-            if await SystemExtensionManager.isInstalled() && !force {
-                return true
+            let installed = await SystemExtensionManager.isInstalled()
+            if installed == .installed && !force {
+                return installed
             }
             if let result = try await SystemExtensionManager.activate(forceReplace: force) {
-                return result == .completed
+                if result == .completed {
+                    return .installed
+                } else {
+                    return .notInstalled
+                }
             }
-            return false
+            return .notInstalled
         } catch {
             YGLog("setup system extension error: \(error.localizedDescription)")
-            return false
+            return .notInstalled
         }
     }
     #endif
-    
+
     func readStatus() -> NEVPNStatus? {
         return VPNManager.shared.vpn?.connection.status
     }
-    
-    func startVpn() async -> Bool {
+
+    func startVpn() async -> RefreshVpnResult {
         guard let request = StartVpnRequest.startModel else {
-            return false
+            return .notInstalled
         }
 
         do {
-            await refreshVpn()
+            let installed = await refreshVpn()
+            if installed != .installed {
+                return installed
+            }
             if let vpn = vpn {
                 if let tun = request.tun {
                     await saveVpn(vpn: vpn, tun: tun, request: request)
@@ -156,21 +168,24 @@ class VPNManager {
                     } else {
                         try session.startTunnel()
                     }
-                    return true
+                    return .installed
                 } else {
-                    return false
+                    return .notInstalled
                 }
             } else {
-                return false
+                return .notInstalled
             }
         } catch {
             YGLog(error)
-            return false
+            return .notInstalled
         }
     }
 
-    func stopVpn() async {
-        await refreshVpn()
+    func stopVpn() async -> RefreshVpnResult {
+        let installed = await refreshVpn()
+        if installed != .installed {
+            return installed
+        }
         if let vpn = vpn {
             await saveVpn(vpn: vpn, tun: TunJson())
             switch vpn.connection.status {
@@ -184,8 +199,9 @@ class VPNManager {
                 break
             }
         }
+        return .installed
     }
-    
+
     private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async {
         vpn.isEnabled = true
         if let request, let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
@@ -239,7 +255,6 @@ class VPNManager {
         }
     }
 
-    
     private func convertRules(_ rules: [OnDemandRule]) -> [NEOnDemandRule] {
         var onDemandRules: [NEOnDemandRule] = []
         for rule in rules {
@@ -249,7 +264,7 @@ class VPNManager {
         }
         return onDemandRules
     }
-    
+
     private func convertRule(_ rule: OnDemandRule) -> NEOnDemandRule? {
         if let mode = rule.mode {
             switch mode {
@@ -258,7 +273,7 @@ class VPNManager {
                 if fillOnDemandRule(onDemandRule, rule) {
                     return onDemandRule
                 }
-                
+
             case .disconnect:
                 let onDemandRule = NEOnDemandRuleDisconnect()
                 if fillOnDemandRule(onDemandRule, rule) {
@@ -268,7 +283,7 @@ class VPNManager {
         }
         return nil
     }
-    
+
     private func fillOnDemandRule(_ onDemandRule: NEOnDemandRule, _ rule: OnDemandRule) -> Bool {
         guard let interfaceType = rule.interfaceType else {
             return false
@@ -282,24 +297,24 @@ class VPNManager {
         }
         return true
     }
-    
+
     private func convertInterfaceType(_ interfaceType: OnDemandRuleInterfaceType) -> NEOnDemandRuleInterfaceType {
         switch interfaceType {
         case .any:
             return .any
         case .wifi:
             return .wiFi
-#if os(macOS)
+        #if os(macOS)
         case .ethernet:
             return .ethernet
         case .cellular:
             return .any
-#else
+        #else
         case .cellular:
             return .cellular
         case .ethernet:
             return .any
-#endif
+        #endif
         }
     }
 
@@ -307,13 +322,18 @@ class VPNManager {
 
     private func pathMapping() -> (user: String, ext: String)? {
         guard let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()),
-              let extGroup = extensionGroupContainerURL() else {
+              let extGroup = extensionGroupContainerURL()
+        else {
             return nil
         }
         var u = userGroup.adaptedPath()
         var e = extGroup.adaptedPath()
-        while u.hasSuffix("/") { u.removeLast() }
-        while e.hasSuffix("/") { e.removeLast() }
+        while u.hasSuffix("/") {
+            u.removeLast()
+        }
+        while e.hasSuffix("/") {
+            e.removeLast()
+        }
         if u == e { return nil }
         return (u, e)
     }
@@ -323,7 +343,8 @@ class VPNManager {
         var newRequest = request
         if let coreBase64 = request.coreBase64Text,
            let data = Data(base64Encoded: coreBase64),
-           let text = String(data: data, encoding: .utf8) {
+           let text = String(data: data, encoding: .utf8)
+        {
             let rewritten = text.replacingOccurrences(of: mapping.user, with: mapping.ext)
             if let rewrittenData = rewritten.data(using: .utf8) {
                 newRequest.coreBase64Text = rewrittenData.base64EncodedString()
@@ -380,7 +401,7 @@ class VPNManager {
             default:
                 break
             }
-            try await Task.sleep(nanoseconds: 100_000_000)
+            try await Task.sleep(nanoseconds: 100000000)
         }
         throw VPNError.sessionNotReady
     }

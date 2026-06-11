@@ -6,7 +6,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/launch/first_run/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 
 class FirstRunPage extends StatelessWidget {
@@ -62,14 +62,20 @@ class FirstRunPage extends StatelessWidget {
     FirstRunController controller,
   ) {
     final cells = SimpleCountry.values
-        .map((e) => RadioListTile<SimpleCountry>(value: e, title: Text(e.name)))
+        .map(
+          (e) => SettingRow(
+            title: e.name,
+            onTap: () => controller.updateCountry(e),
+            trailing: Radio<SimpleCountry>(value: e),
+          ),
+        )
         .toList();
-    return SectionView(
-      title: AppLocalizations.of(context)!.firstRunPageCountrySection,
-      child: RadioGroup<SimpleCountry>(
-        groupValue: state.country,
-        onChanged: (value) => controller.updateCountry(value),
-        child: Column(children: cells),
+    return RadioGroup<SimpleCountry>(
+      groupValue: state.country,
+      onChanged: (value) => controller.updateCountry(value),
+      child: SettingSection(
+        title: AppLocalizations.of(context)!.firstRunPageCountrySection,
+        children: cells,
       ),
     );
   }
@@ -82,18 +88,19 @@ class FirstRunPage extends StatelessWidget {
     final cells = state.interfaces.map((e) {
       final name = e.name;
       final address = e.addresses.map((address) => address.address).join("\n");
-      return RadioListTile<String>(
-        value: name,
-        title: Text(name),
-        subtitle: Text(address),
+      return SettingRow(
+        title: name,
+        subtitle: address,
+        onTap: () => controller.updateInterface(name),
+        trailing: Radio<String>(value: name),
       );
     }).toList();
-    return SectionView(
-      title: AppLocalizations.of(context)!.firstRunPageInterfaceSection,
-      child: RadioGroup<String>(
-        groupValue: state.interface,
-        onChanged: (value) => controller.updateInterface(value),
-        child: Column(children: cells),
+    return RadioGroup<String>(
+      groupValue: state.interface,
+      onChanged: (value) => controller.updateInterface(value),
+      child: SettingSection(
+        title: AppLocalizations.of(context)!.firstRunPageInterfaceSection,
+        children: cells,
       ),
     );
   }

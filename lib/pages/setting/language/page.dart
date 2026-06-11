@@ -5,7 +5,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/language/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/section.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 
 class LanguagePage extends StatelessWidget {
@@ -55,15 +55,18 @@ class LanguagePage extends StatelessWidget {
     LanguageController controller,
   ) {
     final children = LanguageCode.values
-        .map((e) => RadioListTile(value: e, title: Text("$e")))
+        .map(
+          (e) => SettingRow(
+            title: "$e",
+            onTap: () => controller.updateLanguageCode(e),
+            trailing: Radio<LanguageCode>(value: e),
+          ),
+        )
         .toList();
-    return SectionView(
-      title: "",
-      child: RadioGroup<LanguageCode>(
-        groupValue: state.languageCode,
-        onChanged: (value) => controller.updateLanguageCode(value),
-        child: Column(children: children),
-      ),
+    return RadioGroup<LanguageCode>(
+      groupValue: state.languageCode,
+      onChanged: (value) => controller.updateLanguageCode(value),
+      child: SettingSection(title: "", children: children),
     );
   }
 

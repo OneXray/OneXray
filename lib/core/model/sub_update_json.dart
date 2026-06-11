@@ -7,8 +7,16 @@ class SubUpdateJson {
   bool? enabled;
   int? interval;
   bool? autoPing;
+  bool? geoDataEnabled;
+  int? geoDataInterval;
 
-  SubUpdateJson(this.enabled, this.interval, this.autoPing);
+  SubUpdateJson(
+    this.enabled,
+    this.interval,
+    this.autoPing,
+    this.geoDataEnabled,
+    this.geoDataInterval,
+  );
 
   factory SubUpdateJson.fromJson(Map<String, dynamic> json) =>
       _$SubUpdateJsonFromJson(json);

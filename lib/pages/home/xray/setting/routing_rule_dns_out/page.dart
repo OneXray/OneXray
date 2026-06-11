@@ -2,8 +2,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule_dns_out/controller.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule_dns_out/params.dart';
-import 'package:onexray/pages/widget/section.dart';
-import 'package:onexray/pages/widget/text_row.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,21 +15,28 @@ class RoutingRuleDnsOutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => RoutingRuleDnsOutController(params),
-      child: BlocBuilder<RoutingRuleDnsOutController, RoutingRuleDnsOutCubitState>(
-        builder: (context, state) {
-          final controller = context.read<RoutingRuleDnsOutController>();
-          return Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.routingRulePageTitle),
-        ),
-        body: SafeArea(child: _body(context, controller, state)),
-      );
-        },
-      ),
+      child:
+          BlocBuilder<RoutingRuleDnsOutController, RoutingRuleDnsOutCubitState>(
+            builder: (context, state) {
+              final controller = context.read<RoutingRuleDnsOutController>();
+              return Scaffold(
+                appBar: AppBar(
+                  title: Text(
+                    AppLocalizations.of(context)!.routingRulePageTitle,
+                  ),
+                ),
+                body: SafeArea(child: _body(context, controller, state)),
+              );
+            },
+          ),
     );
   }
 
-  Widget _body(BuildContext context, RoutingRuleDnsOutController controller, RoutingRuleDnsOutCubitState state) {
+  Widget _body(
+    BuildContext context,
+    RoutingRuleDnsOutController controller,
+    RoutingRuleDnsOutCubitState state,
+  ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
@@ -48,49 +54,51 @@ class RoutingRuleDnsOutPage extends StatelessWidget {
 
   Widget _inboundTagSection(
     BuildContext context,
-    RoutingRuleDnsOutController controller, RoutingRuleDnsOutCubitState state) {
+    RoutingRuleDnsOutController controller,
+    RoutingRuleDnsOutCubitState state,
+  ) {
     final views = state.ruleState.inboundTag
-        .map((e) => Text(e))
+        .map((tag) => SettingRow(title: tag))
         .toList();
-    return SectionView(
+    return SettingSection(
       title: AppLocalizations.of(context)!.routingRulePageInboundTag,
-      child: Column(children: views),
+      children: views,
     );
   }
 
   Widget _portSection(
     BuildContext context,
-    RoutingRuleDnsOutController controller, RoutingRuleDnsOutCubitState state) {
-    return SectionView(
+    RoutingRuleDnsOutController controller,
+    RoutingRuleDnsOutCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.routingRulePagePort,
-            detail: state.ruleState.port,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.routingRulePagePort,
+          value: state.ruleState.port,
+        ),
+      ],
     );
   }
 
   Widget _tagSection(
     BuildContext context,
-    RoutingRuleDnsOutController controller, RoutingRuleDnsOutCubitState state) {
-    return SectionView(
+    RoutingRuleDnsOutController controller,
+    RoutingRuleDnsOutCubitState state,
+  ) {
+    return SettingSection(
       title: "",
-      child: Column(
-        children: [
-          TextRow(
-            title: AppLocalizations.of(context)!.routingRulePageOutboundTag,
-            detail: state.ruleState.outboundTag,
-          ),
-          TextRow(
-            title: AppLocalizations.of(context)!.routingRulePageRuleTag,
-            detail: state.ruleState.ruleTag,
-          ),
-        ],
-      ),
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.routingRulePageOutboundTag,
+          value: state.ruleState.outboundTag,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.routingRulePageRuleTag,
+          value: state.ruleState.ruleTag,
+        ),
+      ],
     );
   }
 }

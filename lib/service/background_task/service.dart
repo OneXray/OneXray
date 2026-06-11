@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:onexray/service/subscription/service.dart';
+import 'package:onexray/service/data_update/service.dart';
 
 class BackgroundTaskService {
   static final BackgroundTaskService _singleton =
@@ -14,8 +14,11 @@ class BackgroundTaskService {
   Timer? _timer;
 
   Future<void> asyncInit() async {
+    if (_timer != null) {
+      return;
+    }
     final interval = const Duration(hours: 1);
-    _timer = Timer.periodic(interval, (_) => checkSubscriptionUpdate());
+    _timer = Timer.periodic(interval, (_) => checkDataUpdate());
   }
 
   void dispose() {
@@ -23,7 +26,7 @@ class BackgroundTaskService {
     _timer = null;
   }
 
-  Future<void> checkSubscriptionUpdate() async {
-    await SubscriptionService().refreshOutdatedSubscription();
+  Future<void> checkDataUpdate() async {
+    await DataUpdateService().checkAndRun();
   }
 }

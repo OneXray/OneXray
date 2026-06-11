@@ -11,6 +11,8 @@ SubUpdateJson _$SubUpdateJsonFromJson(Map<String, dynamic> json) =>
       json['enabled'] as bool?,
       (json['interval'] as num?)?.toInt(),
       json['autoPing'] as bool?,
+      json['geoDataEnabled'] as bool?,
+      (json['geoDataInterval'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$SubUpdateJsonToJson(SubUpdateJson instance) =>
@@ -18,4 +20,6 @@ Map<String, dynamic> _$SubUpdateJsonToJson(SubUpdateJson instance) =>
       'enabled': ?instance.enabled,
       'interval': ?instance.interval,
       'autoPing': ?instance.autoPing,
+      'geoDataEnabled': ?instance.geoDataEnabled,
+      'geoDataInterval': ?instance.geoDataInterval,
     };
