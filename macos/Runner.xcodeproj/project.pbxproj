@@ -373,7 +373,6 @@
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				EB4C11002FE0000000000001 /* Copy OneXray CLI */,
 				EBEAD8642B95749600A8D27B /* Embed Foundation Extensions */,
-				D34CFA6DDE6FB8B80602FB11 /* [CP] Embed Pods Frameworks */,
 				AAA6AE00DA7B6969B8AF7983 /* FlutterFire: "flutterfire upload-crashlytics-symbols" */,
 			);
 			buildRules = (
@@ -580,23 +579,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "CLI_SOURCE=\"$SRCROOT/../build/cli/macos/onexray\"\nCLI_DEST=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/onexray\"\nif [ -f \"$CLI_SOURCE\" ]; then\n  mkdir -p \"$(dirname \"$CLI_DEST\")\"\n  cp \"$CLI_SOURCE\" \"$CLI_DEST\"\n  chmod 755 \"$CLI_DEST\"\n\n  SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:-${CODE_SIGN_IDENTITY:-}}\"\n  if [ \"${CODE_SIGNING_ALLOWED:-YES}\" != \"NO\" ] && [ -n \"$SIGN_IDENTITY\" ] && [ \"$SIGN_IDENTITY\" != \"-\" ]; then\n    CODE_SIGN_OPTIONS=\"\"\n    if [ \"${ENABLE_HARDENED_RUNTIME:-NO}\" = \"YES\" ]; then\n      CODE_SIGN_OPTIONS=\"--options runtime\"\n    fi\n\n    /usr/bin/codesign --force --sign \"$SIGN_IDENTITY\" $CODE_SIGN_OPTIONS \"$CLI_DEST\"\n    /usr/bin/codesign --verify --strict \"$CLI_DEST\"\n  fi\nelse\n  rm -f \"$CLI_DEST\"\nfi\n";
-		};
-		D34CFA6DDE6FB8B80602FB11 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
