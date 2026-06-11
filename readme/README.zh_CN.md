@@ -1,5 +1,7 @@
 # OneXray
 
+[English](../README.md) | [Русский](./README.ru.md)
+
 ## 应用介绍
 
 关注我们的 Telegram 频道：[OneXray](https://t.me/OneXrayApp)
@@ -10,20 +12,34 @@
 
 ## 下载
 
-| 操作系统 | 版本                   | CPU 架构             | 安装包格式 | 下载链接                                                                                                                   |
-| -------- | ---------------------- | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Windows  | Windows 10, Windows 11 | x86_64               | exe        | [OneXray-windows-amd64.exe](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)         |
-| Windows  | Windows 10, Windows 11 | x86_64               | zip        | [OneXray-windows-amd64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip)         |
-| Android  | Android 10.0 及以上    | arm32, arm64, x86_64 | aab        | [Google Play Store](https://play.google.com/store/apps/details?id=net.yuandev.onexray)                                     |
-| Android  | Android 10.0 及以上    | arm32, arm64, x86_64 | apk        | [OneXray-android-universal.apk](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| iOS      | iOS 15.0 及以上        | arm64                | ipa        | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                            |
-| iOS      | iOS 15.0 及以上        | arm64                | ipa        | [OneXray-ios.ipa](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa)                             |
-| macOS    | macOS 12.0 及以上      | Apple silicon, Intel | pkg        | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                        |
-| macOS    | macOS 12.0 及以上      | Apple silicon, Intel | zip        | [OneXray-macos-universal.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip)     |
-| Linux    | GLIBC >= 2.39          | x86_64               | deb        | [OneXray-linux-x86_64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)           |
-| Linux    | GLIBC >= 2.39          | x86_64               | zip        | [OneXray-linux-x86_64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)           |
-| Linux    | GLIBC >= 2.39          | arm64                | deb        | [OneXray-linux-aarch64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)         |
-| Linux    | GLIBC >= 2.39          | arm64                | zip        | [OneXray-linux-aarch64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)          |
+| 平台 | 要求 | 下载 |
+| --- | --- | --- |
+| iOS | iOS 15.0 及以上，arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)、[IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| macOS | macOS 12.0 及以上，Apple silicon 或 Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)、[Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Android | Android 10.0 及以上，arm32、arm64 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray)、[Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows | Windows 10 或 Windows 11，x86_64 | [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+
+## 桌面端 CLI
+
+桌面端安装包包含 `onexray` CLI。CLI 通过本地 Automation API 连接正在运行的 App，因此使用 CLI 命令前必须先打开 OneXray。
+
+```shell
+onexray health
+onexray status
+onexray import --file /path/to/import.txt
+onexray import --text 'vless://...'
+cat import.txt | onexray import --file -
+onexray debug session
+onexray vpn start
+onexray vpn start --id 123
+onexray vpn stop
+```
+
+`onexray import` 支持 OneXray URL Scheme、HTTPS 订阅 URL、Xray 分享链接、多行分享文本、Clash.Meta YAML，以及内置 libXray API 可识别的 Xray JSON 文本。`--file` 读取文本文件；二维码图片导入请在 App UI 中使用。
+
+完整命令参数、导入 payload、session 路径和 Automation API 细节见 [开发](https://onexray.com/zh/docs/develop/) 和 [AI 参考](https://onexray.com/zh/docs/reference/)。
 
 ## 使用注意
 

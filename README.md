@@ -1,6 +1,6 @@
 # OneXray
 
-[简体中文](./readme/README.zh_CN.md)
+[简体中文](./readme/README.zh_CN.md) | [Русский](./readme/README.ru.md)
 
 ## App Introduction
 
@@ -12,20 +12,34 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 
 ## Download
 
-| Operating System | Version                | CPU Architecture     | Installation Package Format | Download Link                                                                                                              |
-| ---------------- | ---------------------- | -------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Windows          | Windows 10, Windows 11 | x86_64               | exe                         | [OneXray-windows-amd64.exe](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)         |
-| Windows          | Windows 10, Windows 11 | x86_64               | zip                         | [OneXray-windows-amd64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip)         |
-| Android          | Android 10.0 and above | arm32, arm64, x86_64 | aab                         | [Google Play Store](https://play.google.com/store/apps/details?id=net.yuandev.onexray)                                     |
-| Android          | Android 10.0 and above | arm32, arm64, x86_64 | apk                         | [OneXray-android-universal.apk](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| iOS              | iOS 15.0 and above     | arm64                | ipa                         | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                            |
-| iOS              | iOS 15.0 and above     | arm64                | ipa                         | [OneXray-ios.ipa](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa)                             |
-| macOS            | macOS 12.0 and above   | Apple silicon, Intel | pkg                         | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                        | \ |
-| macOS            | macOS 12.0 and above   | Apple silicon, Intel | zip                         | [OneXray-macos-universal.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip)     |
-| Linux            | GLIBC >= 2.39          | x86_64               | deb                         | [OneXray-linux-x86_64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)           |
-| Linux            | GLIBC >= 2.39          | x86_64               | zip                         | [OneXray-linux-x86_64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)           |
-| Linux            | GLIBC >= 2.39          | arm64                | deb                         | [OneXray-linux-aarch64.deb](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)         |
-| Linux            | GLIBC >= 2.39          | arm64                | zip                         | [OneXray-linux-aarch64.zip](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip)         |
+| Platform | Requirements | Download |
+| --- | --- | --- |
+| iOS | iOS 15.0 and above, arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773), [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| macOS | macOS 12.0 and above, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773), [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Android | Android 10.0 and above, arm32, arm64, or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows | Windows 10 or Windows 11, x86_64 | [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+
+## Desktop CLI
+
+Desktop packages include the `onexray` CLI. It talks to the running app through the local Automation API, so OneXray must be open before using CLI commands.
+
+```shell
+onexray health
+onexray status
+onexray import --file /path/to/import.txt
+onexray import --text 'vless://...'
+cat import.txt | onexray import --file -
+onexray debug session
+onexray vpn start
+onexray vpn start --id 123
+onexray vpn stop
+```
+
+`onexray import` accepts OneXray URL Scheme links, HTTPS subscription URLs, Xray share links, multi-line share text, Clash.Meta YAML, and Xray JSON text supported by the bundled libXray API. `--file` reads text files; QR image import is available from the app UI.
+
+For exact command options, import payloads, session paths, and Automation API details, see [Develop](https://onexray.com/docs/develop/) and [AI Reference](https://onexray.com/docs/reference/).
 
 ## Notes
 
