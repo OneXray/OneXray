@@ -47,7 +47,7 @@ platform :mac do
         configuration: 'Release',
         output_directory: File.expand_path('../../../output', __dir__),
         export_options: {
-          method: 'app-store',
+          method: 'app-store-connect',
           provisioningProfiles: {
             'net.yuandev.onexray' => 'OneXraymacOS',
             'net.yuandev.onexray.tun' => 'OneXrayTunmacOS'

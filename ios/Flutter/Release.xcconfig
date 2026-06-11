@@ -1,4 +1,3 @@
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
 
 // AdMob iOS App ID — referenced from Info.plist as $(ADMOB_APP_ID_IOS). The

@@ -45,7 +45,7 @@ platform :ios do
         output_directory: File.expand_path('../../../output', __dir__),
         output_name: 'OneXray-ios',
         export_options: {
-          method: 'app-store',
+          method: 'app-store-connect',
           provisioningProfiles: {
             'net.yuandev.onexray' => 'OneXrayiOS',
             'net.yuandev.onexray.tun' => 'OneXrayTuniOS'
