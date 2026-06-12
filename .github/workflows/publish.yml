@@ -2,8 +2,6 @@
 # Publishes artifacts produced by the Build workflow.
 #
 # Trigger:
-#   - workflow_run: automatically publishes a pre-release after a successful
-#     tag-triggered Build workflow.
 #   - workflow_dispatch: manually publishes a pre-release from a specific Build
 #     workflow run id and tag.
 #
@@ -14,11 +12,6 @@
 name: Publish
 
 on:
-  workflow_run:
-    workflows:
-      - Build
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       run_id:
@@ -31,44 +24,25 @@ on:
         type: string
 
 concurrency:
-  group: publish-${{ github.event.workflow_run.id || inputs.run_id }}
+  group: publish-${{ inputs.run_id }}
   cancel-in-progress: false
 
 jobs:
   pre_release:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push'
-      )
     runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: write
     steps:
-      - name: Resolve build run
-        id: build
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "run_id=${{ inputs.run_id }}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Download build artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh run download "${{ steps.build.outputs.run_id }}" --repo "${{ github.repository }}" --dir artifacts
+        run: gh run download "${{ inputs.run_id }}" --repo "${{ github.repository }}" --dir artifacts
 
       - name: Resolve release tag
         id: release
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag_name }}"
-          else
-            tag="$(cat artifacts/release-metadata/tag.txt)"
-          fi
+          tag="${{ inputs.tag_name }}"
 
           case "$tag" in
             v*) ;;
@@ -79,6 +53,22 @@ jobs:
           esac
 
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Verify build metadata
+        run: |
+          metadata_tag_file="artifacts/release-metadata/tag.txt"
+          if [ ! -f "$metadata_tag_file" ]; then
+            echo "Missing release metadata artifact: $metadata_tag_file" >&2
+            exit 1
+          fi
+
+          metadata_tag="$(cat "$metadata_tag_file")"
+          if [ "$metadata_tag" != "${{ steps.release.outputs.tag }}" ]; then
+            echo "Build metadata tag does not match publish tag." >&2
+            echo "metadata: $metadata_tag" >&2
+            echo "publish:  ${{ steps.release.outputs.tag }}" >&2
+            exit 1
+          fi
 
       - name: List release files
         run: find artifacts -type f | sort
