@@ -13,12 +13,14 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/app_update/dialog.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
 import 'package:onexray/pages/home/xray/raw/params.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/background_task/service.dart';
+import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
@@ -62,12 +64,45 @@ class HomeController extends Cubit<HomeState> {
     if (pendingRefreshVpnResult != null) {
       _handleRefreshVpn(pendingRefreshVpnResult);
     }
+    BackgroundTaskService().init();
     unawaited(VpnService().refreshVpnStatus());
     final id = await PreferencesKey().readLastConfigId();
     emit(state.copyWith(configId: id));
     await _updateConfigName(id);
-    await BackgroundTaskService().asyncInit();
-    await BackgroundTaskService().checkDataUpdate();
+    unawaited(_checkAppUpdate());
+  }
+
+  Future<void> _checkAppUpdate() async {
+    try {
+      await Future.delayed(const Duration(seconds: 3));
+      if (isClosed || !context.mounted) {
+        return;
+      }
+      if (!await PreferencesKey().readPrivacyAccepted()) {
+        return;
+      }
+      final service = AppUpdateService();
+      if (!await service.shouldRunAutomaticCheck()) {
+        return;
+      }
+      await service.recordAutomaticCheck();
+      final result = await service.checkForUpdate();
+      if (isClosed ||
+          !context.mounted ||
+          result.status != AppUpdateCheckStatus.available ||
+          result.updateInfo == null) {
+        return;
+      }
+      final updateInfo = result.updateInfo!;
+      if (!await service.shouldShowAutomaticReminder(updateInfo)) {
+        return;
+      }
+      if (!isClosed && context.mounted) {
+        await AppUpdateDialog.show(context, updateInfo);
+      }
+    } catch (e) {
+      ygLogger("checkAppUpdate error: $e");
+    }
   }
 
   void _initToastStream() {

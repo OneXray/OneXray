@@ -467,6 +467,7 @@
   "subUpdatePageIntervalThreeDays": "三天",
   "subUpdatePageIntervalOneWeek": "一週",
   "subUpdatePageAutoPing": "更新後自動測速",
+  "subUpdatePageGeoDataUpdateAfterVpnConnected": "VPN 連線後更新",
   "geoDataListPageTitle": "規則集",
   "geoDataListPageSystem": "系統",
   "geoDataListPageCustom": "自定義",

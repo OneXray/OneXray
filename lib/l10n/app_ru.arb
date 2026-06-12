@@ -467,6 +467,7 @@
   "subUpdatePageIntervalThreeDays": "Три дня",
   "subUpdatePageIntervalOneWeek": "Одна неделя",
   "subUpdatePageAutoPing": "Авто пинг после обновления",
+  "subUpdatePageGeoDataUpdateAfterVpnConnected": "Обновлять после подключения VPN",
   "geoDataListPageTitle": "Наборы правил",
   "geoDataListPageSystem": "Системные",
   "geoDataListPageCustom": "Пользовательские",

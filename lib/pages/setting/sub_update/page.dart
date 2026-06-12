@@ -79,6 +79,8 @@ class SubUpdatePage extends StatelessWidget {
       children: [
         _geoDataEnable(context, state, controller),
         if (state.subUpdateState.geoDataEnable)
+          _geoDataUpdateAfterVpnConnected(context, state, controller),
+        if (state.subUpdateState.geoDataEnable)
           _geoDataInterval(context, state, controller),
       ],
     );
@@ -143,6 +145,21 @@ class SubUpdatePage extends StatelessWidget {
       value: "${state.subUpdateState.geoDataInterval}",
       selections: SubUpdateInterval.values,
       onSelected: (value) => controller.updateGeoDataInterval(value),
+    );
+  }
+
+  Widget _geoDataUpdateAfterVpnConnected(
+    BuildContext context,
+    SubUpdatePageState state,
+    SubUpdateController controller,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(
+        context,
+      )!.subUpdatePageGeoDataUpdateAfterVpnConnected,
+      value: state.subUpdateState.geoDataUpdateAfterVpnConnected,
+      onChanged: (value) =>
+          controller.updateGeoDataUpdateAfterVpnConnected(value),
     );
   }
 

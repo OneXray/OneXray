@@ -43,8 +43,9 @@ class SubUpdateState {
   var enable = false;
   var interval = SubUpdateInterval.oneDay;
   var autoPing = false;
-  var geoDataEnable = true;
+  var geoDataEnable = false;
   var geoDataInterval = SubUpdateInterval.oneWeek;
+  var geoDataUpdateAfterVpnConnected = true;
 
   Future<void> readFromPreferences() async {
     final jsonMap = await PreferencesKey().readSubUpdate();
@@ -70,6 +71,10 @@ class SubUpdateState {
         fallback: SubUpdateInterval.oneWeek,
       );
     }
+    if (subUpdateJson.geoDataUpdateAfterVpnConnected != null) {
+      geoDataUpdateAfterVpnConnected =
+          subUpdateJson.geoDataUpdateAfterVpnConnected!;
+    }
   }
 
   Future<void> saveToPreferences() async {
@@ -79,6 +84,7 @@ class SubUpdateState {
       autoPing,
       geoDataEnable,
       geoDataInterval.value,
+      geoDataUpdateAfterVpnConnected,
     );
     await PreferencesKey().saveSubUpdate(subUpdateJson.toJson());
   }

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/app_update/reminder.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/home/component/outbound/controller.dart';
 import 'package:onexray/pages/home/home/component/outbound/view.dart';
@@ -58,22 +57,20 @@ class _HomePageState extends State<HomePage>
         builder: (context, homeState) {
           final controller = context.read<HomeController>();
           return BlocBuilder<AppEventBus, AppEventBusState>(
-            builder: (context, eventState) => AppUpdateReminder(
-              child: Scaffold(
-                appBar: AppBar(
-                  leading: IconButton(
-                    onPressed: () => controller.gotoSettings(context),
-                    icon: Icon(Icons.settings),
-                  ),
-                  title: Text(AppLocalizations.of(context)!.homePageTitle),
-                  actions: [
-                    _searchButton(context),
-                    _rightButton(context, controller, eventState),
-                  ],
+            builder: (context, eventState) => Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  onPressed: () => controller.gotoSettings(context),
+                  icon: Icon(Icons.settings),
                 ),
-                body: SafeArea(
-                  child: _body(context, controller, homeState, eventState),
-                ),
+                title: Text(AppLocalizations.of(context)!.homePageTitle),
+                actions: [
+                  _searchButton(context),
+                  _rightButton(context, controller, eventState),
+                ],
+              ),
+              body: SafeArea(
+                child: _body(context, controller, homeState, eventState),
               ),
             ),
           );

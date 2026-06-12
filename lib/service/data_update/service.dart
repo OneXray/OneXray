@@ -15,14 +15,24 @@ class DataUpdateService {
 
   var _running = false;
 
-  Future<void> checkAndRun() async {
+  Future<void> checkAndRun({
+    bool updateSubscription = true,
+    bool updateGeoData = true,
+    bool vpnConnected = false,
+  }) async {
     if (_running || AppEventBus.instance.state.downloading) {
       return;
     }
 
     final subUpdateState = SubUpdateState();
     await subUpdateState.readFromPreferences();
-    if (!subUpdateState.enable && !subUpdateState.geoDataEnable) {
+    final shouldUpdateSubscription =
+        updateSubscription && subUpdateState.enable;
+    final shouldUpdateGeoData =
+        updateGeoData &&
+        subUpdateState.geoDataEnable &&
+        (!subUpdateState.geoDataUpdateAfterVpnConnected || vpnConnected);
+    if (!shouldUpdateSubscription && !shouldUpdateGeoData) {
       return;
     }
 
@@ -30,13 +40,13 @@ class DataUpdateService {
     final eventBus = AppEventBus.instance;
     eventBus.updateDownloading(true);
     try {
-      if (subUpdateState.enable) {
+      if (shouldUpdateSubscription) {
         await SubscriptionService().refreshOutdatedSubscription(
           subUpdateState: subUpdateState,
           updateDownloading: false,
         );
       }
-      if (subUpdateState.geoDataEnable) {
+      if (shouldUpdateGeoData) {
         await _refreshOutdatedGeoData(subUpdateState);
       }
     } catch (e) {

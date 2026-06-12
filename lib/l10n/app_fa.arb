@@ -467,6 +467,7 @@
     "subUpdatePageIntervalThreeDays": "سه روز",
     "subUpdatePageIntervalOneWeek": "یک هفته",
     "subUpdatePageAutoPing": "پینگ خودکار پس از به‌روزرسانی",
+    "subUpdatePageGeoDataUpdateAfterVpnConnected": "به‌روزرسانی پس از اتصال VPN",
     "geoDataListPageTitle": "مجموعه قوانین",
     "geoDataListPageSystem": "سیستم",
     "geoDataListPageCustom": "سفارشی",

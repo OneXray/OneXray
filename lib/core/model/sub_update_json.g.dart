@@ -13,13 +13,16 @@ SubUpdateJson _$SubUpdateJsonFromJson(Map<String, dynamic> json) =>
       json['autoPing'] as bool?,
       json['geoDataEnabled'] as bool?,
       (json['geoDataInterval'] as num?)?.toInt(),
+      json['geoDataUpdateAfterVpnConnected'] as bool?,
     );
 
-Map<String, dynamic> _$SubUpdateJsonToJson(SubUpdateJson instance) =>
-    <String, dynamic>{
-      'enabled': ?instance.enabled,
-      'interval': ?instance.interval,
-      'autoPing': ?instance.autoPing,
-      'geoDataEnabled': ?instance.geoDataEnabled,
-      'geoDataInterval': ?instance.geoDataInterval,
-    };
+Map<String, dynamic> _$SubUpdateJsonToJson(
+  SubUpdateJson instance,
+) => <String, dynamic>{
+  'enabled': ?instance.enabled,
+  'interval': ?instance.interval,
+  'autoPing': ?instance.autoPing,
+  'geoDataEnabled': ?instance.geoDataEnabled,
+  'geoDataInterval': ?instance.geoDataInterval,
+  'geoDataUpdateAfterVpnConnected': ?instance.geoDataUpdateAfterVpnConnected,
+};

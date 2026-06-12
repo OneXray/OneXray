@@ -50,6 +50,11 @@ class SubUpdateController extends Cubit<SubUpdatePageState> {
     emit(state._copy());
   }
 
+  void updateGeoDataUpdateAfterVpnConnected(bool value) {
+    state.subUpdateState.geoDataUpdateAfterVpnConnected = value;
+    emit(state._copy());
+  }
+
   Future<void> save(BuildContext context) async {
     await state.subUpdateState.saveToPreferences();
     if (context.mounted) {

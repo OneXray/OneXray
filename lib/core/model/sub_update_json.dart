@@ -9,6 +9,7 @@ class SubUpdateJson {
   bool? autoPing;
   bool? geoDataEnabled;
   int? geoDataInterval;
+  bool? geoDataUpdateAfterVpnConnected;
 
   SubUpdateJson(
     this.enabled,
@@ -16,6 +17,7 @@ class SubUpdateJson {
     this.autoPing,
     this.geoDataEnabled,
     this.geoDataInterval,
+    this.geoDataUpdateAfterVpnConnected,
   );
 
   factory SubUpdateJson.fromJson(Map<String, dynamic> json) =>
