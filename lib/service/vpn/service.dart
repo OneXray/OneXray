@@ -71,12 +71,17 @@ final class VpnService {
   }
 
   void dispose() {
-    _vpnStatusSubscription.cancel();
+    final vpnStatusSubscription = _vpnStatusSubscription;
+    _vpnStatusSubscription = null;
+    unawaited(vpnStatusSubscription?.cancel() ?? Future.value());
   }
 
-  late StreamSubscription<VpnStatus> _vpnStatusSubscription;
+  StreamSubscription<VpnStatus>? _vpnStatusSubscription;
 
   void _listenVpnStatus() {
+    if (_vpnStatusSubscription != null) {
+      return;
+    }
     ygLogger("_listenVpnStatus");
     _vpnStatusSubscription = AppFlutterApi().vpnStatusController.stream.listen(
       _vpnStatusChanged,

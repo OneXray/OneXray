@@ -17,20 +17,23 @@ final class TrayService with TrayListener {
   TrayService._internal();
 
   //==========================
+  var _initialized = false;
 
   void init() {
-    if (!AppPlatform.isDesktop) {
+    if (!AppPlatform.isDesktop || _initialized) {
       return;
     }
 
     trayManager.addListener(this);
+    _initialized = true;
   }
 
   void dispose() {
-    if (!AppPlatform.isDesktop) {
+    if (!AppPlatform.isDesktop || !_initialized) {
       return;
     }
     trayManager.removeListener(this);
+    _initialized = false;
   }
 
   Future<void> refreshTrayManager() async {

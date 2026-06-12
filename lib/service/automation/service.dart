@@ -409,18 +409,16 @@ final class AutomationService {
       return;
     }
 
-    final paths = <String>{
-      p.join(VpnConstants.runDir, AutomationProtocol.sessionFileName),
-      ...AutomationSessionPaths.candidates(),
-    };
-    for (final path in paths) {
-      try {
-        await Directory(p.dirname(path)).create(recursive: true);
-        await File(path).writeAsString(jsonEncode(session.toJson()));
-        _sessionPaths.add(path);
-      } catch (_) {
-        continue;
-      }
+    final path = p.join(
+      VpnConstants.runDir,
+      AutomationProtocol.sessionFileName,
+    );
+    try {
+      await Directory(p.dirname(path)).create(recursive: true);
+      await File(path).writeAsString(jsonEncode(session.toJson()));
+      _sessionPaths.add(path);
+    } catch (_) {
+      return;
     }
   }
 

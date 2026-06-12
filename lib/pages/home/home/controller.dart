@@ -21,6 +21,8 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/app_update/service.dart';
+import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/geo_data/system_dat_service.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
@@ -55,6 +57,7 @@ class HomeController extends Cubit<HomeState> {
 
   late final StreamSubscription<void> _toastSubscription;
   late final StreamSubscription<RefreshVpnResult> _refreshVpnSubscription;
+  Future<void>? _systemGeoDatFuture;
   var _systemExtensionApprovalShown = false;
 
   Future<void> _asyncInit() async {
@@ -64,12 +67,63 @@ class HomeController extends Cubit<HomeState> {
     if (pendingRefreshVpnResult != null) {
       _handleRefreshVpn(pendingRefreshVpnResult);
     }
-    BackgroundTaskService().init();
-    unawaited(VpnService().refreshVpnStatus());
-    final id = await PreferencesKey().readLastConfigId();
-    emit(state.copyWith(configId: id));
-    await _updateConfigName(id);
+    _systemGeoDatFuture = _checkSystemGeoDatAssets();
+    unawaited(_systemGeoDatFuture!);
+    unawaited(_initServices());
+    try {
+      final id = await PreferencesKey().readLastConfigId();
+      if (isClosed) {
+        return;
+      }
+      emit(state.copyWith(configId: id));
+      await _updateConfigName(id);
+    } catch (e, stackTrace) {
+      ygLogger("home init error: $e\n$stackTrace");
+    }
     unawaited(_checkAppUpdate());
+  }
+
+  Future<void> _initServices() async {
+    try {
+      if (isClosed || !context.mounted) {
+        return;
+      }
+      await context.read<AppEventBus>().asyncInitService(context);
+    } catch (e, stackTrace) {
+      ygLogger("home service init error: $e\n$stackTrace");
+    }
+
+    if (isClosed) {
+      return;
+    }
+    try {
+      BackgroundTaskService().init();
+    } catch (e, stackTrace) {
+      ygLogger("background task init error: $e\n$stackTrace");
+    }
+    unawaited(_refreshVpnStatus());
+  }
+
+  Future<void> _refreshVpnStatus() async {
+    try {
+      await VpnService().refreshVpnStatus();
+    } catch (e, stackTrace) {
+      ygLogger("refreshVpnStatus error: $e\n$stackTrace");
+    }
+  }
+
+  Future<void> _checkSystemGeoDatAssets() async {
+    try {
+      await SystemGeoDatService().checkAssets();
+    } catch (e, stackTrace) {
+      ygLogger("checkSystemGeoDatAssets error: $e\n$stackTrace");
+    }
+  }
+
+  Future<void> _ensureSystemGeoDatAssets() async {
+    final systemGeoDatFuture = _systemGeoDatFuture ??=
+        _checkSystemGeoDatAssets();
+    await systemGeoDatFuture;
   }
 
   Future<void> _checkAppUpdate() async {
@@ -268,6 +322,7 @@ class HomeController extends Cubit<HomeState> {
       return;
     }
 
+    await _ensureSystemGeoDatAssets();
     final permission = await VpnService().checkPermission();
     if (!permission) {
       if (context.mounted) {

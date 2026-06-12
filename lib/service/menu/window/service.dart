@@ -11,23 +11,26 @@ final class WindowService with WindowListener {
   WindowService._internal();
 
   //==========================
+  var _initialized = false;
 
   Future<void> asyncInit() async {
-    if (!AppPlatform.isDesktop) {
+    if (!AppPlatform.isDesktop || _initialized) {
       return;
     }
     await windowManager.setPreventClose(true);
     windowManager.addListener(this);
+    _initialized = true;
 
     final hideDockIcon = await PreferencesKey().readHideDockIcon();
     await windowManager.setSkipTaskbar(hideDockIcon);
   }
 
   void dispose() {
-    if (!AppPlatform.isDesktop) {
+    if (!AppPlatform.isDesktop || !_initialized) {
       return;
     }
     windowManager.removeListener(this);
+    _initialized = false;
   }
 
   @override

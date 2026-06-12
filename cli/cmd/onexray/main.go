@@ -30,6 +30,13 @@ const (
 	vpnStopPath  = "/v1/vpn/stop"
 
 	sessionFileName = "automation-session.json"
+	sessionEnvName  = "ONEXRAY_SESSION"
+
+	macOSAppGroupID   = "2CKAULFA9J.net.yuandev.onexray"
+	macOSSEAppGroupID = "group.net.yuandev.onexray.se"
+	linuxAppID        = "net.yuandev.onexray"
+	windowsCompany    = "YuanDevLLC"
+	windowsProduct    = "OneXray"
 
 	codeAppNotRunning   = "app_not_running"
 	codeAPIUnavailable  = "api_unavailable"
@@ -485,35 +492,41 @@ func sessionCandidates(explicit string) []string {
 		paths = append(paths, path)
 	}
 	add(explicit)
-	add(os.Getenv("ONEXRAY_SESSION"))
+	add(os.Getenv(sessionEnvName))
+	add(defaultSessionPath())
+	return paths
+}
 
+func defaultSessionPath() string {
 	switch runtime.GOOS {
 	case "darwin":
-		home := os.Getenv("HOME")
-		if home != "" {
-			add(filepath.Join(home, "Library", "Group Containers", "2CKAULFA9J.net.yuandev.onexray", "run", sessionFileName))
-			add(filepath.Join(home, "Library", "Group Containers", "group.net.yuandev.onexray.se", "run", sessionFileName))
-			add(filepath.Join(home, "Library", "Application Support", "OneXray", "run", sessionFileName))
+		if home := os.Getenv("HOME"); home != "" {
+			return filepath.Join(home, "Library", "Group Containers", macOSAppGroupIDForCurrentBuild(), "run", sessionFileName)
 		}
 	case "windows":
 		if appData := os.Getenv("APPDATA"); appData != "" {
-			add(filepath.Join(appData, "OneXray", "run", sessionFileName))
+			return filepath.Join(appData, windowsCompany, windowsProduct, "run", sessionFileName)
 		}
 	case "linux":
-		if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
-			add(filepath.Join(runtimeDir, "onexray", sessionFileName))
+		if dataHome := os.Getenv("XDG_DATA_HOME"); dataHome != "" {
+			return filepath.Join(dataHome, linuxAppID, "run", sessionFileName)
 		}
-		if configHome := os.Getenv("XDG_CONFIG_HOME"); configHome != "" {
-			add(filepath.Join(configHome, "onexray", "run", sessionFileName))
-		} else {
-			home := os.Getenv("HOME")
-			if home != "" {
-				add(filepath.Join(home, ".config", "onexray", "run", sessionFileName))
-				add(filepath.Join(home, ".local", "share", "onexray", "run", sessionFileName))
-			}
+		if home := os.Getenv("HOME"); home != "" {
+			return filepath.Join(home, ".local", "share", linuxAppID, "run", sessionFileName)
 		}
 	}
-	return paths
+	return ""
+}
+
+func macOSAppGroupIDForCurrentBuild() string {
+	executable, err := os.Executable()
+	if err != nil {
+		return macOSAppGroupID
+	}
+	if strings.Contains(filepath.Clean(executable), string(os.PathSeparator)+"OneXraySE.app"+string(os.PathSeparator)) {
+		return macOSSEAppGroupID
+	}
+	return macOSAppGroupID
 }
 
 func statusText(data map[string]any) string {

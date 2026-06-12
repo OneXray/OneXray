@@ -27,6 +27,9 @@ final class ShareService {
   //==========================
 
   void init() {
+    if (_deepLinkSubscription != null) {
+      return;
+    }
     final appLinks = AppLinks();
     _deepLinkSubscription = appLinks.uriLinkStream.listen(
       (uri) => _readDeepLink(uri),
@@ -34,10 +37,12 @@ final class ShareService {
   }
 
   void dispose() {
-    _deepLinkSubscription.cancel();
+    final deepLinkSubscription = _deepLinkSubscription;
+    _deepLinkSubscription = null;
+    unawaited(deepLinkSubscription?.cancel() ?? Future.value());
   }
 
-  late StreamSubscription<Uri> _deepLinkSubscription;
+  StreamSubscription<Uri>? _deepLinkSubscription;
 
   Future<void> _readDeepLink(Uri uri) async {
     await readShareText(uri.toString());

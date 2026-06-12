@@ -25,13 +25,13 @@ class AppEventBus extends Cubit<AppEventBusState> {
   }
 
   Future<void> asyncInitService(BuildContext context) async {
-    await _asyncInitState();
+    await asyncInitState();
     if (context.mounted) {
       await ServiceManager.serviceInit(context);
     }
   }
 
-  Future<void> _asyncInitState() async {
+  Future<void> asyncInitState() async {
     final xraySettingId = await PreferencesKey().readXraySettingId();
     final runningId = await PreferencesKey().readRunningConfigId();
     emit(state.copyWith(xraySettingId: xraySettingId, runningId: runningId));

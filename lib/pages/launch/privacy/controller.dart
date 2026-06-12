@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/pages/launch/init.dart';
+import 'package:onexray/pages/main/url.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyState {
@@ -42,9 +44,26 @@ class PrivacyController extends Cubit<PrivacyState> {
   }
 
   Future<void> accept(BuildContext context) async {
-    await PreferencesKey().savePrivacyAccepted(true);
-    if (context.mounted) {
-      checkFirstRun(context);
+    var accepted = false;
+    try {
+      await PreferencesKey().savePrivacyAccepted(true);
+      accepted = true;
+      if (context.mounted) {
+        await checkFirstRun(context);
+      }
+    } catch (e, stackTrace) {
+      ygLogger("privacy accept error: $e\n$stackTrace");
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: e,
+          stack: stackTrace,
+          library: "OneXray launch",
+          context: ErrorDescription("while accepting privacy policy"),
+        ),
+      );
+      if (accepted && context.mounted) {
+        context.go(RouterPath.home);
+      }
     }
   }
 }
