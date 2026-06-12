@@ -52,11 +52,17 @@ class HomeController extends Cubit<HomeState> {
   }
 
   late final StreamSubscription<void> _toastSubscription;
-  late final StreamSubscription<void> _refreshVpnSubscription;
+  late final StreamSubscription<RefreshVpnResult> _refreshVpnSubscription;
+  var _systemExtensionApprovalShown = false;
 
   Future<void> _asyncInit() async {
     _initToastStream();
     _initRefreshVpnStream();
+    final pendingRefreshVpnResult = AppFlutterApi().consumeRefreshVpnResult();
+    if (pendingRefreshVpnResult != null) {
+      _handleRefreshVpn(pendingRefreshVpnResult);
+    }
+    unawaited(VpnService().refreshVpnStatus());
     final id = await PreferencesKey().readLastConfigId();
     emit(state.copyWith(configId: id));
     await _updateConfigName(id);
@@ -84,14 +90,20 @@ class HomeController extends Cubit<HomeState> {
   void _handleRefreshVpn(RefreshVpnResult result) async {
     final useSystemExtension = await AppHostApi().useSystemExtension();
     if (AppPlatform.isMacOS && useSystemExtension) {
-      if (result == RefreshVpnResult.waitForApproval && context.mounted) {
-        ygLogger("VPN is waiting for approval, showing alert dialog");
-        ContextAlert.showOKDialog(
-          context,
-          "System Extension Approval",
-          "VPN is waiting for approval, showing alert dialog",
-        );
+      if (result != RefreshVpnResult.waitForApproval) {
+        _systemExtensionApprovalShown = false;
+        return;
       }
+      if (_systemExtensionApprovalShown || !context.mounted) {
+        return;
+      }
+      _systemExtensionApprovalShown = true;
+      ygLogger("VPN is waiting for approval, showing alert dialog");
+      ContextAlert.showOKDialog(
+        context,
+        "System Extension Approval",
+        "VPN is waiting for approval, showing alert dialog",
+      );
     }
   }
 

@@ -123,7 +123,7 @@ class VPNManager {
         #endif
         do {
             let installed = await SystemExtensionManager.isInstalled()
-            if installed == .installed && !force {
+            if (installed == .installed || installed == .waitForApproval) && !force {
                 return installed
             }
             if let result = try await SystemExtensionManager.activate(forceReplace: force) {
@@ -133,7 +133,7 @@ class VPNManager {
                     return .notInstalled
                 }
             }
-            return .notInstalled
+            return .waitForApproval
         } catch {
             YGLog("setup system extension error: \(error.localizedDescription)")
             return .notInstalled

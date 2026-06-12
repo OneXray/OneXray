@@ -6,32 +6,41 @@ import SystemExtensions
 /// no state is retained between calls.
 enum SystemExtensionManager {
     static func isInstalled() async -> RefreshVpnResult {
-        guard let properties = try? await ExtensionRequestDriver().runProperties({ queue in
+        guard let properties = try? await ExtensionRequestDriver().runProperties(timeout: .seconds(5), { queue in
             OSSystemExtensionRequest.propertiesRequest(forExtensionWithIdentifier: packetTunnelId(), queue: queue)
         }) else { return .notInstalled }
         let waitForApproval = properties.contains(where: { item in
-            item.isAwaitingUserApproval
+            item.bundleIdentifier == packetTunnelId() && item.isAwaitingUserApproval
         })
         if waitForApproval {
             return .waitForApproval
         }
+        guard let current = ExtensionIdentity.bundled() else {
+            return .notInstalled
+        }
         let success = properties.contains(where: { item in
-            !item.isAwaitingUserApproval && !item.isUninstalling
+            item.matches(current) && !item.isAwaitingUserApproval && !item.isUninstalling
         })
         if success {
             return .installed
+        }
+        let activeDifferentVersion = properties.contains(where: { item in
+            item.bundleIdentifier == current.bundleIdentifier && !item.isAwaitingUserApproval && !item.isUninstalling
+        })
+        if activeDifferentVersion {
+            YGLog("system extension version mismatch; activation required")
         }
         return .notInstalled
     }
 
     static func activate(forceReplace: Bool = false) async throws -> OSSystemExtensionRequest.Result? {
-        try await ExtensionRequestDriver(forceReplace: forceReplace).runResult { queue in
+        try await ExtensionRequestDriver(forceReplace: forceReplace).runResult(timeout: .seconds(20)) { queue in
             OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: packetTunnelId(), queue: queue)
         }
     }
 
     static func deactivate() async throws -> OSSystemExtensionRequest.Result? {
-        try await ExtensionRequestDriver().runResult { queue in
+        try await ExtensionRequestDriver().runResult(timeout: .seconds(20)) { queue in
             OSSystemExtensionRequest.deactivationRequest(forExtensionWithIdentifier: packetTunnelId(), queue: queue)
         }
     }
@@ -41,14 +50,69 @@ enum SystemExtensionManager {
 
 private typealias RequestFactory = (DispatchQueue) -> OSSystemExtensionRequest
 
+private enum SystemExtensionRequestError: Error {
+    case timeout
+}
+
+private struct ExtensionIdentity {
+    let bundleIdentifier: String
+    let bundleVersion: String
+    let bundleShortVersion: String
+
+    static func bundled() -> ExtensionIdentity? {
+        let identifier = packetTunnelId()
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("Contents")
+            .appendingPathComponent("Library")
+            .appendingPathComponent("SystemExtensions")
+            .appendingPathComponent("\(identifier).systemextension")
+        guard let bundle = Bundle(url: url) else {
+            YGLog("bundled system extension not found: \(url.path)")
+            return nil
+        }
+        return ExtensionIdentity(
+            bundleIdentifier: bundle.bundleIdentifier ?? identifier,
+            bundleVersion: stringValue(bundle.object(forInfoDictionaryKey: "CFBundleVersion")) ?? "",
+            bundleShortVersion: stringValue(bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString")) ?? ""
+        )
+    }
+
+    private static func stringValue(_ value: Any?) -> String? {
+        if let value = value as? String {
+            return value
+        }
+        if let value = value as? NSNumber {
+            return value.stringValue
+        }
+        return nil
+    }
+}
+
+private extension OSSystemExtensionProperties {
+    func matches(_ identity: ExtensionIdentity) -> Bool {
+        bundleIdentifier == identity.bundleIdentifier
+            && bundleVersion == identity.bundleVersion
+            && bundleShortVersion == identity.bundleShortVersion
+    }
+}
+
 /// Handles a single OSSystemExtensionRequest. Delegate callbacks run on a
 /// dedicated serial queue that also guards all mutable state, making the
 /// driver effectively single-threaded despite its `@unchecked Sendable`.
 private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDelegate, @unchecked Sendable {
     private enum Waiter {
         case none
-        case result(CheckedContinuation<OSSystemExtensionRequest.Result?, Error>)
-        case properties(CheckedContinuation<[OSSystemExtensionProperties], Error>)
+        case result(UUID, CheckedContinuation<OSSystemExtensionRequest.Result?, Error>)
+        case properties(UUID, CheckedContinuation<[OSSystemExtensionProperties], Error>)
+
+        var token: UUID? {
+            switch self {
+            case .none:
+                return nil
+            case let .result(token, _), let .properties(token, _):
+                return token
+            }
+        }
     }
 
     private static let delegateQueue = DispatchQueue(label: "net.yuandev.onexray.system-extension")
@@ -61,24 +125,54 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
         super.init()
     }
 
-    func runResult(_ make: @escaping RequestFactory) async throws -> OSSystemExtensionRequest.Result? {
+    func runResult(
+        timeout: DispatchTimeInterval,
+        _ make: @escaping RequestFactory
+    ) async throws -> OSSystemExtensionRequest.Result? {
         try await withCheckedThrowingContinuation { continuation in
-            submit(.result(continuation), make: make)
+            submit(.result(UUID(), continuation), timeout: timeout, make: make)
         }
     }
 
-    func runProperties(_ make: @escaping RequestFactory) async throws -> [OSSystemExtensionProperties] {
+    func runProperties(
+        timeout: DispatchTimeInterval,
+        _ make: @escaping RequestFactory
+    ) async throws -> [OSSystemExtensionProperties] {
         try await withCheckedThrowingContinuation { continuation in
-            submit(.properties(continuation), make: make)
+            submit(.properties(UUID(), continuation), timeout: timeout, make: make)
         }
     }
 
-    private func submit(_ waiter: Waiter, make: @escaping RequestFactory) {
+    private func submit(_ waiter: Waiter, timeout: DispatchTimeInterval, make: @escaping RequestFactory) {
         Self.delegateQueue.async {
             self.waiter = waiter
+            if let token = waiter.token {
+                self.scheduleTimeout(token, timeout: timeout)
+            }
             let request = make(Self.delegateQueue)
             request.delegate = self
             OSSystemExtensionManager.shared.submitRequest(request)
+        }
+    }
+
+    private func scheduleTimeout(_ token: UUID, timeout: DispatchTimeInterval) {
+        Self.delegateQueue.asyncAfter(deadline: .now() + timeout) {
+            self.timeout(token)
+        }
+    }
+
+    private func timeout(_ token: UUID) {
+        switch waiter {
+        case let .result(current, continuation) where current == token:
+            waiter = .none
+            YGLog("system extension request timeout")
+            continuation.resume(throwing: SystemExtensionRequestError.timeout)
+        case let .properties(current, continuation) where current == token:
+            waiter = .none
+            YGLog("system extension properties request timeout")
+            continuation.resume(throwing: SystemExtensionRequestError.timeout)
+        default:
+            break
         }
     }
 
@@ -105,7 +199,7 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
         // Resolve with nil so callers treat "pending approval" as "not ready";
         // the success path is detected later via isInstalled().
         YGLog("system extension awaiting user approval in System Settings")
-        if case let .result(continuation) = waiter {
+        if case let .result(_, continuation) = waiter {
             waiter = .none
             continuation.resume(returning: nil)
         }
@@ -114,7 +208,7 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
     func request(_ request: OSSystemExtensionRequest,
                  didFinishWithResult result: OSSystemExtensionRequest.Result)
     {
-        if case let .result(continuation) = waiter {
+        if case let .result(_, continuation) = waiter {
             waiter = .none
             continuation.resume(returning: result)
         }
@@ -122,10 +216,10 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
 
     func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
         switch waiter {
-        case let .result(c):
+        case let .result(_, c):
             waiter = .none
             c.resume(throwing: error)
-        case let .properties(c):
+        case let .properties(_, c):
             waiter = .none
             c.resume(throwing: error)
         case .none:
@@ -136,7 +230,7 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
     func request(_ request: OSSystemExtensionRequest,
                  foundProperties properties: [OSSystemExtensionProperties])
     {
-        if case let .properties(continuation) = waiter {
+        if case let .properties(_, continuation) = waiter {
             waiter = .none
             continuation.resume(returning: properties)
         }

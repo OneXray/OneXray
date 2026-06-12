@@ -67,9 +67,7 @@ final class VpnService {
 
     _lastConfigId = await PreferencesKey().readLastConfigId();
 
-    await _listenVpnStatus();
-
-    await AppHostApi().checkVpnPermission();
+    _listenVpnStatus();
   }
 
   void dispose() {
@@ -78,11 +76,14 @@ final class VpnService {
 
   late StreamSubscription<VpnStatus> _vpnStatusSubscription;
 
-  Future<void> _listenVpnStatus() async {
+  void _listenVpnStatus() {
     ygLogger("_listenVpnStatus");
     _vpnStatusSubscription = AppFlutterApi().vpnStatusController.stream.listen(
       _vpnStatusChanged,
     );
+  }
+
+  Future<void> refreshVpnStatus() async {
     await AppHostApi().readVpnStatus();
   }
 
