@@ -4,22 +4,22 @@
 
 ## 1. Инициализация проекта
 
-Репозиторий фиксирует версию Flutter через `.fvmrc`. После клонирования сначала установите FVM:
+Репозиторий использует последний stable Flutter SDK. После клонирования сначала установите Flutter:
 
 ```shell
 # macOS / Linux
-curl -fsSL https://fvm.app/install.sh | bash
-export PATH="$HOME/fvm/bin:$PATH"
+git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$HOME/flutter/stable"
+export PATH="$HOME/flutter/stable/bin:$PATH"
 
 # Windows
-choco install fvm
+git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "%USERPROFILE%\\flutter\\stable"
+setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
 ```
 
 Затем выполните в корне репозитория:
 
 ```shell
-fvm install
-fvm flutter pub get
+flutter pub get
 ```
 
 После этого подготовьте локальные конфигурационные файлы для debug:
@@ -103,8 +103,8 @@ cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
 Запустите нужную платформу:
 
 ```shell
-fvm flutter run -d android
-fvm flutter run -d macos
+flutter run -d android
+flutter run -d macos
 ```
 
 Перед отладкой Linux установите локальные build dependencies:
@@ -116,7 +116,7 @@ sudo apt-get install -y \
   libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev \
   libayatana-appindicator3-dev \
   file
-fvm flutter run -d linux
+flutter run -d linux
 ```
 
 Перед отладкой iOS установите CocoaPods dependencies:
@@ -125,7 +125,7 @@ fvm flutter run -d linux
 cd ios
 pod install
 cd ..
-fvm flutter run -d ios
+flutter run -d ios
 ```
 
 ## 4. Примечания к `.env`
@@ -179,8 +179,8 @@ fvm flutter run -d ios
 
 1. Скопировать `.example` конфигурационные файлы.
 2. Собрать `libXray` и скопировать его артефакты в соответствующие каталоги OneXray.
-3. Выполнить `fvm install` и `fvm flutter pub get`.
+3. Установить последний stable Flutter SDK и выполнить `flutter pub get`.
 4. Установить platform-specific dependencies, например `pod install` на Apple platforms и `libayatana-appindicator3-dev` на Linux.
-5. Запустить приложение через `fvm flutter run -d <device>`.
+5. Запустить приложение через `flutter run -d <device>`.
 
 Файлы вроде `playservice.json`, `android/keystore/` и платформенных `AuthKey.p8` относятся к release workflow, а не к bootstrap debug-окружения.

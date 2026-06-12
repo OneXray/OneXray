@@ -2,17 +2,8 @@
 
 set -euo pipefail
 
-if command -v python3 >/dev/null 2>&1; then
-  python_cmd="python3"
-elif command -v python >/dev/null 2>&1; then
-  python_cmd="python"
-else
-  echo "python is required to read .fvmrc" >&2
-  exit 1
-fi
-
-flutter_version="${FLUTTER_VERSION:-$("$python_cmd" -c 'import json; print(json.load(open(".fvmrc", encoding="utf-8"))["flutter"])')}"
-flutter_root="${FLUTTER_ROOT:-$HOME/flutter/$flutter_version}"
+flutter_channel="${FLUTTER_CHANNEL:-stable}"
+flutter_root="${FLUTTER_ROOT:-$HOME/flutter/$flutter_channel}"
 flutter_bin_dir="$flutter_root/bin"
 
 uname_s="$(uname -s)"
@@ -57,7 +48,7 @@ add_to_github_env() {
 
 rm -rf "$flutter_root"
 mkdir -p "$(dirname "$flutter_root")"
-git clone --depth 1 --branch "$flutter_version" https://github.com/flutter/flutter.git "$flutter_root"
+git clone --depth 1 --branch "$flutter_channel" https://github.com/flutter/flutter.git "$flutter_root"
 
 export PATH="$flutter_bin_dir:$PATH"
 add_to_github_path "$flutter_bin_dir"

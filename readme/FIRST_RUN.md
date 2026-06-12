@@ -4,22 +4,22 @@ This guide is for OneXray developers. It describes the minimum setup for the **l
 
 ## 1. Initialize the project
 
-This repository pins Flutter with `.fvmrc`. After cloning the repository, install FVM first:
+This repository uses the latest stable Flutter SDK. After cloning the repository, install Flutter first:
 
 ```shell
 # macOS / Linux
-curl -fsSL https://fvm.app/install.sh | bash
-export PATH="$HOME/fvm/bin:$PATH"
+git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$HOME/flutter/stable"
+export PATH="$HOME/flutter/stable/bin:$PATH"
 
 # Windows
-choco install fvm
+git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "%USERPROFILE%\\flutter\\stable"
+setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
 ```
 
 Then run in the repository root:
 
 ```shell
-fvm install
-fvm flutter pub get
+flutter pub get
 ```
 
 Then prepare the local config files needed for debugging:
@@ -103,8 +103,8 @@ cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
 Run the target platform with:
 
 ```shell
-fvm flutter run -d android
-fvm flutter run -d macos
+flutter run -d android
+flutter run -d macos
 ```
 
 Before debugging Linux, install the local build dependencies:
@@ -116,7 +116,7 @@ sudo apt-get install -y \
   libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev \
   libayatana-appindicator3-dev \
   file
-fvm flutter run -d linux
+flutter run -d linux
 ```
 
 Before debugging iOS, install CocoaPods dependencies:
@@ -125,7 +125,7 @@ Before debugging iOS, install CocoaPods dependencies:
 cd ios
 pod install
 cd ..
-fvm flutter run -d ios
+flutter run -d ios
 ```
 
 ## 4. `.env` notes
@@ -179,8 +179,8 @@ For local development and breakpoint debugging, the minimum setup is:
 
 1. Copy the `.example` config files.
 2. Build `libXray` and copy its artifacts into the corresponding OneXray directories.
-3. Run `fvm install` and `fvm flutter pub get`.
+3. Install the latest stable Flutter SDK and run `flutter pub get`.
 4. Install platform-specific dependencies when needed, such as `pod install` on Apple platforms and `libayatana-appindicator3-dev` on Linux.
-5. Start the app with `fvm flutter run -d <device>`.
+5. Start the app with `flutter run -d <device>`.
 
 Files such as `playservice.json`, `android/keystore/`, and the platform `AuthKey.p8` files are part of the release workflow, not the debug environment bootstrap.

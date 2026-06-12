@@ -4,22 +4,22 @@
 
 ## 1. 初始化项目
 
-本仓库通过 `.fvmrc` 固定 Flutter 版本。首次拉取代码后，先安装 FVM：
+本仓库使用最新 stable Flutter SDK。首次拉取代码后，先安装 Flutter：
 
 ```shell
 # macOS / Linux
-curl -fsSL https://fvm.app/install.sh | bash
-export PATH="$HOME/fvm/bin:$PATH"
+git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$HOME/flutter/stable"
+export PATH="$HOME/flutter/stable/bin:$PATH"
 
 # Windows
-choco install fvm
+git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "%USERPROFILE%\\flutter\\stable"
+setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
 ```
 
 然后在仓库根目录执行：
 
 ```shell
-fvm install
-fvm flutter pub get
+flutter pub get
 ```
 
 然后补齐本地调试所需的配置文件：
@@ -103,8 +103,8 @@ cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
 按目标平台执行：
 
 ```shell
-fvm flutter run -d android
-fvm flutter run -d macos
+flutter run -d android
+flutter run -d macos
 ```
 
 调试 Linux 前，先安装本地构建依赖：
@@ -116,7 +116,7 @@ sudo apt-get install -y \
   libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev \
   libayatana-appindicator3-dev \
   file
-fvm flutter run -d linux
+flutter run -d linux
 ```
 
 调试 iOS 前先安装 CocoaPods 依赖：
@@ -125,7 +125,7 @@ fvm flutter run -d linux
 cd ios
 pod install
 cd ..
-fvm flutter run -d ios
+flutter run -d ios
 ```
 
 ## 4. `.env` 说明
@@ -179,8 +179,8 @@ fvm flutter run -d ios
 
 1. 复制 `.example` 配置文件。
 2. 构建 `libXray` 并把产物复制到 OneXray 对应目录。
-3. 执行 `fvm install` 和 `fvm flutter pub get`。
+3. 安装最新 stable Flutter SDK，并执行 `flutter pub get`。
 4. 按平台安装额外依赖，例如 Apple 平台的 `pod install` 和 Linux 平台的 `libayatana-appindicator3-dev`。
-5. 用 `fvm flutter run -d <device>` 启动。
+5. 用 `flutter run -d <device>` 启动。
 
 `playservice.json`、`android/keystore/`、各平台 `AuthKey.p8` 这类发布文件，不属于 debug 环境初始化范围。
