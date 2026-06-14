@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:onexray/core/tools/logger.dart';
 import "package:path/path.dart" as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -100,11 +101,15 @@ class FileTool {
 
   static Future<void> copyAssets(List<String> assets, String dstDir) async {
     for (final asset in assets) {
-      final fileName = _readAssetFileName(asset);
-      final data = await rootBundle.load(asset);
-      final dstPath = p.join(dstDir, fileName);
-      final bytes = Uint8List.sublistView(data);
-      await File(dstPath).writeAsBytes(bytes);
+      try {
+        final fileName = _readAssetFileName(asset);
+        final data = await rootBundle.load(asset);
+        final dstPath = p.join(dstDir, fileName);
+        final bytes = Uint8List.sublistView(data);
+        await File(dstPath).writeAsBytes(bytes);
+      } catch (e) {
+        ygLogger("copy asset failed: $asset, $e");
+      }
     }
   }
 
