@@ -94,7 +94,7 @@
   "homePageSubscriptionDeleteWarning": "This will delete all configs from this subscribe link",
   "homePageSubscriptionCleanWarning": "This will delete all unreachable configs from this subscribe link",
   "homePageWaitForApprovalTitle": "Waiting for Network Extension Approval",
-  "homePageWaitForApprovalTips": "Please approve the OneXray network extension in the system settings. You can follow these steps: System Settings -> General -> Login Items & Extensions -> By App -> OneXraySE -> Network Extension -> Enable Permission",
+  "homePageWaitForApprovalTips": "Please approve the OneXray Network Extension manually:\n\n1. Open System Settings\n2. Go to General\n3. Open Login Items & Extensions\n4. Find Extensions\n5. Open Network Extensions\n6. Enable OneXraySE\n7. Return to the OneXray Home page and click Start again",
   "homeOutboundViewXraySetting": "Xray Setting",
   "homeOutboundViewNoOutbound": "No configs",
   "homeOutboundViewNoValidConfig": "Can not read valid config",

@@ -94,7 +94,7 @@
     "homePageSubscriptionDeleteWarning": "این کار همه پیکربندی‌های این لینک اشتراک را حذف می‌کند",
     "homePageSubscriptionCleanWarning": "این کار همه پیکربندی‌های غیرقابل دسترس این لینک اشتراک را حذف می‌کند",
     "homePageWaitForApprovalTitle": "در انتظار تأیید توسعه شبکه",
-    "homePageWaitForApprovalTips": "لطفاً توسعه شبکه OneXray را در تنظیمات سیستم تأیید کنید. می‌توانید این مراحل را دنبال کنید: تنظیمات سیستم -> عمومی -> آیتم‌ها و توسعه‌ها -> بر اساس برنامه -> OneXraySE -> توسعه شبکه -> فعال کردن مجوز",
+    "homePageWaitForApprovalTips": "لطفاً افزونه شبکه OneXray را به‌صورت دستی تأیید کنید:\n\n1. System Settings را باز کنید\n2. وارد General شوید\n3. Login Items & Extensions را باز کنید\n4. بخش Extensions را پیدا کنید\n5. Network Extensions را باز کنید\n6. OneXraySE را فعال کنید\n7. به صفحه اصلی OneXray برگردید و دوباره Start را بزنید",
     "homeOutboundViewXraySetting": "تنظیمات Xray",
     "homeOutboundViewNoOutbound": "بدون پیکربندی",
     "homeOutboundViewNoValidConfig": "پیکربندی معتبری یافت نشد",

@@ -18,13 +18,13 @@ abstract class BridgeHostApi {
   String getTunFilesDir();
 
   @async
-  void readVpnStatus();
+  NativeVpnCommandResult readVpnStatus();
 
   @async
-  void startVpn();
+  NativeVpnCommandResult startVpn();
 
   @async
-  void stopVpn();
+  NativeVpnCommandResult stopVpn();
 
   @async
   String getFreePorts(int num);
@@ -60,6 +60,12 @@ abstract class BridgeHostApi {
   @async
   bool checkVpnPermission();
 
+  @async
+  PlatformPermissionResult queryPlatformPermission();
+
+  @async
+  PlatformPermissionResult requestPlatformPermission();
+
   //android=======================
 
   @async
@@ -81,6 +87,39 @@ enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
 // macOS only
 enum RefreshVpnResult { installed, notInstalled, waitForApproval }
+
+enum PlatformPermissionKind { none, androidVpn, macosSystemExtension }
+
+enum PlatformPermissionState {
+  notRequired,
+  notDetermined,
+  awaitingUserApproval,
+  granted,
+  denied,
+  failed,
+}
+
+enum NativeVpnCommandState { success, waitingForPlatformPermission, failed }
+
+class PlatformPermissionResult {
+  PlatformPermissionResult({
+    required this.kind,
+    required this.state,
+    this.message,
+  });
+
+  final PlatformPermissionKind kind;
+  final PlatformPermissionState state;
+  final String? message;
+}
+
+class NativeVpnCommandResult {
+  NativeVpnCommandResult({required this.state, this.permission, this.message});
+
+  final NativeVpnCommandState state;
+  final PlatformPermissionResult? permission;
+  final String? message;
+}
 
 class AndroidAppInfo {
   AndroidAppInfo({required this.name, required this.packageName});

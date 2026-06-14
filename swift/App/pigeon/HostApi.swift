@@ -27,28 +27,31 @@ class AppHostApi: BridgeHostApi {
         }
     }
 
-    func readVpnStatus(completion: @escaping (Result<Void, any Error>) -> Void) {
+    func readVpnStatus(completion: @escaping (Result<NativeVpnCommandResult, any Error>) -> Void) {
         Task {
             let installed = await VPNManager.shared.refreshVpn()
+            let permission = await VPNManager.shared.queryPlatformPermission()
             await flutterApi.refreshVpn(result: installed)
             await flutterApi.vpnStatusChanged()
-            completion(.success(()))
+            completion(.success(commandSuccess(permission: permission)))
         }
     }
     
-    func startVpn(completion: @escaping (Result<Void, any Error>) -> Void) {
+    func startVpn(completion: @escaping (Result<NativeVpnCommandResult, any Error>) -> Void) {
         Task {
             let installed = await VPNManager.shared.startVpn()
+            let permission = await VPNManager.shared.queryPlatformPermission()
             await flutterApi.refreshVpn(result: installed)
-            completion(.success(()))
+            completion(.success(commandResult(installed, permission: permission)))
         }
     }
 
-    func stopVpn(completion: @escaping (Result<Void, any Error>) -> Void) {
+    func stopVpn(completion: @escaping (Result<NativeVpnCommandResult, any Error>) -> Void) {
         Task {
             let installed = await VPNManager.shared.stopVpn()
+            let permission = await VPNManager.shared.queryPlatformPermission()
             await flutterApi.refreshVpn(result: installed)
-            completion(.success(()))
+            completion(.success(commandSuccess(permission: permission)))
         }
     }
     
@@ -159,6 +162,18 @@ class AppHostApi: BridgeHostApi {
         }
         completion(.success(true))
     }
+
+    func queryPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, any Error>) -> Void) {
+        Task {
+            completion(.success(await VPNManager.shared.queryPlatformPermission()))
+        }
+    }
+
+    func requestPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, any Error>) -> Void) {
+        Task {
+            completion(.success(await VPNManager.shared.requestPlatformPermission()))
+        }
+    }
     
     /// android
     func getInstalledApps(completion: @escaping (Result<[AndroidAppInfo], any Error>) -> Void) {
@@ -203,5 +218,46 @@ class AppHostApi: BridgeHostApi {
         }
 #endif
         completion(.success(appIcon))
+    }
+
+    private func commandResult(
+        _ result: RefreshVpnResult,
+        permission: PlatformPermissionResult
+    ) -> NativeVpnCommandResult {
+        switch result {
+        case .installed:
+            return NativeVpnCommandResult(
+                state: .success,
+                permission: permission,
+                message: nil
+            )
+        case .waitForApproval:
+            return NativeVpnCommandResult(
+                state: .waitingForPlatformPermission,
+                permission: permission,
+                message: nil
+            )
+        case .notInstalled:
+            if permission.state == .awaitingUserApproval || permission.state == .notDetermined {
+                return NativeVpnCommandResult(
+                    state: .waitingForPlatformPermission,
+                    permission: permission,
+                    message: nil
+                )
+            }
+            return NativeVpnCommandResult(
+                state: .failed,
+                permission: permission,
+                message: nil
+            )
+        }
+    }
+
+    private func commandSuccess(permission: PlatformPermissionResult) -> NativeVpnCommandResult {
+        NativeVpnCommandResult(
+            state: .success,
+            permission: permission,
+            message: nil
+        )
     }
 }

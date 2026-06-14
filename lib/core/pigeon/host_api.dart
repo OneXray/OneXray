@@ -34,51 +34,57 @@ class AppHostApi {
     }
   }
 
-  Future<void> readVpnStatus() async {
+  Future<NativeVpnCommandResult> readVpnStatus() async {
     try {
-      await _readVpnStatus();
-    } catch (_) {}
-  }
-
-  Future<void> _readVpnStatus() async {
-    if (AppPlatform.isLinux) {
-      await LinuxFfiApi().readVpnStatus();
-    } else if (AppPlatform.isWindows) {
-      await WindowsFfiApi().readVpnStatus();
-    } else {
-      await _api.readVpnStatus();
+      return await _readVpnStatus();
+    } catch (e) {
+      return _commandFailed("$e");
     }
   }
 
-  Future<void> startVpn() async {
-    try {
-      await _startVpn();
-    } catch (_) {}
-  }
-
-  Future<void> _startVpn() async {
+  Future<NativeVpnCommandResult> _readVpnStatus() async {
     if (AppPlatform.isLinux) {
-      await LinuxFfiApi().startVpn();
+      return LinuxFfiApi().readVpnStatus();
     } else if (AppPlatform.isWindows) {
-      await WindowsFfiApi().startVpn();
+      return WindowsFfiApi().readVpnStatus();
     } else {
-      await _api.startVpn();
+      return _api.readVpnStatus();
     }
   }
 
-  Future<void> stopVpn() async {
+  Future<NativeVpnCommandResult> startVpn() async {
     try {
-      await _stopVpn();
-    } catch (_) {}
+      return await _startVpn();
+    } catch (e) {
+      return _commandFailed("$e");
+    }
   }
 
-  Future<void> _stopVpn() async {
+  Future<NativeVpnCommandResult> _startVpn() async {
     if (AppPlatform.isLinux) {
-      await LinuxFfiApi().stopVpn();
+      return LinuxFfiApi().startVpn();
     } else if (AppPlatform.isWindows) {
-      await WindowsFfiApi().stopVpn();
+      return WindowsFfiApi().startVpn();
     } else {
-      await _api.stopVpn();
+      return _api.startVpn();
+    }
+  }
+
+  Future<NativeVpnCommandResult> stopVpn() async {
+    try {
+      return await _stopVpn();
+    } catch (e) {
+      return _commandFailed("$e");
+    }
+  }
+
+  Future<NativeVpnCommandResult> _stopVpn() async {
+    if (AppPlatform.isLinux) {
+      return LinuxFfiApi().stopVpn();
+    } else if (AppPlatform.isWindows) {
+      return WindowsFfiApi().stopVpn();
+    } else {
+      return _api.stopVpn();
     }
   }
 
@@ -401,6 +407,28 @@ class AppHostApi {
     return true;
   }
 
+  Future<PlatformPermissionResult> queryPlatformPermission() async {
+    if (AppPlatform.isLinux || AppPlatform.isWindows) {
+      return _platformPermissionNotRequired();
+    }
+    try {
+      return await _api.queryPlatformPermission();
+    } catch (e) {
+      return _platformPermissionFailed("$e");
+    }
+  }
+
+  Future<PlatformPermissionResult> requestPlatformPermission() async {
+    if (AppPlatform.isLinux || AppPlatform.isWindows) {
+      return _platformPermissionNotRequired();
+    }
+    try {
+      return await _api.requestPlatformPermission();
+    } catch (e) {
+      return _platformPermissionFailed("$e");
+    }
+  }
+
   Future<List<AndroidAppInfo>> getInstalledApps() async {
     if (AppPlatform.isAndroid) {
       try {
@@ -437,5 +465,28 @@ class AppHostApi {
       } catch (_) {}
     }
     return "";
+  }
+
+  PlatformPermissionResult _platformPermissionNotRequired() {
+    return PlatformPermissionResult(
+      kind: PlatformPermissionKind.none,
+      state: PlatformPermissionState.notRequired,
+    );
+  }
+
+  PlatformPermissionResult _platformPermissionFailed(String message) {
+    return PlatformPermissionResult(
+      kind: PlatformPermissionKind.none,
+      state: PlatformPermissionState.failed,
+      message: message,
+    );
+  }
+
+  NativeVpnCommandResult _commandFailed(String message) {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.failed,
+      permission: _platformPermissionFailed(message),
+      message: message,
+    );
   }
 }

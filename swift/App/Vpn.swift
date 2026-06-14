@@ -16,7 +16,7 @@ class VPNManager {
     var vpn: NETunnelProviderManager?
     private var cancellable: Cancellable?
     private var statusObserver: VPNStatusCallback?
-    private var systemExtensionSetupTask: Task<RefreshVpnResult, Never>?
+    private var systemExtensionActivationTask: Task<RefreshVpnResult, Never>?
 
     init() {
         YGLog("VPNManager init")
@@ -75,8 +75,8 @@ class VPNManager {
     func refreshVpn() async -> RefreshVpnResult {
         #if os(macOS)
         if Constants.useSystemExtension {
-            let installed = await ensureSystemExtensionIfNeeded()
-            YGLog("ensureSystemExtensionIfNeeded \(installed)")
+            let installed = await querySystemExtensionIfNeeded()
+            YGLog("querySystemExtensionIfNeeded \(installed)")
             if installed != .installed {
                 return installed
             }
@@ -97,22 +97,75 @@ class VPNManager {
     }
 
     #if os(macOS)
-    private func ensureSystemExtensionIfNeeded() async -> RefreshVpnResult {
-        if let existing = systemExtensionSetupTask {
-            let cached = await existing.value
-            if cached == .installed { return cached }
-            // Previous attempt returned nil (approval pending) or failed.
-            // Re-check current state: the user may have approved in System
-            // Settings since then.
-            let installed = await SystemExtensionManager.isInstalled()
-            if (installed == .installed) {
-                systemExtensionSetupTask = Task { installed }
+    func queryPlatformPermission() async -> PlatformPermissionResult {
+        if Constants.useSystemExtension {
+            let state = await querySystemExtensionIfNeeded()
+            return platformPermissionResult(from: state)
+        }
+        return PlatformPermissionResult(
+            kind: .none,
+            state: .notRequired,
+            message: nil
+        )
+    }
+
+    func requestPlatformPermission() async -> PlatformPermissionResult {
+        if Constants.useSystemExtension {
+            let state = await requestSystemExtensionIfNeeded()
+            return platformPermissionResult(from: state, requested: true)
+        }
+        return PlatformPermissionResult(
+            kind: .none,
+            state: .notRequired,
+            message: nil
+        )
+    }
+
+    private func platformPermissionResult(
+        from state: RefreshVpnResult,
+        requested: Bool = false
+    ) -> PlatformPermissionResult {
+        switch state {
+        case .installed:
+            return PlatformPermissionResult(
+                kind: .macosSystemExtension,
+                state: .granted,
+                message: nil
+            )
+        case .waitForApproval:
+            return PlatformPermissionResult(
+                kind: .macosSystemExtension,
+                state: .awaitingUserApproval,
+                message: nil
+            )
+        case .notInstalled:
+            return PlatformPermissionResult(
+                kind: .macosSystemExtension,
+                state: requested ? .failed : .notDetermined,
+                message: requested ? "System Extension activation did not complete." : nil
+            )
+        }
+    }
+
+    private func querySystemExtensionIfNeeded() async -> RefreshVpnResult {
+        await SystemExtensionManager.isInstalled()
+    }
+
+    private func requestSystemExtensionIfNeeded() async -> RefreshVpnResult {
+        if let existing = systemExtensionActivationTask {
+            let result = await existing.value
+            if result != .installed {
+                systemExtensionActivationTask = nil
             }
-            return installed
+            return result
         }
         let task = Task { await self.runSystemExtensionSetup() }
-        systemExtensionSetupTask = task
-        return await task.value
+        systemExtensionActivationTask = task
+        let result = await task.value
+        if result != .installed {
+            systemExtensionActivationTask = nil
+        }
+        return result
     }
 
     private func runSystemExtensionSetup() async -> RefreshVpnResult {
@@ -138,6 +191,24 @@ class VPNManager {
             YGLog("setup system extension error: \(error.localizedDescription)")
             return .notInstalled
         }
+    }
+    #endif
+
+    #if !os(macOS)
+    func queryPlatformPermission() async -> PlatformPermissionResult {
+        PlatformPermissionResult(
+            kind: .none,
+            state: .notRequired,
+            message: nil
+        )
+    }
+
+    func requestPlatformPermission() async -> PlatformPermissionResult {
+        PlatformPermissionResult(
+            kind: .none,
+            state: .notRequired,
+            message: nil
+        )
     }
     #endif
 
@@ -182,9 +253,12 @@ class VPNManager {
     }
 
     func stopVpn() async -> RefreshVpnResult {
-        let installed = await refreshVpn()
-        if installed != .installed {
-            return installed
+        if vpn == nil {
+            do {
+                vpn = try await findVpn()
+            } catch {
+                YGLog(error)
+            }
         }
         if let vpn = vpn {
             await saveVpn(vpn: vpn, tun: TunJson())

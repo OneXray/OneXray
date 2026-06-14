@@ -3,7 +3,6 @@ package net.yuandev.onexray.pigeon
 import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Context
-import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,14 +23,15 @@ import kotlin.time.Duration.Companion.seconds
 class AppHostApi(
     private val context: Context,
 ) : BridgeHostApi {
+    private val activity = context as FragmentActivity
     private val prepareResult =
-        (context as FragmentActivity).registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            val callback = permissionCallback
+            permissionCallback = null
             if (it.resultCode == RESULT_OK) {
-                if (startVpnIntent != null) {
-                    context.startForegroundService(startVpnIntent)
-                    startVpnIntent = null
-                }
+                callback?.invoke(androidPermissionGranted())
             } else {
+                callback?.invoke(androidPermissionDenied())
                 onVpnStatusChanged(false)
             }
         }
@@ -60,7 +60,7 @@ class AppHostApi(
         scope.cancel()
     }
 
-    private var startVpnIntent: Intent? = null
+    private var permissionCallback: ((PlatformPermissionResult) -> Unit)? = null
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -69,33 +69,36 @@ class AppHostApi(
         callback(Result.success(dirPath))
     }
 
-    override fun readVpnStatus(callback: (Result<Unit>) -> Unit) {
+    override fun readVpnStatus(callback: (Result<NativeVpnCommandResult>) -> Unit) {
         scope.launch {
             flutterApi?.refreshVpnStatus()
-            callback(Result.success(Unit))
+            callback(Result.success(commandSuccess(queryPermissionNow())))
         }
     }
 
-    override fun startVpn(callback: (Result<Unit>) -> Unit) {
+    override fun startVpn(callback: (Result<NativeVpnCommandResult>) -> Unit) {
         XLog.d("AppHostApi: startVpn called")
         scope.launch {
+            val permission = queryPermissionNow()
+            if (permission.state != PlatformPermissionState.GRANTED) {
+                callback(Result.success(waitingForPermission(permission)))
+                return@launch
+            }
             flutterApi?.vpnStatusChanged(VpnStatus.CONNECTING)
             val intent = VpnController.buildStartIntent(context)
-            val prepare = VpnService.prepare(context)
-            if (prepare != null) {
-                startVpnIntent = intent
-                prepareResult.launch(prepare)
-            } else {
-                context.startForegroundService(intent)
-            }
-            callback(Result.success(Unit))
+            context.startForegroundService(intent)
+            callback(Result.success(commandSuccess(permission)))
         }
     }
 
-    override fun stopVpn(callback: (Result<Unit>) -> Unit) {
+    override fun stopVpn(callback: (Result<NativeVpnCommandResult>) -> Unit) {
         XLog.d("AppHostApi: stopVpn called")
         scope.launch {
-            val vpnStatus = flutterApi?.readVpnStatus() ?: return@launch
+            val vpnStatus = flutterApi?.readVpnStatus()
+            if (vpnStatus == null) {
+                callback(Result.success(commandSuccess(queryPermissionNow())))
+                return@launch
+            }
             when (vpnStatus) {
                 VpnStatus.DISCONNECTED -> flutterApi?.refreshVpnStatus()
                 VpnStatus.CONNECTED -> {
@@ -107,7 +110,7 @@ class AppHostApi(
                 else -> XLog.d("stopVpn unknown VpnStatus $vpnStatus")
             }
 
-            callback(Result.success(Unit))
+            callback(Result.success(commandSuccess(queryPermissionNow())))
         }
     }
 
@@ -212,6 +215,45 @@ class AppHostApi(
         }
     }
 
+    override fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit) {
+        scope.launch {
+            callback(Result.success(queryPermissionNow()))
+        }
+    }
+
+    override fun requestPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit) {
+        scope.launch {
+            val permission = queryPermissionNow()
+            if (permission.state == PlatformPermissionState.GRANTED) {
+                callback(Result.success(permission))
+                return@launch
+            }
+            val prepare = VpnService.prepare(context)
+            if (prepare == null) {
+                callback(Result.success(androidPermissionGranted()))
+                return@launch
+            }
+            if (permissionCallback != null) {
+                callback(
+                    Result.success(
+                        PlatformPermissionResult(
+                            PlatformPermissionKind.ANDROID_VPN,
+                            PlatformPermissionState.AWAITING_USER_APPROVAL,
+                            "Android VPN permission is already pending.",
+                        )
+                    )
+                )
+                return@launch
+            }
+            permissionCallback = { result ->
+                callback(Result.success(result))
+            }
+            activity.runOnUiThread {
+                prepareResult.launch(prepare)
+            }
+        }
+    }
+
 
     override fun getInstalledApps(callback: (Result<List<AndroidAppInfo>>) -> Unit) {
         scope.launch {
@@ -265,4 +307,41 @@ class AppHostApi(
     override fun getCurrentAppIcon(callback: (Result<String>) -> Unit) {
         callback(Result.success(""))
     }
+
+    private fun queryPermissionNow(): PlatformPermissionResult {
+        val prepare = VpnService.prepare(context)
+        return if (prepare == null) {
+            androidPermissionGranted()
+        } else {
+            PlatformPermissionResult(
+                PlatformPermissionKind.ANDROID_VPN,
+                PlatformPermissionState.NOT_DETERMINED,
+                null,
+            )
+        }
+    }
+
+    private fun androidPermissionGranted() = PlatformPermissionResult(
+        PlatformPermissionKind.ANDROID_VPN,
+        PlatformPermissionState.GRANTED,
+        null,
+    )
+
+    private fun androidPermissionDenied() = PlatformPermissionResult(
+        PlatformPermissionKind.ANDROID_VPN,
+        PlatformPermissionState.DENIED,
+        null,
+    )
+
+    private fun commandSuccess(permission: PlatformPermissionResult) = NativeVpnCommandResult(
+        NativeVpnCommandState.SUCCESS,
+        permission,
+        null,
+    )
+
+    private fun waitingForPermission(permission: PlatformPermissionResult) = NativeVpnCommandResult(
+        NativeVpnCommandState.WAITING_FOR_PLATFORM_PERMISSION,
+        permission,
+        null,
+    )
 }

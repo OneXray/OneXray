@@ -201,6 +201,117 @@ enum RefreshVpnResult: Int {
   case waitForApproval = 2
 }
 
+enum PlatformPermissionKind: Int {
+  case none = 0
+  case androidVpn = 1
+  case macosSystemExtension = 2
+}
+
+enum PlatformPermissionState: Int {
+  case notRequired = 0
+  case notDetermined = 1
+  case awaitingUserApproval = 2
+  case granted = 3
+  case denied = 4
+  case failed = 5
+}
+
+enum NativeVpnCommandState: Int {
+  case success = 0
+  case waitingForPlatformPermission = 1
+  case failed = 2
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
+struct PlatformPermissionResult: Hashable, CustomStringConvertible {
+  var kind: PlatformPermissionKind
+  var state: PlatformPermissionState
+  var message: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> PlatformPermissionResult? {
+    let kind = pigeonVar_list[0] as! PlatformPermissionKind
+    let state = pigeonVar_list[1] as! PlatformPermissionState
+    let message: String? = nilOrValue(pigeonVar_list[2])
+
+    return PlatformPermissionResult(
+      kind: kind,
+      state: state,
+      message: message
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      kind,
+      state,
+      message,
+    ]
+  }
+  static func == (lhs: PlatformPermissionResult, rhs: PlatformPermissionResult) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.kind, rhs.kind) && MessagesPigeonInternal.deepEquals(lhs.state, rhs.state) && MessagesPigeonInternal.deepEquals(lhs.message, rhs.message)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("PlatformPermissionResult")
+    MessagesPigeonInternal.deepHash(value: kind, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: state, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: message, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "PlatformPermissionResult(kind: \(String(describing: kind)), state: \(String(describing: state)), message: \(String(describing: message)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
+struct NativeVpnCommandResult: Hashable, CustomStringConvertible {
+  var state: NativeVpnCommandState
+  var permission: PlatformPermissionResult? = nil
+  var message: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> NativeVpnCommandResult? {
+    let state = pigeonVar_list[0] as! NativeVpnCommandState
+    let permission: PlatformPermissionResult? = nilOrValue(pigeonVar_list[1])
+    let message: String? = nilOrValue(pigeonVar_list[2])
+
+    return NativeVpnCommandResult(
+      state: state,
+      permission: permission,
+      message: message
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      state,
+      permission,
+      message,
+    ]
+  }
+  static func == (lhs: NativeVpnCommandResult, rhs: NativeVpnCommandResult) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.state, rhs.state) && MessagesPigeonInternal.deepEquals(lhs.permission, rhs.permission) && MessagesPigeonInternal.deepEquals(lhs.message, rhs.message)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("NativeVpnCommandResult")
+    MessagesPigeonInternal.deepHash(value: state, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: permission, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: message, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "NativeVpnCommandResult(state: \(String(describing: state)), permission: \(String(describing: permission)), message: \(String(describing: message)))"
+  }
+}
+
 /// Generated class from Pigeon that represents data sent in messages.
 struct AndroidAppInfo: Hashable, CustomStringConvertible {
   var name: String
@@ -257,6 +368,28 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
       }
       return nil
     case 131:
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return PlatformPermissionKind(rawValue: enumResultAsInt)
+      }
+      return nil
+    case 132:
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return PlatformPermissionState(rawValue: enumResultAsInt)
+      }
+      return nil
+    case 133:
+      let enumResultAsInt: Int? = nilOrValue(self.readValue() as! Int?)
+      if let enumResultAsInt = enumResultAsInt {
+        return NativeVpnCommandState(rawValue: enumResultAsInt)
+      }
+      return nil
+    case 134:
+      return PlatformPermissionResult.fromList(self.readValue() as! [Any?])
+    case 135:
+      return NativeVpnCommandResult.fromList(self.readValue() as! [Any?])
+    case 136:
       return AndroidAppInfo.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -272,8 +405,23 @@ private class MessagesPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? RefreshVpnResult {
       super.writeByte(130)
       super.writeValue(value.rawValue)
-    } else if let value = value as? AndroidAppInfo {
+    } else if let value = value as? PlatformPermissionKind {
       super.writeByte(131)
+      super.writeValue(value.rawValue)
+    } else if let value = value as? PlatformPermissionState {
+      super.writeByte(132)
+      super.writeValue(value.rawValue)
+    } else if let value = value as? NativeVpnCommandState {
+      super.writeByte(133)
+      super.writeValue(value.rawValue)
+    } else if let value = value as? PlatformPermissionResult {
+      super.writeByte(134)
+      super.writeValue(value.toList())
+    } else if let value = value as? NativeVpnCommandResult {
+      super.writeByte(135)
+      super.writeValue(value.toList())
+    } else if let value = value as? AndroidAppInfo {
+      super.writeByte(136)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -299,9 +447,9 @@ class MessagesPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
 protocol BridgeHostApi {
   func getTunFilesDir(completion: @escaping (Result<String, Error>) -> Void)
-  func readVpnStatus(completion: @escaping (Result<Void, Error>) -> Void)
-  func startVpn(completion: @escaping (Result<Void, Error>) -> Void)
-  func stopVpn(completion: @escaping (Result<Void, Error>) -> Void)
+  func readVpnStatus(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
+  func startVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
+  func stopVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
   func getFreePorts(num: Int64, completion: @escaping (Result<String, Error>) -> Void)
   func convertShareLinksToXrayJson(base64Text: String, completion: @escaping (Result<String, Error>) -> Void)
   func convertXrayJsonToShareLinks(base64Text: String, completion: @escaping (Result<String, Error>) -> Void)
@@ -313,6 +461,8 @@ protocol BridgeHostApi {
   func stopXray(completion: @escaping (Result<String, Error>) -> Void)
   func xrayVersion(completion: @escaping (Result<String, Error>) -> Void)
   func checkVpnPermission(completion: @escaping (Result<Bool, Error>) -> Void)
+  func queryPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
+  func requestPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
   func getInstalledApps(completion: @escaping (Result<[AndroidAppInfo], Error>) -> Void)
   func useSystemExtension(completion: @escaping (Result<Bool, Error>) -> Void)
   func setAppIcon(appIcon: String, completion: @escaping (Result<Bool, Error>) -> Void)
@@ -345,8 +495,8 @@ class BridgeHostApiSetup {
       readVpnStatusChannel.setMessageHandler { _, reply in
         api.readVpnStatus { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
@@ -360,8 +510,8 @@ class BridgeHostApiSetup {
       startVpnChannel.setMessageHandler { _, reply in
         api.startVpn { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
@@ -375,8 +525,8 @@ class BridgeHostApiSetup {
       stopVpnChannel.setMessageHandler { _, reply in
         api.stopVpn { result in
           switch result {
-          case .success:
-            reply(wrapResult(nil))
+          case .success(let res):
+            reply(wrapResult(res))
           case .failure(let error):
             reply(wrapError(error))
           }
@@ -565,6 +715,36 @@ class BridgeHostApiSetup {
       }
     } else {
       checkVpnPermissionChannel.setMessageHandler(nil)
+    }
+    let queryPlatformPermissionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.queryPlatformPermission\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      queryPlatformPermissionChannel.setMessageHandler { _, reply in
+        api.queryPlatformPermission { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      queryPlatformPermissionChannel.setMessageHandler(nil)
+    }
+    let requestPlatformPermissionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.requestPlatformPermission\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      requestPlatformPermissionChannel.setMessageHandler { _, reply in
+        api.requestPlatformPermission { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      requestPlatformPermissionChannel.setMessageHandler(nil)
     }
     let getInstalledAppsChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.getInstalledApps\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

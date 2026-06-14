@@ -7,6 +7,7 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/constants.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/automation/protocol.dart';
@@ -326,21 +327,40 @@ final class AutomationService {
           'No config exists for id $configId.',
         );
       }
-      await VpnService().startVpn(configId);
+      final result = await VpnService().startVpn(configId);
+      return {
+        'requested': true,
+        'configId': configId,
+        ..._vpnCommandResultJson(result),
+      };
     } else {
-      await VpnService().startDefaultVpn();
+      final result = await VpnService().startDefaultVpn();
+      final response = <String, dynamic>{'requested': true};
+      if (configId != null) {
+        response['configId'] = configId;
+      }
+      response.addAll(_vpnCommandResultJson(result));
+      return response;
     }
-
-    final response = <String, dynamic>{'requested': true};
-    if (configId != null) {
-      response['configId'] = configId;
-    }
-    return response;
   }
 
   Future<Map<String, dynamic>> _stopVpn() async {
-    await VpnService().stopDefaultVpn();
-    return {'requested': true};
+    final result = await VpnService().stopDefaultVpn();
+    return {'requested': true, ..._vpnCommandResultJson(result)};
+  }
+
+  Map<String, dynamic> _vpnCommandResultJson(NativeVpnCommandResult result) {
+    final permission = result.permission;
+    return {
+      'state': result.state.name,
+      if (result.message != null) 'message': result.message,
+      if (permission != null)
+        'permission': {
+          'kind': permission.kind.name,
+          'state': permission.state.name,
+          if (permission.message != null) 'message': permission.message,
+        },
+    };
   }
 
   Future<String> _configName(int id) async {

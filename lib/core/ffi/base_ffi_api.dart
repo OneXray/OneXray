@@ -19,8 +19,9 @@ abstract class BaseFfiApi {
 
   var _vpnStatus = VpnStatus.disconnected;
 
-  Future<void> readVpnStatus() async {
+  Future<NativeVpnCommandResult> readVpnStatus() async {
     await AppFlutterApi().vpnStatusChanged(_vpnStatus);
+    return _commandSuccess();
   }
 
   Future<void> updateVpnStatus(VpnStatus status) async {
@@ -28,7 +29,7 @@ abstract class BaseFfiApi {
     await AppFlutterApi().vpnStatusChanged(_vpnStatus);
   }
 
-  Future<void> startVpn() async {
+  Future<NativeVpnCommandResult> startVpn() async {
     await updateVpnStatus(VpnStatus.connecting);
 
     final request = await StartVpnRequestReader.readFromStartFile();
@@ -38,9 +39,10 @@ abstract class BaseFfiApi {
     var res = await startCore(configPath);
     if (!res) {
       await stopVpn();
-      return;
+      return _commandFailed("Failed to start core.");
     }
     await updateVpnStatus(VpnStatus.connected);
+    return _commandSuccess();
   }
 
   Future<bool> startCore(String configPath) async {
@@ -49,11 +51,34 @@ abstract class BaseFfiApi {
 
   void stopCore() {}
 
-  Future<void> stopVpn() async {
+  Future<NativeVpnCommandResult> stopVpn() async {
     await updateVpnStatus(VpnStatus.disconnecting);
     stopCore();
     await Future.delayed(Duration(seconds: 1));
     await updateVpnStatus(VpnStatus.disconnected);
+    return _commandSuccess();
+  }
+
+  PlatformPermissionResult _permissionNotRequired() {
+    return PlatformPermissionResult(
+      kind: PlatformPermissionKind.none,
+      state: PlatformPermissionState.notRequired,
+    );
+  }
+
+  NativeVpnCommandResult _commandSuccess() {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.success,
+      permission: _permissionNotRequired(),
+    );
+  }
+
+  NativeVpnCommandResult _commandFailed(String message) {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.failed,
+      permission: _permissionNotRequired(),
+      message: message,
+    );
   }
 
   final _sharedIsolate = IsolateManager.createShared(concurrent: 1);

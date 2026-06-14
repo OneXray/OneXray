@@ -220,6 +220,135 @@ enum class RefreshVpnResult(val raw: Int) {
   }
 }
 
+enum class PlatformPermissionKind(val raw: Int) {
+  NONE(0),
+  ANDROID_VPN(1),
+  MACOS_SYSTEM_EXTENSION(2);
+
+  companion object {
+    fun ofRaw(raw: Int): PlatformPermissionKind? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
+enum class PlatformPermissionState(val raw: Int) {
+  NOT_REQUIRED(0),
+  NOT_DETERMINED(1),
+  AWAITING_USER_APPROVAL(2),
+  GRANTED(3),
+  DENIED(4),
+  FAILED(5);
+
+  companion object {
+    fun ofRaw(raw: Int): PlatformPermissionState? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
+enum class NativeVpnCommandState(val raw: Int) {
+  SUCCESS(0),
+  WAITING_FOR_PLATFORM_PERMISSION(1),
+  FAILED(2);
+
+  companion object {
+    fun ofRaw(raw: Int): NativeVpnCommandState? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PlatformPermissionResult (
+  val kind: PlatformPermissionKind,
+  val state: PlatformPermissionState,
+  val message: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PlatformPermissionResult {
+      val kind = pigeonVar_list[0] as PlatformPermissionKind
+      val state = pigeonVar_list[1] as PlatformPermissionState
+      val message = pigeonVar_list[2] as String?
+      return PlatformPermissionResult(kind, state, message)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      kind,
+      state,
+      message,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as PlatformPermissionResult
+    return MessagesPigeonUtils.deepEquals(this.kind, other.kind) && MessagesPigeonUtils.deepEquals(this.state, other.state) && MessagesPigeonUtils.deepEquals(this.message, other.message)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.kind)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.state)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.message)
+    return result
+  }
+  override fun toString(): String {
+    return "PlatformPermissionResult(kind=$kind, state=$state, message=$message)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class NativeVpnCommandResult (
+  val state: NativeVpnCommandState,
+  val permission: PlatformPermissionResult? = null,
+  val message: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): NativeVpnCommandResult {
+      val state = pigeonVar_list[0] as NativeVpnCommandState
+      val permission = pigeonVar_list[1] as PlatformPermissionResult?
+      val message = pigeonVar_list[2] as String?
+      return NativeVpnCommandResult(state, permission, message)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      state,
+      permission,
+      message,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as NativeVpnCommandResult
+    return MessagesPigeonUtils.deepEquals(this.state, other.state) && MessagesPigeonUtils.deepEquals(this.permission, other.permission) && MessagesPigeonUtils.deepEquals(this.message, other.message)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.state)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.permission)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.message)
+    return result
+  }
+  override fun toString(): String {
+    return "NativeVpnCommandResult(state=$state, permission=$permission, message=$message)"
+  }
+}
+
 /** Generated class from Pigeon that represents data sent in messages. */
 data class AndroidAppInfo (
   val name: String,
@@ -274,6 +403,31 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         }
       }
       131.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PlatformPermissionKind.ofRaw(it.toInt())
+        }
+      }
+      132.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          PlatformPermissionState.ofRaw(it.toInt())
+        }
+      }
+      133.toByte() -> {
+        return (readValue(buffer) as Long?)?.let {
+          NativeVpnCommandState.ofRaw(it.toInt())
+        }
+      }
+      134.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PlatformPermissionResult.fromList(it)
+        }
+      }
+      135.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          NativeVpnCommandResult.fromList(it)
+        }
+      }
+      136.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           AndroidAppInfo.fromList(it)
         }
@@ -291,8 +445,28 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(130)
         writeValue(stream, value.raw.toLong())
       }
-      is AndroidAppInfo -> {
+      is PlatformPermissionKind -> {
         stream.write(131)
+        writeValue(stream, value.raw.toLong())
+      }
+      is PlatformPermissionState -> {
+        stream.write(132)
+        writeValue(stream, value.raw.toLong())
+      }
+      is NativeVpnCommandState -> {
+        stream.write(133)
+        writeValue(stream, value.raw.toLong())
+      }
+      is PlatformPermissionResult -> {
+        stream.write(134)
+        writeValue(stream, value.toList())
+      }
+      is NativeVpnCommandResult -> {
+        stream.write(135)
+        writeValue(stream, value.toList())
+      }
+      is AndroidAppInfo -> {
+        stream.write(136)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -304,9 +478,9 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface BridgeHostApi {
   fun getTunFilesDir(callback: (Result<String>) -> Unit)
-  fun readVpnStatus(callback: (Result<Unit>) -> Unit)
-  fun startVpn(callback: (Result<Unit>) -> Unit)
-  fun stopVpn(callback: (Result<Unit>) -> Unit)
+  fun readVpnStatus(callback: (Result<NativeVpnCommandResult>) -> Unit)
+  fun startVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
+  fun stopVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
   fun getFreePorts(num: Long, callback: (Result<String>) -> Unit)
   fun convertShareLinksToXrayJson(base64Text: String, callback: (Result<String>) -> Unit)
   fun convertXrayJsonToShareLinks(base64Text: String, callback: (Result<String>) -> Unit)
@@ -318,6 +492,8 @@ interface BridgeHostApi {
   fun stopXray(callback: (Result<String>) -> Unit)
   fun xrayVersion(callback: (Result<String>) -> Unit)
   fun checkVpnPermission(callback: (Result<Boolean>) -> Unit)
+  fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
+  fun requestPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
   fun getInstalledApps(callback: (Result<List<AndroidAppInfo>>) -> Unit)
   fun useSystemExtension(callback: (Result<Boolean>) -> Unit)
   fun setAppIcon(appIcon: String, callback: (Result<Boolean>) -> Unit)
@@ -354,12 +530,13 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.readVpnStatus$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            api.readVpnStatus{ result: Result<Unit> ->
+            api.readVpnStatus{ result: Result<NativeVpnCommandResult> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))
               } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
             }
           }
@@ -371,12 +548,13 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.startVpn$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            api.startVpn{ result: Result<Unit> ->
+            api.startVpn{ result: Result<NativeVpnCommandResult> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))
               } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
             }
           }
@@ -388,12 +566,13 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.stopVpn$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            api.stopVpn{ result: Result<Unit> ->
+            api.stopVpn{ result: Result<NativeVpnCommandResult> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))
               } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
             }
           }
@@ -602,6 +781,42 @@ interface BridgeHostApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.checkVpnPermission{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.queryPlatformPermission$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.queryPlatformPermission{ result: Result<PlatformPermissionResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.requestPlatformPermission$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.requestPlatformPermission{ result: Result<PlatformPermissionResult> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

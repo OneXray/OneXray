@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/model.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/manager.dart';
@@ -45,8 +46,37 @@ class AppEventBus extends Cubit<AppEventBusState> {
     emit(state.copyWith(vpnLoading: value));
   }
 
+  void updateVpnActionState(VpnActionState value) {
+    emit(
+      state.copyWith(
+        vpnActionState: value,
+        vpnLoading:
+            value == VpnActionState.preparing ||
+            value == VpnActionState.connecting ||
+            value == VpnActionState.disconnecting,
+      ),
+    );
+  }
+
   void updateRunningId(int value) {
     emit(state.copyWith(runningId: value));
+  }
+
+  void updatePendingConfigId(int value) {
+    emit(state.copyWith(pendingConfigId: value));
+  }
+
+  void updatePlatformPermission(PlatformPermissionResult value) {
+    emit(
+      state.copyWith(
+        platformPermissionKind: value.kind,
+        platformPermissionState: value.state,
+      ),
+    );
+  }
+
+  void updateVpnErrorMessage(String value) {
+    emit(state.copyWith(vpnErrorMessage: value));
   }
 
   void updatePinging(bool value) {
