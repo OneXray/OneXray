@@ -248,13 +248,16 @@ final class VpnService {
         await _handleStartFailure(result.message ?? "VPN start failed.");
         return result;
       }
-      eventBus.updateVpnActionState(VpnActionState.connecting);
+      if (_lastVpnStatus != VpnStatus.connected) {
+        eventBus.updateVpnActionState(VpnActionState.connecting);
+      }
       final connected = await _waitForVpnStatus({VpnStatus.connected});
       if (!connected) {
         final message = "VPN start timed out.";
         await _handleStartFailure(message);
         return _commandFailed(message);
       }
+      eventBus.updateVpnActionState(VpnActionState.connected);
       return result;
     } on _VpnStartException catch (e) {
       await _handleStartFailure(e.message);
