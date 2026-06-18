@@ -125,6 +125,7 @@
 		EB7E984C2F93C268002151DD /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		EB7E984D2F93C268002151DD /* tunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = tunnel.entitlements; sourceTree = "<group>"; };
 		EB9154212D8EBE7600BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/MainMenu.strings"; sourceTree = "<group>"; };
+		EB957B012FE43DA200DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/MainMenu.strings"; sourceTree = "<group>"; };
 		EBB9CF7B2F93C6AF00466352 /* libXray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libXray.h; sourceTree = "<group>"; };
 		EBE36B4E2F9684A700686880 /* BridgeHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeHeader.h; sourceTree = "<group>"; };
 		EBE36B4F2F9684A700686880 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -421,6 +422,7 @@
 				"zh-Hans",
 				ru,
 				fa,
+				"zh-Hant",
 			);
 			mainGroup = 33CC10E42044A3C60003C045;
 			packageReferences = (
@@ -594,6 +596,7 @@
 				EB9154212D8EBE7600BFED8B /* zh-Hans */,
 				EB210DFC2DE868BA00D76E7A /* ru */,
 				EB390D832EC84B6500B741BA /* fa */,
+				EB957B012FE43DA200DCB90D /* zh-Hant */,
 			);
 			name = MainMenu.xib;
 			path = Runner;
@@ -933,7 +936,7 @@
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";
@@ -1001,7 +1004,7 @@
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";
 				OTHER_MODULE_VERIFIER_FLAGS = "";
@@ -1066,7 +1069,7 @@
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";
 				OTHER_MODULE_VERIFIER_FLAGS = "";

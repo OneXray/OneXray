@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -112,6 +112,8 @@
 		EB8B84362C07550A0096E1FF /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
 		EB9154222D8EBE8800BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Main.strings"; sourceTree = "<group>"; };
 		EB9154232D8EBE8800BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
+		EB957AFE2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Main.strings"; sourceTree = "<group>"; };
+		EB957AFF2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
 		EBAB56EA2D81887B0080EC55 /* libXray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libXray.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -358,6 +360,7 @@
 				"zh-Hans",
 				ru,
 				fa,
+				"zh-Hant",
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
@@ -495,6 +498,7 @@
 				EB9154222D8EBE8800BFED8B /* zh-Hans */,
 				EB210DFE2DE8692A00D76E7A /* ru */,
 				EB390D812EC84AF400B741BA /* fa */,
+				EB957AFE2FE43D6400DCB90D /* zh-Hant */,
 			);
 			name = Main.storyboard;
 			sourceTree = "<group>";
@@ -506,6 +510,7 @@
 				EB9154232D8EBE8800BFED8B /* zh-Hans */,
 				EB210DFF2DE8692A00D76E7A /* ru */,
 				EB390D822EC84AF400B741BA /* fa */,
+				EB957AFF2FE43D6400DCB90D /* zh-Hant */,
 			);
 			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";
@@ -809,7 +814,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
@@ -854,7 +859,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -895,7 +900,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
