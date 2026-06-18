@@ -208,19 +208,19 @@ class PreferencesKey {
     await _prefs.setBool(_hideDockIcon, value);
   }
 
-  static const _subUpdate = "subUpdate";
+  static const _autoUpdate = "autoUpdate";
 
-  Future<Map<String, dynamic>?> readSubUpdate() async {
-    final value = await _prefs.getString(_subUpdate);
+  Future<Map<String, dynamic>?> readAutoUpdate() async {
+    final value = await _prefs.getString(_autoUpdate);
     if (value != null) {
       return JsonTool.decodeBase64ToJson(value);
     }
     return null;
   }
 
-  Future<void> saveSubUpdate(Map<String, dynamic> value) async {
+  Future<void> saveAutoUpdate(Map<String, dynamic> value) async {
     final text = JsonTool.encodeJsonToBase64(value);
-    await _prefs.setString(_subUpdate, text);
+    await _prefs.setString(_autoUpdate, text);
   }
 
   static const _themeCode = "themeCode";

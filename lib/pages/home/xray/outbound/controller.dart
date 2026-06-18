@@ -12,6 +12,7 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/setting/tun/network_interface/params.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
@@ -523,7 +524,8 @@ class OutboundUIController extends Cubit<OutboundUIState> {
 
   Future<void> _updateDb() async {
     if (params.id == DBConstants.defaultId) {
-      await state.outboundState.insertToDb();
+      final id = await state.outboundState.insertToDb();
+      PingService().schedulePingConfigIds([id]);
     } else {
       if (_outboundData != null) {
         await state.outboundState.updateToDb(_outboundData!);

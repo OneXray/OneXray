@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/setting/sub_update/controller.dart';
+import 'package:onexray/pages/setting/auto_update/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/service/sub_update/state.dart';
+import 'package:onexray/service/auto_update/state.dart';
 
-class SubUpdatePage extends StatelessWidget {
-  const SubUpdatePage({super.key});
+class AutoUpdatePage extends StatelessWidget {
+  const AutoUpdatePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => SubUpdateController(),
-      child: BlocBuilder<SubUpdateController, SubUpdatePageState>(
+      create: (_) => AutoUpdateController(),
+      child: BlocBuilder<AutoUpdateController, AutoUpdatePageState>(
         builder: (context, state) {
-          final controller = context.read<SubUpdateController>();
+          final controller = context.read<AutoUpdateController>();
           return Scaffold(
             appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.subUpdatePageTitle),
+              title: Text(AppLocalizations.of(context)!.autoUpdatePageTitle),
             ),
             body: SafeArea(child: _body(context, state, controller)),
           );
@@ -31,8 +31,8 @@ class SubUpdatePage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -56,31 +56,30 @@ class SubUpdatePage extends StatelessWidget {
 
   Widget _subscriptionSection(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.subUpdatePageSubscription,
+      title: AppLocalizations.of(context)!.autoUpdatePageSubscription,
       children: [
         _enable(context, state, controller),
-        if (state.subUpdateState.enable) _interval(context, state, controller),
-        _autoPing(context, state, controller),
+        if (state.autoUpdateState.enable) _interval(context, state, controller),
       ],
     );
   }
 
   Widget _geoDataSection(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.geoDataListPageTitle,
       children: [
         _geoDataEnable(context, state, controller),
-        if (state.subUpdateState.geoDataEnable)
+        if (state.autoUpdateState.geoDataEnable)
           _geoDataUpdateAfterVpnConnected(context, state, controller),
-        if (state.subUpdateState.geoDataEnable)
+        if (state.autoUpdateState.geoDataEnable)
           _geoDataInterval(context, state, controller),
       ],
     );
@@ -88,82 +87,70 @@ class SubUpdatePage extends StatelessWidget {
 
   Widget _enable(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.subUpdatePageEnable,
-      value: state.subUpdateState.enable,
+      title: AppLocalizations.of(context)!.autoUpdatePageEnable,
+      value: state.autoUpdateState.enable,
       onChanged: (value) => controller.updateEnable(value),
     );
   }
 
   Widget _interval(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return SelectSettingRow(
-      title: AppLocalizations.of(context)!.subUpdatePageInterval,
-      value: "${state.subUpdateState.interval}",
-      selections: SubUpdateInterval.values,
+      title: AppLocalizations.of(context)!.autoUpdatePageInterval,
+      value: "${state.autoUpdateState.interval}",
+      selections: AutoUpdateInterval.values,
       onSelected: (value) => controller.updateInterval(value),
-    );
-  }
-
-  Widget _autoPing(
-    BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
-  ) {
-    return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.subUpdatePageAutoPing,
-      value: state.subUpdateState.autoPing,
-      onChanged: (value) => controller.updateAutoPing(value),
     );
   }
 
   Widget _geoDataEnable(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.subUpdatePageEnable,
-      value: state.subUpdateState.geoDataEnable,
+      title: AppLocalizations.of(context)!.autoUpdatePageEnable,
+      value: state.autoUpdateState.geoDataEnable,
       onChanged: (value) => controller.updateGeoDataEnable(value),
     );
   }
 
   Widget _geoDataInterval(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return SelectSettingRow(
-      title: AppLocalizations.of(context)!.subUpdatePageInterval,
-      value: "${state.subUpdateState.geoDataInterval}",
-      selections: SubUpdateInterval.values,
+      title: AppLocalizations.of(context)!.autoUpdatePageInterval,
+      value: "${state.autoUpdateState.geoDataInterval}",
+      selections: AutoUpdateInterval.values,
       onSelected: (value) => controller.updateGeoDataInterval(value),
     );
   }
 
   Widget _geoDataUpdateAfterVpnConnected(
     BuildContext context,
-    SubUpdatePageState state,
-    SubUpdateController controller,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(
         context,
-      )!.subUpdatePageGeoDataUpdateAfterVpnConnected,
-      value: state.subUpdateState.geoDataUpdateAfterVpnConnected,
+      )!.autoUpdatePageGeoDataUpdateAfterVpnConnected,
+      value: state.autoUpdateState.geoDataUpdateAfterVpnConnected,
       onChanged: (value) =>
           controller.updateGeoDataUpdateAfterVpnConnected(value),
     );
   }
 
-  Widget _bottomButton(BuildContext context, SubUpdateController controller) {
+  Widget _bottomButton(BuildContext context, AutoUpdateController controller) {
     return BottomView(
       child: Row(
         children: [

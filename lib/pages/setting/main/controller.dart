@@ -62,8 +62,8 @@ class SettingController extends Cubit<SettingState> {
     context.push(RouterPath.ping);
   }
 
-  void gotoSubUpdate(BuildContext context) {
-    context.push(RouterPath.subUpdate);
+  void gotoAutoUpdate(BuildContext context) {
+    context.push(RouterPath.autoUpdate);
   }
 
   void gotoGeoData(BuildContext context) {

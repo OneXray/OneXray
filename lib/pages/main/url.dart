@@ -73,7 +73,7 @@ import 'package:onexray/pages/setting/long_text/page.dart';
 import 'package:onexray/pages/setting/long_text/params.dart';
 import 'package:onexray/pages/setting/main/page.dart';
 import 'package:onexray/pages/setting/ping/page.dart';
-import 'package:onexray/pages/setting/sub_update/page.dart';
+import 'package:onexray/pages/setting/auto_update/page.dart';
 import 'package:onexray/pages/setting/theme/page.dart';
 import 'package:onexray/pages/setting/toolbox/page.dart';
 import 'package:onexray/pages/setting/tun/installed_app/page.dart';
@@ -141,7 +141,7 @@ abstract final class RouterPath {
   static const selectedApp = "/selectedApp";
   static const installedApp = "/installedApp";
   static const ping = "/ping";
-  static const subUpdate = "/subUpdate";
+  static const autoUpdate = "/autoUpdate";
   static const geoDataList = "/geoDataList";
   static const geoDatAdd = "/geoDatAdd";
   static const geoDatSelect = "/geoDatSelect";
@@ -355,8 +355,8 @@ abstract final class RouterPath {
       ),
       GoRoute(path: RouterPath.ping, builder: (_, state) => const PingPage()),
       GoRoute(
-        path: RouterPath.subUpdate,
-        builder: (_, state) => const SubUpdatePage(),
+        path: RouterPath.autoUpdate,
+        builder: (_, state) => const AutoUpdatePage(),
       ),
       GoRoute(
         path: RouterPath.geoDataList,

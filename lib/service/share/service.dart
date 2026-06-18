@@ -12,6 +12,7 @@ import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/share/protocol.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/toast/service.dart';
@@ -174,10 +175,18 @@ final class ShareService {
       if (AppShareService().checkAppShare(url)) {
         final result = await AppShareService().parseShareText(url);
         final rows = result.item1;
+        var configImported = 0;
         if (rows.isNotEmpty) {
-          await ConfigWriter.writeRows(rows, null);
+          final writeResult = await ConfigWriter.writeRowsWithResult(
+            rows,
+            null,
+          );
+          configImported = writeResult.count;
+          if (writeResult.count > 0) {
+            PingService().schedulePingConfigIds(writeResult.ids);
+          }
         }
-        success = result.item2;
+        success = result.item2 || configImported > 0;
       } else if (url.startsWith("https://")) {
         final uri = Uri.tryParse(url);
         if (uri != null) {
@@ -190,8 +199,12 @@ final class ShareService {
       } else {
         final rows = await XrayShareReader().parseShareText(url);
         if (rows.isNotEmpty) {
-          final res = await ConfigWriter.writeRows(rows, null);
-          if (res > 0) {
+          final writeResult = await ConfigWriter.writeRowsWithResult(
+            rows,
+            null,
+          );
+          if (writeResult.count > 0) {
+            PingService().schedulePingConfigIds(writeResult.ids);
             success = true;
           }
         }

@@ -1,27 +1,25 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part 'sub_update_json.g.dart';
+part 'auto_update_json.g.dart';
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class SubUpdateJson {
+class AutoUpdateJson {
   bool? enabled;
   int? interval;
-  bool? autoPing;
   bool? geoDataEnabled;
   int? geoDataInterval;
   bool? geoDataUpdateAfterVpnConnected;
 
-  SubUpdateJson(
+  AutoUpdateJson(
     this.enabled,
     this.interval,
-    this.autoPing,
     this.geoDataEnabled,
     this.geoDataInterval,
     this.geoDataUpdateAfterVpnConnected,
   );
 
-  factory SubUpdateJson.fromJson(Map<String, dynamic> json) =>
-      _$SubUpdateJsonFromJson(json);
+  factory AutoUpdateJson.fromJson(Map<String, dynamic> json) =>
+      _$AutoUpdateJsonFromJson(json);
 
-  Map<String, dynamic> toJson() => _$SubUpdateJsonToJson(this);
+  Map<String, dynamic> toJson() => _$AutoUpdateJsonToJson(this);
 }

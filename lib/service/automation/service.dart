@@ -13,6 +13,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/automation/protocol.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/share/protocol.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/vpn/service.dart';
@@ -246,7 +247,11 @@ final class AutomationService {
       final rows = result.item1;
       var configImported = 0;
       if (rows.isNotEmpty) {
-        configImported = await ConfigWriter.writeRows(rows, null);
+        final writeResult = await ConfigWriter.writeRowsWithResult(rows, null);
+        configImported = writeResult.count;
+        if (writeResult.count > 0) {
+          PingService().schedulePingConfigIds(writeResult.ids);
+        }
       }
       final success = result.item2 || configImported > 0;
       if (!success) {
@@ -299,7 +304,14 @@ final class AutomationService {
         );
       }
     }();
-    final count = rows.isEmpty ? 0 : await ConfigWriter.writeRows(rows, null);
+    var count = 0;
+    if (rows.isNotEmpty) {
+      final writeResult = await ConfigWriter.writeRowsWithResult(rows, null);
+      count = writeResult.count;
+      if (writeResult.count > 0) {
+        PingService().schedulePingConfigIds(writeResult.ids);
+      }
+    }
     if (count <= 0) {
       throw const AutomationException(
         AutomationErrorCode.importFailed,

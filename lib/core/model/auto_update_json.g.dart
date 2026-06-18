@@ -1,27 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'sub_update_json.dart';
+part of 'auto_update_json.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-SubUpdateJson _$SubUpdateJsonFromJson(Map<String, dynamic> json) =>
-    SubUpdateJson(
+AutoUpdateJson _$AutoUpdateJsonFromJson(Map<String, dynamic> json) =>
+    AutoUpdateJson(
       json['enabled'] as bool?,
       (json['interval'] as num?)?.toInt(),
-      json['autoPing'] as bool?,
       json['geoDataEnabled'] as bool?,
       (json['geoDataInterval'] as num?)?.toInt(),
       json['geoDataUpdateAfterVpnConnected'] as bool?,
     );
 
-Map<String, dynamic> _$SubUpdateJsonToJson(
-  SubUpdateJson instance,
+Map<String, dynamic> _$AutoUpdateJsonToJson(
+  AutoUpdateJson instance,
 ) => <String, dynamic>{
   'enabled': ?instance.enabled,
   'interval': ?instance.interval,
-  'autoPing': ?instance.autoPing,
   'geoDataEnabled': ?instance.geoDataEnabled,
   'geoDataInterval': ?instance.geoDataInterval,
   'geoDataUpdateAfterVpnConnected': ?instance.geoDataUpdateAfterVpnConnected,

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:async/async.dart';
 import 'package:collection/collection.dart';
+import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/constants.dart';
@@ -23,13 +24,15 @@ class PingService {
 
   PingService._internal();
 
+  Future<void> _scheduledPingQueue = Future.value();
+  var _pingingTaskCount = 0;
+
   Future<void> pingOutboundConfigs(int subId) async {
-    final eventBus = AppEventBus.instance;
-    eventBus.updatePinging(true);
     final db = AppDatabase();
-    final rows = await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId);
-    await _pingConfigs(db, rows);
-    eventBus.updatePinging(false);
+    await _runPinging(() async {
+      final rows = await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId);
+      await _pingConfigs(db, rows);
+    });
   }
 
   Future<int> _pingOutbound(CoreConfigData row, PingState pingState) async {
@@ -42,12 +45,11 @@ class PingService {
   }
 
   Future<void> pingRawConfigs(int subId) async {
-    final eventBus = AppEventBus.instance;
-    eventBus.updatePinging(true);
     final db = AppDatabase();
-    final rows = await db.coreConfigDao.allRawRowsWithDataBySubId(subId);
-    await _pingConfigs(db, rows);
-    eventBus.updatePinging(false);
+    await _runPinging(() async {
+      final rows = await db.coreConfigDao.allRawRowsWithDataBySubId(subId);
+      await _pingConfigs(db, rows);
+    });
   }
 
   Future<int> _pingRawConfig(CoreConfigData row, PingState pingState) async {
@@ -57,6 +59,87 @@ class PingService {
       return XrayRawPing.ping(text, pingState);
     }
     return PingDelayConstants.unknown;
+  }
+
+  void schedulePingConfigIds(List<int> ids) {
+    final targetIds = ids
+        .where((id) => id > DBConstants.defaultId)
+        .toSet()
+        .toList();
+    if (targetIds.isEmpty) {
+      return;
+    }
+    _enqueueAutoPing(() async {
+      final db = AppDatabase();
+      final rows = <CoreConfigData>[];
+      for (final id in targetIds) {
+        final row = await db.coreConfigDao.searchRow(id);
+        if (row != null && _isPingableConfig(row)) {
+          rows.add(row);
+        }
+      }
+      if (rows.isEmpty) {
+        return;
+      }
+      await _runPinging(() => _pingConfigs(db, rows));
+    });
+  }
+
+  void schedulePingSubscription(int subId) {
+    if (subId <= DBConstants.defaultId) {
+      return;
+    }
+    _enqueueAutoPing(() async {
+      final db = AppDatabase();
+      final rows = [
+        ...await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId),
+        ...await db.coreConfigDao.allRawRowsWithDataBySubId(subId),
+      ];
+      if (rows.isEmpty) {
+        return;
+      }
+      await _runPinging(() => _pingConfigs(db, rows));
+    });
+  }
+
+  void _enqueueAutoPing(Future<void> Function() task) {
+    _scheduledPingQueue = _scheduledPingQueue.then((_) async {
+      try {
+        await task();
+      } catch (e, stackTrace) {
+        ygLogger("Auto ping failed: $e\n$stackTrace");
+      }
+    });
+  }
+
+  Future<void> _runPinging(Future<void> Function() task) async {
+    _startPinging();
+    try {
+      await task();
+    } finally {
+      _stopPinging();
+    }
+  }
+
+  void _startPinging() {
+    _pingingTaskCount += 1;
+    if (_pingingTaskCount == 1) {
+      AppEventBus.instance.updatePinging(true);
+    }
+  }
+
+  void _stopPinging() {
+    if (_pingingTaskCount > 0) {
+      _pingingTaskCount -= 1;
+    }
+    if (_pingingTaskCount == 0) {
+      AppEventBus.instance.updatePinging(false);
+    }
+  }
+
+  bool _isPingableConfig(CoreConfigData row) {
+    final type = CoreConfigType.fromString(row.type);
+    return type == CoreConfigType.outbound || type == CoreConfigType.raw;
   }
 
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
