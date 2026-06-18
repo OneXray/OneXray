@@ -6,6 +6,7 @@ part 'model.g.dart';
 class RunXrayConfig {
   String? tunName;
   int? tunPriority;
+  bool? enableIPv6;
   String? dns;
   String? bindInterface;
   String? datDir;
@@ -14,6 +15,7 @@ class RunXrayConfig {
   RunXrayConfig(
     this.tunName,
     this.tunPriority,
+    this.enableIPv6,
     this.dns,
     this.bindInterface,
     this.datDir,
