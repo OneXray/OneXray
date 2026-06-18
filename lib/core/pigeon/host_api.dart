@@ -9,6 +9,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/xray/standard.dart';
 
 class AppHostApi {
@@ -38,7 +39,8 @@ class AppHostApi {
     try {
       return await _readVpnStatus();
     } catch (e) {
-      return _commandFailed("$e");
+      ygLogger("readVpnStatus error: $e");
+      return _commandFailed(appLocalizationsNoContext().vpnCommandFailed);
     }
   }
 
@@ -56,7 +58,8 @@ class AppHostApi {
     try {
       return await _startVpn();
     } catch (e) {
-      return _commandFailed("$e");
+      ygLogger("startVpn error: $e");
+      return _commandFailed(appLocalizationsNoContext().vpnStartFailed);
     }
   }
 
@@ -74,7 +77,8 @@ class AppHostApi {
     try {
       return await _stopVpn();
     } catch (e) {
-      return _commandFailed("$e");
+      ygLogger("stopVpn error: $e");
+      return _commandFailed(appLocalizationsNoContext().vpnStopFailed);
     }
   }
 
@@ -414,7 +418,10 @@ class AppHostApi {
     try {
       return await _api.queryPlatformPermission();
     } catch (e) {
-      return _platformPermissionFailed("$e");
+      ygLogger("queryPlatformPermission error: $e");
+      return _platformPermissionFailed(
+        appLocalizationsNoContext().vpnPlatformPermissionCheckFailed,
+      );
     }
   }
 
@@ -425,7 +432,10 @@ class AppHostApi {
     try {
       return await _api.requestPlatformPermission();
     } catch (e) {
-      return _platformPermissionFailed("$e");
+      ygLogger("requestPlatformPermission error: $e");
+      return _platformPermissionFailed(
+        appLocalizationsNoContext().vpnPlatformPermissionCheckFailed,
+      );
     }
   }
 

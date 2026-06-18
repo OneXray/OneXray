@@ -9,7 +9,6 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/network/client.dart';
-import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -201,7 +200,9 @@ final class VpnService {
 
     final permission = await _ensurePlatformPermissionForUserAction();
     if (permission.state == PlatformPermissionState.failed) {
-      final message = permission.message ?? "Platform permission check failed.";
+      final message =
+          permission.message ??
+          appLocalizationsNoContext().vpnPlatformPermissionCheckFailed;
       await _handleStartFailure(message);
       return _commandFailed(message);
     }
@@ -245,7 +246,9 @@ final class VpnService {
         return result;
       }
       if (result.state == NativeVpnCommandState.failed) {
-        await _handleStartFailure(result.message ?? "VPN start failed.");
+        await _handleStartFailure(
+          result.message ?? appLocalizationsNoContext().vpnStartFailed,
+        );
         return result;
       }
       if (_lastVpnStatus != VpnStatus.connected) {
@@ -253,7 +256,7 @@ final class VpnService {
       }
       final connected = await _waitForVpnStatus({VpnStatus.connected});
       if (!connected) {
-        final message = "VPN start timed out.";
+        final message = appLocalizationsNoContext().vpnStartTimeout;
         await _handleStartFailure(message);
         return _commandFailed(message);
       }
@@ -274,7 +277,9 @@ final class VpnService {
     _applyNativeCommandResult(result);
     if (result.state == NativeVpnCommandState.failed) {
       eventBus.updateVpnActionState(VpnActionState.failed);
-      eventBus.updateVpnErrorMessage(result.message ?? "VPN stop failed.");
+      eventBus.updateVpnErrorMessage(
+        result.message ?? appLocalizationsNoContext().vpnStopFailed,
+      );
       return result;
     }
     await _waitForVpnStatus({VpnStatus.disconnected}, timeoutSeconds: 5);
@@ -318,7 +323,9 @@ final class VpnService {
         break;
       case NativeVpnCommandState.failed:
         eventBus.updateVpnActionState(VpnActionState.failed);
-        eventBus.updateVpnErrorMessage(result.message ?? "VPN command failed.");
+        eventBus.updateVpnErrorMessage(
+          result.message ?? appLocalizationsNoContext().vpnCommandFailed,
+        );
         break;
     }
   }
@@ -389,7 +396,7 @@ final class VpnService {
 
     final ports = await XrayPorts.getPorts();
     if (ports == null) {
-      return _commandFailed("Failed to allocate local ports.");
+      return _commandFailed(appLocalizationsNoContext().vpnLocalPortFailed);
     }
 
     final db = AppDatabase();
@@ -431,7 +438,7 @@ final class VpnService {
 
     final coreBase64Text = await _makeRunXrayRequest(configPath);
     if (coreBase64Text == null) {
-      return _commandFailed("Failed to create Xray start request.");
+      return _commandFailed(appLocalizationsNoContext().vpnStartRequestFailed);
     }
 
     return _makeVpnRequestAndStart(
@@ -568,7 +575,7 @@ final class VpnService {
   ) async {
     final tunPriority = int.tryParse(tunSettingState.tunPriority);
     if (tunPriority == null) {
-      return _commandFailed("Invalid TUN priority.");
+      return _commandFailed(appLocalizationsNoContext().vpnTunPriorityInvalid);
     }
 
     final request = StartVpnRequest(
@@ -590,26 +597,91 @@ final class VpnService {
     return coreBase64Text;
   }
 
-  Future<void> _connectivityTest() async {
-    final request = await StartVpnRequestReader.readFromStartFile();
-    if (request.pingPort == null) {
+  Future<void> retryConnectivityTest() {
+    if (!_vpnRunning) {
+      AppEventBus.instance.resetConnectivityProbe();
+      return Future.value();
+    }
+    return _connectivityTest(initialDelay: Duration.zero);
+  }
+
+  Future<void> _connectivityTest({
+    Duration initialDelay = const Duration(seconds: 3),
+  }) async {
+    final eventBus = AppEventBus.instance;
+    if (!_vpnRunning) {
+      eventBus.resetConnectivityProbe();
       return;
     }
-    // delay three seconds
-    await Future.delayed(Duration(seconds: 3));
+    final testId = ++_connectivityTestId;
+    eventBus.startConnectivityProbe();
+
+    StartVpnRequest request;
+    try {
+      request = await StartVpnRequestReader.readFromStartFile();
+    } catch (e) {
+      ygLogger("read start vpn request error: $e");
+      eventBus.updateLocationPingFailed();
+      eventBus.updateGeoLocationFailed();
+      return;
+    }
+
+    final pingPort = request.pingPort;
+    if (pingPort == null) {
+      eventBus.updateLocationPingFailed();
+      eventBus.updateGeoLocationFailed();
+      return;
+    }
+
+    if (initialDelay > Duration.zero) {
+      await Future.delayed(initialDelay);
+    }
+    if (!_isConnectivityTestCurrent(testId)) {
+      return;
+    }
 
     final pingState = PingState();
     await pingState.readFromPreferences();
-    final location = await NetClient().connectivityTest(
-      request.pingPort!,
-      pingState.realUrl,
-    );
+
+    await Future.wait([
+      _runPingProbe(testId, pingPort, pingState.realUrl),
+      _runGeoLocationProbe(testId, pingPort),
+    ]);
+  }
+
+  bool _isConnectivityTestCurrent(int testId) {
+    return testId == _connectivityTestId && _vpnRunning;
+  }
+
+  Future<void> _runPingProbe(int testId, String port, String url) async {
+    final delay = await NetClient().ping(port, url);
+    if (!_isConnectivityTestCurrent(testId)) {
+      return;
+    }
     final eventBus = AppEventBus.instance;
-    eventBus.updateLocation(location);
+    if (delay == null) {
+      eventBus.updateLocationPingFailed();
+      return;
+    }
+    eventBus.updateLocationDelay(delay);
+  }
+
+  Future<void> _runGeoLocationProbe(int testId, String port) async {
+    final location = await NetClient().geoLocation(port);
+    if (!_isConnectivityTestCurrent(testId)) {
+      return;
+    }
+    final eventBus = AppEventBus.instance;
+    if (location == null) {
+      eventBus.updateGeoLocationFailed();
+      return;
+    }
+    eventBus.updateGeoLocation(location);
   }
 
   Timer? _timer;
   var _startTime = DateTime.now();
+  var _connectivityTestId = 0;
 
   Future<void> _startDurationTimer() async {
     _stopDurationTimer();
@@ -619,10 +691,11 @@ final class VpnService {
   }
 
   void _stopDurationTimer() {
+    _connectivityTestId++;
     _timer?.cancel();
     _timer = null;
     final eventBus = AppEventBus.instance;
-    eventBus.updateLocation(GeoLocationStandard.standard);
+    eventBus.resetConnectivityProbe();
   }
 
   void _updateDuration() {

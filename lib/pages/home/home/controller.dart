@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/constants.dart';
-import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -335,27 +334,50 @@ class HomeController extends Cubit<HomeState> {
     }
   }
 
-  String formatGeoLocation(BuildContext context, GeoLocation location) {
+  String formatGeoLocation(BuildContext context, AppEventBusState eventState) {
+    final location = eventState.location;
+    final appLocalizations = AppLocalizations.of(context)!;
     var text = "";
-    text += AppLocalizations.of(context)!.nodeInfoPageDuration;
-    if (location.duration == null) {
-      text += ": ${AppLocalizations.of(context)!.nodeInfoPageFetching} ";
-    } else {
-      text += ": ${location.duration} ";
-    }
-    text += AppLocalizations.of(context)!.nodeInfoPageDelay;
-    if (location.delay == null) {
-      text += ": ${AppLocalizations.of(context)!.nodeInfoPageFetching} ";
-    } else {
-      text += ": ${location.delay}ms ";
-    }
-    text += AppLocalizations.of(context)!.nodeInfoPageLocation;
-    if (location.country == null) {
-      text += ": ${AppLocalizations.of(context)!.nodeInfoPageFetching} ";
-    } else {
-      text += ": ${location.country} ";
-    }
+    text += appLocalizations.nodeInfoPageDuration;
+    text += ": ${location.duration ?? appLocalizations.nodeInfoPageFetching} ";
+    text += appLocalizations.nodeInfoPageDelay;
+    text += ": ${_formatDelay(context, eventState)} ";
+    text += appLocalizations.nodeInfoPageLocation;
+    text += ": ${_formatGeoValue(context, eventState, location.country)} ";
     return text;
+  }
+
+  String _formatDelay(BuildContext context, AppEventBusState eventState) {
+    final appLocalizations = AppLocalizations.of(context)!;
+    switch (eventState.pingProbeState) {
+      case ConnectivityProbeState.idle:
+      case ConnectivityProbeState.loading:
+        return appLocalizations.nodeInfoPageFetching;
+      case ConnectivityProbeState.failed:
+        return appLocalizations.nodeInfoPageFailed;
+      case ConnectivityProbeState.success:
+        final delay = eventState.location.delay;
+        return delay == null
+            ? appLocalizations.nodeInfoPageFailed
+            : "${delay}ms";
+    }
+  }
+
+  String _formatGeoValue(
+    BuildContext context,
+    AppEventBusState eventState,
+    String? value,
+  ) {
+    final appLocalizations = AppLocalizations.of(context)!;
+    switch (eventState.geoLocationProbeState) {
+      case ConnectivityProbeState.idle:
+      case ConnectivityProbeState.loading:
+        return appLocalizations.nodeInfoPageFetching;
+      case ConnectivityProbeState.failed:
+        return appLocalizations.nodeInfoPageFailed;
+      case ConnectivityProbeState.success:
+        return value ?? appLocalizations.nodeInfoPageFailed;
+    }
   }
 
   void gotoNodeInfo(BuildContext context) {

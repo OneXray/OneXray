@@ -117,7 +117,7 @@ class PingService {
         content = appLocalizationsNoContext().pingTimeout;
         break;
       case PingDelayConstants.error:
-        content = "error";
+        content = appLocalizationsNoContext().pingError;
         break;
       default:
         content = "${delay}ms";

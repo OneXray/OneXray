@@ -66,6 +66,15 @@
   "vpnChainProxyMissing": "chainProxy 节点不存在",
   "vpnChainProxyInvalid": "chainProxy 节点无效",
   "vpnChainProxySameAsOutbound": "chainProxy 不能与当前出口节点相同",
+  "vpnPlatformPermissionCheckFailed": "平台权限检查失败",
+  "vpnStartFailed": "VPN 启动失败",
+  "vpnStartTimeout": "VPN 启动超时",
+  "vpnStopFailed": "VPN 停止失败",
+  "vpnCommandFailed": "VPN 命令执行失败",
+  "vpnLocalPortFailed": "本地端口分配失败",
+  "vpnStartRequestFailed": "创建 Xray 启动请求失败",
+  "vpnTunPriorityInvalid": "TUN 优先级无效",
+  "vpnCoreStartFailed": "核心启动失败",
   "actionResult": "{action} {result}",
   "@actionResult": {
     "placeholders": {
@@ -382,6 +391,7 @@
   "sharePageCopyLink": "复制链接",
   "nodeInfoPageTitle": "节点信息",
   "nodeInfoPageFetching": "获取中...",
+  "nodeInfoPageFailed": "获取失败",
   "nodeInfoPageDuration": "持续时间",
   "nodeInfoPageDelay": "延迟",
   "nodeInfoPageIP": "IP",

@@ -66,6 +66,15 @@
     "vpnChainProxyMissing": "گره chainProxy پیدا نشد",
     "vpnChainProxyInvalid": "گره chainProxy نامعتبر است",
     "vpnChainProxySameAsOutbound": "chainProxy نمی‌تواند همان outbound فعلی باشد",
+    "vpnPlatformPermissionCheckFailed": "بررسی مجوز پلتفرم ناموفق بود",
+    "vpnStartFailed": "راه‌اندازی VPN ناموفق بود",
+    "vpnStartTimeout": "مهلت راه‌اندازی VPN تمام شد",
+    "vpnStopFailed": "توقف VPN ناموفق بود",
+    "vpnCommandFailed": "فرمان VPN ناموفق بود",
+    "vpnLocalPortFailed": "اختصاص پورت‌های محلی ناموفق بود",
+    "vpnStartRequestFailed": "ایجاد درخواست راه‌اندازی Xray ناموفق بود",
+    "vpnTunPriorityInvalid": "اولویت TUN نامعتبر است",
+    "vpnCoreStartFailed": "راه‌اندازی هسته ناموفق بود",
     "actionResult": "{action} {result}",
     "@actionResult": {
         "placeholders": {
@@ -382,6 +391,7 @@
     "sharePageCopyLink": "کپی لینک",
     "nodeInfoPageTitle": "اطلاعات نود",
     "nodeInfoPageFetching": "در حال دریافت...",
+    "nodeInfoPageFailed": "ناموفق",
     "nodeInfoPageDuration": "مدت‌زمان",
     "nodeInfoPageDelay": "تأخیر",
     "nodeInfoPageIP": "IP",

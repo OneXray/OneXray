@@ -14,6 +14,8 @@ enum VpnActionState {
   failed,
 }
 
+enum ConnectivityProbeState { idle, loading, success, failed }
+
 class AppEventBusState {
   final int xraySettingId;
   final bool vpnLoading;
@@ -26,6 +28,8 @@ class AppEventBusState {
   final bool pinging;
   final GeoLocation location;
   final int locationVersion;
+  final ConnectivityProbeState pingProbeState;
+  final ConnectivityProbeState geoLocationProbeState;
   final bool downloading;
   final bool windowClosed;
   final ThemeCode themeCode;
@@ -43,6 +47,8 @@ class AppEventBusState {
     required this.pinging,
     required this.location,
     this.locationVersion = 0,
+    required this.pingProbeState,
+    required this.geoLocationProbeState,
     required this.downloading,
     required this.windowClosed,
     required this.themeCode,
@@ -60,6 +66,8 @@ class AppEventBusState {
     vpnErrorMessage: "",
     pinging: false,
     location: GeoLocationStandard.standard,
+    pingProbeState: ConnectivityProbeState.idle,
+    geoLocationProbeState: ConnectivityProbeState.idle,
     downloading: false,
     windowClosed: false,
     themeCode: ThemeCode.system,
@@ -78,6 +86,8 @@ class AppEventBusState {
     bool? pinging,
     GeoLocation? location,
     int? locationVersion,
+    ConnectivityProbeState? pingProbeState,
+    ConnectivityProbeState? geoLocationProbeState,
     bool? downloading,
     bool? windowClosed,
     ThemeCode? themeCode,
@@ -97,6 +107,9 @@ class AppEventBusState {
       pinging: pinging ?? this.pinging,
       location: location ?? this.location,
       locationVersion: locationVersion ?? this.locationVersion,
+      pingProbeState: pingProbeState ?? this.pingProbeState,
+      geoLocationProbeState:
+          geoLocationProbeState ?? this.geoLocationProbeState,
       downloading: downloading ?? this.downloading,
       windowClosed: windowClosed ?? this.windowClosed,
       themeCode: themeCode ?? this.themeCode,

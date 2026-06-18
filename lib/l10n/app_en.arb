@@ -66,6 +66,15 @@
   "vpnChainProxyMissing": "chainProxy node not found",
   "vpnChainProxyInvalid": "chainProxy node invalid",
   "vpnChainProxySameAsOutbound": "chainProxy cannot be the current outbound",
+  "vpnPlatformPermissionCheckFailed": "Platform permission check failed",
+  "vpnStartFailed": "VPN start failed",
+  "vpnStartTimeout": "VPN start timed out",
+  "vpnStopFailed": "VPN stop failed",
+  "vpnCommandFailed": "VPN command failed",
+  "vpnLocalPortFailed": "Failed to allocate local ports",
+  "vpnStartRequestFailed": "Failed to create Xray start request",
+  "vpnTunPriorityInvalid": "TUN priority is invalid",
+  "vpnCoreStartFailed": "Failed to start core",
   "actionResult": "{action} {result}",
   "@actionResult": {
     "placeholders": {
@@ -382,6 +391,7 @@
   "sharePageCopyLink": "Copy Link",
   "nodeInfoPageTitle": "Node Information",
   "nodeInfoPageFetching": "Fetching...",
+  "nodeInfoPageFailed": "Failed",
   "nodeInfoPageDuration": "Duration",
   "nodeInfoPageDelay": "Delay",
   "nodeInfoPageIP": "IP",

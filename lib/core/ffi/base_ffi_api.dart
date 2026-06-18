@@ -10,6 +10,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/localizations/service.dart';
 
 abstract class BaseFfiApi {
   Future<String> getTunFilesDir() async {
@@ -39,7 +40,7 @@ abstract class BaseFfiApi {
     var res = await startCore(configPath);
     if (!res) {
       await stopVpn();
-      return _commandFailed("Failed to start core.");
+      return _commandFailed(appLocalizationsNoContext().vpnCoreStartFailed);
     }
     await updateVpnStatus(VpnStatus.connected);
     return _commandSuccess();

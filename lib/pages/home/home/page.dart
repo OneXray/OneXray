@@ -263,7 +263,7 @@ class _HomePageState extends State<HomePage>
         ? AppLocalizations.of(context)!.homePageNoSelectedNode
         : homeState.configName;
     final detailText = connected
-        ? controller.formatGeoLocation(context, eventState.location)
+        ? controller.formatGeoLocation(context, eventState)
         : "${AppLocalizations.of(context)!.homePageCurrentNode}: $nodeName";
     final content = Padding(
       padding: const EdgeInsetsDirectional.symmetric(
