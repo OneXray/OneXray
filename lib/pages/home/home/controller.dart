@@ -26,6 +26,7 @@ import 'package:onexray/service/geo_data/system_dat_service.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -348,27 +349,7 @@ class HomeController extends Cubit<HomeState> {
   }
 
   String formatTraffic(AppEventBusState eventState) {
-    final metrics = eventState.trafficMetrics;
-    if (!metrics.available) {
-      return "↑ --   ↓ --";
-    }
-    return "↑ ${_formatSpeed(metrics.uploadSpeed)}   ↓ ${_formatSpeed(metrics.downloadSpeed)}";
-  }
-
-  String _formatSpeed(int bytesPerSecond) {
-    if (bytesPerSecond < 1024) {
-      return "$bytesPerSecond B/s";
-    }
-    final kb = bytesPerSecond / 1024;
-    if (kb < 1024) {
-      return "${kb.toStringAsFixed(kb >= 10 ? 0 : 1)} KB/s";
-    }
-    final mb = kb / 1024;
-    if (mb < 1024) {
-      return "${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB/s";
-    }
-    final gb = mb / 1024;
-    return "${gb.toStringAsFixed(gb >= 10 ? 0 : 1)} GB/s";
+    return XrayMetricsFormatter.formatTraffic(eventState.trafficMetrics);
   }
 
   String _formatDelay(BuildContext context, AppEventBusState eventState) {

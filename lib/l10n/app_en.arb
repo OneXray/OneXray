@@ -417,6 +417,7 @@
   "nodeInfoPageFailed": "Failed",
   "nodeInfoPageDuration": "Duration",
   "nodeInfoPageDelay": "Delay",
+  "nodeInfoPageTraffic": "Traffic",
   "nodeInfoPageIP": "IP",
   "nodeInfoPageIPVersion": "IP Version",
   "nodeInfoPageLocation": "Location",

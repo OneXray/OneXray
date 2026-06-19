@@ -417,6 +417,7 @@
     "nodeInfoPageFailed": "ناموفق",
     "nodeInfoPageDuration": "مدت‌زمان",
     "nodeInfoPageDelay": "تأخیر",
+    "nodeInfoPageTraffic": "سرعت",
     "nodeInfoPageIP": "IP",
     "nodeInfoPageIPVersion": "نسخه IP",
     "nodeInfoPageLocation": "موقعیت",

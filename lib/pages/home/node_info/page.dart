@@ -6,6 +6,7 @@ import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/xray/metrics/formatter.dart';
 
 class NodeInfoPage extends StatelessWidget {
   const NodeInfoPage({super.key});
@@ -43,6 +44,7 @@ class NodeInfoPage extends StatelessWidget {
     final location = state.location;
     final duration = location.duration ?? appLocalizations.nodeInfoPageFetching;
     final delay = _delayValue(context, state);
+    final traffic = XrayMetricsFormatter.formatTraffic(state.trafficMetrics);
     final ipAddress = _geoValue(context, state, location.ipAddress);
     final ipVersion = _geoValue(context, state, location.ipVersion);
     final country = _geoValue(context, state, location.country);
@@ -59,6 +61,10 @@ class NodeInfoPage extends StatelessWidget {
         SettingRow(
           title: AppLocalizations.of(context)!.nodeInfoPageDelay,
           value: delay,
+        ),
+        SettingRow(
+          title: AppLocalizations.of(context)!.nodeInfoPageTraffic,
+          value: traffic,
         ),
         SettingRow(
           title: AppLocalizations.of(context)!.nodeInfoPageIP,

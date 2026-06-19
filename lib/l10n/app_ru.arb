@@ -417,6 +417,7 @@
   "nodeInfoPageFailed": "Ошибка",
   "nodeInfoPageDuration": "Длительность",
   "nodeInfoPageDelay": "Задержка",
+  "nodeInfoPageTraffic": "Скорость",
   "nodeInfoPageIP": "IP",
   "nodeInfoPageIPVersion": "Версия IP",
   "nodeInfoPageLocation": "Местоположение",

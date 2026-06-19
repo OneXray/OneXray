@@ -5,6 +5,7 @@ import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/xray/metrics/model.dart';
 import 'package:onexray/service/xray/metrics/state.dart';
 
 class XrayMetricsService {
@@ -59,8 +60,9 @@ class XrayMetricsService {
       if (generation != _generation) {
         return;
       }
-      final uploadTotal = _readTunInCounter(payload, "uplink");
-      final downloadTotal = _readTunInCounter(payload, "downlink");
+      final tunIn = XrayMetricsVars.fromJson(payload ?? {}).tunIn;
+      final uploadTotal = tunIn?.uplink;
+      final downloadTotal = tunIn?.downlink;
       if (uploadTotal == null || downloadTotal == null) {
         _resetBaseline();
         AppEventBus.instance.resetTrafficMetrics();
@@ -117,32 +119,6 @@ class XrayMetricsService {
       upload: (uploadBytes * 1000 / elapsedMs).round(),
       download: (downloadBytes * 1000 / elapsedMs).round(),
     );
-  }
-
-  int? _readTunInCounter(Map<String, dynamic>? payload, String direction) {
-    final stats = payload?["stats"];
-    if (stats is! Map) {
-      return null;
-    }
-    final inbound = stats["inbound"];
-    if (inbound is! Map) {
-      return null;
-    }
-    final tunIn = inbound["tunIn"];
-    if (tunIn is! Map) {
-      return null;
-    }
-    final value = tunIn[direction];
-    if (value is int) {
-      return value;
-    }
-    if (value is num) {
-      return value.toInt();
-    }
-    if (value is String) {
-      return int.tryParse(value);
-    }
-    return null;
   }
 
   void _resetBaseline() {

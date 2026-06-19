@@ -258,12 +258,15 @@ class _HomePageState extends State<HomePage>
     AppEventBusState eventState,
   ) {
     final connected = eventState.runningId != DBConstants.defaultId;
-    final statusText = _statusText(context, eventState, connected);
+    final baseStatusText = _statusText(context, eventState, connected);
+    final statusText = connected
+        ? "$baseStatusText ${controller.formatTraffic(eventState)}"
+        : baseStatusText;
     final nodeName = homeState.configName.isEmpty
         ? AppLocalizations.of(context)!.homePageNoSelectedNode
         : homeState.configName;
     final detailText = connected
-        ? "${controller.formatGeoLocation(context, eventState)} ${controller.formatTraffic(eventState)}"
+        ? controller.formatGeoLocation(context, eventState)
         : "${AppLocalizations.of(context)!.homePageCurrentNode}: $nodeName";
     final content = Padding(
       padding: const EdgeInsetsDirectional.symmetric(

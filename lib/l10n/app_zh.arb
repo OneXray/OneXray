@@ -417,6 +417,7 @@
   "nodeInfoPageFailed": "获取失败",
   "nodeInfoPageDuration": "持续时间",
   "nodeInfoPageDelay": "延迟",
+  "nodeInfoPageTraffic": "网速",
   "nodeInfoPageIP": "IP",
   "nodeInfoPageIPVersion": "IP 版本",
   "nodeInfoPageLocation": "位置",
