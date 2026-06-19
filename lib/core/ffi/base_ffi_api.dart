@@ -87,14 +87,6 @@ abstract class BaseFfiApi {
     _sharedIsolate.stop();
   }
 
-  Future<String> initDns(String base64Text) async {
-    return _sharedIsolate.compute(_cgoInitDns, base64Text);
-  }
-
-  Future<String> resetDns() async {
-    return _sharedIsolate.compute(_cgoResetDns, 0);
-  }
-
   Future<String> getFreePorts(int num) async {
     return _sharedIsolate.compute(_cgoGetFreePorts, num);
   }
@@ -153,24 +145,6 @@ class _CoreLib {
     final lib = DynamicLibrary.open(libName);
     _lib = NativeLibrary(lib);
   }
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoInitDns(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoInitDns(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoResetDns(int _) {
-  final resPointer = _CoreLib()._lib.CGoResetDns();
-  final res = _convertPointerToString(resPointer);
-  return res;
 }
 
 @pragma('vm:entry-point')

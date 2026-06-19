@@ -7,8 +7,6 @@ class RunXrayConfig {
   String? tunName;
   int? tunPriority;
   bool? enableIPv6;
-  String? dns;
-  String? bindInterface;
   String? datDir;
   String? configPath;
   String? metricsPort;
@@ -17,8 +15,6 @@ class RunXrayConfig {
     this.tunName,
     this.tunPriority,
     this.enableIPv6,
-    this.dns,
-    this.bindInterface,
     this.datDir,
     this.configPath,
     this.metricsPort,

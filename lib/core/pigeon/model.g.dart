@@ -37,12 +37,6 @@ Map<String, dynamic> _$CallResponseToJson(CallResponse instance) =>
       'error': ?instance.error,
     };
 
-InitDnsRequest _$InitDnsRequestFromJson(Map<String, dynamic> json) =>
-    InitDnsRequest(json['dns'] as String?, json['deviceName'] as String?);
-
-Map<String, dynamic> _$InitDnsRequestToJson(InitDnsRequest instance) =>
-    <String, dynamic>{'dns': ?instance.dns, 'deviceName': ?instance.deviceName};
-
 GetFreePortsResponse _$GetFreePortsResponseFromJson(
   Map<String, dynamic> json,
 ) => GetFreePortsResponse(

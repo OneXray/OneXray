@@ -83,8 +83,6 @@ extern "C" {
 #endif
 
 extern void CGoSetTunFd(int fd);
-extern char* CGoInitDns(char* base64Text);
-extern char* CGoResetDns(void);
 extern char* CGoRunXrayFromJSON(char* base64Text);
 extern char* CGoGetFreePorts(GoInt count);
 extern char* CGoConvertShareLinksToXrayJson(char* base64Text);

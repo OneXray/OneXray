@@ -121,7 +121,6 @@ class OneVpnService : VpnService() {
         XLog.d("OneVpnService: stopTun")
         stopForeground(STOP_FOREGROUND_REMOVE)
         LibXray.stopXray()
-        LibXray.resetDns()
         try {
             tunnel?.close()
         } catch (e: Exception) {
@@ -300,10 +299,6 @@ class OneVpnService : VpnService() {
     private fun runXray(request: StartVpnRequest, fd: Int) {
         scope.launch {
             initController()
-            request.tun?.tunDnsIPv4?.let {
-                val dns = "$it:53"
-                LibXray.initDns(controller, dns)
-            }
             request.coreBase64Text?.let {
                 LibXray.setTunFd(fd)
                 val result = LibXray.runXray(it)

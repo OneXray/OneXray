@@ -38,19 +38,6 @@ class CallResponse {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class InitDnsRequest {
-  String? dns;
-  String? deviceName;
-
-  InitDnsRequest(this.dns, this.deviceName);
-
-  factory InitDnsRequest.fromJson(Map<String, dynamic> json) =>
-      _$InitDnsRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$InitDnsRequestToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class GetFreePortsResponse {
   List<int>? ports;
 
