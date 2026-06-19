@@ -1,4 +1,5 @@
 import Foundation
+import LibXray
 #if os(iOS)
 import Flutter
 #elseif os(macOS)

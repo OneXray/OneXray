@@ -128,7 +128,6 @@
 		EB7E984D2F93C268002151DD /* tunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = tunnel.entitlements; sourceTree = "<group>"; };
 		EB9154212D8EBE7600BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/MainMenu.strings"; sourceTree = "<group>"; };
 		EB957B012FE43DA200DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/MainMenu.strings"; sourceTree = "<group>"; };
-		EBB9CF7B2F93C6AF00466352 /* libXray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libXray.h; sourceTree = "<group>"; };
 		EBE36B4E2F9684A700686880 /* BridgeHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeHeader.h; sourceTree = "<group>"; };
 		EBE36B4F2F9684A700686880 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		EBE36B502F9684A700686880 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
@@ -180,7 +179,6 @@
 			isa = PBXGroup;
 			children = (
 				EBE36B552F9684A700686880 /* All */,
-				EBB9CF7D2F93C6AF00466352 /* c */,
 				33FAB671232836740065AC1E /* Runner */,
 				33CEB47122A05771004F2AC0 /* Flutter */,
 				EB7E984E2F93C268002151DD /* tunnel */,
@@ -296,23 +294,6 @@
 			);
 			path = tunnel;
 			sourceTree = "<group>";
-		};
-		EBB9CF7C2F93C6AF00466352 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				EBB9CF7B2F93C6AF00466352 /* libXray.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		EBB9CF7D2F93C6AF00466352 /* c */ = {
-			isa = PBXGroup;
-			children = (
-				EBB9CF7C2F93C6AF00466352 /* include */,
-			);
-			name = c;
-			path = ../c;
-			sourceTree = SOURCE_ROOT;
 		};
 		EBE36B552F9684A700686880 /* All */ = {
 			isa = PBXGroup;

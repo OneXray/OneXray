@@ -123,7 +123,6 @@
 		EB7471792F9648F50001CF81 /* AppStart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStart.swift; sourceTree = "<group>"; };
 		EB9154212D8EBE7600BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/MainMenu.strings"; sourceTree = "<group>"; };
 		EB957B002FE43D8A00DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/MainMenu.strings"; sourceTree = "<group>"; };
-		EBAB56E72D81885C0080EC55 /* libXray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libXray.h; sourceTree = "<group>"; };
 		EBE36B392F9683C900686880 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
 		EBE36B3C2F9683E000686880 /* BridgeHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeHeader.h; sourceTree = "<group>"; };
 		EBE36B3D2F9683E000686880 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -178,7 +177,6 @@
 			isa = PBXGroup;
 			children = (
 				EBE36B432F9683E000686880 /* All */,
-				EBAB56E92D81885C0080EC55 /* c */,
 				33FAB671232836740065AC1E /* Runner */,
 				33CEB47122A05771004F2AC0 /* Flutter */,
 				EBEAD85C2B95749600A8D27B /* tunnel */,
@@ -291,23 +289,6 @@
 			);
 			name = macOSStore;
 			path = ../swift/macOSStore;
-			sourceTree = SOURCE_ROOT;
-		};
-		EBAB56E82D81885C0080EC55 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				EBAB56E72D81885C0080EC55 /* libXray.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		EBAB56E92D81885C0080EC55 /* c */ = {
-			isa = PBXGroup;
-			children = (
-				EBAB56E82D81885C0080EC55 /* include */,
-			);
-			name = c;
-			path = ../c;
 			sourceTree = SOURCE_ROOT;
 		};
 		EBE36B3A2F9683C900686880 /* Tunnel */ = {

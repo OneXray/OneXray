@@ -126,7 +126,6 @@
 		EB9154232D8EBE8800BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
 		EB957AFE2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Main.strings"; sourceTree = "<group>"; };
 		EB957AFF2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
-		EBAB56EA2D81887B0080EC55 /* libXray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libXray.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -170,7 +169,6 @@
 			isa = PBXGroup;
 			children = (
 				EB68C7032F94D150007C293A /* All */,
-				EBAB56EC2D81887B0080EC55 /* c */,
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
 				EB8B84082C0751410096E1FF /* tunnel */,
@@ -284,23 +282,6 @@
 			);
 			path = tunnel;
 			sourceTree = "<group>";
-		};
-		EBAB56EB2D81887B0080EC55 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				EBAB56EA2D81887B0080EC55 /* libXray.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		EBAB56EC2D81887B0080EC55 /* c */ = {
-			isa = PBXGroup;
-			children = (
-				EBAB56EB2D81887B0080EC55 /* include */,
-			);
-			name = c;
-			path = ../c;
-			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */
 
