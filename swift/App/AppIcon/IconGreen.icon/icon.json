@@ -1,0 +1,43 @@
+{
+  "fill" : {
+    "solid" : "extended-srgb:0.29804,0.68627,0.31373,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "solid" : "extended-srgb:0.29804,0.68627,0.31373,1.00000"
+          },
+          "image-name" : "center-cutout.svg",
+          "name" : "center-cutout"
+        },
+        {
+          "image-name" : "mark-white.svg",
+          "name" : "mark-white"
+        }
+      ],
+      "position" : {
+        "scale" : 1,
+        "translation-in-points" : [
+          0,
+          0
+        ]
+      },
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
