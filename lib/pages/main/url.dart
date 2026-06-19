@@ -39,6 +39,8 @@ import 'package:onexray/pages/home/xray/setting/inbounds/page.dart';
 import 'package:onexray/pages/home/xray/setting/inbounds/params.dart';
 import 'package:onexray/pages/home/xray/setting/log/page.dart';
 import 'package:onexray/pages/home/xray/setting/log/params.dart';
+import 'package:onexray/pages/home/xray/setting/metrics/page.dart';
+import 'package:onexray/pages/home/xray/setting/metrics/params.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_black_hole/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_dns/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_dns/params.dart';
@@ -48,6 +50,8 @@ import 'package:onexray/pages/home/xray/setting/outbound_freedom/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_freedom/params.dart';
 import 'package:onexray/pages/home/xray/setting/outbounds/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbounds/params.dart';
+import 'package:onexray/pages/home/xray/setting/policy/page.dart';
+import 'package:onexray/pages/home/xray/setting/policy/params.dart';
 import 'package:onexray/pages/home/xray/setting/routing/page.dart';
 import 'package:onexray/pages/home/xray/setting/routing/params.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule/page.dart';
@@ -103,6 +107,8 @@ abstract final class RouterPath {
   static const xraySettingSimple = "/xraySettingSimple";
   static const xraySettingUI = "/xraySettingUI";
   static const xrayLog = "/xrayLog";
+  static const metrics = "/metrics";
+  static const policy = "/policy";
   static const dns = "/dns";
   static const fakeDns = "/fakeDns";
   static const dnsHosts = "/dnsHosts";
@@ -188,6 +194,15 @@ abstract final class RouterPath {
         path: RouterPath.xrayLog,
         builder: (_, state) =>
             XrayLogPage(params: state.extra as XrayLogParams),
+      ),
+      GoRoute(
+        path: RouterPath.metrics,
+        builder: (_, state) =>
+            MetricsPage(params: state.extra as MetricsParams),
+      ),
+      GoRoute(
+        path: RouterPath.policy,
+        builder: (_, state) => PolicyPage(params: state.extra as PolicyParams),
       ),
       GoRoute(
         path: RouterPath.dns,

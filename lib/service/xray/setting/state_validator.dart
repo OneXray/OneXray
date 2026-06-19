@@ -13,6 +13,7 @@ extension XraySettingStateValidator on XraySettingState {
     }
     final xrayJson = this.xrayJson;
     removeTunInbound(xrayJson);
+    removeMetricsConfig(xrayJson);
     final res = await xrayJson.test();
     if (res.isNotEmpty) {
       return Tuple2(false, res);

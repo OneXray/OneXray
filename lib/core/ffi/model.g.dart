@@ -15,6 +15,7 @@ RunXrayConfig _$RunXrayConfigFromJson(Map<String, dynamic> json) =>
       json['bindInterface'] as String?,
       json['datDir'] as String?,
       json['configPath'] as String?,
+      json['metricsPort'] as String?,
     );
 
 Map<String, dynamic> _$RunXrayConfigToJson(RunXrayConfig instance) =>
@@ -26,4 +27,5 @@ Map<String, dynamic> _$RunXrayConfigToJson(RunXrayConfig instance) =>
       'bindInterface': ?instance.bindInterface,
       'datDir': ?instance.datDir,
       'configPath': ?instance.configPath,
+      'metricsPort': ?instance.metricsPort,
     };

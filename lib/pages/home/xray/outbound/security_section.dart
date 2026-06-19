@@ -90,7 +90,6 @@ mixin OutboundSecuritySection {
         _pinnedPeerCertSha256(context, controller),
         _verifyPeerCertByName(context, controller),
         _echConfigList(context, controller),
-        _echForceQuery(context, controller, state),
       ],
     );
   }
@@ -144,19 +143,6 @@ mixin OutboundSecuritySection {
       controller: controller.echConfigListController,
       label: AppLocalizations.of(context)!.outboundUIPageEchConfigList,
       hintText: AppLocalizations.of(context)!.outboundUIPageEchConfigList,
-    );
-  }
-
-  Widget _echForceQuery(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageEchForceQuery,
-      value: state.outboundState.echForceQuery.name,
-      selections: StreamSettingsEchForceQuery.values,
-      onSelected: (value) => controller.updateEchForceQuery(value),
     );
   }
 

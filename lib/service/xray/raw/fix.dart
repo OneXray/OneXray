@@ -1,4 +1,5 @@
 import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/constants.dart';
@@ -29,7 +30,7 @@ class XrayRawFix {
 
     fixInboundsPort(jsonMap, ports);
     fixLog(jsonMap, disableLog: disableLog);
-    fixMetrics(jsonMap);
+    fixMetrics(jsonMap, ports.metricsPort);
   }
 
   static void _fixConfigInterface(
@@ -126,11 +127,27 @@ class XrayRawFix {
     }
   }
 
-  static void fixMetrics(Map<String, dynamic> jsonMap) {
-    //remove metrics
+  static void fixMetrics(Map<String, dynamic> jsonMap, [String? metricsPort]) {
     jsonMap.remove("policy");
     jsonMap.remove("metrics");
     jsonMap.remove("stats");
+
+    if (metricsPort == null || metricsPort.isEmpty) {
+      return;
+    }
+
+    jsonMap["stats"] = <String, dynamic>{};
+    jsonMap["policy"] = <String, dynamic>{
+      "system": <String, dynamic>{
+        "statsInboundUplink": true,
+        "statsInboundDownlink": true,
+        "statsOutboundUplink": true,
+        "statsOutboundDownlink": true,
+      },
+    };
+    jsonMap["metrics"] = <String, dynamic>{
+      "listen": "${NetConstants.proxyHost}:$metricsPort",
+    };
   }
 
   static void fixLog(Map<String, dynamic> jsonMap, {bool disableLog = false}) {

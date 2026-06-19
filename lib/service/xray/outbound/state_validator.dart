@@ -48,6 +48,9 @@ extension OutboundStateValidator on OutboundState {
     socksUser = socksUser.removeWhitespace;
     socksPass = socksPass.removeWhitespace;
 
+    httpUser = httpUser.removeWhitespace;
+    httpPass = httpPass.removeWhitespace;
+
     tag = tag.removeWhitespace;
 
     rawPath = rawPath.removeWhitespace;
@@ -55,9 +58,6 @@ extension OutboundStateValidator on OutboundState {
 
     xhttpHost = xhttpHost.removeWhitespace;
     xhttpPath = xhttpPath.removeWhitespace;
-
-    kcpHeaderDomain = kcpHeaderDomain.removeWhitespace;
-    kcpSeed = kcpSeed.removeWhitespace;
 
     wsPath = wsPath.removeWhitespace;
     wsHost = wsHost.removeWhitespace;
@@ -69,10 +69,6 @@ extension OutboundStateValidator on OutboundState {
     httpupgradePath = httpupgradePath.removeWhitespace;
 
     hysteriaAuth = hysteriaAuth.removeWhitespace;
-    hysteriaUp = hysteriaUp.removeWhitespace;
-    hysteriaDown = hysteriaDown.removeWhitespace;
-    hysteriaUdphopPort = hysteriaUdphopPort.removeWhitespace;
-    hysteriaUdphopInterval = hysteriaUdphopInterval.removeWhitespace;
 
     serverName = serverName.removeWhitespace;
     pinnedPeerCertSha256 = pinnedPeerCertSha256.removeWhitespace;
@@ -88,5 +84,9 @@ extension OutboundStateValidator on OutboundState {
 
     dialerProxy = dialerProxy.removeWhitespace;
     interface = interface.removeWhitespace;
+    happyEyeballsTryDelayMs = happyEyeballsTryDelayMs.removeWhitespace;
+    happyEyeballsInterleave = happyEyeballsInterleave.removeWhitespace;
+    happyEyeballsMaxConcurrentTry =
+        happyEyeballsMaxConcurrentTry.removeWhitespace;
   }
 }

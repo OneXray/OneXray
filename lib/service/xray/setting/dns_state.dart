@@ -9,11 +9,15 @@ import 'package:onexray/service/xray/standard.dart';
 class DnsState {
   var hosts = <String, List<String>>{};
   var servers = <DnsServerState>[DnsServerState()];
+  var clientIp = "";
   final tag = DNSServerTag.dnsQuery;
   var queryStrategy = DnsQueryStrategy.useIPv4;
   var disableCache = false;
+  var serveStale = false;
+  var serveExpiredTTL = "";
   var disableFallback = false;
   var disableFallbackIfMatch = false;
+  var enableParallelQuery = false;
   var useSystemHosts = false;
 
   void removeWhitespace() {
@@ -32,6 +36,9 @@ class DnsState {
     for (final server in servers) {
       server.removeWhitespace();
     }
+
+    clientIp = clientIp.removeWhitespace;
+    serveExpiredTTL = serveExpiredTTL.removeWhitespace;
   }
 
   void readFromXrayJson(XrayJson xrayJson) {
@@ -47,6 +54,9 @@ class DnsState {
           .map((e) => DnsServerState()..readFromDnsServer(e))
           .toList();
     }
+    if (EmptyTool.checkString(dns.clientIp)) {
+      clientIp = dns.clientIp!;
+    }
     if (EmptyTool.checkString(dns.queryStrategy)) {
       final queryStrategy = DnsQueryStrategy.fromString(dns.queryStrategy!);
       if (queryStrategy != null) {
@@ -56,11 +66,20 @@ class DnsState {
     if (dns.disableCache != null) {
       disableCache = dns.disableCache!;
     }
+    if (dns.serveStale != null) {
+      serveStale = dns.serveStale!;
+    }
+    if (dns.serveExpiredTTL != null) {
+      serveExpiredTTL = "${dns.serveExpiredTTL!}";
+    }
     if (dns.disableFallback != null) {
       disableFallback = dns.disableFallback!;
     }
     if (dns.disableFallbackIfMatch != null) {
       disableFallbackIfMatch = dns.disableFallbackIfMatch!;
+    }
+    if (dns.enableParallelQuery != null) {
+      enableParallelQuery = dns.enableParallelQuery!;
     }
     if (dns.useSystemHosts != null) {
       useSystemHosts = dns.useSystemHosts!;
@@ -75,16 +94,28 @@ class DnsState {
     if (servers.isNotEmpty) {
       dns.servers = servers.map((e) => e.xrayJson).toList();
     }
+    if (clientIp.isNotEmpty) {
+      dns.clientIp = clientIp;
+    }
     dns.tag = tag;
     dns.queryStrategy = queryStrategy.name;
     if (disableCache) {
       dns.disableCache = disableCache;
+    }
+    if (serveStale) {
+      dns.serveStale = serveStale;
+    }
+    if (serveExpiredTTL.isNotEmpty) {
+      dns.serveExpiredTTL = int.tryParse(serveExpiredTTL);
     }
     if (disableFallback) {
       dns.disableFallback = disableFallback;
     }
     if (disableFallbackIfMatch) {
       dns.disableFallbackIfMatch = disableFallbackIfMatch;
+    }
+    if (enableParallelQuery) {
+      dns.enableParallelQuery = enableParallelQuery;
     }
     if (useSystemHosts) {
       dns.useSystemHosts = useSystemHosts;

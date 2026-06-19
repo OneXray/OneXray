@@ -347,6 +347,30 @@ class HomeController extends Cubit<HomeState> {
     return text;
   }
 
+  String formatTraffic(AppEventBusState eventState) {
+    final metrics = eventState.trafficMetrics;
+    if (!metrics.available) {
+      return "↑ --   ↓ --";
+    }
+    return "↑ ${_formatSpeed(metrics.uploadSpeed)}   ↓ ${_formatSpeed(metrics.downloadSpeed)}";
+  }
+
+  String _formatSpeed(int bytesPerSecond) {
+    if (bytesPerSecond < 1024) {
+      return "$bytesPerSecond B/s";
+    }
+    final kb = bytesPerSecond / 1024;
+    if (kb < 1024) {
+      return "${kb.toStringAsFixed(kb >= 10 ? 0 : 1)} KB/s";
+    }
+    final mb = kb / 1024;
+    if (mb < 1024) {
+      return "${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB/s";
+    }
+    final gb = mb / 1024;
+    return "${gb.toStringAsFixed(gb >= 10 ? 0 : 1)} GB/s";
+  }
+
   String _formatDelay(BuildContext context, AppEventBusState eventState) {
     final appLocalizations = AppLocalizations.of(context)!;
     switch (eventState.pingProbeState) {

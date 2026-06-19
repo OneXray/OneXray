@@ -6,10 +6,10 @@ import 'package:onexray/core/tools/json.dart';
 extension RunXrayConfigReader on RunXrayConfig {
   static RunXrayConfig readFromStartVpnRequest(StartVpnRequest request) {
     if (!EmptyTool.checkString(request.coreBase64Text)) {
-      return RunXrayConfig(null, null, null, null, null, null, null);
+      return RunXrayConfig(null, null, null, null, null, null, null, null);
     }
     if (!EmptyTool.checkString(request.tun?.tunDnsIPv4)) {
-      return RunXrayConfig(null, null, null, null, null, null, null);
+      return RunXrayConfig(null, null, null, null, null, null, null, null);
     }
     final dns = "${request.tun!.tunDnsIPv4}:53";
     final runXrayRquestMap = JsonTool.decodeBase64ToJson(
@@ -24,6 +24,7 @@ extension RunXrayConfigReader on RunXrayConfig {
       request.tun?.bindInterface,
       runXrayRequest.datDir,
       runXrayRequest.configPath,
+      request.metricsPort,
     );
     return config;
   }

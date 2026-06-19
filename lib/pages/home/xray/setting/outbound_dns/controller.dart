@@ -39,9 +39,6 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
     for (final controller in ruleRCodeControllers) {
       controller.dispose();
     }
-    for (final controller in blockTypeControllers) {
-      controller.dispose();
-    }
     return super.close();
   }
 
@@ -49,7 +46,6 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
     final initS = params.state;
     _initInput(initS);
     _initRuleInputs(initS);
-    _initBlockTypeInputs(initS);
     emit(OutboundDnsCubitState(dnsState: initS, version: 1));
   }
 
@@ -69,15 +65,6 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
       );
       ruleRCodeControllers.add(
         TextEditingController(text: rule.rCode?.toString() ?? ""),
-      );
-    }
-  }
-
-  void _initBlockTypeInputs(OutboundDnsState state) {
-    blockTypeControllers.clear();
-    for (final blockType in state.blockTypes) {
-      blockTypeControllers.add(
-        TextEditingController(text: blockType.toString()),
       );
     }
   }
@@ -132,20 +119,6 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
     }
   }
 
-  final blockTypeControllers = <TextEditingController>[];
-
-  void appendBlockType() {
-    blockTypeControllers.add(TextEditingController());
-    state.dnsState.blockTypes.add(0);
-    emit(state.bumped());
-  }
-
-  void deleteBlockType(int index) {
-    state.dnsState.blockTypes.removeAt(index);
-    blockTypeControllers.removeAt(index).dispose();
-    emit(state.bumped());
-  }
-
   void save(BuildContext context) {
     _mergeInputToState(state.dnsState);
     emit(state.bumped());
@@ -155,7 +128,6 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
   void _mergeInputToState(OutboundDnsState state) {
     _mergeInput(state);
     _mergeRules(state);
-    _mergeBlockTypes(state);
 
     state.removeWhitespace();
   }
@@ -180,13 +152,6 @@ class OutboundDnsController extends Cubit<OutboundDnsCubitState> {
       );
     }
     state.rules = rules;
-  }
-
-  void _mergeBlockTypes(OutboundDnsState state) {
-    state.blockTypes = blockTypeControllers
-        .map((controller) => int.tryParse(controller.text.removeWhitespace))
-        .whereType<int>()
-        .toList();
   }
 
   void _moveController(

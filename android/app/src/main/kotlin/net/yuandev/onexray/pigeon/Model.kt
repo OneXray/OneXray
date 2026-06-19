@@ -41,5 +41,6 @@ data class TunJson(
 data class StartVpnRequest(
     val tun: TunJson?,
     val pingPort: String?,
+    val metricsPort: String?,
     val coreBase64Text: String?,
 )

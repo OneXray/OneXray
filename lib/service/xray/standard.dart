@@ -2,21 +2,69 @@ import 'package:onexray/core/model/xray_json.dart';
 
 extension XrayJsonStandard on XrayJson {
   static XrayJson get standard =>
-      XrayJson(null, null, null, null, null, null, null);
+      XrayJson(null, null, null, null, null, null, null, null, null, null);
 }
 
 extension XrayLogStandard on XrayLog {
   static XrayLog get standard => XrayLog(null, null, null, null, null);
 }
 
+extension XrayPolicyStandard on XrayPolicy {
+  static XrayPolicy get standard => XrayPolicy(null, null);
+}
+
+extension XrayPolicyLevelStandard on XrayPolicyLevel {
+  static XrayPolicyLevel get standard =>
+      XrayPolicyLevel(null, null, null, null, null, null, null, null);
+}
+
+extension XrayPolicySystemStandard on XrayPolicySystem {
+  static XrayPolicySystem get standard =>
+      XrayPolicySystem(null, null, null, null);
+}
+
+extension XrayStatsStandard on XrayStats {
+  static XrayStats get standard => XrayStats();
+}
+
+extension XrayMetricsStandard on XrayMetrics {
+  static XrayMetrics get standard => XrayMetrics(null);
+}
+
 extension XrayDnsStandard on XrayDns {
-  static XrayDns get standard =>
-      XrayDns(null, null, null, null, null, null, null, null);
+  static XrayDns get standard => XrayDns(
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+  );
 }
 
 extension XrayDnsServerStandard on XrayDnsServer {
-  static XrayDnsServer get standard =>
-      XrayDnsServer(null, null, null, null, null, null, null, null, null, null);
+  static XrayDnsServer get standard => XrayDnsServer(
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+  );
 }
 
 extension XrayRoutingStandard on XrayRouting {
@@ -50,7 +98,7 @@ extension XrayInboundStandard on XrayInbound {
 
 extension XrayInboundSniffingStandard on XrayInboundSniffing {
   static XrayInboundSniffing get standard =>
-      XrayInboundSniffing(null, null, null, null);
+      XrayInboundSniffing(null, null, null, null, null, null);
 }
 
 extension XrayInboundTunStandard on XrayInboundTun {
@@ -59,17 +107,22 @@ extension XrayInboundTunStandard on XrayInboundTun {
 
 extension XrayOutboundStandard on XrayOutbound {
   static XrayOutbound get standard =>
-      XrayOutbound(null, null, null, null, null, null, null);
+      XrayOutbound(null, null, null, null, null, null, null, null);
 }
 
 extension XrayOutboundShadowsocksStandard on XrayOutboundShadowsocks {
   static XrayOutboundShadowsocks get standard =>
-      XrayOutboundShadowsocks(null, null, null, null, null, null);
+      XrayOutboundShadowsocks(null, null, null, null);
 }
 
 extension XrayOutboundSocksStandard on XrayOutboundSocks {
   static XrayOutboundSocks get standard =>
       XrayOutboundSocks(null, null, null, null);
+}
+
+extension XrayOutboundHttpStandard on XrayOutboundHttp {
+  static XrayOutboundHttp get standard =>
+      XrayOutboundHttp(null, null, null, null, null);
 }
 
 extension XrayOutboundTrojanStandard on XrayOutboundTrojan {
@@ -113,7 +166,7 @@ extension XrayOutboundFreedomNoisesStandard on XrayOutboundFreedomNoises {
 
 extension XrayOutboundDnsStandard on XrayOutboundDns {
   static XrayOutboundDns get standard =>
-      XrayOutboundDns(null, null, null, null, null);
+      XrayOutboundDns(null, null, null, null);
 }
 
 extension XrayOutboundDnsRuleStandard on XrayOutboundDnsRule {
@@ -143,7 +196,7 @@ extension XrayStreamSettingsStandard on XrayStreamSettings {
 
 extension XrayTlsSettingsStandard on XrayTlsSettings {
   static XrayTlsSettings get standard =>
-      XrayTlsSettings(null, null, null, null, null, null, null);
+      XrayTlsSettings(null, null, null, null, null, null);
 }
 
 extension XrayRealitySettingsStandard on XrayRealitySettings {
@@ -171,12 +224,8 @@ extension XrayRawSettingsHeaderRequestHeadersStandard
       XrayRawSettingsHeaderRequestHeaders(null);
 }
 
-extension XrayKcpHeaderStandard on XrayKcpHeader {
-  static XrayKcpHeader get standard => XrayKcpHeader(null, null);
-}
-
 extension XrayKcpSettingsStandard on XrayKcpSettings {
-  static XrayKcpSettings get standard => XrayKcpSettings(null, null);
+  static XrayKcpSettings get standard => XrayKcpSettings();
 }
 
 extension XrayWsSettingsStandard on XrayWsSettings {
@@ -198,17 +247,17 @@ extension XrayXhttpSettingsStandard on XrayXhttpSettings {
 }
 
 extension XrayHysteriaSettingsStandard on XrayHysteriaSettings {
-  static XrayHysteriaSettings get standard =>
-      XrayHysteriaSettings(null, null, null, null, null);
-}
-
-extension XrayHysteriaSettingsUdphopStandard on XrayHysteriaSettingsUdphop {
-  static XrayHysteriaSettingsUdphop get standard =>
-      XrayHysteriaSettingsUdphop(null, null);
+  static XrayHysteriaSettings get standard => XrayHysteriaSettings(null, null);
 }
 
 extension XraySockoptStandard on XraySockopt {
-  static XraySockopt get standard => XraySockopt(null, null, null, null);
+  static XraySockopt get standard =>
+      XraySockopt(null, null, null, null, null, null, null, null);
+}
+
+extension XrayHappyEyeballsStandard on XrayHappyEyeballs {
+  static XrayHappyEyeballs get standard =>
+      XrayHappyEyeballs(null, null, null, null);
 }
 
 extension XrayMuxStandard on XrayMux {

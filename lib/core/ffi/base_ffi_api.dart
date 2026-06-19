@@ -115,10 +115,6 @@ abstract class BaseFfiApi {
     return _sharedIsolate.compute(_cgoReadGeoFiles, base64Text);
   }
 
-  Future<String> queryStats(String base64Text) async {
-    return _sharedIsolate.compute(_cgoQueryStats, base64Text);
-  }
-
   Future<String> ping(String base64Text) async {
     return _sharedIsolate.compute(_cgoPing, base64Text);
   }
@@ -230,16 +226,6 @@ String _cgoReadGeoFiles(String base64Text) {
 String _cgoPing(String base64Text) {
   final req = _convertStringToPointer(base64Text);
   final resPointer = _CoreLib()._lib.CGoPing(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoQueryStats(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoQueryStats(req);
   calloc.free(req);
   final res = _convertPointerToString(resPointer);
   return res;

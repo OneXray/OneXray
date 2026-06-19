@@ -12,6 +12,7 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
           ? null
           : TunJson.fromJson(json['tun'] as Map<String, dynamic>),
       json['pingPort'] as String?,
+      json['metricsPort'] as String?,
       json['coreBase64Text'] as String?,
     );
 
@@ -19,6 +20,7 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
     <String, dynamic>{
       'tun': ?instance.tun?.toJson(),
       'pingPort': ?instance.pingPort,
+      'metricsPort': ?instance.metricsPort,
       'coreBase64Text': ?instance.coreBase64Text,
     };
 

@@ -23,6 +23,15 @@ XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
   (json['outbounds'] as List<dynamic>?)
       ?.map((e) => XrayOutbound.fromJson(e as Map<String, dynamic>))
       .toList(),
+  json['policy'] == null
+      ? null
+      : XrayPolicy.fromJson(json['policy'] as Map<String, dynamic>),
+  json['stats'] == null
+      ? null
+      : XrayStats.fromJson(json['stats'] as Map<String, dynamic>),
+  json['metrics'] == null
+      ? null
+      : XrayMetrics.fromJson(json['metrics'] as Map<String, dynamic>),
   (json['fakeDns'] as List<dynamic>?)
       ?.map((e) => XrayFakeDns.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -35,6 +44,9 @@ Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'routing': ?instance.routing?.toJson(),
   'inbounds': ?instance.inbounds?.map((e) => e.toJson()).toList(),
   'outbounds': ?instance.outbounds?.map((e) => e.toJson()).toList(),
+  'policy': ?instance.policy?.toJson(),
+  'stats': ?instance.stats?.toJson(),
+  'metrics': ?instance.metrics?.toJson(),
   'fakeDns': ?instance.fakeDns?.map((e) => e.toJson()).toList(),
 };
 
@@ -54,6 +66,72 @@ Map<String, dynamic> _$XrayLogToJson(XrayLog instance) => <String, dynamic>{
   'maskAddress': ?instance.maskAddress,
 };
 
+XrayPolicy _$XrayPolicyFromJson(Map<String, dynamic> json) => XrayPolicy(
+  (json['levels'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, XrayPolicyLevel.fromJson(e as Map<String, dynamic>)),
+  ),
+  json['system'] == null
+      ? null
+      : XrayPolicySystem.fromJson(json['system'] as Map<String, dynamic>),
+);
+
+Map<String, dynamic> _$XrayPolicyToJson(XrayPolicy instance) =>
+    <String, dynamic>{
+      'levels': ?instance.levels?.map((k, e) => MapEntry(k, e.toJson())),
+      'system': ?instance.system?.toJson(),
+    };
+
+XrayPolicyLevel _$XrayPolicyLevelFromJson(Map<String, dynamic> json) =>
+    XrayPolicyLevel(
+      (json['handshake'] as num?)?.toInt(),
+      (json['connIdle'] as num?)?.toInt(),
+      (json['uplinkOnly'] as num?)?.toInt(),
+      (json['downlinkOnly'] as num?)?.toInt(),
+      json['statsUserUplink'] as bool?,
+      json['statsUserDownlink'] as bool?,
+      json['statsUserOnline'] as bool?,
+      (json['bufferSize'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$XrayPolicyLevelToJson(XrayPolicyLevel instance) =>
+    <String, dynamic>{
+      'handshake': ?instance.handshake,
+      'connIdle': ?instance.connIdle,
+      'uplinkOnly': ?instance.uplinkOnly,
+      'downlinkOnly': ?instance.downlinkOnly,
+      'statsUserUplink': ?instance.statsUserUplink,
+      'statsUserDownlink': ?instance.statsUserDownlink,
+      'statsUserOnline': ?instance.statsUserOnline,
+      'bufferSize': ?instance.bufferSize,
+    };
+
+XrayPolicySystem _$XrayPolicySystemFromJson(Map<String, dynamic> json) =>
+    XrayPolicySystem(
+      json['statsInboundUplink'] as bool?,
+      json['statsInboundDownlink'] as bool?,
+      json['statsOutboundUplink'] as bool?,
+      json['statsOutboundDownlink'] as bool?,
+    );
+
+Map<String, dynamic> _$XrayPolicySystemToJson(XrayPolicySystem instance) =>
+    <String, dynamic>{
+      'statsInboundUplink': ?instance.statsInboundUplink,
+      'statsInboundDownlink': ?instance.statsInboundDownlink,
+      'statsOutboundUplink': ?instance.statsOutboundUplink,
+      'statsOutboundDownlink': ?instance.statsOutboundDownlink,
+    };
+
+XrayStats _$XrayStatsFromJson(Map<String, dynamic> json) => XrayStats();
+
+Map<String, dynamic> _$XrayStatsToJson(XrayStats instance) =>
+    <String, dynamic>{};
+
+XrayMetrics _$XrayMetricsFromJson(Map<String, dynamic> json) =>
+    XrayMetrics(json['listen'] as String?);
+
+Map<String, dynamic> _$XrayMetricsToJson(XrayMetrics instance) =>
+    <String, dynamic>{'listen': ?instance.listen};
+
 XrayDns _$XrayDnsFromJson(Map<String, dynamic> json) => XrayDns(
   (json['hosts'] as Map<String, dynamic>?)?.map(
     (k, e) =>
@@ -62,28 +140,37 @@ XrayDns _$XrayDnsFromJson(Map<String, dynamic> json) => XrayDns(
   (json['servers'] as List<dynamic>?)
       ?.map((e) => XrayDnsServer.fromJson(e as Map<String, dynamic>))
       .toList(),
+  json['clientIp'] as String?,
   json['tag'] as String?,
   json['queryStrategy'] as String?,
   json['disableCache'] as bool?,
+  json['serveStale'] as bool?,
+  (json['serveExpiredTTL'] as num?)?.toInt(),
   json['disableFallback'] as bool?,
   json['disableFallbackIfMatch'] as bool?,
+  json['enableParallelQuery'] as bool?,
   json['useSystemHosts'] as bool?,
 );
 
 Map<String, dynamic> _$XrayDnsToJson(XrayDns instance) => <String, dynamic>{
   'hosts': ?instance.hosts,
   'servers': ?instance.servers?.map((e) => e.toJson()).toList(),
+  'clientIp': ?instance.clientIp,
   'tag': ?instance.tag,
   'queryStrategy': ?instance.queryStrategy,
   'disableCache': ?instance.disableCache,
+  'serveStale': ?instance.serveStale,
+  'serveExpiredTTL': ?instance.serveExpiredTTL,
   'disableFallback': ?instance.disableFallback,
   'disableFallbackIfMatch': ?instance.disableFallbackIfMatch,
+  'enableParallelQuery': ?instance.enableParallelQuery,
   'useSystemHosts': ?instance.useSystemHosts,
 };
 
 XrayDnsServer _$XrayDnsServerFromJson(Map<String, dynamic> json) =>
     XrayDnsServer(
       json['address'] as String?,
+      json['clientIp'] as String?,
       json['skipFallback'] as bool?,
       (json['port'] as num?)?.toInt(),
       (json['domains'] as List<dynamic>?)?.map((e) => e as String).toList(),
@@ -93,13 +180,17 @@ XrayDnsServer _$XrayDnsServerFromJson(Map<String, dynamic> json) =>
           .toList(),
       json['queryStrategy'] as String?,
       json['tag'] as String?,
+      (json['timeoutMs'] as num?)?.toInt(),
       json['disableCache'] as bool?,
+      json['serveStale'] as bool?,
+      (json['serveExpiredTTL'] as num?)?.toInt(),
       json['finalQuery'] as bool?,
     );
 
 Map<String, dynamic> _$XrayDnsServerToJson(XrayDnsServer instance) =>
     <String, dynamic>{
       'address': ?instance.address,
+      'clientIp': ?instance.clientIp,
       'port': ?instance.port,
       'skipFallback': ?instance.skipFallback,
       'domains': ?instance.domains,
@@ -107,7 +198,10 @@ Map<String, dynamic> _$XrayDnsServerToJson(XrayDnsServer instance) =>
       'unexpectedIPs': ?instance.unexpectedIPs,
       'queryStrategy': ?instance.queryStrategy,
       'tag': ?instance.tag,
+      'timeoutMs': ?instance.timeoutMs,
       'disableCache': ?instance.disableCache,
+      'serveStale': ?instance.serveStale,
+      'serveExpiredTTL': ?instance.serveExpiredTTL,
       'finalQuery': ?instance.finalQuery,
     };
 
@@ -192,6 +286,8 @@ XrayInboundSniffing _$XrayInboundSniffingFromJson(
   json['routeOnly'] as bool?,
   (json['destOverride'] as List<dynamic>?)?.map((e) => e as String).toList(),
   (json['domainsExcluded'] as List<dynamic>?)?.map((e) => e as String).toList(),
+  (json['ipsExcluded'] as List<dynamic>?)?.map((e) => e as String).toList(),
+  json['metadataOnly'] as bool?,
 );
 
 Map<String, dynamic> _$XrayInboundSniffingToJson(
@@ -201,19 +297,21 @@ Map<String, dynamic> _$XrayInboundSniffingToJson(
   'routeOnly': ?instance.routeOnly,
   'destOverride': ?instance.destOverride,
   'domainsExcluded': ?instance.domainsExcluded,
+  'ipsExcluded': ?instance.ipsExcluded,
+  'metadataOnly': ?instance.metadataOnly,
 };
 
 XrayInboundTun _$XrayInboundTunFromJson(Map<String, dynamic> json) =>
     XrayInboundTun(
       json['name'] as String?,
-      (json['MTU'] as num?)?.toInt(),
+      (json['mtu'] as num?)?.toInt(),
       json['autoOutboundsInterface'] as String?,
     );
 
 Map<String, dynamic> _$XrayInboundTunToJson(XrayInboundTun instance) =>
     <String, dynamic>{
       'name': ?instance.name,
-      'MTU': ?instance.mtu,
+      'mtu': ?instance.mtu,
       'autoOutboundsInterface': ?instance.autoOutboundsInterface,
     };
 
@@ -231,6 +329,7 @@ XrayOutbound _$XrayOutboundFromJson(Map<String, dynamic> json) => XrayOutbound(
   json['mux'] == null
       ? null
       : XrayMux.fromJson(json['mux'] as Map<String, dynamic>),
+  json['targetStrategy'] as String?,
 );
 
 Map<String, dynamic> _$XrayOutboundToJson(XrayOutbound instance) =>
@@ -242,6 +341,7 @@ Map<String, dynamic> _$XrayOutboundToJson(XrayOutbound instance) =>
       'tag': ?instance.tag,
       'streamSettings': ?instance.streamSettings?.toJson(),
       'mux': ?instance.mux?.toJson(),
+      'targetStrategy': ?instance.targetStrategy,
     };
 
 XrayOutboundShadowsocks _$XrayOutboundShadowsocksFromJson(
@@ -251,8 +351,6 @@ XrayOutboundShadowsocks _$XrayOutboundShadowsocksFromJson(
   (json['port'] as num?)?.toInt(),
   json['method'] as String?,
   json['password'] as String?,
-  json['uot'] as bool?,
-  (json['UoTVersion'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$XrayOutboundShadowsocksToJson(
@@ -262,8 +360,6 @@ Map<String, dynamic> _$XrayOutboundShadowsocksToJson(
   'port': ?instance.port,
   'method': ?instance.method,
   'password': ?instance.password,
-  'uot': ?instance.uot,
-  'UoTVersion': ?instance.uotVersion,
 };
 
 XrayOutboundSocks _$XrayOutboundSocksFromJson(Map<String, dynamic> json) =>
@@ -280,6 +376,26 @@ Map<String, dynamic> _$XrayOutboundSocksToJson(XrayOutboundSocks instance) =>
       'port': ?instance.port,
       'user': ?instance.user,
       'pass': ?instance.pass,
+    };
+
+XrayOutboundHttp _$XrayOutboundHttpFromJson(Map<String, dynamic> json) =>
+    XrayOutboundHttp(
+      json['address'] as String?,
+      (json['port'] as num?)?.toInt(),
+      json['user'] as String?,
+      json['pass'] as String?,
+      (json['headers'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, e as String),
+      ),
+    );
+
+Map<String, dynamic> _$XrayOutboundHttpToJson(XrayOutboundHttp instance) =>
+    <String, dynamic>{
+      'address': ?instance.address,
+      'port': ?instance.port,
+      'user': ?instance.user,
+      'pass': ?instance.pass,
+      'headers': ?instance.headers,
     };
 
 XrayOutboundTrojan _$XrayOutboundTrojanFromJson(Map<String, dynamic> json) =>
@@ -422,9 +538,6 @@ XrayOutboundDns _$XrayOutboundDnsFromJson(Map<String, dynamic> json) =>
       (json['rules'] as List<dynamic>?)
           ?.map((e) => XrayOutboundDnsRule.fromJson(e as Map<String, dynamic>))
           .toList(),
-      (json['blockTypes'] as List<dynamic>?)
-          ?.map((e) => (e as num).toInt())
-          .toList(),
     );
 
 Map<String, dynamic> _$XrayOutboundDnsToJson(XrayOutboundDns instance) =>
@@ -433,7 +546,6 @@ Map<String, dynamic> _$XrayOutboundDnsToJson(XrayOutboundDns instance) =>
       'address': ?instance.address,
       'port': ?instance.port,
       'rules': ?instance.rules?.map((e) => e.toJson()).toList(),
-      'blockTypes': ?instance.blockTypes,
     };
 
 XrayOutboundDnsRule _$XrayOutboundDnsRuleFromJson(Map<String, dynamic> json) =>
@@ -528,7 +640,6 @@ XrayTlsSettings _$XrayTlsSettingsFromJson(Map<String, dynamic> json) =>
       json['pinnedPeerCertSha256'] as String?,
       json['verifyPeerCertByName'] as String?,
       json['echConfigList'] as String?,
-      json['echForceQuery'] as String?,
     );
 
 Map<String, dynamic> _$XrayTlsSettingsToJson(XrayTlsSettings instance) =>
@@ -539,7 +650,6 @@ Map<String, dynamic> _$XrayTlsSettingsToJson(XrayTlsSettings instance) =>
       'pinnedPeerCertSha256': ?instance.pinnedPeerCertSha256,
       'verifyPeerCertByName': ?instance.verifyPeerCertByName,
       'echConfigList': ?instance.echConfigList,
-      'echForceQuery': ?instance.echForceQuery,
     };
 
 XrayRealitySettings _$XrayRealitySettingsFromJson(Map<String, dynamic> json) =>
@@ -626,24 +736,10 @@ Map<String, dynamic> _$XrayRawSettingsHeaderRequestHeadersToJson(
 ) => <String, dynamic>{'Host': ?instance.host};
 
 XrayKcpSettings _$XrayKcpSettingsFromJson(Map<String, dynamic> json) =>
-    XrayKcpSettings(
-      json['header'] == null
-          ? null
-          : XrayKcpHeader.fromJson(json['header'] as Map<String, dynamic>),
-      json['seed'] as String?,
-    );
+    XrayKcpSettings();
 
 Map<String, dynamic> _$XrayKcpSettingsToJson(XrayKcpSettings instance) =>
-    <String, dynamic>{
-      'header': ?instance.header?.toJson(),
-      'seed': ?instance.seed,
-    };
-
-XrayKcpHeader _$XrayKcpHeaderFromJson(Map<String, dynamic> json) =>
-    XrayKcpHeader(json['type'] as String?, json['domain'] as String?);
-
-Map<String, dynamic> _$XrayKcpHeaderToJson(XrayKcpHeader instance) =>
-    <String, dynamic>{'type': ?instance.type, 'domain': ?instance.domain};
+    <String, dynamic>{};
 
 XrayWsSettings _$XrayWsSettingsFromJson(Map<String, dynamic> json) =>
     XrayWsSettings(json['path'] as String?, json['host'] as String?);
@@ -694,49 +790,67 @@ XrayHysteriaSettings _$XrayHysteriaSettingsFromJson(
 ) => XrayHysteriaSettings(
   (json['version'] as num?)?.toInt(),
   json['auth'] as String?,
-  json['up'] as String?,
-  json['down'] as String?,
-  json['udphop'] == null
-      ? null
-      : XrayHysteriaSettingsUdphop.fromJson(
-          json['udphop'] as Map<String, dynamic>,
-        ),
 );
 
 Map<String, dynamic> _$XrayHysteriaSettingsToJson(
   XrayHysteriaSettings instance,
-) => <String, dynamic>{
-  'version': ?instance.version,
-  'auth': ?instance.auth,
-  'up': ?instance.up,
-  'down': ?instance.down,
-  'udphop': ?instance.udphop?.toJson(),
-};
+) => <String, dynamic>{'version': ?instance.version, 'auth': ?instance.auth};
 
 XrayHysteriaSettingsUdphop _$XrayHysteriaSettingsUdphopFromJson(
   Map<String, dynamic> json,
 ) => XrayHysteriaSettingsUdphop(
-  json['port'] as String?,
+  json['ports'] as String?,
   (json['interval'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$XrayHysteriaSettingsUdphopToJson(
   XrayHysteriaSettingsUdphop instance,
-) => <String, dynamic>{'port': ?instance.port, 'interval': ?instance.interval};
+) => <String, dynamic>{
+  'ports': ?instance.ports,
+  'interval': ?instance.interval,
+};
 
 XraySockopt _$XraySockoptFromJson(Map<String, dynamic> json) => XraySockopt(
   json['dialerProxy'] as String?,
   json['tcpFastOpen'] as bool?,
+  json['domainStrategy'] as String?,
+  json['v6only'] as bool?,
   json['interface'] as String?,
   json['tcpMptcp'] as bool?,
+  json['addressPortStrategy'] as String?,
+  json['happyEyeballs'] == null
+      ? null
+      : XrayHappyEyeballs.fromJson(
+          json['happyEyeballs'] as Map<String, dynamic>,
+        ),
 );
 
 Map<String, dynamic> _$XraySockoptToJson(XraySockopt instance) =>
     <String, dynamic>{
       'dialerProxy': ?instance.dialerProxy,
       'tcpFastOpen': ?instance.tcpFastOpen,
+      'domainStrategy': ?instance.domainStrategy,
+      'v6only': ?instance.v6only,
       'interface': ?instance.interface,
       'tcpMptcp': ?instance.tcpMptcp,
+      'addressPortStrategy': ?instance.addressPortStrategy,
+      'happyEyeballs': ?instance.happyEyeballs?.toJson(),
+    };
+
+XrayHappyEyeballs _$XrayHappyEyeballsFromJson(Map<String, dynamic> json) =>
+    XrayHappyEyeballs(
+      json['prioritizeIPv6'] as bool?,
+      (json['tryDelayMs'] as num?)?.toInt(),
+      (json['interleave'] as num?)?.toInt(),
+      (json['maxConcurrentTry'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$XrayHappyEyeballsToJson(XrayHappyEyeballs instance) =>
+    <String, dynamic>{
+      'prioritizeIPv6': ?instance.prioritizeIPv6,
+      'tryDelayMs': ?instance.tryDelayMs,
+      'interleave': ?instance.interleave,
+      'maxConcurrentTry': ?instance.maxConcurrentTry,
     };
 
 XrayMux _$XrayMuxFromJson(Map<String, dynamic> json) => XrayMux(

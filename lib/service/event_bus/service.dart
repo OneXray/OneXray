@@ -7,6 +7,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/manager.dart';
+import 'package:onexray/service/xray/metrics/state.dart';
 
 class AppEventBus extends Cubit<AppEventBusState> {
   static late AppEventBus instance;
@@ -188,6 +189,16 @@ class AppEventBus extends Cubit<AppEventBusState> {
         pingProbeState: ConnectivityProbeState.idle,
         geoLocationProbeState: ConnectivityProbeState.idle,
       ),
+    );
+  }
+
+  void updateTrafficMetrics(TrafficMetricsState value) {
+    emit(state.copyWith(trafficMetrics: value));
+  }
+
+  void resetTrafficMetrics() {
+    emit(
+      state.copyWith(trafficMetrics: const TrafficMetricsState.unavailable()),
     );
   }
 

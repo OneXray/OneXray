@@ -8,30 +8,30 @@ class InboundSniffingCubitState {
   final InboundSniffingState sniffingState;
   final int version;
 
-  InboundSniffingCubitState({
-    required this.sniffingState,
-    this.version = 0,
-  });
+  InboundSniffingCubitState({required this.sniffingState, this.version = 0});
 
-  factory InboundSniffingCubitState.initial() => InboundSniffingCubitState(
-        sniffingState: InboundSniffingState(),
-      );
+  factory InboundSniffingCubitState.initial() =>
+      InboundSniffingCubitState(sniffingState: InboundSniffingState());
 
   InboundSniffingCubitState bumped() => InboundSniffingCubitState(
-        sniffingState: sniffingState,
-        version: version + 1,
-      );
+    sniffingState: sniffingState,
+    version: version + 1,
+  );
 }
 
 class InboundSniffingController extends Cubit<InboundSniffingCubitState> {
   final InboundSniffingParams params;
-  InboundSniffingController(this.params) : super(InboundSniffingCubitState.initial()) {
+  InboundSniffingController(this.params)
+    : super(InboundSniffingCubitState.initial()) {
     _initParams();
   }
 
   @override
   Future<void> close() {
     for (final controller in domainsExcludedControllers) {
+      controller.dispose();
+    }
+    for (final controller in ipsExcludedControllers) {
       controller.dispose();
     }
     return super.close();
@@ -49,22 +49,35 @@ class InboundSniffingController extends Cubit<InboundSniffingCubitState> {
     );
     this.domainsExcludedControllers.clear();
     this.domainsExcludedControllers.addAll(domainsExcludedControllers);
+
+    final ipsExcludedControllers = state.ipsExcluded.map(
+      (e) => TextEditingController(text: e),
+    );
+    this.ipsExcludedControllers.clear();
+    this.ipsExcludedControllers.addAll(ipsExcludedControllers);
   }
 
   void updateEnabled(bool value) {
-    state.sniffingState.enabled = value; emit(state.bumped());
+    state.sniffingState.enabled = value;
+    emit(state.bumped());
   }
 
   void updateRouteOnly(bool value) {
-    state.sniffingState.routeOnly = value; emit(state.bumped());
+    state.sniffingState.routeOnly = value;
+    emit(state.bumped());
+  }
+
+  void updateMetadataOnly(bool value) {
+    state.sniffingState.metadataOnly = value;
+    emit(state.bumped());
   }
 
   void updateDestOverride(bool selected, InboundSniffingDestOverride value) {
     if (selected) {
-        state.sniffingState.destOverride.add(value);
-      } else {
-        state.sniffingState.destOverride.remove(value);
-      }
+      state.sniffingState.destOverride.add(value);
+    } else {
+      state.sniffingState.destOverride.remove(value);
+    }
     emit(state.bumped());
   }
 
@@ -79,7 +92,23 @@ class InboundSniffingController extends Cubit<InboundSniffingCubitState> {
   void deleteDomainsExcluded(BuildContext context, int index) {
     final controller = domainsExcludedControllers.removeAt(index);
     controller.dispose();
-    state.sniffingState.domainsExcluded.removeAt(index); emit(state.bumped());
+    state.sniffingState.domainsExcluded.removeAt(index);
+    emit(state.bumped());
+  }
+
+  final ipsExcludedControllers = <TextEditingController>[];
+
+  void appendIpsExcluded() {
+    ipsExcludedControllers.add(TextEditingController());
+    state.sniffingState.ipsExcluded.add("");
+    emit(state.bumped());
+  }
+
+  void deleteIpsExcluded(BuildContext context, int index) {
+    final controller = ipsExcludedControllers.removeAt(index);
+    controller.dispose();
+    state.sniffingState.ipsExcluded.removeAt(index);
+    emit(state.bumped());
   }
 
   Future<void> save(BuildContext context) async {
@@ -94,6 +123,7 @@ class InboundSniffingController extends Cubit<InboundSniffingCubitState> {
     state.domainsExcluded = domainsExcludedControllers
         .map((c) => c.text)
         .toList();
+    state.ipsExcluded = ipsExcludedControllers.map((c) => c.text).toList();
 
     state.removeWhitespace();
   }

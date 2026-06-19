@@ -11,6 +11,7 @@ class RunXrayConfig {
   String? bindInterface;
   String? datDir;
   String? configPath;
+  String? metricsPort;
 
   RunXrayConfig(
     this.tunName,
@@ -20,6 +21,7 @@ class RunXrayConfig {
     this.bindInterface,
     this.datDir,
     this.configPath,
+    this.metricsPort,
   );
 
   factory RunXrayConfig.fromJson(Map<String, dynamic> json) =>

@@ -52,7 +52,6 @@ class OutboundDnsPage extends StatelessWidget {
                     _protocolSection(context, controller, state),
                     _settingSection(context, controller, state),
                     _rulesSection(context, controller, state),
-                    _blockTypesSection(context, controller),
                   ],
                 ),
               ),
@@ -225,43 +224,6 @@ class OutboundDnsPage extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _blockTypesSection(
-    BuildContext context,
-    OutboundDnsController controller,
-  ) {
-    final views = controller.blockTypeControllers
-        .mapIndexed(
-          (index, itemController) => TextFieldActionSettingRow(
-            controller: itemController,
-            label: AppLocalizations.of(context)!.outboundDnsPageBlockType,
-            hintText: AppLocalizations.of(
-              context,
-            )!.outboundDnsPageBlockTypeExample,
-            keyboardType: TextInputType.number,
-            trailing: IconButton(
-              onPressed: () => controller.deleteBlockType(index),
-              icon: const Icon(Icons.delete),
-            ),
-          ),
-        )
-        .toList();
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundDnsPageBlockTypes,
-      separated: false,
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.outboundDnsPageBlockTypes,
-          subtitle: AppLocalizations.of(context)!.outboundDnsPageBlockTypesHint,
-          trailing: IconButton(
-            onPressed: () => controller.appendBlockType(),
-            icon: const Icon(Icons.add),
-          ),
-        ),
-        if (views.isNotEmpty) Column(children: views),
-      ],
     );
   }
 

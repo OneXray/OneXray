@@ -9,7 +9,9 @@ import 'package:onexray/pages/home/xray/setting/dns/params.dart';
 import 'package:onexray/pages/home/xray/setting/fake_dns/params.dart';
 import 'package:onexray/pages/home/xray/setting/inbounds/params.dart';
 import 'package:onexray/pages/home/xray/setting/log/params.dart';
+import 'package:onexray/pages/home/xray/setting/metrics/params.dart';
 import 'package:onexray/pages/home/xray/setting/outbounds/params.dart';
+import 'package:onexray/pages/home/xray/setting/policy/params.dart';
 import 'package:onexray/pages/home/xray/setting/routing/params.dart';
 import 'package:onexray/pages/home/xray/setting/ui/params.dart';
 import 'package:onexray/pages/main/url.dart';
@@ -99,6 +101,16 @@ class XraySettingUIController {
     }
   }
 
+  void showMetrics(BuildContext context) {
+    final params = MetricsParams(_xraySettingState.metrics);
+    context.push(RouterPath.metrics, extra: params);
+  }
+
+  void showPolicy(BuildContext context) {
+    final params = PolicyParams(_xraySettingState.policy);
+    context.push(RouterPath.policy, extra: params);
+  }
+
   Future<void> editDns(BuildContext context) async {
     final params = DnsParams(_xraySettingState.dns);
     final dns = await context.push<DnsState>(RouterPath.dns, extra: params);
@@ -179,6 +191,26 @@ class XraySettingUIController {
       case DnsQueryStrategy.useIPv6:
         return "IPv6";
     }
+  }
+
+  String statsSummary(BuildContext context) {
+    return _xraySettingState.stats.enabled
+        ? AppLocalizations.of(context)!.switchEnabled
+        : AppLocalizations.of(context)!.chainProxyPageDisabled;
+  }
+
+  String metricsSummary(BuildContext context) {
+    return _xraySettingState.metrics.displayListen;
+  }
+
+  String policySummary(BuildContext context) {
+    final system = _xraySettingState.policy.system;
+    return system.statsInboundUplink &&
+            system.statsInboundDownlink &&
+            system.statsOutboundUplink &&
+            system.statsOutboundDownlink
+        ? AppLocalizations.of(context)!.switchEnabled
+        : AppLocalizations.of(context)!.chainProxyPageDisabled;
   }
 
   String routingSummary(BuildContext context) {

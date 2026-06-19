@@ -3,6 +3,7 @@ import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/event_bus/enum.dart';
+import 'package:onexray/service/xray/metrics/state.dart';
 
 enum VpnActionState {
   idle,
@@ -30,6 +31,7 @@ class AppEventBusState {
   final int locationVersion;
   final ConnectivityProbeState pingProbeState;
   final ConnectivityProbeState geoLocationProbeState;
+  final TrafficMetricsState trafficMetrics;
   final bool downloading;
   final bool windowClosed;
   final ThemeCode themeCode;
@@ -49,6 +51,7 @@ class AppEventBusState {
     this.locationVersion = 0,
     required this.pingProbeState,
     required this.geoLocationProbeState,
+    required this.trafficMetrics,
     required this.downloading,
     required this.windowClosed,
     required this.themeCode,
@@ -68,6 +71,7 @@ class AppEventBusState {
     location: GeoLocationStandard.standard,
     pingProbeState: ConnectivityProbeState.idle,
     geoLocationProbeState: ConnectivityProbeState.idle,
+    trafficMetrics: const TrafficMetricsState.unavailable(),
     downloading: false,
     windowClosed: false,
     themeCode: ThemeCode.system,
@@ -88,6 +92,7 @@ class AppEventBusState {
     int? locationVersion,
     ConnectivityProbeState? pingProbeState,
     ConnectivityProbeState? geoLocationProbeState,
+    TrafficMetricsState? trafficMetrics,
     bool? downloading,
     bool? windowClosed,
     ThemeCode? themeCode,
@@ -110,6 +115,7 @@ class AppEventBusState {
       pingProbeState: pingProbeState ?? this.pingProbeState,
       geoLocationProbeState:
           geoLocationProbeState ?? this.geoLocationProbeState,
+      trafficMetrics: trafficMetrics ?? this.trafficMetrics,
       downloading: downloading ?? this.downloading,
       windowClosed: windowClosed ?? this.windowClosed,
       themeCode: themeCode ?? this.themeCode,

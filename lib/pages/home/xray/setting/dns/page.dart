@@ -153,10 +153,14 @@ class DnsPage extends StatelessWidget {
       title: AppLocalizations.of(context)!.dnsPageSectionPolicy,
       children: [
         _tag(context, controller, state),
+        _clientIp(context, controller),
         _queryStrategy(context, controller, state),
         _disableCache(context, controller, state),
+        _serveStale(context, controller, state),
+        _serveExpiredTTL(context, controller),
         _disableFallback(context, controller, state),
         _disableFallbackIfMatch(context, controller, state),
+        _enableParallelQuery(context, controller, state),
         _useSystemHosts(context, controller, state),
       ],
     );
@@ -170,6 +174,14 @@ class DnsPage extends StatelessWidget {
     return SettingRow(
       title: AppLocalizations.of(context)!.dnsPageTag,
       value: state.dnsState.tag,
+    );
+  }
+
+  Widget _clientIp(BuildContext context, DnsController controller) {
+    return TextFieldSettingRow(
+      controller: controller.clientIpController,
+      label: AppLocalizations.of(context)!.dnsPageClientIp,
+      hintText: AppLocalizations.of(context)!.dnsPageClientIpExample,
     );
   }
 
@@ -198,6 +210,26 @@ class DnsPage extends StatelessWidget {
     );
   }
 
+  Widget _serveStale(
+    BuildContext context,
+    DnsController controller,
+    DnsCubitState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.dnsPageServeStale,
+      value: state.dnsState.serveStale,
+      onChanged: (value) => controller.updateServeStale(value),
+    );
+  }
+
+  Widget _serveExpiredTTL(BuildContext context, DnsController controller) {
+    return TextFieldSettingRow(
+      controller: controller.serveExpiredTTLController,
+      label: AppLocalizations.of(context)!.dnsPageServeExpiredTTL,
+      hintText: AppLocalizations.of(context)!.dnsPageServeExpiredTTLExample,
+    );
+  }
+
   Widget _disableFallback(
     BuildContext context,
     DnsController controller,
@@ -219,6 +251,18 @@ class DnsPage extends StatelessWidget {
       title: AppLocalizations.of(context)!.dnsPageDisableFallbackIfMatch,
       value: state.dnsState.disableFallbackIfMatch,
       onChanged: (value) => controller.updateDisableFallbackIfMatch(value),
+    );
+  }
+
+  Widget _enableParallelQuery(
+    BuildContext context,
+    DnsController controller,
+    DnsCubitState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.dnsPageEnableParallelQuery,
+      value: state.dnsState.enableParallelQuery,
+      onChanged: (value) => controller.updateEnableParallelQuery(value),
     );
   }
 

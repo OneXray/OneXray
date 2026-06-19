@@ -29,6 +29,7 @@ import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/json_writer.dart';
+import 'package:onexray/service/xray/metrics/service.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
@@ -108,6 +109,7 @@ final class VpnService {
         await _updateRunningId(DBConstants.defaultId);
         await TrayService().refreshTrayManager();
         _stopDurationTimer();
+        XrayMetricsService().stop();
         break;
       case VpnStatus.connecting:
         eventBus.updateVpnActionState(VpnActionState.connecting);
@@ -123,6 +125,7 @@ final class VpnService {
         eventBus.updatePendingConfigId(DBConstants.defaultId);
         await TrayService().refreshTrayManager();
         await _startDurationTimer();
+        await _startMetricsTimer();
         break;
     }
   }
@@ -338,6 +341,7 @@ final class VpnService {
     eventBus.updateVpnErrorMessage(message);
     await _updateRunningId(DBConstants.defaultId);
     ToastService().showToast(message);
+    XrayMetricsService().stop();
   }
 
   Future<bool> _waitForVpnStatus(
@@ -581,6 +585,7 @@ final class VpnService {
     final request = StartVpnRequest(
       tunSettingState.tunJson,
       port.pingPort,
+      port.metricsPort,
       coreBase64Text,
     );
     await request.writeToStartFile();
@@ -688,6 +693,16 @@ final class VpnService {
     _startTime = await PreferencesKey().readVpnStartTimestamp();
     _timer = Timer.periodic(Duration(seconds: 1), (_) => _updateDuration());
     await _connectivityTest();
+  }
+
+  Future<void> _startMetricsTimer() async {
+    try {
+      final request = await StartVpnRequestReader.readFromStartFile();
+      XrayMetricsService().start(request.metricsPort);
+    } catch (e) {
+      ygLogger("read metrics port error: $e");
+      XrayMetricsService().stop();
+    }
   }
 
   void _stopDurationTimer() {

@@ -25,6 +25,9 @@ extension OutboundStateWriter on OutboundState {
       case XrayOutboundProtocol.socks:
         outbound.settings = _socksSettings.toJson();
         break;
+      case XrayOutboundProtocol.http:
+        outbound.settings = _httpSettings.toJson();
+        break;
       case XrayOutboundProtocol.hysteria:
         outbound.settings = _hysteriaSettings.toJson();
       default:
@@ -32,6 +35,9 @@ extension OutboundStateWriter on OutboundState {
     }
 
     outbound.tag = tag;
+    if (targetStrategy != XrayDomainStrategy.asIs) {
+      outbound.targetStrategy = targetStrategy.name;
+    }
 
     outbound.streamSettings = _streamSettings;
     outbound.mux = _mux;
@@ -73,10 +79,6 @@ extension OutboundStateWriter on OutboundState {
     settings.port = int.tryParse(port);
     settings.method = shadowsocksMethod.name;
     settings.password = shadowsocksPassword;
-    settings.uot = shadowsocksUot;
-    if (shadowsocksUotVersion != ShadowsocksUoTVersion.none) {
-      settings.uotVersion = int.tryParse(shadowsocksUotVersion.name);
-    }
     return settings;
   }
 
@@ -98,6 +100,24 @@ extension OutboundStateWriter on OutboundState {
       if (socksPass.isNotEmpty) {
         settings.pass = socksPass;
       }
+    }
+
+    return settings;
+  }
+
+  XrayOutboundHttp get _httpSettings {
+    final settings = XrayOutboundHttpStandard.standard;
+    settings.address = address;
+    settings.port = int.tryParse(port);
+
+    if (EmptyTool.checkString(httpUser)) {
+      settings.user = httpUser;
+      if (httpPass.isNotEmpty) {
+        settings.pass = httpPass;
+      }
+    }
+    if (httpHeaders.isNotEmpty) {
+      settings.headers = httpHeaders;
     }
 
     return settings;
@@ -180,9 +200,6 @@ extension OutboundStateWriter on OutboundState {
     if (echConfigList.isNotEmpty) {
       tlsSettings.echConfigList = echConfigList;
     }
-    if (echForceQuery != StreamSettingsEchForceQuery.none) {
-      tlsSettings.echForceQuery = echForceQuery.name;
-    }
     return tlsSettings;
   }
 
@@ -237,19 +254,7 @@ extension OutboundStateWriter on OutboundState {
   }
 
   XrayKcpSettings get _kcpSettings {
-    final kcpSettings = XrayKcpSettingsStandard.standard;
-    if (kcpHeaderType != KcpHeaderType.none) {
-      final header = XrayKcpHeaderStandard.standard;
-      header.type = kcpHeaderType.name;
-      if (kcpHeaderDomain.isNotEmpty) {
-        header.domain = kcpHeaderDomain;
-      }
-      kcpSettings.header = header;
-    }
-    if (EmptyTool.checkString(kcpSeed)) {
-      kcpSettings.seed = kcpSeed;
-    }
-    return kcpSettings;
+    return XrayKcpSettingsStandard.standard;
   }
 
   XrayGrpcSettings get _grpcSettings {
@@ -298,18 +303,6 @@ extension OutboundStateWriter on OutboundState {
     if (EmptyTool.checkString(hysteriaAuth)) {
       hysteriaSettings.auth = hysteriaAuth;
     }
-    if (EmptyTool.checkString(hysteriaUp)) {
-      hysteriaSettings.up = hysteriaUp;
-    }
-    if (EmptyTool.checkString(hysteriaDown)) {
-      hysteriaSettings.down = hysteriaDown;
-    }
-    if (EmptyTool.checkString(hysteriaUdphopPort)) {
-      final udphop = XrayHysteriaSettingsUdphopStandard.standard;
-      udphop.port = hysteriaUdphopPort;
-      udphop.interval = int.tryParse(hysteriaUdphopInterval);
-      hysteriaSettings.udphop = udphop;
-    }
 
     return hysteriaSettings;
   }
@@ -319,6 +312,12 @@ extension OutboundStateWriter on OutboundState {
     if (tcpFastOpen) {
       sockopt.tcpFastOpen = tcpFastOpen;
     }
+    if (sockoptDomainStrategy != XrayDomainStrategy.asIs) {
+      sockopt.domainStrategy = sockoptDomainStrategy.name;
+    }
+    if (v6only) {
+      sockopt.v6only = v6only;
+    }
     if (EmptyTool.checkString(dialerProxy)) {
       sockopt.dialerProxy = dialerProxy;
     }
@@ -327,6 +326,21 @@ extension OutboundStateWriter on OutboundState {
     }
     if (tcpMptcp) {
       sockopt.tcpMptcp = tcpMptcp;
+    }
+    if (addressPortStrategy != AddressPortStrategy.none) {
+      sockopt.addressPortStrategy = addressPortStrategy.name;
+    }
+    if (happyEyeballsEnabled) {
+      final happyEyeballs = XrayHappyEyeballsStandard.standard;
+      if (happyEyeballsPrioritizeIPv6) {
+        happyEyeballs.prioritizeIPv6 = happyEyeballsPrioritizeIPv6;
+      }
+      happyEyeballs.tryDelayMs = int.tryParse(happyEyeballsTryDelayMs);
+      happyEyeballs.interleave = int.tryParse(happyEyeballsInterleave);
+      happyEyeballs.maxConcurrentTry = int.tryParse(
+        happyEyeballsMaxConcurrentTry,
+      );
+      sockopt.happyEyeballs = happyEyeballs;
     }
     return sockopt;
   }

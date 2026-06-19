@@ -6,6 +6,7 @@ enum XrayOutboundProtocol {
   freedom("freedom"),
   vless("vless"),
   vmess("vmess"),
+  http("http"),
   socks("socks"),
   shadowsocks("shadowsocks"),
   trojan("trojan"),
@@ -29,7 +30,60 @@ enum XrayOutboundProtocol {
     XrayOutboundProtocol.trojan,
     XrayOutboundProtocol.hysteria,
     XrayOutboundProtocol.socks,
+    XrayOutboundProtocol.http,
   ];
+}
+
+enum XrayDomainStrategy {
+  asIs("asis"),
+  useIP("useip"),
+  useIPv4("useipv4"),
+  useIPv6("useipv6"),
+  useIPv4v6("useipv4v6"),
+  useIPv6v4("useipv6v4"),
+  forceIP("forceip"),
+  forceIPv4("forceipv4"),
+  forceIPv6("forceipv6"),
+  forceIPv4v6("forceipv4v6"),
+  forceIPv6v4("forceipv6v4");
+
+  const XrayDomainStrategy(this.name);
+
+  final String name;
+
+  @override
+  String toString() => name;
+
+  static XrayDomainStrategy? fromString(String name) {
+    final clean = name.toLowerCase();
+    return XrayDomainStrategy.values.firstWhereOrNull(
+      (value) => value.name == clean,
+    );
+  }
+}
+
+enum AddressPortStrategy {
+  none("none"),
+  srvPortOnly("srvportonly"),
+  srvAddressOnly("srvaddressonly"),
+  srvPortAndAddress("srvportandaddress"),
+  txtPortOnly("txtportonly"),
+  txtAddressOnly("txtaddressonly"),
+  txtPortAndAddress("txtportandaddress");
+
+  const AddressPortStrategy(this.name);
+
+  final String name;
+
+  @override
+  String toString() => name;
+
+  static AddressPortStrategy? fromString(String name) {
+    final clean = name.toLowerCase();
+    return AddressPortStrategy.values.firstWhereOrNull(
+      (value) => value.name == clean,
+    );
+  }
 }
 
 enum VLESSFlow {
@@ -105,25 +159,6 @@ enum ShadowsocksMethod {
   }
 }
 
-enum ShadowsocksUoTVersion {
-  none(""),
-  one("1"),
-  two("2");
-
-  const ShadowsocksUoTVersion(this.name);
-
-  final String name;
-
-  @override
-  String toString() => name;
-
-  static ShadowsocksUoTVersion? fromString(String name) {
-    return ShadowsocksUoTVersion.values.firstWhereOrNull(
-      (value) => value.name == name,
-    );
-  }
-}
-
 enum StreamSettingsNetwork {
   raw("raw"),
   xhttp("xhttp"),
@@ -169,26 +204,6 @@ enum RawHeaderType {
 
   static RawHeaderType? fromString(String name) =>
       RawHeaderType.values.firstWhereOrNull((value) => value.name == name);
-}
-
-enum KcpHeaderType {
-  none("none"),
-  srtp("srtp"),
-  utp("utp"),
-  wechatVideo("wechat-video"),
-  dtls("dtls"),
-  wireguard("wireguard"),
-  dns("dns");
-
-  const KcpHeaderType(this.name);
-
-  final String name;
-
-  @override
-  String toString() => name;
-
-  static KcpHeaderType? fromString(String name) =>
-      KcpHeaderType.values.firstWhereOrNull((value) => value.name == name);
 }
 
 enum XhttpMode {
@@ -253,24 +268,6 @@ enum StreamSettingsSecurityFingerprint {
 
   static StreamSettingsSecurityFingerprint? fromString(String name) =>
       StreamSettingsSecurityFingerprint.values.firstWhereOrNull(
-        (value) => value.name == name,
-      );
-}
-
-enum StreamSettingsEchForceQuery {
-  none("none"),
-  half("half"),
-  full("full");
-
-  const StreamSettingsEchForceQuery(this.name);
-
-  final String name;
-
-  @override
-  String toString() => name;
-
-  static StreamSettingsEchForceQuery? fromString(String name) =>
-      StreamSettingsEchForceQuery.values.firstWhereOrNull(
         (value) => value.name == name,
       );
 }

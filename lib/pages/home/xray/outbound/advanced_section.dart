@@ -10,10 +10,20 @@ mixin OutboundAdvancedSection {
       title: AppLocalizations.of(context)!.outboundUIPageSockopt,
       children: [
         _tcpFastOpen(context, controller, state),
+        _sockoptDomainStrategy(context, controller, state),
+        _v6only(context, controller, state),
         _dialerProxy(context, controller, state),
         if (AppPlatform.isLinux || AppPlatform.isWindows)
           _interface(context, controller, state),
         _tcpMptcp(context, controller, state),
+        _addressPortStrategy(context, controller, state),
+        _happyEyeballsEnabled(context, controller, state),
+        if (state.outboundState.happyEyeballsEnabled) ...[
+          _happyEyeballsPrioritizeIPv6(context, controller, state),
+          _happyEyeballsTryDelayMs(context, controller),
+          _happyEyeballsInterleave(context, controller),
+          _happyEyeballsMaxConcurrentTry(context, controller),
+        ],
       ],
     );
   }
@@ -27,6 +37,31 @@ mixin OutboundAdvancedSection {
       title: AppLocalizations.of(context)!.outboundUIPageTcpFastOpen,
       value: state.outboundState.tcpFastOpen,
       onChanged: (value) => controller.updateTcpFastOpen(value),
+    );
+  }
+
+  Widget _sockoptDomainStrategy(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageDomainStrategy,
+      value: state.outboundState.sockoptDomainStrategy.name,
+      selections: XrayDomainStrategy.values,
+      onSelected: (value) => controller.updateSockoptDomainStrategy(value),
+    );
+  }
+
+  Widget _v6only(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageV6only,
+      value: state.outboundState.v6only,
+      onChanged: (value) => controller.updateV6only(value),
     );
   }
 
@@ -64,6 +99,78 @@ mixin OutboundAdvancedSection {
       title: AppLocalizations.of(context)!.outboundUIPageTcpMptcp,
       value: state.outboundState.tcpMptcp,
       onChanged: (value) => controller.updateTcpMptcp(value),
+    );
+  }
+
+  Widget _addressPortStrategy(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SelectSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageAddressPortStrategy,
+      value: state.outboundState.addressPortStrategy.name,
+      selections: AddressPortStrategy.values,
+      onSelected: (value) => controller.updateAddressPortStrategy(value),
+    );
+  }
+
+  Widget _happyEyeballsEnabled(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPageHappyEyeballs,
+      value: state.outboundState.happyEyeballsEnabled,
+      onChanged: (value) => controller.updateHappyEyeballsEnabled(value),
+    );
+  }
+
+  Widget _happyEyeballsPrioritizeIPv6(
+    BuildContext context,
+    OutboundUIController controller,
+    OutboundUIState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.outboundUIPagePrioritizeIPv6,
+      value: state.outboundState.happyEyeballsPrioritizeIPv6,
+      onChanged: (value) => controller.updateHappyEyeballsPrioritizeIPv6(value),
+    );
+  }
+
+  Widget _happyEyeballsTryDelayMs(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return TextFieldSettingRow(
+      controller: controller.happyEyeballsTryDelayMsController,
+      label: AppLocalizations.of(context)!.outboundUIPageTryDelayMs,
+      hintText: AppLocalizations.of(context)!.outboundUIPageTryDelayMsExample,
+    );
+  }
+
+  Widget _happyEyeballsInterleave(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return TextFieldSettingRow(
+      controller: controller.happyEyeballsInterleaveController,
+      label: AppLocalizations.of(context)!.outboundUIPageInterleave,
+      hintText: AppLocalizations.of(context)!.outboundUIPageInterleaveExample,
+    );
+  }
+
+  Widget _happyEyeballsMaxConcurrentTry(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return TextFieldSettingRow(
+      controller: controller.happyEyeballsMaxConcurrentTryController,
+      label: AppLocalizations.of(context)!.outboundUIPageMaxConcurrentTry,
+      hintText: AppLocalizations.of(
+        context,
+      )!.outboundUIPageMaxConcurrentTryExample,
     );
   }
 
