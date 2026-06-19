@@ -9,8 +9,8 @@ abstract final class XrayMetricsFormatter {
   }
 
   static String formatSpeed(int bytesPerSecond) {
-    if (bytesPerSecond <= 0) {
-      return "0 KB/s";
+    if (bytesPerSecond < 1000) {
+      return "$bytesPerSecond B/s";
     }
     final kb = bytesPerSecond / 1000;
     if (kb < 1000) {
