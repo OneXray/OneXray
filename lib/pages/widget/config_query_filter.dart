@@ -36,8 +36,6 @@ abstract final class ConfigQueryFilter {
             results.add(row);
           }
           break;
-        case AdsItem():
-          break;
       }
     }
 

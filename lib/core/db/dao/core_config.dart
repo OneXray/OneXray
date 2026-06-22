@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:drift/drift.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/constants.dart';
@@ -17,9 +16,6 @@ part 'core_config.g.dart';
 class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     with _$CoreConfigDaoMixin {
   CoreConfigDao(super.db);
-
-  static const int adsInterval = 10;
-  static const int adsFixedCount = 5;
 
   CoreConfigData _convertRowToCoreConfigData(TypedResult row) {
     final id = row.read(coreConfig.id);
@@ -59,21 +55,9 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
         final outboundItem = ConfigItem(data, ConfigQueryRowType.config);
         group.configs.add(outboundItem);
         group.count += 1;
-        if (AppPlatform.isMobile) {
-          if (group.count % adsInterval == 0) {
-            final adsItem = AdsItem(ConfigQueryRowType.ads);
-            group.configs.add(adsItem);
-          }
-        }
       }
     }
-    // fix ads
     for (final group in groups.values) {
-      if (group.count > adsFixedCount &&
-          group.count < adsInterval &&
-          AppPlatform.isMobile) {
-        group.configs.add(AdsItem(ConfigQueryRowType.ads));
-      }
       group.subscription.count = group.count;
     }
     // fix local count

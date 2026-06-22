@@ -39,12 +39,6 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        // AdMob APPLICATION_ID — read from env var at build time so the real id
-        // isn't committed to the repo. Falls back to Google's test App ID so a
-        // fresh clone without the env set can still build and run (with test ads).
-        manifestPlaceholders["admobAppId"] = System.getenv("ADMOB_APP_ID_ANDROID")
-            ?: "ca-app-pub-3940256099942544~3347511713"
     }
 
     signingConfigs {
@@ -90,7 +84,6 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
 
     implementation("com.google.android.play:integrity:1.6.0")
-    implementation("com.google.android.gms:play-services-ads:25.4.0")
 
     implementation("androidx.datastore:datastore:1.2.1")
 

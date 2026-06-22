@@ -117,26 +117,9 @@ class FlutterBuilder(Builder):
             "build",
             self.build_type[self.system],
         ]
-        cmd.extend(self.dart_defines())
         run_command(cmd)
 
         self.builder.build_app()
-
-    # Names of environment variables that are forwarded to non-Apple
-    # `flutter build` commands as --dart-define=<NAME>=<VALUE>. Keep the Apple
-    # Fastfiles in sync because they own iOS/macOS Flutter builds.
-    DART_DEFINE_ENV_VARS = (
-        "ADMOB_AD_UNIT_ID_ANDROID",
-        "ADMOB_AD_UNIT_ID_IOS",
-    )
-
-    def dart_defines(self) -> list[str]:
-        args: list[str] = []
-        for name in self.DART_DEFINE_ENV_VARS:
-            value = os.environ.get(name)
-            if value:
-                args.append(f"--dart-define={name}={value}")
-        return args
 
     def after_build(self):
         super().after_build()

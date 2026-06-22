@@ -25,28 +25,12 @@ class AppleBuilder(Builder):
 
         self.update_pod()
 
-        self.write_ios_admob_xcconfig()
-
     def update_build_number(self):
         os.chdir(self.project_dir)
         run_command(["xcrun", "agvtool", "new-version", "-all", str(self.build_number)])
 
     def update_pod(self):
         run_command(["pod", "repo", "update"])
-
-    # Info.plist references $(ADMOB_APP_ID_IOS); Debug/Release.xcconfig set a
-    # test-ad default and #include? "AdMob.xcconfig" so this file can override
-    # without being tracked. Only written when the env var is set — otherwise
-    # the build falls back to Google's public test App ID.
-    def write_ios_admob_xcconfig(self):
-        if self.system != "ios":
-            return
-        value = os.environ.get("ADMOB_APP_ID_IOS")
-        if not value:
-            return
-        path = os.path.join(self.project_dir, "Flutter", "AdMob.xcconfig")
-        with open(path, "w") as f:
-            f.write(f"ADMOB_APP_ID_IOS = {value}\n")
 
     def build_app(self):
         os.chdir(self.project_dir)

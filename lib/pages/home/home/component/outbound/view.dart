@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/home/component/ad_row/view.dart';
 import 'package:onexray/pages/home/component/config_row/selectable_view.dart';
 import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/home/home/component/outbound/controller.dart';
@@ -94,8 +93,6 @@ class HomeOutboundView extends StatelessWidget {
         return _subscriptionRow(context, controller, row);
       case ConfigQueryRowType.config:
         return _configRow(context, row);
-      case ConfigQueryRowType.ads:
-        return GoogleAdsRow();
     }
   }
 

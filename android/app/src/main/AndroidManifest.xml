@@ -58,12 +58,6 @@
                     android:scheme="onexray" />
             </intent-filter>
         </activity>
-        <!-- AdMob APPLICATION_ID is injected via manifestPlaceholders from
-             the ADMOB_APP_ID_ANDROID env var; falls back to Google's test
-             App ID if the env var is unset (see app/build.gradle.kts). -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="${admobAppId}" />
         <service
             android:name=".tile.OneQuickSettingsTileService"
             android:exported="true"

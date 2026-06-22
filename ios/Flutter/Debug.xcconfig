@@ -1,5 +1,1 @@
 #include "Generated.xcconfig"
-
-// See Release.xcconfig for how ADMOB_APP_ID_IOS is resolved.
-ADMOB_APP_ID_IOS = ca-app-pub-3940256099942544~1458002511
-#include? "AdMob.xcconfig"
