@@ -15,9 +15,14 @@ class XrayMetricsService {
 
   XrayMetricsService._internal();
 
+  static const _pollInterval = Duration(seconds: 1);
+  static const _failureBackoffSeconds = [2, 4, 8, 16, 30];
+
   Timer? _timer;
   var _generation = 0;
   var _querying = false;
+  var _consecutiveFailures = 0;
+  DateTime? _nextQueryAt;
   int? _lastUploadTotal;
   int? _lastDownloadTotal;
   DateTime? _lastSampleTime;
@@ -33,7 +38,7 @@ class XrayMetricsService {
     AppEventBus.instance.resetTrafficMetrics();
     unawaited(_query(generation, metricsPort));
     _timer = Timer.periodic(
-      const Duration(seconds: 1),
+      _pollInterval,
       (_) => unawaited(_query(generation, metricsPort)),
     );
   }
@@ -43,6 +48,7 @@ class XrayMetricsService {
     _timer?.cancel();
     _timer = null;
     _querying = false;
+    _resetBackoff();
     _resetBaseline();
     if (resetState) {
       AppEventBus.instance.resetTrafficMetrics();
@@ -50,7 +56,7 @@ class XrayMetricsService {
   }
 
   Future<void> _query(int generation, String metricsPort) async {
-    if (_querying) {
+    if (_querying || _isBackoffActive()) {
       return;
     }
     _querying = true;
@@ -60,15 +66,17 @@ class XrayMetricsService {
       if (generation != _generation) {
         return;
       }
-      final tunIn = XrayMetricsVars.fromJson(payload ?? {}).tunIn;
+      final tunIn = payload == null
+          ? null
+          : XrayMetricsVars.fromJson(payload).tunIn;
       final uploadTotal = tunIn?.uplink;
       final downloadTotal = tunIn?.downlink;
       if (uploadTotal == null || downloadTotal == null) {
-        _resetBaseline();
-        AppEventBus.instance.resetTrafficMetrics();
+        _recordQueryFailure(generation);
         return;
       }
 
+      _resetBackoff();
       final now = DateTime.now();
       final speed = _calculateSpeed(uploadTotal, downloadTotal, now);
       _lastUploadTotal = uploadTotal;
@@ -87,8 +95,7 @@ class XrayMetricsService {
     } catch (e) {
       ygLogger("query metrics failed: $e");
       if (generation == _generation) {
-        _resetBaseline();
-        AppEventBus.instance.resetTrafficMetrics();
+        _recordQueryFailure(generation);
       }
     } finally {
       _querying = false;
@@ -119,6 +126,31 @@ class XrayMetricsService {
       upload: (uploadBytes * 1000 / elapsedMs).round(),
       download: (downloadBytes * 1000 / elapsedMs).round(),
     );
+  }
+
+  bool _isBackoffActive() {
+    final nextQueryAt = _nextQueryAt;
+    return nextQueryAt != null && DateTime.now().isBefore(nextQueryAt);
+  }
+
+  void _recordQueryFailure(int generation) {
+    if (generation != _generation) {
+      return;
+    }
+    _consecutiveFailures++;
+    final seconds =
+        _failureBackoffSeconds[min(
+          _consecutiveFailures - 1,
+          _failureBackoffSeconds.length - 1,
+        )];
+    _nextQueryAt = DateTime.now().add(Duration(seconds: seconds));
+    _resetBaseline();
+    AppEventBus.instance.resetTrafficMetrics();
+  }
+
+  void _resetBackoff() {
+    _consecutiveFailures = 0;
+    _nextQueryAt = null;
   }
 
   void _resetBaseline() {
