@@ -275,7 +275,7 @@ class VPNManager {
         }
         await saveVpn(vpn: vpn, tun: TunJson())
         switch vpn.connection.status {
-        case .connected:
+        case .connected, .connecting, .reasserting:
             if let session = vpn.connection as? NETunnelProviderSession {
                 session.stopTunnel()
             }

@@ -52,7 +52,7 @@ class AppHostApi: BridgeHostApi {
             let installed = await VPNManager.shared.stopVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
             await flutterApi.refreshVpn(result: installed)
-            completion(.success(commandSuccess(permission: permission)))
+            completion(.success(commandResult(installed, permission: permission)))
         }
     }
     

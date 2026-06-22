@@ -104,12 +104,20 @@ class OneVpnService : VpnService() {
 
         val runPath = File(this.filesDir.path, "run")
         val file = File(runPath.path, "start.json")
-        val data = file.readText()
-        val decoder = Json {
-            explicitNulls = false
-            ignoreUnknownKeys = true
+        val model = try {
+            val data = file.readText()
+            val decoder = Json {
+                explicitNulls = false
+                ignoreUnknownKeys = true
+            }
+            decoder.decodeFromString<StartVpnRequest>(data)
+        } catch (e: Exception) {
+            XLog.e("OneVpnService: startTun failed to read/parse start.json", e)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            sendStatusBroadcast(false)
+            stopSelf()
+            return
         }
-        val model = decoder.decodeFromString<StartVpnRequest>(data)
         runTun(model)
     }
 
