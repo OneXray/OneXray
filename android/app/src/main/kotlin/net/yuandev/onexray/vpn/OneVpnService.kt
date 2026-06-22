@@ -11,6 +11,7 @@ import android.graphics.drawable.Icon
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.util.Base64
 import com.elvishew.xlog.XLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,7 @@ import net.yuandev.onexray.R
 import net.yuandev.onexray.pigeon.PerAppVPNMode
 import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
+import org.json.JSONObject
 import java.io.File
 
 
@@ -73,8 +75,12 @@ class OneVpnService : VpnService() {
         XLog.d("OneVpnService: onStartCommand ${intent?.action}")
         if (intent != null && intent.action == ACTION_STOP) {
             XLog.d("OneVpnService: onStartCommand $ACTION_STOP running=$running")
-            if (running) {
+            if (running || tunnel != null) {
                 stopTun()
+            } else {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                sendStatusBroadcast(false)
+                stopSelf()
             }
             return START_NOT_STICKY
         }
@@ -102,28 +108,38 @@ class OneVpnService : VpnService() {
 
         showNotification(startId)
 
-        val runPath = File(this.filesDir.path, "run")
-        val file = File(runPath.path, "start.json")
         val model = try {
-            val data = file.readText()
-            val decoder = Json {
-                explicitNulls = false
-                ignoreUnknownKeys = true
-            }
-            decoder.decodeFromString<StartVpnRequest>(data)
+            readStartRequest()
         } catch (e: Exception) {
-            XLog.e("OneVpnService: startTun failed to read/parse start.json", e)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            sendStatusBroadcast(false)
-            stopSelf()
+            failStart("OneVpnService: startTun failed to read/parse start.json", e)
             return
         }
-        runTun(model)
+
+        try {
+            runTun(model)
+        } catch (e: Exception) {
+            failStart("OneVpnService: startTun failed to establish tunnel", e)
+        }
+    }
+
+    private fun readStartRequest(): StartVpnRequest {
+        val runPath = File(this.filesDir.path, "run")
+        val file = File(runPath.path, "start.json")
+        val data = file.readText()
+        val decoder = Json {
+            explicitNulls = false
+            ignoreUnknownKeys = true
+        }
+        return decoder.decodeFromString<StartVpnRequest>(data)
     }
 
     private fun stopTun() {
         if (tunnel == null) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            controller.vpn = null
+            running = false
             sendStatusBroadcast(false)
+            stopSelf()
             return
         }
         XLog.d("OneVpnService: stopTun")
@@ -139,6 +155,28 @@ class OneVpnService : VpnService() {
         controller.vpn = null
         running = false
         sendStatusBroadcast(false)
+    }
+
+    private fun failStart(message: String, error: Exception) {
+        XLog.e(message, error)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        try {
+            LibXray.stopXray()
+        } catch (e: Exception) {
+            XLog.d("OneVpnService: failStart stopXray exception")
+            XLog.d(e)
+        }
+        try {
+            tunnel?.close()
+        } catch (e: Exception) {
+            XLog.d("OneVpnService: failStart close tunnel exception")
+            XLog.d(e)
+        }
+        tunnel = null
+        controller.vpn = null
+        running = false
+        sendStatusBroadcast(false)
+        stopSelf()
     }
 
     private fun showNotification(startId: Int) {
@@ -221,22 +259,21 @@ class OneVpnService : VpnService() {
         }
         XLog.d("OneVpnService: runTun tunnel = null")
         val builder = Builder()
-        request.tun?.let {
-            setPerAppVpn(it, builder)
-            setIPAndDns(it, builder)
-        }
+        val tun = requireNotNull(request.tun) { "missing TUN config" }
+        setPerAppVpn(tun, builder)
+        setIPAndDns(tun, builder)
 
-        tunnel = builder.establish()
+        val establishedTunnel = builder.establish()
+            ?: throw IllegalStateException("failed to establish VPN tunnel")
+        tunnel = establishedTunnel
 
         XLog.d("OneVpnService: runTun tunnel = ${tunnel?.fd}")
 
-        tunnel?.fd?.let { fd ->
-            controller.vpn = this
-            runXray(request, fd)
-
-            running = true
-            sendStatusBroadcast(true)
+        val coreBase64Text = requireNotNull(request.coreBase64Text) {
+            "missing Xray run request"
         }
+        controller.vpn = this
+        runXray(coreBase64Text, establishedTunnel.fd)
     }
 
     private fun setIPAndDns(tun: TunJson, builder: Builder) {
@@ -304,14 +341,28 @@ class OneVpnService : VpnService() {
         controllerInit = true
     }
 
-    private fun runXray(request: StartVpnRequest, fd: Int) {
+    private fun runXray(coreBase64Text: String, fd: Int) {
         scope.launch {
-            initController()
-            request.coreBase64Text?.let {
+            try {
+                initController()
                 LibXray.setTunFd(fd)
-                val result = LibXray.runXray(it)
+                val result = LibXray.runXray(coreBase64Text)
+                validateRunXrayResult(result)
                 XLog.d("TProxyStartService: runXray result=$result")
+                running = true
+                sendStatusBroadcast(true)
+            } catch (e: Exception) {
+                failStart("OneVpnService: runXray failed", e)
             }
+        }
+    }
+
+    private fun validateRunXrayResult(result: String) {
+        val decoded = String(Base64.decode(result, Base64.DEFAULT), Charsets.UTF_8)
+        val response = JSONObject(decoded)
+        if (!response.optBoolean("success", false)) {
+            val error = response.optString("error", "runXray failed")
+            throw IllegalStateException(error)
         }
     }
 }
