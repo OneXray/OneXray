@@ -253,25 +253,36 @@ class VPNManager {
     }
 
     func stopVpn() async -> RefreshVpnResult {
+        #if os(macOS)
+        if Constants.useSystemExtension {
+            let installed = await querySystemExtensionIfNeeded()
+            YGLog("querySystemExtensionIfNeeded \(installed)")
+            if installed != .installed {
+                return installed
+            }
+        }
+        #endif
         if vpn == nil {
             do {
                 vpn = try await findVpn()
             } catch {
                 YGLog(error)
+                return .notInstalled
             }
         }
-        if let vpn = vpn {
-            await saveVpn(vpn: vpn, tun: TunJson())
-            switch vpn.connection.status {
-            case .connected:
-                if let session = vpn.connection as? NETunnelProviderSession {
-                    session.stopTunnel()
-                }
-            case .disconnected:
-                runStatusObserver()
-            default:
-                break
+        guard let vpn = vpn else {
+            return .notInstalled
+        }
+        await saveVpn(vpn: vpn, tun: TunJson())
+        switch vpn.connection.status {
+        case .connected:
+            if let session = vpn.connection as? NETunnelProviderSession {
+                session.stopTunnel()
             }
+        case .disconnected:
+            runStatusObserver()
+        default:
+            break
         }
         return .installed
     }
