@@ -84,12 +84,13 @@ flutter {
 dependencies {
     val coreVersion = "1.18.0"
     implementation("androidx.core:core-ktx:$coreVersion")
+    implementation("androidx.core:core-splashscreen:1.2.0")
 
     implementation("androidx.fragment:fragment-ktx:1.8.9")
     implementation("androidx.activity:activity-ktx:1.13.0")
 
     implementation("com.google.android.play:integrity:1.6.0")
-    implementation("com.google.android.gms:play-services-ads:25.3.0")
+    implementation("com.google.android.gms:play-services-ads:25.4.0")
 
     implementation("androidx.datastore:datastore:1.2.1")
 
