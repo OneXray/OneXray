@@ -5,17 +5,10 @@ import 'package:onexray/pages/main/menu/controller.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
-class MenuMainScaffold extends StatefulWidget {
+class MenuMainScaffold extends StatelessWidget {
   const MenuMainScaffold({super.key, required this.child});
 
   final Widget child;
-
-  @override
-  State<MenuMainScaffold> createState() => _MenuMainScaffoldState();
-}
-
-class _MenuMainScaffoldState extends State<MenuMainScaffold> {
-  final controller = MenuPageController();
 
   static const _appMenu = PlatformMenu(
     label: 'OneXray',
@@ -37,8 +30,11 @@ class _MenuMainScaffoldState extends State<MenuMainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AppEventBus, AppEventBusState>(
-      builder: (context, state) => _body(context, state),
+    return BlocProvider(
+      create: (_) => MenuPageController(),
+      child: BlocBuilder<AppEventBus, AppEventBusState>(
+        builder: (context, state) => _body(context, state),
+      ),
     );
   }
 
@@ -78,7 +74,7 @@ class _MenuMainScaffoldState extends State<MenuMainScaffold> {
             ],
           ),
         ],
-        child: widget.child,
+        child: child,
       ),
     );
   }
@@ -93,12 +89,13 @@ class _MenuMainScaffoldState extends State<MenuMainScaffold> {
             menus: <PlatformMenuItem>[
               PlatformMenuItem(
                 label: AppLocalizations.of(context)!.menuBarShowWindow,
-                onSelected: () => controller.showWindow(),
+                onSelected: () =>
+                    context.read<MenuPageController>().showWindow(),
               ),
             ],
           ),
         ],
-        child: widget.child,
+        child: child,
       ),
     );
   }

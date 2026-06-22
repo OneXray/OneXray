@@ -49,10 +49,8 @@ class HomeState {
 
 class HomeController extends Cubit<HomeState> {
   final BuildContext context;
-  final TabController tabController;
 
-  HomeController(this.context, this.tabController)
-    : super(HomeState.initial()) {
+  HomeController(this.context) : super(HomeState.initial()) {
     _asyncInit();
   }
 
@@ -269,14 +267,18 @@ class HomeController extends Cubit<HomeState> {
     context.push(RouterPath.setting);
   }
 
-  Future<void> addMenuAction(BuildContext context, String menuId) async {
+  Future<void> addMenuAction(
+    BuildContext context,
+    String menuId,
+    int selectedTabIndex,
+  ) async {
     final id = IconMenuId.fromString(menuId);
     if (id == null) {
       return;
     }
     switch (id) {
       case IconMenuId.manualInput:
-        _addConfig(context);
+        _addConfig(context, selectedTabIndex);
         break;
       case IconMenuId.subscribeLink:
         _addSubscription(context);
@@ -298,8 +300,8 @@ class HomeController extends Cubit<HomeState> {
     }
   }
 
-  void _addConfig(BuildContext context) {
-    switch (tabController.index) {
+  void _addConfig(BuildContext context, int selectedTabIndex) {
+    switch (selectedTabIndex) {
       case 0:
         final params = OutboundUIParams(
           DBConstants.defaultId,

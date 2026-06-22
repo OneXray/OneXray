@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -6,13 +7,17 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
 
-class SubscriptionAddController {
+class SubscriptionAddController extends Cubit<int> {
+  SubscriptionAddController() : super(0);
+
   final nameController = TextEditingController();
   final urlController = TextEditingController();
 
-  void dispose() {
+  @override
+  Future<void> close() {
     nameController.dispose();
     urlController.dispose();
+    return super.close();
   }
 
   Future<void> save(BuildContext context) async {

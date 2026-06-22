@@ -9,41 +9,30 @@ import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
-class XrayRawPage extends StatefulWidget {
+class XrayRawPage extends StatelessWidget {
   final XrayRawParams params;
 
   const XrayRawPage({super.key, required this.params});
 
   @override
-  State<XrayRawPage> createState() => _XrayRawPageState();
-}
-
-class _XrayRawPageState extends State<XrayRawPage> {
-  late final XrayRawController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = XrayRawController(widget.params);
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.outboundPageTitle),
+    return BlocProvider(
+      create: (_) => XrayRawController(params),
+      child: Builder(
+        builder: (context) {
+          final controller = context.read<XrayRawController>();
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.outboundPageTitle),
+            ),
+            body: SafeArea(child: _body(context, controller)),
+          );
+        },
       ),
-      body: SafeArea(child: _body(context)),
     );
   }
 
-  Widget _body(BuildContext context) {
+  Widget _body(BuildContext context, XrayRawController controller) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -55,13 +44,13 @@ class _XrayRawPageState extends State<XrayRawPage> {
               maxLines: null,
             ),
           ),
-          _bottomButton(context),
+          _bottomButton(context, controller),
         ],
       ),
     );
   }
 
-  Widget _bottomButton(BuildContext context) {
+  Widget _bottomButton(BuildContext context, XrayRawController controller) {
     return BottomView(
       child: Row(
         spacing: 12,
@@ -69,7 +58,7 @@ class _XrayRawPageState extends State<XrayRawPage> {
           BlocBuilder<AppEventBus, AppEventBusState>(
             bloc: AppEventBus.instance,
             builder: (context, eventState) =>
-                _bottomPingButton(context, eventState),
+                _bottomPingButton(context, controller, eventState),
           ),
           Expanded(
             child: PrimaryBottomButton(
@@ -82,7 +71,11 @@ class _XrayRawPageState extends State<XrayRawPage> {
     );
   }
 
-  Widget _bottomPingButton(BuildContext context, AppEventBusState eventState) {
+  Widget _bottomPingButton(
+    BuildContext context,
+    XrayRawController controller,
+    AppEventBusState eventState,
+  ) {
     final pinging = eventState.pinging;
     if (pinging) {
       return const CircularProgressIndicator();

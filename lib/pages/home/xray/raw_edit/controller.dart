@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/xray/raw_edit/params.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 
-class XrayRawEditController {
+class XrayRawEditController extends Cubit<int> {
   final XrayRawEditParams params;
-  XrayRawEditController(this.params) {
+  XrayRawEditController(this.params) : super(0) {
     _initParams();
   }
 
   final controller = TextEditingController();
 
-  void dispose() {
+  @override
+  Future<void> close() {
     controller.dispose();
+    return super.close();
   }
 
   void _initParams() {

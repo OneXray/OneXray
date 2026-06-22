@@ -1,44 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/pages/launch/init.dart';
-import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/pages/launch/splash/controller.dart';
 
-class SplashPage extends StatefulWidget {
+class SplashPage extends StatelessWidget {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
-}
-
-class _SplashPageState extends State<SplashPage> {
-  @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _initRouter();
-  }
-
-  Future<void> _initRouter() async {
-    try {
-      await initRouter(context);
-    } catch (e, stackTrace) {
-      ygLogger("initRouter error: $e\n$stackTrace");
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: e,
-          stack: stackTrace,
-          library: "OneXray launch",
-          context: ErrorDescription("while initializing the launch router"),
-        ),
-      );
-      if (mounted) {
-        context.go(RouterPath.privacy);
-      }
-    }
+    return BlocProvider(
+      create: (_) => SplashController(),
+      child: BlocListener<SplashController, SplashState>(
+        listenWhen: (previous, current) =>
+            previous.route != current.route && current.route != null,
+        listener: (context, state) {
+          final route = state.route;
+          if (route != null) {
+            context.go(route);
+          }
+        },
+        child: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      ),
+    );
   }
 }

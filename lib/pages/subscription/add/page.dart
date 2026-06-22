@@ -11,29 +11,26 @@ import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
-class SubscriptionAddPage extends StatefulWidget {
+class SubscriptionAddPage extends StatelessWidget {
   const SubscriptionAddPage({super.key});
 
   @override
-  State<SubscriptionAddPage> createState() => _SubscriptionAddPageState();
-}
-
-class _SubscriptionAddPageState extends State<SubscriptionAddPage> {
-  final controller = SubscriptionAddController();
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.subscriptionAddPageTitle),
+    return BlocProvider(
+      create: (_) => SubscriptionAddController(),
+      child: Builder(
+        builder: (context) {
+          final controller = context.read<SubscriptionAddController>();
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(
+                AppLocalizations.of(context)!.subscriptionAddPageTitle,
+              ),
+            ),
+            body: SafeArea(child: _body(context, controller)),
+          );
+        },
       ),
-      body: SafeArea(child: _body(context, controller)),
     );
   }
 

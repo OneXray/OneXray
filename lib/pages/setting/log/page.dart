@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
@@ -8,38 +8,25 @@ import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/constants.dart';
 
-class LogPage extends StatefulWidget {
+class LogPage extends StatelessWidget {
   const LogPage({super.key});
 
   @override
-  State<LogPage> createState() => _LogPageState();
-}
-
-class _LogPageState extends State<LogPage> {
-  late final Future<bool> _useSystemExtension;
-
-  @override
-  void initState() {
-    super.initState();
-    _useSystemExtension = AppHostApi().useSystemExtension();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final controller = LogController.instance;
-    return Scaffold(
-      appBar: AppBar(title: Text(AppLocalizations.of(context)!.logPageTitle)),
-      body: SafeArea(
-        child: FutureBuilder<bool>(
-          future: _useSystemExtension,
-          builder: (context, snapshot) {
-            final waitingForMacOS =
-                AppPlatform.isMacOS &&
-                snapshot.connectionState != ConnectionState.done;
-            final hideLogFiles = waitingForMacOS || snapshot.data == true;
-            return _body(context, controller, hideLogFiles);
-          },
-        ),
+    return BlocProvider(
+      create: (_) => LogController(),
+      child: BlocBuilder<LogController, LogCubitState>(
+        builder: (context, state) {
+          final controller = context.read<LogController>();
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(AppLocalizations.of(context)!.logPageTitle),
+            ),
+            body: SafeArea(
+              child: _body(context, controller, state.hideLogFiles),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -22,6 +23,7 @@ import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/fake_dns_state.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
+import 'package:onexray/service/xray/setting/metrics_state.dart';
 import 'package:onexray/service/xray/setting/outbounds_state.dart';
 import 'package:onexray/service/xray/setting/routing_state.dart';
 import 'package:onexray/service/xray/setting/state.dart';
@@ -30,25 +32,42 @@ import 'package:onexray/service/xray/setting/state_reader.dart';
 import 'package:onexray/service/xray/setting/state_validator.dart';
 import 'package:onexray/service/xray/setting/state_writer.dart';
 
-class XraySettingUIController {
-  final XraySettingUIParams params;
-  final VoidCallback? onChanged;
+class XraySettingUICubitState {
+  final int version;
 
-  XraySettingUIController(this.params, {this.onChanged}) {
+  const XraySettingUICubitState({this.version = 0});
+
+  factory XraySettingUICubitState.initial() => const XraySettingUICubitState();
+
+  XraySettingUICubitState bumped() =>
+      XraySettingUICubitState(version: version + 1);
+}
+
+class XraySettingUIController extends Cubit<XraySettingUICubitState> {
+  final XraySettingUIParams params;
+
+  XraySettingUIController(this.params)
+    : super(XraySettingUICubitState.initial()) {
     _queryXraySetting();
   }
 
   CoreConfigData? _xraySettingData;
 
   var _xraySettingState = XraySettingState();
-  void dispose() {
+
+  @override
+  Future<void> close() {
     nameController.dispose();
+    return super.close();
   }
 
   Future<void> _queryXraySetting() async {
     final db = AppDatabase();
     if (params.id != DBConstants.defaultId) {
       final xraySetting = await db.coreConfigDao.searchRow(params.id);
+      if (isClosed) {
+        return;
+      }
       if (xraySetting != null) {
         _xraySettingData = xraySetting;
 
@@ -101,9 +120,16 @@ class XraySettingUIController {
     }
   }
 
-  void showMetrics(BuildContext context) {
+  Future<void> showMetrics(BuildContext context) async {
     final params = MetricsParams(_xraySettingState.metrics);
-    context.push(RouterPath.metrics, extra: params);
+    final metrics = await context.push<MetricsState>(
+      RouterPath.metrics,
+      extra: params,
+    );
+    if (metrics != null) {
+      _xraySettingState.metrics = metrics;
+      _notifyChanged();
+    }
   }
 
   void showPolicy(BuildContext context) {
@@ -200,7 +226,10 @@ class XraySettingUIController {
   }
 
   String metricsSummary(BuildContext context) {
-    return _xraySettingState.metrics.displayListen;
+    final metrics = _xraySettingState.metrics;
+    return metrics.enabled
+        ? metrics.displayListen
+        : AppLocalizations.of(context)!.chainProxyPageDisabled;
   }
 
   String policySummary(BuildContext context) {
@@ -276,6 +305,8 @@ class XraySettingUIController {
   }
 
   void _notifyChanged() {
-    onChanged?.call();
+    if (!isClosed) {
+      emit(state.bumped());
+    }
   }
 }

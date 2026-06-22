@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -18,9 +19,9 @@ import 'package:onexray/service/xray/setting/state.dart';
 import 'package:onexray/service/xray/setting/state_writer.dart';
 import 'package:uuid/uuid.dart';
 
-class XrayRawController {
+class XrayRawController extends Cubit<int> {
   final XrayRawParams params;
-  XrayRawController(this.params) {
+  XrayRawController(this.params) : super(0) {
     _initParams();
     _queryOutbound();
   }
@@ -30,8 +31,10 @@ class XrayRawController {
 
   final controller = TextEditingController();
 
-  void dispose() {
+  @override
+  Future<void> close() {
     controller.dispose();
+    return super.close();
   }
 
   void _initParams() {
@@ -42,6 +45,9 @@ class XrayRawController {
     final db = AppDatabase();
     if (_configId != DBConstants.defaultId) {
       final config = await db.coreConfigDao.searchRow(_configId);
+      if (isClosed) {
+        return;
+      }
       if (config != null) {
         _configData = config;
         if (EmptyTool.checkString(config.data)) {

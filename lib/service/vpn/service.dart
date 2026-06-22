@@ -571,7 +571,13 @@ final class VpnService {
     final bytes = base64Decode(config.data!);
     final rawText = utf8.decode(bytes);
     final jsonMap = JsonTool.decoder.convert(rawText);
-    await XrayRawFix.fixConfig(jsonMap, tunSettingState, port);
+    final settingState = await XraySettingStateReader.loadFromDb();
+    await XrayRawFix.fixConfig(
+      jsonMap,
+      tunSettingState,
+      port,
+      settingState.metrics.enabled,
+    );
     final configText = JsonTool.encoderForFile.convert(jsonMap);
     final configPath = XrayStateConstants.configFilePath;
     final file = File(configPath);
@@ -593,6 +599,7 @@ final class VpnService {
     final request = StartVpnRequest(
       tunSettingState.tunJson,
       port.pingPort,
+      port.pingAuth,
       port.metricsPort,
       coreBase64Text,
     );
@@ -657,8 +664,8 @@ final class VpnService {
     await pingState.readFromPreferences();
 
     await Future.wait([
-      _runPingProbe(testId, pingPort, pingState.realUrl),
-      _runGeoLocationProbe(testId, pingPort),
+      _runPingProbe(testId, pingPort, pingState.realUrl, request.pingAuth),
+      _runGeoLocationProbe(testId, pingPort, request.pingAuth),
     ]);
   }
 
@@ -666,8 +673,13 @@ final class VpnService {
     return testId == _connectivityTestId && _vpnRunning;
   }
 
-  Future<void> _runPingProbe(int testId, String port, String url) async {
-    final delay = await NetClient().ping(port, url);
+  Future<void> _runPingProbe(
+    int testId,
+    String port,
+    String url,
+    PingAuth? auth,
+  ) async {
+    final delay = await NetClient().ping(port, url, auth);
     if (!_isConnectivityTestCurrent(testId)) {
       return;
     }
@@ -679,8 +691,12 @@ final class VpnService {
     eventBus.updateLocationDelay(delay);
   }
 
-  Future<void> _runGeoLocationProbe(int testId, String port) async {
-    final location = await NetClient().geoLocation(port);
+  Future<void> _runGeoLocationProbe(
+    int testId,
+    String port,
+    PingAuth? auth,
+  ) async {
+    final location = await NetClient().geoLocation(port, auth);
     if (!_isConnectivityTestCurrent(testId)) {
       return;
     }

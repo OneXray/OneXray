@@ -15,91 +15,73 @@ import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController = TabController(
-    length: 2,
-    vsync: this,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController.addListener(_handleTabChanged);
-  }
-
-  @override
-  void dispose() {
-    _tabController.removeListener(_handleTabChanged);
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _handleTabChanged() {
-    setState(() {});
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => HomeController(context, _tabController)),
-        BlocProvider(create: (_) => HomeOutboundController()),
-        BlocProvider(create: (_) => HomeRawController()),
-      ],
-      child: BlocBuilder<HomeController, HomeState>(
-        builder: (context, homeState) {
-          final controller = context.read<HomeController>();
-          return BlocBuilder<AppEventBus, AppEventBusState>(
-            builder: (context, eventState) => Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  onPressed: () => controller.gotoSettings(context),
-                  icon: Icon(Icons.settings),
+    return DefaultTabController(
+      length: 2,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => HomeController(context)),
+          BlocProvider(create: (_) => HomeOutboundController()),
+          BlocProvider(create: (_) => HomeRawController()),
+        ],
+        child: BlocBuilder<HomeController, HomeState>(
+          builder: (context, homeState) {
+            final controller = context.read<HomeController>();
+            return BlocBuilder<AppEventBus, AppEventBusState>(
+              builder: (context, eventState) => Scaffold(
+                appBar: AppBar(
+                  leading: IconButton(
+                    onPressed: () => controller.gotoSettings(context),
+                    icon: Icon(Icons.settings),
+                  ),
+                  title: Text(AppLocalizations.of(context)!.homePageTitle),
+                  actions: [
+                    _searchButton(context),
+                    _rightButton(context, controller, eventState),
+                  ],
                 ),
-                title: Text(AppLocalizations.of(context)!.homePageTitle),
-                actions: [
-                  _searchButton(context),
-                  _rightButton(context, controller, eventState),
-                ],
+                body: SafeArea(
+                  child: _body(context, controller, homeState, eventState),
+                ),
               ),
-              body: SafeArea(
-                child: _body(context, controller, homeState, eventState),
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _searchButton(BuildContext context) {
-    if (_tabController.index == 0) {
-      return BlocBuilder<HomeOutboundController, HomeOutboundState>(
-        buildWhen: (previous, current) =>
-            previous.searching != current.searching,
-        builder: (context, state) {
-          return IconButton(
-            onPressed: () =>
-                context.read<HomeOutboundController>().toggleSearch(),
-            icon: Icon(state.searching ? Icons.close : Icons.search),
+    final tabController = DefaultTabController.of(context);
+    return AnimatedBuilder(
+      animation: tabController,
+      builder: (context, child) {
+        if (tabController.index == 0) {
+          return BlocBuilder<HomeOutboundController, HomeOutboundState>(
+            buildWhen: (previous, current) =>
+                previous.searching != current.searching,
+            builder: (context, state) {
+              return IconButton(
+                onPressed: () =>
+                    context.read<HomeOutboundController>().toggleSearch(),
+                icon: Icon(state.searching ? Icons.close : Icons.search),
+              );
+            },
           );
-        },
-      );
-    }
-    return BlocBuilder<HomeRawController, HomeRawState>(
-      buildWhen: (previous, current) => previous.searching != current.searching,
-      builder: (context, state) {
-        return IconButton(
-          onPressed: () => context.read<HomeRawController>().toggleSearch(),
-          icon: Icon(state.searching ? Icons.close : Icons.search),
+        }
+        return BlocBuilder<HomeRawController, HomeRawState>(
+          buildWhen: (previous, current) =>
+              previous.searching != current.searching,
+          builder: (context, state) {
+            return IconButton(
+              onPressed: () => context.read<HomeRawController>().toggleSearch(),
+              icon: Icon(state.searching ? Icons.close : Icons.search),
+            );
+          },
         );
       },
     );
@@ -123,7 +105,11 @@ class _HomePageState extends State<HomePage>
           IconMenuId.pickFile,
           IconMenuId.readPasteboard,
         ],
-        callback: (actionId) => controller.addMenuAction(context, actionId),
+        callback: (actionId) => controller.addMenuAction(
+          context,
+          actionId,
+          DefaultTabController.of(context).index,
+        ),
       );
     }
   }
@@ -151,7 +137,6 @@ class _HomePageState extends State<HomePage>
     return ColoredBox(
       color: ColorManager.surface(context),
       child: TabBar(
-        controller: _tabController,
         indicatorSize: TabBarIndicatorSize.tab,
         tabs: [
           Tab(text: AppLocalizations.of(context)!.homePageTabOutbound),
@@ -162,10 +147,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _tabBarView(BuildContext context, HomeController controller) {
-    return TabBarView(
-      controller: _tabController,
-      children: const [HomeOutboundView(), HomeRawView()],
-    );
+    return TabBarView(children: const [HomeOutboundView(), HomeRawView()]);
   }
 
   Widget _bottomButton(

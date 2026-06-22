@@ -4,7 +4,6 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/tun_setting/state.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
@@ -23,9 +22,11 @@ extension XraySettingStateWriter on XraySettingState {
     xrayJson.routing = routing.xrayJson;
     xrayJson.inbounds = inbounds.xrayJson;
     xrayJson.outbounds = outbounds.xrayJson;
-    xrayJson.policy = policy.xrayJson;
-    xrayJson.stats = stats.xrayJson;
-    xrayJson.metrics = metrics.xrayJson;
+    if (metrics.enabled) {
+      xrayJson.policy = policy.xrayJson;
+      xrayJson.stats = stats.xrayJson;
+      xrayJson.metrics = metrics.xrayJson;
+    }
 
     return xrayJson;
   }
@@ -83,14 +84,16 @@ extension XraySettingStateWriter on XraySettingState {
   }
 
   void fixInboundsPort(XrayPorts ports) {
-    if (inbounds.ping.port == VpnConstants.randomPort) {
-      inbounds.ping.port = ports.pingPort;
-    } else {
-      ports.pingPort = inbounds.ping.port;
-    }
+    inbounds.ping.port = ports.pingPort;
+    inbounds.ping.auth = ports.pingAuth;
   }
 
   void fixMetricsPort(XrayPorts ports) {
+    if (!metrics.enabled) {
+      metrics.listen = "";
+      ports.metricsPort = "";
+      return;
+    }
     metrics.listen = "${NetConstants.proxyHost}:${ports.metricsPort}";
   }
 

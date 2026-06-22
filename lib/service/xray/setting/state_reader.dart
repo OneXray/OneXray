@@ -35,6 +35,7 @@ extension XraySettingStateReader on XraySettingState {
     routing.readFromXrayJson(xrayJson);
     inbounds.readFromXrayJson(xrayJson);
     outbounds.readFromXrayJson(xrayJson);
+    metrics.readFromXrayJson(xrayJson);
   }
 
   static Future<XraySettingState> loadFromDb() async {

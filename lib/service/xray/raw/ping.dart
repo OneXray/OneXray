@@ -1,5 +1,5 @@
 import 'package:onexray/core/db/database/constants.dart';
-import 'package:onexray/core/network/constants.dart';
+import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
@@ -30,7 +30,7 @@ class XrayRawPing {
       configPath,
       pingState.timeout.toInt(),
       pingState.realUrl,
-      "http://${NetConstants.proxyHost}:${ports.pingPort}",
+      ports.pingAuth.proxyUrl(ports.pingPort),
     );
     await FileTool.deleteFileIfExists(configPath);
 

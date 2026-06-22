@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/raw_edit/controller.dart';
@@ -6,39 +7,28 @@ import 'package:onexray/pages/home/xray/raw_edit/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 
-class XrayRawEditPage extends StatefulWidget {
+class XrayRawEditPage extends StatelessWidget {
   final XrayRawEditParams params;
 
   const XrayRawEditPage({super.key, required this.params});
 
   @override
-  State<XrayRawEditPage> createState() => _XrayRawEditPageState();
-}
-
-class _XrayRawEditPageState extends State<XrayRawEditPage> {
-  late final XrayRawEditController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = XrayRawEditController(widget.params);
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.params.title)),
-      body: SafeArea(child: _body(context)),
+    return BlocProvider(
+      create: (_) => XrayRawEditController(params),
+      child: Builder(
+        builder: (context) {
+          final controller = context.read<XrayRawEditController>();
+          return Scaffold(
+            appBar: AppBar(title: Text(params.title)),
+            body: SafeArea(child: _body(context, controller)),
+          );
+        },
+      ),
     );
   }
 
-  Widget _body(BuildContext context) {
+  Widget _body(BuildContext context, XrayRawEditController controller) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: Column(
@@ -50,13 +40,13 @@ class _XrayRawEditPageState extends State<XrayRawEditPage> {
               maxLines: null,
             ),
           ),
-          _bottomButton(context),
+          _bottomButton(context, controller),
         ],
       ),
     );
   }
 
-  Widget _bottomButton(BuildContext context) {
+  Widget _bottomButton(BuildContext context, XrayRawEditController controller) {
     return BottomView(
       child: Row(
         children: [

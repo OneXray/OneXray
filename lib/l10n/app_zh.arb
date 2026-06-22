@@ -137,6 +137,7 @@
   "xraySettingUIPageMetrics": "Metrics",
   "xraySettingUIPagePolicy": "Policy",
   "metricsPageTitle": "Metrics",
+  "metricsPageEnabled": "启用 Metrics",
   "metricsPageListen": "监听 listen",
   "policyPageTitle": "Policy",
   "policyPageSystem": "system",

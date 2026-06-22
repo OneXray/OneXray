@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/url.dart';
@@ -9,8 +12,26 @@ import 'package:onexray/service/xray/constants.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 
-class LogController {
-  static final instance = LogController();
+class LogCubitState {
+  final bool hideLogFiles;
+
+  const LogCubitState({required this.hideLogFiles});
+
+  factory LogCubitState.initial() =>
+      LogCubitState(hideLogFiles: AppPlatform.isMacOS);
+}
+
+class LogController extends Cubit<LogCubitState> {
+  LogController() : super(LogCubitState.initial()) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    final useSystemExtension = await AppHostApi().useSystemExtension();
+    if (!isClosed) {
+      emit(LogCubitState(hideLogFiles: useSystemExtension));
+    }
+  }
 
   void moreAction(BuildContext context, String path, String menuId) {
     final id = IconMenuId.fromString(menuId);

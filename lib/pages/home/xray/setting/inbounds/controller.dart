@@ -1,3 +1,4 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_ping/params.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_tun/params.dart';
 import 'package:onexray/pages/home/xray/setting/inbounds/params.dart';
@@ -6,9 +7,9 @@ import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class InboundsController {
+class InboundsController extends Cubit<int> {
   final InboundsParams params;
-  InboundsController(this.params) {
+  InboundsController(this.params) : super(0) {
     _initParams();
   }
 
