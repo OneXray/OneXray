@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
@@ -212,6 +213,11 @@ class _HomePageState extends State<HomePage>
         ),
       );
     } else {
+      final waitingForMacApproval =
+          eventState.platformPermissionKind ==
+              PlatformPermissionKind.macosSystemExtension &&
+          eventState.platformPermissionState ==
+              PlatformPermissionState.awaitingUserApproval;
       final disconnected = eventState.runningId == DBConstants.defaultId;
       final color = disconnected
           ? ColorManager.buttonStop(context)
@@ -219,7 +225,11 @@ class _HomePageState extends State<HomePage>
       final foregroundColor = disconnected
           ? ColorManager.buttonStopForeground(context)
           : Theme.of(context).colorScheme.onPrimary;
-      final icon = disconnected ? Icons.public : Icons.private_connectivity;
+      final icon = waitingForMacApproval
+          ? Icons.admin_panel_settings
+          : disconnected
+          ? Icons.public
+          : Icons.private_connectivity;
       final style = ElevatedButton.styleFrom(
         padding: EdgeInsetsDirectional.zero,
         backgroundColor: color,
@@ -248,12 +258,15 @@ class _HomePageState extends State<HomePage>
     AppEventBusState eventState,
   ) {
     final connected = eventState.runningId != DBConstants.defaultId;
-    final statusText = _statusText(context, eventState, connected);
+    final baseStatusText = _statusText(context, eventState, connected);
+    final statusText = connected
+        ? "$baseStatusText ${controller.formatTraffic(eventState)}"
+        : baseStatusText;
     final nodeName = homeState.configName.isEmpty
         ? AppLocalizations.of(context)!.homePageNoSelectedNode
         : homeState.configName;
     final detailText = connected
-        ? controller.formatGeoLocation(context, eventState.location)
+        ? controller.formatGeoLocation(context, eventState)
         : "${AppLocalizations.of(context)!.homePageCurrentNode}: $nodeName";
     final content = Padding(
       padding: const EdgeInsetsDirectional.symmetric(
@@ -318,6 +331,12 @@ class _HomePageState extends State<HomePage>
   ) {
     if (eventState.vpnLoading) {
       return AppLocalizations.of(context)!.homePageStatusConnecting;
+    }
+    if (eventState.platformPermissionKind ==
+            PlatformPermissionKind.macosSystemExtension &&
+        eventState.platformPermissionState ==
+            PlatformPermissionState.awaitingUserApproval) {
+      return AppLocalizations.of(context)!.homePageWaitForApprovalTitle;
     }
     if (connected) {
       return AppLocalizations.of(context)!.homePageStatusConnected;

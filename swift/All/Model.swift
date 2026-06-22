@@ -38,6 +38,7 @@ struct TunJson: Codable {
 struct StartVpnRequest: Codable {
     var tun: TunJson?
     var pingPort: String?
+    var metricsPort: String?
     var coreBase64Text: String?
 
     private static func fromUrl(_ url: URL) throws -> Self {

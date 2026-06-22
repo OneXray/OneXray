@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/geo_data/add/controller.dart';
 import 'package:onexray/pages/global/constants.dart';
+import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
@@ -62,6 +64,7 @@ class GeoDatAddPage extends StatelessWidget {
         _name(context, controller),
         _type(context, controller, state),
         _url(context, controller),
+        _autoUpdate(context),
       ],
     );
   }
@@ -93,6 +96,14 @@ class GeoDatAddPage extends StatelessWidget {
       label: AppLocalizations.of(context)!.geoDatAddPageUrl,
       hintText: AppLocalizations.of(context)!.geoDatAddPageUrlExample,
       helperText: AppLocalizations.of(context)!.helpURL,
+    );
+  }
+
+  Widget _autoUpdate(BuildContext context) {
+    return SettingRow(
+      title: AppLocalizations.of(context)!.autoUpdatePageTitle,
+      onTap: () => context.push(RouterPath.autoUpdate),
+      showChevron: true,
     );
   }
 

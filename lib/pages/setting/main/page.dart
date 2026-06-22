@@ -83,8 +83,8 @@ class SettingPage extends StatelessWidget {
       title: AppLocalizations.of(context)!.settingPageSectionData,
       children: [
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.subUpdatePageTitle,
-          onTap: () => controller.gotoSubUpdate(context),
+          title: AppLocalizations.of(context)!.autoUpdatePageTitle,
+          onTap: () => controller.gotoAutoUpdate(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.geoDataListPageTitle,

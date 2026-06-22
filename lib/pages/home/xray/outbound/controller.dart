@@ -12,6 +12,7 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/setting/tun/network_interface/params.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
@@ -73,11 +74,11 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     trojanPasswordController.dispose();
     socksUserController.dispose();
     socksPassController.dispose();
+    httpUserController.dispose();
+    httpPassController.dispose();
     tagController.dispose();
     xhttpHostController.dispose();
     xhttpPathController.dispose();
-    kcpHeaderDomainController.dispose();
-    kcpSeedController.dispose();
     grpcAuthorityController.dispose();
     grpcServiceNameController.dispose();
     wsPathController.dispose();
@@ -86,10 +87,6 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     httpupgradePathController.dispose();
 
     hysteriaAuthController.dispose();
-    hysteriaUpController.dispose();
-    hysteriaDownController.dispose();
-    hysteriaUdphopPortController.dispose();
-    hysteriaUdphopIntervalController.dispose();
 
     serverNameController.dispose();
     pinnedPeerCertSha256Controller.dispose();
@@ -101,6 +98,9 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     spiderXController.dispose();
     muxConcurrencyController.dispose();
     muxXudpConcurrencyController.dispose();
+    happyEyeballsTryDelayMsController.dispose();
+    happyEyeballsInterleaveController.dispose();
+    happyEyeballsMaxConcurrentTryController.dispose();
 
     // dispose controller list
     for (final controller in rawPathControllers) {
@@ -196,14 +196,13 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     trojanPasswordController.text = outboundState.trojanPassword;
     socksUserController.text = outboundState.socksUser;
     socksPassController.text = outboundState.socksPass;
+    httpUserController.text = outboundState.httpUser;
+    httpPassController.text = outboundState.httpPass;
 
     tagController.text = outboundState.tag;
 
     xhttpHostController.text = outboundState.xhttpHost;
     xhttpPathController.text = outboundState.xhttpPath;
-
-    kcpHeaderDomainController.text = outboundState.kcpHeaderDomain;
-    kcpSeedController.text = outboundState.kcpSeed;
 
     grpcAuthorityController.text = outboundState.grpcAuthority;
     grpcServiceNameController.text = outboundState.grpcServiceName;
@@ -215,11 +214,6 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     httpupgradePathController.text = outboundState.httpupgradePath;
 
     hysteriaAuthController.text = outboundState.hysteriaAuth;
-    hysteriaUpController.text = outboundState.hysteriaUp;
-    hysteriaDownController.text = outboundState.hysteriaDown;
-    hysteriaUdphopPortController.text = outboundState.hysteriaUdphopPort;
-    hysteriaUdphopIntervalController.text =
-        outboundState.hysteriaUdphopInterval;
 
     serverNameController.text = outboundState.serverName;
     pinnedPeerCertSha256Controller.text = outboundState.pinnedPeerCertSha256;
@@ -232,6 +226,12 @@ class OutboundUIController extends Cubit<OutboundUIState> {
 
     muxConcurrencyController.text = outboundState.muxConcurrency;
     muxXudpConcurrencyController.text = outboundState.muxXudpConcurrency;
+    happyEyeballsTryDelayMsController.text =
+        outboundState.happyEyeballsTryDelayMs;
+    happyEyeballsInterleaveController.text =
+        outboundState.happyEyeballsInterleave;
+    happyEyeballsMaxConcurrentTryController.text =
+        outboundState.happyEyeballsMaxConcurrentTry;
   }
 
   Future<void> gotoRawEdit(BuildContext context) async {
@@ -288,22 +288,42 @@ class OutboundUIController extends Cubit<OutboundUIState> {
 
   final shadowsocksPasswordController = TextEditingController();
 
-  void updateShadowsocksUot(bool value) {
-    state.outboundState.shadowsocksUot = value;
-    emit(state.bumped());
-  }
-
-  void updateShadowsocksUotVersion(ShadowsocksUoTVersion value) {
-    state.outboundState.shadowsocksUotVersion = value;
-    emit(state.bumped());
-  }
-
   final trojanPasswordController = TextEditingController();
 
   final socksUserController = TextEditingController();
   final socksPassController = TextEditingController();
 
+  final httpUserController = TextEditingController();
+  final httpPassController = TextEditingController();
+
+  Future<void> editHttpHeaders(BuildContext context) async {
+    final headers = state.outboundState.httpHeaders;
+    final text = JsonTool.encoderForFile.convert(headers);
+    final params = XrayRawEditParams(
+      AppLocalizations.of(context)!.outboundUIPageHeaders,
+      text,
+    );
+    final newText = await context.push<String>(
+      RouterPath.xrayRawEdit,
+      extra: params,
+    );
+    if (newText != null) {
+      final decoded = JsonTool.decoder.convert(newText);
+      if (decoded is Map) {
+        state.outboundState.httpHeaders = decoded.map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        );
+        emit(state.bumped());
+      }
+    }
+  }
+
   final tagController = TextEditingController();
+
+  void updateTargetStrategy(XrayDomainStrategy value) {
+    state.outboundState.targetStrategy = value;
+    emit(state.bumped());
+  }
 
   void updateNetwork(StreamSettingsNetwork value) {
     state.outboundState.network = value;
@@ -345,16 +365,8 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     emit(state.bumped());
   }
 
-  void updateKcpHeaderType(KcpHeaderType value) {
-    state.outboundState.kcpHeaderType = value;
-    emit(state.bumped());
-  }
-
   final wsPathController = TextEditingController();
   final wsHostController = TextEditingController();
-
-  final kcpHeaderDomainController = TextEditingController();
-  final kcpSeedController = TextEditingController();
 
   final grpcAuthorityController = TextEditingController();
   final grpcServiceNameController = TextEditingController();
@@ -394,10 +406,6 @@ class OutboundUIController extends Cubit<OutboundUIState> {
   }
 
   final hysteriaAuthController = TextEditingController();
-  final hysteriaUpController = TextEditingController();
-  final hysteriaDownController = TextEditingController();
-  final hysteriaUdphopPortController = TextEditingController();
-  final hysteriaUdphopIntervalController = TextEditingController();
 
   Future<void> editFinalMask(BuildContext context) async {
     final finalMask = state.outboundState.finalMask;
@@ -442,10 +450,6 @@ class OutboundUIController extends Cubit<OutboundUIState> {
   final verifyPeerCertByNameController = TextEditingController();
 
   final echConfigListController = TextEditingController();
-  void updateEchForceQuery(StreamSettingsEchForceQuery value) {
-    state.outboundState.echForceQuery = value;
-    emit(state.bumped());
-  }
 
   final passwordController = TextEditingController();
   final shortIdController = TextEditingController();
@@ -470,6 +474,16 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     emit(state.bumped());
   }
 
+  void updateSockoptDomainStrategy(XrayDomainStrategy value) {
+    state.outboundState.sockoptDomainStrategy = value;
+    emit(state.bumped());
+  }
+
+  void updateV6only(bool value) {
+    state.outboundState.v6only = value;
+    emit(state.bumped());
+  }
+
   void updateDialerProxy(String value) {
     state.outboundState.dialerProxy = value;
     emit(state.bumped());
@@ -491,6 +505,25 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     state.outboundState.tcpMptcp = value;
     emit(state.bumped());
   }
+
+  void updateAddressPortStrategy(AddressPortStrategy value) {
+    state.outboundState.addressPortStrategy = value;
+    emit(state.bumped());
+  }
+
+  void updateHappyEyeballsEnabled(bool value) {
+    state.outboundState.happyEyeballsEnabled = value;
+    emit(state.bumped());
+  }
+
+  void updateHappyEyeballsPrioritizeIPv6(bool value) {
+    state.outboundState.happyEyeballsPrioritizeIPv6 = value;
+    emit(state.bumped());
+  }
+
+  final happyEyeballsTryDelayMsController = TextEditingController();
+  final happyEyeballsInterleaveController = TextEditingController();
+  final happyEyeballsMaxConcurrentTryController = TextEditingController();
 
   Future<void> realPing(BuildContext context) async {
     _mergeInputToState(state.outboundState);
@@ -523,7 +556,8 @@ class OutboundUIController extends Cubit<OutboundUIState> {
 
   Future<void> _updateDb() async {
     if (params.id == DBConstants.defaultId) {
-      await state.outboundState.insertToDb();
+      final id = await state.outboundState.insertToDb();
+      PingService().schedulePingConfigIds([id]);
     } else {
       if (_outboundData != null) {
         await state.outboundState.updateToDb(_outboundData!);
@@ -557,14 +591,13 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     outboundState.trojanPassword = trojanPasswordController.text;
     outboundState.socksUser = socksUserController.text;
     outboundState.socksPass = socksPassController.text;
+    outboundState.httpUser = httpUserController.text;
+    outboundState.httpPass = httpPassController.text;
 
     outboundState.tag = tagController.text;
 
     outboundState.xhttpHost = xhttpHostController.text;
     outboundState.xhttpPath = xhttpPathController.text;
-
-    outboundState.kcpHeaderDomain = kcpHeaderDomainController.text;
-    outboundState.kcpSeed = kcpSeedController.text;
 
     outboundState.grpcAuthority = grpcAuthorityController.text;
     outboundState.grpcServiceName = grpcServiceNameController.text;
@@ -576,11 +609,6 @@ class OutboundUIController extends Cubit<OutboundUIState> {
     outboundState.httpupgradePath = httpupgradePathController.text;
 
     outboundState.hysteriaAuth = hysteriaAuthController.text;
-    outboundState.hysteriaUp = hysteriaUpController.text;
-    outboundState.hysteriaDown = hysteriaDownController.text;
-    outboundState.hysteriaUdphopPort = hysteriaUdphopPortController.text;
-    outboundState.hysteriaUdphopInterval =
-        hysteriaUdphopIntervalController.text;
 
     outboundState.serverName = serverNameController.text;
     outboundState.pinnedPeerCertSha256 = pinnedPeerCertSha256Controller.text;
@@ -593,6 +621,12 @@ class OutboundUIController extends Cubit<OutboundUIState> {
 
     outboundState.muxConcurrency = muxConcurrencyController.text;
     outboundState.muxXudpConcurrency = muxXudpConcurrencyController.text;
+    outboundState.happyEyeballsTryDelayMs =
+        happyEyeballsTryDelayMsController.text;
+    outboundState.happyEyeballsInterleave =
+        happyEyeballsInterleaveController.text;
+    outboundState.happyEyeballsMaxConcurrentTry =
+        happyEyeballsMaxConcurrentTryController.text;
   }
 
   Future<bool> _validate(BuildContext context) async {

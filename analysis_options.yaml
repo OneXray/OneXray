@@ -5,5 +5,8 @@ linter:
     - always_use_package_imports
 
 analyzer:
+  exclude:
+    - build/**
+    - lib/core/ffi/generated_bindings.dart
   plugins:
     - custom_lint

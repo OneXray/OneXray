@@ -108,15 +108,18 @@ enum InboundSniffingDestOverride {
 class InboundSniffingState {
   var enabled = true;
   var routeOnly = false;
+  var metadataOnly = false;
   var destOverride = <InboundSniffingDestOverride>{
     InboundSniffingDestOverride.http,
     InboundSniffingDestOverride.tls,
     InboundSniffingDestOverride.quic,
   };
   var domainsExcluded = <String>[];
+  var ipsExcluded = <String>[];
 
   void removeWhitespace() {
     domainsExcluded = domainsExcluded.removeWhitespace;
+    ipsExcluded = ipsExcluded.removeWhitespace;
   }
 
   void readFromInbound(XrayInbound inbound) {
@@ -131,6 +134,9 @@ class InboundSniffingState {
     if (sniffing.routeOnly != null) {
       routeOnly = sniffing.routeOnly!;
     }
+    if (sniffing.metadataOnly != null) {
+      metadataOnly = sniffing.metadataOnly!;
+    }
     if (EmptyTool.checkList(sniffing.destOverride)) {
       destOverride = InboundSniffingDestOverride.fromStrings(
         sniffing.destOverride!,
@@ -139,12 +145,18 @@ class InboundSniffingState {
     if (EmptyTool.checkList(sniffing.domainsExcluded)) {
       domainsExcluded = sniffing.domainsExcluded!;
     }
+    if (EmptyTool.checkList(sniffing.ipsExcluded)) {
+      ipsExcluded = sniffing.ipsExcluded!;
+    }
   }
 
   XrayInboundSniffing get xrayJson {
     final sniffing = XrayInboundSniffingStandard.standard;
     sniffing.enabled = enabled;
     sniffing.routeOnly = routeOnly;
+    if (metadataOnly) {
+      sniffing.metadataOnly = metadataOnly;
+    }
     if (destOverride.isNotEmpty) {
       sniffing.destOverride = InboundSniffingDestOverride.toStrings(
         destOverride,
@@ -152,6 +164,9 @@ class InboundSniffingState {
     }
     if (domainsExcluded.isNotEmpty) {
       sniffing.domainsExcluded = domainsExcluded;
+    }
+    if (ipsExcluded.isNotEmpty) {
+      sniffing.ipsExcluded = ipsExcluded;
     }
     return sniffing;
   }
@@ -193,14 +208,15 @@ class InboundsState {
 
 class XrayPorts {
   String pingPort;
+  String metricsPort;
 
-  XrayPorts(this.pingPort);
+  XrayPorts(this.pingPort, this.metricsPort);
 
   static Future<XrayPorts?> getPorts() async {
-    final ports = await AppHostApi().getFreePorts(1);
-    if (ports.length != 1) {
+    final ports = await AppHostApi().getFreePorts(2);
+    if (ports.length != 2) {
       return null;
     }
-    return XrayPorts("${ports[0]}");
+    return XrayPorts("${ports[0]}", "${ports[1]}");
   }
 }

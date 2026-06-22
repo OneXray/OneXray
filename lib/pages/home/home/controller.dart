@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/constants.dart';
-import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -22,10 +21,12 @@ import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/geo_data/system_dat_service.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -58,7 +59,9 @@ class HomeController extends Cubit<HomeState> {
   late final StreamSubscription<void> _toastSubscription;
   late final StreamSubscription<RefreshVpnResult> _refreshVpnSubscription;
   Future<void>? _systemGeoDatFuture;
+  Timer? _systemExtensionApprovalPollTimer;
   var _systemExtensionApprovalShown = false;
+  var _systemExtensionApprovalRefreshInFlight = false;
 
   Future<void> _asyncInit() async {
     _initToastStream();
@@ -178,22 +181,88 @@ class HomeController extends Cubit<HomeState> {
 
   void _handleRefreshVpn(RefreshVpnResult result) async {
     final useSystemExtension = await AppHostApi().useSystemExtension();
+    if (!context.mounted || isClosed) {
+      return;
+    }
     if (AppPlatform.isMacOS && useSystemExtension) {
+      final permission = _macosPermissionFromRefresh(result);
+      final eventBus = context.read<AppEventBus>();
+      eventBus.updatePlatformPermission(permission);
       if (result != RefreshVpnResult.waitForApproval) {
+        _stopSystemExtensionApprovalPolling();
         _systemExtensionApprovalShown = false;
+        if (eventBus.state.vpnActionState ==
+            VpnActionState.waitingForPlatformPermission) {
+          eventBus.updateVpnActionState(VpnActionState.idle);
+        }
         return;
       }
+      _startSystemExtensionApprovalPolling();
+      eventBus.updateVpnActionState(
+        VpnActionState.waitingForPlatformPermission,
+      );
       if (_systemExtensionApprovalShown || !context.mounted) {
         return;
       }
       _systemExtensionApprovalShown = true;
       ygLogger("VPN is waiting for approval, showing alert dialog");
-      ContextAlert.showOKDialog(
-        context,
-        "System Extension Approval",
-        "VPN is waiting for approval, showing alert dialog",
-      );
+      unawaited(_showSystemExtensionApprovalDialog());
     }
+  }
+
+  void _startSystemExtensionApprovalPolling() {
+    if (_systemExtensionApprovalPollTimer != null) {
+      return;
+    }
+    _systemExtensionApprovalPollTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) {
+        if (isClosed || !context.mounted) {
+          _stopSystemExtensionApprovalPolling();
+          return;
+        }
+        if (_systemExtensionApprovalRefreshInFlight) {
+          return;
+        }
+        _systemExtensionApprovalRefreshInFlight = true;
+        unawaited(
+          _refreshVpnStatus().whenComplete(() {
+            _systemExtensionApprovalRefreshInFlight = false;
+          }),
+        );
+      },
+    );
+  }
+
+  void _stopSystemExtensionApprovalPolling() {
+    _systemExtensionApprovalPollTimer?.cancel();
+    _systemExtensionApprovalPollTimer = null;
+  }
+
+  PlatformPermissionResult _macosPermissionFromRefresh(
+    RefreshVpnResult result,
+  ) {
+    final state = switch (result) {
+      RefreshVpnResult.installed => PlatformPermissionState.granted,
+      RefreshVpnResult.waitForApproval =>
+        PlatformPermissionState.awaitingUserApproval,
+      RefreshVpnResult.notInstalled => PlatformPermissionState.notDetermined,
+    };
+    return PlatformPermissionResult(
+      kind: PlatformPermissionKind.macosSystemExtension,
+      state: state,
+    );
+  }
+
+  Future<void> _showSystemExtensionApprovalDialog() async {
+    if (!context.mounted) {
+      return;
+    }
+    await ContextAlert.showOKDialog(
+      context,
+      AppLocalizations.of(context)!.homePageWaitForApprovalTitle,
+      AppLocalizations.of(context)!.homePageWaitForApprovalTips,
+    );
   }
 
   void gotoSettings(BuildContext context) {
@@ -266,27 +335,54 @@ class HomeController extends Cubit<HomeState> {
     }
   }
 
-  String formatGeoLocation(BuildContext context, GeoLocation location) {
+  String formatGeoLocation(BuildContext context, AppEventBusState eventState) {
+    final location = eventState.location;
+    final appLocalizations = AppLocalizations.of(context)!;
     var text = "";
-    text += AppLocalizations.of(context)!.nodeInfoPageDuration;
-    if (location.duration == null) {
-      text += ": ${AppLocalizations.of(context)!.nodeInfoPageFetching} ";
-    } else {
-      text += ": ${location.duration} ";
-    }
-    text += AppLocalizations.of(context)!.nodeInfoPageDelay;
-    if (location.delay == null) {
-      text += ": ${AppLocalizations.of(context)!.nodeInfoPageFetching} ";
-    } else {
-      text += ": ${location.delay}ms ";
-    }
-    text += AppLocalizations.of(context)!.nodeInfoPageLocation;
-    if (location.country == null) {
-      text += ": ${AppLocalizations.of(context)!.nodeInfoPageFetching} ";
-    } else {
-      text += ": ${location.country} ";
-    }
+    text += appLocalizations.nodeInfoPageDuration;
+    text += ": ${location.duration ?? appLocalizations.nodeInfoPageFetching} ";
+    text += appLocalizations.nodeInfoPageDelay;
+    text += ": ${_formatDelay(context, eventState)} ";
+    text += appLocalizations.nodeInfoPageLocation;
+    text += ": ${_formatGeoValue(context, eventState, location.country)} ";
     return text;
+  }
+
+  String formatTraffic(AppEventBusState eventState) {
+    return XrayMetricsFormatter.formatTraffic(eventState.trafficMetrics);
+  }
+
+  String _formatDelay(BuildContext context, AppEventBusState eventState) {
+    final appLocalizations = AppLocalizations.of(context)!;
+    switch (eventState.pingProbeState) {
+      case ConnectivityProbeState.idle:
+      case ConnectivityProbeState.loading:
+        return appLocalizations.nodeInfoPageFetching;
+      case ConnectivityProbeState.failed:
+        return appLocalizations.nodeInfoPageFailed;
+      case ConnectivityProbeState.success:
+        final delay = eventState.location.delay;
+        return delay == null
+            ? appLocalizations.nodeInfoPageFailed
+            : "${delay}ms";
+    }
+  }
+
+  String _formatGeoValue(
+    BuildContext context,
+    AppEventBusState eventState,
+    String? value,
+  ) {
+    final appLocalizations = AppLocalizations.of(context)!;
+    switch (eventState.geoLocationProbeState) {
+      case ConnectivityProbeState.idle:
+      case ConnectivityProbeState.loading:
+        return appLocalizations.nodeInfoPageFetching;
+      case ConnectivityProbeState.failed:
+        return appLocalizations.nodeInfoPageFailed;
+      case ConnectivityProbeState.success:
+        return value ?? appLocalizations.nodeInfoPageFailed;
+    }
   }
 
   void gotoNodeInfo(BuildContext context) {
@@ -323,20 +419,44 @@ class HomeController extends Cubit<HomeState> {
     }
 
     await _ensureSystemGeoDatAssets();
-    final permission = await VpnService().checkPermission();
-    if (!permission) {
-      if (context.mounted) {
-        ContextAlert.showPermissionDialog(context);
-      }
+    final result = await VpnService().startVpn(state.configId);
+    await _handleVpnCommandResult(result);
+  }
+
+  Future<void> _handleVpnCommandResult(NativeVpnCommandResult result) async {
+    if (!context.mounted) {
       return;
     }
-    await VpnService().startVpn(state.configId);
+    switch (result.state) {
+      case NativeVpnCommandState.success:
+        return;
+      case NativeVpnCommandState.waitingForPlatformPermission:
+        final permission = result.permission;
+        if (permission?.kind == PlatformPermissionKind.macosSystemExtension) {
+          _startSystemExtensionApprovalPolling();
+          _systemExtensionApprovalShown = true;
+          await _showSystemExtensionApprovalDialog();
+          return;
+        }
+        if (permission?.kind == PlatformPermissionKind.androidVpn &&
+            permission?.state == PlatformPermissionState.denied) {
+          await ContextAlert.showPermissionDialog(context);
+        }
+        return;
+      case NativeVpnCommandState.failed:
+        final message = result.message;
+        if (message != null && message.isNotEmpty) {
+          ContextAlert.showToast(context, message);
+        }
+        return;
+    }
   }
 
   @override
   Future<void> close() {
     _toastSubscription.cancel();
     _refreshVpnSubscription.cancel();
+    _stopSystemExtensionApprovalPolling();
     return super.close();
   }
 }

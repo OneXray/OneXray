@@ -12,6 +12,7 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
           ? null
           : TunJson.fromJson(json['tun'] as Map<String, dynamic>),
       json['pingPort'] as String?,
+      json['metricsPort'] as String?,
       json['coreBase64Text'] as String?,
     );
 
@@ -19,6 +20,7 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
     <String, dynamic>{
       'tun': ?instance.tun?.toJson(),
       'pingPort': ?instance.pingPort,
+      'metricsPort': ?instance.metricsPort,
       'coreBase64Text': ?instance.coreBase64Text,
     };
 
@@ -34,12 +36,6 @@ Map<String, dynamic> _$CallResponseToJson(CallResponse instance) =>
       'data': ?instance.data,
       'error': ?instance.error,
     };
-
-InitDnsRequest _$InitDnsRequestFromJson(Map<String, dynamic> json) =>
-    InitDnsRequest(json['dns'] as String?, json['deviceName'] as String?);
-
-Map<String, dynamic> _$InitDnsRequestToJson(InitDnsRequest instance) =>
-    <String, dynamic>{'dns': ?instance.dns, 'deviceName': ?instance.deviceName};
 
 GetFreePortsResponse _$GetFreePortsResponseFromJson(
   Map<String, dynamic> json,

@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/network/model.dart';
-import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -48,32 +47,52 @@ class NetClient {
     _downloadClient.options.headers = headers;
   }
 
-  Future<GeoLocation> connectivityTest(String port, String url) async {
+  static const _connectivityRetryCount = 3;
+
+  Future<int?> ping(String port, String url) async {
+    if (url.trim().isEmpty) {
+      return null;
+    }
     _proxyPort = port;
-    var location = GeoLocationStandard.standard;
-    final retryCount = 3;
-    for (var i = 0; i < retryCount; i++) {
+    for (var i = 0; i < _connectivityRetryCount; i++) {
       try {
         final start = DateTime.now().millisecondsSinceEpoch;
-        location = await _geoLocation();
-        if (location.ipAddress != null) {
-          final end = DateTime.now().millisecondsSinceEpoch;
-          location.delay = end - start;
-          break;
-        } else {
-          await Future.delayed(Duration(seconds: 2));
+        final res = await _proxyClient.get<Object?>(
+          url,
+          options: Options(responseType: ResponseType.plain),
+        );
+        if (res.statusCode != null &&
+            res.statusCode! >= 200 &&
+            res.statusCode! < 400) {
+          return DateTime.now().millisecondsSinceEpoch - start;
         }
       } catch (e) {
         ygLogger("$e");
       }
+      if (i < _connectivityRetryCount - 1) {
+        await Future.delayed(Duration(seconds: 2));
+      }
     }
-    return location;
+    return null;
+  }
+
+  Future<GeoLocation?> geoLocation(String port) async {
+    _proxyPort = port;
+    for (var i = 0; i < _connectivityRetryCount; i++) {
+      final location = await _geoLocation();
+      if (location?.ipAddress != null) {
+        return location;
+      }
+      if (i < _connectivityRetryCount - 1) {
+        await Future.delayed(Duration(seconds: 2));
+      }
+    }
+    return null;
   }
 
   final _geoIPUrl = "https://ip-check-perf.radar.cloudflare.com/";
 
-  Future<GeoLocation> _geoLocation() async {
-    var location = GeoLocationStandard.standard;
+  Future<GeoLocation?> _geoLocation() async {
     try {
       final res = await _proxyClient.get<Map<String, dynamic>>(_geoIPUrl);
       if (res.statusCode == 200 && res.data != null) {
@@ -83,7 +102,7 @@ class NetClient {
     } catch (e) {
       ygLogger("$e");
     }
-    return location;
+    return null;
   }
 
   Future<String?> getText(String url) async {

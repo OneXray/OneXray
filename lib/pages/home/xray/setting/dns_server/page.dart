@@ -73,6 +73,7 @@ class DnsServerPage extends StatelessWidget {
       title: AppLocalizations.of(context)!.dnsServerPageSectionAddress,
       children: [
         _address(context, controller),
+        _clientIp(context, controller),
         _port(context, controller),
         _skipFallback(context, controller, state),
       ],
@@ -84,6 +85,14 @@ class DnsServerPage extends StatelessWidget {
       controller: controller.addressController,
       label: AppLocalizations.of(context)!.dnsServerPageAddress,
       hintText: AppLocalizations.of(context)!.dnsServerPageAddressExample,
+    );
+  }
+
+  Widget _clientIp(BuildContext context, DnsServerController controller) {
+    return TextFieldSettingRow(
+      controller: controller.clientIpController,
+      label: AppLocalizations.of(context)!.dnsServerPageClientIp,
+      hintText: AppLocalizations.of(context)!.dnsServerPageClientIpExample,
     );
   }
 
@@ -246,7 +255,10 @@ class DnsServerPage extends StatelessWidget {
       children: [
         _queryStrategy(context, controller, state),
         _tag(context, controller),
+        _timeoutMs(context, controller),
         _disableCache(context, controller, state),
+        _serveStale(context, controller, state),
+        _serveExpiredTTL(context, controller),
         _finalQuery(context, controller, state),
       ],
     );
@@ -273,6 +285,14 @@ class DnsServerPage extends StatelessWidget {
     );
   }
 
+  Widget _timeoutMs(BuildContext context, DnsServerController controller) {
+    return TextFieldSettingRow(
+      controller: controller.timeoutMsController,
+      label: AppLocalizations.of(context)!.dnsServerPageTimeoutMs,
+      hintText: AppLocalizations.of(context)!.dnsServerPageTimeoutMsExample,
+    );
+  }
+
   Widget _disableCache(
     BuildContext context,
     DnsServerController controller,
@@ -282,6 +302,31 @@ class DnsServerPage extends StatelessWidget {
       title: AppLocalizations.of(context)!.dnsServerPageDisableCache,
       value: state.serverState.disableCache,
       onChanged: (value) => controller.updateDisableCache(value),
+    );
+  }
+
+  Widget _serveStale(
+    BuildContext context,
+    DnsServerController controller,
+    DnsServerCubitState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.dnsServerPageServeStale,
+      value: state.serverState.serveStale,
+      onChanged: (value) => controller.updateServeStale(value),
+    );
+  }
+
+  Widget _serveExpiredTTL(
+    BuildContext context,
+    DnsServerController controller,
+  ) {
+    return TextFieldSettingRow(
+      controller: controller.serveExpiredTTLController,
+      label: AppLocalizations.of(context)!.dnsServerPageServeExpiredTTL,
+      hintText: AppLocalizations.of(
+        context,
+      )!.dnsServerPageServeExpiredTTLExample,
     );
   }
 

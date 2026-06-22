@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
+import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/subscription/add/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
@@ -47,6 +49,7 @@ class _SubscriptionAddPageState extends State<SubscriptionAddPage> {
                 children: [
                   _name(context, controller),
                   _url(context, controller),
+                  _autoUpdate(context),
                 ],
               ),
             ),
@@ -71,6 +74,14 @@ class _SubscriptionAddPageState extends State<SubscriptionAddPage> {
       label: AppLocalizations.of(context)!.subscriptionAddPageUrl,
       hintText: AppLocalizations.of(context)!.subscriptionAddPageUrlExample,
       helperText: AppLocalizations.of(context)!.helpURL,
+    );
+  }
+
+  Widget _autoUpdate(BuildContext context) {
+    return SettingRow(
+      title: AppLocalizations.of(context)!.autoUpdatePageTitle,
+      onTap: () => context.push(RouterPath.autoUpdate),
+      showChevron: true,
     );
   }
 

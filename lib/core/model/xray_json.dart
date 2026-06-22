@@ -10,7 +10,9 @@ class XrayJson {
   XrayRouting? routing;
   List<XrayInbound>? inbounds;
   List<XrayOutbound>? outbounds;
-  @JsonKey(name: "fakeDns")
+  XrayPolicy? policy;
+  XrayStats? stats;
+  XrayMetrics? metrics;
   List<XrayFakeDns>? fakeDns;
 
   XrayJson(
@@ -20,6 +22,9 @@ class XrayJson {
     this.routing,
     this.inbounds,
     this.outbounds,
+    this.policy,
+    this.stats,
+    this.metrics,
     this.fakeDns,
   );
 
@@ -53,24 +58,115 @@ class XrayLog {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayPolicy {
+  Map<String, XrayPolicyLevel>? levels;
+  XrayPolicySystem? system;
+
+  XrayPolicy(this.levels, this.system);
+
+  factory XrayPolicy.fromJson(Map<String, dynamic> json) =>
+      _$XrayPolicyFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayPolicyToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayPolicyLevel {
+  int? handshake;
+  int? connIdle;
+  int? uplinkOnly;
+  int? downlinkOnly;
+  bool? statsUserUplink;
+  bool? statsUserDownlink;
+  bool? statsUserOnline;
+  int? bufferSize;
+
+  XrayPolicyLevel(
+    this.handshake,
+    this.connIdle,
+    this.uplinkOnly,
+    this.downlinkOnly,
+    this.statsUserUplink,
+    this.statsUserDownlink,
+    this.statsUserOnline,
+    this.bufferSize,
+  );
+
+  factory XrayPolicyLevel.fromJson(Map<String, dynamic> json) =>
+      _$XrayPolicyLevelFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayPolicyLevelToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayPolicySystem {
+  bool? statsInboundUplink;
+  bool? statsInboundDownlink;
+  bool? statsOutboundUplink;
+  bool? statsOutboundDownlink;
+
+  XrayPolicySystem(
+    this.statsInboundUplink,
+    this.statsInboundDownlink,
+    this.statsOutboundUplink,
+    this.statsOutboundDownlink,
+  );
+
+  factory XrayPolicySystem.fromJson(Map<String, dynamic> json) =>
+      _$XrayPolicySystemFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayPolicySystemToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayStats {
+  XrayStats();
+
+  factory XrayStats.fromJson(Map<String, dynamic> json) =>
+      _$XrayStatsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayStatsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayMetrics {
+  String? listen;
+
+  XrayMetrics(this.listen);
+
+  factory XrayMetrics.fromJson(Map<String, dynamic> json) =>
+      _$XrayMetricsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayMetricsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayDns {
   Map<String, List<String>>? hosts;
   List<XrayDnsServer>? servers;
+  String? clientIp;
   String? tag;
   String? queryStrategy;
   bool? disableCache;
+  bool? serveStale;
+  int? serveExpiredTTL;
   bool? disableFallback;
   bool? disableFallbackIfMatch;
+  bool? enableParallelQuery;
   bool? useSystemHosts;
 
   XrayDns(
     this.hosts,
     this.servers,
+    this.clientIp,
     this.tag,
     this.queryStrategy,
     this.disableCache,
+    this.serveStale,
+    this.serveExpiredTTL,
     this.disableFallback,
     this.disableFallbackIfMatch,
+    this.enableParallelQuery,
     this.useSystemHosts,
   );
 
@@ -83,6 +179,7 @@ class XrayDns {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayDnsServer {
   String? address;
+  String? clientIp;
   int? port;
   bool? skipFallback;
   List<String>? domains;
@@ -90,11 +187,15 @@ class XrayDnsServer {
   List<String>? unexpectedIPs;
   String? queryStrategy;
   String? tag;
+  int? timeoutMs;
   bool? disableCache;
+  bool? serveStale;
+  int? serveExpiredTTL;
   bool? finalQuery;
 
   XrayDnsServer(
     this.address,
+    this.clientIp,
     this.skipFallback,
     this.port,
     this.domains,
@@ -102,7 +203,10 @@ class XrayDnsServer {
     this.unexpectedIPs,
     this.queryStrategy,
     this.tag,
+    this.timeoutMs,
     this.disableCache,
+    this.serveStale,
+    this.serveExpiredTTL,
     this.finalQuery,
   );
 
@@ -197,12 +301,16 @@ class XrayInboundSniffing {
   bool? routeOnly;
   List<String>? destOverride;
   List<String>? domainsExcluded;
+  List<String>? ipsExcluded;
+  bool? metadataOnly;
 
   XrayInboundSniffing(
     this.enabled,
     this.routeOnly,
     this.destOverride,
     this.domainsExcluded,
+    this.ipsExcluded,
+    this.metadataOnly,
   );
 
   factory XrayInboundSniffing.fromJson(Map<String, dynamic> json) =>
@@ -214,7 +322,6 @@ class XrayInboundSniffing {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayInboundTun {
   String? name;
-  @JsonKey(name: "MTU")
   int? mtu;
   String? autoOutboundsInterface;
 
@@ -235,6 +342,7 @@ class XrayOutbound {
   String? tag;
   XrayStreamSettings? streamSettings;
   XrayMux? mux;
+  String? targetStrategy;
 
   XrayOutbound(
     this.name,
@@ -244,6 +352,7 @@ class XrayOutbound {
     this.tag,
     this.streamSettings,
     this.mux,
+    this.targetStrategy,
   );
 
   factory XrayOutbound.fromJson(Map<String, dynamic> json) =>
@@ -258,19 +367,8 @@ class XrayOutboundShadowsocks {
   int? port;
   String? method;
   String? password;
-  bool? uot;
 
-  @JsonKey(name: "UoTVersion")
-  int? uotVersion;
-
-  XrayOutboundShadowsocks(
-    this.address,
-    this.port,
-    this.method,
-    this.password,
-    this.uot,
-    this.uotVersion,
-  );
+  XrayOutboundShadowsocks(this.address, this.port, this.method, this.password);
 
   factory XrayOutboundShadowsocks.fromJson(Map<String, dynamic> json) =>
       _$XrayOutboundShadowsocksFromJson(json);
@@ -291,6 +389,22 @@ class XrayOutboundSocks {
       _$XrayOutboundSocksFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayOutboundSocksToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayOutboundHttp {
+  String? address;
+  int? port;
+  String? user;
+  String? pass;
+  Map<String, String>? headers;
+
+  XrayOutboundHttp(this.address, this.port, this.user, this.pass, this.headers);
+
+  factory XrayOutboundHttp.fromJson(Map<String, dynamic> json) =>
+      _$XrayOutboundHttpFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayOutboundHttpToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -419,15 +533,8 @@ class XrayOutboundDns {
   String? address;
   int? port;
   List<XrayOutboundDnsRule>? rules;
-  List<int>? blockTypes;
 
-  XrayOutboundDns(
-    this.network,
-    this.address,
-    this.port,
-    this.rules,
-    this.blockTypes,
-  );
+  XrayOutboundDns(this.network, this.address, this.port, this.rules);
 
   factory XrayOutboundDns.fromJson(Map<String, dynamic> json) =>
       _$XrayOutboundDnsFromJson(json);
@@ -500,7 +607,6 @@ class XrayTlsSettings {
   String? pinnedPeerCertSha256;
   String? verifyPeerCertByName;
   String? echConfigList;
-  String? echForceQuery;
 
   XrayTlsSettings(
     this.serverName,
@@ -509,7 +615,6 @@ class XrayTlsSettings {
     this.pinnedPeerCertSha256,
     this.verifyPeerCertByName,
     this.echConfigList,
-    this.echForceQuery,
   );
 
   factory XrayTlsSettings.fromJson(Map<String, dynamic> json) =>
@@ -601,28 +706,12 @@ class XrayRawSettingsHeaderRequestHeaders {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayKcpSettings {
-  XrayKcpHeader? header;
-  String? seed;
-
-  XrayKcpSettings(this.header, this.seed);
+  XrayKcpSettings();
 
   factory XrayKcpSettings.fromJson(Map<String, dynamic> json) =>
       _$XrayKcpSettingsFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayKcpSettingsToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class XrayKcpHeader {
-  String? type;
-  String? domain;
-
-  XrayKcpHeader(this.type, this.domain);
-
-  factory XrayKcpHeader.fromJson(Map<String, dynamic> json) =>
-      _$XrayKcpHeaderFromJson(json);
-
-  Map<String, dynamic> toJson() => _$XrayKcpHeaderToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -684,17 +773,8 @@ class XrayXhttpSettings {
 class XrayHysteriaSettings {
   int? version;
   String? auth;
-  String? up;
-  String? down;
-  XrayHysteriaSettingsUdphop? udphop;
 
-  XrayHysteriaSettings(
-    this.version,
-    this.auth,
-    this.up,
-    this.down,
-    this.udphop,
-  );
+  XrayHysteriaSettings(this.version, this.auth);
 
   factory XrayHysteriaSettings.fromJson(Map<String, dynamic> json) =>
       _$XrayHysteriaSettingsFromJson(json);
@@ -704,10 +784,10 @@ class XrayHysteriaSettings {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayHysteriaSettingsUdphop {
-  String? port;
+  String? ports;
   int? interval;
 
-  XrayHysteriaSettingsUdphop(this.port, this.interval);
+  XrayHysteriaSettingsUdphop(this.ports, this.interval);
 
   factory XrayHysteriaSettingsUdphop.fromJson(Map<String, dynamic> json) =>
       _$XrayHysteriaSettingsUdphopFromJson(json);
@@ -718,20 +798,48 @@ class XrayHysteriaSettingsUdphop {
 class XraySockopt {
   String? dialerProxy;
   bool? tcpFastOpen;
+  String? domainStrategy;
+  bool? v6only;
   String? interface;
   bool? tcpMptcp;
+  String? addressPortStrategy;
+  XrayHappyEyeballs? happyEyeballs;
 
   XraySockopt(
     this.dialerProxy,
     this.tcpFastOpen,
+    this.domainStrategy,
+    this.v6only,
     this.interface,
     this.tcpMptcp,
+    this.addressPortStrategy,
+    this.happyEyeballs,
   );
 
   factory XraySockopt.fromJson(Map<String, dynamic> json) =>
       _$XraySockoptFromJson(json);
 
   Map<String, dynamic> toJson() => _$XraySockoptToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayHappyEyeballs {
+  bool? prioritizeIPv6;
+  int? tryDelayMs;
+  int? interleave;
+  int? maxConcurrentTry;
+
+  XrayHappyEyeballs(
+    this.prioritizeIPv6,
+    this.tryDelayMs,
+    this.interleave,
+    this.maxConcurrentTry,
+  );
+
+  factory XrayHappyEyeballs.fromJson(Map<String, dynamic> json) =>
+      _$XrayHappyEyeballsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayHappyEyeballsToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

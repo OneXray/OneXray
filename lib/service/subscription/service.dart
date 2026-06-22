@@ -8,7 +8,7 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/share/protocol.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
-import 'package:onexray/service/sub_update/state.dart';
+import 'package:onexray/service/auto_update/state.dart';
 
 class SubscriptionService {
   static final SubscriptionService _singleton = SubscriptionService._internal();
@@ -30,6 +30,7 @@ class SubscriptionService {
     final text = await NetClient().getText(url);
     final rows = await _readConfigs(text);
     var count = 0;
+    var subId = DBConstants.defaultId;
     if (rows.isNotEmpty) {
       final db = AppDatabase();
       final row = SubscriptionCompanion.insert(
@@ -39,13 +40,17 @@ class SubscriptionService {
         count: rows.length,
         expanded: true,
       );
-      final subId = await db.subscriptionDao.insertRow(row);
+      subId = await db.subscriptionDao.insertRow(row);
       if (subId > DBConstants.defaultId) {
         count = await ConfigWriter.writeRows(rows, subId);
       }
     }
     if (showLoading) {
       eventBus.updateDownloading(false);
+    }
+
+    if (count > 0) {
+      PingService().schedulePingSubscription(subId);
     }
 
     return count;
@@ -79,10 +84,12 @@ class SubscriptionService {
         count: count,
       );
       await db.subscriptionDao.updateRow(newRow);
-      await _autoPing(subscription.id);
     }
     if (showLoading) {
       eventBus.updateDownloading(false);
+    }
+    if (count > 0) {
+      PingService().schedulePingSubscription(subscription.id);
     }
     return count;
   }
@@ -120,7 +127,7 @@ class SubscriptionService {
   }
 
   Future<void> refreshOutdatedSubscription({
-    SubUpdateState? subUpdateState,
+    AutoUpdateState? autoUpdateState,
     bool updateDownloading = true,
   }) async {
     final eventBus = AppEventBus.instance;
@@ -128,8 +135,8 @@ class SubscriptionService {
       eventBus.updateDownloading(true);
     }
 
-    final updateState = subUpdateState ?? SubUpdateState();
-    if (subUpdateState == null) {
+    final updateState = autoUpdateState ?? AutoUpdateState();
+    if (autoUpdateState == null) {
       await updateState.readFromPreferences();
     }
     if (!updateState.enable) {
@@ -149,14 +156,6 @@ class SubscriptionService {
 
     if (updateDownloading) {
       eventBus.updateDownloading(false);
-    }
-  }
-
-  Future<void> _autoPing(int subId) async {
-    final subUpdateState = SubUpdateState();
-    await subUpdateState.readFromPreferences();
-    if (subUpdateState.autoPing) {
-      await PingService().pingOutboundConfigs(subId);
     }
   }
 }

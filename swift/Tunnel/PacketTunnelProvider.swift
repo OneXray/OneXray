@@ -1,4 +1,5 @@
 import Foundation
+import LibXray
 import NetworkExtension
 
 enum TunnelError: Error {

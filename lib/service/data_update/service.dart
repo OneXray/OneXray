@@ -3,7 +3,7 @@ import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/system_state.dart';
-import 'package:onexray/service/sub_update/state.dart';
+import 'package:onexray/service/auto_update/state.dart';
 import 'package:onexray/service/subscription/service.dart';
 
 class DataUpdateService {
@@ -24,14 +24,14 @@ class DataUpdateService {
       return;
     }
 
-    final subUpdateState = SubUpdateState();
-    await subUpdateState.readFromPreferences();
+    final autoUpdateState = AutoUpdateState();
+    await autoUpdateState.readFromPreferences();
     final shouldUpdateSubscription =
-        updateSubscription && subUpdateState.enable;
+        updateSubscription && autoUpdateState.enable;
     final shouldUpdateGeoData =
         updateGeoData &&
-        subUpdateState.geoDataEnable &&
-        (!subUpdateState.geoDataUpdateAfterVpnConnected || vpnConnected);
+        autoUpdateState.geoDataEnable &&
+        (!autoUpdateState.geoDataUpdateAfterVpnConnected || vpnConnected);
     if (!shouldUpdateSubscription && !shouldUpdateGeoData) {
       return;
     }
@@ -42,12 +42,12 @@ class DataUpdateService {
     try {
       if (shouldUpdateSubscription) {
         await SubscriptionService().refreshOutdatedSubscription(
-          subUpdateState: subUpdateState,
+          autoUpdateState: autoUpdateState,
           updateDownloading: false,
         );
       }
       if (shouldUpdateGeoData) {
-        await _refreshOutdatedGeoData(subUpdateState);
+        await _refreshOutdatedGeoData(autoUpdateState);
       }
     } catch (e) {
       ygLogger("DataUpdateService checkAndRun error: $e");
@@ -57,8 +57,8 @@ class DataUpdateService {
     }
   }
 
-  Future<void> _refreshOutdatedGeoData(SubUpdateState subUpdateState) async {
-    final interval = subUpdateState.geoDataInterval.value;
+  Future<void> _refreshOutdatedGeoData(AutoUpdateState autoUpdateState) async {
+    final interval = autoUpdateState.geoDataInterval.value;
     final now = DateTime.now();
     final systemGeoData = await SystemGeoDatState.system;
     if (_expired(systemGeoData, now, interval)) {

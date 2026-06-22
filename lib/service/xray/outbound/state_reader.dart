@@ -36,6 +36,15 @@ extension OutboundStateReader on OutboundState {
         if (EmptyTool.checkString(outbound.tag)) {
           tag = outbound.tag!;
         }
+        if (EmptyTool.checkString(outbound.targetStrategy)) {
+          final targetStrategy = XrayDomainStrategy.fromString(
+            outbound.targetStrategy!,
+          );
+          if (targetStrategy == null) {
+            return false;
+          }
+          this.targetStrategy = targetStrategy;
+        }
 
         if (!_parseMux(outbound)) {
           return false;
@@ -52,6 +61,8 @@ extension OutboundStateReader on OutboundState {
             return _trojanState(outbound);
           case XrayOutboundProtocol.socks:
             return _socksState(outbound);
+          case XrayOutboundProtocol.http:
+            return _httpState(outbound);
           case XrayOutboundProtocol.hysteria:
             return _hysteriaState(outbound);
           default:
@@ -228,19 +239,6 @@ extension OutboundStateReader on OutboundState {
     if (EmptyTool.checkString(settings.password)) {
       shadowsocksPassword = settings.password!;
     }
-    if (settings.uot != null) {
-      shadowsocksUot = settings.uot!;
-    }
-    if (settings.uotVersion != null) {
-      final uoTVersion = ShadowsocksUoTVersion.fromString(
-        "${settings.uotVersion}",
-      );
-      if (uoTVersion != null) {
-        shadowsocksUotVersion = uoTVersion;
-      } else {
-        return false;
-      }
-    }
     return true;
   }
 
@@ -309,6 +307,43 @@ extension OutboundStateReader on OutboundState {
     return true;
   }
 
+  bool _httpState(XrayOutbound outbound) {
+    if (!EmptyTool.checkMap(outbound.settings)) {
+      return false;
+    }
+    final settings = XrayOutboundHttp.fromJson(outbound.settings!);
+
+    if (!_readHttpSettings(settings)) {
+      return false;
+    }
+
+    if (outbound.streamSettings != null) {
+      if (!_parseStreamSettings(outbound.streamSettings!)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _readHttpSettings(XrayOutboundHttp settings) {
+    if (EmptyTool.checkString(settings.address)) {
+      address = settings.address!;
+    }
+    if (settings.port != null) {
+      port = "${settings.port!}";
+    }
+    if (EmptyTool.checkString(settings.user)) {
+      httpUser = settings.user!;
+    }
+    if (EmptyTool.checkString(settings.pass)) {
+      httpPass = settings.pass!;
+    }
+    if (settings.headers != null && EmptyTool.checkMap(settings.headers)) {
+      httpHeaders = settings.headers!;
+    }
+    return true;
+  }
+
   bool _hysteriaState(XrayOutbound outbound) {
     if (!EmptyTool.checkMap(outbound.settings)) {
       return false;
@@ -370,11 +405,6 @@ extension OutboundStateReader on OutboundState {
         }
         break;
       case StreamSettingsNetwork.kcp:
-        if (settings.kcpSettings != null) {
-          if (!_parseKcpSettings(settings.kcpSettings!)) {
-            return false;
-          }
-        }
         break;
       case StreamSettingsNetwork.grpc:
         if (settings.grpcSettings != null) {
@@ -488,27 +518,6 @@ extension OutboundStateReader on OutboundState {
     return true;
   }
 
-  bool _parseKcpSettings(XrayKcpSettings settings) {
-    if (settings.header != null) {
-      final header = settings.header!;
-      if (EmptyTool.checkString(header.type)) {
-        final type = KcpHeaderType.fromString(header.type!);
-        if (type == null) {
-          return false;
-        }
-        kcpHeaderType = type;
-      }
-      if (EmptyTool.checkString(header.domain)) {
-        kcpHeaderDomain = header.domain!;
-      }
-    }
-
-    if (EmptyTool.checkString(settings.seed)) {
-      kcpSeed = settings.seed!;
-    }
-    return true;
-  }
-
   bool _parseGrpcSettings(XrayGrpcSettings settings) {
     if (EmptyTool.checkString(settings.authority)) {
       grpcAuthority = settings.authority!;
@@ -546,18 +555,6 @@ extension OutboundStateReader on OutboundState {
     if (EmptyTool.checkString(settings.auth)) {
       hysteriaAuth = settings.auth!;
     }
-    if (EmptyTool.checkString(settings.up)) {
-      hysteriaUp = settings.up!;
-    }
-    if (EmptyTool.checkString(settings.down)) {
-      hysteriaDown = settings.down!;
-    }
-    if (EmptyTool.checkString(settings.udphop?.port)) {
-      hysteriaUdphopPort = settings.udphop!.port!;
-      if (settings.udphop!.interval != null) {
-        hysteriaUdphopInterval = "${settings.udphop!.interval!}";
-      }
-    }
     return true;
   }
 
@@ -585,15 +582,6 @@ extension OutboundStateReader on OutboundState {
     }
     if (EmptyTool.checkString(settings.echConfigList)) {
       echConfigList = settings.echConfigList!;
-    }
-    if (EmptyTool.checkString(settings.echForceQuery)) {
-      final echForceQuery = StreamSettingsEchForceQuery.fromString(
-        settings.echForceQuery!,
-      );
-      if (echForceQuery == null) {
-        return false;
-      }
-      this.echForceQuery = echForceQuery;
     }
     return true;
   }
@@ -632,6 +620,18 @@ extension OutboundStateReader on OutboundState {
     if (sockopt.tcpFastOpen != null) {
       tcpFastOpen = sockopt.tcpFastOpen!;
     }
+    if (EmptyTool.checkString(sockopt.domainStrategy)) {
+      final domainStrategy = XrayDomainStrategy.fromString(
+        sockopt.domainStrategy!,
+      );
+      if (domainStrategy == null) {
+        return false;
+      }
+      sockoptDomainStrategy = domainStrategy;
+    }
+    if (sockopt.v6only != null) {
+      v6only = sockopt.v6only!;
+    }
     if (EmptyTool.checkString(sockopt.dialerProxy)) {
       dialerProxy = sockopt.dialerProxy!;
     }
@@ -640,6 +640,31 @@ extension OutboundStateReader on OutboundState {
     }
     if (sockopt.tcpMptcp != null) {
       tcpMptcp = sockopt.tcpMptcp!;
+    }
+    if (EmptyTool.checkString(sockopt.addressPortStrategy)) {
+      final addressPortStrategy = AddressPortStrategy.fromString(
+        sockopt.addressPortStrategy!,
+      );
+      if (addressPortStrategy == null) {
+        return false;
+      }
+      this.addressPortStrategy = addressPortStrategy;
+    }
+    if (sockopt.happyEyeballs != null) {
+      final happyEyeballs = sockopt.happyEyeballs!;
+      happyEyeballsEnabled = true;
+      if (happyEyeballs.prioritizeIPv6 != null) {
+        happyEyeballsPrioritizeIPv6 = happyEyeballs.prioritizeIPv6!;
+      }
+      if (happyEyeballs.tryDelayMs != null) {
+        happyEyeballsTryDelayMs = "${happyEyeballs.tryDelayMs!}";
+      }
+      if (happyEyeballs.interleave != null) {
+        happyEyeballsInterleave = "${happyEyeballs.interleave!}";
+      }
+      if (happyEyeballs.maxConcurrentTry != null) {
+        happyEyeballsMaxConcurrentTry = "${happyEyeballs.maxConcurrentTry!}";
+      }
     }
 
     return true;

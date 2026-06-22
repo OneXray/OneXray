@@ -10,6 +10,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/localizations/service.dart';
 
 abstract class BaseFfiApi {
   Future<String> getTunFilesDir() async {
@@ -19,8 +20,9 @@ abstract class BaseFfiApi {
 
   var _vpnStatus = VpnStatus.disconnected;
 
-  Future<void> readVpnStatus() async {
+  Future<NativeVpnCommandResult> readVpnStatus() async {
     await AppFlutterApi().vpnStatusChanged(_vpnStatus);
+    return _commandSuccess();
   }
 
   Future<void> updateVpnStatus(VpnStatus status) async {
@@ -28,7 +30,7 @@ abstract class BaseFfiApi {
     await AppFlutterApi().vpnStatusChanged(_vpnStatus);
   }
 
-  Future<void> startVpn() async {
+  Future<NativeVpnCommandResult> startVpn() async {
     await updateVpnStatus(VpnStatus.connecting);
 
     final request = await StartVpnRequestReader.readFromStartFile();
@@ -38,9 +40,10 @@ abstract class BaseFfiApi {
     var res = await startCore(configPath);
     if (!res) {
       await stopVpn();
-      return;
+      return _commandFailed(appLocalizationsNoContext().vpnCoreStartFailed);
     }
     await updateVpnStatus(VpnStatus.connected);
+    return _commandSuccess();
   }
 
   Future<bool> startCore(String configPath) async {
@@ -49,24 +52,39 @@ abstract class BaseFfiApi {
 
   void stopCore() {}
 
-  Future<void> stopVpn() async {
+  Future<NativeVpnCommandResult> stopVpn() async {
     await updateVpnStatus(VpnStatus.disconnecting);
     stopCore();
     await Future.delayed(Duration(seconds: 1));
     await updateVpnStatus(VpnStatus.disconnected);
+    return _commandSuccess();
+  }
+
+  PlatformPermissionResult _permissionNotRequired() {
+    return PlatformPermissionResult(
+      kind: PlatformPermissionKind.none,
+      state: PlatformPermissionState.notRequired,
+    );
+  }
+
+  NativeVpnCommandResult _commandSuccess() {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.success,
+      permission: _permissionNotRequired(),
+    );
+  }
+
+  NativeVpnCommandResult _commandFailed(String message) {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.failed,
+      permission: _permissionNotRequired(),
+      message: message,
+    );
   }
 
   final _sharedIsolate = IsolateManager.createShared(concurrent: 1);
   void stopSharedIsolate() {
     _sharedIsolate.stop();
-  }
-
-  Future<String> initDns(String base64Text) async {
-    return _sharedIsolate.compute(_cgoInitDns, base64Text);
-  }
-
-  Future<String> resetDns() async {
-    return _sharedIsolate.compute(_cgoResetDns, 0);
   }
 
   Future<String> getFreePorts(int num) async {
@@ -87,10 +105,6 @@ abstract class BaseFfiApi {
 
   Future<String> readGeoFiles(String base64Text) async {
     return _sharedIsolate.compute(_cgoReadGeoFiles, base64Text);
-  }
-
-  Future<String> queryStats(String base64Text) async {
-    return _sharedIsolate.compute(_cgoQueryStats, base64Text);
   }
 
   Future<String> ping(String base64Text) async {
@@ -131,24 +145,6 @@ class _CoreLib {
     final lib = DynamicLibrary.open(libName);
     _lib = NativeLibrary(lib);
   }
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoInitDns(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoInitDns(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoResetDns(int _) {
-  final resPointer = _CoreLib()._lib.CGoResetDns();
-  final res = _convertPointerToString(resPointer);
-  return res;
 }
 
 @pragma('vm:entry-point')
@@ -204,16 +200,6 @@ String _cgoReadGeoFiles(String base64Text) {
 String _cgoPing(String base64Text) {
   final req = _convertStringToPointer(base64Text);
   final resPointer = _CoreLib()._lib.CGoPing(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoQueryStats(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoQueryStats(req);
   calloc.free(req);
   final res = _convertPointerToString(resPointer);
   return res;

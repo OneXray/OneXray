@@ -8,10 +8,6 @@ extension RunXrayConfigReader on RunXrayConfig {
     if (!EmptyTool.checkString(request.coreBase64Text)) {
       return RunXrayConfig(null, null, null, null, null, null);
     }
-    if (!EmptyTool.checkString(request.tun?.tunDnsIPv4)) {
-      return RunXrayConfig(null, null, null, null, null, null);
-    }
-    final dns = "${request.tun!.tunDnsIPv4}:53";
     final runXrayRquestMap = JsonTool.decodeBase64ToJson(
       request.coreBase64Text!,
     );
@@ -19,10 +15,10 @@ extension RunXrayConfigReader on RunXrayConfig {
     final config = RunXrayConfig(
       request.tun?.tunName,
       request.tun?.tunPriority,
-      dns,
-      request.tun?.bindInterface,
+      request.tun?.enableIPv6,
       runXrayRequest.datDir,
       runXrayRequest.configPath,
+      request.metricsPort,
     );
     return config;
   }

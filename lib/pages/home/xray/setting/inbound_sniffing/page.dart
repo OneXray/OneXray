@@ -51,8 +51,10 @@ class InboundSniffingPage extends StatelessWidget {
                 children: [
                   _enableSection(context, controller, state),
                   _routeOnlySection(context, controller, state),
+                  _metadataOnlySection(context, controller, state),
                   _destOverrideSection(context, controller, state),
                   _domainsExcludedSection(context, controller, state),
+                  _ipsExcludedSection(context, controller, state),
                 ],
               ),
             ),
@@ -92,6 +94,23 @@ class InboundSniffingPage extends StatelessWidget {
           title: AppLocalizations.of(context)!.switchRouteOnly,
           value: state.sniffingState.routeOnly,
           onChanged: (value) => controller.updateRouteOnly(value),
+        ),
+      ],
+    );
+  }
+
+  Widget _metadataOnlySection(
+    BuildContext context,
+    InboundSniffingController controller,
+    InboundSniffingCubitState state,
+  ) {
+    return SettingSection(
+      title: "",
+      children: [
+        SwitchSettingRow(
+          title: AppLocalizations.of(context)!.inboundSniffingPageMetadataOnly,
+          value: state.sniffingState.metadataOnly,
+          onChanged: (value) => controller.updateMetadataOnly(value),
         ),
       ],
     );
@@ -161,6 +180,41 @@ class InboundSniffingPage extends StatelessWidget {
           ),
         ),
         ...domainsExcludedViews,
+      ],
+    );
+  }
+
+  Widget _ipsExcludedSection(
+    BuildContext context,
+    InboundSniffingController controller,
+    InboundSniffingCubitState state,
+  ) {
+    final ipsExcludedViews = state.sniffingState.ipsExcluded
+        .mapIndexed(
+          (index, host) => TextFieldActionSettingRow(
+            controller: controller.ipsExcludedControllers[index],
+            label: AppLocalizations.of(context)!.inboundSniffingPageIpsExcluded,
+            hintText: AppLocalizations.of(
+              context,
+            )!.inboundSniffingPageIpsExcludedExample,
+            trailing: IconButton(
+              onPressed: () => controller.deleteIpsExcluded(context, index),
+              icon: const Icon(Icons.delete),
+            ),
+          ),
+        )
+        .toList();
+    return SettingSection(
+      title: "",
+      children: [
+        SettingRow(
+          title: AppLocalizations.of(context)!.inboundSniffingPageIpsExcluded,
+          trailing: IconButton(
+            onPressed: () => controller.appendIpsExcluded(),
+            icon: const Icon(Icons.add),
+          ),
+        ),
+        ...ipsExcludedViews,
       ],
     );
   }

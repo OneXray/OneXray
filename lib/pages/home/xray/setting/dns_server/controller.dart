@@ -11,19 +11,13 @@ class DnsServerCubitState {
   final DnsServerState serverState;
   final int version;
 
-  DnsServerCubitState({
-    required this.serverState,
-    this.version = 0,
-  });
+  DnsServerCubitState({required this.serverState, this.version = 0});
 
-  factory DnsServerCubitState.initial() => DnsServerCubitState(
-        serverState: DnsServerState(),
-      );
+  factory DnsServerCubitState.initial() =>
+      DnsServerCubitState(serverState: DnsServerState());
 
-  DnsServerCubitState bumped() => DnsServerCubitState(
-        serverState: serverState,
-        version: version + 1,
-      );
+  DnsServerCubitState bumped() =>
+      DnsServerCubitState(serverState: serverState, version: version + 1);
 }
 
 class DnsServerController extends Cubit<DnsServerCubitState> {
@@ -35,8 +29,11 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
   @override
   Future<void> close() {
     addressController.dispose();
+    clientIpController.dispose();
     portController.dispose();
     tagController.dispose();
+    timeoutMsController.dispose();
+    serveExpiredTTLController.dispose();
 
     for (final controller in domainsControllers) {
       controller.dispose();
@@ -59,8 +56,11 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
 
   void _initInput(DnsServerState state) {
     addressController.text = state.address;
+    clientIpController.text = state.clientIp;
     portController.text = state.port;
     tagController.text = state.tag;
+    timeoutMsController.text = state.timeoutMs;
+    serveExpiredTTLController.text = state.serveExpiredTTL;
   }
 
   void _initInputs(DnsServerState state) {
@@ -84,10 +84,12 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
   }
 
   final addressController = TextEditingController();
+  final clientIpController = TextEditingController();
   final portController = TextEditingController();
 
   void updateSkipFallback(bool value) {
-    state.serverState.skipFallback = value; emit(state.bumped());
+    state.serverState.skipFallback = value;
+    emit(state.bumped());
   }
 
   final domainsControllers = <TextEditingController>[];
@@ -112,7 +114,8 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
         for (final code in codes) {
           domainsControllers.add(TextEditingController(text: code));
         }
-        state.serverState.domains.addAll(codes); emit(state.bumped());
+        state.serverState.domains.addAll(codes);
+        emit(state.bumped());
       }
     }
   }
@@ -120,7 +123,8 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
   void deleteDomains(BuildContext context, int index) {
     final controller = domainsControllers.removeAt(index);
     controller.dispose();
-    state.serverState.domains.removeAt(index); emit(state.bumped());
+    state.serverState.domains.removeAt(index);
+    emit(state.bumped());
   }
 
   final expectedIPsControllers = <TextEditingController>[];
@@ -145,7 +149,8 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
         for (final code in codes) {
           expectedIPsControllers.add(TextEditingController(text: code));
         }
-        state.serverState.expectedIPs.addAll(codes); emit(state.bumped());
+        state.serverState.expectedIPs.addAll(codes);
+        emit(state.bumped());
       }
     }
   }
@@ -153,7 +158,8 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
   void deleteExpectedIPs(BuildContext context, int index) {
     final controller = expectedIPsControllers.removeAt(index);
     controller.dispose();
-    state.serverState.expectedIPs.removeAt(index); emit(state.bumped());
+    state.serverState.expectedIPs.removeAt(index);
+    emit(state.bumped());
   }
 
   final unexpectedIPsControllers = <TextEditingController>[];
@@ -178,7 +184,8 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
         for (final code in codes) {
           unexpectedIPsControllers.add(TextEditingController(text: code));
         }
-        state.serverState.unexpectedIPs.addAll(codes); emit(state.bumped());
+        state.serverState.unexpectedIPs.addAll(codes);
+        emit(state.bumped());
       }
     }
   }
@@ -186,24 +193,35 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
   void deleteUnexpectedIPs(BuildContext context, int index) {
     final controller = unexpectedIPsControllers.removeAt(index);
     controller.dispose();
-    state.serverState.unexpectedIPs.removeAt(index); emit(state.bumped());
+    state.serverState.unexpectedIPs.removeAt(index);
+    emit(state.bumped());
   }
 
   void updateQueryStrategy(String value) {
     final queryStrategy = DnsQueryStrategy.fromString(value);
     if (queryStrategy != null) {
-      state.serverState.queryStrategy = queryStrategy; emit(state.bumped());
+      state.serverState.queryStrategy = queryStrategy;
+      emit(state.bumped());
     }
   }
 
   final tagController = TextEditingController();
+  final timeoutMsController = TextEditingController();
+  final serveExpiredTTLController = TextEditingController();
 
   void updateDisableCache(bool value) {
-    state.serverState.disableCache = value; emit(state.bumped());
+    state.serverState.disableCache = value;
+    emit(state.bumped());
+  }
+
+  void updateServeStale(bool value) {
+    state.serverState.serveStale = value;
+    emit(state.bumped());
   }
 
   void updateFinalQuery(bool value) {
-    state.serverState.finalQuery = value; emit(state.bumped());
+    state.serverState.finalQuery = value;
+    emit(state.bumped());
   }
 
   void save(BuildContext context) {
@@ -221,8 +239,11 @@ class DnsServerController extends Cubit<DnsServerCubitState> {
 
   void _mergeInput(DnsServerState state) {
     state.address = addressController.text;
+    state.clientIp = clientIpController.text;
     state.port = portController.text;
     state.tag = tagController.text;
+    state.timeoutMs = timeoutMsController.text;
+    state.serveExpiredTTL = serveExpiredTTLController.text;
   }
 
   void _mergeInputs(DnsServerState state) {

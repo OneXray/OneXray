@@ -14,6 +14,12 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		EB9A10022FE6000000000002 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10012FE6000000000001 /* IconBlue.icon */; };
+		EB9A10082FE6000000000008 /* IconBlack.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10072FE6000000000007 /* IconBlack.icon */; };
+		EB9A100A2FE60000000000A /* IconGreen.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10092FE6000000000009 /* IconGreen.icon */; };
+		EB9A100C2FE60000000000C /* IconOrange.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100B2FE60000000000B /* IconOrange.icon */; };
+		EB9A100E2FE60000000000E /* IconPurple.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100D2FE60000000000D /* IconPurple.icon */; };
+		EB9A10102FE600000000010 /* IconRed.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100F2FE60000000000F /* IconRed.icon */; };
 		EB1073862F48B0F700E33A7B /* AppTrackingTransparency.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB1073852F48B0F700E33A7B /* AppTrackingTransparency.framework */; };
 		EB68C6FB2F94D127007C293A /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6F92F94D127007C293A /* PacketTunnelProvider.swift */; };
 		EB68C7042F94D150007C293A /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6FD2F94D150007C293A /* Constants.swift */; };
@@ -86,6 +92,12 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EB9A10012FE6000000000001 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
+		EB9A10072FE6000000000007 /* IconBlack.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlack.icon; path = ../swift/App/AppIcon/IconBlack.icon; sourceTree = SOURCE_ROOT; };
+		EB9A10092FE6000000000009 /* IconGreen.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconGreen.icon; path = ../swift/App/AppIcon/IconGreen.icon; sourceTree = SOURCE_ROOT; };
+		EB9A100B2FE60000000000B /* IconOrange.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconOrange.icon; path = ../swift/App/AppIcon/IconOrange.icon; sourceTree = SOURCE_ROOT; };
+		EB9A100D2FE60000000000D /* IconPurple.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconPurple.icon; path = ../swift/App/AppIcon/IconPurple.icon; sourceTree = SOURCE_ROOT; };
+		EB9A100F2FE60000000000F /* IconRed.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconRed.icon; path = ../swift/App/AppIcon/IconRed.icon; sourceTree = SOURCE_ROOT; };
 		EB1073852F48B0F700E33A7B /* AppTrackingTransparency.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppTrackingTransparency.framework; path = System/Library/Frameworks/AppTrackingTransparency.framework; sourceTree = SDKROOT; };
 		EB210DFE2DE8692A00D76E7A /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Main.strings; sourceTree = "<group>"; };
 		EB210DFF2DE8692A00D76E7A /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
@@ -112,7 +124,8 @@
 		EB8B84362C07550A0096E1FF /* libresolv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = SDKROOT; };
 		EB9154222D8EBE8800BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Main.strings"; sourceTree = "<group>"; };
 		EB9154232D8EBE8800BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
-		EBAB56EA2D81887B0080EC55 /* libXray.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libXray.h; sourceTree = "<group>"; };
+		EB957AFE2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Main.strings"; sourceTree = "<group>"; };
+		EB957AFF2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,7 +169,6 @@
 			isa = PBXGroup;
 			children = (
 				EB68C7032F94D150007C293A /* All */,
-				EBAB56EC2D81887B0080EC55 /* c */,
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
 				EB8B84082C0751410096E1FF /* tunnel */,
@@ -182,6 +194,12 @@
 				EB8B84152C0751EF0096E1FF /* Runner.entitlements */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
+				EB9A10072FE6000000000007 /* IconBlack.icon */,
+				EB9A10012FE6000000000001 /* IconBlue.icon */,
+				EB9A10092FE6000000000009 /* IconGreen.icon */,
+				EB9A100B2FE60000000000B /* IconOrange.icon */,
+				EB9A100D2FE60000000000D /* IconPurple.icon */,
+				EB9A100F2FE60000000000F /* IconRed.icon */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
@@ -265,23 +283,6 @@
 			path = tunnel;
 			sourceTree = "<group>";
 		};
-		EBAB56EB2D81887B0080EC55 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				EBAB56EA2D81887B0080EC55 /* libXray.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		EBAB56EC2D81887B0080EC55 /* c */ = {
-			isa = PBXGroup;
-			children = (
-				EBAB56EB2D81887B0080EC55 /* include */,
-			);
-			name = c;
-			path = ../c;
-			sourceTree = SOURCE_ROOT;
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -358,6 +359,7 @@
 				"zh-Hans",
 				ru,
 				fa,
+				"zh-Hant",
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
@@ -382,6 +384,12 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				EB68C71A2F94D172007C293A /* GoogleService-Info.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
+				EB9A10082FE6000000000008 /* IconBlack.icon in Resources */,
+				EB9A10022FE6000000000002 /* IconBlue.icon in Resources */,
+				EB9A100A2FE60000000000A /* IconGreen.icon in Resources */,
+				EB9A100C2FE60000000000C /* IconOrange.icon in Resources */,
+				EB9A100E2FE60000000000E /* IconPurple.icon in Resources */,
+				EB9A10102FE600000000010 /* IconRed.icon in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -495,6 +503,7 @@
 				EB9154222D8EBE8800BFED8B /* zh-Hans */,
 				EB210DFE2DE8692A00D76E7A /* ru */,
 				EB390D812EC84AF400B741BA /* fa */,
+				EB957AFE2FE43D6400DCB90D /* zh-Hant */,
 			);
 			name = Main.storyboard;
 			sourceTree = "<group>";
@@ -506,6 +515,7 @@
 				EB9154232D8EBE8800BFED8B /* zh-Hans */,
 				EB210DFF2DE8692A00D76E7A /* ru */,
 				EB390D822EC84AF400B741BA /* fa */,
+				EB957AFF2FE43D6400DCB90D /* zh-Hant */,
 			);
 			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";
@@ -809,7 +819,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
@@ -854,7 +864,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -895,7 +905,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 26.6.2;
+				MARKETING_VERSION = 26.6.3;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
 				PRODUCT_NAME = "$(TARGET_NAME)";

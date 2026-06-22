@@ -7,9 +7,15 @@ part 'model.g.dart';
 class StartVpnRequest {
   TunJson? tun;
   String? pingPort;
+  String? metricsPort;
   String? coreBase64Text;
 
-  StartVpnRequest(this.tun, this.pingPort, this.coreBase64Text);
+  StartVpnRequest(
+    this.tun,
+    this.pingPort,
+    this.metricsPort,
+    this.coreBase64Text,
+  );
 
   factory StartVpnRequest.fromJson(Map<String, dynamic> json) =>
       _$StartVpnRequestFromJson(json);
@@ -29,19 +35,6 @@ class CallResponse {
       _$CallResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$CallResponseToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class InitDnsRequest {
-  String? dns;
-  String? deviceName;
-
-  InitDnsRequest(this.dns, this.deviceName);
-
-  factory InitDnsRequest.fromJson(Map<String, dynamic> json) =>
-      _$InitDnsRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$InitDnsRequestToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

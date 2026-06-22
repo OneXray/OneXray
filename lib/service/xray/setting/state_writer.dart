@@ -1,4 +1,5 @@
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -22,6 +23,9 @@ extension XraySettingStateWriter on XraySettingState {
     xrayJson.routing = routing.xrayJson;
     xrayJson.inbounds = inbounds.xrayJson;
     xrayJson.outbounds = outbounds.xrayJson;
+    xrayJson.policy = policy.xrayJson;
+    xrayJson.stats = stats.xrayJson;
+    xrayJson.metrics = metrics.xrayJson;
 
     return xrayJson;
   }
@@ -50,6 +54,7 @@ extension XraySettingStateWriter on XraySettingState {
     }
 
     fixInboundsPort(ports);
+    fixMetricsPort(ports);
     await _fixSystemExtensionLogs();
   }
 
@@ -85,10 +90,20 @@ extension XraySettingStateWriter on XraySettingState {
     }
   }
 
+  void fixMetricsPort(XrayPorts ports) {
+    metrics.listen = "${NetConstants.proxyHost}:${ports.metricsPort}";
+  }
+
   void removeTunInbound(XrayJson xrayJson) {
     xrayJson.inbounds?.removeWhere(
       (inbound) => inbound.tag == RoutingInboundTag.tunIn.name,
     );
+  }
+
+  void removeMetricsConfig(XrayJson xrayJson) {
+    xrayJson.policy = null;
+    xrayJson.stats = null;
+    xrayJson.metrics = null;
   }
 
   Future<void> _fixSystemExtensionLogs() async {

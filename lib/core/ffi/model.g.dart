@@ -10,18 +10,18 @@ RunXrayConfig _$RunXrayConfigFromJson(Map<String, dynamic> json) =>
     RunXrayConfig(
       json['tunName'] as String?,
       (json['tunPriority'] as num?)?.toInt(),
-      json['dns'] as String?,
-      json['bindInterface'] as String?,
+      json['enableIPv6'] as bool?,
       json['datDir'] as String?,
       json['configPath'] as String?,
+      json['metricsPort'] as String?,
     );
 
 Map<String, dynamic> _$RunXrayConfigToJson(RunXrayConfig instance) =>
     <String, dynamic>{
       'tunName': ?instance.tunName,
       'tunPriority': ?instance.tunPriority,
-      'dns': ?instance.dns,
-      'bindInterface': ?instance.bindInterface,
+      'enableIPv6': ?instance.enableIPv6,
       'datDir': ?instance.datDir,
       'configPath': ?instance.configPath,
+      'metricsPort': ?instance.metricsPort,
     };

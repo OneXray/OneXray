@@ -39,6 +39,8 @@ import 'package:onexray/pages/home/xray/setting/inbounds/page.dart';
 import 'package:onexray/pages/home/xray/setting/inbounds/params.dart';
 import 'package:onexray/pages/home/xray/setting/log/page.dart';
 import 'package:onexray/pages/home/xray/setting/log/params.dart';
+import 'package:onexray/pages/home/xray/setting/metrics/page.dart';
+import 'package:onexray/pages/home/xray/setting/metrics/params.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_black_hole/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_dns/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_dns/params.dart';
@@ -48,6 +50,8 @@ import 'package:onexray/pages/home/xray/setting/outbound_freedom/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_freedom/params.dart';
 import 'package:onexray/pages/home/xray/setting/outbounds/page.dart';
 import 'package:onexray/pages/home/xray/setting/outbounds/params.dart';
+import 'package:onexray/pages/home/xray/setting/policy/page.dart';
+import 'package:onexray/pages/home/xray/setting/policy/params.dart';
 import 'package:onexray/pages/home/xray/setting/routing/page.dart';
 import 'package:onexray/pages/home/xray/setting/routing/params.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule/page.dart';
@@ -73,7 +77,7 @@ import 'package:onexray/pages/setting/long_text/page.dart';
 import 'package:onexray/pages/setting/long_text/params.dart';
 import 'package:onexray/pages/setting/main/page.dart';
 import 'package:onexray/pages/setting/ping/page.dart';
-import 'package:onexray/pages/setting/sub_update/page.dart';
+import 'package:onexray/pages/setting/auto_update/page.dart';
 import 'package:onexray/pages/setting/theme/page.dart';
 import 'package:onexray/pages/setting/toolbox/page.dart';
 import 'package:onexray/pages/setting/tun/installed_app/page.dart';
@@ -103,6 +107,8 @@ abstract final class RouterPath {
   static const xraySettingSimple = "/xraySettingSimple";
   static const xraySettingUI = "/xraySettingUI";
   static const xrayLog = "/xrayLog";
+  static const metrics = "/metrics";
+  static const policy = "/policy";
   static const dns = "/dns";
   static const fakeDns = "/fakeDns";
   static const dnsHosts = "/dnsHosts";
@@ -141,7 +147,7 @@ abstract final class RouterPath {
   static const selectedApp = "/selectedApp";
   static const installedApp = "/installedApp";
   static const ping = "/ping";
-  static const subUpdate = "/subUpdate";
+  static const autoUpdate = "/autoUpdate";
   static const geoDataList = "/geoDataList";
   static const geoDatAdd = "/geoDatAdd";
   static const geoDatSelect = "/geoDatSelect";
@@ -188,6 +194,15 @@ abstract final class RouterPath {
         path: RouterPath.xrayLog,
         builder: (_, state) =>
             XrayLogPage(params: state.extra as XrayLogParams),
+      ),
+      GoRoute(
+        path: RouterPath.metrics,
+        builder: (_, state) =>
+            MetricsPage(params: state.extra as MetricsParams),
+      ),
+      GoRoute(
+        path: RouterPath.policy,
+        builder: (_, state) => PolicyPage(params: state.extra as PolicyParams),
       ),
       GoRoute(
         path: RouterPath.dns,
@@ -355,8 +370,8 @@ abstract final class RouterPath {
       ),
       GoRoute(path: RouterPath.ping, builder: (_, state) => const PingPage()),
       GoRoute(
-        path: RouterPath.subUpdate,
-        builder: (_, state) => const SubUpdatePage(),
+        path: RouterPath.autoUpdate,
+        builder: (_, state) => const AutoUpdatePage(),
       ),
       GoRoute(
         path: RouterPath.geoDataList,

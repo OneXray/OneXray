@@ -13,19 +13,12 @@ class DnsCubitState {
   final DnsState dnsState;
   final int version;
 
-  const DnsCubitState({
-    required this.dnsState,
-    this.version = 0,
-  });
+  const DnsCubitState({required this.dnsState, this.version = 0});
 
-  factory DnsCubitState.initial() => DnsCubitState(
-        dnsState: DnsState(),
-      );
+  factory DnsCubitState.initial() => DnsCubitState(dnsState: DnsState());
 
-  DnsCubitState bumped() => DnsCubitState(
-        dnsState: dnsState,
-        version: version + 1,
-      );
+  DnsCubitState bumped() =>
+      DnsCubitState(dnsState: dnsState, version: version + 1);
 }
 
 class DnsController extends Cubit<DnsCubitState> {
@@ -34,31 +27,62 @@ class DnsController extends Cubit<DnsCubitState> {
     _initParams();
   }
 
+  @override
+  Future<void> close() {
+    clientIpController.dispose();
+    serveExpiredTTLController.dispose();
+    return super.close();
+  }
+
   void _initParams() {
+    _initInput(params.state);
     emit(DnsCubitState(dnsState: params.state, version: 1));
   }
+
+  void _initInput(DnsState state) {
+    clientIpController.text = state.clientIp;
+    serveExpiredTTLController.text = state.serveExpiredTTL;
+  }
+
+  final clientIpController = TextEditingController();
+  final serveExpiredTTLController = TextEditingController();
 
   void updateQueryStrategy(String value) {
     final queryStrategy = DnsQueryStrategy.fromString(value);
     if (queryStrategy != null) {
-      state.dnsState.queryStrategy = queryStrategy; emit(state.bumped());
+      state.dnsState.queryStrategy = queryStrategy;
+      emit(state.bumped());
     }
   }
 
   void updateDisableCache(bool value) {
-    state.dnsState.disableCache = value; emit(state.bumped());
+    state.dnsState.disableCache = value;
+    emit(state.bumped());
+  }
+
+  void updateServeStale(bool value) {
+    state.dnsState.serveStale = value;
+    emit(state.bumped());
   }
 
   void updateDisableFallback(bool value) {
-    state.dnsState.disableFallback = value; emit(state.bumped());
+    state.dnsState.disableFallback = value;
+    emit(state.bumped());
   }
 
   void updateDisableFallbackIfMatch(bool value) {
-    state.dnsState.disableFallbackIfMatch = value; emit(state.bumped());
+    state.dnsState.disableFallbackIfMatch = value;
+    emit(state.bumped());
+  }
+
+  void updateEnableParallelQuery(bool value) {
+    state.dnsState.enableParallelQuery = value;
+    emit(state.bumped());
   }
 
   void updateUseSystemHosts(bool value) {
-    state.dnsState.useSystemHosts = value; emit(state.bumped());
+    state.dnsState.useSystemHosts = value;
+    emit(state.bumped());
   }
 
   Future<void> editHosts(BuildContext context) async {
@@ -68,7 +92,8 @@ class DnsController extends Cubit<DnsCubitState> {
       extra: params,
     );
     if (hosts != null) {
-      state.dnsState.hosts = hosts; emit(state.bumped());
+      state.dnsState.hosts = hosts;
+      emit(state.bumped());
     }
   }
 
@@ -96,15 +121,24 @@ class DnsController extends Cubit<DnsCubitState> {
       extra: params,
     );
     if (server != null) {
-      state.dnsState.servers[index] = server; emit(state.bumped());
+      state.dnsState.servers[index] = server;
+      emit(state.bumped());
     }
   }
 
   void moreAction(String menuId, int serverIndex) async {
-    state.dnsState.servers.removeAt(serverIndex); emit(state.bumped());
+    state.dnsState.servers.removeAt(serverIndex);
+    emit(state.bumped());
   }
 
   Future<void> save(BuildContext context) async {
+    _mergeInputToState(state.dnsState);
     context.pop<DnsState>(state.dnsState);
+  }
+
+  void _mergeInputToState(DnsState state) {
+    state.clientIp = clientIpController.text;
+    state.serveExpiredTTL = serveExpiredTTLController.text;
+    state.removeWhitespace();
   }
 }

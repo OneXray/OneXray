@@ -4,13 +4,11 @@ import 'dart:io';
 
 import 'package:duration/duration.dart';
 import 'package:duration/locale.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/network/client.dart';
-import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -20,6 +18,7 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/menu/tray/service.dart';
 import 'package:onexray/service/notification/service.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
@@ -30,6 +29,7 @@ import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/json_writer.dart';
+import 'package:onexray/service/xray/metrics/service.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
@@ -55,8 +55,9 @@ final class VpnService {
 
   //=================================
   var _lastConfigId = DBConstants.defaultId;
-  var _nextStartId = DBConstants.defaultId;
+  var _pendingConfigId = DBConstants.defaultId;
   var _vpnRunning = false;
+  var _lastVpnStatus = VpnStatus.disconnected;
 
   bool get vpnRunning => _vpnRunning;
 
@@ -89,31 +90,42 @@ final class VpnService {
   }
 
   Future<void> refreshVpnStatus() async {
-    await AppHostApi().readVpnStatus();
+    final result = await AppHostApi().readVpnStatus();
+    _applyNativeCommandResult(result);
   }
 
   Future<void> _vpnStatusChanged(VpnStatus status) async {
+    _lastVpnStatus = status;
     final eventBus = AppEventBus.instance;
     switch (status) {
       case VpnStatus.disconnecting:
-        eventBus.updateVpnLoading(true);
+        eventBus.updateVpnActionState(VpnActionState.disconnecting);
         break;
       case VpnStatus.disconnected:
         _vpnRunning = false;
-        await _tryStartVpn();
+        _pendingConfigId = DBConstants.defaultId;
+        eventBus.updatePendingConfigId(DBConstants.defaultId);
+        eventBus.updateVpnActionState(VpnActionState.idle);
+        await _updateRunningId(DBConstants.defaultId);
         await TrayService().refreshTrayManager();
         _stopDurationTimer();
+        XrayMetricsService().stop();
         break;
       case VpnStatus.connecting:
-        eventBus.updateVpnLoading(true);
-        await _updateRunningId(_lastConfigId);
+        eventBus.updateVpnActionState(VpnActionState.connecting);
         break;
       case VpnStatus.connected:
         _vpnRunning = true;
-        eventBus.updateVpnLoading(false);
-        await _updateRunningId(_lastConfigId);
+        eventBus.updateVpnActionState(VpnActionState.connected);
+        final runningId = _pendingConfigId == DBConstants.defaultId
+            ? _lastConfigId
+            : _pendingConfigId;
+        await _updateRunningId(runningId);
+        _pendingConfigId = DBConstants.defaultId;
+        eventBus.updatePendingConfigId(DBConstants.defaultId);
         await TrayService().refreshTrayManager();
         await _startDurationTimer();
+        await _startMetricsTimer();
         break;
     }
   }
@@ -129,109 +141,266 @@ final class VpnService {
     _lastConfigId = id;
   }
 
-  Future<void> restartCurrentVpn() async {
+  Future<NativeVpnCommandResult> restartCurrentVpn() async {
     final eventBus = AppEventBus.instance;
     final configId = eventBus.state.runningId;
     await stopDefaultVpn();
-    _nextStartId = configId;
-    await _tryStartVpn();
+    if (configId == DBConstants.defaultId) {
+      return _commandSuccess();
+    }
+    return startVpn(configId);
   }
 
-  Future<void> startDefaultVpn() async {
+  Future<NativeVpnCommandResult> startDefaultVpn() async {
     final eventBus = AppEventBus.instance;
     if (eventBus.state.runningId != DBConstants.defaultId) {
-      return;
-    }
-
-    final permission = await VpnService().checkPermission();
-    if (!permission) {
-      await NotificationService().pushNotification(
-        appLocalizationsNoContext().homePageOpenSettings,
-      );
-      return;
+      return _commandSuccess();
     }
 
     final db = AppDatabase();
     if (_lastConfigId == DBConstants.defaultId) {
-      await _startRandomVpn();
+      return _startRandomVpn();
     } else {
       final config = await db.coreConfigDao.searchRow(_lastConfigId);
       if (config == null) {
-        await _startRandomVpn();
+        return _startRandomVpn();
       } else {
-        await startVpn(config.id);
+        return startVpn(config.id);
       }
     }
   }
 
-  Future<void> _startRandomVpn() async {
+  Future<NativeVpnCommandResult> _startRandomVpn() async {
     final db = AppDatabase();
     final config = await db.coreConfigDao.randomConfig();
     if (config == null) {
       await NotificationService().pushNotification(
         appLocalizationsNoContext().vpnNoConfig,
       );
+      return _commandFailed(appLocalizationsNoContext().vpnNoConfig);
     } else {
-      await startVpn(config.id);
+      return startVpn(config.id);
     }
   }
 
-  Future<void> stopDefaultVpn() async {
-    await startVpn(DBConstants.defaultId);
+  Future<NativeVpnCommandResult> stopDefaultVpn() async {
+    return _stopCurrentVpn();
   }
 
-  Future<void> startVpn(int configId) async {
+  Future<NativeVpnCommandResult> startVpn(int configId) async {
     final eventBus = AppEventBus.instance;
-    if (configId != eventBus.state.runningId) {
-      _nextStartId = configId;
-    } else {
-      _nextStartId = DBConstants.defaultId;
+    if (configId == DBConstants.defaultId) {
+      return stopDefaultVpn();
     }
-    await AppHostApi().stopVpn();
-  }
-
-  Future<bool> checkPermission() async {
-    if (AppPlatform.isAndroid) {
-      final granted = await AppHostApi().checkVpnPermission();
-      return granted;
+    if (configId == eventBus.state.runningId) {
+      return stopDefaultVpn();
     }
-    return true;
-  }
 
-  Future<void> _tryStartVpn() async {
-    final eventBus = AppEventBus.instance;
-    if (_nextStartId != DBConstants.defaultId) {
-      final rowId = _nextStartId;
+    _pendingConfigId = configId;
+    eventBus.updatePendingConfigId(configId);
+    eventBus.updateVpnActionState(VpnActionState.preparing);
+    eventBus.updateVpnErrorMessage("");
 
-      _nextStartId = DBConstants.defaultId;
-      eventBus.updateVpnLoading(true);
+    final permission = await _ensurePlatformPermissionForUserAction();
+    if (permission.state == PlatformPermissionState.failed) {
+      final message =
+          permission.message ??
+          appLocalizationsNoContext().vpnPlatformPermissionCheckFailed;
+      await _handleStartFailure(message);
+      return _commandFailed(message);
+    }
+    if (!_permissionAllowsStart(permission)) {
+      eventBus.updatePlatformPermission(permission);
+      eventBus.updateVpnActionState(
+        VpnActionState.waitingForPlatformPermission,
+      );
+      return _waitingForPermission(permission);
+    }
 
-      final db = AppDatabase();
-      final outbound = await db.coreConfigDao.searchRow(rowId);
-      if (outbound != null) {
-        try {
-          await _realStartXray(outbound);
-        } on _VpnStartException catch (e) {
-          await _updateRunningId(DBConstants.defaultId);
-          eventBus.updateVpnLoading(false);
-          ToastService().showToast(e.message);
-        }
-      } else {
-        await _updateRunningId(DBConstants.defaultId);
-        eventBus.updateVpnLoading(false);
-        ToastService().showToast(
-          appLocalizationsNoContext().vpnSelectOneConfig,
-        );
+    if (eventBus.state.runningId != DBConstants.defaultId ||
+        _lastVpnStatus == VpnStatus.connected ||
+        _lastVpnStatus == VpnStatus.connecting) {
+      final stopResult = await _stopCurrentVpn();
+      if (stopResult.state == NativeVpnCommandState.failed) {
+        return stopResult;
       }
-    } else {
-      await _updateRunningId(DBConstants.defaultId);
-      eventBus.updateVpnLoading(false);
+      _pendingConfigId = configId;
+      eventBus.updatePendingConfigId(configId);
+      eventBus.updateVpnActionState(VpnActionState.preparing);
+    }
+
+    final db = AppDatabase();
+    final outbound = await db.coreConfigDao.searchRow(configId);
+    if (outbound == null) {
+      final message = appLocalizationsNoContext().vpnSelectOneConfig;
+      await _handleStartFailure(message);
+      return _commandFailed(message);
+    }
+
+    try {
+      final result = await _realStartXray(outbound);
+      if (result.state == NativeVpnCommandState.waitingForPlatformPermission) {
+        if (result.permission != null) {
+          eventBus.updatePlatformPermission(result.permission!);
+        }
+        eventBus.updateVpnActionState(
+          VpnActionState.waitingForPlatformPermission,
+        );
+        return result;
+      }
+      if (result.state == NativeVpnCommandState.failed) {
+        await _handleStartFailure(
+          result.message ?? appLocalizationsNoContext().vpnStartFailed,
+        );
+        return result;
+      }
+      if (_lastVpnStatus != VpnStatus.connected) {
+        eventBus.updateVpnActionState(VpnActionState.connecting);
+      }
+      final connected = await _waitForVpnStatus({VpnStatus.connected});
+      if (!connected) {
+        final message = appLocalizationsNoContext().vpnStartTimeout;
+        await _handleStartFailure(message);
+        return _commandFailed(message);
+      }
+      eventBus.updateVpnActionState(VpnActionState.connected);
+      return result;
+    } on _VpnStartException catch (e) {
+      await _handleStartFailure(e.message);
+      return _commandFailed(e.message);
     }
   }
 
-  Future<void> _realStartXray(CoreConfigData config) async {
-    _updateLastConfigId(config.id);
-    _updateRunningId(config.id);
+  Future<NativeVpnCommandResult> _stopCurrentVpn() async {
+    final eventBus = AppEventBus.instance;
+    _pendingConfigId = DBConstants.defaultId;
+    eventBus.updatePendingConfigId(DBConstants.defaultId);
+    eventBus.updateVpnActionState(VpnActionState.disconnecting);
+    final result = await AppHostApi().stopVpn();
+    _applyNativeCommandResult(result);
+    if (result.state == NativeVpnCommandState.failed) {
+      eventBus.updateVpnActionState(VpnActionState.failed);
+      eventBus.updateVpnErrorMessage(
+        result.message ?? appLocalizationsNoContext().vpnStopFailed,
+      );
+      return result;
+    }
+    final disconnected = await _waitForVpnStatus({
+      VpnStatus.disconnected,
+    }, timeoutSeconds: 5);
+    if (!disconnected) {
+      final message = appLocalizationsNoContext().vpnStopFailed;
+      eventBus.updateVpnActionState(VpnActionState.failed);
+      eventBus.updateVpnErrorMessage(message);
+      return _commandFailed(message);
+    }
+    await _updateRunningId(DBConstants.defaultId);
+    eventBus.updateVpnActionState(VpnActionState.idle);
+    return result;
+  }
+
+  Future<PlatformPermissionResult>
+  _ensurePlatformPermissionForUserAction() async {
+    final eventBus = AppEventBus.instance;
+    final query = await AppHostApi().queryPlatformPermission();
+    eventBus.updatePlatformPermission(query);
+    if (_permissionAllowsStart(query) ||
+        query.state == PlatformPermissionState.failed) {
+      return query;
+    }
+    final request = await AppHostApi().requestPlatformPermission();
+    eventBus.updatePlatformPermission(request);
+    return request;
+  }
+
+  bool _permissionAllowsStart(PlatformPermissionResult permission) {
+    return permission.state == PlatformPermissionState.notRequired ||
+        permission.state == PlatformPermissionState.granted;
+  }
+
+  void _applyNativeCommandResult(NativeVpnCommandResult result) {
+    final eventBus = AppEventBus.instance;
+    final permission = result.permission;
+    if (permission != null) {
+      eventBus.updatePlatformPermission(permission);
+    }
+    switch (result.state) {
+      case NativeVpnCommandState.success:
+        break;
+      case NativeVpnCommandState.waitingForPlatformPermission:
+        eventBus.updateVpnActionState(
+          VpnActionState.waitingForPlatformPermission,
+        );
+        break;
+      case NativeVpnCommandState.failed:
+        eventBus.updateVpnActionState(VpnActionState.failed);
+        eventBus.updateVpnErrorMessage(
+          result.message ?? appLocalizationsNoContext().vpnCommandFailed,
+        );
+        break;
+    }
+  }
+
+  Future<void> _handleStartFailure(String message) async {
+    final eventBus = AppEventBus.instance;
+    _pendingConfigId = DBConstants.defaultId;
+    eventBus.updatePendingConfigId(DBConstants.defaultId);
+    eventBus.updateVpnActionState(VpnActionState.failed);
+    eventBus.updateVpnErrorMessage(message);
+    await _updateRunningId(DBConstants.defaultId);
+    ToastService().showToast(message);
+    XrayMetricsService().stop();
+  }
+
+  Future<bool> _waitForVpnStatus(
+    Set<VpnStatus> statuses, {
+    int timeoutSeconds = 15,
+  }) async {
+    if (statuses.contains(_lastVpnStatus)) {
+      return true;
+    }
+    try {
+      await AppFlutterApi().vpnStatusController.stream
+          .firstWhere(statuses.contains)
+          .timeout(Duration(seconds: timeoutSeconds));
+      return true;
+    } catch (_) {
+      return statuses.contains(_lastVpnStatus);
+    }
+  }
+
+  NativeVpnCommandResult _commandSuccess() {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.success,
+      permission: PlatformPermissionResult(
+        kind: PlatformPermissionKind.none,
+        state: PlatformPermissionState.notRequired,
+      ),
+    );
+  }
+
+  NativeVpnCommandResult _commandFailed(String message) {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.failed,
+      permission: PlatformPermissionResult(
+        kind: PlatformPermissionKind.none,
+        state: PlatformPermissionState.notRequired,
+      ),
+      message: message,
+    );
+  }
+
+  NativeVpnCommandResult _waitingForPermission(
+    PlatformPermissionResult permission,
+  ) {
+    return NativeVpnCommandResult(
+      state: NativeVpnCommandState.waitingForPlatformPermission,
+      permission: permission,
+    );
+  }
+
+  Future<NativeVpnCommandResult> _realStartXray(CoreConfigData config) async {
+    await _updateLastConfigId(config.id);
     await PreferencesKey().saveVpnStartTimestamp();
 
     final runDir = VpnConstants.runDir;
@@ -239,18 +408,18 @@ final class VpnService {
 
     final ports = await XrayPorts.getPorts();
     if (ports == null) {
-      return;
+      return _commandFailed(appLocalizationsNoContext().vpnLocalPortFailed);
     }
 
     final db = AppDatabase();
     final outbound = await db.coreConfigDao.searchRow(config.id);
     if (outbound == null) {
-      return;
+      return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
     }
 
     final coreConfigType = CoreConfigType.fromString(config.type);
     if (coreConfigType == null) {
-      return;
+      return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
     }
     final tunSettingState = TunSettingState();
     await tunSettingState.readFromPreferences();
@@ -274,17 +443,17 @@ final class VpnService {
         );
         break;
       default:
-        return;
+        return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
     }
 
     await _clearXrayLog();
 
     final coreBase64Text = await _makeRunXrayRequest(configPath);
     if (coreBase64Text == null) {
-      return;
+      return _commandFailed(appLocalizationsNoContext().vpnStartRequestFailed);
     }
 
-    await _makeVpnRequestAndStart(
+    return _makeVpnRequestAndStart(
       coreBase64Text,
       runDir,
       ports,
@@ -410,7 +579,7 @@ final class VpnService {
     return configPath;
   }
 
-  Future<void> _makeVpnRequestAndStart(
+  Future<NativeVpnCommandResult> _makeVpnRequestAndStart(
     String coreBase64Text,
     String runDir,
     XrayPorts port,
@@ -418,17 +587,20 @@ final class VpnService {
   ) async {
     final tunPriority = int.tryParse(tunSettingState.tunPriority);
     if (tunPriority == null) {
-      return;
+      return _commandFailed(appLocalizationsNoContext().vpnTunPriorityInvalid);
     }
 
     final request = StartVpnRequest(
       tunSettingState.tunJson,
       port.pingPort,
+      port.metricsPort,
       coreBase64Text,
     );
     await request.writeToStartFile();
 
-    await AppHostApi().startVpn();
+    final result = await AppHostApi().startVpn();
+    _applyNativeCommandResult(result);
+    return result;
   }
 
   Future<String?> _makeRunXrayRequest(String configPath) async {
@@ -438,26 +610,91 @@ final class VpnService {
     return coreBase64Text;
   }
 
-  Future<void> _connectivityTest() async {
-    final request = await StartVpnRequestReader.readFromStartFile();
-    if (request.pingPort == null) {
+  Future<void> retryConnectivityTest() {
+    if (!_vpnRunning) {
+      AppEventBus.instance.resetConnectivityProbe();
+      return Future.value();
+    }
+    return _connectivityTest(initialDelay: Duration.zero);
+  }
+
+  Future<void> _connectivityTest({
+    Duration initialDelay = const Duration(seconds: 3),
+  }) async {
+    final eventBus = AppEventBus.instance;
+    if (!_vpnRunning) {
+      eventBus.resetConnectivityProbe();
       return;
     }
-    // delay three seconds
-    await Future.delayed(Duration(seconds: 3));
+    final testId = ++_connectivityTestId;
+    eventBus.startConnectivityProbe();
+
+    StartVpnRequest request;
+    try {
+      request = await StartVpnRequestReader.readFromStartFile();
+    } catch (e) {
+      ygLogger("read start vpn request error: $e");
+      eventBus.updateLocationPingFailed();
+      eventBus.updateGeoLocationFailed();
+      return;
+    }
+
+    final pingPort = request.pingPort;
+    if (pingPort == null) {
+      eventBus.updateLocationPingFailed();
+      eventBus.updateGeoLocationFailed();
+      return;
+    }
+
+    if (initialDelay > Duration.zero) {
+      await Future.delayed(initialDelay);
+    }
+    if (!_isConnectivityTestCurrent(testId)) {
+      return;
+    }
 
     final pingState = PingState();
     await pingState.readFromPreferences();
-    final location = await NetClient().connectivityTest(
-      request.pingPort!,
-      pingState.realUrl,
-    );
+
+    await Future.wait([
+      _runPingProbe(testId, pingPort, pingState.realUrl),
+      _runGeoLocationProbe(testId, pingPort),
+    ]);
+  }
+
+  bool _isConnectivityTestCurrent(int testId) {
+    return testId == _connectivityTestId && _vpnRunning;
+  }
+
+  Future<void> _runPingProbe(int testId, String port, String url) async {
+    final delay = await NetClient().ping(port, url);
+    if (!_isConnectivityTestCurrent(testId)) {
+      return;
+    }
     final eventBus = AppEventBus.instance;
-    eventBus.updateLocation(location);
+    if (delay == null) {
+      eventBus.updateLocationPingFailed();
+      return;
+    }
+    eventBus.updateLocationDelay(delay);
+  }
+
+  Future<void> _runGeoLocationProbe(int testId, String port) async {
+    final location = await NetClient().geoLocation(port);
+    if (!_isConnectivityTestCurrent(testId)) {
+      return;
+    }
+    final eventBus = AppEventBus.instance;
+    if (location == null) {
+      eventBus.updateGeoLocationFailed();
+      return;
+    }
+    eventBus.updateGeoLocation(location);
   }
 
   Timer? _timer;
   var _startTime = DateTime.now();
+  var _connectivityTestId = 0;
 
   Future<void> _startDurationTimer() async {
     _stopDurationTimer();
@@ -466,11 +703,22 @@ final class VpnService {
     await _connectivityTest();
   }
 
+  Future<void> _startMetricsTimer() async {
+    try {
+      final request = await StartVpnRequestReader.readFromStartFile();
+      XrayMetricsService().start(request.metricsPort);
+    } catch (e) {
+      ygLogger("read metrics port error: $e");
+      XrayMetricsService().stop();
+    }
+  }
+
   void _stopDurationTimer() {
+    _connectivityTestId++;
     _timer?.cancel();
     _timer = null;
     final eventBus = AppEventBus.instance;
-    eventBus.updateLocation(GeoLocationStandard.standard);
+    eventBus.resetConnectivityProbe();
   }
 
   void _updateDuration() {

@@ -115,6 +115,124 @@ enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
 enum RefreshVpnResult { installed, notInstalled, waitForApproval }
 
+enum PlatformPermissionKind { none, androidVpn, macosSystemExtension }
+
+enum PlatformPermissionState {
+  notRequired,
+  notDetermined,
+  awaitingUserApproval,
+  granted,
+  denied,
+  failed,
+}
+
+enum NativeVpnCommandState { success, waitingForPlatformPermission, failed }
+
+class PlatformPermissionResult {
+  PlatformPermissionResult({
+    required this.kind,
+    required this.state,
+    this.message,
+  });
+
+  PlatformPermissionKind kind;
+
+  PlatformPermissionState state;
+
+  String? message;
+
+  List<Object?> _toList() {
+    return <Object?>[kind, state, message];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static PlatformPermissionResult decode(Object result) {
+    result as List<Object?>;
+    return PlatformPermissionResult(
+      kind: result[0]! as PlatformPermissionKind,
+      state: result[1]! as PlatformPermissionState,
+      message: result[2] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! PlatformPermissionResult ||
+        other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(kind, other.kind) &&
+        _deepEquals(state, other.state) &&
+        _deepEquals(message, other.message);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'PlatformPermissionResult(kind: $kind, state: $state, message: $message)';
+  }
+}
+
+class NativeVpnCommandResult {
+  NativeVpnCommandResult({required this.state, this.permission, this.message});
+
+  NativeVpnCommandState state;
+
+  PlatformPermissionResult? permission;
+
+  String? message;
+
+  List<Object?> _toList() {
+    return <Object?>[state, permission, message];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static NativeVpnCommandResult decode(Object result) {
+    result as List<Object?>;
+    return NativeVpnCommandResult(
+      state: result[0]! as NativeVpnCommandState,
+      permission: result[1] as PlatformPermissionResult?,
+      message: result[2] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! NativeVpnCommandResult || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(state, other.state) &&
+        _deepEquals(permission, other.permission) &&
+        _deepEquals(message, other.message);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'NativeVpnCommandResult(state: $state, permission: $permission, message: $message)';
+  }
+}
+
 class AndroidAppInfo {
   AndroidAppInfo({required this.name, required this.packageName});
 
@@ -174,8 +292,23 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is RefreshVpnResult) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    } else if (value is AndroidAppInfo) {
+    } else if (value is PlatformPermissionKind) {
       buffer.putUint8(131);
+      writeValue(buffer, value.index);
+    } else if (value is PlatformPermissionState) {
+      buffer.putUint8(132);
+      writeValue(buffer, value.index);
+    } else if (value is NativeVpnCommandState) {
+      buffer.putUint8(133);
+      writeValue(buffer, value.index);
+    } else if (value is PlatformPermissionResult) {
+      buffer.putUint8(134);
+      writeValue(buffer, value.encode());
+    } else if (value is NativeVpnCommandResult) {
+      buffer.putUint8(135);
+      writeValue(buffer, value.encode());
+    } else if (value is AndroidAppInfo) {
+      buffer.putUint8(136);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -192,6 +325,19 @@ class _PigeonCodec extends StandardMessageCodec {
         final value = readValue(buffer) as int?;
         return value == null ? null : RefreshVpnResult.values[value];
       case 131:
+        final value = readValue(buffer) as int?;
+        return value == null ? null : PlatformPermissionKind.values[value];
+      case 132:
+        final value = readValue(buffer) as int?;
+        return value == null ? null : PlatformPermissionState.values[value];
+      case 133:
+        final value = readValue(buffer) as int?;
+        return value == null ? null : NativeVpnCommandState.values[value];
+      case 134:
+        return PlatformPermissionResult.decode(readValue(buffer)!);
+      case 135:
+        return NativeVpnCommandResult.decode(readValue(buffer)!);
+      case 136:
         return AndroidAppInfo.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -235,7 +381,7 @@ class BridgeHostApi {
     return pigeonVar_replyValue! as String;
   }
 
-  Future<void> readVpnStatus() async {
+  Future<NativeVpnCommandResult> readVpnStatus() async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.onexray.BridgeHostApi.readVpnStatus$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -246,14 +392,15 @@ class BridgeHostApi {
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
       pigeonVar_replyList,
       pigeonVar_channelName,
-      isNullValid: true,
+      isNullValid: false,
     );
+    return pigeonVar_replyValue! as NativeVpnCommandResult;
   }
 
-  Future<void> startVpn() async {
+  Future<NativeVpnCommandResult> startVpn() async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.onexray.BridgeHostApi.startVpn$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -264,14 +411,15 @@ class BridgeHostApi {
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
       pigeonVar_replyList,
       pigeonVar_channelName,
-      isNullValid: true,
+      isNullValid: false,
     );
+    return pigeonVar_replyValue! as NativeVpnCommandResult;
   }
 
-  Future<void> stopVpn() async {
+  Future<NativeVpnCommandResult> stopVpn() async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.onexray.BridgeHostApi.stopVpn$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -282,11 +430,12 @@ class BridgeHostApi {
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
-    _extractReplyValueOrThrow(
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
       pigeonVar_replyList,
       pigeonVar_channelName,
-      isNullValid: true,
+      isNullValid: false,
     );
+    return pigeonVar_replyValue! as NativeVpnCommandResult;
   }
 
   Future<String> getFreePorts(int num) async {
@@ -512,6 +661,44 @@ class BridgeHostApi {
       isNullValid: false,
     );
     return pigeonVar_replyValue! as bool;
+  }
+
+  Future<PlatformPermissionResult> queryPlatformPermission() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.onexray.BridgeHostApi.queryPlatformPermission$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as PlatformPermissionResult;
+  }
+
+  Future<PlatformPermissionResult> requestPlatformPermission() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.onexray.BridgeHostApi.requestPlatformPermission$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as PlatformPermissionResult;
   }
 
   Future<List<AndroidAppInfo>> getInstalledApps() async {

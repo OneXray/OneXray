@@ -21,15 +21,18 @@ class OutboundState {
 
   var shadowsocksMethod = ShadowsocksMethod.none;
   var shadowsocksPassword = "";
-  var shadowsocksUot = false;
-  var shadowsocksUotVersion = ShadowsocksUoTVersion.none;
 
   var trojanPassword = "";
 
   var socksUser = "";
   var socksPass = "";
 
+  var httpUser = "";
+  var httpPass = "";
+  var httpHeaders = <String, String>{};
+
   var tag = RoutingOutboundTag.proxy.name;
+  var targetStrategy = XrayDomainStrategy.asIs;
 
   var network = StreamSettingsNetwork.raw;
 
@@ -41,10 +44,6 @@ class OutboundState {
   var xhttpPath = "";
   var xhttpMode = XhttpMode.auto;
   var xhttpExtra = <String, dynamic>{};
-
-  var kcpHeaderType = KcpHeaderType.none;
-  var kcpHeaderDomain = "";
-  var kcpSeed = "";
 
   var grpcAuthority = "";
   var grpcServiceName = "";
@@ -58,10 +57,6 @@ class OutboundState {
 
   final hysteriaVersion = "2";
   var hysteriaAuth = "";
-  var hysteriaUp = "";
-  var hysteriaDown = "";
-  var hysteriaUdphopPort = "";
-  var hysteriaUdphopInterval = "";
 
   var finalMask = <String, dynamic>{};
 
@@ -72,7 +67,6 @@ class OutboundState {
   var pinnedPeerCertSha256 = "";
   var verifyPeerCertByName = "";
   var echConfigList = "";
-  var echForceQuery = StreamSettingsEchForceQuery.full;
   var password = "";
   var shortId = "";
   var mldsa65Verify = "";
@@ -85,7 +79,15 @@ class OutboundState {
 
   // sockopt
   var tcpFastOpen = false;
+  var sockoptDomainStrategy = XrayDomainStrategy.asIs;
+  var v6only = false;
   var dialerProxy = "";
   var interface = "";
   var tcpMptcp = false;
+  var addressPortStrategy = AddressPortStrategy.none;
+  var happyEyeballsEnabled = false;
+  var happyEyeballsPrioritizeIPv6 = false;
+  var happyEyeballsTryDelayMs = "0";
+  var happyEyeballsInterleave = "1";
+  var happyEyeballsMaxConcurrentTry = "4";
 }

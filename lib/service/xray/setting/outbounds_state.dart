@@ -98,7 +98,6 @@ class OutboundDnsState {
   var address = "";
   var port = "";
   var rules = defaultRules;
-  var blockTypes = <int>[];
 
   static List<XrayOutboundDnsRule> get defaultRules => [
     XrayOutboundDnsRule("hijack", "1,28", null, null),
@@ -126,8 +125,6 @@ class OutboundDnsState {
     }
     if (rules.isNotEmpty) {
       settings.rules = rules;
-    } else if (blockTypes.isNotEmpty) {
-      settings.blockTypes = blockTypes;
     }
     outbound.settings = settings.toJson();
 
@@ -246,13 +243,8 @@ class OutboundsState {
     }
     if (EmptyTool.checkList(settings.rules)) {
       dns.rules = settings.rules!;
-      dns.blockTypes = <int>[];
-    } else if (EmptyTool.checkList(settings.blockTypes)) {
-      dns.rules = <XrayOutboundDnsRule>[];
-      dns.blockTypes = settings.blockTypes!;
     } else {
       dns.rules = OutboundDnsState.defaultRules;
-      dns.blockTypes = <int>[];
     }
   }
 

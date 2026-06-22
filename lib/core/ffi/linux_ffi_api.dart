@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:process/process.dart';
@@ -22,7 +23,7 @@ class LinuxFfiApi extends BaseFfiApi {
   final _processManager = LocalProcessManager();
 
   @override
-  Future<void> startVpn() async {
+  Future<NativeVpnCommandResult> startVpn() async {
     await _killAll();
     return super.startVpn();
   }

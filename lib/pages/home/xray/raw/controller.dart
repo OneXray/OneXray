@@ -8,6 +8,7 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/pages/home/xray/raw/params.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/raw/db.dart';
@@ -102,7 +103,8 @@ class XrayRawController {
   Future<void> _updateDb(String rawText) async {
     final name = _readName(rawText);
     if (_configId == DBConstants.defaultId) {
-      await XrayRawDb.insertToDb(name, rawText);
+      final id = await XrayRawDb.insertToDb(name, rawText);
+      PingService().schedulePingConfigIds([id]);
     } else {
       if (_configData != null) {
         await XrayRawDb.updateToDb(name, rawText, _configData!);

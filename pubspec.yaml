@@ -1,7 +1,7 @@
 name: onexray
 description: "Cross Platform Xray-core Client"
 publish_to: "none"
-version: 26.6.2+1
+version: 26.6.3+1
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -15,7 +15,7 @@ dependencies:
 
   #---------- flutter.dev plugin
   cupertino_icons: ^1.0.9
-  path_provider: ^2.1.5
+  path_provider: ^2.1.6
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
   quick_actions: ^1.1.0
@@ -39,9 +39,9 @@ dependencies:
   #---------- google.dev plugin
   json_annotation: ^4.12.0
   tuple: ^2.0.2
-  firebase_core: ^4.10.0
-  firebase_analytics: ^12.4.2
-  firebase_crashlytics: ^5.2.3
+  firebase_core: ^4.11.0
+  firebase_analytics: ^12.4.3
+  firebase_crashlytics: ^5.2.4
   google_mobile_ads: ^9.0.0
 
   #---------- flutter community
@@ -52,14 +52,14 @@ dependencies:
   #---------- third party plugin
   drift: ^2.34.0
   drift_flutter: ^0.3.0
-  sqlite3: ^3.3.2
+  sqlite3: ^3.3.3
 
   dio: ^5.9.2
   uuid: ^4.5.3
   permission_handler: ^12.0.3
   app_links: ^7.1.2
   # qrcode
-  file_picker: ^12.0.0-beta.5
+  file_picker: ^12.0.0-beta.7
   mobile_scanner: ^7.2.0
   image: ^4.8.0
   zxing2: ^0.2.4
@@ -72,7 +72,7 @@ dependencies:
   flutter_markdown_plus: ^1.0.7
   duration: ^4.0.3
 
-  flutter_local_notifications: ^22.0.0
+  flutter_local_notifications: ^22.0.1
 
   in_app_review: ^2.0.12
 
@@ -87,7 +87,7 @@ dev_dependencies:
   build_runner: ^2.15.0
   json_serializable: ^6.14.0
   drift_dev: ^2.34.0
-  pigeon: ^27.0.0
+  pigeon: ^27.1.0
   flutter_lints: ^6.0.0
   flutter_gen_runner: ^5.14.1
   ffigen: ^20.1.1

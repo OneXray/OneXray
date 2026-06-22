@@ -6,18 +6,18 @@ part 'model.g.dart';
 class RunXrayConfig {
   String? tunName;
   int? tunPriority;
-  String? dns;
-  String? bindInterface;
+  bool? enableIPv6;
   String? datDir;
   String? configPath;
+  String? metricsPort;
 
   RunXrayConfig(
     this.tunName,
     this.tunPriority,
-    this.dns,
-    this.bindInterface,
+    this.enableIPv6,
     this.datDir,
     this.configPath,
+    this.metricsPort,
   );
 
   factory RunXrayConfig.fromJson(Map<String, dynamic> json) =>
