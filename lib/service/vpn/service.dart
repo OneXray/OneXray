@@ -285,7 +285,15 @@ final class VpnService {
       );
       return result;
     }
-    await _waitForVpnStatus({VpnStatus.disconnected}, timeoutSeconds: 5);
+    final disconnected = await _waitForVpnStatus({
+      VpnStatus.disconnected,
+    }, timeoutSeconds: 5);
+    if (!disconnected) {
+      final message = appLocalizationsNoContext().vpnStopFailed;
+      eventBus.updateVpnActionState(VpnActionState.failed);
+      eventBus.updateVpnErrorMessage(message);
+      return _commandFailed(message);
+    }
     await _updateRunningId(DBConstants.defaultId);
     eventBus.updateVpnActionState(VpnActionState.idle);
     return result;

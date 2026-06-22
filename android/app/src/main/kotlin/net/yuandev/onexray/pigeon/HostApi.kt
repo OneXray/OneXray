@@ -101,13 +101,11 @@ class AppHostApi(
             }
             when (vpnStatus) {
                 VpnStatus.DISCONNECTED -> flutterApi?.refreshVpnStatus()
-                VpnStatus.CONNECTED -> {
+                VpnStatus.CONNECTING, VpnStatus.CONNECTED, VpnStatus.DISCONNECTING -> {
                     flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTING)
                     val intent = VpnController.buildStopIntent(context)
                     context.startService(intent)
                 }
-
-                else -> XLog.d("stopVpn unknown VpnStatus $vpnStatus")
             }
 
             callback(Result.success(commandSuccess(queryPermissionNow())))

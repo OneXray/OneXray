@@ -28,6 +28,7 @@ import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 
 class OneVpnService : VpnService() {
@@ -43,10 +44,13 @@ class OneVpnService : VpnService() {
         const val NOTIFICATION_STOP_REQUEST_CODE = 2
     }
 
+    @Volatile
     private var tunnel: ParcelFileDescriptor? = null
 
     private val tunMtu = 1500
+    @Volatile
     private var running = false
+    private val startGeneration = AtomicInteger(0)
 
     private fun sendStatusBroadcast(running: Boolean) {
         val intent = Intent(ACTION_VPN_STATUS).apply {
@@ -86,7 +90,7 @@ class OneVpnService : VpnService() {
         }
         if (intent != null && intent.action == ACTION_START) {
             XLog.d("OneVpnService: onStartCommand $ACTION_START running=$running")
-            if (!running) {
+            if (!running && tunnel == null) {
                 startTun(startId)
             }
             return START_NOT_STICKY
@@ -105,20 +109,25 @@ class OneVpnService : VpnService() {
 
     private fun startTun(startId: Int) {
         XLog.d("OneVpnService: startTun $startId")
+        if (tunnel != null) {
+            XLog.d("OneVpnService: startTun ignored because tunnel already exists")
+            return
+        }
+        val generation = startGeneration.incrementAndGet()
 
         showNotification(startId)
 
         val model = try {
             readStartRequest()
         } catch (e: Exception) {
-            failStart("OneVpnService: startTun failed to read/parse start.json", e)
+            failStart("OneVpnService: startTun failed to read/parse start.json", e, generation)
             return
         }
 
         try {
-            runTun(model)
+            runTun(model, generation)
         } catch (e: Exception) {
-            failStart("OneVpnService: startTun failed to establish tunnel", e)
+            failStart("OneVpnService: startTun failed to establish tunnel", e, generation)
         }
     }
 
@@ -134,6 +143,7 @@ class OneVpnService : VpnService() {
     }
 
     private fun stopTun() {
+        startGeneration.incrementAndGet()
         if (tunnel == null) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             controller.vpn = null
@@ -157,7 +167,13 @@ class OneVpnService : VpnService() {
         sendStatusBroadcast(false)
     }
 
-    private fun failStart(message: String, error: Exception) {
+    private fun failStart(message: String, error: Exception, generation: Int? = null) {
+        if (generation != null && generation != startGeneration.get()) {
+            XLog.d("$message ignored for stale start generation=$generation")
+            XLog.d(error)
+            return
+        }
+        startGeneration.incrementAndGet()
         XLog.e(message, error)
         stopForeground(STOP_FOREGROUND_REMOVE)
         try {
@@ -252,9 +268,10 @@ class OneVpnService : VpnService() {
     }
 
     private fun runTun(
-        request: StartVpnRequest
+        request: StartVpnRequest,
+        generation: Int,
     ) {
-        if (tunnel != null) {
+        if (generation != startGeneration.get() || tunnel != null) {
             return
         }
         XLog.d("OneVpnService: runTun tunnel = null")
@@ -265,6 +282,10 @@ class OneVpnService : VpnService() {
 
         val establishedTunnel = builder.establish()
             ?: throw IllegalStateException("failed to establish VPN tunnel")
+        if (generation != startGeneration.get()) {
+            establishedTunnel.close()
+            return
+        }
         tunnel = establishedTunnel
 
         XLog.d("OneVpnService: runTun tunnel = ${tunnel?.fd}")
@@ -273,7 +294,7 @@ class OneVpnService : VpnService() {
             "missing Xray run request"
         }
         controller.vpn = this
-        runXray(coreBase64Text, establishedTunnel.fd)
+        runXray(coreBase64Text, establishedTunnel, generation)
     }
 
     private fun setIPAndDns(tun: TunJson, builder: Builder) {
@@ -341,18 +362,32 @@ class OneVpnService : VpnService() {
         controllerInit = true
     }
 
-    private fun runXray(coreBase64Text: String, fd: Int) {
+    private fun runXray(
+        coreBase64Text: String,
+        establishedTunnel: ParcelFileDescriptor,
+        generation: Int,
+    ) {
         scope.launch {
             try {
                 initController()
-                LibXray.setTunFd(fd)
+                if (generation != startGeneration.get() || tunnel !== establishedTunnel) {
+                    return@launch
+                }
+                LibXray.setTunFd(establishedTunnel.fd)
                 val result = LibXray.runXray(coreBase64Text)
                 validateRunXrayResult(result)
+                if (generation != startGeneration.get() || tunnel !== establishedTunnel) {
+                    XLog.d("OneVpnService: stale runXray result ignored")
+                    if (tunnel == null) {
+                        LibXray.stopXray()
+                    }
+                    return@launch
+                }
                 XLog.d("TProxyStartService: runXray result=$result")
                 running = true
                 sendStatusBroadcast(true)
             } catch (e: Exception) {
-                failStart("OneVpnService: runXray failed", e)
+                failStart("OneVpnService: runXray failed", e, generation)
             }
         }
     }
