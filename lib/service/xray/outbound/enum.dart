@@ -35,17 +35,17 @@ enum XrayOutboundProtocol {
 }
 
 enum XrayDomainStrategy {
-  asIs("asis"),
-  useIP("useip"),
-  useIPv4("useipv4"),
-  useIPv6("useipv6"),
-  useIPv4v6("useipv4v6"),
-  useIPv6v4("useipv6v4"),
-  forceIP("forceip"),
-  forceIPv4("forceipv4"),
-  forceIPv6("forceipv6"),
-  forceIPv4v6("forceipv4v6"),
-  forceIPv6v4("forceipv6v4");
+  asIs("AsIs"),
+  useIP("UseIP"),
+  useIPv4("UseIPv4"),
+  useIPv6("UseIPv6"),
+  useIPv4v6("UseIPv4v6"),
+  useIPv6v4("UseIPv6v4"),
+  forceIP("ForceIP"),
+  forceIPv4("ForceIPv4"),
+  forceIPv6("ForceIPv6"),
+  forceIPv4v6("ForceIPv4v6"),
+  forceIPv6v4("ForceIPv6v4");
 
   const XrayDomainStrategy(this.name);
 
@@ -57,19 +57,19 @@ enum XrayDomainStrategy {
   static XrayDomainStrategy? fromString(String name) {
     final clean = name.toLowerCase();
     return XrayDomainStrategy.values.firstWhereOrNull(
-      (value) => value.name == clean,
+      (value) => value.name.toLowerCase() == clean,
     );
   }
 }
 
 enum AddressPortStrategy {
   none("none"),
-  srvPortOnly("srvportonly"),
-  srvAddressOnly("srvaddressonly"),
-  srvPortAndAddress("srvportandaddress"),
-  txtPortOnly("txtportonly"),
-  txtAddressOnly("txtaddressonly"),
-  txtPortAndAddress("txtportandaddress");
+  srvPortOnly("SrvPortOnly"),
+  srvAddressOnly("SrvAddressOnly"),
+  srvPortAndAddress("SrvPortAndAddress"),
+  txtPortOnly("TxtPortOnly"),
+  txtAddressOnly("TxtAddressOnly"),
+  txtPortAndAddress("TxtPortAndAddress");
 
   const AddressPortStrategy(this.name);
 
@@ -81,7 +81,7 @@ enum AddressPortStrategy {
   static AddressPortStrategy? fromString(String name) {
     final clean = name.toLowerCase();
     return AddressPortStrategy.values.firstWhereOrNull(
-      (value) => value.name == clean,
+      (value) => value.name.toLowerCase() == clean,
     );
   }
 }
