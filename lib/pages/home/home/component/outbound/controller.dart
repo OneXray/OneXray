@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
 import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/xray/setting/simple_state.dart';
@@ -136,7 +135,7 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
   }
 
   void gotoXraySetting(BuildContext context) {
-    context.push(RouterPath.xraySettingList);
+    context.goScoped(AppSecondaryDestination.xray);
   }
 
   Future<void> ping(int subId) async {

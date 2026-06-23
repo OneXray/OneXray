@@ -14,11 +14,17 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    this.initialWorkspace = HomeWorkspace.connection,
+    this.initialTabIndex = 0,
+  });
+
+  final HomeWorkspace initialWorkspace;
+  final int initialTabIndex;
 
   static const double _adaptiveBreakpoint = 840;
   static const double _inspectorBreakpoint = 1060;
-  static const double _expandedRailBreakpoint = 1180;
   static const double _inspectorWidth = 320;
   static const double _largeInspectorWidth = 360;
 
@@ -26,9 +32,13 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
+      initialIndex: initialTabIndex,
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (context) => HomeController(context)),
+          BlocProvider(
+            create: (context) =>
+                HomeController(context, initialWorkspace: initialWorkspace),
+          ),
           BlocProvider(create: (_) => HomeOutboundController()),
           BlocProvider(create: (_) => HomeRawController()),
         ],
@@ -111,17 +121,6 @@ class HomePage extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _adaptiveNavigationRail(
-                context,
-                controller,
-                homeState,
-                constraints.maxWidth,
-              ),
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: ColorManager.border(context),
-              ),
               Expanded(
                 child: _adaptivePrimary(
                   context,
@@ -151,163 +150,6 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _adaptiveNavigationRail(
-    BuildContext context,
-    HomeController controller,
-    HomeState homeState,
-    double width,
-  ) {
-    final localizations = AppLocalizations.of(context)!;
-    final extended = width >= _expandedRailBreakpoint;
-    final railWidth = extended ? 220.0 : 72.0;
-    final connectionSelected = homeState.workspace == HomeWorkspace.connection;
-    final nodesSelected = homeState.workspace == HomeWorkspace.nodes;
-    return Material(
-      color: ColorManager.surface(context),
-      child: SizedBox(
-        width: railWidth,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.symmetric(
-            horizontal: 8,
-            vertical: 10,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _adaptiveNavigationItem(
-                context,
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home,
-                label: localizations.homePageTitle,
-                extended: extended,
-                selected: connectionSelected,
-                onTap: controller.gotoHome,
-              ),
-              _adaptiveNavigationItem(
-                context,
-                icon: Icons.account_tree_outlined,
-                selectedIcon: Icons.account_tree,
-                label: localizations.homePageTabOutbound,
-                extended: extended,
-                selected: nodesSelected,
-                onTap: () => controller.gotoNodes(context),
-              ),
-              _adaptiveNavigationItem(
-                context,
-                icon: Icons.hub_outlined,
-                selectedIcon: Icons.hub,
-                label: localizations.tunSettingUIPageTitle,
-                extended: extended,
-                onTap: () => controller.gotoTunSetting(context),
-              ),
-              _adaptiveNavigationItem(
-                context,
-                icon: Icons.tune_outlined,
-                selectedIcon: Icons.tune,
-                label: localizations.xraySettingListPageTitle,
-                extended: extended,
-                onTap: () => controller.gotoXraySetting(context),
-              ),
-              _adaptiveNavigationItem(
-                context,
-                icon: Icons.rule_folder_outlined,
-                selectedIcon: Icons.rule_folder,
-                label: localizations.geoDataListPageTitle,
-                extended: extended,
-                onTap: () => controller.gotoGeoData(context),
-              ),
-              _adaptiveNavigationItem(
-                context,
-                icon: Icons.article_outlined,
-                selectedIcon: Icons.article,
-                label: localizations.logPageTitle,
-                extended: extended,
-                onTap: () => controller.gotoLog(context),
-              ),
-              const Spacer(),
-              Divider(height: 1, color: ColorManager.border(context)),
-              const SizedBox(height: 8),
-              _adaptiveNavigationItem(
-                context,
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: localizations.settingPageTitle,
-                extended: extended,
-                onTap: () => controller.gotoSettings(context),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _adaptiveNavigationItem(
-    BuildContext context, {
-    required IconData icon,
-    required IconData selectedIcon,
-    required String label,
-    required bool extended,
-    required VoidCallback onTap,
-    bool selected = false,
-  }) {
-    final foregroundColor = selected
-        ? Theme.of(context).colorScheme.primary
-        : ColorManager.secondaryText(context);
-    final backgroundColor = selected
-        ? ColorManager.selected(context)
-        : Colors.transparent;
-    final content = SizedBox(
-      height: 46,
-      child: Material(
-        color: backgroundColor,
-        borderRadius: BorderRadiusDirectional.circular(8),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsetsDirectional.symmetric(
-              horizontal: extended ? 12 : 0,
-            ),
-            child: Row(
-              mainAxisAlignment: extended
-                  ? MainAxisAlignment.start
-                  : MainAxisAlignment.center,
-              children: [
-                Icon(
-                  selected ? selectedIcon : icon,
-                  size: 22,
-                  color: foregroundColor,
-                ),
-                if (extended) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: foregroundColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: 6),
-      child: extended ? content : Tooltip(message: label, child: content),
     );
   }
 

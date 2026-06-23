@@ -25,17 +25,27 @@ class NodeInfoPage extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(child: _body(context)),
+      body: const SafeArea(child: NodeInfoContent()),
     );
   }
+}
 
-  Widget _body(BuildContext context) {
+class NodeInfoContent extends StatelessWidget {
+  const NodeInfoContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
         child: ResponsiveContent(
-          child: BlocBuilder<AppEventBus, AppEventBusState>(
-            builder: (context, state) => _section(context, state),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BlocBuilder<AppEventBus, AppEventBusState>(
+                builder: (context, state) => _section(context, state),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,1 @@
-enum ConfigRowStatus {
-  unselected,
-  selected,
-  running;
-}
+enum ConfigRowStatus { unselected, selected, running }

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/constants.dart';
@@ -13,10 +12,10 @@ import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/app_update/dialog.dart';
-import 'package:onexray/pages/geo_data/list/params.dart';
-import 'package:onexray/pages/home/xray/outbound/params.dart';
-import 'package:onexray/pages/home/xray/raw/params.dart';
-import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/pages/core/geo_data/list/params.dart';
+import 'package:onexray/pages/core/xray/outbound/params.dart';
+import 'package:onexray/pages/core/xray/raw/params.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/background_task/service.dart';
@@ -44,10 +43,12 @@ class HomeState {
     required this.workspace,
   });
 
-  factory HomeState.initial() => const HomeState(
+  factory HomeState.initial({
+    HomeWorkspace workspace = HomeWorkspace.connection,
+  }) => HomeState(
     configId: DBConstants.defaultId,
     configName: "",
-    workspace: HomeWorkspace.connection,
+    workspace: workspace,
   );
 
   HomeState copyWith({
@@ -98,7 +99,10 @@ class HomeConnectionViewState {
 class HomeController extends Cubit<HomeState> {
   final BuildContext context;
 
-  HomeController(this.context) : super(HomeState.initial()) {
+  HomeController(
+    this.context, {
+    HomeWorkspace initialWorkspace = HomeWorkspace.connection,
+  }) : super(HomeState.initial(workspace: initialWorkspace)) {
     _asyncInit();
   }
 
@@ -312,7 +316,7 @@ class HomeController extends Cubit<HomeState> {
   }
 
   void gotoSettings(BuildContext context) {
-    context.push(RouterPath.setting);
+    context.goPrimaryRoot(AppPrimaryRoute.settings);
   }
 
   void gotoHome() {
@@ -325,11 +329,11 @@ class HomeController extends Cubit<HomeState> {
   }
 
   void gotoTunSetting(BuildContext context) {
-    context.push(RouterPath.tunSettingUI);
+    context.goScoped(AppSecondaryDestination.tun);
   }
 
   void gotoXraySetting(BuildContext context) {
-    context.push(RouterPath.xraySettingList);
+    context.goScoped(AppSecondaryDestination.xray);
   }
 
   void gotoGeoData(BuildContext context) {
@@ -337,11 +341,11 @@ class HomeController extends Cubit<HomeState> {
       GeoDataListType.full,
       GeoDatCodesMode.show,
     );
-    context.push(RouterPath.geoDataList, extra: params);
+    context.goScoped(AppSecondaryDestination.geoData, extra: params);
   }
 
   void gotoLog(BuildContext context) {
-    context.push(RouterPath.log);
+    context.goScoped(AppSecondaryDestination.logs);
   }
 
   Future<void> addMenuAction(
@@ -385,24 +389,26 @@ class HomeController extends Cubit<HomeState> {
           OutboundState(),
           [],
         );
-        context.push(RouterPath.outboundUI, extra: params);
+        context.pushScoped(AppSecondaryDestination.outboundUI, extra: params);
         break;
       case 1:
         final params = XrayRawParams(DBConstants.defaultId);
-        context.push(RouterPath.xrayRaw, extra: params);
+        context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
         break;
     }
   }
 
   void _addSubscription(BuildContext context) {
-    context.push(RouterPath.subscriptionAdd);
+    context.pushScoped(AppSecondaryDestination.subscriptionAdd);
   }
 
   Future<void> _scanQrCode(BuildContext context) async {
     final status = await Permission.camera.request();
     if (status.isGranted) {
       if (context.mounted) {
-        final result = await context.push<String>(RouterPath.qrcode);
+        final result = await context.pushScoped<String>(
+          AppSecondaryDestination.qrcode,
+        );
         if (result != null) {
           await ShareService().readShareText(result);
         }
@@ -568,7 +574,7 @@ class HomeController extends Cubit<HomeState> {
   }
 
   void gotoNodeInfo(BuildContext context) {
-    context.push(RouterPath.nodeInfo);
+    context.goScoped(AppSecondaryDestination.nodeInfo);
   }
 
   Future<void> _updateConfigName(int value) async {
