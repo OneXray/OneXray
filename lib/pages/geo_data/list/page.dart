@@ -10,6 +10,7 @@ import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -41,7 +42,13 @@ class GeoDataListPage extends StatelessWidget {
                 ),
               ],
             ),
-            body: SafeArea(child: _body(context, controller, state)),
+            body: SafeArea(
+              child: ResponsiveContent(
+                desktopMaxWidth: 880,
+                adaptiveBreakpoint: 840,
+                child: _body(context, controller, state),
+              ),
+            ),
           );
         },
       ),

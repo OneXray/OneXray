@@ -5,6 +5,7 @@ import 'package:onexray/pages/geo_data/show/controller.dart';
 import 'package:onexray/pages/geo_data/show/params.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/data_list.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatShowPage extends StatelessWidget {
@@ -28,7 +29,11 @@ class GeoDatShowPage extends StatelessWidget {
   Widget _body(BuildContext context, GeoDatShowState state) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: _mainBody(context, state),
+      child: ResponsiveContent(
+        desktopMaxWidth: 880,
+        adaptiveBreakpoint: 840,
+        child: _mainBody(context, state),
+      ),
     );
   }
 

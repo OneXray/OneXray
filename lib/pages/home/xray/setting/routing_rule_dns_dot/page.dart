@@ -4,6 +4,7 @@ import 'package:onexray/pages/home/xray/setting/routing_rule_dns_dot/controller.
 import 'package:onexray/pages/home/xray/setting/routing_rule_dns_dot/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -41,22 +42,24 @@ class RoutingRuleDnsDoTPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _inboundTagSection(context, controller, state),
-                  _portSection(context, controller, state),
-                  _tagSection(context, controller, state),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _inboundTagSection(context, controller, state),
+                    _portSection(context, controller, state),
+                    _tagSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

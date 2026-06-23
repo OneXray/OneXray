@@ -8,6 +8,7 @@ import 'package:onexray/pages/home/xray/outbound/controller.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -53,29 +54,31 @@ class OutboundUIPage extends StatelessWidget
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _nameSection(context, controller),
-                  _protocolSection(context, controller, state),
-                  _settingsSection(context, controller, state),
-                  _tagSection(context, controller, state),
-                  _networkSection(context, controller, state),
-                  _networkSettings(context, controller, state),
-                  _finalMaskSection(context, controller),
-                  _securitySection(context, controller, state),
-                  _securitySettings(context, controller, state),
-                  _sockoptSection(context, controller, state),
-                  _muxSection(context, controller, state),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _nameSection(context, controller),
+                    _protocolSection(context, controller, state),
+                    _settingsSection(context, controller, state),
+                    _tagSection(context, controller, state),
+                    _networkSection(context, controller, state),
+                    _networkSettings(context, controller, state),
+                    _finalMaskSection(context, controller),
+                    _securitySection(context, controller, state),
+                    _securitySettings(context, controller, state),
+                    _sockoptSection(context, controller, state),
+                    _muxSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

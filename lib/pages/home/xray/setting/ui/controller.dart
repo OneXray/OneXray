@@ -10,9 +10,7 @@ import 'package:onexray/pages/home/xray/setting/dns/params.dart';
 import 'package:onexray/pages/home/xray/setting/fake_dns/params.dart';
 import 'package:onexray/pages/home/xray/setting/inbounds/params.dart';
 import 'package:onexray/pages/home/xray/setting/log/params.dart';
-import 'package:onexray/pages/home/xray/setting/metrics/params.dart';
 import 'package:onexray/pages/home/xray/setting/outbounds/params.dart';
-import 'package:onexray/pages/home/xray/setting/policy/params.dart';
 import 'package:onexray/pages/home/xray/setting/routing/params.dart';
 import 'package:onexray/pages/home/xray/setting/ui/params.dart';
 import 'package:onexray/pages/main/url.dart';
@@ -23,7 +21,6 @@ import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/fake_dns_state.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
-import 'package:onexray/service/xray/setting/metrics_state.dart';
 import 'package:onexray/service/xray/setting/outbounds_state.dart';
 import 'package:onexray/service/xray/setting/routing_state.dart';
 import 'package:onexray/service/xray/setting/state.dart';
@@ -120,23 +117,6 @@ class XraySettingUIController extends Cubit<XraySettingUICubitState> {
     }
   }
 
-  Future<void> showMetrics(BuildContext context) async {
-    final params = MetricsParams(_xraySettingState.metrics);
-    final metrics = await context.push<MetricsState>(
-      RouterPath.metrics,
-      extra: params,
-    );
-    if (metrics != null) {
-      _xraySettingState.metrics = metrics;
-      _notifyChanged();
-    }
-  }
-
-  void showPolicy(BuildContext context) {
-    final params = PolicyParams(_xraySettingState.policy);
-    context.push(RouterPath.policy, extra: params);
-  }
-
   Future<void> editDns(BuildContext context) async {
     final params = DnsParams(_xraySettingState.dns);
     final dns = await context.push<DnsState>(RouterPath.dns, extra: params);
@@ -217,29 +197,6 @@ class XraySettingUIController extends Cubit<XraySettingUICubitState> {
       case DnsQueryStrategy.useIPv6:
         return "IPv6";
     }
-  }
-
-  String statsSummary(BuildContext context) {
-    return _xraySettingState.stats.enabled
-        ? AppLocalizations.of(context)!.switchEnabled
-        : AppLocalizations.of(context)!.chainProxyPageDisabled;
-  }
-
-  String metricsSummary(BuildContext context) {
-    final metrics = _xraySettingState.metrics;
-    return metrics.enabled
-        ? metrics.displayListen
-        : AppLocalizations.of(context)!.chainProxyPageDisabled;
-  }
-
-  String policySummary(BuildContext context) {
-    final system = _xraySettingState.policy.system;
-    return system.statsInboundUplink &&
-            system.statsInboundDownlink &&
-            system.statsOutboundUplink &&
-            system.statsOutboundDownlink
-        ? AppLocalizations.of(context)!.switchEnabled
-        : AppLocalizations.of(context)!.chainProxyPageDisabled;
   }
 
   String routingSummary(BuildContext context) {

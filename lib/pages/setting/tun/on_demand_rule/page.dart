@@ -7,6 +7,7 @@ import 'package:onexray/pages/setting/tun/on_demand_rule/controller.dart';
 import 'package:onexray/pages/setting/tun/on_demand_rule/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/tun_setting/enum.dart';
 
@@ -40,22 +41,24 @@ class OnDemandRulePage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _modeSection(context, state, controller),
-                  if (state.ruleState.interfaceType ==
-                      OnDemandRuleInterfaceType.wifi)
-                    _ssidSection(context, state, controller),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _modeSection(context, state, controller),
+                    if (state.ruleState.interfaceType ==
+                        OnDemandRuleInterfaceType.wifi)
+                      _ssidSection(context, state, controller),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

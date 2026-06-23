@@ -11,6 +11,7 @@ import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 
 class XraySettingListPage extends StatelessWidget {
   const XraySettingListPage({super.key});
@@ -38,7 +39,13 @@ class XraySettingListPage extends StatelessWidget {
                 ),
               ],
             ),
-            body: SafeArea(child: _body(context, controller, state)),
+            body: SafeArea(
+              child: ResponsiveContent(
+                desktopMaxWidth: 880,
+                adaptiveBreakpoint: 840,
+                child: _body(context, controller, state),
+              ),
+            ),
           );
         },
       ),

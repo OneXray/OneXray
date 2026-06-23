@@ -487,8 +487,7 @@ final class VpnService {
     await _applyChainProxy(settingState, outboundState, config);
     settingState.outbounds.outbounds.add(outboundState);
 
-    await settingState.fixSetting(tunSettingState, port);
-    final xrayJson = settingState.xrayJson;
+    final xrayJson = await settingState.fixSetting(tunSettingState, port);
     final configPath = await xrayJson.writeConfig(runDir);
     return configPath;
   }
@@ -571,12 +570,11 @@ final class VpnService {
     final bytes = base64Decode(config.data!);
     final rawText = utf8.decode(bytes);
     final jsonMap = JsonTool.decoder.convert(rawText);
-    final settingState = await XraySettingStateReader.loadFromDb();
     await XrayRawFix.fixConfig(
       jsonMap,
       tunSettingState,
       port,
-      settingState.metrics.enabled,
+      tunSettingState.metricsEnabled,
     );
     final configText = JsonTool.encoderForFile.convert(jsonMap);
     final configPath = XrayStateConstants.configFilePath;

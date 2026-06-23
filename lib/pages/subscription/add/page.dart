@@ -7,6 +7,7 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/subscription/add/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -37,22 +38,26 @@ class SubscriptionAddPage extends StatelessWidget {
   Widget _body(BuildContext context, SubscriptionAddController controller) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: SettingSection(
-                title: AppLocalizations.of(context)!.subscriptionAddPageSection,
-                children: [
-                  _name(context, controller),
-                  _url(context, controller),
-                  _autoUpdate(context),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: SettingSection(
+                  title: AppLocalizations.of(
+                    context,
+                  )!.subscriptionAddPageSection,
+                  children: [
+                    _name(context, controller),
+                    _url(context, controller),
+                    _autoUpdate(context),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

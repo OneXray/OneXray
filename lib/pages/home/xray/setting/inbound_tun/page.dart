@@ -6,6 +6,7 @@ import 'package:onexray/pages/home/xray/setting/inbound_tun/controller.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_tun/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class InboundTunPage extends StatelessWidget {
@@ -38,22 +39,24 @@ class InboundTunPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _listenSection(context, controller, state),
-                  _settingsSection(context, controller, state),
-                  _tagSection(context, controller, state),
-                  _sniffingSection(context, controller),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _listenSection(context, controller, state),
+                    _settingsSection(context, controller, state),
+                    _tagSection(context, controller, state),
+                    _sniffingSection(context, controller),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

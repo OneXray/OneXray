@@ -7,6 +7,7 @@ import 'package:onexray/pages/home/xray/setting/dns_hosts/controller.dart';
 import 'package:onexray/pages/home/xray/setting/dns_hosts/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class DnsHostsPage extends StatelessWidget {
@@ -39,20 +40,22 @@ class DnsHostsPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _addSection(context, controller),
-                  _hosts(context, controller, state),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _addSection(context, controller),
+                    _hosts(context, controller, state),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

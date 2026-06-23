@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/outbound_black_hole/controller.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class OutboundBlackHolePage extends StatelessWidget {
@@ -21,7 +22,9 @@ class OutboundBlackHolePage extends StatelessWidget {
   Widget _body(BuildContext context, OutboundBlackHoleController controller) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: SingleChildScrollView(child: _section(context, controller)),
+      child: SingleChildScrollView(
+        child: ResponsiveContent(child: _section(context, controller)),
+      ),
     );
   }
 

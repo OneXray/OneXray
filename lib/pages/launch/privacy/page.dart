@@ -6,6 +6,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/launch/privacy/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 
 class PrivacyPage extends StatelessWidget {
   const PrivacyPage({super.key});
@@ -35,16 +36,20 @@ class PrivacyPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: Markdown(
-              data: state.md,
-              onTapLink: (_, href, _) => controller.openUrl(href),
+      child: ResponsiveContent(
+        desktopMaxWidth: 860,
+        adaptiveBreakpoint: 840,
+        child: Column(
+          children: [
+            Expanded(
+              child: Markdown(
+                data: state.md,
+                onTapLink: (_, href, _) => controller.openUrl(href),
+              ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

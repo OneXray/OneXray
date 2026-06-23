@@ -6,6 +6,7 @@ import 'package:onexray/pages/home/xray/setting/log/controller.dart';
 import 'package:onexray/pages/home/xray/setting/log/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
 
@@ -39,15 +40,17 @@ class XrayLogPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: _settingSection(context, controller, state),
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: _settingSection(context, controller, state),
+              ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

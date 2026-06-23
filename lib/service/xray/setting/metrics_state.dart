@@ -3,13 +3,9 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/xray/standard.dart';
 
 class MetricsState {
-  var enabled = true;
   var listen = "127.0.0.1:0";
 
-  XrayMetrics? get xrayJson {
-    if (!enabled) {
-      return null;
-    }
+  XrayMetrics get xrayJson {
     final metrics = XrayMetricsStandard.standard;
     metrics.listen = listen;
     return metrics;
@@ -18,17 +14,12 @@ class MetricsState {
   void readFromXrayJson(XrayJson xrayJson) {
     final metrics = xrayJson.metrics;
     if (metrics != null && EmptyTool.checkString(metrics.listen)) {
-      enabled = true;
       listen = metrics.listen!;
-      return;
     }
-    enabled = false;
   }
 
   MetricsState get copy {
-    return MetricsState()
-      ..enabled = enabled
-      ..listen = listen;
+    return MetricsState()..listen = listen;
   }
 
   String get displayListen => listen;

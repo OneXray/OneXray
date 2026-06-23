@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:onexray/core/db/database/constants.dart';
-import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
@@ -18,6 +16,12 @@ import 'package:onexray/service/event_bus/state.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  static const double _adaptiveBreakpoint = 840;
+  static const double _inspectorBreakpoint = 1060;
+  static const double _expandedRailBreakpoint = 1180;
+  static const double _inspectorWidth = 320;
+  static const double _largeInspectorWidth = 360;
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -32,25 +36,772 @@ class HomePage extends StatelessWidget {
           builder: (context, homeState) {
             final controller = context.read<HomeController>();
             return BlocBuilder<AppEventBus, AppEventBusState>(
-              builder: (context, eventState) => Scaffold(
-                appBar: AppBar(
-                  leading: IconButton(
-                    onPressed: () => controller.gotoSettings(context),
-                    icon: Icon(Icons.settings),
-                  ),
-                  title: Text(AppLocalizations.of(context)!.homePageTitle),
-                  actions: [
-                    _searchButton(context),
-                    _rightButton(context, controller, eventState),
-                  ],
-                ),
-                body: SafeArea(
-                  child: _body(context, controller, homeState, eventState),
-                ),
+              builder: (context, eventState) => LayoutBuilder(
+                builder: (context, constraints) {
+                  final connection = controller.buildConnectionViewState(
+                    context,
+                    homeState,
+                    eventState,
+                  );
+                  if (constraints.maxWidth >= _adaptiveBreakpoint) {
+                    return _adaptiveScaffold(
+                      context,
+                      controller,
+                      homeState,
+                      connection,
+                      eventState,
+                      constraints,
+                    );
+                  }
+                  return _compactScaffold(
+                    context,
+                    controller,
+                    connection,
+                    eventState,
+                  );
+                },
               ),
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _compactScaffold(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection,
+    AppEventBusState eventState,
+  ) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => controller.gotoSettings(context),
+          icon: const Icon(Icons.settings),
+        ),
+        title: Text(AppLocalizations.of(context)!.homePageTitle),
+        actions: [
+          _searchButton(context),
+          _rightButton(context, controller, eventState),
+        ],
+      ),
+      body: SafeArea(child: _body(context, controller, connection)),
+    );
+  }
+
+  Widget _adaptiveScaffold(
+    BuildContext context,
+    HomeController controller,
+    HomeState homeState,
+    HomeConnectionViewState connection,
+    AppEventBusState eventState,
+    BoxConstraints constraints,
+  ) {
+    final inNodesWorkspace = homeState.workspace == HomeWorkspace.nodes;
+    final showSwitcher =
+        !inNodesWorkspace && constraints.maxWidth >= _inspectorBreakpoint;
+    final inspectorWidth = constraints.maxWidth >= 1260
+        ? _largeInspectorWidth
+        : _inspectorWidth;
+    return Scaffold(
+      body: SafeArea(
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _adaptiveNavigationRail(
+                context,
+                controller,
+                homeState,
+                constraints.maxWidth,
+              ),
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: ColorManager.border(context),
+              ),
+              Expanded(
+                child: _adaptivePrimary(
+                  context,
+                  controller,
+                  homeState,
+                  connection,
+                  eventState,
+                  showSwitcher,
+                ),
+              ),
+              if (showSwitcher) ...[
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: ColorManager.border(context),
+                ),
+                SizedBox(
+                  width: inspectorWidth,
+                  child: _configSwitcherPanel(
+                    context,
+                    controller,
+                    showHeader: true,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _adaptiveNavigationRail(
+    BuildContext context,
+    HomeController controller,
+    HomeState homeState,
+    double width,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final extended = width >= _expandedRailBreakpoint;
+    final railWidth = extended ? 220.0 : 72.0;
+    final connectionSelected = homeState.workspace == HomeWorkspace.connection;
+    final nodesSelected = homeState.workspace == HomeWorkspace.nodes;
+    return Material(
+      color: ColorManager.surface(context),
+      child: SizedBox(
+        width: railWidth,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: 8,
+            vertical: 10,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _adaptiveNavigationItem(
+                context,
+                icon: Icons.home_outlined,
+                selectedIcon: Icons.home,
+                label: localizations.homePageTitle,
+                extended: extended,
+                selected: connectionSelected,
+                onTap: controller.gotoHome,
+              ),
+              _adaptiveNavigationItem(
+                context,
+                icon: Icons.account_tree_outlined,
+                selectedIcon: Icons.account_tree,
+                label: localizations.homePageTabOutbound,
+                extended: extended,
+                selected: nodesSelected,
+                onTap: () => controller.gotoNodes(context),
+              ),
+              _adaptiveNavigationItem(
+                context,
+                icon: Icons.hub_outlined,
+                selectedIcon: Icons.hub,
+                label: localizations.tunSettingUIPageTitle,
+                extended: extended,
+                onTap: () => controller.gotoTunSetting(context),
+              ),
+              _adaptiveNavigationItem(
+                context,
+                icon: Icons.tune_outlined,
+                selectedIcon: Icons.tune,
+                label: localizations.xraySettingListPageTitle,
+                extended: extended,
+                onTap: () => controller.gotoXraySetting(context),
+              ),
+              _adaptiveNavigationItem(
+                context,
+                icon: Icons.rule_folder_outlined,
+                selectedIcon: Icons.rule_folder,
+                label: localizations.geoDataListPageTitle,
+                extended: extended,
+                onTap: () => controller.gotoGeoData(context),
+              ),
+              _adaptiveNavigationItem(
+                context,
+                icon: Icons.article_outlined,
+                selectedIcon: Icons.article,
+                label: localizations.logPageTitle,
+                extended: extended,
+                onTap: () => controller.gotoLog(context),
+              ),
+              const Spacer(),
+              Divider(height: 1, color: ColorManager.border(context)),
+              const SizedBox(height: 8),
+              _adaptiveNavigationItem(
+                context,
+                icon: Icons.settings_outlined,
+                selectedIcon: Icons.settings,
+                label: localizations.settingPageTitle,
+                extended: extended,
+                onTap: () => controller.gotoSettings(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _adaptiveNavigationItem(
+    BuildContext context, {
+    required IconData icon,
+    required IconData selectedIcon,
+    required String label,
+    required bool extended,
+    required VoidCallback onTap,
+    bool selected = false,
+  }) {
+    final foregroundColor = selected
+        ? Theme.of(context).colorScheme.primary
+        : ColorManager.secondaryText(context);
+    final backgroundColor = selected
+        ? ColorManager.selected(context)
+        : Colors.transparent;
+    final content = SizedBox(
+      height: 46,
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadiusDirectional.circular(8),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsetsDirectional.symmetric(
+              horizontal: extended ? 12 : 0,
+            ),
+            child: Row(
+              mainAxisAlignment: extended
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.center,
+              children: [
+                Icon(
+                  selected ? selectedIcon : icon,
+                  size: 22,
+                  color: foregroundColor,
+                ),
+                if (extended) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: foregroundColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: 6),
+      child: extended ? content : Tooltip(message: label, child: content),
+    );
+  }
+
+  Widget _adaptivePrimary(
+    BuildContext context,
+    HomeController controller,
+    HomeState homeState,
+    HomeConnectionViewState connection,
+    AppEventBusState eventState,
+    bool showSwitcher,
+  ) {
+    if (homeState.workspace == HomeWorkspace.nodes) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _adaptiveHeader(
+            context,
+            controller,
+            eventState,
+            title: AppLocalizations.of(context)!.homePageTabOutbound,
+          ),
+          Expanded(
+            child: _configSwitcherPanel(context, controller, showHeader: false),
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _adaptiveHeader(context, controller, eventState),
+        Expanded(
+          child: showSwitcher
+              ? _connectionDashboard(
+                  context,
+                  controller,
+                  connection,
+                  expanded: true,
+                )
+              : _adaptiveStackedHome(context, controller, connection),
+        ),
+      ],
+    );
+  }
+
+  Widget _adaptiveStackedHome(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection,
+  ) {
+    return Column(
+      children: [
+        Expanded(
+          flex: 5,
+          child: _connectionDashboard(
+            context,
+            controller,
+            connection,
+            expanded: true,
+          ),
+        ),
+        Divider(height: 1, color: ColorManager.border(context)),
+        Expanded(
+          flex: 4,
+          child: _configSwitcherPanel(context, controller, showHeader: false),
+        ),
+      ],
+    );
+  }
+
+  Widget _adaptiveHeader(
+    BuildContext context,
+    HomeController controller,
+    AppEventBusState eventState, {
+    String? title,
+  }) {
+    return Material(
+      color: ColorManager.surface(context),
+      child: SizedBox(
+        height: 64,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 20, end: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title ?? AppLocalizations.of(context)!.homePageTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: ColorManager.primaryText(context),
+                  ),
+                ),
+              ),
+              _searchButton(context),
+              _rightButton(context, controller, eventState),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _configSwitcherPanel(
+    BuildContext context,
+    HomeController controller, {
+    required bool showHeader,
+  }) {
+    return Material(
+      color: ColorManager.surface(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (showHeader) _configSwitcherHeader(context),
+          _tabBar(context, controller),
+          Expanded(child: _tabBarView(context, controller)),
+        ],
+      ),
+    );
+  }
+
+  Widget _configSwitcherHeader(BuildContext context) {
+    return SizedBox(
+      height: 64,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            AppLocalizations.of(context)!.homePageCurrentNode,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: ColorManager.primaryText(context),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _connectionDashboard(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection, {
+    required bool expanded,
+  }) {
+    if (!expanded) {
+      return Material(
+        color: ColorManager.surface(context),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 22),
+          child: _connectionDashboardContent(
+            context,
+            controller,
+            connection,
+            expanded: false,
+          ),
+        ),
+      );
+    }
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final minHeight = constraints.maxHeight > 64
+              ? constraints.maxHeight - 64
+              : 0.0;
+          return SingleChildScrollView(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: 32,
+              vertical: 32,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: minHeight),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: _connectionDashboardContent(
+                    context,
+                    controller,
+                    connection,
+                    expanded: true,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _connectionDashboardContent(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection, {
+    required bool expanded,
+  }) {
+    final titleFontSize = expanded ? 34.0 : 28.0;
+    final detailMaxLines = expanded ? 3 : 2;
+    return Column(
+      mainAxisSize: expanded ? MainAxisSize.min : MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _primaryVpnButton(context, controller, connection, expanded: expanded),
+        SizedBox(height: expanded ? 24 : 18),
+        Text(
+          connection.statusText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: titleFontSize,
+            fontWeight: FontWeight.w800,
+            color: ColorManager.primaryText(context),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          connection.detailText,
+          maxLines: detailMaxLines,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.35,
+            color: ColorManager.secondaryText(context),
+          ),
+        ),
+        SizedBox(height: expanded ? 28 : 20),
+        _currentNodeSummary(context, connection),
+        if (connection.connected) ...[
+          SizedBox(height: expanded ? 18 : 14),
+          _connectionMetrics(
+            context,
+            controller,
+            connection,
+            expanded: expanded,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _primaryVpnButton(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection, {
+    required bool expanded,
+  }) {
+    final dimension = expanded ? 144.0 : 116.0;
+    final accentColor = _connectionAccentColor(context, connection);
+    final backgroundColor = connection.tone == HomeConnectionTone.disconnected
+        ? ColorManager.buttonStop(context)
+        : accentColor;
+    final foregroundColor = switch (connection.tone) {
+      HomeConnectionTone.disconnected => ColorManager.buttonStopForeground(
+        context,
+      ),
+      HomeConnectionTone.failed => Theme.of(context).colorScheme.onError,
+      _ => Theme.of(context).colorScheme.onPrimary,
+    };
+    final child = connection.loading
+        ? SizedBox.square(
+            dimension: expanded ? 42 : 34,
+            child: CircularProgressIndicator(color: accentColor),
+          )
+        : Icon(connection.actionIcon, size: expanded ? 58 : 46);
+    final button = SizedBox.square(
+      dimension: dimension,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsetsDirectional.zero,
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          iconColor: foregroundColor,
+          elevation: 0,
+          shape: const CircleBorder(),
+        ),
+        onPressed: connection.loading
+            ? null
+            : () => controller.startVpn(context),
+        child: child,
+      ),
+    );
+    return Tooltip(message: connection.statusText, child: button);
+  }
+
+  Widget _currentNodeSummary(
+    BuildContext context,
+    HomeConnectionViewState connection,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadiusDirectional.circular(8),
+        border: Border.all(color: ColorManager.border(context)),
+        color: ColorManager.surface(context),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            connection.statusIcon,
+            size: 22,
+            color: _connectionAccentColor(context, connection),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.homePageCurrentNode,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: ColorManager.secondaryText(context),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  connection.nodeName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: ColorManager.primaryText(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _connectionMetrics(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection, {
+    required bool expanded,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compactMetricWidth = (constraints.maxWidth - 12) / 2;
+        final metricWidth = expanded
+            ? 260.0
+            : compactMetricWidth < 120
+            ? constraints.maxWidth
+            : compactMetricWidth;
+        return Wrap(
+          alignment: WrapAlignment.center,
+          runSpacing: 12,
+          spacing: 12,
+          children: [
+            _connectionMetric(
+              context,
+              Icons.swap_vert,
+              AppLocalizations.of(context)!.nodeInfoPageTraffic,
+              connection.trafficText,
+              metricWidth,
+              onTap: () => controller.gotoNodeInfo(context),
+            ),
+            _connectionMetric(
+              context,
+              Icons.location_on_outlined,
+              AppLocalizations.of(context)!.nodeInfoPageLocation,
+              connection.detailText,
+              metricWidth,
+              onTap: () => controller.gotoNodeInfo(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _connectionMetric(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    double width, {
+    VoidCallback? onTap,
+  }) {
+    final borderRadius = BorderRadiusDirectional.circular(8);
+    return SizedBox(
+      width: width,
+      child: Material(
+        color: ColorManager.surface(context),
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 76),
+            padding: const EdgeInsetsDirectional.all(12),
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              border: Border.all(color: ColorManager.border(context)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: ColorManager.secondaryText(context),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: ColorManager.secondaryText(context),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        value,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.25,
+                          color: ColorManager.primaryText(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _connectionAccentColor(
+    BuildContext context,
+    HomeConnectionViewState connection,
+  ) {
+    switch (connection.tone) {
+      case HomeConnectionTone.connected:
+      case HomeConnectionTone.connecting:
+      case HomeConnectionTone.waitingForApproval:
+        return Theme.of(context).colorScheme.primary;
+      case HomeConnectionTone.failed:
+        return Theme.of(context).colorScheme.error;
+      case HomeConnectionTone.disconnected:
+        return ColorManager.secondaryText(context);
+    }
+  }
+
+  Widget _body(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection,
+  ) {
+    return DefaultTextStyle.merge(
+      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _connectionDashboard(
+            context,
+            controller,
+            connection,
+            expanded: false,
+          ),
+          Divider(height: 1, color: ColorManager.border(context)),
+          Expanded(
+            child: _configSwitcherPanel(context, controller, showHeader: false),
+          ),
+        ],
       ),
     );
   }
@@ -114,25 +865,6 @@ class HomePage extends StatelessWidget {
     }
   }
 
-  Widget _body(
-    BuildContext context,
-    HomeController controller,
-    HomeState homeState,
-    AppEventBusState eventState,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _tabBar(context, controller),
-          Expanded(child: _tabBarView(context, controller)),
-          _bottomButton(context, controller, homeState, eventState),
-        ],
-      ),
-    );
-  }
-
   Widget _tabBar(BuildContext context, HomeController controller) {
     return ColoredBox(
       color: ColorManager.surface(context),
@@ -148,181 +880,5 @@ class HomePage extends StatelessWidget {
 
   Widget _tabBarView(BuildContext context, HomeController controller) {
     return TabBarView(children: const [HomeOutboundView(), HomeRawView()]);
-  }
-
-  Widget _bottomButton(
-    BuildContext context,
-    HomeController controller,
-    HomeState homeState,
-    AppEventBusState eventState,
-  ) {
-    return Container(
-      color: ColorManager.surface(context),
-      padding: EdgeInsetsDirectional.symmetric(vertical: 12, horizontal: 16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _connectionInfo(
-                  context,
-                  controller,
-                  homeState,
-                  eventState,
-                ),
-              ),
-              _startVpnButton(context, controller, eventState),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _startVpnButton(
-    BuildContext context,
-    HomeController controller,
-    AppEventBusState eventState,
-  ) {
-    if (eventState.vpnLoading) {
-      return const SizedBox.square(
-        dimension: 56,
-        child: Center(
-          child: SizedBox.square(
-            dimension: 28,
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
-    } else {
-      final waitingForMacApproval =
-          eventState.platformPermissionKind ==
-              PlatformPermissionKind.macosSystemExtension &&
-          eventState.platformPermissionState ==
-              PlatformPermissionState.awaitingUserApproval;
-      final disconnected = eventState.runningId == DBConstants.defaultId;
-      final color = disconnected
-          ? ColorManager.buttonStop(context)
-          : Theme.of(context).colorScheme.primary;
-      final foregroundColor = disconnected
-          ? ColorManager.buttonStopForeground(context)
-          : Theme.of(context).colorScheme.onPrimary;
-      final icon = waitingForMacApproval
-          ? Icons.admin_panel_settings
-          : disconnected
-          ? Icons.public
-          : Icons.private_connectivity;
-      final style = ElevatedButton.styleFrom(
-        padding: EdgeInsetsDirectional.zero,
-        backgroundColor: color,
-        iconSize: 30,
-        iconColor: foregroundColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadiusDirectional.circular(12),
-        ),
-      );
-      return SizedBox(
-        width: 56,
-        height: 56,
-        child: ElevatedButton(
-          style: style,
-          onPressed: () => controller.startVpn(context),
-          child: Icon(icon),
-        ),
-      );
-    }
-  }
-
-  Widget _connectionInfo(
-    BuildContext context,
-    HomeController controller,
-    HomeState homeState,
-    AppEventBusState eventState,
-  ) {
-    final connected = eventState.runningId != DBConstants.defaultId;
-    final baseStatusText = _statusText(context, eventState, connected);
-    final statusText = connected
-        ? "$baseStatusText ${controller.formatTraffic(eventState)}"
-        : baseStatusText;
-    final nodeName = homeState.configName.isEmpty
-        ? AppLocalizations.of(context)!.homePageNoSelectedNode
-        : homeState.configName;
-    final detailText = connected
-        ? controller.formatGeoLocation(context, eventState)
-        : "${AppLocalizations.of(context)!.homePageCurrentNode}: $nodeName";
-    final content = Padding(
-      padding: const EdgeInsetsDirectional.symmetric(
-        horizontal: 10,
-        vertical: 8,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            connected ? Icons.private_connectivity : Icons.public,
-            size: 20,
-            color: connected
-                ? Theme.of(context).colorScheme.primary
-                : ColorManager.secondaryText(context),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  statusText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: ColorManager.primaryText(context),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  detailText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: ColorManager.secondaryText(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (connected) const Icon(Icons.chevron_right),
-        ],
-      ),
-    );
-    if (!connected) {
-      return content;
-    }
-    return InkWell(
-      onTap: () => controller.gotoNodeInfo(context),
-      child: content,
-    );
-  }
-
-  String _statusText(
-    BuildContext context,
-    AppEventBusState eventState,
-    bool connected,
-  ) {
-    if (eventState.vpnLoading) {
-      return AppLocalizations.of(context)!.homePageStatusConnecting;
-    }
-    if (eventState.platformPermissionKind ==
-            PlatformPermissionKind.macosSystemExtension &&
-        eventState.platformPermissionState ==
-            PlatformPermissionState.awaitingUserApproval) {
-      return AppLocalizations.of(context)!.homePageWaitForApprovalTitle;
-    }
-    if (connected) {
-      return AppLocalizations.of(context)!.homePageStatusConnected;
-    }
-    return AppLocalizations.of(context)!.homePageStatusDisconnected;
   }
 }

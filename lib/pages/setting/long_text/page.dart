@@ -4,6 +4,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/long_text/controller.dart';
 import 'package:onexray/pages/setting/long_text/params.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 
 class LongTextPage extends StatelessWidget {
   final LongTextParams params;
@@ -39,9 +40,13 @@ class LongTextPage extends StatelessWidget {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsetsDirectional.all(20.0),
-          child: Text(state.text),
+        child: ResponsiveContent(
+          desktopMaxWidth: 900,
+          adaptiveBreakpoint: 840,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.all(20.0),
+            child: Text(state.text),
+          ),
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:onexray/pages/home/xray/setting/routing_rule_dns_query/controlle
 import 'package:onexray/pages/home/xray/setting/routing_rule_dns_query/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class RoutingRuleDnsQueryPage extends StatelessWidget {
@@ -44,21 +45,23 @@ class RoutingRuleDnsQueryPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _inboundTagSection(context, controller, state),
-                  _tagSection(context, controller, state),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _inboundTagSection(context, controller, state),
+                    _tagSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

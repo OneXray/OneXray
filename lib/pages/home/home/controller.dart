@@ -13,6 +13,7 @@ import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/app_update/dialog.dart';
+import 'package:onexray/pages/geo_data/list/params.dart';
 import 'package:onexray/pages/home/xray/outbound/params.dart';
 import 'package:onexray/pages/home/xray/raw/params.dart';
 import 'package:onexray/pages/main/url.dart';
@@ -30,21 +31,68 @@ import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+enum HomeWorkspace { connection, nodes }
+
 class HomeState {
   final int configId;
   final String configName;
+  final HomeWorkspace workspace;
 
-  const HomeState({required this.configId, required this.configName});
+  const HomeState({
+    required this.configId,
+    required this.configName,
+    required this.workspace,
+  });
 
-  factory HomeState.initial() =>
-      const HomeState(configId: DBConstants.defaultId, configName: "");
+  factory HomeState.initial() => const HomeState(
+    configId: DBConstants.defaultId,
+    configName: "",
+    workspace: HomeWorkspace.connection,
+  );
 
-  HomeState copyWith({int? configId, String? configName}) {
+  HomeState copyWith({
+    int? configId,
+    String? configName,
+    HomeWorkspace? workspace,
+  }) {
     return HomeState(
       configId: configId ?? this.configId,
       configName: configName ?? this.configName,
+      workspace: workspace ?? this.workspace,
     );
   }
+}
+
+enum HomeConnectionTone {
+  disconnected,
+  connecting,
+  connected,
+  waitingForApproval,
+  failed,
+}
+
+class HomeConnectionViewState {
+  final HomeConnectionTone tone;
+  final bool connected;
+  final bool loading;
+  final String statusText;
+  final String nodeName;
+  final String detailText;
+  final String trafficText;
+  final IconData statusIcon;
+  final IconData actionIcon;
+
+  const HomeConnectionViewState({
+    required this.tone,
+    required this.connected,
+    required this.loading,
+    required this.statusText,
+    required this.nodeName,
+    required this.detailText,
+    required this.trafficText,
+    required this.statusIcon,
+    required this.actionIcon,
+  });
 }
 
 class HomeController extends Cubit<HomeState> {
@@ -267,6 +315,35 @@ class HomeController extends Cubit<HomeState> {
     context.push(RouterPath.setting);
   }
 
+  void gotoHome() {
+    emit(state.copyWith(workspace: HomeWorkspace.connection));
+  }
+
+  void gotoNodes(BuildContext context) {
+    emit(state.copyWith(workspace: HomeWorkspace.nodes));
+    DefaultTabController.of(context).animateTo(0);
+  }
+
+  void gotoTunSetting(BuildContext context) {
+    context.push(RouterPath.tunSettingUI);
+  }
+
+  void gotoXraySetting(BuildContext context) {
+    context.push(RouterPath.xraySettingList);
+  }
+
+  void gotoGeoData(BuildContext context) {
+    final params = GeoDataListParams(
+      GeoDataListType.full,
+      GeoDatCodesMode.show,
+    );
+    context.push(RouterPath.geoDataList, extra: params);
+  }
+
+  void gotoLog(BuildContext context) {
+    context.push(RouterPath.log);
+  }
+
   Future<void> addMenuAction(
     BuildContext context,
     String menuId,
@@ -352,6 +429,109 @@ class HomeController extends Cubit<HomeState> {
 
   String formatTraffic(AppEventBusState eventState) {
     return XrayMetricsFormatter.formatTraffic(eventState.trafficMetrics);
+  }
+
+  HomeConnectionViewState buildConnectionViewState(
+    BuildContext context,
+    HomeState homeState,
+    AppEventBusState eventState,
+  ) {
+    final appLocalizations = AppLocalizations.of(context)!;
+    final connected = eventState.runningId != DBConstants.defaultId;
+    final waitingForMacApproval = _isWaitingForMacApproval(eventState);
+    final failed = eventState.vpnActionState == VpnActionState.failed;
+    final nodeName = homeState.configName.isEmpty
+        ? appLocalizations.homePageNoSelectedNode
+        : homeState.configName;
+    final tone = _connectionTone(
+      eventState,
+      connected,
+      waitingForMacApproval,
+      failed,
+    );
+    final statusText = _connectionStatusText(
+      appLocalizations,
+      eventState,
+      connected,
+      waitingForMacApproval,
+      failed,
+    );
+    final detailText = failed && eventState.vpnErrorMessage.isNotEmpty
+        ? eventState.vpnErrorMessage
+        : waitingForMacApproval
+        ? appLocalizations.homePageWaitForApprovalTips
+        : connected
+        ? formatGeoLocation(context, eventState)
+        : "${appLocalizations.homePageCurrentNode}: $nodeName";
+    final disconnected = eventState.runningId == DBConstants.defaultId;
+    final actionIcon = failed
+        ? Icons.error_outline
+        : waitingForMacApproval
+        ? Icons.admin_panel_settings
+        : disconnected
+        ? Icons.public
+        : Icons.private_connectivity;
+    return HomeConnectionViewState(
+      tone: tone,
+      connected: connected,
+      loading: eventState.vpnLoading,
+      statusText: statusText,
+      nodeName: nodeName,
+      detailText: detailText,
+      trafficText: formatTraffic(eventState),
+      statusIcon: actionIcon,
+      actionIcon: actionIcon,
+    );
+  }
+
+  HomeConnectionTone _connectionTone(
+    AppEventBusState eventState,
+    bool connected,
+    bool waitingForMacApproval,
+    bool failed,
+  ) {
+    if (waitingForMacApproval) {
+      return HomeConnectionTone.waitingForApproval;
+    }
+    if (failed) {
+      return HomeConnectionTone.failed;
+    }
+    if (eventState.vpnLoading) {
+      return HomeConnectionTone.connecting;
+    }
+    if (connected) {
+      return HomeConnectionTone.connected;
+    }
+    return HomeConnectionTone.disconnected;
+  }
+
+  String _connectionStatusText(
+    AppLocalizations appLocalizations,
+    AppEventBusState eventState,
+    bool connected,
+    bool waitingForMacApproval,
+    bool failed,
+  ) {
+    if (waitingForMacApproval) {
+      return appLocalizations.homePageWaitForApprovalTitle;
+    }
+    if (failed) {
+      return appLocalizations.nodeInfoPageFailed;
+    }
+    if (eventState.vpnLoading) {
+      return appLocalizations.homePageStatusConnecting;
+    }
+    if (connected) {
+      return appLocalizations.homePageStatusConnected;
+    }
+    return appLocalizations.homePageStatusDisconnected;
+  }
+
+  bool _isWaitingForMacApproval(AppEventBusState eventState) {
+    return eventState.platformPermissionKind ==
+            PlatformPermissionKind.macosSystemExtension &&
+        eventState.platformPermissionState ==
+            PlatformPermissionState.awaitingUserApproval;
   }
 
   String _formatDelay(BuildContext context, AppEventBusState eventState) {

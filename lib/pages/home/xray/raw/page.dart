@@ -6,6 +6,7 @@ import 'package:onexray/pages/home/xray/raw/controller.dart';
 import 'package:onexray/pages/home/xray/raw/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
@@ -35,17 +36,21 @@ class XrayRawPage extends StatelessWidget {
   Widget _body(BuildContext context, XrayRawController controller) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller.controller,
-              decoration: InputDecoration(border: InputBorder.none),
-              maxLines: null,
+      child: ResponsiveContent(
+        desktopMaxWidth: 900,
+        adaptiveBreakpoint: 840,
+        child: Column(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller.controller,
+                decoration: InputDecoration(border: InputBorder.none),
+                maxLines: null,
+              ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

@@ -88,20 +88,6 @@ class XraySettingUIPage extends StatelessWidget {
           value: controller.logSummary(context),
           onTap: () => controller.editLog(context),
         ),
-        SettingRow(
-          title: AppLocalizations.of(context)!.xraySettingUIPageStats,
-          value: controller.statsSummary(context),
-        ),
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.xraySettingUIPageMetrics,
-          value: controller.metricsSummary(context),
-          onTap: () => controller.showMetrics(context),
-        ),
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.xraySettingUIPagePolicy,
-          value: controller.policySummary(context),
-          onTap: () => controller.showPolicy(context),
-        ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.xraySettingUIPageEditDns,
           value: controller.dnsSummary(context),

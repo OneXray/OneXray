@@ -7,6 +7,7 @@ import 'package:onexray/pages/setting/tun/network_interface/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 
 class NetworkInterfacePage extends StatelessWidget {
   final NetworkInterfaceParams params;
@@ -40,11 +41,15 @@ class NetworkInterfacePage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(child: _list(context, state, controller)),
-          _bottomButton(context, controller),
-        ],
+      child: ResponsiveContent(
+        desktopMaxWidth: 880,
+        adaptiveBreakpoint: 840,
+        child: Column(
+          children: [
+            Expanded(child: _list(context, state, controller)),
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

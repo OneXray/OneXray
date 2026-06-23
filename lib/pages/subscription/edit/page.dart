@@ -6,6 +6,7 @@ import 'package:onexray/pages/subscription/edit/controller.dart';
 import 'package:onexray/pages/subscription/edit/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class SubscriptionEditPage extends StatelessWidget {
@@ -39,18 +40,22 @@ class SubscriptionEditPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: SettingSection(
-                title: AppLocalizations.of(context)!.subscriptionAddPageSection,
-                children: [_name(context, controller), _url(context, state)],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: SettingSection(
+                  title: AppLocalizations.of(
+                    context,
+                  )!.subscriptionAddPageSection,
+                  children: [_name(context, controller), _url(context, state)],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

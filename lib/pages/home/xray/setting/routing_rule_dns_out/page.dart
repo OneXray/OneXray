@@ -2,6 +2,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule_dns_out/controller.dart';
 import 'package:onexray/pages/home/xray/setting/routing_rule_dns_out/params.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,13 +41,15 @@ class RoutingRuleDnsOutPage extends StatelessWidget {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _inboundTagSection(context, controller, state),
-            _portSection(context, controller, state),
-            _tagSection(context, controller, state),
-          ],
+        child: ResponsiveContent(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _inboundTagSection(context, controller, state),
+              _portSection(context, controller, state),
+              _tagSection(context, controller, state),
+            ],
+          ),
         ),
       ),
     );

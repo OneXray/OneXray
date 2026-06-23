@@ -19,12 +19,11 @@ Future<void> main() async {
   if (AppPlatform.isDesktop) {
     await windowManager.ensureInitialized();
 
-    const windowSize = Size(400, 600);
-    // mac store
-    // const windowSize = Size(1168, 688);
+    const windowSize = Size(1080, 700);
+    const minimumWindowSize = Size(420, 600);
     WindowOptions windowOptions = WindowOptions(
       size: windowSize,
-      minimumSize: windowSize,
+      minimumSize: minimumWindowSize,
       center: true,
     );
     windowManager.waitUntilReadyToShow(windowOptions, () async {

@@ -7,6 +7,7 @@ import 'package:onexray/pages/setting/tun/installed_app/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 
 class InstalledAppPage extends StatelessWidget {
   final InstalledAppParams params;
@@ -38,7 +39,11 @@ class InstalledAppPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: _mainBody(context, state, controller),
+      child: ResponsiveContent(
+        desktopMaxWidth: 880,
+        adaptiveBreakpoint: 840,
+        child: _mainBody(context, state, controller),
+      ),
     );
   }
 

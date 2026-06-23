@@ -9,6 +9,7 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/tun_setting/enum.dart';
@@ -42,15 +43,17 @@ class TunSettingUIPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: _buildColumnView(context, state, controller),
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: _buildColumnView(context, state, controller),
+              ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }
@@ -165,6 +168,7 @@ class TunSettingUIPage extends StatelessWidget {
             state.tunSettingState.enableDot)
           _tunDnsServerName(context, controller),
         _enableIPv6(context, state, controller),
+        _metricsEnabled(context, state, controller),
       ],
     );
   }
@@ -227,6 +231,18 @@ class TunSettingUIPage extends StatelessWidget {
       title: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6,
       value: state.tunSettingState.enableIPv6,
       onChanged: (value) => controller.updateEnableIPv6(value),
+    );
+  }
+
+  Widget _metricsEnabled(
+    BuildContext context,
+    TunSettingUIState state,
+    TunSettingUIController controller,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.tunSettingUIPageMetrics,
+      value: state.tunSettingState.metricsEnabled,
+      onChanged: (value) => controller.updateMetricsEnabled(value),
     );
   }
 

@@ -7,6 +7,7 @@ import 'package:onexray/pages/home/xray/setting/outbound_fragment/controller.dar
 import 'package:onexray/pages/home/xray/setting/outbound_fragment/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class OutboundFragmentPage extends StatelessWidget {
@@ -42,23 +43,25 @@ class OutboundFragmentPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _protocolSection(context, controller, state),
-                  _settingSection(context, controller),
-                  _tagSection(context, controller, state),
-                  if (AppPlatform.isLinux || AppPlatform.isWindows)
-                    _sockoptSection(context, controller, state),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _protocolSection(context, controller, state),
+                    _settingSection(context, controller),
+                    _tagSection(context, controller, state),
+                    if (AppPlatform.isLinux || AppPlatform.isWindows)
+                      _sockoptSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

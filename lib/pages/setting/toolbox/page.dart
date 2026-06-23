@@ -1,6 +1,7 @@
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/toolbox/controller.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -34,7 +35,11 @@ class ToolboxPage extends StatelessWidget {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: Column(children: [_dockIconSection(context, state, controller)]),
+        child: ResponsiveContent(
+          child: Column(
+            children: [_dockIconSection(context, state, controller)],
+          ),
+        ),
       ),
     );
   }

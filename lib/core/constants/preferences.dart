@@ -11,7 +11,7 @@ class PreferencesKey {
 
   PreferencesKey._internal();
 
-  static const _privacyAccepted = "privacyAccepted02";
+  static const _privacyAccepted = "privacyAccepted03";
 
   Future<bool> readPrivacyAccepted() async {
     final value = await _prefs.getBool(_privacyAccepted);

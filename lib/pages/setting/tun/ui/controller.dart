@@ -16,7 +16,7 @@ class TunSettingUIState {
   final TunSettingState tunSettingState;
 
   TunSettingUIState({TunSettingState? tunSettingState})
-      : tunSettingState = tunSettingState ?? TunSettingState();
+    : tunSettingState = tunSettingState ?? TunSettingState();
 
   TunSettingUIState _copy() {
     return TunSettingUIState(tunSettingState: tunSettingState);
@@ -63,6 +63,11 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
 
   void updateEnableIPv6(bool value) {
     state.tunSettingState.enableIPv6 = value;
+    emit(state._copy());
+  }
+
+  void updateMetricsEnabled(bool value) {
+    state.tunSettingState.metricsEnabled = value;
     emit(state._copy());
   }
 

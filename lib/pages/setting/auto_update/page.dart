@@ -5,6 +5,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/auto_update/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/auto_update/state.dart';
 
@@ -36,21 +37,54 @@ class AutoUpdatePage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _subscriptionSection(context, state, controller),
-                  _geoDataSection(context, state, controller),
-                ],
+      child: ResponsiveContent(
+        desktopMaxWidth: 1040,
+        adaptiveBreakpoint: 900,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth >= 900) {
+                      return _wideSections(context, state, controller);
+                    }
+                    return _compactSections(context, state, controller);
+                  },
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _compactSections(
+    BuildContext context,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
+  ) {
+    return Column(
+      children: [
+        _subscriptionSection(context, state, controller),
+        _geoDataSection(context, state, controller),
+      ],
+    );
+  }
+
+  Widget _wideSections(
+    BuildContext context,
+    AutoUpdatePageState state,
+    AutoUpdateController controller,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _subscriptionSection(context, state, controller)),
+        Expanded(child: _geoDataSection(context, state, controller)),
+      ],
     );
   }
 

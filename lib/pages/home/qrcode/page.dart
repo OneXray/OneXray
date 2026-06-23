@@ -15,8 +15,17 @@ class QrcodePage extends StatelessWidget {
         title: Text(AppLocalizations.of(context)!.qrcodePageTitle),
       ),
       body: SafeArea(
-        child: MobileScanner(
-          onDetect: (barcodes) => _handleBarcode(context, barcodes),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+              child: MobileScanner(
+                onDetect: (barcodes) => _handleBarcode(context, barcodes),
+              ),
+            ),
+          ),
         ),
       ),
     );

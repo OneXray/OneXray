@@ -7,6 +7,7 @@ import 'package:onexray/pages/home/xray/setting/inbound_sniffing/controller.dart
 import 'package:onexray/pages/home/xray/setting/inbound_sniffing/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 
@@ -42,25 +43,27 @@ class InboundSniffingPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _enableSection(context, controller, state),
-                  _routeOnlySection(context, controller, state),
-                  _metadataOnlySection(context, controller, state),
-                  _destOverrideSection(context, controller, state),
-                  _domainsExcludedSection(context, controller, state),
-                  _ipsExcludedSection(context, controller, state),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _enableSection(context, controller, state),
+                    _routeOnlySection(context, controller, state),
+                    _metadataOnlySection(context, controller, state),
+                    _destOverrideSection(context, controller, state),
+                    _domainsExcludedSection(context, controller, state),
+                    _ipsExcludedSection(context, controller, state),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

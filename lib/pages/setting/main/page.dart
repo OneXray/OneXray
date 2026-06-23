@@ -38,19 +38,68 @@ class SettingPage extends StatelessWidget {
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
         child: ResponsiveContent(
+          desktopMaxWidth: 1040,
+          adaptiveBreakpoint: 900,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 900) {
+                return _wideBody(context, state, controller);
+              }
+              return _compactBody(context, state, controller);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _compactBody(
+    BuildContext context,
+    SettingState state,
+    SettingController controller,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _networkSection(context, controller),
+        _dataSection(context, state, controller),
+        _appSection(context, controller),
+        _supportSection(context, controller),
+        _versionSection(context, state),
+        _footerTips(context),
+      ],
+    );
+  }
+
+  Widget _wideBody(
+    BuildContext context,
+    SettingState state,
+    SettingController controller,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _networkSection(context, controller),
               _dataSection(context, state, controller),
+              _versionSection(context, state),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               _appSection(context, controller),
               _supportSection(context, controller),
-              _versionSection(context, state),
               _footerTips(context),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 

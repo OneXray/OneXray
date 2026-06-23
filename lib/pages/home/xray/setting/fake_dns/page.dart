@@ -6,6 +6,7 @@ import 'package:onexray/pages/home/xray/setting/fake_dns/controller.dart';
 import 'package:onexray/pages/home/xray/setting/fake_dns/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class FakeDnsPage extends StatelessWidget {
@@ -34,20 +35,22 @@ class FakeDnsPage extends StatelessWidget {
   Widget _body(BuildContext context, FakeDnsController controller) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _ipv4Section(context, controller),
-                  _ipv6Section(context, controller),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _ipv4Section(context, controller),
+                    _ipv6Section(context, controller),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

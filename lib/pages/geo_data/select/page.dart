@@ -7,6 +7,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 
 class GeoDatSelectPage extends StatelessWidget {
@@ -37,7 +38,11 @@ class GeoDatSelectPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: _mainBody(context, controller, state),
+      child: ResponsiveContent(
+        desktopMaxWidth: 880,
+        adaptiveBreakpoint: 840,
+        child: _mainBody(context, controller, state),
+      ),
     );
   }
 

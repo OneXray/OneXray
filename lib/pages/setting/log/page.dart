@@ -5,6 +5,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/log/controller.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/constants.dart';
 
@@ -39,11 +40,13 @@ class LogPage extends StatelessWidget {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: Column(
-          children: [
-            if (!hideLogFiles) _logSection(context, controller),
-            _configSection(context, controller),
-          ],
+        child: ResponsiveContent(
+          child: Column(
+            children: [
+              if (!hideLogFiles) _logSection(context, controller),
+              _configSection(context, controller),
+            ],
+          ),
         ),
       ),
     );

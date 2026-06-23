@@ -7,6 +7,7 @@ import 'package:onexray/pages/home/component/config_row/view.dart';
 import 'package:onexray/pages/home/outbound_select/controller.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/pages/widget/data_list.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 
 class OutboundSelectPage extends StatelessWidget {
   final OutboundSelectParams params;
@@ -40,12 +41,16 @@ class OutboundSelectPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          if (state.configs.isNotEmpty || state.query.isNotEmpty)
-            _search(context, controller),
-          Expanded(child: _configList(context, controller, state)),
-        ],
+      child: ResponsiveContent(
+        desktopMaxWidth: 880,
+        adaptiveBreakpoint: 840,
+        child: Column(
+          children: [
+            if (state.configs.isNotEmpty || state.query.isNotEmpty)
+              _search(context, controller),
+            Expanded(child: _configList(context, controller, state)),
+          ],
+        ),
       ),
     );
   }

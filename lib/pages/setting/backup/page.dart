@@ -9,6 +9,7 @@ import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
 class BackupPage extends StatelessWidget {
@@ -45,11 +46,15 @@ class BackupPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(child: _fileList(context, state, controller)),
-          _bottomButton(context, state, controller),
-        ],
+      child: ResponsiveContent(
+        desktopMaxWidth: 880,
+        adaptiveBreakpoint: 840,
+        child: Column(
+          children: [
+            Expanded(child: _fileList(context, state, controller)),
+            _bottomButton(context, state, controller),
+          ],
+        ),
       ),
     );
   }

@@ -22,11 +22,6 @@ extension XraySettingStateWriter on XraySettingState {
     xrayJson.routing = routing.xrayJson;
     xrayJson.inbounds = inbounds.xrayJson;
     xrayJson.outbounds = outbounds.xrayJson;
-    if (metrics.enabled) {
-      xrayJson.policy = policy.xrayJson;
-      xrayJson.stats = stats.xrayJson;
-      xrayJson.metrics = metrics.xrayJson;
-    }
 
     return xrayJson;
   }
@@ -37,7 +32,7 @@ extension XraySettingStateWriter on XraySettingState {
     return copy;
   }
 
-  Future<void> fixSetting(
+  Future<XrayJson> fixSetting(
     TunSettingState tunSettingState,
     XrayPorts ports,
   ) async {
@@ -45,7 +40,7 @@ extension XraySettingStateWriter on XraySettingState {
     if (tunSettingState.shouldFixInterface) {
       final networkInterface = await tunSettingState.networkInterface;
       if (networkInterface == null) {
-        return;
+        return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
       }
       _fixSettingInterface(networkInterface);
       tunSettingState.bindInterface = networkInterface;
@@ -55,8 +50,14 @@ extension XraySettingStateWriter on XraySettingState {
     }
 
     fixInboundsPort(ports);
-    fixMetricsPort(ports);
     await _fixSystemExtensionLogs();
+    return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
+  }
+
+  XrayJson _fixedXrayJson(XrayPorts ports, bool metricsEnabled) {
+    final xrayJson = this.xrayJson;
+    fixMetricsConfig(xrayJson, ports, metricsEnabled);
+    return xrayJson;
   }
 
   void _fixSettingInterface(String interface) {
@@ -88,13 +89,21 @@ extension XraySettingStateWriter on XraySettingState {
     inbounds.ping.auth = ports.pingAuth;
   }
 
-  void fixMetricsPort(XrayPorts ports) {
-    if (!metrics.enabled) {
+  void fixMetricsConfig(
+    XrayJson xrayJson,
+    XrayPorts ports,
+    bool metricsEnabled,
+  ) {
+    if (!metricsEnabled) {
       metrics.listen = "";
       ports.metricsPort = "";
+      removeMetricsConfig(xrayJson);
       return;
     }
     metrics.listen = "${NetConstants.proxyHost}:${ports.metricsPort}";
+    xrayJson.policy = policy.xrayJson;
+    xrayJson.stats = stats.xrayJson;
+    xrayJson.metrics = metrics.xrayJson;
   }
 
   void removeTunInbound(XrayJson xrayJson) {

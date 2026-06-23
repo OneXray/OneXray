@@ -6,6 +6,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/setting/app_icon/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 
 class AppIconPage extends StatelessWidget {
   const AppIconPage({super.key});
@@ -35,12 +36,14 @@ class AppIconPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          _selectedIcon(context, state),
-          Expanded(child: _icons(context, controller)),
-          _bottomButton(context, controller),
-        ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            _selectedIcon(context, state),
+            Expanded(child: _icons(context, controller)),
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }
@@ -61,15 +64,20 @@ class AppIconPage extends StatelessWidget {
 
   Widget _icons(BuildContext context, AppIconController controller) {
     final icons = AppIcon.values;
-    return GridView.builder(
-      itemCount: icons.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-      ),
-      itemBuilder: (_, int index) => InkWell(
-        onTap: () => controller.updateIcon(icons[index]),
-        child: _image(icons[index].assetImage),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth >= 560 ? 4 : 3;
+        return GridView.builder(
+          itemCount: icons.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+          ),
+          itemBuilder: (_, int index) => InkWell(
+            onTap: () => controller.updateIcon(icons[index]),
+            child: _image(icons[index].assetImage),
+          ),
+        );
+      },
     );
   }
 

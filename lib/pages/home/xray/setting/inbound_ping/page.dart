@@ -4,6 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_ping/controller.dart';
 import 'package:onexray/pages/home/xray/setting/inbound_ping/params.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
 class InboundPingPage extends StatelessWidget {
@@ -37,11 +38,13 @@ class InboundPingPage extends StatelessWidget {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: Column(
-          children: [
-            _listenSection(context, controller, state),
-            _tagSection(context, controller, state),
-          ],
+        child: ResponsiveContent(
+          child: Column(
+            children: [
+              _listenSection(context, controller, state),
+              _tagSection(context, controller, state),
+            ],
+          ),
         ),
       ),
     );
