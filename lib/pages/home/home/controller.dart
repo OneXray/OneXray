@@ -79,6 +79,7 @@ class HomeConnectionViewState {
   final String statusText;
   final String nodeName;
   final String detailText;
+  final String? summaryDetailText;
   final String trafficText;
   final IconData statusIcon;
   final IconData actionIcon;
@@ -90,6 +91,7 @@ class HomeConnectionViewState {
     required this.statusText,
     required this.nodeName,
     required this.detailText,
+    required this.summaryDetailText,
     required this.trafficText,
     required this.statusIcon,
     required this.actionIcon,
@@ -315,10 +317,6 @@ class HomeController extends Cubit<HomeState> {
     );
   }
 
-  void gotoSettings(BuildContext context) {
-    context.goPrimaryRoot(AppPrimaryRoute.settings);
-  }
-
   void gotoHome() {
     emit(state.copyWith(workspace: HomeWorkspace.connection));
   }
@@ -469,6 +467,9 @@ class HomeController extends Cubit<HomeState> {
         : connected
         ? formatGeoLocation(context, eventState)
         : "${appLocalizations.homePageCurrentNode}: $nodeName";
+    final summaryDetailText = failed || waitingForMacApproval
+        ? detailText
+        : null;
     final disconnected = eventState.runningId == DBConstants.defaultId;
     final actionIcon = failed
         ? Icons.error_outline
@@ -484,6 +485,7 @@ class HomeController extends Cubit<HomeState> {
       statusText: statusText,
       nodeName: nodeName,
       detailText: detailText,
+      summaryDetailText: summaryDetailText,
       trafficText: formatTraffic(eventState),
       statusIcon: actionIcon,
       actionIcon: actionIcon,

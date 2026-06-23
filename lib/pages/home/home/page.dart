@@ -24,9 +24,6 @@ class HomePage extends StatelessWidget {
   final int initialTabIndex;
 
   static const double _adaptiveBreakpoint = 840;
-  static const double _inspectorBreakpoint = 1060;
-  static const double _inspectorWidth = 320;
-  static const double _largeInspectorWidth = 360;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +57,6 @@ class HomePage extends StatelessWidget {
                       homeState,
                       connection,
                       eventState,
-                      constraints,
                     );
                   }
                   return _compactScaffold(
@@ -86,10 +82,6 @@ class HomePage extends StatelessWidget {
   ) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => controller.gotoSettings(context),
-          icon: const Icon(Icons.settings),
-        ),
         title: Text(AppLocalizations.of(context)!.homePageTitle),
         actions: [
           _searchButton(context),
@@ -106,47 +98,17 @@ class HomePage extends StatelessWidget {
     HomeState homeState,
     HomeConnectionViewState connection,
     AppEventBusState eventState,
-    BoxConstraints constraints,
   ) {
-    final inNodesWorkspace = homeState.workspace == HomeWorkspace.nodes;
-    final showSwitcher =
-        !inNodesWorkspace && constraints.maxWidth >= _inspectorBreakpoint;
-    final inspectorWidth = constraints.maxWidth >= 1260
-        ? _largeInspectorWidth
-        : _inspectorWidth;
     return Scaffold(
       body: SafeArea(
         child: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _adaptivePrimary(
-                  context,
-                  controller,
-                  homeState,
-                  connection,
-                  eventState,
-                  showSwitcher,
-                ),
-              ),
-              if (showSwitcher) ...[
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: ColorManager.border(context),
-                ),
-                SizedBox(
-                  width: inspectorWidth,
-                  child: _configSwitcherPanel(
-                    context,
-                    controller,
-                    showHeader: true,
-                  ),
-                ),
-              ],
-            ],
+          child: _adaptivePrimary(
+            context,
+            controller,
+            homeState,
+            connection,
+            eventState,
           ),
         ),
       ),
@@ -159,7 +121,6 @@ class HomePage extends StatelessWidget {
     HomeState homeState,
     HomeConnectionViewState connection,
     AppEventBusState eventState,
-    bool showSwitcher,
   ) {
     if (homeState.workspace == HomeWorkspace.nodes) {
       return Column(
@@ -181,39 +142,13 @@ class HomePage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _adaptiveHeader(context, controller, eventState),
-        Expanded(
-          child: showSwitcher
-              ? _connectionDashboard(
-                  context,
-                  controller,
-                  connection,
-                  expanded: true,
-                )
-              : _adaptiveStackedHome(context, controller, connection),
-        ),
-      ],
-    );
-  }
-
-  Widget _adaptiveStackedHome(
-    BuildContext context,
-    HomeController controller,
-    HomeConnectionViewState connection,
-  ) {
-    return Column(
-      children: [
-        Expanded(
-          flex: 5,
-          child: _connectionDashboard(
-            context,
-            controller,
-            connection,
-            expanded: true,
-          ),
+        HomeConnectionSummary(
+          connection: connection,
+          onToggleConnection: () => controller.startVpn(context),
+          onShowNodeInfo: () => controller.gotoNodeInfo(context),
         ),
         Divider(height: 1, color: ColorManager.border(context)),
         Expanded(
-          flex: 4,
           child: _configSwitcherPanel(context, controller, showHeader: false),
         ),
       ],
@@ -295,334 +230,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _connectionDashboard(
-    BuildContext context,
-    HomeController controller,
-    HomeConnectionViewState connection, {
-    required bool expanded,
-  }) {
-    if (!expanded) {
-      return Material(
-        color: ColorManager.surface(context),
-        child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 22),
-          child: _connectionDashboardContent(
-            context,
-            controller,
-            connection,
-            expanded: false,
-          ),
-        ),
-      );
-    }
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final minHeight = constraints.maxHeight > 64
-              ? constraints.maxHeight - 64
-              : 0.0;
-          return SingleChildScrollView(
-            padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: 32,
-              vertical: 32,
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: minHeight),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 620),
-                  child: _connectionDashboardContent(
-                    context,
-                    controller,
-                    connection,
-                    expanded: true,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _connectionDashboardContent(
-    BuildContext context,
-    HomeController controller,
-    HomeConnectionViewState connection, {
-    required bool expanded,
-  }) {
-    final titleFontSize = expanded ? 34.0 : 28.0;
-    final detailMaxLines = expanded ? 3 : 2;
-    return Column(
-      mainAxisSize: expanded ? MainAxisSize.min : MainAxisSize.max,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _primaryVpnButton(context, controller, connection, expanded: expanded),
-        SizedBox(height: expanded ? 24 : 18),
-        Text(
-          connection.statusText,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: titleFontSize,
-            fontWeight: FontWeight.w800,
-            color: ColorManager.primaryText(context),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          connection.detailText,
-          maxLines: detailMaxLines,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.35,
-            color: ColorManager.secondaryText(context),
-          ),
-        ),
-        SizedBox(height: expanded ? 28 : 20),
-        _currentNodeSummary(context, connection),
-        if (connection.connected) ...[
-          SizedBox(height: expanded ? 18 : 14),
-          _connectionMetrics(
-            context,
-            controller,
-            connection,
-            expanded: expanded,
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _primaryVpnButton(
-    BuildContext context,
-    HomeController controller,
-    HomeConnectionViewState connection, {
-    required bool expanded,
-  }) {
-    final dimension = expanded ? 144.0 : 116.0;
-    final accentColor = _connectionAccentColor(context, connection);
-    final backgroundColor = connection.tone == HomeConnectionTone.disconnected
-        ? ColorManager.buttonStop(context)
-        : accentColor;
-    final foregroundColor = switch (connection.tone) {
-      HomeConnectionTone.disconnected => ColorManager.buttonStopForeground(
-        context,
-      ),
-      HomeConnectionTone.failed => Theme.of(context).colorScheme.onError,
-      _ => Theme.of(context).colorScheme.onPrimary,
-    };
-    final child = connection.loading
-        ? SizedBox.square(
-            dimension: expanded ? 42 : 34,
-            child: CircularProgressIndicator(color: accentColor),
-          )
-        : Icon(connection.actionIcon, size: expanded ? 58 : 46);
-    final button = SizedBox.square(
-      dimension: dimension,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsetsDirectional.zero,
-          backgroundColor: backgroundColor,
-          foregroundColor: foregroundColor,
-          iconColor: foregroundColor,
-          elevation: 0,
-          shape: const CircleBorder(),
-        ),
-        onPressed: connection.loading
-            ? null
-            : () => controller.startVpn(context),
-        child: child,
-      ),
-    );
-    return Tooltip(message: connection.statusText, child: button);
-  }
-
-  Widget _currentNodeSummary(
-    BuildContext context,
-    HomeConnectionViewState connection,
-  ) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsetsDirectional.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadiusDirectional.circular(8),
-        border: Border.all(color: ColorManager.border(context)),
-        color: ColorManager.surface(context),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            connection.statusIcon,
-            size: 22,
-            color: _connectionAccentColor(context, connection),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.homePageCurrentNode,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: ColorManager.secondaryText(context),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  connection.nodeName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: ColorManager.primaryText(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _connectionMetrics(
-    BuildContext context,
-    HomeController controller,
-    HomeConnectionViewState connection, {
-    required bool expanded,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compactMetricWidth = (constraints.maxWidth - 12) / 2;
-        final metricWidth = expanded
-            ? 260.0
-            : compactMetricWidth < 120
-            ? constraints.maxWidth
-            : compactMetricWidth;
-        return Wrap(
-          alignment: WrapAlignment.center,
-          runSpacing: 12,
-          spacing: 12,
-          children: [
-            _connectionMetric(
-              context,
-              Icons.swap_vert,
-              AppLocalizations.of(context)!.nodeInfoPageTraffic,
-              connection.trafficText,
-              metricWidth,
-              onTap: () => controller.gotoNodeInfo(context),
-            ),
-            _connectionMetric(
-              context,
-              Icons.location_on_outlined,
-              AppLocalizations.of(context)!.nodeInfoPageLocation,
-              connection.detailText,
-              metricWidth,
-              onTap: () => controller.gotoNodeInfo(context),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _connectionMetric(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-    double width, {
-    VoidCallback? onTap,
-  }) {
-    final borderRadius = BorderRadiusDirectional.circular(8);
-    return SizedBox(
-      width: width,
-      child: Material(
-        color: ColorManager.surface(context),
-        borderRadius: borderRadius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 76),
-            padding: const EdgeInsetsDirectional.all(12),
-            decoration: BoxDecoration(
-              borderRadius: borderRadius,
-              border: Border.all(color: ColorManager.border(context)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: ColorManager.secondaryText(context),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: ColorManager.secondaryText(context),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        value,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.25,
-                          color: ColorManager.primaryText(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _connectionAccentColor(
-    BuildContext context,
-    HomeConnectionViewState connection,
-  ) {
-    switch (connection.tone) {
-      case HomeConnectionTone.connected:
-      case HomeConnectionTone.connecting:
-      case HomeConnectionTone.waitingForApproval:
-        return Theme.of(context).colorScheme.primary;
-      case HomeConnectionTone.failed:
-        return Theme.of(context).colorScheme.error;
-      case HomeConnectionTone.disconnected:
-        return ColorManager.secondaryText(context);
-    }
-  }
-
   Widget _body(
     BuildContext context,
     HomeController controller,
@@ -633,11 +240,10 @@ class HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _connectionDashboard(
-            context,
-            controller,
-            connection,
-            expanded: false,
+          HomeConnectionSummary(
+            connection: connection,
+            onToggleConnection: () => controller.startVpn(context),
+            onShowNodeInfo: () => controller.gotoNodeInfo(context),
           ),
           Divider(height: 1, color: ColorManager.border(context)),
           Expanded(
@@ -722,5 +328,251 @@ class HomePage extends StatelessWidget {
 
   Widget _tabBarView(BuildContext context, HomeController controller) {
     return TabBarView(children: const [HomeOutboundView(), HomeRawView()]);
+  }
+}
+
+class HomeConnectionSummary extends StatelessWidget {
+  const HomeConnectionSummary({
+    super.key,
+    required this.connection,
+    required this.onToggleConnection,
+    required this.onShowNodeInfo,
+  });
+
+  final HomeConnectionViewState connection;
+  final VoidCallback onToggleConnection;
+  final VoidCallback onShowNodeInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ColorManager.surface(context),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wideLayout = constraints.maxWidth >= 720;
+            final status = _statusSummary(context);
+            final metrics = _metrics(context);
+            if (wideLayout) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: status),
+                  const SizedBox(width: 16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    child: metrics,
+                  ),
+                ],
+              );
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [status, const SizedBox(height: 10), metrics],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _statusSummary(BuildContext context) {
+    final summaryDetailText = connection.summaryDetailText;
+    return Row(
+      children: [
+        _actionButton(context),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                connection.statusText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: ColorManager.primaryText(context),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                connection.nodeName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: ColorManager.primaryText(context),
+                ),
+              ),
+              if (summaryDetailText != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  summaryDetailText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: ColorManager.secondaryText(context),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionButton(BuildContext context) {
+    final accentColor = _accentColor(context);
+    final backgroundColor = connection.tone == HomeConnectionTone.disconnected
+        ? ColorManager.buttonStop(context)
+        : accentColor;
+    final foregroundColor = switch (connection.tone) {
+      HomeConnectionTone.disconnected => ColorManager.buttonStopForeground(
+        context,
+      ),
+      HomeConnectionTone.failed => Theme.of(context).colorScheme.onError,
+      _ => Theme.of(context).colorScheme.onPrimary,
+    };
+    final child = connection.loading
+        ? SizedBox.square(
+            dimension: 24,
+            child: CircularProgressIndicator(
+              color: accentColor,
+              strokeWidth: 3,
+            ),
+          )
+        : Icon(connection.actionIcon, size: 30);
+    final button = SizedBox.square(
+      dimension: 64,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsetsDirectional.zero,
+          backgroundColor: backgroundColor,
+          disabledBackgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          disabledForegroundColor: foregroundColor,
+          iconColor: foregroundColor,
+          elevation: 0,
+          shape: const CircleBorder(),
+        ),
+        onPressed: connection.loading ? null : onToggleConnection,
+        child: child,
+      ),
+    );
+    return Tooltip(message: connection.statusText, child: button);
+  }
+
+  Widget _metrics(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 340;
+        final traffic = _metric(
+          context,
+          icon: Icons.swap_vert,
+          label: AppLocalizations.of(context)!.nodeInfoPageTraffic,
+          value: connection.trafficText,
+        );
+        final location = _metric(
+          context,
+          icon: Icons.location_on_outlined,
+          label: AppLocalizations.of(context)!.nodeInfoPageLocation,
+          value: connection.detailText,
+        );
+        if (stacked) {
+          return Column(
+            children: [traffic, const SizedBox(height: 8), location],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: traffic),
+            const SizedBox(width: 8),
+            Expanded(child: location),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _metric(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    final borderRadius = BorderRadiusDirectional.circular(8);
+    return Material(
+      color: ColorManager.tagBackground(context),
+      borderRadius: borderRadius,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onShowNodeInfo,
+        child: Container(
+          height: 54,
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: 10,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            border: Border.all(color: ColorManager.border(context)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: ColorManager.secondaryText(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: ColorManager.secondaryText(context),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.1,
+                        color: ColorManager.primaryText(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _accentColor(BuildContext context) {
+    switch (connection.tone) {
+      case HomeConnectionTone.connected:
+      case HomeConnectionTone.connecting:
+      case HomeConnectionTone.waitingForApproval:
+        return Theme.of(context).colorScheme.primary;
+      case HomeConnectionTone.failed:
+        return Theme.of(context).colorScheme.error;
+      case HomeConnectionTone.disconnected:
+        return ColorManager.secondaryText(context);
+    }
   }
 }
