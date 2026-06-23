@@ -97,6 +97,7 @@
   "homePageTabRaw": "JSON",
   "homePageStatusDisconnected": "Not Connected",
   "homePageStatusConnecting": "Connecting",
+  "homePageStatusDisconnecting": "Disconnecting",
   "homePageStatusConnected": "Connected",
   "homePageCurrentNode": "Current Node",
   "homePageNoSelectedNode": "No node selected",

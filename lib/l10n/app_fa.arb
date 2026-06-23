@@ -97,6 +97,7 @@
     "homePageTabRaw": "JSON",
     "homePageStatusDisconnected": "متصل نیست",
     "homePageStatusConnecting": "در حال اتصال",
+    "homePageStatusDisconnecting": "در حال قطع اتصال",
     "homePageStatusConnected": "متصل",
     "homePageCurrentNode": "گره فعلی",
     "homePageNoSelectedNode": "هیچ گره‌ای انتخاب نشده است",

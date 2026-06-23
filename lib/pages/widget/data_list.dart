@@ -200,6 +200,9 @@ class DataListRow extends StatelessWidget {
   final DataListRowTone tone;
   final int titleMaxLines;
   final int subtitleMaxLines;
+  final double minHeight;
+  final double verticalPadding;
+  final double horizontalPadding;
 
   const DataListRow({
     super.key,
@@ -215,16 +218,19 @@ class DataListRow extends StatelessWidget {
     this.tone = DataListRowTone.normal,
     this.titleMaxLines = 1,
     this.subtitleMaxLines = 2,
+    this.minHeight = 56,
+    this.verticalPadding = 10,
+    this.horizontalPadding = 16,
   });
 
   @override
   Widget build(BuildContext context) {
     final content = ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 56),
+      constraints: BoxConstraints(minHeight: minHeight),
       child: Padding(
-        padding: const EdgeInsetsDirectional.symmetric(
-          vertical: 10,
-          horizontal: 16,
+        padding: EdgeInsetsDirectional.symmetric(
+          vertical: verticalPadding,
+          horizontal: horizontalPadding,
         ),
         child: Row(
           children: [

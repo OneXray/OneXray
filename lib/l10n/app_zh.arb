@@ -97,6 +97,7 @@
   "homePageTabRaw": "JSON",
   "homePageStatusDisconnected": "未连接",
   "homePageStatusConnecting": "连接中",
+  "homePageStatusDisconnecting": "断开中",
   "homePageStatusConnected": "已连接",
   "homePageCurrentNode": "当前节点",
   "homePageNoSelectedNode": "未选择节点",

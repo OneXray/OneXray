@@ -36,11 +36,13 @@ class HomeState {
   final int configId;
   final String configName;
   final HomeWorkspace workspace;
+  final bool vpnCommandLoading;
 
   const HomeState({
     required this.configId,
     required this.configName,
     required this.workspace,
+    required this.vpnCommandLoading,
   });
 
   factory HomeState.initial({
@@ -49,17 +51,20 @@ class HomeState {
     configId: DBConstants.defaultId,
     configName: "",
     workspace: workspace,
+    vpnCommandLoading: false,
   );
 
   HomeState copyWith({
     int? configId,
     String? configName,
     HomeWorkspace? workspace,
+    bool? vpnCommandLoading,
   }) {
     return HomeState(
       configId: configId ?? this.configId,
       configName: configName ?? this.configName,
       workspace: workspace ?? this.workspace,
+      vpnCommandLoading: vpnCommandLoading ?? this.vpnCommandLoading,
     );
   }
 }
@@ -481,7 +486,7 @@ class HomeController extends Cubit<HomeState> {
     return HomeConnectionViewState(
       tone: tone,
       connected: connected,
-      loading: eventState.vpnLoading,
+      loading: eventState.vpnLoading || homeState.vpnCommandLoading,
       statusText: statusText,
       nodeName: nodeName,
       detailText: detailText,
@@ -525,6 +530,9 @@ class HomeController extends Cubit<HomeState> {
     }
     if (failed) {
       return appLocalizations.nodeInfoPageFailed;
+    }
+    if (eventState.vpnActionState == VpnActionState.disconnecting) {
+      return appLocalizations.homePageStatusDisconnecting;
     }
     if (eventState.vpnLoading) {
       return appLocalizations.homePageStatusConnecting;
@@ -600,6 +608,9 @@ class HomeController extends Cubit<HomeState> {
   }
 
   Future<void> startVpn(BuildContext context) async {
+    if (state.vpnCommandLoading || AppEventBus.instance.state.vpnLoading) {
+      return;
+    }
     if (state.configId == DBConstants.defaultId) {
       ContextAlert.showToast(
         context,
@@ -608,9 +619,16 @@ class HomeController extends Cubit<HomeState> {
       return;
     }
 
-    await _ensureSystemGeoDatAssets();
-    final result = await VpnService().startVpn(state.configId);
-    await _handleVpnCommandResult(result);
+    emit(state.copyWith(vpnCommandLoading: true));
+    try {
+      await _ensureSystemGeoDatAssets();
+      final result = await VpnService().startVpn(state.configId);
+      await _handleVpnCommandResult(result);
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(vpnCommandLoading: false));
+      }
+    }
   }
 
   Future<void> _handleVpnCommandResult(NativeVpnCommandResult result) async {

@@ -355,13 +355,22 @@ class HomeConnectionSummary extends StatelessWidget {
             final status = _statusSummary(context);
             final metrics = _metrics(context);
             if (wideLayout) {
+              final metricsWidth = (constraints.maxWidth * 0.46).clamp(
+                460.0,
+                620.0,
+              );
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(child: status),
+                  Expanded(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 320),
+                      child: status,
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 380),
+                    constraints: BoxConstraints(maxWidth: metricsWidth),
                     child: metrics,
                   ),
                 ],
@@ -379,56 +388,75 @@ class HomeConnectionSummary extends StatelessWidget {
 
   Widget _statusSummary(BuildContext context) {
     final summaryDetailText = connection.summaryDetailText;
-    return Row(
-      children: [
-        _actionButton(context),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                connection.statusText,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: ColorManager.primaryText(context),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                connection.nodeName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: ColorManager.primaryText(context),
-                ),
-              ),
-              if (summaryDetailText != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  summaryDetailText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: ColorManager.secondaryText(context),
+    final borderRadius = BorderRadius.circular(8);
+    return Tooltip(
+      message: connection.statusText,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: connection.loading ? null : onToggleConnection,
+          borderRadius: borderRadius,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: 8,
+              vertical: 8,
+            ),
+            child: Row(
+              children: [
+                _actionIndicator(context),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        connection.statusText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: ColorManager.primaryText(context),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        connection.nodeName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: ColorManager.primaryText(context),
+                        ),
+                      ),
+                      if (summaryDetailText != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          summaryDetailText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: ColorManager.secondaryText(context),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
-            ],
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 
-  Widget _actionButton(BuildContext context) {
+  Widget _actionIndicator(BuildContext context) {
     final accentColor = _accentColor(context);
     final backgroundColor = connection.tone == HomeConnectionTone.disconnected
         ? ColorManager.buttonStop(context)
@@ -444,29 +472,24 @@ class HomeConnectionSummary extends StatelessWidget {
         ? SizedBox.square(
             dimension: 24,
             child: CircularProgressIndicator(
-              color: accentColor,
+              color: foregroundColor,
               strokeWidth: 3,
             ),
           )
         : Icon(connection.actionIcon, size: 30);
-    final button = SizedBox.square(
+    return SizedBox.square(
       dimension: 64,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsetsDirectional.zero,
-          backgroundColor: backgroundColor,
-          disabledBackgroundColor: backgroundColor,
-          foregroundColor: foregroundColor,
-          disabledForegroundColor: foregroundColor,
-          iconColor: foregroundColor,
-          elevation: 0,
-          shape: const CircleBorder(),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
         ),
-        onPressed: connection.loading ? null : onToggleConnection,
-        child: child,
+        child: IconTheme.merge(
+          data: IconThemeData(color: foregroundColor),
+          child: Center(child: child),
+        ),
       ),
     );
-    return Tooltip(message: connection.statusText, child: button);
   }
 
   Widget _metrics(BuildContext context) {

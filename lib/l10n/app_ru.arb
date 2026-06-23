@@ -96,6 +96,7 @@
   "homePageTabOutbound": "Узлы",
   "homePageStatusDisconnected": "Не подключено",
   "homePageStatusConnecting": "Подключение",
+  "homePageStatusDisconnecting": "Отключение",
   "homePageStatusConnected": "Подключено",
   "homePageCurrentNode": "Текущий узел",
   "homePageNoSelectedNode": "Узел не выбран",
