@@ -7,6 +7,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/firebase_options.dart';
+import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/router.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -19,8 +20,11 @@ Future<void> main() async {
   if (AppPlatform.isDesktop) {
     await windowManager.ensureInitialized();
 
-    const windowSize = Size(1080, 700);
-    const minimumWindowSize = Size(420, 600);
+    const windowSize = Size(1200, 800);
+    const minimumWindowSize = Size(
+      AdaptiveMainShell.railBreakpoint,
+      800,
+    );
     WindowOptions windowOptions = WindowOptions(
       size: windowSize,
       minimumSize: minimumWindowSize,

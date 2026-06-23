@@ -11,7 +11,7 @@ import 'package:onexray/pages/theme/color.dart';
 class AdaptiveMainShell extends StatelessWidget {
   const AdaptiveMainShell({super.key, required this.navigationShell});
 
-  static const double _railBreakpoint = 700;
+  static const double railBreakpoint = 700;
   static const double _extendedRailBreakpoint = 1180;
 
   final StatefulNavigationShell navigationShell;
@@ -20,7 +20,7 @@ class AdaptiveMainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= _railBreakpoint) {
+        if (constraints.maxWidth >= railBreakpoint) {
           return _railScaffold(context, constraints.maxWidth);
         }
         return _bottomNavigationScaffold(context);
