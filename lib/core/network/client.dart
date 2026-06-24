@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/network/model.dart';
+import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -17,6 +18,19 @@ class NetClient {
       createHttpClient: () {
         final client = HttpClient();
         client.findProxy = (uri) => _proxy;
+        client.authenticateProxy = (host, port, scheme, realm) {
+          final auth = _proxyAuth;
+          if (auth == null || !auth.isValid) {
+            return Future.value(false);
+          }
+          client.addProxyCredentials(
+            host,
+            port,
+            realm ?? "",
+            HttpClientBasicCredentials(auth.user!, auth.pass!),
+          );
+          return Future.value(true);
+        };
         return client;
       },
     );
@@ -34,6 +48,7 @@ class NetClient {
   );
 
   String _proxyPort = "${NetConstants.defaultPingPort}";
+  PingAuth? _proxyAuth;
 
   String get _proxy {
     return "PROXY ${NetConstants.proxyHost}:$_proxyPort";
@@ -49,11 +64,12 @@ class NetClient {
 
   static const _connectivityRetryCount = 3;
 
-  Future<int?> ping(String port, String url) async {
+  Future<int?> ping(String port, String url, [PingAuth? auth]) async {
     if (url.trim().isEmpty) {
       return null;
     }
     _proxyPort = port;
+    _proxyAuth = auth?.isValid == true ? auth : null;
     for (var i = 0; i < _connectivityRetryCount; i++) {
       try {
         final start = DateTime.now().millisecondsSinceEpoch;
@@ -76,8 +92,9 @@ class NetClient {
     return null;
   }
 
-  Future<GeoLocation?> geoLocation(String port) async {
+  Future<GeoLocation?> geoLocation(String port, [PingAuth? auth]) async {
     _proxyPort = port;
+    _proxyAuth = auth?.isValid == true ? auth : null;
     for (var i = 0; i < _connectivityRetryCount; i++) {
       final location = await _geoLocation();
       if (location?.ipAddress != null) {

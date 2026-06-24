@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/share/params.dart';
-import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/subscription/edit/params.dart';
+import 'package:onexray/pages/subscriptions/edit/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/subscription/service.dart';
+import 'package:onexray/pages/main/navigation.dart';
 
 class SubscriptionRowController {
   Future<void> updateExpanded(
@@ -53,7 +52,7 @@ class SubscriptionRowController {
       case IconMenuId.share:
         if (context.mounted) {
           final params = SharePageParams(ShareType.subscription, data.id);
-          context.push(RouterPath.share, extra: params);
+          context.pushScoped(AppSecondaryDestination.share, extra: params);
         }
         break;
       case IconMenuId.delete:
@@ -65,7 +64,10 @@ class SubscriptionRowController {
       case IconMenuId.edit:
         if (context.mounted) {
           final params = SubscriptionEditParams(id: data.id);
-          context.push(RouterPath.subscriptionEdit, extra: params);
+          context.pushScoped(
+            AppSecondaryDestination.subscriptionEdit,
+            extra: params,
+          );
         }
         break;
       default:

@@ -3,15 +3,7 @@ skip_docs
 default_platform :mac
 
 def flutter_build_args(*args)
-  defines = []
-  [
-    'ADMOB_AD_UNIT_ID_ANDROID',
-    'ADMOB_AD_UNIT_ID_IOS'
-  ].each do |name|
-    value = ENV[name]
-    defines << "--dart-define=#{name}=#{value}" unless value.to_s.empty?
-  end
-  ['flutter', 'build', *args, *defines]
+  ['flutter', 'build', *args]
 end
 
 platform :mac do

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -24,16 +25,28 @@ class NodeInfoPage extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(child: _body(context)),
+      body: const SafeArea(child: NodeInfoContent()),
     );
   }
+}
 
-  Widget _body(BuildContext context) {
+class NodeInfoContent extends StatelessWidget {
+  const NodeInfoContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: BlocBuilder<AppEventBus, AppEventBusState>(
-          builder: (context, state) => _section(context, state),
+        child: ResponsiveContent(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BlocBuilder<AppEventBus, AppEventBusState>(
+                builder: (context, state) => _section(context, state),
+              ),
+            ],
+          ),
         ),
       ),
     );

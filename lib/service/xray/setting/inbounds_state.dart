@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/constants.dart';
+import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/extensions.dart';
@@ -177,6 +178,7 @@ class InboundPingState {
   var port = VpnConstants.randomPort;
   final protocol = XrayInboundProtocol.http;
   final tag = RoutingInboundTag.pingIn;
+  PingAuth? auth;
 
   XrayInbound get xrayJson {
     final inbound = XrayInboundStandard.standard;
@@ -184,6 +186,12 @@ class InboundPingState {
     inbound.port = port;
     inbound.protocol = protocol.name;
     inbound.tag = tag.name;
+    if (auth?.isValid == true) {
+      inbound.settings = <String, dynamic>{
+        "users": <Map<String, dynamic>>[auth!.xrayUser],
+        "allowTransparent": false,
+      };
+    }
 
     return inbound;
   }
@@ -209,14 +217,15 @@ class InboundsState {
 class XrayPorts {
   String pingPort;
   String metricsPort;
+  final PingAuth pingAuth;
 
-  XrayPorts(this.pingPort, this.metricsPort);
+  XrayPorts(this.pingPort, this.metricsPort, this.pingAuth);
 
   static Future<XrayPorts?> getPorts() async {
     final ports = await AppHostApi().getFreePorts(2);
     if (ports.length != 2) {
       return null;
     }
-    return XrayPorts("${ports[0]}", "${ports[1]}");
+    return XrayPorts("${ports[0]}", "${ports[1]}", PingAuthFactory.random());
   }
 }

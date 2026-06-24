@@ -34,6 +34,7 @@ abstract final class AppTheme {
         backgroundColor: colors.surface,
         foregroundColor: colors.primaryText,
         surfaceTintColor: Colors.transparent,
+        centerTitle: false,
         elevation: 0,
       ),
       bottomSheetTheme: BottomSheetThemeData(

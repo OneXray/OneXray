@@ -1,6 +1,6 @@
 import 'package:onexray/core/db/database/database.dart';
 
-enum ConfigQueryRowType { config, subscription, ads }
+enum ConfigQueryRowType { config, subscription }
 
 abstract class ConfigQueryRow {
   final ConfigQueryRowType rowType;
@@ -19,10 +19,6 @@ class SubscriptionItem extends ConfigQueryRow {
   int count = 0;
 
   SubscriptionItem(this.subscription, super.rowType);
-}
-
-class AdsItem extends ConfigQueryRow {
-  AdsItem(super.rowType);
 }
 
 class ConfigGroup {

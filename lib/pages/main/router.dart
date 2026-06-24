@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/main/menu/page.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -57,13 +59,14 @@ class GoRouteApp extends StatelessWidget {
         return supportedLocales.first;
       },
       builder: (_, child) {
-        if (child == null) {
-          return const SizedBox.shrink();
-        }
-        return Directionality(
+        final routedChild = Directionality(
           textDirection: state.languageCode.textDirection,
-          child: child,
+          child: child ?? const SizedBox.shrink(),
         );
+        if (AppPlatform.isMacOS) {
+          return MenuMainScaffold(child: routedChild);
+        }
+        return routedChild;
       },
     );
   }

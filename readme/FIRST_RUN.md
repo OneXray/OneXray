@@ -33,7 +33,7 @@ cp swift/AppStore/GoogleService-Info.plist.example swift/AppStore/GoogleService-
 cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-Info.plist
 ```
 
-The `.example` files are enough for local development. Replace them with your own config later if you need to test real Firebase or AdMob behavior.
+The `.example` files are enough for local development. Replace them with your own config later if you need to test real Firebase behavior.
 
 ## 2. Prepare libXray artifacts
 
@@ -132,8 +132,6 @@ flutter run -d ios
 
 For local debugging, `.env` can usually stay empty:
 
-- If `ADMOB_APP_ID_ANDROID` or `ADMOB_APP_ID_IOS` is empty, OneXray falls back to Google's official test App ID.
-- If `ADMOB_AD_UNIT_ID_ANDROID` or `ADMOB_AD_UNIT_ID_IOS` is empty, no real ad unit IDs are injected.
 - `FASTLANE_*` variables are only for release flows and are not required for debugging.
 
 You only need to `source .env` and set `BUILD_NUMBER` when running the repository's packaging scripts.
@@ -149,7 +147,6 @@ The following paths are ignored by `.gitignore`. In the **debug environment**, t
 | `ios/fastlane/AuthKey.p8` | Not used | Only used for iOS release. |
 | `macos/fastlane/AuthKey.p8` | Not used | Only used for Mac App Store release. |
 | `macos_se/fastlane/AuthKey.p8` | Not used | Only used for macOS SE release / notarization. |
-| `ios/Flutter/AdMob.xcconfig` | Optional | If missing, iOS uses the default test App ID; release scripts can also generate it automatically. |
 | `swift/AppStore/GoogleService-Info.plist` | Provide when needed | Used when debugging iOS / macOS with Firebase enabled. |
 | `swift/macOSSE/GoogleService-Info.plist` | Provide when needed | Used when debugging macOS SE with Firebase enabled. |
 

@@ -3,6 +3,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/share/controller.dart';
 import 'package:onexray/pages/home/share/params.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -31,11 +32,13 @@ class SharePage extends StatelessWidget {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
-        child: Column(
-          children: [
-            if (state.showLinkSection) _linkSection(context, state),
-            _appSection(context, state),
-          ],
+        child: ResponsiveContent(
+          child: Column(
+            children: [
+              if (state.showLinkSection) _linkSection(context, state),
+              _appSection(context, state),
+            ],
+          ),
         ),
       ),
     );

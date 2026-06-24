@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/gen/assets.gen.dart';
-import 'package:onexray/pages/launch/init.dart';
+import 'package:onexray/pages/launch/route.dart';
 import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/service/launch/bootstrap.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyState {
@@ -48,8 +49,10 @@ class PrivacyController extends Cubit<PrivacyState> {
     try {
       await PreferencesKey().savePrivacyAccepted(true);
       accepted = true;
+      final destination = await LaunchBootstrapService()
+          .resolveAcceptedDestination();
       if (context.mounted) {
-        await checkFirstRun(context);
+        context.go(destination.route);
       }
     } catch (e, stackTrace) {
       ygLogger("privacy accept error: $e\n$stackTrace");

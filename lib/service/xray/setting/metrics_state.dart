@@ -1,4 +1,5 @@
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/xray/standard.dart';
 
 class MetricsState {
@@ -8,6 +9,17 @@ class MetricsState {
     final metrics = XrayMetricsStandard.standard;
     metrics.listen = listen;
     return metrics;
+  }
+
+  void readFromXrayJson(XrayJson xrayJson) {
+    final metrics = xrayJson.metrics;
+    if (metrics != null && EmptyTool.checkString(metrics.listen)) {
+      listen = metrics.listen!;
+    }
+  }
+
+  MetricsState get copy {
+    return MetricsState()..listen = listen;
   }
 
   String get displayListen => listen;

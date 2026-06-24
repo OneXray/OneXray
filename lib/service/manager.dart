@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/ads/service.dart';
 import 'package:onexray/service/analytics/service.dart';
 import 'package:onexray/service/automation/service.dart';
 import 'package:onexray/service/background_task/service.dart';
@@ -34,7 +33,6 @@ abstract final class ServiceManager {
   }
 
   static Future<void> _serviceInit(BuildContext context) async {
-    unawaited(_initAdsService());
     await _runInit("NetClient", () => NetClient().asyncInit());
     await _runInit("TrayService", () => TrayService().init());
     await _runInit("VpnService", () => VpnService().asyncInit());
@@ -56,14 +54,6 @@ abstract final class ServiceManager {
     _initialized = true;
   }
 
-  static Future<void> _initAdsService() async {
-    try {
-      await AdsService().init();
-    } catch (e, stackTrace) {
-      ygLogger("ads init error: $e\n$stackTrace");
-    }
-  }
-
   static Future<void> _runInit(
     String name,
     FutureOr<void> Function() init,
@@ -78,7 +68,6 @@ abstract final class ServiceManager {
   static void serviceDispose() {
     _initFuture = null;
     _initialized = false;
-    AdsService().dispose();
     AutomationService().dispose();
     TrayService().dispose();
     VpnService().dispose();

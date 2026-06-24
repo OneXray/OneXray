@@ -15,6 +15,7 @@ class TunSettingState {
   var enableDot = false;
   var dnsServerName = "dns.google";
   var enableIPv6 = false;
+  var metricsEnabled = true;
 
   var bindInterface = "";
 
@@ -48,6 +49,9 @@ class TunSettingState {
     }
     if (tunJson.enableIPv6 != null) {
       enableIPv6 = tunJson.enableIPv6!;
+    }
+    if (tunJson.metricsEnabled != null) {
+      metricsEnabled = tunJson.metricsEnabled!;
     }
 
     if (EmptyTool.checkString(tunJson.bindInterface)) {
@@ -94,6 +98,7 @@ class TunSettingState {
     tunJson.enableDot = enableDot;
     tunJson.dnsServerName = dnsServerName;
     tunJson.enableIPv6 = enableIPv6;
+    tunJson.metricsEnabled = metricsEnabled;
 
     tunJson.bindInterface = bindInterface;
 

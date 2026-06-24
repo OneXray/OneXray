@@ -12,6 +12,9 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
           ? null
           : TunJson.fromJson(json['tun'] as Map<String, dynamic>),
       json['pingPort'] as String?,
+      json['pingAuth'] == null
+          ? null
+          : PingAuth.fromJson(json['pingAuth'] as Map<String, dynamic>),
       json['metricsPort'] as String?,
       json['coreBase64Text'] as String?,
     );
@@ -20,9 +23,18 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
     <String, dynamic>{
       'tun': ?instance.tun?.toJson(),
       'pingPort': ?instance.pingPort,
+      'pingAuth': ?instance.pingAuth?.toJson(),
       'metricsPort': ?instance.metricsPort,
       'coreBase64Text': ?instance.coreBase64Text,
     };
+
+PingAuth _$PingAuthFromJson(Map<String, dynamic> json) =>
+    PingAuth(json['user'] as String?, json['pass'] as String?);
+
+Map<String, dynamic> _$PingAuthToJson(PingAuth instance) => <String, dynamic>{
+  'user': ?instance.user,
+  'pass': ?instance.pass,
+};
 
 CallResponse _$CallResponseFromJson(Map<String, dynamic> json) => CallResponse(
   json['success'] as bool?,

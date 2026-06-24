@@ -42,7 +42,6 @@ dependencies:
   firebase_core: ^4.11.0
   firebase_analytics: ^12.4.3
   firebase_crashlytics: ^5.2.4
-  google_mobile_ads: ^9.0.0
 
   #---------- flutter community
   package_info_plus: ^10.1.0

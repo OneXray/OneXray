@@ -7,12 +7,14 @@ part 'model.g.dart';
 class StartVpnRequest {
   TunJson? tun;
   String? pingPort;
+  PingAuth? pingAuth;
   String? metricsPort;
   String? coreBase64Text;
 
   StartVpnRequest(
     this.tun,
     this.pingPort,
+    this.pingAuth,
     this.metricsPort,
     this.coreBase64Text,
   );
@@ -21,6 +23,19 @@ class StartVpnRequest {
       _$StartVpnRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$StartVpnRequestToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class PingAuth {
+  String? user;
+  String? pass;
+
+  PingAuth(this.user, this.pass);
+
+  factory PingAuth.fromJson(Map<String, dynamic> json) =>
+      _$PingAuthFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PingAuthToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

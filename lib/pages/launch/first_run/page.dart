@@ -6,6 +6,7 @@ import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/launch/first_run/controller.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 
@@ -37,21 +38,23 @@ class FirstRunPage extends StatelessWidget {
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _countrySection(context, state, controller),
-                  if (AppPlatform.isWindows || AppPlatform.isLinux)
-                    _interfaceSection(context, state, controller),
-                ],
+      child: ResponsiveContent(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _countrySection(context, state, controller),
+                    if (AppPlatform.isWindows || AppPlatform.isLinux)
+                      _interfaceSection(context, state, controller),
+                  ],
+                ),
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+            _bottomButton(context, controller),
+          ],
+        ),
       ),
     );
   }

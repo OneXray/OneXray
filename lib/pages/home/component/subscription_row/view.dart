@@ -15,12 +15,14 @@ class SubscriptionRowView extends StatelessWidget {
   final SubscriptionItem item;
   final VoidCallback? pingCallback;
   final VoidCallback? expandCallback;
+  final bool compact;
 
   const SubscriptionRowView({
     super.key,
     required this.item,
     required this.pingCallback,
     required this.expandCallback,
+    this.compact = false,
   });
 
   static final _controller = SubscriptionRowController();
@@ -41,9 +43,10 @@ class SubscriptionRowView extends StatelessWidget {
     return DataListRow(
       title: item.subscription.name,
       tags: [TagView(tag: "${item.count}")],
-      meta: item.subscription.id > DBConstants.defaultId
+      meta: !compact && item.subscription.id > DBConstants.defaultId
           ? DateView(date: item.subscription.timestamp)
           : null,
+      verticalPadding: compact ? 4 : 10,
       onTap: expandCallback == null
           ? null
           : () => controller.updateExpanded(item.subscription, expandCallback!),

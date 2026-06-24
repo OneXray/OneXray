@@ -4,7 +4,6 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/tun_setting/state.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
@@ -23,9 +22,6 @@ extension XraySettingStateWriter on XraySettingState {
     xrayJson.routing = routing.xrayJson;
     xrayJson.inbounds = inbounds.xrayJson;
     xrayJson.outbounds = outbounds.xrayJson;
-    xrayJson.policy = policy.xrayJson;
-    xrayJson.stats = stats.xrayJson;
-    xrayJson.metrics = metrics.xrayJson;
 
     return xrayJson;
   }
@@ -36,7 +32,7 @@ extension XraySettingStateWriter on XraySettingState {
     return copy;
   }
 
-  Future<void> fixSetting(
+  Future<XrayJson> fixSetting(
     TunSettingState tunSettingState,
     XrayPorts ports,
   ) async {
@@ -44,7 +40,7 @@ extension XraySettingStateWriter on XraySettingState {
     if (tunSettingState.shouldFixInterface) {
       final networkInterface = await tunSettingState.networkInterface;
       if (networkInterface == null) {
-        return;
+        return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
       }
       _fixSettingInterface(networkInterface);
       tunSettingState.bindInterface = networkInterface;
@@ -54,8 +50,14 @@ extension XraySettingStateWriter on XraySettingState {
     }
 
     fixInboundsPort(ports);
-    fixMetricsPort(ports);
     await _fixSystemExtensionLogs();
+    return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
+  }
+
+  XrayJson _fixedXrayJson(XrayPorts ports, bool metricsEnabled) {
+    final xrayJson = this.xrayJson;
+    fixMetricsConfig(xrayJson, ports, metricsEnabled);
+    return xrayJson;
   }
 
   void _fixSettingInterface(String interface) {
@@ -77,21 +79,33 @@ extension XraySettingStateWriter on XraySettingState {
 
   void _removeSettingInterface() {
     outbounds.freedom.interface = "";
+    outbounds.fragment.interface = "";
     for (final outbound in outbounds.outbounds) {
       outbound.interface = "";
     }
+    inbounds.tun.settings.autoOutboundsInterface = "";
   }
 
   void fixInboundsPort(XrayPorts ports) {
-    if (inbounds.ping.port == VpnConstants.randomPort) {
-      inbounds.ping.port = ports.pingPort;
-    } else {
-      ports.pingPort = inbounds.ping.port;
-    }
+    inbounds.ping.port = ports.pingPort;
+    inbounds.ping.auth = ports.pingAuth;
   }
 
-  void fixMetricsPort(XrayPorts ports) {
+  void fixMetricsConfig(
+    XrayJson xrayJson,
+    XrayPorts ports,
+    bool metricsEnabled,
+  ) {
+    if (!metricsEnabled) {
+      metrics.listen = "";
+      ports.metricsPort = "";
+      removeMetricsConfig(xrayJson);
+      return;
+    }
     metrics.listen = "${NetConstants.proxyHost}:${ports.metricsPort}";
+    xrayJson.policy = policy.xrayJson;
+    xrayJson.stats = stats.xrayJson;
+    xrayJson.metrics = metrics.xrayJson;
   }
 
   void removeTunInbound(XrayJson xrayJson) {

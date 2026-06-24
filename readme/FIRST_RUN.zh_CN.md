@@ -33,7 +33,7 @@ cp swift/AppStore/GoogleService-Info.plist.example swift/AppStore/GoogleService-
 cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-Info.plist
 ```
 
-这些文件的 `.example` 版本已经足够用于本地开发；如果后续需要联调真实 Firebase / AdMob，再替换成你自己的配置。
+这些文件的 `.example` 版本已经足够用于本地开发；如果后续需要联调真实 Firebase，再替换成你自己的配置。
 
 ## 2. 准备 libXray 产物
 
@@ -132,8 +132,6 @@ flutter run -d ios
 
 本地 debug 场景下，`.env` 可以先保持为空：
 
-- `ADMOB_APP_ID_ANDROID`、`ADMOB_APP_ID_IOS` 留空时，会回退到 Google 官方测试 App ID。
-- `ADMOB_AD_UNIT_ID_ANDROID`、`ADMOB_AD_UNIT_ID_IOS` 留空时，不会注入真实广告位。
 - `FASTLANE_*` 变量是发布用的，debug 不需要。
 
 只有在运行仓库里的打包脚本时，才需要手动 `source .env` 并设置 `BUILD_NUMBER`。
@@ -149,7 +147,6 @@ flutter run -d ios
 | `ios/fastlane/AuthKey.p8` | 不参与 | 仅 iOS 发布时使用。 |
 | `macos/fastlane/AuthKey.p8` | 不参与 | 仅 Mac App Store 发布时使用。 |
 | `macos_se/fastlane/AuthKey.p8` | 不参与 | 仅 macOS SE 发布 / notarization 时使用。 |
-| `ios/Flutter/AdMob.xcconfig` | 可选 | 不提供时会使用默认测试 App ID；走发布脚本时也会自动生成。 |
 | `swift/AppStore/GoogleService-Info.plist` | 按需提供 | 调试 iOS / macOS 且需要 Firebase 时使用。 |
 | `swift/macOSSE/GoogleService-Info.plist` | 按需提供 | 调试 macOS SE 且需要 Firebase 时使用。 |
 
