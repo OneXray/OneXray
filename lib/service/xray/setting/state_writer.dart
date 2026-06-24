@@ -36,21 +36,23 @@ extension XraySettingStateWriter on XraySettingState {
     TunSettingState tunSettingState,
     XrayPorts ports,
   ) async {
-    //fix interface
+    fixInboundsPort(ports);
+    await _fixSystemExtensionLogs();
+
     if (tunSettingState.shouldFixInterface) {
       final networkInterface = await tunSettingState.networkInterface;
-      if (networkInterface == null) {
-        return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
+      if (networkInterface != null) {
+        _fixSettingInterface(networkInterface);
+        tunSettingState.bindInterface = networkInterface;
+      } else {
+        _removeSettingInterface();
+        tunSettingState.bindInterface = "";
       }
-      _fixSettingInterface(networkInterface);
-      tunSettingState.bindInterface = networkInterface;
     } else {
       _removeSettingInterface();
       tunSettingState.bindInterface = "";
     }
 
-    fixInboundsPort(ports);
-    await _fixSystemExtensionLogs();
     return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
   }
 
