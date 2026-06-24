@@ -242,4 +242,18 @@ class PreferencesKey {
   Future<void> saveLanguageCode(String value) async {
     await _prefs.setString(_languageCode, value);
   }
+
+  Future<void> clearUserDataPreferences() async {
+    await Future.wait([
+      _prefs.remove(_localSubscriptionExpanded),
+      _prefs.remove(_runningConfigId),
+      _prefs.remove(_lastConfigId),
+      _prefs.remove(_vpnStartTimestamp),
+      _prefs.remove(_appUpdateLastCheckTimestamp),
+      _prefs.remove(_appUpdateSkippedVersion),
+      _prefs.remove(_pingState),
+      _prefs.remove(_autoUpdate),
+      _prefs.remove(_xraySettingId),
+    ]);
+  }
 }

@@ -51,8 +51,13 @@ class HomeRawController extends Cubit<HomeRawState> {
     });
   }
 
-  Future<void> ping(int subId) async {
-    await PingService().pingRawConfigs(subId);
+  Future<void> ping() async {
+    await PingService().pingRawConfigs();
+  }
+
+  Future<void> cleanUnreachable() async {
+    final db = AppDatabase();
+    await db.coreConfigDao.deleteUnreachableRawRows();
   }
 
   Future<void> refreshData() async {

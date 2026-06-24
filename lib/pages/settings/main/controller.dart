@@ -11,7 +11,9 @@ import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/app_update/service.dart';
+import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/doc/helper.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,22 +21,26 @@ class SettingState {
   final String appVersion;
   final String xrayVersion;
   final bool checkingUpdate;
+  final bool clearingData;
 
   const SettingState({
     this.appVersion = "",
     this.xrayVersion = "",
     this.checkingUpdate = false,
+    this.clearingData = false,
   });
 
   SettingState copyWith({
     String? appVersion,
     String? xrayVersion,
     bool? checkingUpdate,
+    bool? clearingData,
   }) {
     return SettingState(
       appVersion: appVersion ?? this.appVersion,
       xrayVersion: xrayVersion ?? this.xrayVersion,
       checkingUpdate: checkingUpdate ?? this.checkingUpdate,
+      clearingData: clearingData ?? this.clearingData,
     );
   }
 }
@@ -71,16 +77,6 @@ class SettingController extends Cubit<SettingState> {
       GeoDatCodesMode.show,
     );
     context.goScoped(AppSecondaryDestination.geoData, extra: params);
-  }
-
-  final _enhancedRouting = Uri.parse("https://github.com/OneXray/Routing");
-
-  Future<void> openEnhancedRouting(BuildContext context) async {
-    try {
-      await launchUrl(_enhancedRouting);
-    } catch (e) {
-      ygLogger("openEnhancedRouting error: $e");
-    }
   }
 
   void gotoLog(BuildContext context) {
@@ -140,6 +136,74 @@ class SettingController extends Cubit<SettingState> {
     AppUpdateInfo updateInfo,
   ) async {
     await AppUpdateDialog.show(context, updateInfo);
+  }
+
+  Future<void> clearData(BuildContext context) async {
+    final eventBus = AppEventBus.instance;
+    if (state.clearingData || eventBus.state.downloading) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.runningAndWait,
+      );
+      return;
+    }
+
+    final confirmed = await _showClearDataDialog(context);
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    emit(state.copyWith(clearingData: true));
+    eventBus.updateDownloading(true);
+    var success = false;
+    try {
+      success = await AppDataCleanupService().clearFromSettings();
+    } finally {
+      eventBus.updateDownloading(false);
+      if (!isClosed) {
+        emit(state.copyWith(clearingData: false));
+      }
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final localizations = AppLocalizations.of(context)!;
+    ContextAlert.showToast(
+      context,
+      localizations.actionResult(
+        localizations.settingPageClearData,
+        success ? localizations.resultSuccess : localizations.resultFailed,
+      ),
+    );
+    if (success) {
+      context.goPrimaryRoot(AppPrimaryRoute.home);
+    }
+  }
+
+  Future<bool?> _showClearDataDialog(BuildContext context) async {
+    final localizations = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(localizations.settingPageClearDataDialogTitle),
+        content: Text(localizations.settingPageClearDataDialogContent),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(localizations.buttonCancel),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(localizations.buttonOK),
+          ),
+        ],
+      ),
+    );
   }
 
   void gotoBackup(BuildContext context) {

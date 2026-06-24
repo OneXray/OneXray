@@ -91,6 +91,8 @@ import 'package:onexray/pages/subscriptions/add/page.dart';
 import 'package:onexray/pages/subscriptions/edit/page.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
 import 'package:onexray/pages/subscriptions/list/page.dart';
+import 'package:onexray/pages/subscriptions/nodes/page.dart';
+import 'package:onexray/pages/subscriptions/nodes/params.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: "root",
@@ -206,6 +208,14 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   _route(
     AppSecondaryDestination.subscriptionList,
     (_, _) => const SubscriptionListPage(),
+  ),
+  _route(
+    AppSecondaryDestination.subscriptionNodes,
+    (_, state) => _withExtra<SubscriptionNodesParams>(
+      state,
+      AppSecondaryDestination.subscriptionNodes,
+      (params) => SubscriptionNodesPage(params: params),
+    ),
   ),
   _route(
     AppSecondaryDestination.subscriptionAdd,

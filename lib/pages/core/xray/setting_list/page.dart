@@ -128,14 +128,6 @@ class XraySettingListPage extends StatelessWidget {
     }
 
     if (state.configs.isNotEmpty) {
-      rows.add(
-        DataListSectionHeader(
-          title: _sectionTitle(
-            AppLocalizations.of(context)!.xraySettingListPageCustom,
-            _configCount(state.configs),
-          ),
-        ),
-      );
       rows.addAll(
         state.configs.map((row) => _customRow(context, controller, state, row)),
       );
@@ -145,11 +137,6 @@ class XraySettingListPage extends StatelessWidget {
 
   String _sectionTitle(String title, int count) {
     return "$title ($count)";
-  }
-
-  int _configCount(List<ConfigQueryRow> rows) {
-    final count = rows.whereType<ConfigItem>().length;
-    return count == 0 ? rows.length : count;
   }
 
   Widget _customRow(

@@ -125,10 +125,12 @@ class SettingContent extends StatelessWidget {
       children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.autoUpdatePageTitle,
+          leading: const Icon(Icons.update_outlined),
           onTap: () => controller.gotoAutoUpdate(context),
         ),
         SettingRow(
           title: AppLocalizations.of(context)!.appUpdateCheck,
+          leading: const Icon(Icons.system_update_outlined),
           onTap: state.checkingUpdate
               ? null
               : () => controller.checkUpdate(context),
@@ -137,9 +139,31 @@ class SettingContent extends StatelessWidget {
                   dimension: 24,
                   child: CircularProgressIndicator(),
                 )
-              : const Icon(Icons.system_update),
+              : null,
         ),
+        _clearData(context, state, controller),
       ],
+    );
+  }
+
+  Widget _clearData(
+    BuildContext context,
+    SettingState state,
+    SettingController controller,
+  ) {
+    final errorColor = Theme.of(context).colorScheme.error;
+    return SettingRow(
+      title: AppLocalizations.of(context)!.settingPageClearData,
+      subtitle: AppLocalizations.of(context)!.settingPageClearDataSubtitle,
+      leading: Icon(Icons.delete_forever, color: errorColor),
+      enabled: !state.clearingData,
+      onTap: state.clearingData ? null : () => controller.clearData(context),
+      trailing: state.clearingData
+          ? const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(),
+            )
+          : Icon(Icons.chevron_right, color: errorColor),
     );
   }
 
@@ -159,6 +183,7 @@ class SettingContent extends StatelessWidget {
   Widget _backup(BuildContext context, SettingController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.backupPageTitle,
+      leading: const Icon(Icons.backup_outlined),
       onTap: () => controller.gotoBackup(context),
     );
   }
@@ -166,6 +191,7 @@ class SettingContent extends StatelessWidget {
   Widget _appIcon(BuildContext context, SettingController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.appIconPageTitle,
+      leading: const Icon(Icons.apps_outlined),
       onTap: () => controller.gotoAppIcon(context),
     );
   }
@@ -173,6 +199,7 @@ class SettingContent extends StatelessWidget {
   Widget _toolbox(BuildContext context, SettingController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.toolboxPageTitle,
+      leading: const Icon(Icons.build_outlined),
       onTap: () => controller.gotoToolbox(context),
     );
   }
@@ -180,6 +207,7 @@ class SettingContent extends StatelessWidget {
   Widget _theme(BuildContext context, SettingController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.themePageTitle,
+      leading: const Icon(Icons.palette_outlined),
       onTap: () => controller.gotoTheme(context),
     );
   }
@@ -187,6 +215,7 @@ class SettingContent extends StatelessWidget {
   Widget _language(BuildContext context, SettingController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.languagePageTitle,
+      leading: const Icon(Icons.translate_outlined),
       onTap: () => controller.gotoLanguage(context),
     );
   }
@@ -197,31 +226,38 @@ class SettingContent extends StatelessWidget {
       children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPageDoc,
+          leading: const Icon(Icons.menu_book_outlined),
           onTap: () => controller.openDoc(context),
         ),
         if (AppPlatform.isMobile || AppPlatform.isMacOS)
           NavigationSettingRow(
             title: AppLocalizations.of(context)!.settingPageReview,
+            leading: const Icon(Icons.star_rate_outlined),
             onTap: () => controller.gotoReview(context),
           ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPageTelegramChannel,
+          leading: const Icon(Icons.send_outlined),
           onTap: () => controller.openTelegram(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPageSubmitIssue,
+          leading: const Icon(Icons.bug_report_outlined),
           onTap: () => controller.submitIssue(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPageSourceCode,
+          leading: const Icon(Icons.code_outlined),
           onTap: () => controller.openSourceCode(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPageCredits,
+          leading: const Icon(Icons.info_outline),
           onTap: () => controller.openCredits(context),
         ),
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPagePrivacy,
+          leading: const Icon(Icons.privacy_tip_outlined),
           onTap: () => controller.openPrivacy(context),
         ),
       ],
@@ -234,10 +270,12 @@ class SettingContent extends StatelessWidget {
       children: [
         SettingRow(
           title: AppLocalizations.of(context)!.settingPageAppVersion,
+          leading: const Icon(Icons.apps_outlined),
           value: state.appVersion,
         ),
         SettingRow(
           title: AppLocalizations.of(context)!.settingPageXrayVersion,
+          leading: const Icon(Icons.memory_outlined),
           value: state.xrayVersion,
         ),
       ],

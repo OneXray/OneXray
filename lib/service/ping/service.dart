@@ -44,10 +44,10 @@ class PingService {
     return PingDelayConstants.unknown;
   }
 
-  Future<void> pingRawConfigs(int subId) async {
+  Future<void> pingRawConfigs() async {
     final db = AppDatabase();
     await _runPinging(() async {
-      final rows = await db.coreConfigDao.allRawRowsWithDataBySubId(subId);
+      final rows = await db.coreConfigDao.allRawRowsWithData;
       await _pingConfigs(db, rows);
     });
   }
@@ -91,10 +91,7 @@ class PingService {
     }
     _enqueueAutoPing(() async {
       final db = AppDatabase();
-      final rows = [
-        ...await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId),
-        ...await db.coreConfigDao.allRawRowsWithDataBySubId(subId),
-      ];
+      final rows = await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId);
       if (rows.isEmpty) {
         return;
       }

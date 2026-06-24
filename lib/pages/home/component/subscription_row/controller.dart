@@ -31,8 +31,9 @@ class SubscriptionRowController {
   Future<void> moreAction(
     BuildContext context,
     SubscriptionData data,
-    String menuId,
-  ) async {
+    String menuId, {
+    Future<void> Function(SubscriptionData data)? cleanCallback,
+  }) async {
     final id = IconMenuId.fromString(menuId);
     if (id == null) {
       return;
@@ -59,7 +60,7 @@ class SubscriptionRowController {
         await _showDeleteWarning(context, data);
         break;
       case IconMenuId.clean:
-        await _showCleanWarning(context, data);
+        await _showCleanWarning(context, data, cleanCallback: cleanCallback);
         break;
       case IconMenuId.edit:
         if (context.mounted) {
@@ -109,8 +110,9 @@ class SubscriptionRowController {
 
   Future<void> _showCleanWarning(
     BuildContext context,
-    SubscriptionData data,
-  ) async {
+    SubscriptionData data, {
+    Future<void> Function(SubscriptionData data)? cleanCallback,
+  }) async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -123,7 +125,7 @@ class SubscriptionRowController {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _deleteUnreachableConfigs(data);
+              _deleteUnreachableConfigs(data, cleanCallback: cleanCallback);
             },
             child: Text(AppLocalizations.of(ctx)!.buttonOK),
           ),
@@ -132,7 +134,14 @@ class SubscriptionRowController {
     );
   }
 
-  Future<void> _deleteUnreachableConfigs(SubscriptionData data) async {
+  Future<void> _deleteUnreachableConfigs(
+    SubscriptionData data, {
+    Future<void> Function(SubscriptionData data)? cleanCallback,
+  }) async {
+    if (cleanCallback != null) {
+      await cleanCallback(data);
+      return;
+    }
     final db = AppDatabase();
     await db.coreConfigDao.deleteUnreachableRows(data.id);
   }

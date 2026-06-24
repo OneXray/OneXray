@@ -96,6 +96,9 @@ class _SubscriptionListView extends StatelessWidget {
         final item = items[index];
         return SubscriptionRowView(
           item: item,
+          tapCallback: () => context
+              .read<SubscriptionListController>()
+              .openNodes(context, item.subscription.id),
           pingCallback: () => context.read<SubscriptionListController>().ping(
             item.subscription.id,
           ),

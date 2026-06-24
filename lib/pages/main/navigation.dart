@@ -30,6 +30,7 @@ enum AppSecondaryDestination {
   share("share"),
   outboundSelect("outbound-select"),
   subscriptionList("subscription-list"),
+  subscriptionNodes("subscription-nodes"),
   subscriptionAdd("subscription-add"),
   subscriptionEdit("subscription-edit"),
   tun("tun"),

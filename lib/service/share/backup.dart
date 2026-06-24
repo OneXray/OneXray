@@ -7,13 +7,12 @@ import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/gen/assets.gen.dart';
+import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/subscription/service.dart';
@@ -337,11 +336,14 @@ class BackupService {
         if (!validData) {
           res = false;
         } else {
-          await _clearAllData();
-
-          await _restoreGeoData(dataDir);
-          await _restoreLocalConfigs(dataDir);
-          await _restoreSubscriptions(dataDir);
+          final cleared = await AppDataCleanupService().clearForBackupRestore();
+          if (!cleared) {
+            res = false;
+          } else {
+            await _restoreGeoData(dataDir);
+            await _restoreLocalConfigs(dataDir);
+            await _restoreSubscriptions(dataDir);
+          }
         }
       } catch (e) {
         ygLogger("restore backup error: $e");
@@ -363,22 +365,6 @@ class BackupService {
     }
     final manifest = jsonDecode(await manifestFile.readAsString());
     return manifest is Map && manifest["version"] == _backupVersion;
-  }
-
-  Future<void> _clearAllData() async {
-    await PreferencesKey().saveRunningConfigId(DBConstants.defaultId);
-    await PreferencesKey().saveLastConfigId(DBConstants.defaultId);
-    await PreferencesKey().saveXraySettingId(DBConstants.defaultId);
-
-    final db = AppDatabase();
-    await db.geoDataDao.clear();
-    await db.coreConfigDao.clear();
-    await db.subscriptionDao.clear();
-
-    final datPath = VpnConstants.datDir;
-    await FileTool.deleteDirIfExists(datPath);
-    await FileTool.checkDir(datPath);
-    await FileTool.copyAssets(Assets.dat.values, datPath);
   }
 
   Future<void> _restoreGeoData(String dataDir) async {
