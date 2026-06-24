@@ -5,6 +5,14 @@ import 'package:onexray/service/event_bus/service.dart';
 class DocURLHelper {
   static const _domain = "onexray.com";
 
+  static String _localizedRootPath() {
+    return switch (AppEventBus.instance.state.languageCode) {
+      LanguageCode.zh => "/zh",
+      LanguageCode.ru => "/ru",
+      _ => "/",
+    };
+  }
+
   static String _localizedDocsPath(String page) {
     return switch (AppEventBus.instance.state.languageCode) {
       LanguageCode.zh => "/zh/docs/$page/",
@@ -14,11 +22,7 @@ class DocURLHelper {
   }
 
   static Uri docUri() {
-    var path = "/";
-    if (AppEventBus.instance.state.languageCode == LanguageCode.zh) {
-      path = "/zh";
-    }
-
+    final path = _localizedRootPath();
     final uri = Uri.https(_domain, path);
     ygLogger("$uri");
     return uri;
