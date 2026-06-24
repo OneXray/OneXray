@@ -79,9 +79,11 @@ extension XraySettingStateWriter on XraySettingState {
 
   void _removeSettingInterface() {
     outbounds.freedom.interface = "";
+    outbounds.fragment.interface = "";
     for (final outbound in outbounds.outbounds) {
       outbound.interface = "";
     }
+    inbounds.tun.settings.autoOutboundsInterface = "";
   }
 
   void fixInboundsPort(XrayPorts ports) {

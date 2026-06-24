@@ -454,7 +454,7 @@
   "tunSettingUIPageTunDnsServerName": "Имя сервера",
   "tunSettingUIPageTunDnsServerNameExample": "dns.google",
   "tunSettingUIPageEnableIPv6": "Включить IPv6",
-  "tunSettingUIPageMetrics": "Enable metrics",
+  "tunSettingUIPageMetrics": "Включить метрики",
   "tunSettingUIPageInterface": "Сетевая карта",
   "tunSettingUIPageOnDemandEnabled": "Включить по требованию",
   "tunSettingUIPageOnDemandRules": "Правила",

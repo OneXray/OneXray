@@ -84,16 +84,30 @@ class XrayRawFix {
 
   static void _removeConfigInterface(Map<String, dynamic> jsonMap) {
     final List<dynamic>? outbounds = jsonMap["outbounds"];
-    if (outbounds == null) {
+    if (outbounds != null) {
+      for (final outbound in outbounds) {
+        final Map<String, dynamic>? streamSettings = outbound["streamSettings"];
+        if (streamSettings != null) {
+          final Map<String, dynamic>? sockopt = streamSettings["sockopt"];
+          if (sockopt != null) {
+            sockopt.remove("interface");
+          }
+        }
+      }
+    }
+
+    final List<dynamic>? inbounds = jsonMap["inbounds"];
+    if (inbounds == null) {
       return;
     }
-    for (final outbound in outbounds) {
-      final Map<String, dynamic>? streamSettings = outbound["streamSettings"];
-      if (streamSettings != null) {
-        final Map<String, dynamic>? sockopt = streamSettings["sockopt"];
-        if (sockopt != null) {
-          sockopt.remove("interface");
+    for (final inbound in inbounds) {
+      if (inbound["tag"] == RoutingInboundTag.tunIn.name &&
+          inbound["protocol"] == XrayInboundProtocol.tun.name) {
+        final settings = inbound["settings"];
+        if (settings is Map) {
+          settings.remove("autoOutboundsInterface");
         }
+        return;
       }
     }
   }

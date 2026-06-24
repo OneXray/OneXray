@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/tools/file.dart';
+import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/log/long_text/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
@@ -26,9 +27,16 @@ class LogController extends Cubit<LogCubitState> {
   }
 
   Future<void> _init() async {
-    final useSystemExtension = await AppHostApi().useSystemExtension();
+    var hideLogFiles = false;
+    try {
+      if (AppPlatform.isMacOS) {
+        hideLogFiles = await AppHostApi().useSystemExtension();
+      }
+    } catch (e) {
+      ygLogger("LogController init error: $e");
+    }
     if (!isClosed) {
-      emit(LogCubitState(hideLogFiles: useSystemExtension));
+      emit(LogCubitState(hideLogFiles: hideLogFiles));
     }
   }
 

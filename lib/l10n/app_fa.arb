@@ -454,7 +454,7 @@
     "tunSettingUIPageTunDnsServerName": "نام سرور",
     "tunSettingUIPageTunDnsServerNameExample": "dns.google",
     "tunSettingUIPageEnableIPv6": "فعال‌سازی IPv6",
-    "tunSettingUIPageMetrics": "Enable metrics",
+    "tunSettingUIPageMetrics": "فعال‌سازی متریک‌ها",
     "tunSettingUIPageInterface": "رابط شبکه",
     "tunSettingUIPageOnDemandEnabled": "فعال‌سازی در صورت نیاز",
     "tunSettingUIPageOnDemandRules": "قوانین",

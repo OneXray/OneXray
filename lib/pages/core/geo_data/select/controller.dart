@@ -61,6 +61,9 @@ class GeoDatSelectController extends Cubit<GeoDatSelectState> {
       VpnConstants.datDir,
       state.geoDatName,
     );
+    if (isClosed) {
+      return;
+    }
     if (EmptyTool.checkList(geoList.codes)) {
       final newSelections = <String>{};
       for (final selection in params.selections) {
