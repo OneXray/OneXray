@@ -14,8 +14,8 @@ import 'package:onexray/service/automation/protocol.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/share/protocol.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
+import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/vpn/service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
@@ -233,40 +233,6 @@ final class AutomationService {
   }
 
   Future<Map<String, dynamic>> _readImportText(String text) async {
-    if (AppShareService().checkAppShare(text)) {
-      final result = await () async {
-        try {
-          return await AppShareService().parseShareText(text);
-        } catch (_) {
-          throw const AutomationException(
-            AutomationErrorCode.importFailed,
-            'OneXray share content could not be imported.',
-          );
-        }
-      }();
-      final rows = result.item1;
-      var configImported = 0;
-      if (rows.isNotEmpty) {
-        final writeResult = await ConfigWriter.writeRowsWithResult(rows, null);
-        configImported = writeResult.count;
-        if (writeResult.count > 0) {
-          PingService().schedulePingConfigIds(writeResult.ids);
-        }
-      }
-      final success = result.item2 || configImported > 0;
-      if (!success) {
-        throw const AutomationException(
-          AutomationErrorCode.importFailed,
-          'No valid OneXray share content was imported.',
-        );
-      }
-      return {
-        'imported': configImported > 0 ? configImported : 1,
-        'configImported': configImported,
-        'source': 'oneXrayShare',
-      };
-    }
-
     if (text.startsWith('https://')) {
       final uri = Uri.tryParse(text);
       if (uri == null) {
@@ -275,7 +241,7 @@ final class AutomationService {
           'Subscription URL is invalid.',
         );
       }
-      final success = await AppShareService().addSubscription(
+      final success = await SubscriptionService().addSubscription(
         text,
         uri.fragment,
         true,

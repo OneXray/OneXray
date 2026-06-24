@@ -82,6 +82,35 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return results;
   }
 
+  List<ConfigQueryRow> _convertSettingQueryRows(List<TypedResult> rows) {
+    if (rows.isEmpty) {
+      return [];
+    }
+
+    final localSub = SubscriptionData(
+      id: DBConstants.defaultId,
+      name: "Local",
+      url: "",
+      timestamp: DateTime.now(),
+      count: rows.length,
+      expanded: true,
+    );
+    final localItem = SubscriptionItem(
+      localSub,
+      ConfigQueryRowType.subscription,
+    )..count = rows.length;
+
+    return [
+      localItem,
+      ...rows.map((row) {
+        final data = _convertRowToCoreConfigData(
+          row,
+        ).copyWith(subId: DBConstants.defaultId);
+        return ConfigItem(data, ConfigQueryRowType.config);
+      }),
+    ];
+  }
+
   JoinedSelectStatement<$CoreConfigTable, CoreConfigData>
   get _allConfigRowsQuery {
     final query = selectOnly(coreConfig)
@@ -126,7 +155,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       ..where(coreConfig.type.equals(CoreConfigType.setting.name));
     final queryStream = query.watch();
     await for (final rows in queryStream) {
-      final results = await _convertConfigQueryRows(rows);
+      final results = _convertSettingQueryRows(rows);
       yield results;
     }
   }
@@ -135,7 +164,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     final query = _allConfigRowsQuery
       ..where(coreConfig.type.equals(CoreConfigType.setting.name));
     final rows = await query.get();
-    final results = await _convertConfigQueryRows(rows);
+    final results = _convertSettingQueryRows(rows);
     return results;
   }
 

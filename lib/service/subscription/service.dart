@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/share/protocol.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/auto_update/state.dart';
+import 'package:onexray/service/subscription/validator.dart';
 
 class SubscriptionService {
   static final SubscriptionService _singleton = SubscriptionService._internal();
@@ -16,6 +17,20 @@ class SubscriptionService {
   factory SubscriptionService() => _singleton;
 
   SubscriptionService._internal();
+
+  Future<bool> addSubscription(
+    String url,
+    String name,
+    bool showLoading,
+  ) async {
+    final subscriptionName = name.isEmpty ? "anonymous" : name;
+    final checked = await SubscriptionValidator.validate(subscriptionName, url);
+    if (!checked.item1) {
+      return false;
+    }
+    final count = await insertSubscription(subscriptionName, url, showLoading);
+    return count > 0;
+  }
 
   Future<int> insertSubscription(
     String name,
@@ -99,15 +114,14 @@ class SubscriptionService {
       return [];
     }
     final url = text.trim();
-    if (AppShareService().checkAppShare(url)) {
-      final result = await AppShareService().parseShareText(
-        url,
-        skipSubscription: true,
-      );
-      return result.item1;
-    } else {
-      return XrayShareReader().parseShareText(url);
-    }
+    final rows = await XrayShareReader().parseOutboundShareText(url);
+    return rows
+        .where(
+          (row) =>
+              row.type.present &&
+              row.type.value == CoreConfigType.outbound.name,
+        )
+        .toList();
   }
 
   Future<void> refreshAllSubscription({bool updateDownloading = true}) async {

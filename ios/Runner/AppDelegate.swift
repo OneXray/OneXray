@@ -1,4 +1,3 @@
-import app_links
 import Flutter
 import UIKit
 
@@ -19,8 +18,5 @@ import UIKit
         BridgeHostApiSetup.setUp(binaryMessenger: binaryMessenger, api: AppHostApi(flutterApi: flutterApi))
         
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-        
-        // https://github.com/llfbandit/app_links/blob/master/doc/README_ios_7.md
-        AppLinks.shared.defaultUrlHandling = .availability
     }
 }

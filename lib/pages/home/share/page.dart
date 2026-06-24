@@ -36,7 +36,8 @@ class SharePage extends StatelessWidget {
           child: Column(
             children: [
               if (state.showLinkSection) _linkSection(context, state),
-              _appSection(context, state),
+              if (state.showTextSection) _textSection(context, state),
+              if (state.showJsonFileSection) _jsonFileSection(context, state),
             ],
           ),
         ),
@@ -100,19 +101,38 @@ class SharePage extends StatelessWidget {
     );
   }
 
-  Widget _appSection(BuildContext context, ShareState state) {
+  Widget _textSection(BuildContext context, ShareState state) {
     final controller = context.read<ShareController>();
     return SettingSection(
       title:
-          "${AppLocalizations.of(context)!.sharePageAppLink} / ${AppLocalizations.of(context)!.sharePageLink}",
+          "${state.textSection} / ${AppLocalizations.of(context)!.sharePageText}",
       children: [
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.sharePageShareLink,
-          onTap: () => controller.shareAppUrl(context),
+          title: AppLocalizations.of(context)!.sharePageShareText,
+          onTap: () => controller.shareText(context),
         ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.sharePageCopyLink,
-          onTap: () => controller.copyAppUrl(context),
+          title: AppLocalizations.of(context)!.sharePageCopyText,
+          onTap: () => controller.copyText(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _jsonFileSection(BuildContext context, ShareState state) {
+    final controller = context.read<ShareController>();
+    return SettingSection(
+      title:
+          "${state.jsonFileSection} / ${AppLocalizations.of(context)!.sharePageJsonFile}",
+      children: [
+        if (!AppPlatform.isLinux)
+          NavigationSettingRow(
+            title: AppLocalizations.of(context)!.sharePageShareJsonFile,
+            onTap: () => controller.shareJsonFile(context),
+          ),
+        NavigationSettingRow(
+          title: AppLocalizations.of(context)!.sharePageSaveJsonFile,
+          onTap: () => controller.saveJsonFile(context),
         ),
       ],
     );

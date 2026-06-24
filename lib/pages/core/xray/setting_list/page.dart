@@ -5,7 +5,6 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/component/config_row/enum.dart';
 import 'package:onexray/pages/home/component/config_row/view.dart';
-import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/core/xray/setting_list/controller.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
@@ -173,10 +172,8 @@ class XraySettingListPage extends StatelessWidget {
     ConfigQueryRow row,
   ) {
     final item = row as SubscriptionItem;
-    return SubscriptionRowView(
-      item: item,
-      pingCallback: null,
-      expandCallback: () => controller.refreshData(),
+    return DataListSectionHeader(
+      title: _sectionTitle(item.subscription.name, item.count),
     );
   }
 
