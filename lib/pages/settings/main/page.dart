@@ -209,10 +209,6 @@ class SettingContent extends StatelessWidget {
           onTap: () => controller.openTelegram(context),
         ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingPageEmail,
-          onTap: () => controller.sendEmail(context),
-        ),
-        NavigationSettingRow(
           title: AppLocalizations.of(context)!.settingPageSubmitIssue,
           onTap: () => controller.submitIssue(context),
         ),

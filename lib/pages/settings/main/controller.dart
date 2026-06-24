@@ -187,16 +187,6 @@ class SettingController extends Cubit<SettingState> {
     }
   }
 
-  final _email = Uri.parse("mailto:yuan@yuandev.net");
-
-  Future<void> sendEmail(BuildContext context) async {
-    try {
-      await launchUrl(_email);
-    } catch (e) {
-      ygLogger("sendEmail error: $e");
-    }
-  }
-
   final _githubIssue = Uri.parse(
     "https://github.com/OneXray/OneXray/issues/new",
   );
