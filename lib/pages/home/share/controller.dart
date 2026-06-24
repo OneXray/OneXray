@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -12,18 +13,18 @@ import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
+import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/share/params.dart';
-import 'package:onexray/service/share/protocol.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
+import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/standard.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
-import 'package:tuple/tuple.dart';
 import 'package:zxing2/qrcode.dart';
 
 class ShareState {
@@ -31,14 +32,24 @@ class ShareState {
   final String linkSection;
   final String linkUrl;
   final bool linkQrcodeSuccess;
-  final String appUrl;
+  final bool showTextSection;
+  final String textSection;
+  final String textContent;
+  final bool showJsonFileSection;
+  final String jsonFileSection;
+  final String jsonFileContent;
 
   const ShareState({
     required this.showLinkSection,
     required this.linkSection,
     required this.linkUrl,
     required this.linkQrcodeSuccess,
-    required this.appUrl,
+    required this.showTextSection,
+    required this.textSection,
+    required this.textContent,
+    required this.showJsonFileSection,
+    required this.jsonFileSection,
+    required this.jsonFileContent,
   });
 
   factory ShareState.initial() => const ShareState(
@@ -46,7 +57,12 @@ class ShareState {
     linkSection: "",
     linkUrl: "",
     linkQrcodeSuccess: false,
-    appUrl: "",
+    showTextSection: false,
+    textSection: "",
+    textContent: "",
+    showJsonFileSection: false,
+    jsonFileSection: "",
+    jsonFileContent: "",
   );
 
   ShareState copyWith({
@@ -54,14 +70,24 @@ class ShareState {
     String? linkSection,
     String? linkUrl,
     bool? linkQrcodeSuccess,
-    String? appUrl,
+    bool? showTextSection,
+    String? textSection,
+    String? textContent,
+    bool? showJsonFileSection,
+    String? jsonFileSection,
+    String? jsonFileContent,
   }) {
     return ShareState(
       showLinkSection: showLinkSection ?? this.showLinkSection,
       linkSection: linkSection ?? this.linkSection,
       linkUrl: linkUrl ?? this.linkUrl,
       linkQrcodeSuccess: linkQrcodeSuccess ?? this.linkQrcodeSuccess,
-      appUrl: appUrl ?? this.appUrl,
+      showTextSection: showTextSection ?? this.showTextSection,
+      textSection: textSection ?? this.textSection,
+      textContent: textContent ?? this.textContent,
+      showJsonFileSection: showJsonFileSection ?? this.showJsonFileSection,
+      jsonFileSection: jsonFileSection ?? this.jsonFileSection,
+      jsonFileContent: jsonFileContent ?? this.jsonFileContent,
     );
   }
 }
@@ -83,9 +109,6 @@ class ShareController extends Cubit<ShareState> {
       case ShareType.subscription:
         _querySubscription(params.id);
         break;
-      case ShareType.geoDat:
-        _queryGeoData(params.id);
-        break;
     }
   }
 
@@ -95,17 +118,27 @@ class ShareController extends Cubit<ShareState> {
       final config = await db.coreConfigDao.searchRow(configId);
       if (config != null) {
         final type = CoreConfigType.fromString(config.type);
-        if (type == CoreConfigType.outbound) {
-          emit(
-            state.copyWith(
-              showLinkSection: true,
-              linkSection: appLocalizationsNoContext().sharePageXrayLink,
-            ),
-          );
-          await _parseXrayJson(config);
+        switch (type) {
+          case CoreConfigType.outbound:
+            emit(
+              state.copyWith(
+                showLinkSection: true,
+                linkSection: appLocalizationsNoContext().sharePageXrayLink,
+              ),
+            );
+            await _parseXrayJson(config);
+            break;
+          case CoreConfigType.raw:
+            final text = XrayRawDb.readFromDbData(config);
+            await _finishJsonExport(text, config.name);
+            break;
+          case CoreConfigType.setting:
+            final text = _readConfigDataText(config);
+            await _finishJsonExport(text, config.name);
+            break;
+          case null:
+            break;
         }
-        final result = await AppShareService().generateConfigLink(config);
-        await _finishApp(result);
       }
     }
   }
@@ -122,19 +155,6 @@ class ShareController extends Cubit<ShareState> {
           ),
         );
         await _parseShareSubscription(subscription);
-        final result = AppShareService().generateSubscriptionLink(subscription);
-        await _finishApp(result);
-      }
-    }
-  }
-
-  Future<void> _queryGeoData(int geoDataId) async {
-    final db = AppDatabase();
-    if (geoDataId != DBConstants.defaultId) {
-      final geoData = await db.geoDataDao.searchRow(geoDataId);
-      if (geoData != null) {
-        final result = AppShareService().generateGeoDataLink(geoData);
-        await _finishApp(result);
       }
     }
   }
@@ -176,15 +196,22 @@ class ShareController extends Cubit<ShareState> {
     }
   }
 
-  Future<void> _finishApp(Tuple2<String, String> result) async {
-    final url = result.item1;
-    final name = result.item2;
-    if (url.isEmpty || name.isEmpty) {
+  Future<void> _finishJsonExport(String text, String name) async {
+    final jsonText = _formatJsonText(text);
+    if (jsonText.isEmpty) {
       return;
     }
-
     _name = name;
-    emit(state.copyWith(appUrl: url));
+    emit(
+      state.copyWith(
+        showTextSection: true,
+        textSection: appLocalizationsNoContext().sharePageXrayJson,
+        textContent: jsonText,
+        showJsonFileSection: true,
+        jsonFileSection: appLocalizationsNoContext().sharePageXrayJson,
+        jsonFileContent: jsonText,
+      ),
+    );
   }
 
   Future<void> shareLinkQrcode(BuildContext context) async {
@@ -280,10 +307,6 @@ class ShareController extends Cubit<ShareState> {
     await _shareUrl(context, state.linkUrl);
   }
 
-  Future<void> shareAppUrl(BuildContext context) async {
-    await _shareUrl(context, state.appUrl);
-  }
-
   Future<void> _shareUrl(BuildContext context, String url) async {
     Rect? sharePositionOrigin;
     if (context.mounted) {
@@ -312,10 +335,6 @@ class ShareController extends Cubit<ShareState> {
     await _copyUrl(context, state.linkUrl);
   }
 
-  Future<void> copyAppUrl(BuildContext context) async {
-    await _copyUrl(context, state.appUrl);
-  }
-
   Future<void> _copyUrl(BuildContext context, String url) async {
     final data = ClipboardData(text: url);
     await Clipboard.setData(data);
@@ -329,6 +348,134 @@ class ShareController extends Cubit<ShareState> {
       );
       context.pop();
     }
+  }
+
+  Future<void> shareText(BuildContext context) async {
+    await _shareText(context, state.textContent);
+  }
+
+  Future<void> _shareText(BuildContext context, String text) async {
+    Rect? sharePositionOrigin;
+    if (context.mounted) {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null) {
+        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+      }
+    }
+    final params = ShareParams(
+      text: text,
+      subject: _name,
+      sharePositionOrigin: sharePositionOrigin,
+    );
+    final result = await SharePlus.instance.share(params);
+
+    if (context.mounted) {
+      _showActionResult(
+        context,
+        result.status == ShareResultStatus.success,
+        AppLocalizations.of(context)!.sharePageShareText,
+      );
+    }
+  }
+
+  Future<void> copyText(BuildContext context) async {
+    await _copyText(context, state.textContent);
+  }
+
+  Future<void> _copyText(BuildContext context, String text) async {
+    final data = ClipboardData(text: text);
+    await Clipboard.setData(data);
+    if (context.mounted) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.actionResult(
+          AppLocalizations.of(context)!.sharePageCopyText,
+          AppLocalizations.of(context)!.resultSuccess,
+        ),
+      );
+      context.pop();
+    }
+  }
+
+  Future<void> shareJsonFile(BuildContext context) async {
+    await _shareJsonFile(context, state.jsonFileContent);
+  }
+
+  Future<void> _shareJsonFile(BuildContext context, String text) async {
+    Rect? sharePositionOrigin;
+    if (context.mounted) {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null) {
+        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+      }
+    }
+
+    final cacheDir = await FileTool.makeCacheDir();
+    final fileName = "${_safeFileName()}.json";
+    final filePath = p.join(cacheDir, fileName);
+    await File(filePath).writeAsString(text);
+
+    final params = ShareParams(
+      files: [XFile(filePath)],
+      fileNameOverrides: [fileName],
+      sharePositionOrigin: sharePositionOrigin,
+    );
+    final result = await SharePlus.instance.share(params);
+    await FileTool.deleteDirIfExists(cacheDir);
+    if (context.mounted) {
+      _showActionResult(
+        context,
+        result.status == ShareResultStatus.success,
+        AppLocalizations.of(context)!.sharePageShareJsonFile,
+      );
+    }
+  }
+
+  Future<void> saveJsonFile(BuildContext context) async {
+    await _saveJsonFile(context, state.jsonFileContent);
+  }
+
+  Future<void> _saveJsonFile(BuildContext context, String text) async {
+    final data = Uint8List.fromList(utf8.encode(text));
+    final success = await FileTool.saveData(
+      data,
+      "${_safeFileName()}.json",
+      ".json",
+    );
+    if (context.mounted) {
+      _showActionResult(
+        context,
+        success,
+        AppLocalizations.of(context)!.sharePageSaveJsonFile,
+      );
+    }
+  }
+
+  String _safeFileName() {
+    final name = _name.trim().replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), "_");
+    return name.isEmpty ? "config" : name;
+  }
+}
+
+String _readConfigDataText(CoreConfigData config) {
+  try {
+    final jsonData = JsonTool.decodeBase64ToJson(config.data ?? "");
+    return JsonTool.encoderForFile.convert(jsonData);
+  } catch (_) {
+    try {
+      return utf8.decode(base64Decode(config.data ?? ""));
+    } catch (_) {
+      return "";
+    }
+  }
+}
+
+String _formatJsonText(String text) {
+  try {
+    final jsonData = JsonTool.decoder.convert(text);
+    return JsonTool.encoderForFile.convert(jsonData);
+  } catch (_) {
+    return text;
   }
 }
 

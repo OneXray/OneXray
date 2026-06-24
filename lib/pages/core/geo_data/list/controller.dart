@@ -10,7 +10,6 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/core/geo_data/select/params.dart';
 import 'package:onexray/pages/core/geo_data/show/params.dart';
-import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -230,9 +229,6 @@ class GeoDataListController extends Cubit<GeoDataListState> {
       case IconMenuId.refresh:
         await _updateGeoDat(context, geoDat);
         break;
-      case IconMenuId.share:
-        _shareGeoDat(context, geoDat);
-        break;
       case IconMenuId.delete:
         await GeoDataService().deleteGeoDat(geoDat);
         break;
@@ -253,11 +249,6 @@ class GeoDataListController extends Cubit<GeoDataListState> {
       return;
     }
     await GeoDataService().updateGeoDat(geoDat);
-  }
-
-  void _shareGeoDat(BuildContext context, GeoDataData geoDat) async {
-    final params = SharePageParams(ShareType.geoDat, geoDat.id);
-    context.pushScoped(AppSecondaryDestination.share, extra: params);
   }
 
   void save(BuildContext context) {

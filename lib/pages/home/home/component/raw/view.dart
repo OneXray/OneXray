@@ -56,8 +56,10 @@ class HomeRawView extends StatelessWidget {
           ? AppLocalizations.of(context)!.homeOutboundViewNoOutbound
           : AppLocalizations.of(context)!.listNoSearchResult,
       emptyIcon: state.query.isEmpty ? Icons.data_object : Icons.search_off,
-      onPingSubscription: (subId) => controller.ping(subId),
+      onPingSubscription: (_) => controller.ping(),
       onRefresh: () => controller.refreshData(),
+      onCleanSubscription: (_) => controller.cleanUnreachable(),
+      subscriptionExpandable: false,
     );
   }
 }

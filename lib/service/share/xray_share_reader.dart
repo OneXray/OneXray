@@ -18,13 +18,19 @@ class XrayShareReader {
     return parseShareText(text);
   }
 
-  Future<List<CoreConfigCompanion>> parseShareText(String text) async {
+  Future<List<CoreConfigCompanion>> parseOutboundShareText(String text) async {
     final xrayJson = await AppHostApi().convertShareLinksToXrayJson(text);
-    final rows = await _readXrayJson(xrayJson);
+    final rows = await _readXrayJsonOutbounds(xrayJson);
     return rows;
   }
 
-  Future<List<CoreConfigCompanion>> _readXrayJson(XrayJson xrayJson) async {
+  Future<List<CoreConfigCompanion>> parseShareText(String text) async {
+    return parseOutboundShareText(text);
+  }
+
+  Future<List<CoreConfigCompanion>> _readXrayJsonOutbounds(
+    XrayJson xrayJson,
+  ) async {
     final res = <CoreConfigCompanion>[];
     final outbounds = xrayJson.outbounds;
     if (outbounds == null) {

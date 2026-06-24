@@ -14,19 +14,6 @@ class XrayRawFix {
     XrayPorts ports,
     bool metricsEnabled,
   ) async {
-    //fix interface
-    if (tunSettingState.shouldFixInterface) {
-      final networkInterface = await tunSettingState.networkInterface;
-      if (networkInterface == null) {
-        return;
-      }
-      _fixConfigInterface(jsonMap, networkInterface);
-      tunSettingState.bindInterface = networkInterface;
-    } else {
-      _removeConfigInterface(jsonMap);
-      tunSettingState.bindInterface = "";
-    }
-
     final disableLog = await AppHostApi().useSystemExtension();
 
     fixInboundsPort(jsonMap, ports);
@@ -34,6 +21,20 @@ class XrayRawFix {
     fixMetrics(jsonMap, metricsEnabled ? ports.metricsPort : null);
     if (!metricsEnabled) {
       ports.metricsPort = "";
+    }
+
+    if (tunSettingState.shouldFixInterface) {
+      final networkInterface = await tunSettingState.networkInterface;
+      if (networkInterface != null) {
+        _fixConfigInterface(jsonMap, networkInterface);
+        tunSettingState.bindInterface = networkInterface;
+      } else {
+        _removeConfigInterface(jsonMap);
+        tunSettingState.bindInterface = "";
+      }
+    } else {
+      _removeConfigInterface(jsonMap);
+      tunSettingState.bindInterface = "";
     }
   }
 

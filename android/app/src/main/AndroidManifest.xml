@@ -46,17 +46,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Deep Link sample -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:host="onexray.com"
-                    android:scheme="onexray" />
-            </intent-filter>
         </activity>
         <service
             android:name=".tile.OneQuickSettingsTileService"

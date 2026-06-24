@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/main/controller.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
@@ -44,14 +43,17 @@ class CoreContent extends StatelessWidget {
                 children: [
                   NavigationSettingRow(
                     title: localizations.tunSettingUIPageTitle,
+                    leading: const Icon(Icons.vpn_lock_outlined),
                     onTap: () => controller.gotoTun(context),
                   ),
                   NavigationSettingRow(
                     title: localizations.pingPageTitle,
+                    leading: const Icon(Icons.speed_outlined),
                     onTap: () => controller.gotoPing(context),
                   ),
                   NavigationSettingRow(
                     title: localizations.logPageTitle,
+                    leading: const Icon(Icons.article_outlined),
                     onTap: () => controller.gotoLogs(context),
                   ),
                 ],
@@ -61,19 +63,14 @@ class CoreContent extends StatelessWidget {
                 children: [
                   NavigationSettingRow(
                     title: localizations.xraySettingListPageTitle,
+                    leading: const Icon(Icons.hub_outlined),
                     onTap: () => controller.gotoXray(context),
                   ),
                   NavigationSettingRow(
                     title: localizations.geoDataListPageTitle,
+                    leading: const Icon(Icons.public_outlined),
                     onTap: () => controller.gotoGeoData(context),
                   ),
-                  if (!AppPlatform.isIOS)
-                    NavigationSettingRow(
-                      title: localizations.settingPageEnhancedRouting,
-                      onTap: () {
-                        controller.openEnhancedRouting();
-                      },
-                    ),
                 ],
               ),
             ],

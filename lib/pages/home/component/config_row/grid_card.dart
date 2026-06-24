@@ -34,14 +34,15 @@ class SelectableConfigGridCard extends StatelessWidget {
     return ConfigGridCard(
       data: data,
       status: status,
-      moreMenus: [
-        IconMenuId.edit,
-        IconMenuId.share,
-        IconMenuId.copy,
-        IconMenuId.delete,
-      ],
+      moreMenus: _moreMenus(),
       tapCallback: () => homeController.updateConfigId(context, data.id),
     );
+  }
+
+  List<IconMenuId> _moreMenus() {
+    final menus = <IconMenuId>[IconMenuId.edit, IconMenuId.share];
+    menus.addAll([IconMenuId.copy, IconMenuId.delete]);
+    return menus;
   }
 }
 

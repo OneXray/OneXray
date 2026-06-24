@@ -236,7 +236,7 @@ class GeoDataListPage extends StatelessWidget {
       onTap: () => controller.gotoGeoData(context, data),
       trailing: IconMenuPicker(
         icon: Icons.more_vert,
-        menus: [IconMenuId.refresh, IconMenuId.share, IconMenuId.delete],
+        menus: [IconMenuId.refresh, IconMenuId.delete],
         callback: (menuId) => controller.moreAction(context, data, menuId),
       ),
     );

@@ -82,6 +82,64 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return results;
   }
 
+  List<ConfigQueryRow> _convertSettingQueryRows(List<TypedResult> rows) {
+    if (rows.isEmpty) {
+      return [];
+    }
+
+    final localSub = SubscriptionData(
+      id: DBConstants.defaultId,
+      name: "Local",
+      url: "",
+      timestamp: DateTime.now(),
+      count: rows.length,
+      expanded: true,
+    );
+    final localItem = SubscriptionItem(
+      localSub,
+      ConfigQueryRowType.subscription,
+    )..count = rows.length;
+
+    return [
+      localItem,
+      ...rows.map((row) {
+        final data = _convertRowToCoreConfigData(
+          row,
+        ).copyWith(subId: DBConstants.defaultId);
+        return ConfigItem(data, ConfigQueryRowType.config);
+      }),
+    ];
+  }
+
+  List<ConfigQueryRow> _convertRawQueryRows(List<TypedResult> rows) {
+    if (rows.isEmpty) {
+      return [];
+    }
+
+    final localSub = SubscriptionData(
+      id: DBConstants.defaultId,
+      name: "Local",
+      url: "",
+      timestamp: DateTime.now(),
+      count: rows.length,
+      expanded: true,
+    );
+    final localItem = SubscriptionItem(
+      localSub,
+      ConfigQueryRowType.subscription,
+    )..count = rows.length;
+
+    return [
+      localItem,
+      ...rows.map((row) {
+        final data = _convertRowToCoreConfigData(
+          row,
+        ).copyWith(subId: DBConstants.defaultId);
+        return ConfigItem(data, ConfigQueryRowType.config);
+      }),
+    ];
+  }
+
   JoinedSelectStatement<$CoreConfigTable, CoreConfigData>
   get _allConfigRowsQuery {
     final query = selectOnly(coreConfig)
@@ -126,7 +184,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       ..where(coreConfig.type.equals(CoreConfigType.setting.name));
     final queryStream = query.watch();
     await for (final rows in queryStream) {
-      final results = await _convertConfigQueryRows(rows);
+      final results = _convertSettingQueryRows(rows);
       yield results;
     }
   }
@@ -135,7 +193,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     final query = _allConfigRowsQuery
       ..where(coreConfig.type.equals(CoreConfigType.setting.name));
     final rows = await query.get();
-    final results = await _convertConfigQueryRows(rows);
+    final results = _convertSettingQueryRows(rows);
     return results;
   }
 
@@ -144,7 +202,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       ..where(coreConfig.type.equals(CoreConfigType.raw.name));
     final queryStream = query.watch();
     await for (final rows in queryStream) {
-      final results = await _convertConfigQueryRows(rows);
+      final results = _convertRawQueryRows(rows);
       yield results;
     }
   }
@@ -153,7 +211,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     final query = _allConfigRowsQuery
       ..where(coreConfig.type.equals(CoreConfigType.raw.name));
     final rows = await query.get();
-    final results = await _convertConfigQueryRows(rows);
+    final results = _convertRawQueryRows(rows);
     return results;
   }
 
@@ -165,10 +223,18 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
             ..where((tbl) => tbl.subId.equals(subId)))
           .get();
 
-  Future<List<CoreConfigData>> allRawRowsWithDataBySubId(int subId) async =>
+  Stream<List<CoreConfigData>> allOutboundRowsWithDataBySubIdStream(int subId) {
+    return (select(coreConfig)
+          ..where((tbl) => tbl.type.equals(CoreConfigType.outbound.name))
+          ..where((tbl) => tbl.subId.equals(subId))
+          ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
+        .watch();
+  }
+
+  Future<List<CoreConfigData>> get allRawRowsWithData async =>
       (select(coreConfig)
             ..where((tbl) => tbl.type.equals(CoreConfigType.raw.name))
-            ..where((tbl) => tbl.subId.equals(subId)))
+            ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
           .get();
 
   Future<List<CoreConfigData>> get allLocalRowsWithData async => (select(
@@ -252,6 +318,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     final res =
         await (delete(coreConfig)
               ..where((tbl) => tbl.subId.equals(subId))
+              ..where((tbl) => tbl.type.equals(CoreConfigType.outbound.name))
               ..where(
                 (tbl) =>
                     tbl.delay.isBiggerThanValue(PingDelayConstants.unknown),
@@ -268,6 +335,19 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       TableUpdate.onTable(coreConfig, kind: UpdateKind.delete),
       TableUpdate.onTable(subscription, kind: UpdateKind.update),
     });
+    return res;
+  }
+
+  Future<int> deleteUnreachableRawRows() async {
+    final res =
+        await (delete(coreConfig)
+              ..where((tbl) => tbl.type.equals(CoreConfigType.raw.name))
+              ..where(
+                (tbl) =>
+                    tbl.delay.isBiggerThanValue(PingDelayConstants.unknown),
+              ))
+            .go();
+    notifyUpdates({TableUpdate.onTable(coreConfig, kind: UpdateKind.delete)});
     return res;
   }
 

@@ -481,6 +481,7 @@ class NavigationSettingRow extends StatelessWidget {
   final String? value;
   final String? subtitle;
   final Widget? subtitleWidget;
+  final Widget? leading;
   final int valueMaxLines;
   final VoidCallback onTap;
 
@@ -490,6 +491,7 @@ class NavigationSettingRow extends StatelessWidget {
     this.value,
     this.subtitle,
     this.subtitleWidget,
+    this.leading,
     this.valueMaxLines = 1,
     required this.onTap,
   });
@@ -501,6 +503,7 @@ class NavigationSettingRow extends StatelessWidget {
       value: value,
       subtitle: subtitle,
       subtitleWidget: subtitleWidget,
+      leading: leading,
       valueMaxLines: valueMaxLines,
       onTap: onTap,
       showChevron: true,

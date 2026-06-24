@@ -15,6 +15,8 @@ class SubscriptionRowView extends StatelessWidget {
   final SubscriptionItem item;
   final VoidCallback? pingCallback;
   final VoidCallback? expandCallback;
+  final VoidCallback? tapCallback;
+  final Future<void> Function(SubscriptionData data)? cleanCallback;
   final bool compact;
 
   const SubscriptionRowView({
@@ -22,6 +24,8 @@ class SubscriptionRowView extends StatelessWidget {
     required this.item,
     required this.pingCallback,
     required this.expandCallback,
+    this.tapCallback,
+    this.cleanCallback,
     this.compact = false,
   });
 
@@ -47,9 +51,14 @@ class SubscriptionRowView extends StatelessWidget {
           ? DateView(date: item.subscription.timestamp)
           : null,
       verticalPadding: compact ? 4 : 10,
-      onTap: expandCallback == null
-          ? null
-          : () => controller.updateExpanded(item.subscription, expandCallback!),
+      onTap:
+          tapCallback ??
+          (expandCallback == null
+              ? null
+              : () => controller.updateExpanded(
+                  item.subscription,
+                  expandCallback!,
+                )),
       trailing: ActionCluster(
         children: [
           if (pingCallback != null)
@@ -76,15 +85,23 @@ class SubscriptionRowView extends StatelessWidget {
           IconMenuId.delete,
           IconMenuId.clean,
         ],
-        callback: (menuId) =>
-            controller.moreAction(context, item.subscription, menuId),
+        callback: (menuId) => controller.moreAction(
+          context,
+          item.subscription,
+          menuId,
+          cleanCallback: cleanCallback,
+        ),
       );
     }
     return IconMenuPicker(
       icon: Icons.more_vert,
       menus: [IconMenuId.clean],
-      callback: (menuId) =>
-          controller.moreAction(context, item.subscription, menuId),
+      callback: (menuId) => controller.moreAction(
+        context,
+        item.subscription,
+        menuId,
+        cleanCallback: cleanCallback,
+      ),
     );
   }
 

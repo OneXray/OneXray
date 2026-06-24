@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'dart:io';
 
-import 'package:app_links/app_links.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -13,8 +11,8 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/share/protocol.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
+import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:zxing2/qrcode.dart';
 
@@ -27,27 +25,9 @@ final class ShareService {
 
   //==========================
 
-  void init() {
-    if (_deepLinkSubscription != null) {
-      return;
-    }
-    final appLinks = AppLinks();
-    _deepLinkSubscription = appLinks.uriLinkStream.listen(
-      (uri) => _readDeepLink(uri),
-    );
-  }
+  void init() {}
 
-  void dispose() {
-    final deepLinkSubscription = _deepLinkSubscription;
-    _deepLinkSubscription = null;
-    unawaited(deepLinkSubscription?.cancel() ?? Future.value());
-  }
-
-  StreamSubscription<Uri>? _deepLinkSubscription;
-
-  Future<void> _readDeepLink(Uri uri) async {
-    await readShareText(uri.toString());
-  }
+  void dispose() {}
 
   Future<void> pickImage() async {
     final picker = ImagePicker();
@@ -172,25 +152,10 @@ final class ShareService {
       final eventBus = AppEventBus.instance;
       eventBus.updateDownloading(true);
       final url = text.trim();
-      if (AppShareService().checkAppShare(url)) {
-        final result = await AppShareService().parseShareText(url);
-        final rows = result.item1;
-        var configImported = 0;
-        if (rows.isNotEmpty) {
-          final writeResult = await ConfigWriter.writeRowsWithResult(
-            rows,
-            null,
-          );
-          configImported = writeResult.count;
-          if (writeResult.count > 0) {
-            PingService().schedulePingConfigIds(writeResult.ids);
-          }
-        }
-        success = result.item2 || configImported > 0;
-      } else if (url.startsWith("https://")) {
+      if (url.startsWith("https://")) {
         final uri = Uri.tryParse(url);
         if (uri != null) {
-          success = await AppShareService().addSubscription(
+          success = await SubscriptionService().addSubscription(
             url,
             uri.fragment,
             true,

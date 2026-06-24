@@ -41,6 +41,8 @@ class ConfigGridList extends StatelessWidget {
     required this.emptyIcon,
     required this.onPingSubscription,
     required this.onRefresh,
+    this.onCleanSubscription,
+    this.subscriptionExpandable = true,
   });
 
   static const double maxContentWidth = 1040;
@@ -55,6 +57,8 @@ class ConfigGridList extends StatelessWidget {
   final IconData emptyIcon;
   final void Function(int subId) onPingSubscription;
   final VoidCallback onRefresh;
+  final Future<void> Function(int subId)? onCleanSubscription;
+  final bool subscriptionExpandable;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +101,10 @@ class ConfigGridList extends StatelessWidget {
           SubscriptionRowView(
             item: item,
             pingCallback: () => onPingSubscription(item.subscription.id),
-            expandCallback: onRefresh,
+            expandCallback: subscriptionExpandable ? onRefresh : null,
+            cleanCallback: onCleanSubscription == null
+                ? null
+                : (subscription) => onCleanSubscription!(subscription.id),
             compact: true,
           ),
           const Divider(height: 1),

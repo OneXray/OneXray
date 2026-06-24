@@ -1,19 +1,21 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
+import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/file.dart';
+import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/gen/assets.gen.dart';
+import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/share/protocol.dart';
+import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -26,9 +28,10 @@ import 'package:tuple/tuple.dart';
 // -- data.zip
 
 // data
-// -- config.txt
-// -- subscription.txt
-// -- dat.txt
+// -- manifest.json
+// -- core_configs.json
+// -- subscriptions.json
+// -- geo_data.json
 // -- dat
 //    -- geo.dat
 //    -- geo.json
@@ -40,10 +43,12 @@ class BackupService {
 
   BackupService._internal();
 
+  static const _backupVersion = 2;
   static const _datDir = "dat";
-  static const _datFile = "dat.txt";
-  static const _configFile = "config.txt";
-  static const _subscriptionFile = "subscription.txt";
+  static const _manifestFile = "manifest.json";
+  static const _coreConfigsFile = "core_configs.json";
+  static const _subscriptionsFile = "subscriptions.json";
+  static const _geoDataFile = "geo_data.json";
 
   static const _dataDir = "data";
   static const _dataFile = "data.zip";
@@ -103,6 +108,7 @@ class BackupService {
     timestampStr = timestampStr.trim();
     final timestamp = int.tryParse(timestampStr);
     if (timestamp == null) {
+      await FileTool.deleteDirIfExists(cacheDir);
       return Tuple2(false, DateTime.now());
     }
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -130,8 +136,32 @@ class BackupService {
       return Tuple2(false, DateTime.now());
     }
 
+    final validData = await _dataZipHasV2Manifest(dataZipFile.path);
+    if (!validData) {
+      await FileTool.deleteDirIfExists(cacheDir);
+      return Tuple2(false, DateTime.now());
+    }
+
     await FileTool.deleteDirIfExists(cacheDir);
     return Tuple2(true, date);
+  }
+
+  Future<bool> _dataZipHasV2Manifest(String dataZipPath) async {
+    final cacheDir = await FileTool.makeCacheDir();
+    try {
+      extractFileToDisk(dataZipPath, cacheDir);
+      final manifestFile = File(p.join(cacheDir, _manifestFile));
+      if (!await manifestFile.exists()) {
+        return false;
+      }
+      final manifest = jsonDecode(await manifestFile.readAsString());
+      return manifest is Map && manifest["version"] == _backupVersion;
+    } catch (e) {
+      ygLogger("test backup manifest error: $e");
+      return false;
+    } finally {
+      await FileTool.deleteDirIfExists(cacheDir);
+    }
   }
 
   Future<void> backup() async {
@@ -142,6 +172,7 @@ class BackupService {
     final dataDir = p.join(cacheDir, _dataDir);
     await FileTool.checkDir(dataDir);
 
+    await _writeManifest(dataDir);
     await _backupGeoData(dataDir);
     await _backupLocalConfigs(dataDir);
     await _backupSubscriptions(dataDir);
@@ -172,6 +203,14 @@ class BackupService {
     eventBus.updateDownloading(false);
   }
 
+  Future<void> _writeManifest(String zipDir) async {
+    final manifest = <String, dynamic>{
+      "version": _backupVersion,
+      "createdAt": DateTime.now().millisecondsSinceEpoch,
+    };
+    await _writeJsonToFile(manifest, p.join(zipDir, _manifestFile));
+  }
+
   Future<void> _saveBackupFile(String filePath, DateTime date) async {
     final dateStr = DateFormat("yyyy-MM-dd").format(date);
     final zipName = "$_zipFilePrefix-$dateStr.zip";
@@ -191,14 +230,20 @@ class BackupService {
     await FileTool.checkDir(datDir);
     final db = AppDatabase();
     final geoList = await db.geoDataDao.allRows;
-    final links = <String>[];
+    final rows = <Map<String, dynamic>>[];
     for (final geoData in geoList) {
-      final link = AppShareService().generateGeoDataLink(geoData).item1;
-      links.add(link);
+      rows.add({
+        "name": geoData.name,
+        "type": geoData.type,
+        "url": geoData.url,
+        "timestamp": geoData.timestamp.millisecondsSinceEpoch,
+        "categoryCount": geoData.categoryCount,
+        "ruleCount": geoData.ruleCount,
+      });
       await _copyDat(geoData.name, VpnConstants.datDir, datDir);
     }
-    final sharePath = p.join(zipDir, _datFile);
-    await _writeLinksToFile(links, sharePath);
+    final geoDataPath = p.join(zipDir, _geoDataFile);
+    await _writeJsonToFile(rows, geoDataPath);
   }
 
   Future<void> _copyDat(String name, String srcDir, String dstDir) async {
@@ -216,28 +261,39 @@ class BackupService {
   Future<void> _backupLocalConfigs(String zipDir) async {
     final db = AppDatabase();
     final configs = await db.coreConfigDao.allLocalRowsWithData;
-    final links = <String>[];
-    for (final config in configs) {
-      final link = await AppShareService().generateConfigLink(config);
-      links.add(link.item1);
-    }
-    final sharePath = p.join(zipDir, _configFile);
-    await _writeLinksToFile(links, sharePath);
+    final rows = configs
+        .map(
+          (config) => <String, dynamic>{
+            "name": config.name,
+            "type": config.type,
+            "tags": config.tags,
+            "data": config.data,
+          },
+        )
+        .toList();
+    final configsPath = p.join(zipDir, _coreConfigsFile);
+    await _writeJsonToFile(rows, configsPath);
   }
 
   Future<void> _backupSubscriptions(String zipDir) async {
     final db = AppDatabase();
-    final configs = await db.subscriptionDao.allRows;
-    final links = configs
-        .map((e) => AppShareService().generateSubscriptionLink(e).item1)
+    final subscriptions = await db.subscriptionDao.allRows;
+    final rows = subscriptions
+        .map(
+          (subscription) => <String, dynamic>{
+            "name": subscription.name,
+            "url": subscription.url,
+            "timestamp": subscription.timestamp.millisecondsSinceEpoch,
+            "expanded": subscription.expanded,
+          },
+        )
         .toList();
-    final sharePath = p.join(zipDir, _subscriptionFile);
-    await _writeLinksToFile(links, sharePath);
+    final subscriptionsPath = p.join(zipDir, _subscriptionsFile);
+    await _writeJsonToFile(rows, subscriptionsPath);
   }
 
-  Future<void> _writeLinksToFile(List<String> links, String path) async {
-    final text = links.join("\n");
-    await File(path).writeAsString(text);
+  Future<void> _writeJsonToFile(Object? data, String path) async {
+    await File(path).writeAsString(JsonTool.encoderForFile.convert(data));
   }
 
   //=========================
@@ -275,55 +331,162 @@ class BackupService {
     }
 
     if (res) {
-      await _clearAllData();
-
-      await _restoreGeoData(dataDir);
-      await _restoreLocalConfigs(dataDir);
-      await _restoreSubscriptions(dataDir);
+      try {
+        final validData = await _dataDirHasV2Manifest(dataDir);
+        if (!validData) {
+          res = false;
+        } else {
+          final cleared = await AppDataCleanupService().clearForBackupRestore();
+          if (!cleared) {
+            res = false;
+          } else {
+            await _restoreGeoData(dataDir);
+            await _restoreLocalConfigs(dataDir);
+            await _restoreSubscriptions(dataDir);
+          }
+        }
+      } catch (e) {
+        ygLogger("restore backup error: $e");
+        res = false;
+      }
     }
 
     await FileTool.deleteDirIfExists(cacheDir);
 
     eventBus.updateDownloading(false);
 
-    return true;
+    return res;
   }
 
-  Future<void> _clearAllData() async {
-    await PreferencesKey().saveRunningConfigId(DBConstants.defaultId);
-    await PreferencesKey().saveLastConfigId(DBConstants.defaultId);
-    await PreferencesKey().saveXraySettingId(DBConstants.defaultId);
-
-    final db = AppDatabase();
-    await db.geoDataDao.clear();
-    await db.coreConfigDao.clear();
-    await db.subscriptionDao.clear();
-
-    final datPath = VpnConstants.datDir;
-    await FileTool.deleteDirIfExists(datPath);
-    await FileTool.checkDir(datPath);
-    await FileTool.copyAssets(Assets.dat.values, datPath);
+  Future<bool> _dataDirHasV2Manifest(String dataDir) async {
+    final manifestFile = File(p.join(dataDir, _manifestFile));
+    if (!await manifestFile.exists()) {
+      return false;
+    }
+    final manifest = jsonDecode(await manifestFile.readAsString());
+    return manifest is Map && manifest["version"] == _backupVersion;
   }
 
   Future<void> _restoreGeoData(String dataDir) async {
     final datSrcDir = p.join(dataDir, _datDir);
     await FileTool.copyDir(datSrcDir, VpnConstants.datDir);
 
-    final sharePath = p.join(dataDir, _datFile);
-    final text = await File(sharePath).readAsString();
-    await AppShareService().parseShareText(text, needDownload: false);
+    final rows = await _readJsonList(p.join(dataDir, _geoDataFile));
+    final db = AppDatabase();
+    for (final row in rows) {
+      if (row is! Map<String, dynamic>) {
+        continue;
+      }
+      final name = row["name"];
+      final type = row["type"];
+      final url = row["url"];
+      if (name is! String || type is! String || url is! String) {
+        continue;
+      }
+      final timestamp = _readTimestamp(row["timestamp"]);
+      final categoryCount = _readInt(row["categoryCount"]);
+      final ruleCount = _readInt(row["ruleCount"]);
+      await db.geoDataDao.insertRow(
+        GeoDataCompanion.insert(
+          name: name,
+          type: type,
+          url: url,
+          timestamp: timestamp,
+          categoryCount: categoryCount,
+          ruleCount: ruleCount,
+        ),
+      );
+    }
   }
 
   Future<void> _restoreLocalConfigs(String dataDir) async {
-    final sharePath = p.join(dataDir, _configFile);
-    final text = await File(sharePath).readAsString();
-    final result = await AppShareService().parseShareText(text);
-    await ConfigWriter.writeRows(result.item1, null);
+    final rows = await _readJsonList(p.join(dataDir, _coreConfigsFile));
+    final configs = <CoreConfigCompanion>[];
+    for (final row in rows) {
+      if (row is! Map<String, dynamic>) {
+        continue;
+      }
+      final name = row["name"];
+      final type = row["type"];
+      final tags = row["tags"];
+      if (name is! String || type is! String || tags is! String) {
+        continue;
+      }
+      final data = row["data"];
+      configs.add(
+        CoreConfigCompanion.insert(
+          name: name,
+          type: type,
+          tags: tags,
+          data: Value<String?>(data is String ? data : null),
+          delay: PingDelayConstants.unknown,
+          subId: DBConstants.defaultId,
+        ),
+      );
+    }
+    await ConfigWriter.writeRows(configs, null);
   }
 
   Future<void> _restoreSubscriptions(String dataDir) async {
-    final sharePath = p.join(dataDir, _subscriptionFile);
-    final text = await File(sharePath).readAsString();
-    await AppShareService().parseShareText(text);
+    final rows = await _readJsonList(p.join(dataDir, _subscriptionsFile));
+    final db = AppDatabase();
+    for (final row in rows) {
+      if (row is! Map<String, dynamic>) {
+        continue;
+      }
+      final name = row["name"];
+      final url = row["url"];
+      if (name is! String || url is! String) {
+        continue;
+      }
+      final timestamp = _readTimestamp(row["timestamp"]);
+      final expanded = row["expanded"] == true;
+      final subId = await db.subscriptionDao.insertRow(
+        SubscriptionCompanion.insert(
+          name: name,
+          url: url,
+          timestamp: timestamp,
+          count: 0,
+          expanded: expanded,
+        ),
+      );
+      if (subId > DBConstants.defaultId) {
+        final subscription = SubscriptionData(
+          id: subId,
+          name: name,
+          url: url,
+          timestamp: timestamp,
+          count: 0,
+          expanded: expanded,
+        );
+        await SubscriptionService().refreshSubscription(subscription, false);
+      }
+    }
+  }
+
+  Future<List<dynamic>> _readJsonList(String path) async {
+    final file = File(path);
+    if (!await file.exists()) {
+      return [];
+    }
+    final data = jsonDecode(await file.readAsString());
+    if (data is List) {
+      return data;
+    }
+    return [];
+  }
+
+  DateTime _readTimestamp(dynamic value) {
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return DateTime.now();
+  }
+
+  int _readInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    return 0;
   }
 }
