@@ -10,6 +10,5 @@ install(FILES "${APP_DIR}/libXray.so"
 
 install(PROGRAMS
         "${APP_DIR}/OneXrayCore"
-        "${APP_DIR}/onexray"
         DESTINATION "${APP_BIN_DIR}"
         COMPONENT Runtime)

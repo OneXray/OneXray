@@ -21,26 +21,6 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
-## Desktop CLI
-
-Desktop packages include the `onexray` CLI. It talks to the running app through the local Automation API, so OneXray must be open before using CLI commands.
-
-```shell
-onexray health
-onexray status
-onexray import --file /path/to/import.txt
-onexray import --text 'vless://...'
-cat import.txt | onexray import --file -
-onexray debug session
-onexray vpn start
-onexray vpn start --id 123
-onexray vpn stop
-```
-
-`onexray import` accepts OneXray URL Scheme links, HTTPS subscription URLs, Xray share links, multi-line share text, Clash.Meta YAML, and Xray JSON text supported by the bundled libXray API. `--file` reads text files; QR image import is available from the app UI.
-
-For exact command options, import payloads, session paths, and Automation API details, see [Develop](https://onexray.com/docs/develop/) and [AI Reference](https://onexray.com/docs/reference/).
-
 ## Notes
 
 ### iOS
