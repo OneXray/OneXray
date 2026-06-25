@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CoreRootController extends Cubit<void> {
   CoreRootController() : super(null);
@@ -27,5 +29,15 @@ class CoreRootController extends Cubit<void> {
       AppSecondaryDestination.geoData,
       extra: GeoDataListParams(GeoDataListType.full, GeoDatCodesMode.show),
     );
+  }
+
+  final _routingTemplates = Uri.parse("https://github.com/OneXray/Routing");
+
+  Future<void> openEnhancedRouting(BuildContext context) async {
+    try {
+      await launchUrl(_routingTemplates);
+    } catch (e) {
+      ygLogger("openEnhancedRouting error: $e");
+    }
   }
 }

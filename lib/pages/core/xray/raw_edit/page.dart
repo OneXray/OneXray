@@ -6,6 +6,7 @@ import 'package:onexray/pages/core/xray/raw_edit/controller.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 
 class XrayRawEditPage extends StatelessWidget {
@@ -21,7 +22,17 @@ class XrayRawEditPage extends StatelessWidget {
         builder: (context) {
           final controller = context.read<XrayRawEditController>();
           return Scaffold(
-            appBar: AppBar(title: Text(params.title)),
+            appBar: AppBar(
+              title: Text(params.title),
+              actions: [
+                IconMenuPicker(
+                  icon: Icons.file_upload_outlined,
+                  menus: [IconMenuId.pickFile, IconMenuId.readPasteboard],
+                  callback: (menuId) =>
+                      controller.importAction(context, menuId),
+                ),
+              ],
+            ),
             body: SafeArea(child: _body(context, controller)),
           );
         },
