@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective Date: May 1, 2025** **Last Updated: June 23, 2026**
+**Effective Date: May 1, 2025** **Last Updated: June 25, 2026**
 
 Thank you for choosing our VPN application (the "**App**"). We are committed to protecting your privacy and ensuring a transparent experience. This Privacy Policy explains how we handle information and our commitment to your anonymity.
 
