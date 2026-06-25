@@ -56,6 +56,7 @@ class Builder(object):
         cmd = [python_command(), "build/main.py", cmd_system]
         if cmd_system == "apple":
             cmd.append("go")
+        cmd.append("local")
 
         run_command(cmd)
 
