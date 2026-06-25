@@ -18,7 +18,7 @@ class AppDelegate: FlutterAppDelegate {
                 if !window.isVisible {
                     window.setIsVisible(true)
                 }
-                window.orderFront(self)
+                window.makeKeyAndOrderFront(self)
                 NSApp.activate(ignoringOtherApps: true)
             }
         }

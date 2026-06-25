@@ -27,13 +27,14 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
+  flutter_controller_->engine()->SetNextFrameCallback([]() {
+    // Showing is controlled by windowManager.waitUntilReadyToShow in Dart.
   });
 
-  // Flutter can complete the first frame before the "show window" callback is
-  // registered. The following call ensures a frame is pending to ensure the
-  // window is shown. It is a no-op if the first frame hasn't completed yet.
+  // Flutter can complete the first frame before the window manager callback is
+  // registered. The following call ensures a frame is pending for the Dart-side
+  // waitUntilReadyToShow path. It is a no-op if the first frame hasn't
+  // completed yet.
   flutter_controller_->ForceRedraw();
 
   return true;
