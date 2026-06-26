@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/core/tools/extensions.dart';
-import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/ping/state.dart';
 
 class PingPageState {
@@ -21,13 +18,10 @@ class PingController extends Cubit<PingPageState> {
     _readPingState();
   }
 
-  final customUrlController = TextEditingController();
-
   Future<void> _readPingState() async {
     final pingState = PingState();
     await pingState.readFromPreferences();
     emit(PingPageState(pingState: pingState));
-    customUrlController.text = pingState.customUrl;
   }
 
   void updateTimeout(double value) {
@@ -48,36 +42,15 @@ class PingController extends Cubit<PingPageState> {
     }
   }
 
-  Future<void> save(BuildContext context) async {
-    final url = customUrlController.text.removeWhitespace;
-    if (state.pingState.url == PingUrl.custom) {
-      if (url.isEmpty) {
-        ContextAlert.showToast(
-          context,
-          AppLocalizations.of(context)!.validationUrlRequired,
-        );
-        return;
-      }
-      final uri = Uri.tryParse(url);
-      if (uri == null) {
-        ContextAlert.showToast(
-          context,
-          AppLocalizations.of(context)!.validationUrlInvalid,
-        );
-        return;
-      }
-    }
-    state.pingState.customUrl = url;
+  void updateAutoPingNewConfigs(bool value) {
+    state.pingState.autoPingNewConfigs = value;
+    emit(state._copy());
+  }
 
+  Future<void> save(BuildContext context) async {
     await state.pingState.saveToPreferences();
     if (context.mounted) {
       context.pop();
     }
-  }
-
-  @override
-  Future<void> close() {
-    customUrlController.dispose();
-    return super.close();
   }
 }
