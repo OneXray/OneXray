@@ -50,7 +50,7 @@ class XrayRawEditController extends Cubit<int> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ["txt", "json", "yaml"],
+        allowedExtensions: ["txt", "json"],
       );
       if (result == null) {
         return;
