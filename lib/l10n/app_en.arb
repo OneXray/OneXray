@@ -431,6 +431,7 @@
   "settingPageSectionApp": "App Settings",
   "settingPageSectionSupport": "Support & About",
   "settingPageSectionVersion": "Version",
+  "corePageImportEnhancedRouting": "Import Enhanced Routing",
   "appUpdateCheck": "Check for Updates",
   "appUpdateAlreadyLatest": "You are using the latest version",
   "appUpdateCheckFailed": "Failed to check for updates. Please try again later.",

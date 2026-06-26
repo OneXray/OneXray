@@ -7,7 +7,6 @@ install(FILES "${APP_DIR}/libXray.dll"
 
 install(PROGRAMS
         "${APP_DIR}/OneXrayCore.exe"
-        "${APP_DIR}/onexray.exe"
         DESTINATION "${APP_BIN_DIR}"
         COMPONENT Runtime)
 

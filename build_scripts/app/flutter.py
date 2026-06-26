@@ -6,7 +6,6 @@ import yaml
 from app.android import AndroidBuilder
 from app.apple import AppleBuilder
 from app.builder import Builder
-from app.cli import build_cli, should_build_cli, stage_cli_for_cmake
 from app.command_line import run_command, cp_dir_files, flutter_command, dart_command
 from app.linux import LinuxBuilder
 from app.windows import WindowsBuilder
@@ -29,7 +28,6 @@ class FlutterBuilder(Builder):
             "windows": WindowsBuilder(project, new_system, build_scripts_dir),
         }
         self.builder = builders[self.system]
-        self.cli_path = None
 
         self.build_type = {
             "android": "appbundle",
@@ -76,10 +74,6 @@ class FlutterBuilder(Builder):
 
         self.update_build_number()
         self.pub_get()
-        if should_build_cli(self.system):
-            root_dir = os.path.join(self.project_dir, "..")
-            self.cli_path = build_cli(root_dir, self.system)
-            stage_cli_for_cmake(root_dir, self.system, self.cli_path)
         self.run_ffi_gen()
 
         self.builder.before_build()

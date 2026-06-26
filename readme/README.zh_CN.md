@@ -21,26 +21,6 @@
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
-## 桌面端 CLI
-
-桌面端安装包包含 `onexray` CLI。CLI 通过本地 Automation API 连接正在运行的 App，因此使用 CLI 命令前必须先打开 OneXray。
-
-```shell
-onexray health
-onexray status
-onexray import --file /path/to/import.txt
-onexray import --text 'vless://...'
-cat import.txt | onexray import --file -
-onexray debug session
-onexray vpn start
-onexray vpn start --id 123
-onexray vpn stop
-```
-
-`onexray import` 支持 OneXray URL Scheme、HTTPS 订阅 URL、Xray 分享链接、多行分享文本、Clash.Meta YAML，以及内置 libXray API 可识别的 Xray JSON 文本。`--file` 读取文本文件；二维码图片导入请在 App UI 中使用。
-
-完整命令参数、导入 payload、session 路径和 Automation API 细节见 [开发](https://onexray.com/zh/docs/develop/) 和 [AI 参考](https://onexray.com/zh/docs/reference/)。
-
 ## 使用注意
 
 ### iOS

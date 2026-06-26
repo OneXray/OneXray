@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/analytics/service.dart';
-import 'package:onexray/service/automation/service.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/menu/short_cut/service.dart';
 import 'package:onexray/service/menu/tray/service.dart';
@@ -36,7 +35,6 @@ abstract final class ServiceManager {
     await _runInit("NetClient", () => NetClient().asyncInit());
     await _runInit("TrayService", () => TrayService().init());
     await _runInit("VpnService", () => VpnService().asyncInit());
-    await _runInit("AutomationService", () => AutomationService().asyncInit());
     await _runInit("ShareService", () => ShareService().init());
     await _runInit(
       "NotificationService",
@@ -68,7 +66,6 @@ abstract final class ServiceManager {
   static void serviceDispose() {
     _initFuture = null;
     _initialized = false;
-    AutomationService().dispose();
     TrayService().dispose();
     VpnService().dispose();
     ShareService().dispose();

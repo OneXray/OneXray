@@ -9,10 +9,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"OneXray");
   if (hwnd != NULL) {
-      SendAppLinkToInstance(L"OneXray");
-      ::ShowWindow(hwnd, SW_NORMAL);
-      ::SetForegroundWindow(hwnd);
-      return EXIT_FAILURE;
+    ::ShowWindow(hwnd, SW_NORMAL);
+    ::SetForegroundWindow(hwnd);
+    return EXIT_FAILURE;
   }
 
   // Attach to console when present (e.g., 'flutter run') or create a

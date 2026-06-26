@@ -431,6 +431,7 @@
   "settingPageSectionApp": "Настройки приложения",
   "settingPageSectionSupport": "Поддержка и сведения",
   "settingPageSectionVersion": "Версия",
+  "corePageImportEnhancedRouting": "Импортировать расширенную маршрутизацию",
   "appUpdateCheck": "Проверить обновления",
   "appUpdateAlreadyLatest": "Установлена последняя версия",
   "appUpdateCheckFailed": "Не удалось проверить обновления. Повторите попытку позже.",

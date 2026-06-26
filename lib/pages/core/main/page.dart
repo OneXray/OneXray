@@ -71,6 +71,11 @@ class CoreContent extends StatelessWidget {
                     leading: const Icon(Icons.public_outlined),
                     onTap: () => controller.gotoGeoData(context),
                   ),
+                  NavigationSettingRow(
+                    title: localizations.corePageImportEnhancedRouting,
+                    leading: const Icon(Icons.route_outlined),
+                    onTap: () => controller.openEnhancedRouting(context),
+                  ),
                 ],
               ),
             ],

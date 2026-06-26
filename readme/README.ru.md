@@ -21,26 +21,6 @@
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
-## Настольный CLI
-
-Настольные пакеты включают CLI `onexray`. CLI подключается к запущенному приложению через локальный Automation API, поэтому перед использованием команд OneXray должен быть открыт.
-
-```shell
-onexray health
-onexray status
-onexray import --file /path/to/import.txt
-onexray import --text 'vless://...'
-cat import.txt | onexray import --file -
-onexray debug session
-onexray vpn start
-onexray vpn start --id 123
-onexray vpn stop
-```
-
-`onexray import` принимает ссылки OneXray URL Scheme, HTTPS URL подписок, Xray share links, многострочный share text, Clash.Meta YAML и Xray JSON text, если такой формат поддерживается встроенным libXray API. `--file` читает текстовые файлы; импорт QR-изображений доступен в интерфейсе приложения.
-
-Точные параметры команд, import payloads, session paths и детали Automation API описаны в [Develop](https://onexray.com/ru/docs/develop/) и [AI Reference](https://onexray.com/ru/docs/reference/).
-
 ## Примечания
 
 ### iOS

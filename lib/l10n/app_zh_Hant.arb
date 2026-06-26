@@ -431,6 +431,7 @@
   "settingPageSectionApp": "應用設置",
   "settingPageSectionSupport": "支持與關於",
   "settingPageSectionVersion": "版本信息",
+  "corePageImportEnhancedRouting": "導入增強版路由",
   "appUpdateCheck": "檢查更新",
   "appUpdateAlreadyLatest": "當前已是最新版本",
   "appUpdateCheckFailed": "檢查更新失敗，請稍後重試。",
