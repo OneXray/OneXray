@@ -6,6 +6,7 @@ import 'package:onexray/pages/core/xray/raw/controller.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -25,6 +26,14 @@ class XrayRawPage extends StatelessWidget {
           return Scaffold(
             appBar: AppBar(
               title: Text(AppLocalizations.of(context)!.outboundPageTitle),
+              actions: [
+                IconMenuPicker(
+                  icon: Icons.file_upload_outlined,
+                  menus: [IconMenuId.pickFile, IconMenuId.readPasteboard],
+                  callback: (menuId) =>
+                      controller.importAction(context, menuId),
+                ),
+              ],
             ),
             body: SafeArea(child: _body(context, controller)),
           );
