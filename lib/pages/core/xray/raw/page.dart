@@ -25,7 +25,7 @@ class XrayRawPage extends StatelessWidget {
           final controller = context.read<XrayRawController>();
           return Scaffold(
             appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.outboundPageTitle),
+              title: Text(AppLocalizations.of(context)!.xrayRawPageTitle),
               actions: [
                 IconMenuPicker(
                   icon: Icons.file_upload_outlined,

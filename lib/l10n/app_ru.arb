@@ -302,6 +302,7 @@
   "outboundPageRealPing": "Тест соединения",
   "outboundPageRealPingResult": "Результат теста",
   "outboundPageTitle": "Xray узлы",
+  "xrayRawPageTitle": "Raw JSON",
   "outboundUIPageName": "Имя",
   "outboundUIPageProtocol": "protocol",
   "outboundUIPageVLESS": "VLESS",
