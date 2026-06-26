@@ -21,7 +21,7 @@ class SubscriptionAddController extends Cubit<int> {
   }
 
   Future<void> save(BuildContext context) async {
-    final name = nameController.text.removeWhitespace;
+    final name = nameController.text.trim();
     final url = urlController.text.removeWhitespace;
     final check = await SubscriptionValidator.validate(name, url);
     if (check.item1) {

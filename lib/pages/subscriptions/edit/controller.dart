@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
@@ -49,7 +48,7 @@ class SubscriptionEditController extends Cubit<SubscriptionEditState> {
     if (sub == null) {
       return;
     }
-    final name = nameController.text.removeWhitespace;
+    final name = nameController.text.trim();
     if (name.isEmpty) {
       if (context.mounted) {
         ContextAlert.showToast(
