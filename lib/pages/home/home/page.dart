@@ -493,43 +493,10 @@ class HomeConnectionSummary extends StatelessWidget {
   }
 
   Widget _metrics(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stacked = constraints.maxWidth < 340;
-        final traffic = _metric(
-          context,
-          icon: Icons.swap_vert,
-          label: AppLocalizations.of(context)!.nodeInfoPageTraffic,
-          value: connection.trafficText,
-        );
-        final location = _metric(
-          context,
-          icon: Icons.location_on_outlined,
-          label: AppLocalizations.of(context)!.nodeInfoPageLocation,
-          value: connection.detailText,
-        );
-        if (stacked) {
-          return Column(
-            children: [traffic, const SizedBox(height: 8), location],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(child: traffic),
-            const SizedBox(width: 8),
-            Expanded(child: location),
-          ],
-        );
-      },
-    );
+    return _metricBar(context);
   }
 
-  Widget _metric(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
+  Widget _metricBar(BuildContext context) {
     final borderRadius = BorderRadiusDirectional.circular(8);
     return Material(
       color: ColorManager.tagBackground(context),
@@ -549,7 +516,11 @@ class HomeConnectionSummary extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: ColorManager.secondaryText(context)),
+              Icon(
+                Icons.swap_vert,
+                size: 18,
+                color: ColorManager.secondaryText(context),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -557,17 +528,7 @@ class HomeConnectionSummary extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: ColorManager.secondaryText(context),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
+                      connection.trafficText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -576,8 +537,25 @@ class HomeConnectionSummary extends StatelessWidget {
                         color: ColorManager.primaryText(context),
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      connection.metricsText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.1,
+                        color: ColorManager.secondaryText(context),
+                      ),
+                    ),
                   ],
                 ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: ColorManager.secondaryText(context),
               ),
             ],
           ),
