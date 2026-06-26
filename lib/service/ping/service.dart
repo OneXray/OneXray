@@ -102,6 +102,11 @@ class PingService {
   void _enqueueAutoPing(Future<void> Function() task) {
     _scheduledPingQueue = _scheduledPingQueue.then((_) async {
       try {
+        final pingState = PingState();
+        await pingState.readFromPreferences();
+        if (!pingState.autoPingNewConfigs) {
+          return;
+        }
         await task();
       } catch (e, stackTrace) {
         ygLogger("Auto ping failed: $e\n$stackTrace");

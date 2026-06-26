@@ -1,15 +1,12 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/service/xray/json_importer.dart';
 
 class XrayRawEditController extends Cubit<int> {
   final XrayRawEditParams params;
@@ -47,72 +44,34 @@ class XrayRawEditController extends Cubit<int> {
   }
 
   Future<void> pickFile(BuildContext context) async {
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ["txt", "json"],
-      );
-      if (result == null) {
-        return;
-      }
-      if (!context.mounted) {
-        return;
-      }
-      final path = result.files.single.path;
-      if (path == null) {
-        _showJsonInvalid(context);
-        return;
-      }
-      final text = await File(path).readAsString();
-      if (!context.mounted) {
-        return;
-      }
-      _importText(context, text);
-    } catch (_) {
-      if (context.mounted) {
-        _showJsonInvalid(context);
-      }
-    }
+    await _applyImportResult(context, JsonImporter.pickFile);
   }
 
   Future<void> readPasteboard(BuildContext context) async {
-    try {
-      final hasStrings = await Clipboard.hasStrings();
-      if (!context.mounted) {
-        return;
-      }
-      if (!hasStrings) {
-        _showJsonInvalid(context);
-        return;
-      }
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (!context.mounted) {
-        return;
-      }
-      final text = data?.text;
-      if (text == null) {
-        _showJsonInvalid(context);
-        return;
-      }
-      _importText(context, text);
-    } catch (_) {
-      if (context.mounted) {
-        _showJsonInvalid(context);
-      }
-    }
+    await _applyImportResult(context, JsonImporter.readPasteboard);
   }
 
-  void _importText(BuildContext context, String text) {
-    final rawText = text.trim();
-    try {
-      final decoded = JsonTool.decoder.convert(rawText);
-      controller.text = JsonTool.encoderForFile.convert(decoded);
-      controller.selection = TextSelection.collapsed(
-        offset: controller.text.length,
-      );
-    } catch (_) {
-      _showJsonInvalid(context);
+  Future<void> _applyImportResult(
+    BuildContext context,
+    Future<JsonImportResult> Function() importText,
+  ) async {
+    final result = await importText();
+    if (!context.mounted || result.isCanceled) {
+      return;
     }
+
+    final text = result.text;
+    if (text == null) {
+      _showJsonInvalid(context);
+      return;
+    }
+
+    _updateEditorText(text);
+  }
+
+  void _updateEditorText(String text) {
+    controller.text = text;
+    controller.selection = TextSelection.collapsed(offset: text.length);
   }
 
   void _showJsonInvalid(BuildContext context) {

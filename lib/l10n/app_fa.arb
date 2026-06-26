@@ -495,6 +495,7 @@
     "pingPageTimeout": "مهلت (ثانیه)",
     "pingPageConcurrency": "همزمانی",
     "pingPageUrl": "نشانی اینترنتی",
+    "pingPageAutoPingNewConfigs": "پینگ خودکار گره‌های جدید",
     "autoUpdatePageTitle": "به‌روزرسانی خودکار",
     "autoUpdatePageSubscription": "اشتراک‌ها",
     "autoUpdatePageGeoData": "GeoData",

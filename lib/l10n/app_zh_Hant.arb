@@ -495,6 +495,7 @@
   "pingPageTimeout": "超時（秒）",
   "pingPageConcurrency": "併發數",
   "pingPageUrl": "URL",
+  "pingPageAutoPingNewConfigs": "新增節點自動測速",
   "autoUpdatePageTitle": "自動更新",
   "autoUpdatePageSubscription": "訂閱",
   "autoUpdatePageGeoData": "GeoData",
