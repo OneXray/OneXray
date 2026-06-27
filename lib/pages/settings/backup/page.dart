@@ -10,7 +10,6 @@ import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/service/event_bus/service.dart';
 
 class BackupPage extends StatelessWidget {
   const BackupPage({super.key});
@@ -27,7 +26,9 @@ class BackupPage extends StatelessWidget {
               title: Text(AppLocalizations.of(context)!.backupPageTitle),
               actions: [
                 IconButton(
-                  onPressed: () => controller.importBackup(context),
+                  onPressed: state.backingUp || state.restoring
+                      ? null
+                      : () => controller.importBackup(context),
                   icon: Icon(Icons.add),
                 ),
               ],
@@ -115,37 +116,36 @@ class BackupPage extends StatelessWidget {
     BackupState state,
     BackupController controller,
   ) {
-    final eventBus = AppEventBus.instance;
-    if (eventBus.state.downloading) {
-      return const CircularProgressIndicator();
-    } else {
-      return BottomView(
-        child: Row(
-          spacing: 12,
-          children: [
-            if (state.selection.isEmpty)
-              Expanded(
-                child: SecondaryBottomButton(
-                  title: AppLocalizations.of(context)!.backupPageRestore,
-                  callback: null,
-                ),
-              )
-            else
-              Expanded(
-                child: SecondaryBottomButton(
-                  title: AppLocalizations.of(context)!.backupPageRestore,
-                  callback: () => controller.restore(context),
-                ),
-              ),
+    final processing = state.backingUp || state.restoring;
+    return BottomView(
+      child: Row(
+        spacing: 12,
+        children: [
+          if (state.selection.isEmpty)
             Expanded(
-              child: PrimaryBottomButton(
-                title: AppLocalizations.of(context)!.backupPageBackup,
-                callback: () => controller.backup(context),
+              child: SecondaryBottomButton(
+                title: AppLocalizations.of(context)!.backupPageRestore,
+                callback: null,
+                loading: state.restoring,
+              ),
+            )
+          else
+            Expanded(
+              child: SecondaryBottomButton(
+                title: AppLocalizations.of(context)!.backupPageRestore,
+                callback: processing ? null : () => controller.restore(context),
+                loading: state.restoring,
               ),
             ),
-          ],
-        ),
-      );
-    }
+          Expanded(
+            child: PrimaryBottomButton(
+              title: AppLocalizations.of(context)!.backupPageBackup,
+              callback: processing ? null : () => controller.backup(context),
+              loading: state.backingUp,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

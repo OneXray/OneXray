@@ -108,15 +108,12 @@ class SubscriptionAddPage extends StatelessWidget {
     AppEventBusState state,
   ) {
     final downloading = state.downloading;
-    if (downloading) {
-      return const CircularProgressIndicator();
-    } else {
-      return Expanded(
-        child: PrimaryBottomButton(
-          title: AppLocalizations.of(context)!.buttonSave,
-          callback: () => controller.save(context),
-        ),
-      );
-    }
+    return Expanded(
+      child: PrimaryBottomButton(
+        title: AppLocalizations.of(context)!.buttonSave,
+        callback: downloading ? null : () => controller.save(context),
+        loading: downloading,
+      ),
+    );
   }
 }
