@@ -224,10 +224,6 @@ class AppEventBus extends Cubit<AppEventBusState> {
     emit(state.copyWith(downloading: value));
   }
 
-  void updateWindowClosed(bool value) {
-    emit(state.copyWith(windowClosed: value));
-  }
-
   Future<void> updateThemeCode(ThemeCode value) async {
     await PreferencesKey().saveThemeCode(value.name);
     emit(state.copyWith(themeCode: value));

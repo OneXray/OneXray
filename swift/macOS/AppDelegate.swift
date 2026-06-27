@@ -13,9 +13,7 @@ class AppDelegate: FlutterAppDelegate {
     }
 
     override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            restoreMainWindow()
-        }
+        restoreMainWindow()
         return true
     }
 
@@ -24,16 +22,15 @@ class AppDelegate: FlutterAppDelegate {
     }
 
     private func restoreMainWindow() {
-        for window in NSApp.windows {
-            if !window.isVisible {
-                window.setIsVisible(true)
-            }
-            if window.isMiniaturized {
-                window.deminiaturize(self)
-            }
-            window.makeKeyAndOrderFront(self)
+        guard let window = mainFlutterWindow ?? NSApp.mainWindow ?? NSApp.windows.first(where: { $0 is MainFlutterWindow }) else {
+            return
         }
+
         NSApp.activate(ignoringOtherApps: true)
+        if window.isMiniaturized {
+            window.deminiaturize(self)
+        }
+        window.makeKeyAndOrderFront(self)
     }
 
     override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
