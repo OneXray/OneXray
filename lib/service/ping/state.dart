@@ -41,7 +41,7 @@ class PingState {
   var timeout = PingTimeout.defaultValue;
   var concurrency = PingConcurrency.defaultValue;
   var url = PingUrl.cloudflare;
-  var autoPingNewConfigs = true;
+  var autoPingNewConfigs = false;
 
   String get realUrl => url.url;
 

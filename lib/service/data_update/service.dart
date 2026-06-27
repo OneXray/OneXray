@@ -27,7 +27,7 @@ class DataUpdateService {
     final autoUpdateState = AutoUpdateState();
     await autoUpdateState.readFromPreferences();
     final shouldUpdateSubscription =
-        updateSubscription && autoUpdateState.enable;
+        updateSubscription && autoUpdateState.subscriptionEnabled;
     final shouldUpdateGeoData =
         updateGeoData &&
         autoUpdateState.geoDataEnable &&

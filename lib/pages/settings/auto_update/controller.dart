@@ -25,13 +25,13 @@ class AutoUpdateController extends Cubit<AutoUpdatePageState> {
     emit(AutoUpdatePageState(autoUpdateState: autoUpdateState));
   }
 
-  void updateEnable(bool value) {
-    state.autoUpdateState.enable = value;
+  void updateSubscriptionEnabled(bool value) {
+    state.autoUpdateState.subscriptionEnabled = value;
     emit(state._copy());
   }
 
-  void updateInterval(AutoUpdateInterval value) {
-    state.autoUpdateState.interval = value;
+  void updateSubscriptionInterval(AutoUpdateInterval value) {
+    state.autoUpdateState.subscriptionInterval = value;
     emit(state._copy());
   }
 

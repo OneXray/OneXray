@@ -96,8 +96,9 @@ class AutoUpdatePage extends StatelessWidget {
     return SettingSection(
       title: AppLocalizations.of(context)!.autoUpdatePageSubscription,
       children: [
-        _enable(context, state, controller),
-        if (state.autoUpdateState.enable) _interval(context, state, controller),
+        _subscriptionEnabled(context, state, controller),
+        if (state.autoUpdateState.subscriptionEnabled)
+          _subscriptionInterval(context, state, controller),
       ],
     );
   }
@@ -119,28 +120,28 @@ class AutoUpdatePage extends StatelessWidget {
     );
   }
 
-  Widget _enable(
+  Widget _subscriptionEnabled(
     BuildContext context,
     AutoUpdatePageState state,
     AutoUpdateController controller,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.autoUpdatePageEnable,
-      value: state.autoUpdateState.enable,
-      onChanged: (value) => controller.updateEnable(value),
+      value: state.autoUpdateState.subscriptionEnabled,
+      onChanged: (value) => controller.updateSubscriptionEnabled(value),
     );
   }
 
-  Widget _interval(
+  Widget _subscriptionInterval(
     BuildContext context,
     AutoUpdatePageState state,
     AutoUpdateController controller,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.autoUpdatePageInterval,
-      value: "${state.autoUpdateState.interval}",
+      value: "${state.autoUpdateState.subscriptionInterval}",
       selections: AutoUpdateInterval.values,
-      onSelected: (value) => controller.updateInterval(value),
+      onSelected: (value) => controller.updateSubscriptionInterval(value),
     );
   }
 

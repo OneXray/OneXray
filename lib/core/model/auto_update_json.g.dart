@@ -8,8 +8,8 @@ part of 'auto_update_json.dart';
 
 AutoUpdateJson _$AutoUpdateJsonFromJson(Map<String, dynamic> json) =>
     AutoUpdateJson(
-      json['enabled'] as bool?,
-      (json['interval'] as num?)?.toInt(),
+      json['subscriptionEnabled'] as bool?,
+      (json['subscriptionInterval'] as num?)?.toInt(),
       json['geoDataEnabled'] as bool?,
       (json['geoDataInterval'] as num?)?.toInt(),
       json['geoDataUpdateAfterVpnConnected'] as bool?,
@@ -18,8 +18,8 @@ AutoUpdateJson _$AutoUpdateJsonFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$AutoUpdateJsonToJson(
   AutoUpdateJson instance,
 ) => <String, dynamic>{
-  'enabled': ?instance.enabled,
-  'interval': ?instance.interval,
+  'subscriptionEnabled': ?instance.subscriptionEnabled,
+  'subscriptionInterval': ?instance.subscriptionInterval,
   'geoDataEnabled': ?instance.geoDataEnabled,
   'geoDataInterval': ?instance.geoDataInterval,
   'geoDataUpdateAfterVpnConnected': ?instance.geoDataUpdateAfterVpnConnected,
