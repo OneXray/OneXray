@@ -40,8 +40,8 @@ enum AutoUpdateInterval {
 }
 
 class AutoUpdateState {
-  var enable = true;
-  var interval = AutoUpdateInterval.threeDays;
+  var subscriptionEnabled = true;
+  var subscriptionInterval = AutoUpdateInterval.threeDays;
   var geoDataEnable = true;
   var geoDataInterval = AutoUpdateInterval.threeDays;
   var geoDataUpdateAfterVpnConnected = true;
@@ -52,11 +52,13 @@ class AutoUpdateState {
       return;
     }
     final autoUpdateJson = AutoUpdateJson.fromJson(jsonMap!);
-    if (autoUpdateJson.enabled != null) {
-      enable = autoUpdateJson.enabled!;
+    if (autoUpdateJson.subscriptionEnabled != null) {
+      subscriptionEnabled = autoUpdateJson.subscriptionEnabled!;
     }
-    if (autoUpdateJson.interval != null) {
-      interval = AutoUpdateInterval.fromInt(autoUpdateJson.interval!);
+    if (autoUpdateJson.subscriptionInterval != null) {
+      subscriptionInterval = AutoUpdateInterval.fromInt(
+        autoUpdateJson.subscriptionInterval!,
+      );
     }
     if (autoUpdateJson.geoDataEnabled != null) {
       geoDataEnable = autoUpdateJson.geoDataEnabled!;
@@ -74,8 +76,8 @@ class AutoUpdateState {
 
   Future<void> saveToPreferences() async {
     final autoUpdateJson = AutoUpdateJson(
-      enable,
-      interval.value,
+      subscriptionEnabled,
+      subscriptionInterval.value,
       geoDataEnable,
       geoDataInterval.value,
       geoDataUpdateAfterVpnConnected,

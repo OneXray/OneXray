@@ -25,7 +25,7 @@ class XrayRawPage extends StatelessWidget {
           final controller = context.read<XrayRawController>();
           return Scaffold(
             appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.outboundPageTitle),
+              title: Text(AppLocalizations.of(context)!.xrayRawPageTitle),
               actions: [
                 IconMenuPicker(
                   icon: Icons.file_upload_outlined,
@@ -91,15 +91,12 @@ class XrayRawPage extends StatelessWidget {
     AppEventBusState eventState,
   ) {
     final pinging = eventState.pinging;
-    if (pinging) {
-      return const CircularProgressIndicator();
-    } else {
-      return Expanded(
-        child: SecondaryBottomButton(
-          title: AppLocalizations.of(context)!.outboundPageRealPing,
-          callback: () => controller.realPing(context),
-        ),
-      );
-    }
+    return Expanded(
+      child: SecondaryBottomButton(
+        title: AppLocalizations.of(context)!.outboundPageRealPing,
+        callback: pinging ? null : () => controller.realPing(context),
+        loading: pinging,
+      ),
+    );
   }
 }

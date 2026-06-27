@@ -270,15 +270,12 @@ mixin OutboundAdvancedSection {
     AppEventBusState eventState,
   ) {
     final pinging = eventState.pinging;
-    if (pinging) {
-      return const CircularProgressIndicator();
-    } else {
-      return Expanded(
-        child: SecondaryBottomButton(
-          title: AppLocalizations.of(context)!.outboundPageRealPing,
-          callback: () => controller.realPing(context),
-        ),
-      );
-    }
+    return Expanded(
+      child: SecondaryBottomButton(
+        title: AppLocalizations.of(context)!.outboundPageRealPing,
+        callback: pinging ? null : () => controller.realPing(context),
+        loading: pinging,
+      ),
+    );
   }
 }

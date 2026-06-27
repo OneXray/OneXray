@@ -22,13 +22,27 @@ class FileInfo {
 class BackupState {
   final List<FileInfo> files;
   final String selection;
+  final bool backingUp;
+  final bool restoring;
 
-  const BackupState({this.files = const [], this.selection = ""});
+  const BackupState({
+    this.files = const [],
+    this.selection = "",
+    this.backingUp = false,
+    this.restoring = false,
+  });
 
-  BackupState copyWith({List<FileInfo>? files, String? selection}) {
+  BackupState copyWith({
+    List<FileInfo>? files,
+    String? selection,
+    bool? backingUp,
+    bool? restoring,
+  }) {
     return BackupState(
       files: files ?? this.files,
       selection: selection ?? this.selection,
+      backingUp: backingUp ?? this.backingUp,
+      restoring: restoring ?? this.restoring,
     );
   }
 }
@@ -64,6 +78,9 @@ class BackupController extends Cubit<BackupState> {
   }
 
   Future<void> importBackup(BuildContext context) async {
+    if (state.backingUp || state.restoring) {
+      return;
+    }
     final success = await BackupService().importBackup();
     if (context.mounted) {
       _showActionResult(
@@ -157,11 +174,24 @@ class BackupController extends Cubit<BackupState> {
   }
 
   Future<void> backup(BuildContext context) async {
-    await BackupService().backup();
-    await _readFiles();
+    if (state.backingUp || state.restoring) {
+      return;
+    }
+    emit(state.copyWith(backingUp: true));
+    try {
+      await BackupService().backup();
+      await _readFiles();
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(backingUp: false));
+      }
+    }
   }
 
   Future<void> restore(BuildContext context) async {
+    if (state.backingUp || state.restoring) {
+      return;
+    }
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -184,13 +214,23 @@ class BackupController extends Cubit<BackupState> {
   }
 
   Future<void> _restore(BuildContext context) async {
+    if (state.backingUp || state.restoring) {
+      return;
+    }
     final zipPath = state.files
         .where((e) => e.name == state.selection)
         .firstOrNull
         ?.path;
     var success = false;
     if (zipPath != null) {
-      success = await BackupService().restore(zipPath);
+      emit(state.copyWith(restoring: true));
+      try {
+        success = await BackupService().restore(zipPath);
+      } finally {
+        if (!isClosed) {
+          emit(state.copyWith(restoring: false));
+        }
+      }
     }
     if (context.mounted) {
       _showActionResult(

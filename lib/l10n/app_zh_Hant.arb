@@ -302,6 +302,7 @@
   "outboundPageRealPing": "真連接測試",
   "outboundPageRealPingResult": "真連接測試結果",
   "outboundPageTitle": "Xray 節點",
+  "xrayRawPageTitle": "Raw JSON",
   "outboundUIPageName": "名稱",
   "outboundUIPageProtocol": "protocol",
   "outboundUIPageVLESS": "VLESS",

@@ -31,7 +31,7 @@ final class AppDataCleanupService {
 
   Future<bool> clearForBackupRestore() async {
     return _clear(
-      targetXraySettingId: DBConstants.defaultId,
+      targetXraySettingId: XraySettingSimple.simpleId,
       clearUserDataPreferences: false,
       clearCache: false,
     );

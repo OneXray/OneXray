@@ -127,15 +127,13 @@ class GeoDatAddPage extends StatelessWidget {
     GeoDatAddController controller,
     AppEventBusState state,
   ) {
-    if (state.downloading) {
-      return const CircularProgressIndicator();
-    } else {
-      return Expanded(
-        child: PrimaryBottomButton(
-          title: AppLocalizations.of(context)!.buttonAdd,
-          callback: () => controller.save(context),
-        ),
-      );
-    }
+    final downloading = state.downloading;
+    return Expanded(
+      child: PrimaryBottomButton(
+        title: AppLocalizations.of(context)!.buttonAdd,
+        callback: downloading ? null : () => controller.save(context),
+        loading: downloading,
+      ),
+    );
   }
 }

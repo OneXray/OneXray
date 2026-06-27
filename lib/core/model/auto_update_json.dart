@@ -4,15 +4,15 @@ part 'auto_update_json.g.dart';
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class AutoUpdateJson {
-  bool? enabled;
-  int? interval;
+  bool? subscriptionEnabled;
+  int? subscriptionInterval;
   bool? geoDataEnabled;
   int? geoDataInterval;
   bool? geoDataUpdateAfterVpnConnected;
 
   AutoUpdateJson(
-    this.enabled,
-    this.interval,
+    this.subscriptionEnabled,
+    this.subscriptionInterval,
     this.geoDataEnabled,
     this.geoDataInterval,
     this.geoDataUpdateAfterVpnConnected,

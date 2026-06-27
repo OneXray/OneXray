@@ -153,13 +153,13 @@ class SubscriptionService {
     if (autoUpdateState == null) {
       await updateState.readFromPreferences();
     }
-    if (!updateState.enable) {
+    if (!updateState.subscriptionEnabled) {
       if (updateDownloading) {
         eventBus.updateDownloading(false);
       }
       return;
     }
-    final interval = updateState.interval.value;
+    final interval = updateState.subscriptionInterval.value;
     final subs = await AppDatabase().subscriptionDao.allRows;
     final now = DateTime.now();
     for (final sub in subs) {

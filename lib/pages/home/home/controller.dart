@@ -86,6 +86,7 @@ class HomeConnectionViewState {
   final String detailText;
   final String? summaryDetailText;
   final String trafficText;
+  final String metricsText;
   final IconData statusIcon;
   final IconData actionIcon;
 
@@ -98,6 +99,7 @@ class HomeConnectionViewState {
     required this.detailText,
     required this.summaryDetailText,
     required this.trafficText,
+    required this.metricsText,
     required this.statusIcon,
     required this.actionIcon,
   });
@@ -436,6 +438,18 @@ class HomeController extends Cubit<HomeState> {
     return text;
   }
 
+  String formatSummaryMetrics(
+    BuildContext context,
+    AppEventBusState eventState,
+  ) {
+    final location = eventState.location;
+    final appLocalizations = AppLocalizations.of(context)!;
+    final duration = location.duration ?? appLocalizations.nodeInfoPageFetching;
+    final country = _formatGeoValue(context, eventState, location.country);
+    final delay = _formatDelay(context, eventState);
+    return "$duration · $country · $delay";
+  }
+
   String formatTraffic(AppEventBusState eventState) {
     return XrayMetricsFormatter.formatTraffic(eventState.trafficMetrics);
   }
@@ -492,6 +506,7 @@ class HomeController extends Cubit<HomeState> {
       detailText: detailText,
       summaryDetailText: summaryDetailText,
       trafficText: formatTraffic(eventState),
+      metricsText: formatSummaryMetrics(context, eventState),
       statusIcon: actionIcon,
       actionIcon: actionIcon,
     );

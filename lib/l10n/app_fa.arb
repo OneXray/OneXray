@@ -302,6 +302,7 @@
     "outboundPageRealPing": "پینگ واقعی",
     "outboundPageRealPingResult": "نتیجه پینگ واقعی",
     "outboundPageTitle": "Xray Outbound",
+    "xrayRawPageTitle": "Raw JSON",
     "outboundUIPageName": "نام",
     "outboundUIPageProtocol": "protocol",
     "outboundUIPageVLESS": "VLESS",

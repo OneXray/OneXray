@@ -3,31 +3,25 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/share/backup_model.dart';
 import 'package:onexray/service/subscription/service.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:tuple/tuple.dart';
 
 // 文件结构
 // OneXray-date.zip
-// -- timestamp.txt
-// -- sha256sum.txt
-// -- data.zip
-
-// data
 // -- manifest.json
 // -- core_configs.json
 // -- subscriptions.json
@@ -43,24 +37,18 @@ class BackupService {
 
   BackupService._internal();
 
-  static const _backupVersion = 2;
+  static const _backupVersion = 3;
   static const _datDir = "dat";
   static const _manifestFile = "manifest.json";
   static const _coreConfigsFile = "core_configs.json";
   static const _subscriptionsFile = "subscriptions.json";
   static const _geoDataFile = "geo_data.json";
 
-  static const _dataDir = "data";
-  static const _dataFile = "data.zip";
-  static const _sha256SumFile = "sha256sum.txt";
-  static const _timestampFile = "timestamp.txt";
-
   static const _zipFilePrefix = "OneXray";
 
   // backup zip files dir, in application support directory
   static const _backupName = "backup";
 
-  //=========================
   Future<String> get backupDir async {
     final rootPath = await getApplicationSupportDirectory();
     final backupPath = p.join(rootPath.path, _backupName);
@@ -80,85 +68,15 @@ class BackupService {
     if (file.path == null) {
       return false;
     }
-    final filePath = file.path!;
-    final check = await _testBackupFile(filePath);
-    if (!check.item1) {
-      return false;
-    }
-    await _saveBackupFile(filePath, check.item2);
-    return true;
-  }
 
-  Future<Tuple2<bool, DateTime>> _testBackupFile(String filePath) async {
     final cacheDir = await FileTool.makeCacheDir();
     try {
-      extractFileToDisk(filePath, cacheDir);
-    } catch (_) {
-      await FileTool.deleteDirIfExists(cacheDir);
-      return Tuple2(false, DateTime.now());
-    }
-
-    final timestampFile = File(p.join(cacheDir, _timestampFile));
-    var exist = await timestampFile.exists();
-    if (!exist) {
-      await FileTool.deleteDirIfExists(cacheDir);
-      return Tuple2(false, DateTime.now());
-    }
-    var timestampStr = await timestampFile.readAsString();
-    timestampStr = timestampStr.trim();
-    final timestamp = int.tryParse(timestampStr);
-    if (timestamp == null) {
-      await FileTool.deleteDirIfExists(cacheDir);
-      return Tuple2(false, DateTime.now());
-    }
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-
-    final dataZipFile = File(p.join(cacheDir, _dataFile));
-    exist = await dataZipFile.exists();
-    if (!exist) {
-      await FileTool.deleteDirIfExists(cacheDir);
-      return Tuple2(false, DateTime.now());
-    }
-
-    final sha256SumFile = File(p.join(cacheDir, _sha256SumFile));
-    exist = await sha256SumFile.exists();
-    if (!exist) {
-      await FileTool.deleteDirIfExists(cacheDir);
-      return Tuple2(false, DateTime.now());
-    }
-    var savedSha256Sum = await sha256SumFile.readAsString();
-    savedSha256Sum = savedSha256Sum.trim();
-
-    final dataBytes = await dataZipFile.readAsBytes();
-    final sha256Sum = sha256.convert(dataBytes).toString();
-    if (sha256Sum != savedSha256Sum) {
-      await FileTool.deleteDirIfExists(cacheDir);
-      return Tuple2(false, DateTime.now());
-    }
-
-    final validData = await _dataZipHasV2Manifest(dataZipFile.path);
-    if (!validData) {
-      await FileTool.deleteDirIfExists(cacheDir);
-      return Tuple2(false, DateTime.now());
-    }
-
-    await FileTool.deleteDirIfExists(cacheDir);
-    return Tuple2(true, date);
-  }
-
-  Future<bool> _dataZipHasV2Manifest(String dataZipPath) async {
-    final cacheDir = await FileTool.makeCacheDir();
-    try {
-      extractFileToDisk(dataZipPath, cacheDir);
-      final manifestFile = File(p.join(cacheDir, _manifestFile));
-      if (!await manifestFile.exists()) {
+      final payload = await _readBackupPayload(file.path!, cacheDir);
+      if (payload == null) {
         return false;
       }
-      final manifest = jsonDecode(await manifestFile.readAsString());
-      return manifest is Map && manifest["version"] == _backupVersion;
-    } catch (e) {
-      ygLogger("test backup manifest error: $e");
-      return false;
+      await _saveBackupFile(file.path!, payload.createdAt);
+      return true;
     } finally {
       await FileTool.deleteDirIfExists(cacheDir);
     }
@@ -169,45 +87,221 @@ class BackupService {
     eventBus.updateDownloading(true);
 
     final cacheDir = await FileTool.makeCacheDir();
-    final dataDir = p.join(cacheDir, _dataDir);
-    await FileTool.checkDir(dataDir);
+    final stagingDir = p.join(cacheDir, "staging");
+    final createdAt = DateTime.now();
+    try {
+      await FileTool.checkDir(stagingDir);
+      await _writeManifest(stagingDir, createdAt);
+      await _backupGeoData(stagingDir);
+      await _backupLocalConfigs(stagingDir);
+      await _backupSubscriptions(stagingDir);
 
-    await _writeManifest(dataDir);
-    await _backupGeoData(dataDir);
-    await _backupLocalConfigs(dataDir);
-    await _backupSubscriptions(dataDir);
-
-    final zipDir = p.join(cacheDir, _zipFilePrefix);
-    await FileTool.checkDir(zipDir);
-
-    final dataZipPath = p.join(zipDir, _dataFile);
-    await _archiveDirToZipFile(dataDir, dataZipPath);
-
-    final dataBytes = await File(dataZipPath).readAsBytes();
-    final sha256Sum = sha256.convert(dataBytes).toString();
-    final sha256SumPath = p.join(zipDir, _sha256SumFile);
-    await File(sha256SumPath).writeAsString(sha256Sum);
-
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    await File(p.join(zipDir, _timestampFile)).writeAsString("$timestamp");
-
-    final zipName = "$_zipFilePrefix.zip";
-    final zipSrcPath = p.join(cacheDir, zipName);
-    await _archiveDirToZipFile(zipDir, zipSrcPath);
-
-    await _saveBackupFile(zipSrcPath, DateTime.now());
-
-    ygLogger(cacheDir);
-    //await FileTool.deleteDirIfExists(cacheDir);
-
-    eventBus.updateDownloading(false);
+      final zipSrcPath = p.join(cacheDir, "$_zipFilePrefix.zip");
+      await _archiveDirToZipFile(stagingDir, zipSrcPath);
+      await _saveBackupFile(zipSrcPath, createdAt);
+    } catch (e, stackTrace) {
+      ygLogger("backup error: $e\n$stackTrace");
+      rethrow;
+    } finally {
+      await FileTool.deleteDirIfExists(cacheDir);
+      eventBus.updateDownloading(false);
+    }
   }
 
-  Future<void> _writeManifest(String zipDir) async {
-    final manifest = <String, dynamic>{
-      "version": _backupVersion,
-      "createdAt": DateTime.now().millisecondsSinceEpoch,
-    };
+  Future<bool> restore(String zipPath) async {
+    final eventBus = AppEventBus.instance;
+    eventBus.updateDownloading(true);
+
+    final cacheDir = await FileTool.makeCacheDir();
+    try {
+      final payload = await _readBackupPayload(zipPath, cacheDir);
+      if (payload == null) {
+        return false;
+      }
+
+      final cleared = await AppDataCleanupService().clearForBackupRestore();
+      if (!cleared) {
+        return false;
+      }
+
+      await _restoreGeoData(payload);
+      await _restoreLocalConfigs(payload);
+      await _restoreSubscriptions(payload);
+      return true;
+    } catch (e, stackTrace) {
+      ygLogger("restore backup error: $e\n$stackTrace");
+      return false;
+    } finally {
+      await FileTool.deleteDirIfExists(cacheDir);
+      eventBus.updateDownloading(false);
+    }
+  }
+
+  Future<_BackupPayload?> _readBackupPayload(
+    String zipPath,
+    String cacheDir,
+  ) async {
+    try {
+      await extractFileToDisk(zipPath, cacheDir);
+      return _readBackupDir(cacheDir);
+    } catch (e, stackTrace) {
+      ygLogger("read backup error: $e\n$stackTrace");
+      return null;
+    }
+  }
+
+  Future<_BackupPayload?> _readBackupDir(String backupRoot) async {
+    final manifest = await _readManifest(backupRoot);
+    if (manifest == null) {
+      return null;
+    }
+
+    final coreConfigs = await _readJsonList(
+      p.join(backupRoot, _coreConfigsFile),
+      BackupCoreConfigJson.fromJson,
+    );
+    final subscriptions = await _readJsonList(
+      p.join(backupRoot, _subscriptionsFile),
+      BackupSubscriptionJson.fromJson,
+    );
+    final geoDataList = await _readJsonList(
+      p.join(backupRoot, _geoDataFile),
+      BackupGeoDataJson.fromJson,
+    );
+    if (coreConfigs == null || subscriptions == null || geoDataList == null) {
+      return null;
+    }
+
+    if (!_validateCoreConfigs(coreConfigs) ||
+        !_validateSubscriptions(subscriptions) ||
+        !await _validateGeoDataList(backupRoot, geoDataList)) {
+      return null;
+    }
+
+    return _BackupPayload(
+      rootDir: backupRoot,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(manifest.createdAt!),
+      coreConfigs: coreConfigs,
+      subscriptions: subscriptions,
+      geoDataList: geoDataList,
+    );
+  }
+
+  Future<BackupManifestJson?> _readManifest(String backupRoot) async {
+    final manifestFile = File(p.join(backupRoot, _manifestFile));
+    if (!await manifestFile.exists()) {
+      return null;
+    }
+
+    final manifest = await _readJsonModel(
+      manifestFile.path,
+      BackupManifestJson.fromJson,
+    );
+    if (manifest == null ||
+        manifest.version != _backupVersion ||
+        manifest.createdAt == null) {
+      return null;
+    }
+    return manifest;
+  }
+
+  Future<T?> _readJsonModel<T>(
+    String path,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    final file = File(path);
+    if (!await file.exists()) {
+      return null;
+    }
+    try {
+      final data = jsonDecode(await file.readAsString());
+      if (data is! Map<String, dynamic>) {
+        return null;
+      }
+      return fromJson(data);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<T>?> _readJsonList<T>(
+    String path,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    final file = File(path);
+    if (!await file.exists()) {
+      return null;
+    }
+    try {
+      final data = jsonDecode(await file.readAsString());
+      if (data is! List) {
+        return null;
+      }
+
+      final models = <T>[];
+      for (final item in data) {
+        if (item is! Map<String, dynamic>) {
+          return null;
+        }
+        models.add(fromJson(item));
+      }
+      return models;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _validateCoreConfigs(List<BackupCoreConfigJson> configs) {
+    for (final config in configs) {
+      if (config.name == null || config.type == null || config.tags == null) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _validateSubscriptions(List<BackupSubscriptionJson> subscriptions) {
+    for (final subscription in subscriptions) {
+      if (subscription.name == null ||
+          subscription.url == null ||
+          subscription.timestamp == null ||
+          subscription.expanded == null) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<bool> _validateGeoDataList(
+    String backupRoot,
+    List<BackupGeoDataJson> geoDataList,
+  ) async {
+    final datDir = p.join(backupRoot, _datDir);
+    for (final geoData in geoDataList) {
+      final name = geoData.name;
+      if (name == null ||
+          geoData.type == null ||
+          geoData.url == null ||
+          geoData.timestamp == null ||
+          geoData.categoryCount == null ||
+          geoData.ruleCount == null) {
+        return false;
+      }
+
+      final datFile = File(p.join(datDir, "$name.dat"));
+      final jsonFile = File(p.join(datDir, "$name.json"));
+      if (!await datFile.exists() || !await jsonFile.exists()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _writeManifest(String zipDir, DateTime createdAt) async {
+    final manifest = BackupManifestJson(
+      _backupVersion,
+      createdAt.millisecondsSinceEpoch,
+    );
     await _writeJsonToFile(manifest, p.join(zipDir, _manifestFile));
   }
 
@@ -230,16 +324,18 @@ class BackupService {
     await FileTool.checkDir(datDir);
     final db = AppDatabase();
     final geoList = await db.geoDataDao.allRows;
-    final rows = <Map<String, dynamic>>[];
+    final rows = <BackupGeoDataJson>[];
     for (final geoData in geoList) {
-      rows.add({
-        "name": geoData.name,
-        "type": geoData.type,
-        "url": geoData.url,
-        "timestamp": geoData.timestamp.millisecondsSinceEpoch,
-        "categoryCount": geoData.categoryCount,
-        "ruleCount": geoData.ruleCount,
-      });
+      rows.add(
+        BackupGeoDataJson(
+          geoData.name,
+          geoData.type,
+          geoData.url,
+          geoData.timestamp.millisecondsSinceEpoch,
+          geoData.categoryCount,
+          geoData.ruleCount,
+        ),
+      );
       await _copyDat(geoData.name, VpnConstants.datDir, datDir);
     }
     final geoDataPath = p.join(zipDir, _geoDataFile);
@@ -263,12 +359,12 @@ class BackupService {
     final configs = await db.coreConfigDao.allLocalRowsWithData;
     final rows = configs
         .map(
-          (config) => <String, dynamic>{
-            "name": config.name,
-            "type": config.type,
-            "tags": config.tags,
-            "data": config.data,
-          },
+          (config) => BackupCoreConfigJson(
+            config.name,
+            config.type,
+            config.tags,
+            config.data,
+          ),
         )
         .toList();
     final configsPath = p.join(zipDir, _coreConfigsFile);
@@ -280,12 +376,12 @@ class BackupService {
     final subscriptions = await db.subscriptionDao.allRows;
     final rows = subscriptions
         .map(
-          (subscription) => <String, dynamic>{
-            "name": subscription.name,
-            "url": subscription.url,
-            "timestamp": subscription.timestamp.millisecondsSinceEpoch,
-            "expanded": subscription.expanded,
-          },
+          (subscription) => BackupSubscriptionJson(
+            subscription.name,
+            subscription.url,
+            subscription.timestamp.millisecondsSinceEpoch,
+            subscription.expanded,
+          ),
         )
         .toList();
     final subscriptionsPath = p.join(zipDir, _subscriptionsFile);
@@ -293,132 +389,46 @@ class BackupService {
   }
 
   Future<void> _writeJsonToFile(Object? data, String path) async {
-    await File(path).writeAsString(JsonTool.encoderForFile.convert(data));
+    final json = switch (data) {
+      BackupManifestJson() => data.toJson(),
+      List<BackupCoreConfigJson>() => data.map((e) => e.toJson()).toList(),
+      List<BackupSubscriptionJson>() => data.map((e) => e.toJson()).toList(),
+      List<BackupGeoDataJson>() => data.map((e) => e.toJson()).toList(),
+      _ => data,
+    };
+    await File(path).writeAsString(JsonTool.encoderForFile.convert(json));
   }
 
-  //=========================
-  Future<bool> restore(String zipPath) async {
-    final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
-
-    var res = true;
-    final cacheDir = await FileTool.makeCacheDir();
-    try {
-      await extractFileToDisk(zipPath, cacheDir);
-    } catch (e) {
-      ygLogger("$e");
-      res = false;
+  Future<void> _restoreGeoData(_BackupPayload payload) async {
+    final datSrcDir = p.join(payload.rootDir, _datDir);
+    if (await Directory(datSrcDir).exists()) {
+      await FileTool.copyDir(datSrcDir, VpnConstants.datDir);
     }
 
-    final dataZipPath = p.join(cacheDir, _dataFile);
-    if (res) {
-      final exist = await File(dataZipPath).exists();
-      if (!exist) {
-        res = false;
-      }
-    }
-
-    final dataDir = p.join(cacheDir, _dataDir);
-    await FileTool.checkDir(dataDir);
-
-    if (res) {
-      try {
-        await extractFileToDisk(dataZipPath, dataDir);
-      } catch (e) {
-        ygLogger("$e");
-        res = false;
-      }
-    }
-
-    if (res) {
-      try {
-        final validData = await _dataDirHasV2Manifest(dataDir);
-        if (!validData) {
-          res = false;
-        } else {
-          final cleared = await AppDataCleanupService().clearForBackupRestore();
-          if (!cleared) {
-            res = false;
-          } else {
-            await _restoreGeoData(dataDir);
-            await _restoreLocalConfigs(dataDir);
-            await _restoreSubscriptions(dataDir);
-          }
-        }
-      } catch (e) {
-        ygLogger("restore backup error: $e");
-        res = false;
-      }
-    }
-
-    await FileTool.deleteDirIfExists(cacheDir);
-
-    eventBus.updateDownloading(false);
-
-    return res;
-  }
-
-  Future<bool> _dataDirHasV2Manifest(String dataDir) async {
-    final manifestFile = File(p.join(dataDir, _manifestFile));
-    if (!await manifestFile.exists()) {
-      return false;
-    }
-    final manifest = jsonDecode(await manifestFile.readAsString());
-    return manifest is Map && manifest["version"] == _backupVersion;
-  }
-
-  Future<void> _restoreGeoData(String dataDir) async {
-    final datSrcDir = p.join(dataDir, _datDir);
-    await FileTool.copyDir(datSrcDir, VpnConstants.datDir);
-
-    final rows = await _readJsonList(p.join(dataDir, _geoDataFile));
     final db = AppDatabase();
-    for (final row in rows) {
-      if (row is! Map<String, dynamic>) {
-        continue;
-      }
-      final name = row["name"];
-      final type = row["type"];
-      final url = row["url"];
-      if (name is! String || type is! String || url is! String) {
-        continue;
-      }
-      final timestamp = _readTimestamp(row["timestamp"]);
-      final categoryCount = _readInt(row["categoryCount"]);
-      final ruleCount = _readInt(row["ruleCount"]);
+    for (final geoData in payload.geoDataList) {
       await db.geoDataDao.insertRow(
         GeoDataCompanion.insert(
-          name: name,
-          type: type,
-          url: url,
-          timestamp: timestamp,
-          categoryCount: categoryCount,
-          ruleCount: ruleCount,
+          name: geoData.name!,
+          type: geoData.type!,
+          url: geoData.url!,
+          timestamp: _readTimestamp(geoData.timestamp),
+          categoryCount: geoData.categoryCount!,
+          ruleCount: geoData.ruleCount!,
         ),
       );
     }
   }
 
-  Future<void> _restoreLocalConfigs(String dataDir) async {
-    final rows = await _readJsonList(p.join(dataDir, _coreConfigsFile));
+  Future<void> _restoreLocalConfigs(_BackupPayload payload) async {
     final configs = <CoreConfigCompanion>[];
-    for (final row in rows) {
-      if (row is! Map<String, dynamic>) {
-        continue;
-      }
-      final name = row["name"];
-      final type = row["type"];
-      final tags = row["tags"];
-      if (name is! String || type is! String || tags is! String) {
-        continue;
-      }
-      final data = row["data"];
+    for (final config in payload.coreConfigs) {
       configs.add(
         CoreConfigCompanion.insert(
-          name: name,
-          type: type,
-          tags: tags,
-          data: Value<String?>(data is String ? data : null),
+          name: config.name!,
+          type: config.type!,
+          tags: config.tags!,
+          data: Value<String?>(config.data),
           delay: PingDelayConstants.unknown,
           subId: DBConstants.defaultId,
         ),
@@ -427,53 +437,31 @@ class BackupService {
     await ConfigWriter.writeRows(configs, null);
   }
 
-  Future<void> _restoreSubscriptions(String dataDir) async {
-    final rows = await _readJsonList(p.join(dataDir, _subscriptionsFile));
+  Future<void> _restoreSubscriptions(_BackupPayload payload) async {
     final db = AppDatabase();
-    for (final row in rows) {
-      if (row is! Map<String, dynamic>) {
-        continue;
-      }
-      final name = row["name"];
-      final url = row["url"];
-      if (name is! String || url is! String) {
-        continue;
-      }
-      final timestamp = _readTimestamp(row["timestamp"]);
-      final expanded = row["expanded"] == true;
+    for (final row in payload.subscriptions) {
+      final timestamp = _readTimestamp(row.timestamp);
       final subId = await db.subscriptionDao.insertRow(
         SubscriptionCompanion.insert(
-          name: name,
-          url: url,
+          name: row.name!,
+          url: row.url!,
           timestamp: timestamp,
           count: 0,
-          expanded: expanded,
+          expanded: row.expanded!,
         ),
       );
       if (subId > DBConstants.defaultId) {
         final subscription = SubscriptionData(
           id: subId,
-          name: name,
-          url: url,
+          name: row.name!,
+          url: row.url!,
           timestamp: timestamp,
           count: 0,
-          expanded: expanded,
+          expanded: row.expanded!,
         );
         await SubscriptionService().refreshSubscription(subscription, false);
       }
     }
-  }
-
-  Future<List<dynamic>> _readJsonList(String path) async {
-    final file = File(path);
-    if (!await file.exists()) {
-      return [];
-    }
-    final data = jsonDecode(await file.readAsString());
-    if (data is List) {
-      return data;
-    }
-    return [];
   }
 
   DateTime _readTimestamp(dynamic value) {
@@ -482,11 +470,20 @@ class BackupService {
     }
     return DateTime.now();
   }
+}
 
-  int _readInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-    return 0;
-  }
+class _BackupPayload {
+  final String rootDir;
+  final DateTime createdAt;
+  final List<BackupCoreConfigJson> coreConfigs;
+  final List<BackupSubscriptionJson> subscriptions;
+  final List<BackupGeoDataJson> geoDataList;
+
+  const _BackupPayload({
+    required this.rootDir,
+    required this.createdAt,
+    required this.coreConfigs,
+    required this.subscriptions,
+    required this.geoDataList,
+  });
 }
