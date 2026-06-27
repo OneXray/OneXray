@@ -70,9 +70,14 @@ class BottomButtonChild extends StatelessWidget {
     if (!loading) {
       return Text(title);
     }
-    return const SizedBox.square(
-      dimension: 18,
-      child: CircularProgressIndicator(strokeWidth: 2),
+    return Semantics(
+      label: title,
+      child: const ExcludeSemantics(
+        child: SizedBox.square(
+          dimension: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
     );
   }
 }
