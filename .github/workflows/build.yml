@@ -46,12 +46,11 @@
 #     ADMOB_AD_UNIT_ID_IOS
 #
 # Layout:
-#   build_scripts/app/builder.py#build_core expects the XTLS/libXray and
-#   XTLS/Xray-core source checkouts to live as siblings of this repo (same parent
-#   directory). Every job therefore checks out this repo to `OneXray/`, libXray
-#   to `libXray/`, and Xray-core to `Xray-core/` at the workspace root. CI uses
-#   Xray-core `main` as libXray's local Go replace source; fastforge/fastlane/
-#   flutter all produce their outputs under `<workspace>/output`.
+#   build_scripts/app/builder.py#build_core expects XTLS/libXray to live as a
+#   sibling of this repo. Every job therefore checks out this repo to
+#   `OneXray/` and libXray to `libXray/` at the workspace root. Xray-core is
+#   resolved by libXray's pinned Go module dependency; fastforge/fastlane/flutter
+#   all produce their outputs under `<workspace>/output`.
 
 name: Build
 
@@ -71,7 +70,6 @@ env:
   PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
   LIBXRAY_REF: main
-  XRAY_CORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -115,12 +113,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/Xray-core
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -208,12 +200,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/Xray-core
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -305,12 +291,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/Xray-core
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -396,12 +376,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/Xray-core
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - uses: actions/setup-java@v5
         with:
@@ -503,12 +477,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/Xray-core
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -585,12 +553,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v6
-        with:
-          repository: XTLS/Xray-core
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - uses: actions/setup-go@v6
         with:

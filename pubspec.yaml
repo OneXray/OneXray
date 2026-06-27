@@ -1,7 +1,7 @@
 name: onexray
 description: "Cross Platform Xray-core Client"
 publish_to: "none"
-version: 26.6.3+1
+version: 26.7.1+1
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
