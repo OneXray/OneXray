@@ -355,24 +355,12 @@ class HomeConnectionSummary extends StatelessWidget {
             final status = _statusSummary(context);
             final metrics = _metrics(context);
             if (wideLayout) {
-              final metricsWidth = (constraints.maxWidth * 0.46).clamp(
-                460.0,
-                620.0,
-              );
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 320),
-                      child: status,
-                    ),
-                  ),
+                  Expanded(child: status),
                   const SizedBox(width: 16),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: metricsWidth),
-                    child: metrics,
-                  ),
+                  Expanded(child: metrics),
                 ],
               );
             }
