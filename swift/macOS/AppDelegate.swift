@@ -13,16 +13,24 @@ class AppDelegate: FlutterAppDelegate {
     }
 
     override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            for window in NSApp.windows {
-                if !window.isVisible {
-                    window.setIsVisible(true)
-                }
-                window.makeKeyAndOrderFront(self)
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        }
+        restoreMainWindow()
         return true
+    }
+
+    @IBAction func showMainWindow(_ sender: Any?) {
+        restoreMainWindow()
+    }
+
+    private func restoreMainWindow() {
+        guard let window = mainFlutterWindow ?? NSApp.mainWindow ?? NSApp.windows.first(where: { $0 is MainFlutterWindow }) else {
+            return
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        if window.isMiniaturized {
+            window.deminiaturize(self)
+        }
+        window.makeKeyAndOrderFront(self)
     }
 
     override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {

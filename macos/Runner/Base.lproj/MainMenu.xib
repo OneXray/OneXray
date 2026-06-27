@@ -302,6 +302,13 @@
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Window" systemMenu="window" id="Td7-aD-5lo">
                         <items>
+                            <menuItem title="Show OneXray" id="OXr-Sw-Mnu">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="showMainWindow:" target="Voe-Tx-rLC" id="OXr-Sw-Act"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="OXr-Sw-Sep"/>
                             <menuItem title="Minimize" keyEquivalent="m" id="OY7-WF-poV">
                                 <connections>
                                     <action selector="performMiniaturize:" target="-1" id="VwT-WD-YPe"/>

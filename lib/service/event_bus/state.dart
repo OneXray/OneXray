@@ -33,7 +33,6 @@ class AppEventBusState {
   final ConnectivityProbeState geoLocationProbeState;
   final TrafficMetricsState trafficMetrics;
   final bool downloading;
-  final bool windowClosed;
   final ThemeCode themeCode;
   final LanguageCode languageCode;
 
@@ -53,7 +52,6 @@ class AppEventBusState {
     required this.geoLocationProbeState,
     required this.trafficMetrics,
     required this.downloading,
-    required this.windowClosed,
     required this.themeCode,
     required this.languageCode,
   });
@@ -73,7 +71,6 @@ class AppEventBusState {
     geoLocationProbeState: ConnectivityProbeState.idle,
     trafficMetrics: const TrafficMetricsState.unavailable(),
     downloading: false,
-    windowClosed: false,
     themeCode: ThemeCode.system,
     languageCode: LanguageCode.en,
   );
@@ -94,7 +91,6 @@ class AppEventBusState {
     ConnectivityProbeState? geoLocationProbeState,
     TrafficMetricsState? trafficMetrics,
     bool? downloading,
-    bool? windowClosed,
     ThemeCode? themeCode,
     LanguageCode? languageCode,
   }) {
@@ -117,7 +113,6 @@ class AppEventBusState {
           geoLocationProbeState ?? this.geoLocationProbeState,
       trafficMetrics: trafficMetrics ?? this.trafficMetrics,
       downloading: downloading ?? this.downloading,
-      windowClosed: windowClosed ?? this.windowClosed,
       themeCode: themeCode ?? this.themeCode,
       languageCode: languageCode ?? this.languageCode,
     );

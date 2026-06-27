@@ -1,5 +1,4 @@
 import 'package:onexray/core/constants/preferences.dart';
-import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -37,14 +36,5 @@ final class WindowService with WindowListener {
   Future<void> onWindowClose() async {
     super.onWindowClose();
     await windowManager.hide();
-    final eventBus = AppEventBus.instance;
-    eventBus.updateWindowClosed(true);
-  }
-
-  @override
-  void onWindowFocus() {
-    super.onWindowFocus();
-    final eventBus = AppEventBus.instance;
-    eventBus.updateWindowClosed(false);
   }
 }
