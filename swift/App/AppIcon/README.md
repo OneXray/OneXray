@@ -20,6 +20,6 @@ projects can use the same source artwork.
 - Purple: `#9C27B0`
 - Red: `#F44336`
 
-Each `.icon` package includes its own `center-cutout.svg`. The center circle
-must use the same color as that package's background so it masks the crossing
-white strokes and creates the visual break in the middle of the mark.
+Each `.icon` package uses the same `mark-white.svg` foreground artwork on a
+package-specific background color. The mark is drawn on a `1024x1024` canvas and
+does not use a center cutout layer.

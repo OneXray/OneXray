@@ -27,7 +27,4 @@
         android:strokeColor="#ffffff"
         android:strokeLineCap="round"
         android:strokeWidth="20" />
-    <path
-        android:fillColor="@color/one_xray_blue"
-        android:pathData="M144,154.4C149.7,154.4 154.4,149.7 154.4,144C154.4,138.3 149.7,133.6 144,133.6C138.3,133.6 133.6,138.3 133.6,144C133.6,149.7 138.3,154.4 144,154.4Z" />
 </vector>
