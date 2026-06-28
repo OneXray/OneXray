@@ -323,9 +323,19 @@ class XrayInboundSniffing {
 class XrayInboundTun {
   String? name;
   int? mtu;
+  List<String>? gateway;
+  List<String>? dns;
+  List<String>? autoSystemRoutingTable;
   String? autoOutboundsInterface;
 
-  XrayInboundTun(this.name, this.mtu, this.autoOutboundsInterface);
+  XrayInboundTun(
+    this.name,
+    this.mtu,
+    this.gateway,
+    this.dns,
+    this.autoSystemRoutingTable,
+    this.autoOutboundsInterface,
+  );
 
   factory XrayInboundTun.fromJson(Map<String, dynamic> json) =>
       _$XrayInboundTunFromJson(json);

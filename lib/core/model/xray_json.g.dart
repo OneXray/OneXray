@@ -305,6 +305,11 @@ XrayInboundTun _$XrayInboundTunFromJson(Map<String, dynamic> json) =>
     XrayInboundTun(
       json['name'] as String?,
       (json['mtu'] as num?)?.toInt(),
+      (json['gateway'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      (json['dns'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      (json['autoSystemRoutingTable'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
       json['autoOutboundsInterface'] as String?,
     );
 
@@ -312,6 +317,9 @@ Map<String, dynamic> _$XrayInboundTunToJson(XrayInboundTun instance) =>
     <String, dynamic>{
       'name': ?instance.name,
       'mtu': ?instance.mtu,
+      'gateway': ?instance.gateway,
+      'dns': ?instance.dns,
+      'autoSystemRoutingTable': ?instance.autoSystemRoutingTable,
       'autoOutboundsInterface': ?instance.autoOutboundsInterface,
     };
 

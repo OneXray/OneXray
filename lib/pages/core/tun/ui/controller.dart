@@ -72,13 +72,16 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
   }
 
   Future<void> editInterface(BuildContext context) async {
-    final params = NetworkInterfaceParams(state.tunSettingState.bindInterface);
+    final params = NetworkInterfaceParams(
+      state.tunSettingState.autoOutboundsInterface,
+      showAuto: true,
+    );
     final networkInterface = await context.pushScoped<String>(
       AppSecondaryDestination.networkInterface,
       extra: params,
     );
     if (networkInterface != null) {
-      state.tunSettingState.bindInterface = networkInterface;
+      state.tunSettingState.autoOutboundsInterface = networkInterface;
       emit(state._copy());
     }
   }

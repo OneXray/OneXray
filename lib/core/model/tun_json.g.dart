@@ -15,7 +15,7 @@ TunJson _$TunJsonFromJson(Map<String, dynamic> json) => TunJson(
   json['metricsEnabled'] as bool?,
   json['tunName'] as String?,
   (json['tunPriority'] as num?)?.toInt(),
-  json['bindInterface'] as String?,
+  json['autoOutboundsInterface'] as String?,
   json['onDemandEnabled'] as bool?,
   json['disconnectOnSleep'] as bool?,
   (json['onDemandRules'] as List<dynamic>?)
@@ -35,7 +35,7 @@ Map<String, dynamic> _$TunJsonToJson(TunJson instance) => <String, dynamic>{
   'metricsEnabled': ?instance.metricsEnabled,
   'tunName': ?instance.tunName,
   'tunPriority': ?instance.tunPriority,
-  'bindInterface': ?instance.bindInterface,
+  'autoOutboundsInterface': ?instance.autoOutboundsInterface,
   'onDemandEnabled': ?instance.onDemandEnabled,
   'disconnectOnSleep': ?instance.disconnectOnSleep,
   'onDemandRules': ?instance.onDemandRules?.map((e) => e.toJson()).toList(),

@@ -25,7 +25,7 @@ class PreferencesKey {
     await _prefs.setBool(_privacyAccepted, value);
   }
 
-  static const _firstRun = "firstRun01";
+  static const _firstRun = "firstRun02";
 
   Future<bool> readFirstRun() async {
     final value = await _prefs.getBool(_firstRun);

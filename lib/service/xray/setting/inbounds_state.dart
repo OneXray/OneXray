@@ -8,6 +8,7 @@ import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/service/xray/tun_route.dart';
 
 class InboundTunState {
   final listen = NetConstants.proxyHost;
@@ -57,16 +58,35 @@ class InboundTunState {
 class InboundTunSettingsState {
   final name = "OneXrayTun";
   final mtu = 1500;
+  var gateway = <String>[];
+  var dns = <String>[];
+  var autoSystemRoutingTable = <String>[];
   var autoOutboundsInterface = "";
 
   XrayInboundTun get xrayJson {
     final settings = XrayInboundTunStandard.standard;
     settings.name = name;
     settings.mtu = mtu;
+    if (gateway.isNotEmpty) {
+      settings.gateway = gateway;
+    }
+    if (dns.isNotEmpty) {
+      settings.dns = dns;
+    }
+    if (autoSystemRoutingTable.isNotEmpty) {
+      settings.autoSystemRoutingTable = autoSystemRoutingTable;
+    }
     if (autoOutboundsInterface.isNotEmpty) {
       settings.autoOutboundsInterface = autoOutboundsInterface;
     }
     return settings;
+  }
+
+  void applyRouteConfig(XrayTunRouteConfig config) {
+    gateway = config.gateway;
+    dns = config.dns;
+    autoSystemRoutingTable = config.autoSystemRoutingTable;
+    autoOutboundsInterface = config.autoOutboundsInterface ?? "";
   }
 }
 

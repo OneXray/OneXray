@@ -15,22 +15,26 @@ class FirstRunState {
   final SimpleCountry country;
   final List<NetworkInterface> interfaces;
   final String interface;
+  final bool enableIPv6;
 
   const FirstRunState({
     this.country = SimpleCountry.cn,
     this.interfaces = const [],
-    this.interface = "",
+    this.interface = TunSettingState.autoOutboundsInterfaceAuto,
+    this.enableIPv6 = true,
   });
 
   FirstRunState copyWith({
     SimpleCountry? country,
     List<NetworkInterface>? interfaces,
     String? interface,
+    bool? enableIPv6,
   }) {
     return FirstRunState(
       country: country ?? this.country,
       interfaces: interfaces ?? this.interfaces,
       interface: interface ?? this.interface,
+      enableIPv6: enableIPv6 ?? this.enableIPv6,
     );
   }
 }
@@ -42,11 +46,7 @@ class FirstRunController extends Cubit<FirstRunState> {
 
   Future<void> _readNetworkInterfaces() async {
     final interfaces = await queryInterfaceList();
-    String interfaceName = "";
-    if (interfaces.isNotEmpty) {
-      interfaceName = interfaces.first.name;
-    }
-    emit(state.copyWith(interfaces: interfaces, interface: interfaceName));
+    emit(state.copyWith(interfaces: interfaces));
   }
 
   void updateCountry(SimpleCountry? value) {
@@ -59,6 +59,10 @@ class FirstRunController extends Cubit<FirstRunState> {
     if (value != null) {
       emit(state.copyWith(interface: value));
     }
+  }
+
+  void updateEnableIPv6(bool value) {
+    emit(state.copyWith(enableIPv6: value));
   }
 
   Future<void> nextStep(BuildContext context) async {
@@ -79,10 +83,9 @@ class FirstRunController extends Cubit<FirstRunState> {
   }
 
   Future<void> _initTunSetting() async {
-    if (state.interface.isNotEmpty) {
-      final tunSetting = TunSettingState();
-      tunSetting.bindInterface = state.interface;
-      await tunSetting.saveToPreferences();
-    }
+    final tunSetting = TunSettingState();
+    tunSetting.autoOutboundsInterface = state.interface;
+    tunSetting.enableIPv6 = state.enableIPv6;
+    await tunSetting.saveToPreferences();
   }
 }

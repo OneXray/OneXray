@@ -4,9 +4,10 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/tun_setting/enum.dart';
 import 'package:onexray/service/tun_setting/interface.dart';
 import 'package:onexray/service/tun_setting/standart.dart';
-import 'package:onexray/core/tools/platform.dart';
 
 class TunSettingState {
+  static const autoOutboundsInterfaceAuto = "auto";
+
   // linux, windows
   final tunName = "OneXrayTun";
   var tunPriority = "20";
@@ -14,10 +15,10 @@ class TunSettingState {
   var tunDnsIPv6 = "2001:4860:4860::8888";
   var enableDot = false;
   var dnsServerName = "dns.google";
-  var enableIPv6 = false;
+  var enableIPv6 = true;
   var metricsEnabled = true;
 
-  var bindInterface = "";
+  var autoOutboundsInterface = autoOutboundsInterfaceAuto;
 
   var onDemandEnabled = false;
   var disconnectOnSleep = false;
@@ -54,8 +55,8 @@ class TunSettingState {
       metricsEnabled = tunJson.metricsEnabled!;
     }
 
-    if (EmptyTool.checkString(tunJson.bindInterface)) {
-      bindInterface = tunJson.bindInterface!;
+    if (EmptyTool.checkString(tunJson.autoOutboundsInterface)) {
+      autoOutboundsInterface = tunJson.autoOutboundsInterface!;
     }
 
     if (tunJson.onDemandEnabled != null) {
@@ -100,7 +101,7 @@ class TunSettingState {
     tunJson.enableIPv6 = enableIPv6;
     tunJson.metricsEnabled = metricsEnabled;
 
-    tunJson.bindInterface = bindInterface;
+    tunJson.autoOutboundsInterface = autoOutboundsInterface;
 
     tunJson.onDemandEnabled = onDemandEnabled;
     tunJson.disconnectOnSleep = disconnectOnSleep;
@@ -113,13 +114,13 @@ class TunSettingState {
     return tunJson;
   }
 
-  bool get shouldFixInterface {
-    return AppPlatform.isLinux || AppPlatform.isWindows;
+  bool get isAutoOutboundsInterface {
+    return autoOutboundsInterface == autoOutboundsInterfaceAuto;
   }
 
-  Future<String?> get networkInterface async {
-    if (bindInterface.isNotEmpty) {
-      return bindInterface;
+  Future<String?> get resolvedAutoOutboundsInterface async {
+    if (!isAutoOutboundsInterface) {
+      return autoOutboundsInterface;
     }
     final interfaces = await queryInterfaceList();
     if (interfaces.isNotEmpty) {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_sniffing/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_tun/params.dart';
+import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
+import 'package:onexray/service/xray/tun_route.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
 class InboundTunCubitState {
@@ -25,8 +28,19 @@ class InboundTunController extends Cubit<InboundTunCubitState> {
     _initParams();
   }
 
-  void _initParams() {
-    emit(InboundTunCubitState(tunState: params.state, version: 1));
+  Future<void> _initParams() async {
+    final tunState = params.state;
+    final tunSettingState = TunSettingState();
+    await tunSettingState.readFromPreferences();
+    final resolvedAutoOutboundsInterface = AppPlatform.isLinux
+        ? await tunSettingState.resolvedAutoOutboundsInterface
+        : null;
+    final config = XrayTunRouteConfig.fromTunSetting(
+      tunSettingState,
+      resolvedAutoOutboundsInterface: resolvedAutoOutboundsInterface,
+    );
+    tunState.settings.applyRouteConfig(config);
+    emit(InboundTunCubitState(tunState: tunState, version: 1));
   }
 
   Future<void> editSniffing(BuildContext context) async {

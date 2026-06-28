@@ -10,6 +10,7 @@ import 'package:onexray/service/xray/setting/log_state.dart';
 import 'package:onexray/service/xray/setting/state.dart';
 import 'package:onexray/service/xray/setting/state_reader.dart';
 import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/service/xray/tun_route.dart';
 
 extension XraySettingStateWriter on XraySettingState {
   XrayJson get xrayJson {
@@ -39,18 +40,23 @@ extension XraySettingStateWriter on XraySettingState {
     fixInboundsPort(ports);
     await _fixSystemExtensionLogs();
 
-    if (tunSettingState.shouldFixInterface) {
-      final networkInterface = await tunSettingState.networkInterface;
+    if (AppPlatform.isWindows) {
+      _removeSettingInterface();
+      _applyTunRouteConfig(tunSettingState);
+    } else if (AppPlatform.isLinux) {
+      final networkInterface =
+          await tunSettingState.resolvedAutoOutboundsInterface;
       if (networkInterface != null) {
         _fixSettingInterface(networkInterface);
-        tunSettingState.bindInterface = networkInterface;
       } else {
         _removeSettingInterface();
-        tunSettingState.bindInterface = "";
       }
+      _applyTunRouteConfig(
+        tunSettingState,
+        resolvedAutoOutboundsInterface: networkInterface,
+      );
     } else {
       _removeSettingInterface();
-      tunSettingState.bindInterface = "";
     }
 
     return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
@@ -74,9 +80,6 @@ extension XraySettingStateWriter on XraySettingState {
         outbound.interface = interface;
       }
     }
-    if (!EmptyTool.checkString(inbounds.tun.settings.autoOutboundsInterface)) {
-      inbounds.tun.settings.autoOutboundsInterface = interface;
-    }
   }
 
   void _removeSettingInterface() {
@@ -86,6 +89,20 @@ extension XraySettingStateWriter on XraySettingState {
       outbound.interface = "";
     }
     inbounds.tun.settings.autoOutboundsInterface = "";
+    inbounds.tun.settings.gateway = [];
+    inbounds.tun.settings.dns = [];
+    inbounds.tun.settings.autoSystemRoutingTable = [];
+  }
+
+  void _applyTunRouteConfig(
+    TunSettingState tunSettingState, {
+    String? resolvedAutoOutboundsInterface,
+  }) {
+    final config = XrayTunRouteConfig.fromTunSetting(
+      tunSettingState,
+      resolvedAutoOutboundsInterface: resolvedAutoOutboundsInterface,
+    );
+    inbounds.tun.settings.applyRouteConfig(config);
   }
 
   void fixInboundsPort(XrayPorts ports) {

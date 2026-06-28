@@ -18,7 +18,7 @@ class TunJson {
   // linux
   int? tunPriority;
   // linux, windows
-  String? bindInterface;
+  String? autoOutboundsInterface;
 
   // apple
   bool? onDemandEnabled;
@@ -38,7 +38,7 @@ class TunJson {
     this.metricsEnabled,
     this.tunName,
     this.tunPriority,
-    this.bindInterface,
+    this.autoOutboundsInterface,
     this.onDemandEnabled,
     this.disconnectOnSleep,
     this.onDemandRules,

@@ -55,7 +55,7 @@ extension TunSettingStateValidator on TunSettingState {
     tunDnsIPv6 = tunDnsIPv6.removeWhitespace;
     dnsServerName = dnsServerName.removeWhitespace;
 
-    bindInterface = bindInterface.removeWhitespace;
+    autoOutboundsInterface = autoOutboundsInterface.removeWhitespace;
 
     for (final rule in onDemandRules) {
       rule.removeWhitespace();

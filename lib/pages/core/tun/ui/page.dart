@@ -238,6 +238,7 @@ class TunSettingContent extends StatelessWidget {
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6,
+      subtitle: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6Tip,
       value: state.tunSettingState.enableIPv6,
       onChanged: (value) => controller.updateEnableIPv6(value),
     );
@@ -273,7 +274,7 @@ class TunSettingContent extends StatelessWidget {
   ) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.tunSettingUIPageInterface,
-      value: state.tunSettingState.bindInterface,
+      value: state.tunSettingState.autoOutboundsInterface,
       onTap: () => controller.editInterface(context),
     );
   }
