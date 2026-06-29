@@ -3,11 +3,12 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:isolate_manager/isolate_manager.dart';
 import 'package:onexray/core/ffi/generated_bindings.dart';
-import 'package:onexray/core/ffi/model_reader.dart';
-import 'package:onexray/core/ffi/model_writer.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
+import 'package:onexray/core/tools/empty.dart';
+import 'package:onexray/core/tools/json.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/localizations/service.dart';
@@ -34,10 +35,9 @@ abstract class BaseFfiApi {
     await updateVpnStatus(VpnStatus.connecting);
 
     final request = await StartVpnRequestReader.readFromStartFile();
-    final coreConfig = RunXrayConfigReader.readFromStartVpnRequest(request);
-    final configPath = await coreConfig.writeToFile();
+    final coreRequest = _readRunXrayRequest(request);
 
-    var res = await startCore(configPath);
+    var res = await startCore(coreRequest);
     if (!res) {
       await stopVpn();
       return _commandFailed(appLocalizationsNoContext().vpnCoreStartFailed);
@@ -46,7 +46,17 @@ abstract class BaseFfiApi {
     return _commandSuccess();
   }
 
-  Future<bool> startCore(String configPath) async {
+  RunXrayRequest _readRunXrayRequest(StartVpnRequest request) {
+    if (!EmptyTool.checkString(request.coreBase64Text)) {
+      return RunXrayRequest(null, null);
+    }
+    final runXrayRequestMap =
+        JsonTool.decodeBase64ToJson(request.coreBase64Text!)
+            as Map<String, dynamic>;
+    return RunXrayRequest.fromJson(runXrayRequestMap);
+  }
+
+  Future<bool> startCore(RunXrayRequest request) async {
     return true;
   }
 

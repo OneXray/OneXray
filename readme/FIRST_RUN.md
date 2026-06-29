@@ -35,23 +35,23 @@ cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-In
 
 The `.example` files are enough for local development. Replace them with your own config later if you need to test real Firebase behavior.
 
-## 2. Prepare libXray artifacts
+## 2. Prepare libXray and Xray-core artifacts
 
-Local OneXray debugging depends on artifacts built from the sibling `libXray` repository. The main outputs from `libXray/build` are:
+Local OneXray debugging depends on artifacts built from the sibling `libXray` and `Xray-core` repositories. The main outputs are:
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`, `libXray-sources.jar`
-- Linux: `linux_so/libXray.so`, `bin/xray`
-- Windows: `windows_dll/libXray.dll`, `bin/xray.exe`
+- Linux: `linux_so/libXray.so` and an Xray-core CLI renamed to `OneXrayCore`
+- Windows: `windows_dll/libXray.dll` and an Xray-core CLI renamed to `OneXrayCore.exe`
 
-Build the required targets in `libXray` first:
+Build the required targets in `libXray` first. These commands use the sibling `Xray-core` checkout:
 
 ```shell
 cd ../libXray
-python3 build/main.py apple go
-python3 build/main.py android
-python3 build/main.py linux
-python3 build/main.py windows
+python3 build/main.py apple go local
+python3 build/main.py android local
+python3 build/main.py linux local
+python3 build/main.py windows local
 ```
 
 Then copy the artifacts into the corresponding OneXray directories.
@@ -78,22 +78,22 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` links `libXray.so` from `linux/app/` and installs `OneXrayCore` into the final bundle. Copy the Linux artifacts into `linux/app/`, and rename `bin/xray` to match OneXray's expected name:
+`linux/app.cmake` links `libXray.so` from `linux/app/` and installs `OneXrayCore` into the final bundle. Copy `libXray.so`, then build Xray-core into OneXray's expected filename:
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-cp ../libXray/bin/xray linux/app/OneXrayCore
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 ### Windows
 
-`windows/app.cmake` installs `libXray.dll` and `OneXrayCore.exe` from `windows/app/`. Copy the Windows artifacts into `windows/app/`, and rename `bin/xray.exe` to match OneXray's expected name:
+`windows/app.cmake` installs `libXray.dll` and `OneXrayCore.exe` from `windows/app/`. Copy `libXray.dll`, then build Xray-core into OneXray's expected filename:
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 > `windows/app.cmake` also packages `wintun.dll`. That file does not come from `libXray` and must be prepared separately in the Windows development environment.

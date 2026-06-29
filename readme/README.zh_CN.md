@@ -52,19 +52,19 @@ sudo apt remove onexray
 
 ### 内核升级
 
-在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core 。您可按照 [libXray](https://github.com/XTLS/libXray) 中的指引，使用 build 脚本进行编译。
+在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core。libXray 只提供动态库，`OneXrayCore` 需要从 Xray-core CLI 单独编译。
 
 #### Linux
 
 将 `OneXray/lib/libXray.so` 替换为 libXray 的编译产物 `linux_so/libXray.so` 。
 
-将 `OneXray/bin/OneXrayCore` 替换为 libXray 的编译产物 `bin/xray` 。
+将 `OneXray/bin/OneXrayCore` 替换为 Xray-core CLI 的编译产物。
 
 #### Windows
 
 将 `OneXray/libXray.dll` 替换为 libXray 的编译产物 `windows_dll/libXray.dll` 。
 
-将 `OneXray/bin/OneXrayCore.exe` 替换为 libXray 的编译产物 `bin/xray.exe` 。
+将 `OneXray/bin/OneXrayCore.exe` 替换为 Xray-core CLI 的编译产物。
 
 ## 贡献
 

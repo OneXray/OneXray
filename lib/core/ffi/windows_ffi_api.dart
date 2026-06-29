@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:tuple/tuple.dart';
@@ -22,17 +23,39 @@ class WindowsFfiApi extends BaseFfiApi {
   HANDLE? _coreProcess;
 
   @override
-  Future<bool> startCore(String configPath) async {
-    final result = _runCommand(
-      Tuple3("runas", corePath, "-configPath ${_quoteArg(configPath)}"),
-    );
-    if (!result.item1) {
-      final errorCode = GetLastError();
-      ygLogger("Start core failed. errorCode=$errorCode");
+  Future<bool> startCore(RunXrayRequest request) async {
+    try {
+      final xrayConfigPath = request.configPath;
+      final datDir = request.datDir;
+      if (xrayConfigPath == null || xrayConfigPath.isEmpty) {
+        ygLogger("start core failed: configPath is empty");
+        return false;
+      }
+      if (datDir == null || datDir.isEmpty) {
+        ygLogger("start core failed: datDir is empty");
+        return false;
+      }
+
+      final envArg = "XRAY_LOCATION_ASSET=$datDir";
+      final parameters = <String>[
+        "run",
+        "-config",
+        _quoteArg(xrayConfigPath),
+        "--env",
+        _quoteArg(envArg),
+      ].join(" ");
+      final result = _runCommand(Tuple3("runas", corePath, parameters));
+      if (!result.item1) {
+        final errorCode = GetLastError();
+        ygLogger("Start core failed. errorCode=$errorCode");
+        return false;
+      }
+      _coreProcess = result.item2;
+      ygLogger("Core process started with handle: $_coreProcess");
+    } catch (e) {
+      ygLogger("start core failed: $e");
       return false;
     }
-    _coreProcess = result.item2;
-    ygLogger("Core process started with handle: $_coreProcess");
 
     await Future.delayed(Duration(seconds: 1));
     return true;

@@ -38,21 +38,14 @@
 #     APPLE_GOOGLE_SERVICE_INFO_PLIST_BASE64      shared by iOS + MAS macOS (same bundle id net.yuandev.onexray)
 #     MACOS_SE_GOOGLE_SERVICE_INFO_PLIST_BASE64   for the SE build  (swift/macOSSE/GoogleService-Info.plist)
 #
-#   AdMob (forwarded to Dart as --dart-define; App IDs consumed by Android
-#   manifestPlaceholders / iOS Info.plist build setting):
-#     ADMOB_APP_ID_ANDROID
-#     ADMOB_APP_ID_IOS
-#     ADMOB_AD_UNIT_ID_ANDROID
-#     ADMOB_AD_UNIT_ID_IOS
-#
 # Layout:
-#   build_scripts/app/builder.py#build_core expects XTLS/libXray to live as a
-#   sibling of this repo. Every job therefore checks out this repo to
-#   `OneXray/` and libXray to `libXray/` at the workspace root. Xray-core is
-#   resolved by libXray's pinned Go module dependency for libXray itself, while
-#   Windows/Linux app packages download official Xray-core release binaries for
-#   runtime. fastforge/fastlane/flutter all produce their outputs under
-#   `<workspace>/output`.
+#   build_scripts/app/builder.py#build_core expects XTLS/libXray and
+#   XTLS/Xray-core to live as siblings of this repo. Every job therefore checks
+#   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
+#   `Xray-core/` at the workspace root. libXray is built with local Xray-core,
+#   and Windows/Linux app packages compile OneXrayCore directly from that same
+#   sibling Xray-core checkout. fastforge/fastlane/flutter all produce their
+#   outputs under `<workspace>/output`.
 
 name: Build
 
@@ -72,6 +65,8 @@ env:
   PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
   LIBXRAY_REF: main
+  XRAY_CORE_REPOSITORY: XTLS/Xray-core
+  XRAY_CORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -115,6 +110,12 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
+
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
+          ref: ${{ env.XRAY_CORE_REF }}
+          path: Xray-core
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -171,9 +172,6 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          ADMOB_APP_ID_IOS: ${{ secrets.ADMOB_APP_ID_IOS }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray ios
 
       - name: Upload artifact
@@ -202,6 +200,12 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
+
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
+          ref: ${{ env.XRAY_CORE_REF }}
+          path: Xray-core
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -268,8 +272,6 @@ jobs:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
           FASTLANE_MAS_INSTALLER_CERT: ${{ secrets.FASTLANE_MAS_INSTALLER_CERT }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray macos
 
   # =================================================================
@@ -292,6 +294,12 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
+
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
+          ref: ${{ env.XRAY_CORE_REF }}
+          path: Xray-core
 
       - name: Select latest stable Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -348,8 +356,6 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray macos_se
 
       - name: Upload artifact
@@ -378,6 +384,12 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
+
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
+          ref: ${{ env.XRAY_CORE_REF }}
+          path: Xray-core
 
       - uses: actions/setup-java@v5
         with:
@@ -442,10 +454,6 @@ jobs:
         run: sudo gem install fastlane --no-document
 
       - name: Build & upload
-        env:
-          ADMOB_APP_ID_ANDROID: ${{ secrets.ADMOB_APP_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray android
 
       - name: Upload artifact
@@ -479,6 +487,12 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
+          ref: ${{ env.XRAY_CORE_REF }}
+          path: Xray-core
+
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -508,10 +522,10 @@ jobs:
           echo "$LOCALAPPDATA/Pub/Cache/bin" >> "$GITHUB_PATH"
 
       - name: Build
-        env:
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python build_scripts/main.py OneXray windows
+
+      - name: Verify core CLI
+        run: ./windows/app/OneXrayCore.exe help run | grep -- "--env"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -556,6 +570,12 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
+          ref: ${{ env.XRAY_CORE_REF }}
+          path: Xray-core
+
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -594,10 +614,10 @@ jobs:
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
       - name: Build
-        env:
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray linux
+
+      - name: Verify core CLI
+        run: ./linux/app/OneXrayCore help run | grep -- "--env"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

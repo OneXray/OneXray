@@ -1,6 +1,7 @@
 import os
 import platform
 import shutil
+import subprocess
 
 import yaml
 
@@ -14,6 +15,9 @@ from app.command_line import (
 )
 from app.config import PROJECT_CONFIG
 
+XRAY_CORE_DIR_NAME = "Xray-core"
+LOCAL_XRAY_CORE_ARG = "local"
+
 
 class Builder(object):
     def __init__(
@@ -26,6 +30,7 @@ class Builder(object):
         self.system = system
         self.project_dir = os.path.join(build_scripts_dir, "..", system)
         self.output_dir = os.path.join(build_scripts_dir, "..", "..", "output")
+        self.workspace_dir = os.path.abspath(os.path.join(self.output_dir, ".."))
 
         self.fastlane = "deploy"
 
@@ -56,6 +61,7 @@ class Builder(object):
         cmd = [python_command(), "build/main.py", cmd_system]
         if cmd_system == "apple":
             cmd.append("go")
+        cmd.append(LOCAL_XRAY_CORE_ARG)
 
         run_command(cmd)
 
@@ -80,21 +86,38 @@ class Builder(object):
         check_and_delete_dir(dat_dst_path)
         shutil.copytree(dat_src_path, dat_dst_path, symlinks=True)
 
-        self.copy_core_binary(lib_dir)
+        self.build_core_binary()
 
-    def copy_core_binary(self, lib_dir: str):
-        bin_src_key = f"core.bin.src.file.{self.system}"
+    def build_core_binary(self):
         bin_dst_key = f"core.bin.dst.file.{self.system}"
-        if (
-            bin_src_key not in self.project_config
-            or bin_dst_key not in self.project_config
-        ):
+        if bin_dst_key not in self.project_config:
             return
 
-        bin_src_path = os.path.join(lib_dir, self.project_config[bin_src_key])
+        xray_core_dir = os.path.join(self.workspace_dir, XRAY_CORE_DIR_NAME)
+        if not os.path.isdir(xray_core_dir):
+            raise Exception(f"Xray-core dir not found: {xray_core_dir}")
+
         bin_dst_path = os.path.join(self.project_dir, self.project_config[bin_dst_key])
         check_and_create_dir(os.path.dirname(bin_dst_path))
-        shutil.copy2(bin_src_path, bin_dst_path)
+
+        run_env = get_env()
+        run_env["CGO_ENABLED"] = "0"
+        cmd = [
+            "go",
+            "build",
+            "-o",
+            bin_dst_path,
+            "-trimpath",
+            "-buildvcs=false",
+            "-ldflags=-s -w -buildid=",
+            "-v",
+            "./main",
+        ]
+        print(cmd)
+        ret = subprocess.run(cmd, cwd=xray_core_dir, env=run_env)
+        if ret.returncode != 0:
+            raise Exception("build Xray-core binary failed")
+
         if self.system != "windows":
             os.chmod(bin_dst_path, 0o755)
 

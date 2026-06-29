@@ -51,19 +51,19 @@ sudo apt remove onexray
 
 ### Обновление ядра
 
-На Linux и Windows вы можете самостоятельно обновить или заменить Xray-core. Его можно собрать build-скриптом по инструкциям из [libXray](https://github.com/XTLS/libXray).
+На Linux и Windows вы можете самостоятельно обновить или заменить Xray-core. libXray теперь предоставляет только динамическую библиотеку, а `OneXrayCore` нужно собирать отдельно из Xray-core CLI.
 
 #### Linux
 
 Замените `OneXray/lib/libXray.so` на артефакт libXray `linux_so/libXray.so`.
 
-Замените `OneXray/bin/OneXrayCore` на артефакт libXray `bin/xray`.
+Замените `OneXray/bin/OneXrayCore` на собранный Xray-core CLI.
 
 #### Windows
 
 Замените `OneXray/libXray.dll` на артефакт libXray `windows_dll/libXray.dll`.
 
-Замените `OneXray/bin/OneXrayCore.exe` на артефакт libXray `bin/xray.exe`.
+Замените `OneXray/bin/OneXrayCore.exe` на собранный Xray-core CLI.
 
 ## Участие
 
