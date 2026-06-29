@@ -25,55 +25,14 @@ class XrayRawFix {
       ports.metricsPort = "";
     }
 
-    if (AppPlatform.isWindows) {
+    if (AppPlatform.isWindows || AppPlatform.isLinux) {
       _removeConfigInterface(jsonMap);
       _applyRawTunRouteConfig(
         jsonMap,
         XrayTunRouteConfig.fromTunSetting(tunSettingState),
       );
-    } else if (AppPlatform.isLinux) {
-      final networkInterface =
-          await tunSettingState.resolvedAutoOutboundsInterface;
-      if (networkInterface != null) {
-        _fixConfigInterface(jsonMap, networkInterface);
-      } else {
-        _removeConfigInterface(jsonMap);
-      }
-      _applyRawTunRouteConfig(
-        jsonMap,
-        XrayTunRouteConfig.fromTunSetting(
-          tunSettingState,
-          resolvedAutoOutboundsInterface: networkInterface,
-        ),
-      );
     } else {
       _removeConfigInterface(jsonMap);
-    }
-  }
-
-  static void _fixConfigInterface(
-    Map<String, dynamic> jsonMap,
-    String interfaceName,
-  ) {
-    final List<dynamic>? outbounds = jsonMap["outbounds"];
-    if (outbounds == null) {
-      return;
-    }
-    for (final outbound in outbounds) {
-      final Map<String, dynamic>? streamSettings = outbound["streamSettings"];
-      if (streamSettings != null) {
-        final Map<String, dynamic>? sockopt = streamSettings["sockopt"];
-        if (sockopt != null) {
-          sockopt["interface"] = interfaceName;
-        } else {
-          streamSettings["sockopt"] = <String, dynamic>{
-            "interface": interfaceName,
-          };
-        }
-      } else {
-        final sockopt = <String, dynamic>{"interface": interfaceName};
-        outbound["streamSettings"] = <String, dynamic>{"sockopt": sockopt};
-      }
     }
   }
 

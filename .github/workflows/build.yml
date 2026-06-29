@@ -49,8 +49,10 @@
 #   build_scripts/app/builder.py#build_core expects XTLS/libXray to live as a
 #   sibling of this repo. Every job therefore checks out this repo to
 #   `OneXray/` and libXray to `libXray/` at the workspace root. Xray-core is
-#   resolved by libXray's pinned Go module dependency; fastforge/fastlane/flutter
-#   all produce their outputs under `<workspace>/output`.
+#   resolved by libXray's pinned Go module dependency for libXray itself, while
+#   Windows/Linux app packages download official Xray-core release binaries for
+#   runtime. fastforge/fastlane/flutter all produce their outputs under
+#   `<workspace>/output`.
 
 name: Build
 

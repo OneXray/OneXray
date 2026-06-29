@@ -1,9 +1,17 @@
+import 'dart:io';
+
 import 'package:onexray/core/ffi/model.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
 
 extension RunXrayConfigReader on RunXrayConfig {
+  static Future<RunXrayConfig> readFromFile(String path) async {
+    final data = await File(path).readAsString();
+    final configMap = JsonTool.decoder.convert(data) as Map<String, dynamic>;
+    return RunXrayConfig.fromJson(configMap);
+  }
+
   static RunXrayConfig readFromStartVpnRequest(StartVpnRequest request) {
     if (!EmptyTool.checkString(request.coreBase64Text)) {
       return RunXrayConfig(null, null, null, null, null, null);

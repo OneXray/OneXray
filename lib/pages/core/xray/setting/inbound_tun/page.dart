@@ -98,19 +98,19 @@ class InboundTunPage extends StatelessWidget {
           title: AppLocalizations.of(context)!.inboundTunPageSettingsMTU,
           value: "${state.tunState.settings.mtu}",
         ),
-        if (AppPlatform.isWindows)
+        if (AppPlatform.isWindows || AppPlatform.isLinux)
           SettingRow(
             title: AppLocalizations.of(context)!.inboundTunPageSettingsGateway,
             value: _formatList(state.tunState.settings.gateway),
             valueMaxLines: 3,
           ),
-        if (AppPlatform.isWindows)
+        if (AppPlatform.isWindows || AppPlatform.isLinux)
           SettingRow(
             title: AppLocalizations.of(context)!.inboundTunPageSettingsDns,
             value: _formatList(state.tunState.settings.dns),
             valueMaxLines: 3,
           ),
-        if (AppPlatform.isWindows)
+        if (AppPlatform.isWindows || AppPlatform.isLinux)
           SettingRow(
             title: AppLocalizations.of(
               context,

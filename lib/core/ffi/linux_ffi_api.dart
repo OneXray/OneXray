@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
+import 'package:onexray/core/ffi/model_reader.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
@@ -52,10 +53,28 @@ class LinuxFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> startCore(String configPath) async {
-    final command = <String>[corePath, "-configPath", configPath];
-    final process = await _processManager.start(command);
-    _bindProcess(process);
-    _coreProcess = process.pid;
+    try {
+      final config = await RunXrayConfigReader.readFromFile(configPath);
+      final xrayConfigPath = config.configPath;
+      if (xrayConfigPath == null || xrayConfigPath.isEmpty) {
+        return false;
+      }
+      final command = <String>[corePath, "run", "-config", xrayConfigPath];
+      final environment = <String, String>{
+        if (config.datDir != null && config.datDir!.isNotEmpty)
+          "XRAY_LOCATION_ASSET": config.datDir!,
+      };
+      final process = await _processManager.start(
+        command,
+        environment: environment,
+        includeParentEnvironment: true,
+      );
+      _bindProcess(process);
+      _coreProcess = process.pid;
+    } catch (e) {
+      ygLogger("start core failed: $e");
+      return false;
+    }
 
     await Future.delayed(Duration(seconds: 1));
 

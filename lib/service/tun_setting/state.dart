@@ -2,7 +2,6 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/tun_setting/enum.dart';
-import 'package:onexray/service/tun_setting/interface.dart';
 import 'package:onexray/service/tun_setting/standart.dart';
 
 class TunSettingState {
@@ -112,21 +111,6 @@ class TunSettingState {
     tunJson.disallowAppList = disallowAppList.toList();
 
     return tunJson;
-  }
-
-  bool get isAutoOutboundsInterface {
-    return autoOutboundsInterface == autoOutboundsInterfaceAuto;
-  }
-
-  Future<String?> get resolvedAutoOutboundsInterface async {
-    if (!isAutoOutboundsInterface) {
-      return autoOutboundsInterface;
-    }
-    final interfaces = await queryInterfaceList();
-    if (interfaces.isNotEmpty) {
-      return interfaces.first.name;
-    }
-    return null;
   }
 }
 

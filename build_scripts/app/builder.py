@@ -7,7 +7,10 @@ import yaml
 from app.command_line import (
     check_and_create_dir,
     check_and_delete_dir,
+    download_file,
     get_env,
+    is_amd64,
+    is_arm64,
     run_command,
     python_command,
     fastforge_command,
@@ -73,25 +76,57 @@ class Builder(object):
             else:
                 shutil.copy(lib_src_path, lib_dst_path)
 
-        bin_src_key = f"core.bin.src.file.{self.system}"
-        if bin_src_key in self.project_config:
-            bin_src_path = os.path.join(
-                lib_dir,
-                self.project_config[bin_src_key],
-            )
-            bin_dst_file_key = f"core.bin.dst.file.{self.system}"
-            bin_dst_path = os.path.join(
-                self.project_dir,
-                self.project_config[bin_dst_file_key],
-            )
-            shutil.copy(bin_src_path, bin_dst_path)
-
         dat_src_path = os.path.join(lib_dir, "dat")
         dat_dst_path = os.path.join(
             self.project_dir, self.project_config["core.dat.dst.dir"]
         )
         check_and_delete_dir(dat_dst_path)
         shutil.copytree(dat_src_path, dat_dst_path, symlinks=True)
+
+        self.download_xray_core_binary()
+
+    def download_xray_core_binary(self):
+        bin_dst_file_key = f"core.bin.dst.file.{self.system}"
+        if bin_dst_file_key not in self.project_config:
+            return
+
+        asset_name = self.xray_core_asset_name()
+        version = self.project_config["xray_core.version"]
+        url = (
+            "https://github.com/XTLS/Xray-core/releases/download/"
+            f"{version}/{asset_name}"
+        )
+
+        zip_path = os.path.join(self.output_dir, asset_name)
+        extract_dir = os.path.join(self.output_dir, f"xray-core-{self.system}")
+        check_and_delete_dir(extract_dir)
+        check_and_create_dir(extract_dir)
+        download_file(url, zip_path)
+        shutil.unpack_archive(zip_path, extract_dir)
+
+        binary_name = "xray.exe" if self.system == "windows" else "xray"
+        bin_src_path = os.path.join(extract_dir, binary_name)
+        bin_dst_path = os.path.join(
+            self.project_dir,
+            self.project_config[bin_dst_file_key],
+        )
+        check_and_create_dir(os.path.dirname(bin_dst_path))
+        shutil.copy2(bin_src_path, bin_dst_path)
+        if self.system != "windows":
+            os.chmod(bin_dst_path, 0o755)
+
+    def xray_core_asset_name(self) -> str:
+        if self.system == "windows":
+            if not is_amd64():
+                raise Exception("official Windows Xray-core binary only supports x64")
+            return "Xray-windows-64.zip"
+        if self.system == "linux":
+            if is_amd64():
+                return "Xray-linux-64.zip"
+            if is_arm64():
+                return "Xray-linux-arm64-v8a.zip"
+            raise Exception("official Linux Xray-core binary only supports x64/arm64")
+        raise Exception(f"official Xray-core binary not supported for {self.system}")
 
     def split_file_path(self, root_path: str, file_path: str) -> str:
         path_parts = file_path.split("/")

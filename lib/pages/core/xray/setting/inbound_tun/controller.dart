@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_sniffing/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_tun/params.dart';
 import 'package:onexray/service/tun_setting/state.dart';
@@ -32,13 +31,7 @@ class InboundTunController extends Cubit<InboundTunCubitState> {
     final tunState = params.state;
     final tunSettingState = TunSettingState();
     await tunSettingState.readFromPreferences();
-    final resolvedAutoOutboundsInterface = AppPlatform.isLinux
-        ? await tunSettingState.resolvedAutoOutboundsInterface
-        : null;
-    final config = XrayTunRouteConfig.fromTunSetting(
-      tunSettingState,
-      resolvedAutoOutboundsInterface: resolvedAutoOutboundsInterface,
-    );
+    final config = XrayTunRouteConfig.fromTunSetting(tunSettingState);
     tunState.settings.applyRouteConfig(config);
     emit(InboundTunCubitState(tunState: tunState, version: 1));
   }

@@ -8,10 +8,10 @@ class XrayTunRouteConfig {
   static const _autoSystemRoutingTableKey = "autoSystemRoutingTable";
   static const _autoOutboundsInterfaceKey = "autoOutboundsInterface";
 
-  static const windowsIPv4Gateway = "198.18.0.1/15";
-  static const windowsIPv6Gateway = "fc00::1/64";
-  static const windowsIPv4Route = "0.0.0.0/0";
-  static const windowsIPv6Route = "::/0";
+  static const tunIPv4Gateway = "198.18.0.1/15";
+  static const tunIPv6Gateway = "fc00::1/64";
+  static const tunIPv4Route = "0.0.0.0/0";
+  static const tunIPv6Route = "::/0";
 
   final List<String> gateway;
   final List<String> dns;
@@ -25,52 +25,29 @@ class XrayTunRouteConfig {
     this.autoOutboundsInterface,
   });
 
-  factory XrayTunRouteConfig.fromTunSetting(
-    TunSettingState state, {
-    String? resolvedAutoOutboundsInterface,
-  }) {
-    final autoOutboundsInterface = _autoOutboundsInterface(
-      state,
-      resolvedAutoOutboundsInterface,
-    );
-    if (!AppPlatform.isWindows) {
-      return XrayTunRouteConfig(
-        autoOutboundsInterface: AppPlatform.isLinux
-            ? autoOutboundsInterface
-            : null,
-      );
+  factory XrayTunRouteConfig.fromTunSetting(TunSettingState state) {
+    if (!AppPlatform.isWindows && !AppPlatform.isLinux) {
+      return const XrayTunRouteConfig();
     }
 
-    final gateway = <String>[windowsIPv4Gateway];
+    final gateway = <String>[tunIPv4Gateway];
     final dns = <String>[if (state.tunDnsIPv4.isNotEmpty) state.tunDnsIPv4];
-    final autoSystemRoutingTable = <String>[windowsIPv4Route];
+    final autoSystemRoutingTable = <String>[tunIPv4Route];
 
     if (state.enableIPv6) {
-      gateway.add(windowsIPv6Gateway);
+      gateway.add(tunIPv6Gateway);
       if (state.tunDnsIPv6.isNotEmpty) {
         dns.add(state.tunDnsIPv6);
       }
-      autoSystemRoutingTable.add(windowsIPv6Route);
+      autoSystemRoutingTable.add(tunIPv6Route);
     }
 
     return XrayTunRouteConfig(
       gateway: gateway,
       dns: dns,
       autoSystemRoutingTable: autoSystemRoutingTable,
-      autoOutboundsInterface: autoOutboundsInterface,
+      autoOutboundsInterface: state.autoOutboundsInterface,
     );
-  }
-
-  static String _autoOutboundsInterface(
-    TunSettingState state,
-    String? resolvedAutoOutboundsInterface,
-  ) {
-    if (AppPlatform.isLinux &&
-        state.isAutoOutboundsInterface &&
-        resolvedAutoOutboundsInterface != null) {
-      return resolvedAutoOutboundsInterface;
-    }
-    return state.autoOutboundsInterface;
   }
 
   void applyToXrayInboundTun(XrayInboundTun settings) {

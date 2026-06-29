@@ -562,8 +562,8 @@
 				EB957B012FE43DA200DCB90D /* zh-Hant */,
 			);
 			name = MainMenu.xib;
-			path = Runner;
-			sourceTree = "<group>";
+			path = ../swift/macOS;
+			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXVariantGroup section */
 
