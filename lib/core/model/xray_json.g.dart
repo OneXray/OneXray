@@ -279,6 +279,50 @@ Map<String, dynamic> _$XrayInboundToJson(XrayInbound instance) =>
       'sniffing': ?instance.sniffing?.toJson(),
     };
 
+XrayInboundAccount _$XrayInboundAccountFromJson(Map<String, dynamic> json) =>
+    XrayInboundAccount(json['user'] as String?, json['pass'] as String?);
+
+Map<String, dynamic> _$XrayInboundAccountToJson(XrayInboundAccount instance) =>
+    <String, dynamic>{'user': ?instance.user, 'pass': ?instance.pass};
+
+XrayInboundSocksSettings _$XrayInboundSocksSettingsFromJson(
+  Map<String, dynamic> json,
+) => XrayInboundSocksSettings(
+  json['auth'] as String?,
+  json['udp'] as bool?,
+  (json['accounts'] as List<dynamic>?)
+      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$XrayInboundSocksSettingsToJson(
+  XrayInboundSocksSettings instance,
+) => <String, dynamic>{
+  'auth': ?instance.auth,
+  'udp': ?instance.udp,
+  'accounts': ?instance.accounts?.map((e) => e.toJson()).toList(),
+};
+
+XrayInboundHttpSettings _$XrayInboundHttpSettingsFromJson(
+  Map<String, dynamic> json,
+) => XrayInboundHttpSettings(
+  json['allowTransparent'] as bool?,
+  (json['accounts'] as List<dynamic>?)
+      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  (json['users'] as List<dynamic>?)
+      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$XrayInboundHttpSettingsToJson(
+  XrayInboundHttpSettings instance,
+) => <String, dynamic>{
+  'allowTransparent': ?instance.allowTransparent,
+  'accounts': ?instance.accounts?.map((e) => e.toJson()).toList(),
+  'users': ?instance.users?.map((e) => e.toJson()).toList(),
+};
+
 XrayInboundSniffing _$XrayInboundSniffingFromJson(
   Map<String, dynamic> json,
 ) => XrayInboundSniffing(

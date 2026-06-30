@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/core/xray/setting/inbound_proxy/controller.dart';
-import 'package:onexray/pages/core/xray/setting/inbound_proxy/params.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_socks/controller.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_socks/params.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
-class InboundProxyPage extends StatelessWidget {
-  final InboundProxyParams params;
+class InboundSocksPage extends StatelessWidget {
+  final InboundSocksParams params;
 
-  const InboundProxyPage({super.key, required this.params});
+  const InboundSocksPage({super.key, required this.params});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => InboundProxyController(params),
-      child: BlocBuilder<InboundProxyController, InboundProxyCubitState>(
+      create: (_) => InboundSocksController(params),
+      child: BlocBuilder<InboundSocksController, InboundSocksCubitState>(
         builder: (context, state) {
-          final controller = context.read<InboundProxyController>();
+          final controller = context.read<InboundSocksController>();
           return Scaffold(
             appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.inboundProxyPageTitle),
+              title: Text(AppLocalizations.of(context)!.inboundSocksPageTitle),
             ),
             body: SafeArea(child: _body(context, controller, state)),
           );
@@ -34,8 +34,8 @@ class InboundProxyPage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    InboundProxyController controller,
-    InboundProxyCubitState state,
+    InboundSocksController controller,
+    InboundSocksCubitState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -62,8 +62,8 @@ class InboundProxyPage extends StatelessWidget {
 
   Widget _listenSection(
     BuildContext context,
-    InboundProxyController controller,
-    InboundProxyCubitState state,
+    InboundSocksController controller,
+    InboundSocksCubitState state,
   ) {
     final localizations = AppLocalizations.of(context)!;
     return SettingSection(
@@ -71,7 +71,7 @@ class InboundProxyPage extends StatelessWidget {
       children: [
         SettingRow(
           title: localizations.inboundProxyPageListen,
-          value: state.proxyState.listen,
+          value: state.socksState.listen,
         ),
         TextFieldSettingRow(
           controller: controller.portController,
@@ -80,13 +80,17 @@ class InboundProxyPage extends StatelessWidget {
         ),
         SettingRow(
           title: localizations.inboundProxyPageProtocol,
-          value: state.proxyState.protocol.name,
+          value: state.socksState.protocol.name,
+        ),
+        SettingRow(
+          title: localizations.inboundProxyPageUdp,
+          value: localizations.switchEnabled,
         ),
       ],
     );
   }
 
-  Widget _authSection(BuildContext context, InboundProxyController controller) {
+  Widget _authSection(BuildContext context, InboundSocksController controller) {
     final localizations = AppLocalizations.of(context)!;
     return SettingSection(
       title: localizations.inboundProxyPageAuth,
@@ -103,13 +107,13 @@ class InboundProxyPage extends StatelessWidget {
     );
   }
 
-  Widget _tagSection(BuildContext context, InboundProxyCubitState state) {
+  Widget _tagSection(BuildContext context, InboundSocksCubitState state) {
     return SettingSection(
       title: "",
       children: [
         SettingRow(
           title: AppLocalizations.of(context)!.inboundProxyPageTag,
-          value: state.proxyState.tag.name,
+          value: state.socksState.tag.name,
         ),
       ],
     );
@@ -117,7 +121,7 @@ class InboundProxyPage extends StatelessWidget {
 
   Widget _bottomButton(
     BuildContext context,
-    InboundProxyController controller,
+    InboundSocksController controller,
   ) {
     return BottomView(
       child: Row(

@@ -296,6 +296,47 @@ class XrayInbound {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayInboundAccount {
+  String? user;
+  String? pass;
+
+  XrayInboundAccount(this.user, this.pass);
+
+  factory XrayInboundAccount.fromJson(Map<String, dynamic> json) =>
+      _$XrayInboundAccountFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayInboundAccountToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayInboundSocksSettings {
+  String? auth;
+  bool? udp;
+  List<XrayInboundAccount>? accounts;
+
+  XrayInboundSocksSettings(this.auth, this.udp, this.accounts);
+
+  factory XrayInboundSocksSettings.fromJson(Map<String, dynamic> json) =>
+      _$XrayInboundSocksSettingsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayInboundSocksSettingsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayInboundHttpSettings {
+  bool? allowTransparent;
+  List<XrayInboundAccount>? accounts;
+  List<XrayInboundAccount>? users;
+
+  XrayInboundHttpSettings(this.allowTransparent, this.accounts, this.users);
+
+  factory XrayInboundHttpSettings.fromJson(Map<String, dynamic> json) =>
+      _$XrayInboundHttpSettingsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayInboundHttpSettingsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayInboundSniffing {
   bool? enabled;
   bool? routeOnly;

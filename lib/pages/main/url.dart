@@ -34,10 +34,12 @@ import 'package:onexray/pages/core/xray/setting/dns_server/page.dart';
 import 'package:onexray/pages/core/xray/setting/dns_server/params.dart';
 import 'package:onexray/pages/core/xray/setting/fake_dns/page.dart';
 import 'package:onexray/pages/core/xray/setting/fake_dns/params.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_http/page.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_http/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_ping/page.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_ping/params.dart';
-import 'package:onexray/pages/core/xray/setting/inbound_proxy/page.dart';
-import 'package:onexray/pages/core/xray/setting/inbound_proxy/params.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_socks/page.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_socks/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_sniffing/page.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_sniffing/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_tun/page.dart';
@@ -374,11 +376,19 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     ),
   ),
   _route(
-    AppSecondaryDestination.inboundProxy,
-    (_, state) => _withExtra<InboundProxyParams>(
+    AppSecondaryDestination.inboundSocks,
+    (_, state) => _withExtra<InboundSocksParams>(
       state,
-      AppSecondaryDestination.inboundProxy,
-      (params) => InboundProxyPage(params: params),
+      AppSecondaryDestination.inboundSocks,
+      (params) => InboundSocksPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.inboundHttp,
+    (_, state) => _withExtra<InboundHttpParams>(
+      state,
+      AppSecondaryDestination.inboundHttp,
+      (params) => InboundHttpPage(params: params),
     ),
   ),
   _route(

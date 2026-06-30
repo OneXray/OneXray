@@ -1,31 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/pages/core/xray/setting/inbound_proxy/params.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_http/params.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/toast/service.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 
-class InboundProxyCubitState {
-  final InboundLocalProxyState proxyState;
+class InboundHttpCubitState {
+  final InboundHttpState httpState;
 
-  const InboundProxyCubitState({required this.proxyState});
+  const InboundHttpCubitState({required this.httpState});
 
-  factory InboundProxyCubitState.initial() => InboundProxyCubitState(
-    proxyState: InboundLocalProxyState(
-      protocol: XrayInboundProtocol.socks,
-      tag: RoutingInboundTag.socksIn,
-      defaultPort: "11024",
-    ),
-  );
+  factory InboundHttpCubitState.initial() =>
+      InboundHttpCubitState(httpState: InboundHttpState());
 }
 
-class InboundProxyController extends Cubit<InboundProxyCubitState> {
-  final InboundProxyParams params;
+class InboundHttpController extends Cubit<InboundHttpCubitState> {
+  final InboundHttpParams params;
 
-  InboundProxyController(this.params)
-    : super(InboundProxyCubitState.initial()) {
+  InboundHttpController(this.params) : super(InboundHttpCubitState.initial()) {
     _initParams();
   }
 
@@ -38,7 +31,7 @@ class InboundProxyController extends Cubit<InboundProxyCubitState> {
     portController.text = state.port;
     userController.text = state.user;
     passController.text = state.pass;
-    emit(InboundProxyCubitState(proxyState: state));
+    emit(InboundHttpCubitState(httpState: state));
   }
 
   void save(BuildContext context) {
@@ -50,12 +43,12 @@ class InboundProxyController extends Cubit<InboundProxyCubitState> {
       );
       return;
     }
-    final proxyState = state.proxyState;
-    proxyState.port = port;
-    proxyState.user = userController.text.trim();
-    proxyState.pass = passController.text.trim();
-    proxyState.removeWhitespace();
-    context.pop<InboundLocalProxyState>(proxyState);
+    final httpState = state.httpState;
+    httpState.port = port;
+    httpState.user = userController.text.trim();
+    httpState.pass = passController.text.trim();
+    httpState.removeWhitespace();
+    context.pop<InboundHttpState>(httpState);
   }
 
   @override

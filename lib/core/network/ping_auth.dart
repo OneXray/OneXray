@@ -10,11 +10,6 @@ export 'package:onexray/core/pigeon/model.dart' show PingAuth;
 extension PingAuthNetwork on PingAuth {
   bool get isValid => user?.isNotEmpty == true && pass?.isNotEmpty == true;
 
-  Map<String, dynamic> get xrayUser => <String, dynamic>{
-    "user": user ?? "",
-    "pass": pass ?? "",
-  };
-
   String proxyUrl(String port) {
     final parsedPort = int.tryParse(port);
     if (!isValid || parsedPort == null) {

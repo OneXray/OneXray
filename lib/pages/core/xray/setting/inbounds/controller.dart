@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_http/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_ping/params.dart';
-import 'package:onexray/pages/core/xray/setting/inbound_proxy/params.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_socks/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_tun/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbounds/params.dart';
 import 'package:onexray/service/localizations/service.dart';
@@ -42,9 +43,9 @@ class InboundsController extends Cubit<int> {
   }
 
   Future<void> editSocks(BuildContext context) async {
-    final params = InboundProxyParams(_inboundsState.socks);
-    final socks = await context.pushScoped<InboundLocalProxyState>(
-      AppSecondaryDestination.inboundProxy,
+    final params = InboundSocksParams(_inboundsState.socks);
+    final socks = await context.pushScoped<InboundSocksState>(
+      AppSecondaryDestination.inboundSocks,
       extra: params,
     );
     if (socks != null) {
@@ -53,9 +54,9 @@ class InboundsController extends Cubit<int> {
   }
 
   Future<void> editHttp(BuildContext context) async {
-    final params = InboundProxyParams(_inboundsState.http);
-    final http = await context.pushScoped<InboundLocalProxyState>(
-      AppSecondaryDestination.inboundProxy,
+    final params = InboundHttpParams(_inboundsState.http);
+    final http = await context.pushScoped<InboundHttpState>(
+      AppSecondaryDestination.inboundHttp,
       extra: params,
     );
     if (http != null) {
