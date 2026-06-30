@@ -15,13 +15,22 @@
 | 平台 | 要求 | 下载 |
 | --- | --- | --- |
 | iOS | iOS 15.0 及以上，arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)、[IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS | macOS 12.0 及以上，Apple silicon 或 Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)、[Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| macOS | macOS 12.0 及以上，Apple silicon 或 Intel | Mac App Store：[App Store](https://apps.apple.com/us/app/onexray/id6745748773)<br>Homebrew / Universal ZIP（OneXraySE）：`brew install --cask onexrayse`、[Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 及以上，arm32、arm64 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray)、[Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
 | Windows | Windows 10 或 Windows 11，x86_64 | [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
 ## 使用注意
+
+### macOS
+
+Mac App Store 版本是单独的商店包。Homebrew 和 Universal ZIP 使用同一个 Developer ID `macos_se` 包，安装的 App 为 `OneXraySE.app`。
+
+```shell
+brew install --cask onexrayse
+brew uninstall --cask onexrayse
+```
 
 ### iOS
 
@@ -52,19 +61,19 @@ sudo apt remove onexray
 
 ### 内核升级
 
-在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core。libXray 只提供动态库，`OneXrayCore` 需要从 Xray-core CLI 单独编译。
+在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core。libXray 只需要编译动态库，`OneXrayCore` 直接使用 Xray-core 官方 release 二进制。
 
 #### Linux
 
 将 `OneXray/lib/libXray.so` 替换为 libXray 的编译产物 `linux_so/libXray.so` 。
 
-将 `OneXray/bin/OneXrayCore` 替换为 Xray-core CLI 的编译产物。
+下载 Xray-core 官方 Linux release 二进制，将 `xray` 重命名为 `OneXrayCore`，然后替换 `OneXray/bin/OneXrayCore`。
 
 #### Windows
 
 将 `OneXray/libXray.dll` 替换为 libXray 的编译产物 `windows_dll/libXray.dll` 。
 
-将 `OneXray/bin/OneXrayCore.exe` 替换为 Xray-core CLI 的编译产物。
+下载 Xray-core 官方 Windows release 二进制，将 `xray.exe` 重命名为 `OneXrayCore.exe`，然后替换 `OneXray/bin/OneXrayCore.exe`。
 
 ## 贡献
 

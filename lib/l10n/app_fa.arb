@@ -389,7 +389,7 @@
     "outboundUIPageMaxConcurrentTryExample": "4",
     "qrcodePageTitle": "اسکن QRCode",
     "subscriptionAddPageTitle": "لینک اشتراک",
-    "subscriptionAddPageSection": "پشتیبانی از لینک VMessAEAD/VLESS، Clash.Meta، Hysteria 2 URI و XrayJson",
+    "subscriptionAddPageSection": "پشتیبانی از لینک VMessAEAD/VLESS، Clash / Mihomo، Hysteria 2 URI و XrayJson",
     "subscriptionAddPageName": "نام",
     "subscriptionAddPageUrl": "نشانی اینترنتی",
     "subscriptionAddPageUrlExample": "https://example.com/sub.txt",

@@ -389,7 +389,7 @@
   "outboundUIPageMaxConcurrentTryExample": "4",
   "qrcodePageTitle": "Сканировать QR-код",
   "subscriptionAddPageTitle": "Подписка",
-  "subscriptionAddPageSection": "Поддержка VMessAEAD/VLESS, Clash.Meta, Hysteria 2 URI и XrayJson",
+  "subscriptionAddPageSection": "Поддержка VMessAEAD/VLESS, Clash / Mihomo, Hysteria 2 URI и XrayJson",
   "subscriptionAddPageName": "Имя",
   "subscriptionAddPageUrl": "Ссылка",
   "subscriptionAddPageUrlExample": "https://example.com/sub.txt",

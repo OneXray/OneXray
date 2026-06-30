@@ -389,7 +389,7 @@
   "outboundUIPageMaxConcurrentTryExample": "4",
   "qrcodePageTitle": "扫描二维码",
   "subscriptionAddPageTitle": "订阅",
-  "subscriptionAddPageSection": "支持 VMessAEAD/VLESS, Clash.Meta, Hysteria 2 URI 和 XrayJson",
+  "subscriptionAddPageSection": "支持 VMessAEAD/VLESS, Clash / Mihomo, Hysteria 2 URI 和 XrayJson",
   "subscriptionAddPageName": "名称",
   "subscriptionAddPageUrl": "链接",
   "subscriptionAddPageUrlExample": "https://example.com/sub.txt",
