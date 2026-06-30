@@ -52,10 +52,11 @@ class LinuxFfiApi extends BaseFfiApi {
   var _coreProcess = 0;
 
   @override
-  Future<bool> startCore(RunXrayRequest request) async {
+  Future<bool> startCore(LibXrayRunConfig request) async {
     try {
-      final xrayConfigPath = request.configPath;
-      final datDir = request.datDir;
+      final xrayConfigPath = request.request.configPath;
+      final datDir = request.env?.assetLocation;
+      final certDir = request.env?.certLocation ?? datDir;
       if (xrayConfigPath == null || xrayConfigPath.isEmpty) {
         ygLogger("start core failed: configPath is empty");
         return false;
@@ -71,8 +72,11 @@ class LinuxFfiApi extends BaseFfiApi {
         "-config",
         xrayConfigPath,
         "--env",
-        "XRAY_LOCATION_ASSET=$datDir",
+        "xray.location.asset=$datDir",
       ];
+      if (certDir != null && certDir.isNotEmpty) {
+        command.addAll(["--env", "xray.location.cert=$certDir"]);
+      }
       ygLogger("Running command: ${command.join(" ")}");
       final process = await _processManager.start(command);
       _bindProcess(process);

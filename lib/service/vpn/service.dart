@@ -448,13 +448,13 @@ final class VpnService {
 
     await _clearXrayLog();
 
-    final coreBase64Text = await _makeRunXrayRequest(configPath);
-    if (coreBase64Text == null) {
+    final coreInvokeText = await _makeRunXrayRequest(configPath);
+    if (coreInvokeText == null) {
       return _commandFailed(appLocalizationsNoContext().vpnStartRequestFailed);
     }
 
     return _makeVpnRequestAndStart(
-      coreBase64Text,
+      coreInvokeText,
       runDir,
       ports,
       tunSettingState,
@@ -584,7 +584,7 @@ final class VpnService {
   }
 
   Future<NativeVpnCommandResult> _makeVpnRequestAndStart(
-    String coreBase64Text,
+    String coreInvokeText,
     String runDir,
     XrayPorts port,
     TunSettingState tunSettingState,
@@ -599,7 +599,7 @@ final class VpnService {
       port.pingPort,
       port.pingAuth,
       port.metricsPort,
-      coreBase64Text,
+      coreInvokeText,
     );
     await request.writeToStartFile();
 
@@ -609,10 +609,15 @@ final class VpnService {
   }
 
   Future<String?> _makeRunXrayRequest(String configPath) async {
-    final xrayParam = RunXrayRequest(VpnConstants.datDir, configPath).toJson();
-
-    final coreBase64Text = JsonTool.encodeJsonToBase64(xrayParam);
-    return coreBase64Text;
+    final request = LibXrayInvokeRequest(
+      method: LibXrayMethod.runXray,
+      env: LibXrayEnvJson(
+        assetLocation: VpnConstants.datDir,
+        certLocation: VpnConstants.datDir,
+      ),
+      payload: RunXrayRequest(configPath),
+    );
+    return JsonTool.encoderForDb.convert(request.toJson());
   }
 
   Future<void> retryConnectivityTest() {

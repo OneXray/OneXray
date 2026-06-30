@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
@@ -96,7 +94,12 @@ class AppHostApi {
 
   Future<List<int>> getFreePorts(int num) async {
     try {
-      final res = await _getFreePorts(num);
+      final res = await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.getFreePorts,
+          payload: GetFreePortsRequest(num),
+        ),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
@@ -111,20 +114,14 @@ class AppHostApi {
     return [];
   }
 
-  Future<String> _getFreePorts(int num) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().getFreePorts(num);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().getFreePorts(num);
-    } else {
-      return _api.getFreePorts(num);
-    }
-  }
-
   Future<XrayJson> convertShareLinksToXrayJson(String text) async {
     try {
-      final request = encodeStringRequest(text);
-      final res = await _convertShareLinksToXrayJson(request);
+      final res = await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.convertShareLinksToXrayJson,
+          payload: ConvertShareLinksToXrayJsonRequest(text),
+        ),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
@@ -139,21 +136,15 @@ class AppHostApi {
     return XrayJsonStandard.standard;
   }
 
-  Future<String> _convertShareLinksToXrayJson(String base64Text) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().convertShareLinksToXrayJson(base64Text);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().convertShareLinksToXrayJson(base64Text);
-    } else {
-      return _api.convertShareLinksToXrayJson(base64Text);
-    }
-  }
-
   Future<String> convertXrayJsonToShareLinks(XrayJson xrayJson) async {
     try {
-      final requestMap = xrayJson.toJson();
-      final base64Text = JsonTool.encodeJsonToBase64(requestMap);
-      final res = await _convertXrayJsonToShareLinks(base64Text);
+      final xrayJsonText = JsonTool.encoderForDb.convert(xrayJson.toJson());
+      final res = await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.convertXrayJsonToShareLinks,
+          payload: ConvertXrayJsonToShareLinksRequest(xrayJsonText),
+        ),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
@@ -167,21 +158,18 @@ class AppHostApi {
     return "";
   }
 
-  Future<String> _convertXrayJsonToShareLinks(String base64Text) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().convertXrayJsonToShareLinks(base64Text);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().convertXrayJsonToShareLinks(base64Text);
-    } else {
-      return _api.convertXrayJsonToShareLinks(base64Text);
-    }
-  }
-
-  Future<String> countGeoData(CountGeoDataRequest request) async {
+  Future<String> countGeoData(
+    String datDir,
+    CountGeoDataRequest request,
+  ) async {
     try {
-      final requestMap = request.toJson();
-      final base64Text = JsonTool.encodeJsonToBase64(requestMap);
-      final res = await _countGeoData(base64Text);
+      final res = await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.countGeoData,
+          env: _datEnv(datDir),
+          payload: request,
+        ),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
@@ -196,47 +184,6 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<String> _countGeoData(String base64Text) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().countGeoData(base64Text);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().countGeoData(base64Text);
-    } else {
-      return _api.countGeoData(base64Text);
-    }
-  }
-
-  Future<ReadGeoFilesResponse> readGeoFiles(String base64Text) async {
-    try {
-      final res = await _readGeoFiles(base64Text);
-      final resp = parseCallResponse(res);
-      if (resp.success != null) {
-        if (resp.success!) {
-          final data = resp.data as Map<String, dynamic>;
-          final geoFiles = ReadGeoFilesResponse.fromJson(data);
-          return geoFiles;
-        } else {
-          if (resp.error != null) {
-            return ReadGeoFilesResponse(null, null);
-          }
-        }
-      }
-    } catch (e) {
-      ygLogger("$e");
-    }
-    return ReadGeoFilesResponse(null, null);
-  }
-
-  Future<String> _readGeoFiles(String base64Text) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().readGeoFiles(base64Text);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().readGeoFiles(base64Text);
-    } else {
-      return _api.readGeoFiles(base64Text);
-    }
-  }
-
   Future<int> ping(
     String datDir,
     String configPath,
@@ -245,15 +192,13 @@ class AppHostApi {
     String proxy,
   ) async {
     try {
-      final request = PingRequest(
-        datDir,
-        configPath,
-        timeout,
-        url,
-        proxy,
-      ).toJson();
-      final base64Text = JsonTool.encodeJsonToBase64(request);
-      final res = await _ping(base64Text);
+      final res = await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.ping,
+          env: _datEnv(datDir),
+          payload: PingRequest(configPath, timeout, url, proxy),
+        ),
+      );
       final resp = parseCallResponse(res);
       ygLogger(
         "ping result sucess:${resp.success} data:${resp.data} error:${resp.error}",
@@ -268,21 +213,15 @@ class AppHostApi {
     return PingDelayConstants.unknown;
   }
 
-  Future<String> _ping(String base64Text) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().ping(base64Text);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().ping(base64Text);
-    } else {
-      return _api.ping(base64Text);
-    }
-  }
-
   Future<String> testXray(String datDir, String configPath) async {
     try {
-      final request = RunXrayRequest(datDir, configPath).toJson();
-      final base64Text = JsonTool.encodeJsonToBase64(request);
-      final res = await _testXray(base64Text);
+      final res = await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.testXray,
+          env: _datEnv(datDir),
+          payload: RunXrayRequest(configPath),
+        ),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
@@ -299,21 +238,15 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<String> _testXray(String base64Text) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().testXray(base64Text);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().testXray(base64Text);
-    } else {
-      return _api.testXray(base64Text);
-    }
-  }
-
   Future<String> runXray(String datDir, String configPath) async {
     try {
-      final request = RunXrayRequest(datDir, configPath).toJson();
-      final base64Text = JsonTool.encodeJsonToBase64(request);
-      final res = await _runXray(base64Text);
+      final res = await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.runXray,
+          env: _datEnv(datDir),
+          payload: RunXrayRequest(configPath),
+        ),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
@@ -326,21 +259,13 @@ class AppHostApi {
       }
     } catch (_) {}
     return _errorResult;
-  }
-
-  Future<String> _runXray(String base64Text) async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().runXray(base64Text);
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().runXray(base64Text);
-    } else {
-      return _api.runXray(base64Text);
-    }
   }
 
   Future<String> stopXray() async {
     try {
-      final res = await _stopXray();
+      final res = await _invoke(
+        LibXrayInvokeRequest(method: LibXrayMethod.stopXray),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
@@ -355,19 +280,11 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<String> _stopXray() async {
-    if (AppPlatform.isLinux) {
-      return LinuxFfiApi().stopXray();
-    } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().stopXray();
-    } else {
-      return _api.stopXray();
-    }
-  }
-
   Future<String> xrayVersion() async {
     try {
-      final res = await _xrayVersion();
+      final res = await _invoke(
+        LibXrayInvokeRequest(method: LibXrayMethod.xrayVersion),
+      );
       final resp = parseCallResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
@@ -378,26 +295,25 @@ class AppHostApi {
     return "";
   }
 
-  Future<String> _xrayVersion() async {
+  Future<String> _invoke(LibXrayInvokeRequest request) async {
+    final requestJson = JsonTool.encoderForDb.convert(request.toJson());
     if (AppPlatform.isLinux) {
-      return LinuxFfiApi().xrayVersion();
+      return LinuxFfiApi().invoke(requestJson);
     } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().xrayVersion();
+      return WindowsFfiApi().invoke(requestJson);
     } else {
-      return _api.xrayVersion();
+      return _api.invoke(requestJson);
     }
   }
 
   CallResponse parseCallResponse(String res) {
-    final data = JsonTool.decodeBase64ToJson(res);
+    final data = JsonTool.decoder.convert(res);
     final resp = CallResponse.fromJson(data);
     return resp;
   }
 
-  String encodeStringRequest(String request) {
-    final data = utf8.encode(request);
-    final base64Text = base64Encode(data);
-    return base64Text;
+  LibXrayEnvJson _datEnv(String datDir) {
+    return LibXrayEnvJson(assetLocation: datDir, certLocation: datDir);
   }
 
   // android

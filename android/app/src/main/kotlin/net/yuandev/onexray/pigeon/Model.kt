@@ -42,5 +42,5 @@ data class StartVpnRequest(
     val tun: TunJson?,
     val pingPort: String?,
     val metricsPort: String?,
-    val coreBase64Text: String?,
+    val coreInvokeText: String?,
 )

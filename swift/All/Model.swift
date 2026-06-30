@@ -39,7 +39,7 @@ struct StartVpnRequest: Codable {
     var tun: TunJson?
     var pingPort: String?
     var metricsPort: String?
-    var coreBase64Text: String?
+    var coreInvokeText: String?
 
     private static func fromUrl(_ url: URL) throws -> Self {
         let data = try Data(contentsOf: url)
@@ -70,7 +70,7 @@ struct CallResponse: Codable, Hashable {
             let text = String(cString: res)
             free(res)
 
-            if let data = Data(base64Encoded: text) {
+            if let data = text.data(using: .utf8) {
                 do {
                     let decoder = JSONDecoder()
                     let model = try decoder.decode(self, from: data)
