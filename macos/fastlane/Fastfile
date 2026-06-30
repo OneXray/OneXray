@@ -8,6 +8,8 @@ end
 
 platform :mac do
   lane :deploy do
+    ENV['FIREBASE_ANALYTICS_WITHOUT_ADID'] = 'true'
+
     installer_cert_name = ENV.fetch('FASTLANE_MAS_INSTALLER_CERT')
 
     api_key = app_store_connect_api_key(

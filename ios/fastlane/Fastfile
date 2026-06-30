@@ -8,6 +8,8 @@ end
 
 platform :ios do
   lane :deploy do
+    ENV['FIREBASE_ANALYTICS_WITHOUT_ADID'] = 'true'
+
     api_key = app_store_connect_api_key(
       key_id: ENV.fetch('FASTLANE_ASC_KEY_ID'),
       issuer_id: ENV.fetch('FASTLANE_ASC_ISSUER_ID'),
