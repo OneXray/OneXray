@@ -88,7 +88,7 @@ final class ShareService {
   }
 
   Future<void> pickFile() async {
-    final textFiles = <String>["txt", "json", "yaml"];
+    final textFiles = <String>["txt", "json", "yaml", "yml"];
     final imageFiles = <String>["png", "jpg", "jpeg"];
     final allowedExtensions = <String>[];
     allowedExtensions.addAll(textFiles);
