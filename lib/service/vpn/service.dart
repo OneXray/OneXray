@@ -8,6 +8,7 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -772,7 +773,7 @@ final class VpnService {
         assetLocation: VpnConstants.datDir,
         certLocation: VpnConstants.datDir,
       ),
-      payload: RunXrayRequest(configPath),
+      payload: RunXrayRequest(configPath).toJson(),
     );
     return JsonTool.encoderForDb.convert(request.toJson());
   }
@@ -837,7 +838,7 @@ final class VpnService {
     int testId,
     String port,
     String url,
-    PingAuth? auth,
+    XrayInboundAccount? auth,
   ) async {
     final delay = await NetClient().ping(port, url, auth);
     if (!_isConnectivityTestCurrent(testId)) {
@@ -854,7 +855,7 @@ final class VpnService {
   Future<void> _runGeoLocationProbe(
     int testId,
     String port,
-    PingAuth? auth,
+    XrayInboundAccount? auth,
   ) async {
     final location = await NetClient().geoLocation(port, auth);
     if (!_isConnectivityTestCurrent(testId)) {

@@ -48,7 +48,7 @@ class NetClient {
   );
 
   String _proxyPort = "${NetConstants.defaultPingPort}";
-  PingAuth? _proxyAuth;
+  XrayInboundAccount? _proxyAuth;
 
   String get _proxy {
     return "PROXY ${NetConstants.proxyHost}:$_proxyPort";
@@ -64,7 +64,7 @@ class NetClient {
 
   static const _connectivityRetryCount = 3;
 
-  Future<int?> ping(String port, String url, [PingAuth? auth]) async {
+  Future<int?> ping(String port, String url, [XrayInboundAccount? auth]) async {
     if (url.trim().isEmpty) {
       return null;
     }
@@ -92,7 +92,10 @@ class NetClient {
     return null;
   }
 
-  Future<GeoLocation?> geoLocation(String port, [PingAuth? auth]) async {
+  Future<GeoLocation?> geoLocation(
+    String port, [
+    XrayInboundAccount? auth,
+  ]) async {
     _proxyPort = port;
     _proxyAuth = auth?.isValid == true ? auth : null;
     for (var i = 0; i < _connectivityRetryCount; i++) {

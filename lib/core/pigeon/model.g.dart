@@ -14,7 +14,9 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
       json['pingPort'] as String?,
       json['pingAuth'] == null
           ? null
-          : PingAuth.fromJson(json['pingAuth'] as Map<String, dynamic>),
+          : XrayInboundAccount.fromJson(
+              json['pingAuth'] as Map<String, dynamic>,
+            ),
       json['metricsPort'] as String?,
       json['coreInvokeText'] as String?,
     );
@@ -28,26 +30,21 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
       'coreInvokeText': ?instance.coreInvokeText,
     };
 
-PingAuth _$PingAuthFromJson(Map<String, dynamic> json) =>
-    PingAuth(json['user'] as String?, json['pass'] as String?);
-
-Map<String, dynamic> _$PingAuthToJson(PingAuth instance) => <String, dynamic>{
-  'user': ?instance.user,
-  'pass': ?instance.pass,
-};
-
-CallResponse _$CallResponseFromJson(Map<String, dynamic> json) => CallResponse(
+LibXrayInvokeResponse _$LibXrayInvokeResponseFromJson(
+  Map<String, dynamic> json,
+) => LibXrayInvokeResponse(
   json['success'] as bool?,
-  json['data'],
+  json['data'] as Map<String, dynamic>?,
   json['error'] as String?,
 );
 
-Map<String, dynamic> _$CallResponseToJson(CallResponse instance) =>
-    <String, dynamic>{
-      'success': ?instance.success,
-      'data': ?instance.data,
-      'error': ?instance.error,
-    };
+Map<String, dynamic> _$LibXrayInvokeResponseToJson(
+  LibXrayInvokeResponse instance,
+) => <String, dynamic>{
+  'success': ?instance.success,
+  'data': ?instance.data,
+  'error': ?instance.error,
+};
 
 GetFreePortsResponse _$GetFreePortsResponseFromJson(
   Map<String, dynamic> json,
@@ -58,6 +55,35 @@ GetFreePortsResponse _$GetFreePortsResponseFromJson(
 Map<String, dynamic> _$GetFreePortsResponseToJson(
   GetFreePortsResponse instance,
 ) => <String, dynamic>{'ports': ?instance.ports};
+
+ConvertXrayJsonToShareLinksResponse
+_$ConvertXrayJsonToShareLinksResponseFromJson(Map<String, dynamic> json) =>
+    ConvertXrayJsonToShareLinksResponse(json['links'] as String?);
+
+Map<String, dynamic> _$ConvertXrayJsonToShareLinksResponseToJson(
+  ConvertXrayJsonToShareLinksResponse instance,
+) => <String, dynamic>{'links': ?instance.links};
+
+PingResponse _$PingResponseFromJson(Map<String, dynamic> json) =>
+    PingResponse((json['delay'] as num?)?.toInt());
+
+Map<String, dynamic> _$PingResponseToJson(PingResponse instance) =>
+    <String, dynamic>{'delay': ?instance.delay};
+
+XrayVersionResponse _$XrayVersionResponseFromJson(Map<String, dynamic> json) =>
+    XrayVersionResponse(json['version'] as String?);
+
+Map<String, dynamic> _$XrayVersionResponseToJson(
+  XrayVersionResponse instance,
+) => <String, dynamic>{'version': ?instance.version};
+
+GetXrayStateResponse _$GetXrayStateResponseFromJson(
+  Map<String, dynamic> json,
+) => GetXrayStateResponse(json['running'] as bool?);
+
+Map<String, dynamic> _$GetXrayStateResponseToJson(
+  GetXrayStateResponse instance,
+) => <String, dynamic>{'running': ?instance.running};
 
 CountGeoDataRequest _$CountGeoDataRequestFromJson(Map<String, dynamic> json) =>
     CountGeoDataRequest(json['name'] as String?, json['geoType'] as String?);
@@ -130,7 +156,7 @@ LibXrayInvokeRequest _$LibXrayInvokeRequestFromJson(
   env: json['env'] == null
       ? null
       : LibXrayEnvJson.fromJson(json['env'] as Map<String, dynamic>),
-  payload: json['payload'],
+  payload: json['payload'] as Map<String, dynamic>?,
 )..apiVersion = (json['apiVersion'] as num?)?.toInt();
 
 Map<String, dynamic> _$LibXrayInvokeRequestToJson(
@@ -179,10 +205,10 @@ Map<String, dynamic> _$ConvertXrayJsonToShareLinksRequestToJson(
   ConvertXrayJsonToShareLinksRequest instance,
 ) => <String, dynamic>{'xrayJson': ?instance.xrayJson};
 
-RunXrayFromJsonRequest _$RunXrayFromJsonRequestFromJson(
+RunXrayFromJSONRequest _$RunXrayFromJSONRequestFromJson(
   Map<String, dynamic> json,
-) => RunXrayFromJsonRequest(json['configJSON'] as String?);
+) => RunXrayFromJSONRequest(json['configJSON'] as String?);
 
-Map<String, dynamic> _$RunXrayFromJsonRequestToJson(
-  RunXrayFromJsonRequest instance,
+Map<String, dynamic> _$RunXrayFromJSONRequestToJson(
+  RunXrayFromJSONRequest instance,
 ) => <String, dynamic>{'configJSON': ?instance.configJSON};

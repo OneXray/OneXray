@@ -199,7 +199,7 @@ class InboundPingState {
   var port = VpnConstants.randomPort;
   final protocol = XrayInboundProtocol.http;
   final tag = RoutingInboundTag.pingIn;
-  PingAuth? auth;
+  XrayInboundAccount? auth;
 
   XrayInbound get xrayJson {
     final inbound = XrayInboundStandard.standard;
@@ -404,7 +404,7 @@ class InboundsState {
 class XrayPorts {
   String pingPort;
   String metricsPort;
-  final PingAuth pingAuth;
+  final XrayInboundAccount pingAuth;
 
   XrayPorts(this.pingPort, this.metricsPort, this.pingAuth);
 
@@ -420,7 +420,7 @@ class XrayPorts {
         return XrayPorts(
           "${filtered[0]}",
           "${filtered[1]}",
-          PingAuthFactory.random(),
+          XrayInboundAccountFactory.random(),
         );
       }
     }

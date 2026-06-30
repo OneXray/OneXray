@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/tools/json.dart';
 
@@ -8,7 +9,7 @@ part 'model.g.dart';
 class StartVpnRequest {
   TunJson? tun;
   String? pingPort;
-  PingAuth? pingAuth;
+  XrayInboundAccount? pingAuth;
   String? metricsPort;
   String? coreInvokeText;
 
@@ -27,30 +28,17 @@ class StartVpnRequest {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class PingAuth {
-  String? user;
-  String? pass;
-
-  PingAuth(this.user, this.pass);
-
-  factory PingAuth.fromJson(Map<String, dynamic> json) =>
-      _$PingAuthFromJson(json);
-
-  Map<String, dynamic> toJson() => _$PingAuthToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class CallResponse {
+class LibXrayInvokeResponse {
   bool? success;
-  dynamic data;
+  Map<String, dynamic>? data;
   String? error;
 
-  CallResponse(this.success, this.data, this.error);
+  LibXrayInvokeResponse(this.success, this.data, this.error);
 
-  factory CallResponse.fromJson(Map<String, dynamic> json) =>
-      _$CallResponseFromJson(json);
+  factory LibXrayInvokeResponse.fromJson(Map<String, dynamic> json) =>
+      _$LibXrayInvokeResponseFromJson(json);
 
-  Map<String, dynamic> toJson() => _$CallResponseToJson(this);
+  Map<String, dynamic> toJson() => _$LibXrayInvokeResponseToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -63,6 +51,56 @@ class GetFreePortsResponse {
       _$GetFreePortsResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$GetFreePortsResponseToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class ConvertXrayJsonToShareLinksResponse {
+  String? links;
+
+  ConvertXrayJsonToShareLinksResponse(this.links);
+
+  factory ConvertXrayJsonToShareLinksResponse.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ConvertXrayJsonToShareLinksResponseFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$ConvertXrayJsonToShareLinksResponseToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class PingResponse {
+  int? delay;
+
+  PingResponse(this.delay);
+
+  factory PingResponse.fromJson(Map<String, dynamic> json) =>
+      _$PingResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PingResponseToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayVersionResponse {
+  String? version;
+
+  XrayVersionResponse(this.version);
+
+  factory XrayVersionResponse.fromJson(Map<String, dynamic> json) =>
+      _$XrayVersionResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayVersionResponseToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class GetXrayStateResponse {
+  bool? running;
+
+  GetXrayStateResponse(this.running);
+
+  factory GetXrayStateResponse.fromJson(Map<String, dynamic> json) =>
+      _$GetXrayStateResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$GetXrayStateResponseToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -189,7 +227,7 @@ class LibXrayInvokeRequest {
   int? apiVersion;
   LibXrayMethod? method;
   LibXrayEnvJson? env;
-  Object? payload;
+  Map<String, dynamic>? payload;
 
   LibXrayInvokeRequest({this.method, this.env, this.payload}) : apiVersion = 1;
 
@@ -240,15 +278,15 @@ class ConvertXrayJsonToShareLinksRequest {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class RunXrayFromJsonRequest {
+class RunXrayFromJSONRequest {
   String? configJSON;
 
-  RunXrayFromJsonRequest(this.configJSON);
+  RunXrayFromJSONRequest(this.configJSON);
 
-  factory RunXrayFromJsonRequest.fromJson(Map<String, dynamic> json) =>
-      _$RunXrayFromJsonRequestFromJson(json);
+  factory RunXrayFromJSONRequest.fromJson(Map<String, dynamic> json) =>
+      _$RunXrayFromJSONRequestFromJson(json);
 
-  Map<String, dynamic> toJson() => _$RunXrayFromJsonRequestToJson(this);
+  Map<String, dynamic> toJson() => _$RunXrayFromJSONRequestToJson(this);
 }
 
 class LibXrayRunConfig {
@@ -260,8 +298,7 @@ class LibXrayRunConfig {
   factory LibXrayRunConfig.fromInvokeText(String text) {
     final data = JsonTool.decoder.convert(text) as Map<String, dynamic>;
     final invoke = LibXrayInvokeRequest.fromJson(data);
-    final payload =
-        invoke.payload as Map<String, dynamic>? ?? const <String, dynamic>{};
+    final payload = invoke.payload ?? const <String, dynamic>{};
     return LibXrayRunConfig(invoke.env, RunXrayRequest.fromJson(payload));
   }
 }

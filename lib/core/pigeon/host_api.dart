@@ -97,14 +97,13 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.getFreePorts,
-          payload: GetFreePortsRequest(num),
+          payload: GetFreePortsRequest(num).toJson(),
         ),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
-          final data = resp.data as Map<String, dynamic>;
-          final ports = GetFreePortsResponse.fromJson(data);
+          final ports = GetFreePortsResponse.fromJson(resp.data!);
           if (ports.ports != null) {
             return ports.ports!;
           }
@@ -119,14 +118,13 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.convertShareLinksToXrayJson,
-          payload: ConvertShareLinksToXrayJsonRequest(text),
+          payload: ConvertShareLinksToXrayJsonRequest(text).toJson(),
         ),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
-          final data = resp.data as Map<String, dynamic>;
-          final xrayJson = XrayJson.fromJson(data);
+          final xrayJson = XrayJson.fromJson(resp.data!);
           return xrayJson;
         }
       }
@@ -142,14 +140,14 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.convertXrayJsonToShareLinks,
-          payload: ConvertXrayJsonToShareLinksRequest(xrayJsonText),
+          payload: ConvertXrayJsonToShareLinksRequest(xrayJsonText).toJson(),
         ),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
-          final data = resp.data as String;
-          return data;
+          final data = ConvertXrayJsonToShareLinksResponse.fromJson(resp.data!);
+          return data.links ?? "";
         }
       }
     } catch (e) {
@@ -167,10 +165,10 @@ class AppHostApi {
         LibXrayInvokeRequest(
           method: LibXrayMethod.countGeoData,
           env: _datEnv(datDir),
-          payload: request,
+          payload: request.toJson(),
         ),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
           return "";
@@ -196,16 +194,19 @@ class AppHostApi {
         LibXrayInvokeRequest(
           method: LibXrayMethod.ping,
           env: _datEnv(datDir),
-          payload: PingRequest(configPath, timeout, url, proxy),
+          payload: PingRequest(configPath, timeout, url, proxy).toJson(),
         ),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       ygLogger(
         "ping result sucess:${resp.success} data:${resp.data} error:${resp.error}",
       );
-      if (resp.data != null && resp.data is int) {
-        ygLogger("ping delay: ${resp.data}");
-        return resp.data as int;
+      if (resp.success == true && resp.data != null) {
+        final data = PingResponse.fromJson(resp.data!);
+        if (data.delay != null) {
+          ygLogger("ping delay: ${data.delay}");
+          return data.delay!;
+        }
       }
     } catch (e) {
       ygLogger("$e");
@@ -219,10 +220,10 @@ class AppHostApi {
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
           env: _datEnv(datDir),
-          payload: RunXrayRequest(configPath),
+          payload: RunXrayRequest(configPath).toJson(),
         ),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
           return "";
@@ -244,10 +245,10 @@ class AppHostApi {
         LibXrayInvokeRequest(
           method: LibXrayMethod.runXray,
           env: _datEnv(datDir),
-          payload: RunXrayRequest(configPath),
+          payload: RunXrayRequest(configPath).toJson(),
         ),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
           return "";
@@ -266,7 +267,7 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.stopXray),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
           return "";
@@ -285,9 +286,9 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.getXrayState),
       );
-      final resp = parseCallResponse(res);
-      if (resp.success == true && resp.data is bool) {
-        return resp.data as bool;
+      final resp = parseLibXrayInvokeResponse(res);
+      if (resp.success == true && resp.data != null) {
+        return GetXrayStateResponse.fromJson(resp.data!).running ?? false;
       }
     } catch (e) {
       ygLogger("getXrayState error: $e");
@@ -300,10 +301,10 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.xrayVersion),
       );
-      final resp = parseCallResponse(res);
+      final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null && resp.data != null) {
         if (resp.success!) {
-          return resp.data! as String;
+          return XrayVersionResponse.fromJson(resp.data!).version ?? "";
         }
       }
     } catch (_) {}
@@ -321,9 +322,9 @@ class AppHostApi {
     }
   }
 
-  CallResponse parseCallResponse(String res) {
-    final data = JsonTool.decoder.convert(res);
-    final resp = CallResponse.fromJson(data);
+  LibXrayInvokeResponse parseLibXrayInvokeResponse(String res) {
+    final data = JsonTool.decoder.convert(res) as Map<String, dynamic>;
+    final resp = LibXrayInvokeResponse.fromJson(data);
     return resp;
   }
 
