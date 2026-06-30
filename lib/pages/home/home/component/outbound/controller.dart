@@ -53,7 +53,7 @@ class HomeOutboundState {
 String _initialXraySettingName(int xraySettingId) {
   switch (xraySettingId) {
     case DBConstants.defaultId:
-      return appLocalizationsNoContext().settingNotSet;
+      return appLocalizationsNoContext().xraySettingListPageSimple;
     case XraySettingSimple.simpleId:
       return appLocalizationsNoContext().xraySettingListPageSimple;
     default:
@@ -90,9 +90,7 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
   Future<void> _listenXraySetting() async {
     final eventBus = AppEventBus.instance;
     var xraySettingId = eventBus.state.xraySettingId;
-    if (xraySettingId == DBConstants.defaultId) {
-      xraySettingId = await PreferencesKey().readXraySettingId();
-    }
+    xraySettingId = await PreferencesKey().readXraySettingId();
     await _readXraySetting(xraySettingId);
 
     _xraySettingSubscription = eventBus.stream
@@ -106,7 +104,8 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
       case DBConstants.defaultId:
         emit(
           state.copyWith(
-            xraySettingName: appLocalizationsNoContext().settingNotSet,
+            xraySettingName:
+                appLocalizationsNoContext().xraySettingListPageSimple,
           ),
         );
         break;
@@ -126,7 +125,8 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
         } else {
           emit(
             state.copyWith(
-              xraySettingName: appLocalizationsNoContext().settingNotSet,
+              xraySettingName:
+                  appLocalizationsNoContext().xraySettingListPageSimple,
             ),
           );
         }

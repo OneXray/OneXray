@@ -1,8 +1,10 @@
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/service/xray/constants.dart';
+import 'package:onexray/service/xray/runtime_inbounds.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
@@ -12,20 +14,26 @@ import 'package:onexray/service/xray/tun_route.dart';
 class XrayRawFix {
   static Future<void> fixConfig(
     Map<String, dynamic> jsonMap,
+    XraySettingState settingState,
+    CoreRunMode mode,
     TunSettingState tunSettingState,
     XrayPorts ports,
     bool metricsEnabled,
   ) async {
     final disableLog = await AppHostApi().useSystemExtension();
 
-    fixInboundsPort(jsonMap, ports);
+    settingState.inbounds.ping.port = ports.pingPort;
+    settingState.inbounds.ping.auth = ports.pingAuth;
+    XrayRuntimeInbounds.applyToRawJson(jsonMap, settingState.inbounds, mode);
+    _fixPingRoutingRule(jsonMap);
     fixLog(jsonMap, disableLog: disableLog);
     fixMetrics(jsonMap, metricsEnabled ? ports.metricsPort : null);
     if (!metricsEnabled) {
       ports.metricsPort = "";
     }
 
-    if (AppPlatform.isWindows || AppPlatform.isLinux) {
+    if (mode == CoreRunMode.tun &&
+        (AppPlatform.isWindows || AppPlatform.isLinux)) {
       _removeConfigInterface(jsonMap);
       _applyRawTunRouteConfig(
         jsonMap,
@@ -95,17 +103,7 @@ class XrayRawFix {
   }
 
   static void fixInboundsTun(Map<String, dynamic> jsonMap) {
-    final List<dynamic>? inbounds = jsonMap["inbounds"];
-    if (inbounds == null) {
-      return;
-    }
-    for (final inbound in inbounds) {
-      if (inbound["tag"] == RoutingInboundTag.tunIn.name &&
-          inbound["protocol"] == XrayInboundProtocol.tun.name) {
-        inbounds.remove(inbound);
-        return;
-      }
-    }
+    XrayRuntimeInbounds.removeManagedRawInbounds(jsonMap);
   }
 
   static void fixInboundsPort(Map<String, dynamic> jsonMap, XrayPorts ports) {

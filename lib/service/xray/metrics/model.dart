@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 
 part 'model.g.dart';
 
@@ -9,6 +10,19 @@ class XrayMetricsVars {
   const XrayMetricsVars(this.stats);
 
   XrayTrafficCounter? get tunIn => stats?.inbound?.tunIn;
+
+  XrayTrafficCounter? totalForMode(CoreRunMode mode) {
+    final inbound = stats?.inbound;
+    if (inbound == null) {
+      return null;
+    }
+    switch (mode) {
+      case CoreRunMode.tun:
+        return inbound.tunIn;
+      case CoreRunMode.proxy:
+        return XrayTrafficCounter.sum([inbound.socksIn, inbound.httpIn]);
+    }
+  }
 
   factory XrayMetricsVars.fromJson(Map<String, dynamic> json) =>
       _$XrayMetricsVarsFromJson(json);
@@ -31,8 +45,10 @@ class XrayMetricsStats {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayMetricsInboundStats {
   final XrayTrafficCounter? tunIn;
+  final XrayTrafficCounter? socksIn;
+  final XrayTrafficCounter? httpIn;
 
-  const XrayMetricsInboundStats(this.tunIn);
+  const XrayMetricsInboundStats(this.tunIn, this.socksIn, this.httpIn);
 
   factory XrayMetricsInboundStats.fromJson(Map<String, dynamic> json) =>
       _$XrayMetricsInboundStatsFromJson(json);
@@ -46,6 +62,26 @@ class XrayTrafficCounter {
   final int? downlink;
 
   const XrayTrafficCounter(this.uplink, this.downlink);
+
+  static XrayTrafficCounter? sum(List<XrayTrafficCounter?> counters) {
+    var hasValue = false;
+    var uplink = 0;
+    var downlink = 0;
+    for (final counter in counters) {
+      final nextUplink = counter?.uplink;
+      final nextDownlink = counter?.downlink;
+      if (nextUplink == null || nextDownlink == null) {
+        continue;
+      }
+      hasValue = true;
+      uplink += nextUplink;
+      downlink += nextDownlink;
+    }
+    if (!hasValue) {
+      return null;
+    }
+    return XrayTrafficCounter(uplink, downlink);
+  }
 
   factory XrayTrafficCounter.fromJson(Map<String, dynamic> json) =>
       _$XrayTrafficCounterFromJson(json);

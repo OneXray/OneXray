@@ -51,16 +51,39 @@ class InboundsPage extends StatelessWidget {
   }
 
   Widget _editSection(BuildContext context, InboundsController controller) {
-    return SettingSection(
-      title: "",
+    final localizations = AppLocalizations.of(context)!;
+    return Column(
       children: [
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.inboundsPageTun,
-          onTap: () => controller.editTun(context),
+        SettingSection(
+          title: localizations.inboundsPageTunMode,
+          children: [
+            NavigationSettingRow(
+              title: localizations.inboundsPageTun,
+              onTap: () => controller.editTun(context),
+            ),
+          ],
         ),
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.inboundsPagePing,
-          onTap: () => controller.editPing(context),
+        SettingSection(
+          title: localizations.inboundsPageProxyMode,
+          children: [
+            NavigationSettingRow(
+              title: localizations.inboundsPageSocks,
+              onTap: () => controller.editSocks(context),
+            ),
+            NavigationSettingRow(
+              title: localizations.inboundsPageHttp,
+              onTap: () => controller.editHttp(context),
+            ),
+          ],
+        ),
+        SettingSection(
+          title: localizations.inboundsPageInternal,
+          children: [
+            NavigationSettingRow(
+              title: localizations.inboundsPagePing,
+              onTap: () => controller.editPing(context),
+            ),
+          ],
         ),
       ],
     );

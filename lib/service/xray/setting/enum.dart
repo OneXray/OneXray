@@ -72,6 +72,8 @@ enum RoutingOutboundTag {
 
 enum RoutingInboundTag {
   tunIn("tunIn"),
+  socksIn("socksIn"),
+  httpIn("httpIn"),
   pingIn("pingIn");
 
   const RoutingInboundTag(this.name);

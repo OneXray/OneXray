@@ -1,9 +1,11 @@
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/tools/json.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesKey {
   final _prefs = SharedPreferencesAsync();
+  static const _defaultXraySettingId = -1;
 
   static final PreferencesKey _singleton = PreferencesKey._internal();
 
@@ -141,13 +143,30 @@ class PreferencesKey {
   Future<int> readXraySettingId() async {
     final value = await _prefs.getInt(_xraySettingId);
     if (value == null) {
-      return DBConstants.defaultId;
+      return _defaultXraySettingId;
+    }
+    if (value == DBConstants.defaultId) {
+      return _defaultXraySettingId;
     }
     return value;
   }
 
   Future<void> saveXraySettingId(int value) async {
-    await _prefs.setInt(_xraySettingId, value);
+    final nextValue = value == DBConstants.defaultId
+        ? _defaultXraySettingId
+        : value;
+    await _prefs.setInt(_xraySettingId, nextValue);
+  }
+
+  static const _coreRunMode = "coreRunMode";
+
+  Future<CoreRunMode> readCoreRunMode() async {
+    final value = await _prefs.getString(_coreRunMode);
+    return CoreRunMode.fromString(value);
+  }
+
+  Future<void> saveCoreRunMode(CoreRunMode value) async {
+    await _prefs.setString(_coreRunMode, value.name);
   }
 
   static const _xraySettingSimple = "xraySettingSimple";

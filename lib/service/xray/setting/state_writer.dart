@@ -2,7 +2,9 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_setting/state.dart';
+import 'package:onexray/service/xray/runtime_inbounds.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
@@ -33,24 +35,31 @@ extension XraySettingStateWriter on XraySettingState {
   }
 
   Future<XrayJson> fixSetting(
+    CoreRunMode mode,
     TunSettingState tunSettingState,
     XrayPorts ports,
   ) async {
     fixInboundsPort(ports);
     await _fixSystemExtensionLogs();
 
-    if (AppPlatform.isWindows || AppPlatform.isLinux) {
+    if (mode == CoreRunMode.tun &&
+        (AppPlatform.isWindows || AppPlatform.isLinux)) {
       _removeSettingInterface();
       _applyTunRouteConfig(tunSettingState);
     } else {
       _removeSettingInterface();
     }
 
-    return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
+    return _fixedXrayJson(mode, ports, tunSettingState.metricsEnabled);
   }
 
-  XrayJson _fixedXrayJson(XrayPorts ports, bool metricsEnabled) {
+  XrayJson _fixedXrayJson(
+    CoreRunMode mode,
+    XrayPorts ports,
+    bool metricsEnabled,
+  ) {
     final xrayJson = this.xrayJson;
+    XrayRuntimeInbounds.applyToXrayJson(xrayJson, inbounds, mode);
     fixMetricsConfig(xrayJson, ports, metricsEnabled);
     return xrayJson;
   }

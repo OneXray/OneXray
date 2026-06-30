@@ -66,11 +66,13 @@ class XrayMetricsService {
       if (generation != _generation) {
         return;
       }
-      final tunIn = payload == null
+      final counter = payload == null
           ? null
-          : XrayMetricsVars.fromJson(payload).tunIn;
-      final uploadTotal = tunIn?.uplink;
-      final downloadTotal = tunIn?.downlink;
+          : XrayMetricsVars.fromJson(
+              payload,
+            ).totalForMode(AppEventBus.instance.state.coreRunMode);
+      final uploadTotal = counter?.uplink;
+      final downloadTotal = counter?.downlink;
       if (uploadTotal == null || downloadTotal == null) {
         _recordQueryFailure(generation);
         return;

@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/gen/assets.gen.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/vpn/service.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:collection/collection.dart';
@@ -41,26 +43,41 @@ final class TrayService with TrayListener {
       return;
     }
 
-    var running = VpnService().vpnRunning;
+    final running = VpnService().vpnRunning;
+    final mode = AppEventBus.instance.state.coreRunMode;
 
     await _setTrayIcon(running);
 
     final items = <MenuItem>[];
     if (running) {
       items.add(
-        MenuItem(
-          key: _TrayMenuKey.stopVpn.name,
-          label: appLocalizationsNoContext().menuBarStopVpn,
-        ),
+        MenuItem(key: _TrayMenuKey.stopVpn.name, label: _stopLabel(mode)),
       );
     } else {
       items.add(
-        MenuItem(
-          key: _TrayMenuKey.startVpn.name,
-          label: appLocalizationsNoContext().menuBarStartVpn,
-        ),
+        MenuItem(key: _TrayMenuKey.startVpn.name, label: _startLabel(mode)),
       );
     }
+    items.add(
+      MenuItem.submenu(
+        key: _TrayMenuKey.mode.name,
+        label: appLocalizationsNoContext().menuBarMode,
+        submenu: Menu(
+          items: [
+            MenuItem.checkbox(
+              key: _TrayMenuKey.modeTun.name,
+              label: appLocalizationsNoContext().coreRunModeTun,
+              checked: mode == CoreRunMode.tun,
+            ),
+            MenuItem.checkbox(
+              key: _TrayMenuKey.modeProxy.name,
+              label: appLocalizationsNoContext().coreRunModeProxy,
+              checked: mode == CoreRunMode.proxy,
+            ),
+          ],
+        ),
+      ),
+    );
     items.add(MenuItem.separator());
     items.add(
       MenuItem(
@@ -85,6 +102,24 @@ final class TrayService with TrayListener {
 
     final menu = Menu(items: items);
     await trayManager.setContextMenu(menu);
+  }
+
+  String _startLabel(CoreRunMode mode) {
+    switch (mode) {
+      case CoreRunMode.tun:
+        return appLocalizationsNoContext().menuBarStartTun;
+      case CoreRunMode.proxy:
+        return appLocalizationsNoContext().menuBarStartProxy;
+    }
+  }
+
+  String _stopLabel(CoreRunMode mode) {
+    switch (mode) {
+      case CoreRunMode.tun:
+        return appLocalizationsNoContext().menuBarStopTun;
+      case CoreRunMode.proxy:
+        return appLocalizationsNoContext().menuBarStopProxy;
+    }
   }
 
   Future<void> _setTrayIcon(bool running) async {
@@ -134,6 +169,14 @@ final class TrayService with TrayListener {
       case _TrayMenuKey.stopVpn:
         await VpnService().stopDefaultVpn();
         break;
+      case _TrayMenuKey.mode:
+        break;
+      case _TrayMenuKey.modeTun:
+        await VpnService().switchRunMode(CoreRunMode.tun);
+        break;
+      case _TrayMenuKey.modeProxy:
+        await VpnService().switchRunMode(CoreRunMode.proxy);
+        break;
       case _TrayMenuKey.showApp:
         await windowManager.show();
         await windowManager.focus();
@@ -155,6 +198,9 @@ final class TrayService with TrayListener {
 enum _TrayMenuKey {
   startVpn("startVpn"),
   stopVpn("stopVpn"),
+  mode("mode"),
+  modeTun("modeTun"),
+  modeProxy("modeProxy"),
   showApp("showApp"),
   quitApp("quitApp"),
   quitAndStopVpn("quitAndStopVpn");

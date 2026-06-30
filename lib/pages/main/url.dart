@@ -36,6 +36,8 @@ import 'package:onexray/pages/core/xray/setting/fake_dns/page.dart';
 import 'package:onexray/pages/core/xray/setting/fake_dns/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_ping/page.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_ping/params.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_proxy/page.dart';
+import 'package:onexray/pages/core/xray/setting/inbound_proxy/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_sniffing/page.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_sniffing/params.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_tun/page.dart';
@@ -369,6 +371,14 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       state,
       AppSecondaryDestination.inboundTun,
       (params) => InboundTunPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.inboundProxy,
+    (_, state) => _withExtra<InboundProxyParams>(
+      state,
+      AppSecondaryDestination.inboundProxy,
+      (params) => InboundProxyPage(params: params),
     ),
   ),
   _route(

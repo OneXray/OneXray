@@ -280,6 +280,21 @@ class AppHostApi {
     return _errorResult;
   }
 
+  Future<bool> getXrayState() async {
+    try {
+      final res = await _invoke(
+        LibXrayInvokeRequest(method: LibXrayMethod.getXrayState),
+      );
+      final resp = parseCallResponse(res);
+      if (resp.success == true && resp.data is bool) {
+        return resp.data as bool;
+      }
+    } catch (e) {
+      ygLogger("getXrayState error: $e");
+    }
+    return false;
+  }
+
   Future<String> xrayVersion() async {
     try {
       final res = await _invoke(
