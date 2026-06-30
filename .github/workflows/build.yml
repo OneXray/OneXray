@@ -40,7 +40,7 @@
 #
 # Layout:
 #   build_scripts/app/builder.py#build_core expects XTLS/libXray and
-#   XTLS/Xray-core to live as siblings of this repo. Every job therefore checks
+#   OneXray/Xray-core to live as siblings of this repo. Every job therefore checks
 #   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
 #   `Xray-core/` at the workspace root. libXray is built with local Xray-core,
 #   and Windows/Linux app packages compile OneXrayCore directly from that same
@@ -51,6 +51,17 @@ name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Build target
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - ios
+          - macos
+          - android
   push:
     tags:
       - "v*"
@@ -65,8 +76,8 @@ env:
   PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
   LIBXRAY_REF: main
-  XRAY_CORE_REPOSITORY: XTLS/Xray-core
-  XRAY_CORE_REF: main
+  XRAY_CORE_REPOSITORY: OneXray/Xray-core
+  XRAY_CORE_REF: build
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -95,6 +106,7 @@ jobs:
   # iOS — uploads to App Store Connect (TestFlight) via fastlane
   # =================================================================
   ios:
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'ios'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -185,6 +197,7 @@ jobs:
   # macOS (MAS) — universal binary, uploads to App Store Connect
   # =================================================================
   macos:
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'macos'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -279,6 +292,7 @@ jobs:
   #   + notarized + zipped
   # =================================================================
   macos_se:
+    if: github.event_name == 'push' || inputs.target == 'all'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -369,6 +383,7 @@ jobs:
   # Android — uploads AAB to Play Store via fastlane
   # =================================================================
   android:
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'android'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -470,6 +485,7 @@ jobs:
   #   for C++ desktop workloads).
   # =================================================================
   windows:
+    if: github.event_name == 'push' || inputs.target == 'all'
     runs-on: windows-2022
     timeout-minutes: 60
     defaults:
@@ -546,6 +562,7 @@ jobs:
   #   for private ones.
   # =================================================================
   linux:
+    if: github.event_name == 'push' || inputs.target == 'all'
     strategy:
       fail-fast: false
       matrix:
