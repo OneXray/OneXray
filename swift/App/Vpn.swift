@@ -91,7 +91,7 @@ class VPNManager {
             }
             return .installed
         } catch {
-            YGLog(error)
+            YGLog(error.localizedDescription)
             return .notInstalled
         }
     }
@@ -247,7 +247,7 @@ class VPNManager {
                 return .notInstalled
             }
         } catch {
-            YGLog(error)
+            YGLog(error.localizedDescription)
             return .notInstalled
         }
     }
@@ -266,7 +266,7 @@ class VPNManager {
             do {
                 vpn = try await findVpn()
             } catch {
-                YGLog(error)
+                YGLog(error.localizedDescription)
                 return .notInstalled
             }
         }
@@ -305,7 +305,7 @@ class VPNManager {
                 providerConfig["request"] = encodedRequest
                 conf.providerConfiguration = providerConfig
             } catch {
-                YGLog(error)
+                YGLog(error.localizedDescription)
             }
         }
         if let onDemandEnabled = tun.onDemandEnabled, onDemandEnabled {
@@ -336,7 +336,7 @@ class VPNManager {
             try await vpn.saveToPreferences()
             try await vpn.loadFromPreferences()
         } catch {
-            YGLog(error)
+            YGLog(error.localizedDescription)
         }
     }
 

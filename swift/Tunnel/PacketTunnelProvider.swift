@@ -325,44 +325,40 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             YGLog("PacketTunnelProvider TunnelError.noSocketFd")
             throw TunnelError.noSocketFd
         }
-        let request = try withTunFd(requestJson, fd: fd)
+        let request = try LibXrayInvokeRequest
+            .fromText(requestJson)
+            .withTunFd(fd)
+            .toText()
 
         Task {
             let res = request.withCString { p in
                 let p0 = UnsafeMutablePointer(mutating: p)
                 return CGoInvoke(p0)
             }
-            let result = CallResponse.fromResponse(res)
-            if !result.success {
-                YGLog("PacketTunnelProvider startXray \(result.error ?? "")")
+            let result = LibXrayInvokeResponse.fromResponse(res)
+            if !result.isSuccess {
+                let error = result.error ?? "unknown error"
+                YGLog("PacketTunnelProvider startXray \(error)")
                 killProcess()
             }
         }
     }
 
     private func stopXray() {
-        let request = #"{"apiVersion":1,"method":"stopXray"}"#
-        let res = request.withCString { p in
-            let p0 = UnsafeMutablePointer(mutating: p)
-            return CGoInvoke(p0)
-        }
-        let result = CallResponse.fromResponse(res)
-        if !result.success {
+        do {
+            let request = try LibXrayInvokeRequest(method: .stopXray).toText()
+            let res = request.withCString { p in
+                let p0 = UnsafeMutablePointer(mutating: p)
+                return CGoInvoke(p0)
+            }
+            let result = LibXrayInvokeResponse.fromResponse(res)
+            if !result.isSuccess {
+                killProcess()
+            }
+        } catch {
+            YGLog("PacketTunnelProvider stopXray \(error.localizedDescription)")
             killProcess()
         }
-    }
-
-    private func withTunFd(_ requestJson: String, fd: Int32) throws -> String {
-        guard let data = requestJson.data(using: .utf8),
-              var object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            return requestJson
-        }
-        var env = object["env"] as? [String: Any] ?? [:]
-        env["xray.tun.fd"] = "\(fd)"
-        object["env"] = env
-        let rewritten = try JSONSerialization.data(withJSONObject: object)
-        return String(data: rewritten, encoding: .utf8) ?? requestJson
     }
 }
 

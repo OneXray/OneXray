@@ -17,15 +17,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import libXray.DialerController
 import libXray.LibXray
 import net.yuandev.onexray.MainActivity
 import net.yuandev.onexray.R
+import net.yuandev.onexray.pigeon.LibXrayEnvJson
+import net.yuandev.onexray.pigeon.LibXrayInvokeRequest
+import net.yuandev.onexray.pigeon.LibXrayInvokeResponse
+import net.yuandev.onexray.pigeon.LibXrayMethod
 import net.yuandev.onexray.pigeon.PerAppVPNMode
 import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
-import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -61,6 +65,10 @@ class OneVpnService : VpnService() {
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val invokeJson = Json {
+        explicitNulls = false
+        ignoreUnknownKeys = true
+    }
 
     class VPNController : DialerController {
         var vpn: OneVpnService? = null
@@ -391,22 +399,21 @@ class OneVpnService : VpnService() {
     }
 
     private fun validateRunXrayResult(result: String) {
-        val response = JSONObject(result)
-        if (!response.optBoolean("success", false)) {
-            val error = response.optString("error", "runXray failed")
+        val response = invokeJson.decodeFromString<LibXrayInvokeResponse>(result)
+        if (response.success != true) {
+            val error = response.error ?: "runXray failed"
             throw IllegalStateException(error)
         }
     }
 
     private fun stopXray() {
-        LibXray.invoke("""{"apiVersion":1,"method":"stopXray"}""")
+        val request = LibXrayInvokeRequest(method = LibXrayMethod.STOP_XRAY)
+        LibXray.invoke(invokeJson.encodeToString(request))
     }
 
     private fun withTunFd(requestJson: String, fd: Int): String {
-        val request = JSONObject(requestJson)
-        val env = request.optJSONObject("env") ?: JSONObject()
-        env.put("xray.tun.fd", fd.toString())
-        request.put("env", env)
-        return request.toString()
+        val request = invokeJson.decodeFromString<LibXrayInvokeRequest>(requestJson)
+        val env = (request.env ?: LibXrayEnvJson()).copy(tunFd = fd.toString())
+        return invokeJson.encodeToString(request.copy(env = env))
     }
 }

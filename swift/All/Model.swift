@@ -62,9 +62,103 @@ struct StartVpnRequest: Codable {
 }
 
 
-struct CallResponse: Codable, Hashable {
-    var success: Bool
+enum LibXrayMethod: String, Codable {
+    case getFreePorts
+    case convertShareLinksToXrayJson
+    case convertXrayJsonToShareLinks
+    case countGeoData
+    case ping
+    case testXray
+    case runXray
+    case runXrayFromJson
+    case stopXray
+    case xrayVersion
+    case getXrayState
+}
+
+struct LibXrayEnvJson: Codable, Hashable {
+    var configLocation: String?
+    var confdirLocation: String?
+    var assetLocation: String?
+    var certLocation: String?
+    var useReadV: String?
+    var useFreedomSplice: String?
+    var useVmessPadding: String?
+    var useCone: String?
+    var useStrictJson: String?
+    var bufferSize: String?
+    var browserDialerAddress: String?
+    var xudpLog: String?
+    var xudpBaseKey: String?
+    var tunFd: String?
+
+    enum CodingKeys: String, CodingKey {
+        case configLocation = "xray.location.config"
+        case confdirLocation = "xray.location.confdir"
+        case assetLocation = "xray.location.asset"
+        case certLocation = "xray.location.cert"
+        case useReadV = "xray.buf.readv"
+        case useFreedomSplice = "xray.buf.splice"
+        case useVmessPadding = "xray.vmess.padding"
+        case useCone = "xray.cone.disabled"
+        case useStrictJson = "xray.json.strict"
+        case bufferSize = "xray.ray.buffer.size"
+        case browserDialerAddress = "xray.browser.dialer"
+        case xudpLog = "xray.xudp.show"
+        case xudpBaseKey = "xray.xudp.basekey"
+        case tunFd = "xray.tun.fd"
+    }
+}
+
+struct RunXrayRequest: Codable, Hashable {
+    var configPath: String?
+}
+
+struct LibXrayInvokeRequest: Codable, Hashable {
+    var apiVersion: Int?
+    var method: LibXrayMethod?
+    var env: LibXrayEnvJson?
+    var payload: RunXrayRequest?
+
+    init(
+        apiVersion: Int? = 1,
+        method: LibXrayMethod? = nil,
+        env: LibXrayEnvJson? = nil,
+        payload: RunXrayRequest? = nil
+    ) {
+        self.apiVersion = apiVersion
+        self.method = method
+        self.env = env
+        self.payload = payload
+    }
+
+    static func fromText(_ text: String) throws -> Self {
+        let data = Data(text.utf8)
+        return try JSONDecoder().decode(Self.self, from: data)
+    }
+
+    func toText() throws -> String {
+        let data = try JSONEncoder().encode(self)
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    func withTunFd(_ fd: Int32) -> Self {
+        var request = self
+        var env = request.env ?? LibXrayEnvJson()
+        env.tunFd = "\(fd)"
+        request.env = env
+        return request
+    }
+}
+
+struct LibXrayInvokeResponse: Codable, Hashable {
+    var success: Bool?
     var error: String?
+
+    var isSuccess: Bool {
+        success == true
+    }
+
     static func fromResponse(_ res: UnsafeMutablePointer<CChar>?) -> Self {
         if let res = res {
             let text = String(cString: res)
@@ -78,7 +172,7 @@ struct CallResponse: Codable, Hashable {
                 } catch {}
             }
         }
-        return CallResponse(success: false)
+        return LibXrayInvokeResponse(success: false)
     }
 }
 
