@@ -77,7 +77,6 @@
   "vpnCommandFailed": "VPN 命令執行失敗",
   "vpnLocalPortFailed": "本地端口分配失敗",
   "vpnStartRequestFailed": "建立 Xray 啟動請求失敗",
-  "vpnTunPriorityInvalid": "TUN 優先級無效",
   "vpnCoreStartFailed": "核心啟動失敗",
   "actionResult": "{action} {result}",
   "@actionResult": {
@@ -484,7 +483,6 @@
   "settingPageFooterTips": "本應用僅爲客戶端應用。我們不提供任何 VPN 服務器或服務。您必須提供您自己的服務器配置才能使用本應用。",
   "tunSettingUIPageTitle": "Tun 設置",
   "tunSettingUIPageTunName": "名稱",
-  "tunSettingUIPageTunPriority": "優先級",
   "tunSettingUIPageTunDnsIPv4": "DNS (IPv4)",
   "tunSettingUIPageTunDnsIPv4Example": "1.1.1.1",
   "tunSettingUIPageTunDnsIPv6": "DNS (IPv6)",

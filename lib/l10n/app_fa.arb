@@ -77,7 +77,6 @@
     "vpnCommandFailed": "فرمان VPN ناموفق بود",
     "vpnLocalPortFailed": "اختصاص پورت‌های محلی ناموفق بود",
     "vpnStartRequestFailed": "ایجاد درخواست راه‌اندازی Xray ناموفق بود",
-    "vpnTunPriorityInvalid": "اولویت TUN نامعتبر است",
     "vpnCoreStartFailed": "راه‌اندازی هسته ناموفق بود",
     "actionResult": "{action} {result}",
     "@actionResult": {
@@ -484,7 +483,6 @@
     "settingPageFooterTips": "این یک برنامه فقط-مشتری است. ما هیچ سرور یا خدمات VPN ارائه نمی‌دهیم. برای استفاده از آن باید پیکربندی سرور خود را ارائه دهید.",
     "tunSettingUIPageTitle": "تنظیمات Tun",
     "tunSettingUIPageTunName": "نام",
-    "tunSettingUIPageTunPriority": "اولویت",
     "tunSettingUIPageTunDnsIPv4": "DNS (IPv4)",
     "tunSettingUIPageTunDnsIPv4Example": "1.1.1.1",
     "tunSettingUIPageTunDnsIPv6": "DNS (IPv6)",

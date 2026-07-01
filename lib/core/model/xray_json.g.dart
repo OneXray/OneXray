@@ -290,7 +290,7 @@ XrayInboundSocksSettings _$XrayInboundSocksSettingsFromJson(
 ) => XrayInboundSocksSettings(
   json['auth'] as String?,
   json['udp'] as bool?,
-  (json['accounts'] as List<dynamic>?)
+  (json['users'] as List<dynamic>?)
       ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
       .toList(),
 );
@@ -300,16 +300,13 @@ Map<String, dynamic> _$XrayInboundSocksSettingsToJson(
 ) => <String, dynamic>{
   'auth': ?instance.auth,
   'udp': ?instance.udp,
-  'accounts': ?instance.accounts?.map((e) => e.toJson()).toList(),
+  'users': ?instance.users?.map((e) => e.toJson()).toList(),
 };
 
 XrayInboundHttpSettings _$XrayInboundHttpSettingsFromJson(
   Map<String, dynamic> json,
 ) => XrayInboundHttpSettings(
   json['allowTransparent'] as bool?,
-  (json['accounts'] as List<dynamic>?)
-      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
-      .toList(),
   (json['users'] as List<dynamic>?)
       ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -319,7 +316,6 @@ Map<String, dynamic> _$XrayInboundHttpSettingsToJson(
   XrayInboundHttpSettings instance,
 ) => <String, dynamic>{
   'allowTransparent': ?instance.allowTransparent,
-  'accounts': ?instance.accounts?.map((e) => e.toJson()).toList(),
   'users': ?instance.users?.map((e) => e.toJson()).toList(),
 };
 

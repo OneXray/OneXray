@@ -208,7 +208,7 @@ class InboundPingState {
     inbound.protocol = protocol.name;
     inbound.tag = tag.name;
     if (auth?.isValid == true) {
-      inbound.settings = XrayInboundHttpSettings(false, null, [
+      inbound.settings = XrayInboundHttpSettings(false, [
         XrayInboundAccount(auth!.user, auth!.pass),
       ]).toJson();
     }
@@ -246,7 +246,7 @@ class InboundSocksState {
       return;
     }
     final socksSettings = XrayInboundSocksSettings.fromJson(settings);
-    _readAuth(socksSettings.accounts);
+    _readAuth(socksSettings.users);
   }
 
   XrayInbound? _readInbound(XrayJson xrayJson) {
@@ -261,11 +261,11 @@ class InboundSocksState {
     return null;
   }
 
-  void _readAuth(List<XrayInboundAccount>? accounts) {
-    if (accounts == null || accounts.isEmpty) {
+  void _readAuth(List<XrayInboundAccount>? users) {
+    if (users == null || users.isEmpty) {
       return;
     }
-    final account = accounts.first;
+    final account = users.first;
     if (account.user != null) {
       user = account.user!;
     }
@@ -319,7 +319,7 @@ class InboundHttpState {
       return;
     }
     final httpSettings = XrayInboundHttpSettings.fromJson(settings);
-    _readAuth(httpSettings.accounts ?? httpSettings.users);
+    _readAuth(httpSettings.users);
   }
 
   XrayInbound? _readInbound(XrayJson xrayJson) {
@@ -334,11 +334,11 @@ class InboundHttpState {
     return null;
   }
 
-  void _readAuth(List<XrayInboundAccount>? accounts) {
-    if (accounts == null || accounts.isEmpty) {
+  void _readAuth(List<XrayInboundAccount>? users) {
+    if (users == null || users.isEmpty) {
       return;
     }
-    final account = accounts.first;
+    final account = users.first;
     if (account.user != null) {
       user = account.user!;
     }
@@ -358,7 +358,6 @@ class InboundHttpState {
     inbound.settings = XrayInboundHttpSettings(
       false,
       authEnabled ? [XrayInboundAccount(user, pass)] : null,
-      null,
     ).toJson();
     return inbound;
   }

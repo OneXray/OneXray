@@ -28,14 +28,12 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
     _readTunSetting();
   }
 
-  final tunPriorityController = TextEditingController();
   final tunDnsIPv4Controller = TextEditingController();
   final tunDnsIPv6Controller = TextEditingController();
   final tunDnsServerNameController = TextEditingController();
 
   @override
   Future<void> close() {
-    tunPriorityController.dispose();
     tunDnsIPv4Controller.dispose();
     tunDnsIPv6Controller.dispose();
     tunDnsServerNameController.dispose();
@@ -50,7 +48,6 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
   }
 
   void _initInputs(TunSettingState tunState) {
-    tunPriorityController.text = tunState.tunPriority;
     tunDnsIPv4Controller.text = tunState.tunDnsIPv4;
     tunDnsIPv6Controller.text = tunState.tunDnsIPv6;
     tunDnsServerNameController.text = tunState.dnsServerName;
@@ -219,7 +216,6 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
   }
 
   void _mergeInput(TunSettingState tunState) {
-    tunState.tunPriority = tunPriorityController.text;
     tunState.tunDnsIPv4 = tunDnsIPv4Controller.text;
     tunState.tunDnsIPv6 = tunDnsIPv6Controller.text;
     tunState.dnsServerName = tunDnsServerNameController.text;

@@ -168,7 +168,6 @@ class TunSettingContent extends StatelessWidget {
             title: AppLocalizations.of(context)!.tunSettingUIPageTunName,
             value: state.tunSettingState.tunName,
           ),
-        if (AppPlatform.isLinux) _tunPriority(context, controller),
         _tunDnsIPv4(context, controller),
         _tunDnsIPv6(context, controller),
         if (AppPlatform.isIOS || AppPlatform.isMacOS)
@@ -179,14 +178,6 @@ class TunSettingContent extends StatelessWidget {
         _enableIPv6(context, state, controller),
         _metricsEnabled(context, state, controller),
       ],
-    );
-  }
-
-  Widget _tunPriority(BuildContext context, TunSettingUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.tunPriorityController,
-      label: AppLocalizations.of(context)!.tunSettingUIPageTunPriority,
-      hintText: AppLocalizations.of(context)!.tunSettingUIPageTunPriority,
     );
   }
 

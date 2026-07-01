@@ -77,7 +77,6 @@
   "vpnCommandFailed": "VPN command failed",
   "vpnLocalPortFailed": "Failed to allocate local ports",
   "vpnStartRequestFailed": "Failed to create Xray start request",
-  "vpnTunPriorityInvalid": "TUN priority is invalid",
   "vpnCoreStartFailed": "Failed to start core",
   "actionResult": "{action} {result}",
   "@actionResult": {
@@ -484,7 +483,6 @@
   "settingPageFooterTips": "This is a client-only app. We do not provide any VPN servers or services. You must provide your own server configuration to use it.",
   "tunSettingUIPageTitle": "Tun Setting",
   "tunSettingUIPageTunName": "name",
-  "tunSettingUIPageTunPriority": "priority",
   "tunSettingUIPageTunDnsIPv4": "DNS (IPv4)",
   "tunSettingUIPageTunDnsIPv4Example": "8.8.8.8",
   "tunSettingUIPageTunDnsIPv6": "DNS (IPv6)",

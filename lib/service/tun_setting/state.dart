@@ -9,7 +9,6 @@ class TunSettingState {
 
   // linux, windows
   final tunName = "OneXrayTun";
-  var tunPriority = "20";
   var tunDnsIPv4 = "8.8.8.8";
   var tunDnsIPv6 = "2001:4860:4860::8888";
   var enableDot = false;
@@ -32,9 +31,6 @@ class TunSettingState {
       return;
     }
     final tunJson = TunJson.fromJson(jsonMap!);
-    if (tunJson.tunPriority != null) {
-      tunPriority = "${tunJson.tunPriority!}";
-    }
     if (EmptyTool.checkString(tunJson.tunDnsIPv4)) {
       tunDnsIPv4 = tunJson.tunDnsIPv4!;
     }
@@ -90,9 +86,6 @@ class TunSettingState {
   TunJson get tunJson {
     final tunJson = TunJsonStandard.standard;
     tunJson.tunName = tunName;
-    if (tunPriority.isNotEmpty) {
-      tunJson.tunPriority = int.tryParse(tunPriority);
-    }
     tunJson.tunDnsIPv4 = tunDnsIPv4;
     tunJson.tunDnsIPv6 = tunDnsIPv6;
     tunJson.enableDot = enableDot;

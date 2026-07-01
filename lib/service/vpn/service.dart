@@ -747,11 +747,6 @@ final class VpnService {
     XrayPorts port,
     TunSettingState tunSettingState,
   ) async {
-    final tunPriority = int.tryParse(tunSettingState.tunPriority);
-    if (tunPriority == null) {
-      return _commandFailed(appLocalizationsNoContext().vpnTunPriorityInvalid);
-    }
-
     final request = StartVpnRequest(
       tunSettingState.tunJson,
       port.pingPort,
