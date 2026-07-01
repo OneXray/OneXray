@@ -353,6 +353,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             }
             let result = LibXrayInvokeResponse.fromResponse(res)
             if !result.isSuccess {
+                let error = result.error ?? "unknown error"
+                YGLog("PacketTunnelProvider stopXray \(error)")
                 killProcess()
             }
         } catch {
