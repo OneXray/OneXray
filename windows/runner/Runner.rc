@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "OneXray" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "OneXray" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 Yuan Dev LLC. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025-2026 Yuan Dev LLC. All rights reserved." "\0"
             VALUE "OriginalFilename", "OneXray.exe" "\0"
             VALUE "ProductName", "OneXray" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
