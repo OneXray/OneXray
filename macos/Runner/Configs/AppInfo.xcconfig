@@ -11,4 +11,4 @@ PRODUCT_NAME = OneXray
 PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 Yuan Dev LLC. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025-2026 Yuan Dev LLC. All rights reserved.
