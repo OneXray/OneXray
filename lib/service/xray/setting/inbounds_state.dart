@@ -6,8 +6,10 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/core/pigeon/constants.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/service/xray/tun_route.dart';
 
 class InboundTunState {
   final listen = NetConstants.proxyHost;
@@ -57,16 +59,35 @@ class InboundTunState {
 class InboundTunSettingsState {
   final name = "OneXrayTun";
   final mtu = 1500;
+  var gateway = <String>[];
+  var dns = <String>[];
+  var autoSystemRoutingTable = <String>[];
   var autoOutboundsInterface = "";
 
   XrayInboundTun get xrayJson {
     final settings = XrayInboundTunStandard.standard;
     settings.name = name;
     settings.mtu = mtu;
+    if (gateway.isNotEmpty) {
+      settings.gateway = gateway;
+    }
+    if (dns.isNotEmpty) {
+      settings.dns = dns;
+    }
+    if (autoSystemRoutingTable.isNotEmpty) {
+      settings.autoSystemRoutingTable = autoSystemRoutingTable;
+    }
     if (autoOutboundsInterface.isNotEmpty) {
       settings.autoOutboundsInterface = autoOutboundsInterface;
     }
     return settings;
+  }
+
+  void applyRouteConfig(XrayTunRouteConfig config) {
+    gateway = config.gateway;
+    dns = config.dns;
+    autoSystemRoutingTable = config.autoSystemRoutingTable;
+    autoOutboundsInterface = config.autoOutboundsInterface ?? "";
   }
 }
 
@@ -178,7 +199,7 @@ class InboundPingState {
   var port = VpnConstants.randomPort;
   final protocol = XrayInboundProtocol.http;
   final tag = RoutingInboundTag.pingIn;
-  PingAuth? auth;
+  XrayInboundAccount? auth;
 
   XrayInbound get xrayJson {
     final inbound = XrayInboundStandard.standard;
@@ -187,45 +208,221 @@ class InboundPingState {
     inbound.protocol = protocol.name;
     inbound.tag = tag.name;
     if (auth?.isValid == true) {
-      inbound.settings = <String, dynamic>{
-        "users": <Map<String, dynamic>>[auth!.xrayUser],
-        "allowTransparent": false,
-      };
+      inbound.settings = XrayInboundHttpSettings(false, [
+        XrayInboundAccount(auth!.user, auth!.pass),
+      ]).toJson();
     }
 
     return inbound;
   }
 }
 
+class InboundSocksState {
+  final listen = NetConstants.proxyHost;
+  final protocol = XrayInboundProtocol.socks;
+  final tag = RoutingInboundTag.socksIn;
+  final defaultPort = "11024";
+  var port = "11024";
+  final udp = true;
+  var user = "";
+  var pass = "";
+
+  void removeWhitespace() {
+    port = port.removeWhitespace;
+    user = user.removeWhitespace;
+    pass = pass.removeWhitespace;
+  }
+
+  void readFromXrayJson(XrayJson xrayJson) {
+    final inbound = _readInbound(xrayJson);
+    if (inbound == null) {
+      return;
+    }
+    if (EmptyTool.checkString(inbound.port)) {
+      port = inbound.port!;
+    }
+    final settings = inbound.settings;
+    if (settings == null) {
+      return;
+    }
+    final socksSettings = XrayInboundSocksSettings.fromJson(settings);
+    _readAuth(socksSettings.users);
+  }
+
+  XrayInbound? _readInbound(XrayJson xrayJson) {
+    if (!EmptyTool.checkList(xrayJson.inbounds)) {
+      return null;
+    }
+    for (final inbound in xrayJson.inbounds!) {
+      if (inbound.protocol == protocol.name && inbound.tag == tag.name) {
+        return inbound;
+      }
+    }
+    return null;
+  }
+
+  void _readAuth(List<XrayInboundAccount>? users) {
+    if (users == null || users.isEmpty) {
+      return;
+    }
+    final account = users.first;
+    if (account.user != null) {
+      user = account.user!;
+    }
+    if (account.pass != null) {
+      pass = account.pass!;
+    }
+  }
+
+  bool get authEnabled => user.isNotEmpty || pass.isNotEmpty;
+
+  XrayInbound get xrayJson {
+    final inbound = XrayInboundStandard.standard;
+    inbound.listen = listen;
+    inbound.port = port.isEmpty ? defaultPort : port;
+    inbound.protocol = protocol.name;
+    inbound.tag = tag.name;
+    inbound.settings = XrayInboundSocksSettings(
+      authEnabled ? "password" : "noauth",
+      udp,
+      authEnabled ? [XrayInboundAccount(user, pass)] : null,
+    ).toJson();
+    return inbound;
+  }
+}
+
+class InboundHttpState {
+  final listen = NetConstants.proxyHost;
+  final protocol = XrayInboundProtocol.http;
+  final tag = RoutingInboundTag.httpIn;
+  final defaultPort = "11025";
+  var port = "11025";
+  var user = "";
+  var pass = "";
+
+  void removeWhitespace() {
+    port = port.removeWhitespace;
+    user = user.removeWhitespace;
+    pass = pass.removeWhitespace;
+  }
+
+  void readFromXrayJson(XrayJson xrayJson) {
+    final inbound = _readInbound(xrayJson);
+    if (inbound == null) {
+      return;
+    }
+    if (EmptyTool.checkString(inbound.port)) {
+      port = inbound.port!;
+    }
+    final settings = inbound.settings;
+    if (settings == null) {
+      return;
+    }
+    final httpSettings = XrayInboundHttpSettings.fromJson(settings);
+    _readAuth(httpSettings.users);
+  }
+
+  XrayInbound? _readInbound(XrayJson xrayJson) {
+    if (!EmptyTool.checkList(xrayJson.inbounds)) {
+      return null;
+    }
+    for (final inbound in xrayJson.inbounds!) {
+      if (inbound.protocol == protocol.name && inbound.tag == tag.name) {
+        return inbound;
+      }
+    }
+    return null;
+  }
+
+  void _readAuth(List<XrayInboundAccount>? users) {
+    if (users == null || users.isEmpty) {
+      return;
+    }
+    final account = users.first;
+    if (account.user != null) {
+      user = account.user!;
+    }
+    if (account.pass != null) {
+      pass = account.pass!;
+    }
+  }
+
+  bool get authEnabled => user.isNotEmpty || pass.isNotEmpty;
+
+  XrayInbound get xrayJson {
+    final inbound = XrayInboundStandard.standard;
+    inbound.listen = listen;
+    inbound.port = port.isEmpty ? defaultPort : port;
+    inbound.protocol = protocol.name;
+    inbound.tag = tag.name;
+    inbound.settings = XrayInboundHttpSettings(
+      false,
+      authEnabled ? [XrayInboundAccount(user, pass)] : null,
+    ).toJson();
+    return inbound;
+  }
+}
+
 class InboundsState {
   var tun = InboundTunState();
+  var socks = InboundSocksState();
+  var http = InboundHttpState();
   final ping = InboundPingState();
 
   void removeWhitespace() {
     tun.removeWhitespace();
+    socks.removeWhitespace();
+    http.removeWhitespace();
   }
 
   void readFromXrayJson(XrayJson xrayJson) {
     tun.readFromXrayJson(xrayJson);
+    socks.readFromXrayJson(xrayJson);
+    http.readFromXrayJson(xrayJson);
   }
 
   List<XrayInbound> get xrayJson {
-    return <XrayInbound>[tun.xrayJson, ping.xrayJson];
+    return <XrayInbound>[
+      tun.xrayJson,
+      socks.xrayJson,
+      http.xrayJson,
+      ping.xrayJson,
+    ];
+  }
+
+  List<XrayInbound> runtimeXrayJson(CoreRunMode mode) {
+    switch (mode) {
+      case CoreRunMode.tun:
+        return <XrayInbound>[tun.xrayJson, ping.xrayJson];
+      case CoreRunMode.proxy:
+        return <XrayInbound>[socks.xrayJson, http.xrayJson, ping.xrayJson];
+    }
   }
 }
 
 class XrayPorts {
   String pingPort;
   String metricsPort;
-  final PingAuth pingAuth;
+  final XrayInboundAccount pingAuth;
 
   XrayPorts(this.pingPort, this.metricsPort, this.pingAuth);
 
-  static Future<XrayPorts?> getPorts() async {
-    final ports = await AppHostApi().getFreePorts(2);
-    if (ports.length != 2) {
-      return null;
+  static Future<XrayPorts?> getPorts({
+    Set<int> excludedPorts = const {},
+  }) async {
+    for (var i = 0; i < 5; i++) {
+      final ports = await AppHostApi().getFreePorts(2);
+      final filtered = ports
+          .where((port) => !excludedPorts.contains(port))
+          .toList();
+      if (filtered.length == 2) {
+        return XrayPorts(
+          "${filtered[0]}",
+          "${filtered[1]}",
+          XrayInboundAccountFactory.random(),
+        );
+      }
     }
-    return XrayPorts("${ports[0]}", "${ports[1]}", PingAuthFactory.random());
+    return null;
   }
 }

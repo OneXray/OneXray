@@ -38,25 +38,30 @@
 #     APPLE_GOOGLE_SERVICE_INFO_PLIST_BASE64      shared by iOS + MAS macOS (same bundle id net.yuandev.onexray)
 #     MACOS_SE_GOOGLE_SERVICE_INFO_PLIST_BASE64   for the SE build  (swift/macOSSE/GoogleService-Info.plist)
 #
-#   AdMob (forwarded to Dart as --dart-define; App IDs consumed by Android
-#   manifestPlaceholders / iOS Info.plist build setting):
-#     ADMOB_APP_ID_ANDROID
-#     ADMOB_APP_ID_IOS
-#     ADMOB_AD_UNIT_ID_ANDROID
-#     ADMOB_AD_UNIT_ID_IOS
-#
 # Layout:
-#   build_scripts/app/builder.py#build_core expects the XTLS/libXray and
-#   XTLS/Xray-core source checkouts to live as siblings of this repo (same parent
-#   directory). Every job therefore checks out this repo to `OneXray/`, libXray
-#   to `libXray/`, and Xray-core to `Xray-core/` at the workspace root. CI uses
-#   Xray-core `main` as libXray's local Go replace source; fastforge/fastlane/
-#   flutter all produce their outputs under `<workspace>/output`.
+#   build_scripts/app/builder.py#build_core expects XTLS/libXray and
+#   OneXray/Xray-core to live as siblings of this repo. Every job therefore checks
+#   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
+#   `Xray-core/` at the workspace root. libXray is built with local Xray-core,
+#   and Windows/Linux app packages compile OneXrayCore directly from that same
+#   sibling Xray-core checkout. fastforge/fastlane/flutter all produce their
+#   outputs under `<workspace>/output`.
 
 name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Build target
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - ios
+          - macos
+          - android
   push:
     tags:
       - "v*"
@@ -71,7 +76,8 @@ env:
   PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
   LIBXRAY_REF: main
-  XRAY_CORE_REF: main
+  XRAY_CORE_REPOSITORY: OneXray/Xray-core
+  XRAY_CORE_REF: build
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -100,6 +106,7 @@ jobs:
   # iOS — uploads to App Store Connect (TestFlight) via fastlane
   # =================================================================
   ios:
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'ios'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -118,7 +125,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          repository: XTLS/Xray-core
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
@@ -177,9 +184,6 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          ADMOB_APP_ID_IOS: ${{ secrets.ADMOB_APP_ID_IOS }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray ios
 
       - name: Upload artifact
@@ -193,6 +197,7 @@ jobs:
   # macOS (MAS) — universal binary, uploads to App Store Connect
   # =================================================================
   macos:
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'macos'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -211,7 +216,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          repository: XTLS/Xray-core
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
@@ -280,8 +285,6 @@ jobs:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
           FASTLANE_MAS_INSTALLER_CERT: ${{ secrets.FASTLANE_MAS_INSTALLER_CERT }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray macos
 
   # =================================================================
@@ -289,6 +292,7 @@ jobs:
   #   + notarized + zipped
   # =================================================================
   macos_se:
+    if: github.event_name == 'push' || inputs.target == 'all'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -307,7 +311,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          repository: XTLS/Xray-core
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
@@ -366,8 +370,6 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray macos_se
 
       - name: Upload artifact
@@ -381,6 +383,7 @@ jobs:
   # Android — uploads AAB to Play Store via fastlane
   # =================================================================
   android:
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'android'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     defaults:
@@ -399,7 +402,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          repository: XTLS/Xray-core
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
@@ -466,10 +469,6 @@ jobs:
         run: sudo gem install fastlane --no-document
 
       - name: Build & upload
-        env:
-          ADMOB_APP_ID_ANDROID: ${{ secrets.ADMOB_APP_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray android
 
       - name: Upload artifact
@@ -486,6 +485,7 @@ jobs:
   #   for C++ desktop workloads).
   # =================================================================
   windows:
+    if: github.event_name == 'push' || inputs.target == 'all'
     runs-on: windows-2022
     timeout-minutes: 60
     defaults:
@@ -505,7 +505,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          repository: XTLS/Xray-core
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
@@ -538,10 +538,10 @@ jobs:
           echo "$LOCALAPPDATA/Pub/Cache/bin" >> "$GITHUB_PATH"
 
       - name: Build
-        env:
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python build_scripts/main.py OneXray windows
+
+      - name: Verify core CLI
+        run: ./windows/app/OneXrayCore.exe help run | grep -- "--env"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -562,6 +562,7 @@ jobs:
   #   for private ones.
   # =================================================================
   linux:
+    if: github.event_name == 'push' || inputs.target == 'all'
     strategy:
       fail-fast: false
       matrix:
@@ -588,7 +589,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          repository: XTLS/Xray-core
+          repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
@@ -630,10 +631,10 @@ jobs:
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
       - name: Build
-        env:
-          ADMOB_AD_UNIT_ID_ANDROID: ${{ secrets.ADMOB_AD_UNIT_ID_ANDROID }}
-          ADMOB_AD_UNIT_ID_IOS: ${{ secrets.ADMOB_AD_UNIT_ID_IOS }}
         run: python3 build_scripts/main.py OneXray linux
+
+      - name: Verify core CLI
+        run: ./linux/app/OneXrayCore help run | grep -- "--env"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

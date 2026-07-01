@@ -2,18 +2,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/constants.dart';
-import 'package:onexray/core/pigeon/model.dart';
 
-export 'package:onexray/core/pigeon/model.dart' show PingAuth;
+export 'package:onexray/core/model/xray_json.dart' show XrayInboundAccount;
 
-extension PingAuthNetwork on PingAuth {
+extension XrayInboundAccountNetwork on XrayInboundAccount {
   bool get isValid => user?.isNotEmpty == true && pass?.isNotEmpty == true;
-
-  Map<String, dynamic> get xrayUser => <String, dynamic>{
-    "user": user ?? "",
-    "pass": pass ?? "",
-  };
 
   String proxyUrl(String port) {
     final parsedPort = int.tryParse(port);
@@ -29,9 +24,9 @@ extension PingAuthNetwork on PingAuth {
   }
 }
 
-abstract final class PingAuthFactory {
-  static PingAuth random() {
-    return PingAuth(_token(18), _token(32));
+abstract final class XrayInboundAccountFactory {
+  static XrayInboundAccount random() {
+    return XrayInboundAccount(_token(18), _token(32));
   }
 
   static String _token(int bytes) {

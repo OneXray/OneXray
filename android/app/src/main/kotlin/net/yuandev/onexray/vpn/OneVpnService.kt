@@ -11,7 +11,6 @@ import android.graphics.drawable.Icon
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import android.util.Base64
 import com.elvishew.xlog.XLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -154,7 +153,7 @@ class OneVpnService : VpnService() {
         }
         XLog.d("OneVpnService: stopTun")
         stopForeground(STOP_FOREGROUND_REMOVE)
-        LibXray.stopXray()
+        stopXray()
         try {
             tunnel?.close()
         } catch (e: Exception) {
@@ -177,7 +176,7 @@ class OneVpnService : VpnService() {
         XLog.e(message, error)
         stopForeground(STOP_FOREGROUND_REMOVE)
         try {
-            LibXray.stopXray()
+            stopXray()
         } catch (e: Exception) {
             XLog.d("OneVpnService: failStart stopXray exception")
             XLog.d(e)
@@ -290,11 +289,11 @@ class OneVpnService : VpnService() {
 
         XLog.d("OneVpnService: runTun tunnel = ${tunnel?.fd}")
 
-        val coreBase64Text = requireNotNull(request.coreBase64Text) {
+        val coreInvokeText = requireNotNull(request.coreInvokeText) {
             "missing Xray run request"
         }
         controller.vpn = this
-        runXray(coreBase64Text, establishedTunnel, generation)
+        runXray(coreInvokeText, establishedTunnel, generation)
     }
 
     private fun setIPAndDns(tun: TunJson, builder: Builder) {
@@ -363,7 +362,7 @@ class OneVpnService : VpnService() {
     }
 
     private fun runXray(
-        coreBase64Text: String,
+        coreInvokeText: String,
         establishedTunnel: ParcelFileDescriptor,
         generation: Int,
     ) {
@@ -373,13 +372,12 @@ class OneVpnService : VpnService() {
                 if (generation != startGeneration.get() || tunnel !== establishedTunnel) {
                     return@launch
                 }
-                LibXray.setTunFd(establishedTunnel.fd)
-                val result = LibXray.runXray(coreBase64Text)
+                val result = LibXray.invoke(withTunFd(coreInvokeText, establishedTunnel.fd))
                 validateRunXrayResult(result)
                 if (generation != startGeneration.get() || tunnel !== establishedTunnel) {
                     XLog.d("OneVpnService: stale runXray result ignored")
                     if (tunnel == null) {
-                        LibXray.stopXray()
+                        stopXray()
                     }
                     return@launch
                 }
@@ -393,11 +391,22 @@ class OneVpnService : VpnService() {
     }
 
     private fun validateRunXrayResult(result: String) {
-        val decoded = String(Base64.decode(result, Base64.DEFAULT), Charsets.UTF_8)
-        val response = JSONObject(decoded)
+        val response = JSONObject(result)
         if (!response.optBoolean("success", false)) {
             val error = response.optString("error", "runXray failed")
             throw IllegalStateException(error)
         }
+    }
+
+    private fun stopXray() {
+        LibXray.invoke("""{"apiVersion":1,"method":"stopXray"}""")
+    }
+
+    private fun withTunFd(requestJson: String, fd: Int): String {
+        val request = JSONObject(requestJson)
+        val env = request.optJSONObject("env") ?: JSONObject()
+        env.put("xray.tun.fd", fd.toString())
+        request.put("env", env)
+        return request.toString()
     }
 }

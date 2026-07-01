@@ -23,7 +23,11 @@ extension XrayJsonWriter on XrayJson {
     return res;
   }
 
-  Future<int> ping(PingState pingState, String port, PingAuth auth) async {
+  Future<int> ping(
+    PingState pingState,
+    String port,
+    XrayInboundAccount auth,
+  ) async {
     final configPath = await FileTool.makeCacheFile(ConfigFileType.json);
     await _writeToPath(configPath);
 

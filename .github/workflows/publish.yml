@@ -58,8 +58,8 @@ jobs:
         run: |
           metadata_tag_file="artifacts/release-metadata/tag.txt"
           if [ ! -f "$metadata_tag_file" ]; then
-            echo "Missing release metadata artifact: $metadata_tag_file" >&2
-            exit 1
+            echo "No release metadata artifact found; assuming manual rebuild artifacts."
+            exit 0
           fi
 
           metadata_tag="$(cat "$metadata_tag_file")"
@@ -72,6 +72,24 @@ jobs:
 
       - name: List release files
         run: find artifacts -type f | sort
+
+      - name: Delete matching existing release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG does not exist yet; nothing to delete."
+            exit 0
+          fi
+
+          find artifacts -type f ! -path '*/release-metadata/*' | while IFS= read -r file; do
+            asset="$(basename "$file")"
+            echo "Deleting existing asset if present: $asset"
+            gh release delete-asset "$RELEASE_TAG" "$asset" \
+              --repo "${{ github.repository }}" \
+              --yes >/dev/null 2>&1 || true
+          done
 
       - name: Publish GitHub pre-release
         uses: softprops/action-gh-release@v3

@@ -35,23 +35,23 @@ cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-In
 
 这些文件的 `.example` 版本已经足够用于本地开发；如果后续需要联调真实 Firebase，再替换成你自己的配置。
 
-## 2. 准备 libXray 产物
+## 2. 准备 libXray 和 Xray-core 产物
 
-OneXray 本地 debug 依赖同级目录下的 `libXray` 仓库产物。`libXray/build` 对应的主要产物如下：
+OneXray 本地 debug 依赖同级目录下的 `libXray` 和 `Xray-core` 仓库产物。主要产物如下：
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`、`libXray-sources.jar`
-- Linux: `linux_so/libXray.so`、`bin/xray`
-- Windows: `windows_dll/libXray.dll`、`bin/xray.exe`
+- Linux: `linux_so/libXray.so`，以及重命名为 `OneXrayCore` 的 Xray-core CLI
+- Windows: `windows_dll/libXray.dll`，以及重命名为 `OneXrayCore.exe` 的 Xray-core CLI
 
-建议先在 `libXray` 仓库完成目标平台构建：
+建议先在 `libXray` 仓库完成目标平台构建。以下命令会使用同级目录下的 `Xray-core`：
 
 ```shell
 cd ../libXray
-python3 build/main.py apple go
-python3 build/main.py android
-python3 build/main.py linux
-python3 build/main.py windows
+python3 build/main.py apple go local
+python3 build/main.py android local
+python3 build/main.py linux local
+python3 build/main.py windows local
 ```
 
 然后把产物同步到 OneXray 对应目录。
@@ -78,22 +78,22 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` 会从 `linux/app/` 链接 `libXray.so`，并安装 `OneXrayCore` 到最终包内。因此需要把 Linux 产物复制到 `linux/app/`，其中 `bin/xray` 需要按 OneXray 约定重命名：
+`linux/app.cmake` 会从 `linux/app/` 链接 `libXray.so`，并安装 `OneXrayCore` 到最终包内。因此需要复制 `libXray.so`，并将 Xray-core 编译成 OneXray 约定的文件名：
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-cp ../libXray/bin/xray linux/app/OneXrayCore
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 ### Windows
 
-`windows/app.cmake` 会从 `windows/app/` 安装 `libXray.dll` 和 `OneXrayCore.exe`。因此需要把 Windows 产物复制到 `windows/app/`，其中 `bin/xray.exe` 需要按 OneXray 约定重命名：
+`windows/app.cmake` 会从 `windows/app/` 安装 `libXray.dll` 和 `OneXrayCore.exe`。因此需要复制 `libXray.dll`，并将 Xray-core 编译成 OneXray 约定的文件名：
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 > `windows/app.cmake` 还会打包 `wintun.dll`。这个文件不来自 `libXray`，需要按 Windows 开发环境另行准备。

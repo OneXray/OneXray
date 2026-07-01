@@ -27,34 +27,7 @@ abstract class BridgeHostApi {
   NativeVpnCommandResult stopVpn();
 
   @async
-  String getFreePorts(int num);
-
-  @async
-  String convertShareLinksToXrayJson(String base64Text);
-
-  @async
-  String convertXrayJsonToShareLinks(String base64Text);
-
-  @async
-  String countGeoData(String base64Text);
-
-  @async
-  String readGeoFiles(String base64Text);
-
-  @async
-  String ping(String base64Text);
-
-  @async
-  String testXray(String base64Text);
-
-  @async
-  String runXray(String base64Text);
-
-  @async
-  String stopXray();
-
-  @async
-  String xrayVersion();
+  String invoke(String requestJson);
 
   //platform======================
   @async

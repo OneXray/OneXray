@@ -15,6 +15,7 @@ import 'package:onexray/pages/core/xray/setting/ui/params.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/xray/setting/simple_state.dart';
 
 class XraySettingListState {
@@ -33,7 +34,7 @@ class XraySettingListState {
   });
 
   factory XraySettingListState.initial() => const XraySettingListState(
-    xraySettingId: DBConstants.defaultId,
+    xraySettingId: XraySettingSimple.simpleId,
     simpleConfigs: [],
     configs: [],
     query: "",
@@ -115,10 +116,9 @@ class XraySettingListController extends Cubit<XraySettingListState> {
 
   void updateXraySettingId(BuildContext context, int? id) {
     if (id == null || state.xraySettingId == id) {
-      emit(state.copyWith(xraySettingId: DBConstants.defaultId));
-    } else {
-      emit(state.copyWith(xraySettingId: id));
+      return;
     }
+    emit(state.copyWith(xraySettingId: id));
   }
 
   void addXraySetting(BuildContext context) {
@@ -196,16 +196,21 @@ class XraySettingListController extends Cubit<XraySettingListState> {
   }
 
   Future<void> _deleteSetting(CoreConfigData setting) async {
+    if (setting.id == XraySettingSimple.simpleId ||
+        setting.id == state.xraySettingId) {
+      ToastService().showToast(
+        appLocalizationsNoContext().xraySettingListPageDeleteSelectedBlocked,
+      );
+      return;
+    }
     final db = AppDatabase();
     await db.coreConfigDao.deleteRow(setting);
-    if (setting.id == state.xraySettingId) {
-      emit(state.copyWith(xraySettingId: DBConstants.defaultId));
-      await _updateSettingId();
-    }
   }
 
   Future<void> _updateSettingId() async {
-    final settingId = state.xraySettingId;
+    final settingId = state.xraySettingId == DBConstants.defaultId
+        ? XraySettingSimple.simpleId
+        : state.xraySettingId;
     await PreferencesKey().saveXraySettingId(settingId);
     AppEventBus.instance.updateXraySettingId(settingId);
   }

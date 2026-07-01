@@ -8,12 +8,6 @@ import 'package:tuple/tuple.dart';
 
 extension TunSettingStateValidator on TunSettingState {
   Future<Tuple2<bool, String>> validate() async {
-    if (!EmptyTool.checkString(tunPriority)) {
-      return Tuple2(
-        false,
-        appLocalizationsNoContext().validationPriorityRequired,
-      );
-    }
     if (!EmptyTool.checkString(tunDnsIPv4)) {
       return Tuple2(false, appLocalizationsNoContext().validationDnsRequired);
     }
@@ -50,12 +44,11 @@ extension TunSettingStateValidator on TunSettingState {
   }
 
   void removeWhitespace() {
-    tunPriority = tunPriority.removeWhitespace;
     tunDnsIPv4 = tunDnsIPv4.removeWhitespace;
     tunDnsIPv6 = tunDnsIPv6.removeWhitespace;
     dnsServerName = dnsServerName.removeWhitespace;
 
-    bindInterface = bindInterface.removeWhitespace;
+    autoOutboundsInterface = autoOutboundsInterface.removeWhitespace;
 
     for (final rule in onDemandRules) {
       rule.removeWhitespace();

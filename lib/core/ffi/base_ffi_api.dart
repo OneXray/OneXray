@@ -3,11 +3,11 @@ import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:isolate_manager/isolate_manager.dart';
 import 'package:onexray/core/ffi/generated_bindings.dart';
-import 'package:onexray/core/ffi/model_reader.dart';
-import 'package:onexray/core/ffi/model_writer.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
+import 'package:onexray/core/tools/empty.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/localizations/service.dart';
@@ -34,10 +34,9 @@ abstract class BaseFfiApi {
     await updateVpnStatus(VpnStatus.connecting);
 
     final request = await StartVpnRequestReader.readFromStartFile();
-    final coreConfig = RunXrayConfigReader.readFromStartVpnRequest(request);
-    final configPath = await coreConfig.writeToFile();
+    final coreRequest = _readRunXrayRequest(request);
 
-    var res = await startCore(configPath);
+    var res = await startCore(coreRequest);
     if (!res) {
       await stopVpn();
       return _commandFailed(appLocalizationsNoContext().vpnCoreStartFailed);
@@ -46,7 +45,14 @@ abstract class BaseFfiApi {
     return _commandSuccess();
   }
 
-  Future<bool> startCore(String configPath) async {
+  LibXrayRunConfig _readRunXrayRequest(StartVpnRequest request) {
+    if (!EmptyTool.checkString(request.coreInvokeText)) {
+      return LibXrayRunConfig(null, RunXrayRequest(null));
+    }
+    return LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
+  }
+
+  Future<bool> startCore(LibXrayRunConfig request) async {
     return true;
   }
 
@@ -87,44 +93,8 @@ abstract class BaseFfiApi {
     _sharedIsolate.stop();
   }
 
-  Future<String> getFreePorts(int num) async {
-    return _sharedIsolate.compute(_cgoGetFreePorts, num);
-  }
-
-  Future<String> convertShareLinksToXrayJson(String base64Text) async {
-    return _sharedIsolate.compute(_cgoConvertShareLinksToXrayJson, base64Text);
-  }
-
-  Future<String> convertXrayJsonToShareLinks(String base64Text) async {
-    return _sharedIsolate.compute(_cgoConvertXrayJsonToShareLinks, base64Text);
-  }
-
-  Future<String> countGeoData(String base64Text) async {
-    return _sharedIsolate.compute(_cgoCountGeoData, base64Text);
-  }
-
-  Future<String> readGeoFiles(String base64Text) async {
-    return _sharedIsolate.compute(_cgoReadGeoFiles, base64Text);
-  }
-
-  Future<String> ping(String base64Text) async {
-    return _sharedIsolate.compute(_cgoPing, base64Text);
-  }
-
-  Future<String> testXray(String base64Text) async {
-    return _sharedIsolate.compute(_cgoTestXray, base64Text);
-  }
-
-  Future<String> runXray(String base64Text) async {
-    return _sharedIsolate.compute(_cgoRunXray, base64Text);
-  }
-
-  Future<String> stopXray() async {
-    return _sharedIsolate.compute(_cgoStopXray, 0);
-  }
-
-  Future<String> xrayVersion() async {
-    return _sharedIsolate.compute(_cgoXrayVersion, 0);
+  Future<String> invoke(String requestJson) async {
+    return _sharedIsolate.compute(_cgoInvoke, requestJson);
   }
 }
 
@@ -149,94 +119,10 @@ class _CoreLib {
 
 @pragma('vm:entry-point')
 @isolateManagerSharedWorker
-String _cgoGetFreePorts(int num) {
-  final resPointer = _CoreLib()._lib.CGoGetFreePorts(num);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoConvertShareLinksToXrayJson(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoConvertShareLinksToXrayJson(req);
+String _cgoInvoke(String requestJson) {
+  final req = _convertStringToPointer(requestJson);
+  final resPointer = _CoreLib()._lib.CGoInvoke(req);
   calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoConvertXrayJsonToShareLinks(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGOConvertXrayJsonToShareLinks(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoCountGeoData(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoCountGeoData(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoReadGeoFiles(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoReadGeoFiles(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoPing(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoPing(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoTestXray(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoTestXray(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoRunXray(String base64Text) {
-  final req = _convertStringToPointer(base64Text);
-  final resPointer = _CoreLib()._lib.CGoRunXray(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoStopXray(int _) {
-  final resPointer = _CoreLib()._lib.CGoStopXray();
-  final res = _convertPointerToString(resPointer);
-  return res;
-}
-
-@pragma('vm:entry-point')
-@isolateManagerSharedWorker
-String _cgoXrayVersion(int _) {
-  final resPointer = _CoreLib()._lib.CGoXrayVersion();
   final res = _convertPointerToString(resPointer);
   return res;
 }

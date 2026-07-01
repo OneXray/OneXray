@@ -1,15 +1,17 @@
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_setting/state.dart';
+import 'package:onexray/service/xray/runtime_inbounds.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
 import 'package:onexray/service/xray/setting/state.dart';
 import 'package:onexray/service/xray/setting/state_reader.dart';
 import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/service/xray/tun_route.dart';
 
 extension XraySettingStateWriter on XraySettingState {
   XrayJson get xrayJson {
@@ -33,50 +35,33 @@ extension XraySettingStateWriter on XraySettingState {
   }
 
   Future<XrayJson> fixSetting(
+    CoreRunMode mode,
     TunSettingState tunSettingState,
     XrayPorts ports,
   ) async {
     fixInboundsPort(ports);
     await _fixSystemExtensionLogs();
 
-    if (tunSettingState.shouldFixInterface) {
-      final networkInterface = await tunSettingState.networkInterface;
-      if (networkInterface != null) {
-        _fixSettingInterface(networkInterface);
-        tunSettingState.bindInterface = networkInterface;
-      } else {
-        _removeSettingInterface();
-        tunSettingState.bindInterface = "";
-      }
+    if (mode == CoreRunMode.tun &&
+        (AppPlatform.isWindows || AppPlatform.isLinux)) {
+      _removeSettingInterface();
+      _applyTunRouteConfig(tunSettingState);
     } else {
       _removeSettingInterface();
-      tunSettingState.bindInterface = "";
     }
 
-    return _fixedXrayJson(ports, tunSettingState.metricsEnabled);
+    return _fixedXrayJson(mode, ports, tunSettingState.metricsEnabled);
   }
 
-  XrayJson _fixedXrayJson(XrayPorts ports, bool metricsEnabled) {
+  XrayJson _fixedXrayJson(
+    CoreRunMode mode,
+    XrayPorts ports,
+    bool metricsEnabled,
+  ) {
     final xrayJson = this.xrayJson;
+    XrayRuntimeInbounds.applyToXrayJson(xrayJson, inbounds, mode);
     fixMetricsConfig(xrayJson, ports, metricsEnabled);
     return xrayJson;
-  }
-
-  void _fixSettingInterface(String interface) {
-    if (!EmptyTool.checkString(outbounds.freedom.interface)) {
-      outbounds.freedom.interface = interface;
-    }
-    if (!EmptyTool.checkString(outbounds.fragment.interface)) {
-      outbounds.fragment.interface = interface;
-    }
-    for (final outbound in outbounds.outbounds) {
-      if (!EmptyTool.checkString(outbound.interface)) {
-        outbound.interface = interface;
-      }
-    }
-    if (!EmptyTool.checkString(inbounds.tun.settings.autoOutboundsInterface)) {
-      inbounds.tun.settings.autoOutboundsInterface = interface;
-    }
   }
 
   void _removeSettingInterface() {
@@ -86,6 +71,14 @@ extension XraySettingStateWriter on XraySettingState {
       outbound.interface = "";
     }
     inbounds.tun.settings.autoOutboundsInterface = "";
+    inbounds.tun.settings.gateway = [];
+    inbounds.tun.settings.dns = [];
+    inbounds.tun.settings.autoSystemRoutingTable = [];
+  }
+
+  void _applyTunRouteConfig(TunSettingState tunSettingState) {
+    final config = XrayTunRouteConfig.fromTunSetting(tunSettingState);
+    inbounds.tun.settings.applyRouteConfig(config);
   }
 
   void fixInboundsPort(XrayPorts ports) {

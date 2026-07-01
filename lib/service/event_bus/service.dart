@@ -4,6 +4,7 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/manager.dart';
@@ -36,12 +37,23 @@ class AppEventBus extends Cubit<AppEventBusState> {
 
   Future<void> asyncInitState() async {
     final xraySettingId = await PreferencesKey().readXraySettingId();
+    final coreRunMode = await PreferencesKey().readCoreRunMode();
     final runningId = await PreferencesKey().readRunningConfigId();
-    emit(state.copyWith(xraySettingId: xraySettingId, runningId: runningId));
+    emit(
+      state.copyWith(
+        xraySettingId: xraySettingId,
+        coreRunMode: coreRunMode,
+        runningId: runningId,
+      ),
+    );
   }
 
   void updateXraySettingId(int value) {
     emit(state.copyWith(xraySettingId: value));
+  }
+
+  void updateCoreRunMode(CoreRunMode value) {
+    emit(state.copyWith(coreRunMode: value));
   }
 
   void updateVpnActionState(VpnActionState value) {

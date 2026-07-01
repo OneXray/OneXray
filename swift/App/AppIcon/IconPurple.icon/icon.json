@@ -6,13 +6,6 @@
     {
       "layers" : [
         {
-          "fill" : {
-            "solid" : "extended-srgb:0.61176,0.15294,0.69020,1.00000"
-          },
-          "image-name" : "center-cutout.svg",
-          "name" : "center-cutout"
-        },
-        {
           "image-name" : "mark-white.svg",
           "name" : "mark-white"
         }

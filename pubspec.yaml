@@ -1,7 +1,7 @@
 name: onexray
 description: "Cross Platform Xray-core Client"
 publish_to: "none"
-version: 26.6.3+1
+version: 26.7.1+1
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -44,9 +44,9 @@ dependencies:
   firebase_crashlytics: ^5.2.4
 
   #---------- flutter community
-  package_info_plus: ^10.1.0
-  device_info_plus: ^13.1.0
-  share_plus: ^13.1.0
+  package_info_plus: ^10.2.0
+  device_info_plus: ^13.2.0
+  share_plus: ^13.2.0
 
   #---------- third party plugin
   drift: ^2.34.0

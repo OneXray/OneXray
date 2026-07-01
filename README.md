@@ -15,13 +15,22 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 | Platform | Requirements | Download |
 | --- | --- | --- |
 | iOS | iOS 15.0 and above, arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773), [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS | macOS 12.0 and above, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773), [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| macOS | macOS 12.0 and above, Apple silicon or Intel | Mac App Store: [App Store](https://apps.apple.com/us/app/onexray/id6745748773)<br>Homebrew / Universal ZIP (OneXraySE): `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 and above, arm32, arm64, or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
 | Windows | Windows 10 or Windows 11, x86_64 | [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
 ## Notes
+
+### macOS
+
+The Mac App Store build is a separate store package. Homebrew and Universal ZIP use the same Developer ID `macos_se` package and install `OneXraySE.app`.
+
+```shell
+brew install --cask onexrayse
+brew uninstall --cask onexrayse
+```
 
 ### iOS
 
@@ -51,19 +60,19 @@ If your machine's CPU architecture is Arm64, switching the language to a CJK lan
 
 ### Kernel Upgrade
 
-On Linux and Windows platforms, you can upgrade or replace Xray-core yourself. You can compile it using the build script according to the instructions in [libXray](https://github.com/XTLS/libXray).
+On Linux and Windows platforms, you can upgrade or replace Xray-core yourself. Build libXray only for the dynamic library, and download the official Xray-core release binary for `OneXrayCore`.
 
 #### Linux
 
 Replace `OneXray/lib/libXray.so` with the compiled product of libXray `linux_so/libXray.so`.
 
-Replace `OneXray/bin/OneXrayCore` with the compiled product of libXray `bin/xray`.
+Download the official Linux Xray-core release binary, rename `xray` to `OneXrayCore`, and replace `OneXray/bin/OneXrayCore`.
 
 #### Windows
 
 Replace `OneXray/libXray.dll` with the compiled product of libXray `windows_dll/libXray.dll`.
 
-Replace `OneXray/bin/OneXrayCore.exe` with the compiled product of libXray `bin/xray.exe`.
+Download the official Windows Xray-core release binary, rename `xray.exe` to `OneXrayCore.exe`, and replace `OneXray/bin/OneXrayCore.exe`.
 
 ## Contribution
 

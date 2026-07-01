@@ -82,18 +82,7 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern void CGoSetTunFd(int fd);
-extern char* CGoRunXrayFromJSON(char* base64Text);
-extern char* CGoGetFreePorts(GoInt count);
-extern char* CGoConvertShareLinksToXrayJson(char* base64Text);
-extern char* CGOConvertXrayJsonToShareLinks(char* base64Text);
-extern char* CGoCountGeoData(char* base64Text);
-extern char* CGoReadGeoFiles(char* base64Text);
-extern char* CGoPing(char* base64Text);
-extern char* CGoTestXray(char* base64Text);
-extern char* CGoRunXray(char* base64Text);
-extern char* CGoStopXray(void);
-extern char* CGoXrayVersion(void);
+extern char* CGoInvoke(char* requestJSON);
 
 #ifdef __cplusplus
 }

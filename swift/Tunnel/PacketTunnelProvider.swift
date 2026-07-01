@@ -63,8 +63,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
         let settings = buildSettings(request: request)
         try await setTunnelNetworkSettings(settings)
-        if let coreBase64Text = request.coreBase64Text {
-            try startXray(coreBase64Text)
+        if let coreInvokeText = request.coreInvokeText {
+            try startXray(coreInvokeText)
         }
         YGLog("startTunnel finished")
     }
@@ -117,8 +117,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         let settings = buildSettings(request: request)
         try await setTunnelNetworkSettings(settings)
 
-        if let coreBase64Text = request.coreBase64Text {
-            try startXray(coreBase64Text)
+        if let coreInvokeText = request.coreInvokeText {
+            try startXray(coreInvokeText)
         }
     }
 
@@ -320,32 +320,49 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
 
     // MARK: - Xray lifecycle
 
-    private func startXray(_ base64Text: String) throws {
+    private func startXray(_ requestJson: String) throws {
         guard let fd = self.tunnelFileDescriptor else {
             YGLog("PacketTunnelProvider TunnelError.noSocketFd")
             throw TunnelError.noSocketFd
         }
+        let request = try withTunFd(requestJson, fd: fd)
 
         Task {
-            CGoSetTunFd(fd)
-            let res = base64Text.withCString { p in
+            let res = request.withCString { p in
                 let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoRunXray(p0)
+                return CGoInvoke(p0)
             }
             let result = CallResponse.fromResponse(res)
             if !result.success {
-                YGLog("PacketTunnelProvider startXray \(result.error)")
+                YGLog("PacketTunnelProvider startXray \(result.error ?? "")")
                 killProcess()
             }
         }
     }
 
     private func stopXray() {
-        let res = CGoStopXray()
+        let request = #"{"apiVersion":1,"method":"stopXray"}"#
+        let res = request.withCString { p in
+            let p0 = UnsafeMutablePointer(mutating: p)
+            return CGoInvoke(p0)
+        }
         let result = CallResponse.fromResponse(res)
         if !result.success {
             killProcess()
         }
+    }
+
+    private func withTunFd(_ requestJson: String, fd: Int32) throws -> String {
+        guard let data = requestJson.data(using: .utf8),
+              var object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return requestJson
+        }
+        var env = object["env"] as? [String: Any] ?? [:]
+        env["xray.tun.fd"] = "\(fd)"
+        object["env"] = env
+        let rewritten = try JSONSerialization.data(withJSONObject: object)
+        return String(data: rewritten, encoding: .utf8) ?? requestJson
     }
 }
 

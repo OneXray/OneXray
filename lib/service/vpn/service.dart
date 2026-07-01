@@ -8,6 +8,7 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -17,6 +18,7 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/menu/tray/service.dart';
@@ -58,6 +60,8 @@ final class VpnService {
   var _pendingConfigId = DBConstants.defaultId;
   var _vpnRunning = false;
   var _lastVpnStatus = VpnStatus.disconnected;
+  var _runningMode = CoreRunMode.tun;
+  var _pendingRunMode = CoreRunMode.tun;
 
   bool get vpnRunning => _vpnRunning;
 
@@ -67,6 +71,8 @@ final class VpnService {
     eventBus.updateRunningId(savedRunningId);
 
     _lastConfigId = await PreferencesKey().readLastConfigId();
+    _runningMode = await PreferencesKey().readCoreRunMode();
+    _pendingRunMode = _runningMode;
 
     _listenVpnStatus();
   }
@@ -90,8 +96,23 @@ final class VpnService {
   }
 
   Future<void> refreshVpnStatus() async {
+    final mode = await PreferencesKey().readCoreRunMode();
+    if (mode == CoreRunMode.proxy) {
+      await _refreshProxyCoreStatus();
+      return;
+    }
     final result = await AppHostApi().readVpnStatus();
     _applyNativeCommandResult(result);
+  }
+
+  Future<void> _refreshProxyCoreStatus() async {
+    final running = await AppHostApi().getXrayState();
+    _pendingRunMode = CoreRunMode.proxy;
+    if (running) {
+      await _vpnStatusChanged(VpnStatus.connected);
+    } else {
+      await _vpnStatusChanged(VpnStatus.disconnected);
+    }
   }
 
   Future<void> _vpnStatusChanged(VpnStatus status) async {
@@ -116,6 +137,7 @@ final class VpnService {
         break;
       case VpnStatus.connected:
         _vpnRunning = true;
+        _runningMode = _pendingRunMode;
         eventBus.updateVpnActionState(VpnActionState.connected);
         final runningId = _pendingConfigId == DBConstants.defaultId
             ? _lastConfigId
@@ -189,6 +211,7 @@ final class VpnService {
 
   Future<NativeVpnCommandResult> startVpn(int configId) async {
     final eventBus = AppEventBus.instance;
+    final coreRunMode = await PreferencesKey().readCoreRunMode();
     if (configId == DBConstants.defaultId) {
       return stopDefaultVpn();
     }
@@ -201,20 +224,22 @@ final class VpnService {
     eventBus.updateVpnActionState(VpnActionState.preparing);
     eventBus.updateVpnErrorMessage("");
 
-    final permission = await _ensurePlatformPermissionForUserAction();
-    if (permission.state == PlatformPermissionState.failed) {
-      final message =
-          permission.message ??
-          appLocalizationsNoContext().vpnPlatformPermissionCheckFailed;
-      await _handleStartFailure(message);
-      return _commandFailed(message);
-    }
-    if (!_permissionAllowsStart(permission)) {
-      eventBus.updatePlatformPermission(permission);
-      eventBus.updateVpnActionState(
-        VpnActionState.waitingForPlatformPermission,
-      );
-      return _waitingForPermission(permission);
+    if (coreRunMode == CoreRunMode.tun) {
+      final permission = await _ensurePlatformPermissionForUserAction();
+      if (permission.state == PlatformPermissionState.failed) {
+        final message =
+            permission.message ??
+            appLocalizationsNoContext().vpnPlatformPermissionCheckFailed;
+        await _handleStartFailure(message);
+        return _commandFailed(message);
+      }
+      if (!_permissionAllowsStart(permission)) {
+        eventBus.updatePlatformPermission(permission);
+        eventBus.updateVpnActionState(
+          VpnActionState.waitingForPlatformPermission,
+        );
+        return _waitingForPermission(permission);
+      }
     }
 
     if (eventBus.state.runningId != DBConstants.defaultId ||
@@ -276,8 +301,7 @@ final class VpnService {
     _pendingConfigId = DBConstants.defaultId;
     eventBus.updatePendingConfigId(DBConstants.defaultId);
     eventBus.updateVpnActionState(VpnActionState.disconnecting);
-    final result = await AppHostApi().stopVpn();
-    _applyNativeCommandResult(result);
+    final result = await _stopCurrentCore();
     if (result.state == NativeVpnCommandState.failed) {
       eventBus.updateVpnActionState(VpnActionState.failed);
       eventBus.updateVpnErrorMessage(
@@ -297,6 +321,53 @@ final class VpnService {
     await _updateRunningId(DBConstants.defaultId);
     eventBus.updateVpnActionState(VpnActionState.idle);
     return result;
+  }
+
+  Future<NativeVpnCommandResult> switchRunMode(CoreRunMode mode) async {
+    final preferences = PreferencesKey();
+    final currentMode = await preferences.readCoreRunMode();
+    if (currentMode == mode) {
+      return _commandSuccess();
+    }
+
+    final eventBus = AppEventBus.instance;
+    final runningId = eventBus.state.runningId;
+    if (runningId != DBConstants.defaultId ||
+        _lastVpnStatus == VpnStatus.connected ||
+        _lastVpnStatus == VpnStatus.connecting) {
+      final stopResult = await _stopCurrentVpn();
+      if (stopResult.state == NativeVpnCommandState.failed) {
+        return stopResult;
+      }
+    }
+
+    await preferences.saveCoreRunMode(mode);
+    eventBus.updateCoreRunMode(mode);
+    await TrayService().refreshTrayManager();
+
+    if (runningId == DBConstants.defaultId) {
+      return _commandSuccess();
+    }
+    return startVpn(runningId);
+  }
+
+  Future<NativeVpnCommandResult> _stopCurrentCore() async {
+    if (_runningMode == CoreRunMode.proxy) {
+      return _stopProxyCore();
+    }
+    final result = await AppHostApi().stopVpn();
+    _applyNativeCommandResult(result);
+    return result;
+  }
+
+  Future<NativeVpnCommandResult> _stopProxyCore() async {
+    await _vpnStatusChanged(VpnStatus.disconnecting);
+    final error = await AppHostApi().stopXray();
+    if (error.isNotEmpty) {
+      return _commandFailed(appLocalizationsNoContext().vpnStopFailed);
+    }
+    await _vpnStatusChanged(VpnStatus.disconnected);
+    return _commandSuccess();
   }
 
   Future<PlatformPermissionResult>
@@ -403,10 +474,23 @@ final class VpnService {
     await _updateLastConfigId(config.id);
     await PreferencesKey().saveVpnStartTimestamp();
 
+    final coreRunMode = await PreferencesKey().readCoreRunMode();
+    _pendingRunMode = coreRunMode;
+
     final runDir = VpnConstants.runDir;
     await FileTool.checkDir(runDir);
 
-    final ports = await XrayPorts.getPorts();
+    final tunSettingState = TunSettingState();
+    await tunSettingState.readFromPreferences();
+    final settingState = await XraySettingStateReader.loadFromDb();
+    final proxyPortValidation = _validateProxyPorts(coreRunMode, settingState);
+    if (proxyPortValidation != null) {
+      return _commandFailed(proxyPortValidation);
+    }
+
+    final ports = await XrayPorts.getPorts(
+      excludedPorts: _localProxyPorts(coreRunMode, settingState),
+    );
     if (ports == null) {
       return _commandFailed(appLocalizationsNoContext().vpnLocalPortFailed);
     }
@@ -421,13 +505,13 @@ final class VpnService {
     if (coreConfigType == null) {
       return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
     }
-    final tunSettingState = TunSettingState();
-    await tunSettingState.readFromPreferences();
     var configPath = "";
     switch (coreConfigType) {
       case CoreConfigType.outbound:
         configPath = await _writeXrayUIConfig(
           config,
+          settingState,
+          coreRunMode,
           tunSettingState,
           ports,
           runDir,
@@ -437,6 +521,8 @@ final class VpnService {
         configPath = await _writeXrayRawConfig(
           coreConfigType,
           config,
+          settingState,
+          coreRunMode,
           tunSettingState,
           ports,
           runDir,
@@ -448,17 +534,57 @@ final class VpnService {
 
     await _clearXrayLog();
 
-    final coreBase64Text = await _makeRunXrayRequest(configPath);
-    if (coreBase64Text == null) {
+    final coreInvokeText = await _makeRunXrayRequest(configPath);
+    if (coreInvokeText == null) {
       return _commandFailed(appLocalizationsNoContext().vpnStartRequestFailed);
     }
 
-    return _makeVpnRequestAndStart(
-      coreBase64Text,
-      runDir,
-      ports,
-      tunSettingState,
-    );
+    switch (coreRunMode) {
+      case CoreRunMode.tun:
+        return _makeVpnRequestAndStart(
+          coreInvokeText,
+          runDir,
+          ports,
+          tunSettingState,
+        );
+      case CoreRunMode.proxy:
+        return _makeProxyRequestAndStart(coreInvokeText, configPath, ports);
+    }
+  }
+
+  String? _validateProxyPorts(CoreRunMode mode, XraySettingState settingState) {
+    if (mode != CoreRunMode.proxy) {
+      return null;
+    }
+    final socksPort = int.tryParse(settingState.inbounds.socks.port);
+    final httpPort = int.tryParse(settingState.inbounds.http.port);
+    if (!_isValidPort(socksPort) || !_isValidPort(httpPort)) {
+      return appLocalizationsNoContext().validationPortInvalid;
+    }
+    if (socksPort == httpPort) {
+      return appLocalizationsNoContext().validationPortDuplicate;
+    }
+    return null;
+  }
+
+  bool _isValidPort(int? port) {
+    return port != null && port > 0 && port <= 65535;
+  }
+
+  Set<int> _localProxyPorts(CoreRunMode mode, XraySettingState settingState) {
+    if (mode != CoreRunMode.proxy) {
+      return const {};
+    }
+    final ports = <int>{};
+    final socksPort = int.tryParse(settingState.inbounds.socks.port);
+    final httpPort = int.tryParse(settingState.inbounds.http.port);
+    if (_isValidPort(socksPort)) {
+      ports.add(socksPort!);
+    }
+    if (_isValidPort(httpPort)) {
+      ports.add(httpPort!);
+    }
+    return ports;
   }
 
   Future<void> _clearXrayLog() async {
@@ -468,12 +594,12 @@ final class VpnService {
 
   Future<String> _writeXrayUIConfig(
     CoreConfigData config,
+    XraySettingState settingState,
+    CoreRunMode coreRunMode,
     TunSettingState tunSettingState,
     XrayPorts port,
     String runDir,
   ) async {
-    final settingState = await XraySettingStateReader.loadFromDb();
-
     final outboundState = OutboundState();
     var outboundValid = false;
     try {
@@ -487,7 +613,11 @@ final class VpnService {
     await _applyChainProxy(settingState, outboundState, config);
     settingState.outbounds.outbounds.add(outboundState);
 
-    final xrayJson = await settingState.fixSetting(tunSettingState, port);
+    final xrayJson = await settingState.fixSetting(
+      coreRunMode,
+      tunSettingState,
+      port,
+    );
     final configPath = await xrayJson.writeConfig(runDir);
     return configPath;
   }
@@ -563,6 +693,8 @@ final class VpnService {
   Future<String> _writeXrayRawConfig(
     CoreConfigType coreConfigType,
     CoreConfigData config,
+    XraySettingState settingState,
+    CoreRunMode coreRunMode,
     TunSettingState tunSettingState,
     XrayPorts port,
     String runDir,
@@ -572,6 +704,8 @@ final class VpnService {
     final jsonMap = JsonTool.decoder.convert(rawText);
     await XrayRawFix.fixConfig(
       jsonMap,
+      settingState,
+      coreRunMode,
       tunSettingState,
       port,
       tunSettingState.metricsEnabled,
@@ -583,23 +717,42 @@ final class VpnService {
     return configPath;
   }
 
+  Future<NativeVpnCommandResult> _makeProxyRequestAndStart(
+    String coreInvokeText,
+    String configPath,
+    XrayPorts port,
+  ) async {
+    final request = StartVpnRequest(
+      null,
+      port.pingPort,
+      port.pingAuth,
+      port.metricsPort,
+      coreInvokeText,
+    );
+    await request.writeToStartFile();
+
+    await _vpnStatusChanged(VpnStatus.connecting);
+    final error = await AppHostApi().runXray(VpnConstants.datDir, configPath);
+    if (error.isNotEmpty) {
+      await _vpnStatusChanged(VpnStatus.disconnected);
+      return _commandFailed(error);
+    }
+    await _vpnStatusChanged(VpnStatus.connected);
+    return _commandSuccess();
+  }
+
   Future<NativeVpnCommandResult> _makeVpnRequestAndStart(
-    String coreBase64Text,
+    String coreInvokeText,
     String runDir,
     XrayPorts port,
     TunSettingState tunSettingState,
   ) async {
-    final tunPriority = int.tryParse(tunSettingState.tunPriority);
-    if (tunPriority == null) {
-      return _commandFailed(appLocalizationsNoContext().vpnTunPriorityInvalid);
-    }
-
     final request = StartVpnRequest(
       tunSettingState.tunJson,
       port.pingPort,
       port.pingAuth,
       port.metricsPort,
-      coreBase64Text,
+      coreInvokeText,
     );
     await request.writeToStartFile();
 
@@ -609,10 +762,15 @@ final class VpnService {
   }
 
   Future<String?> _makeRunXrayRequest(String configPath) async {
-    final xrayParam = RunXrayRequest(VpnConstants.datDir, configPath).toJson();
-
-    final coreBase64Text = JsonTool.encodeJsonToBase64(xrayParam);
-    return coreBase64Text;
+    final request = LibXrayInvokeRequest(
+      method: LibXrayMethod.runXray,
+      env: LibXrayEnvJson(
+        assetLocation: VpnConstants.datDir,
+        certLocation: VpnConstants.datDir,
+      ),
+      payload: RunXrayRequest(configPath).toJson(),
+    );
+    return JsonTool.encoderForDb.convert(request.toJson());
   }
 
   Future<void> retryConnectivityTest() {
@@ -675,7 +833,7 @@ final class VpnService {
     int testId,
     String port,
     String url,
-    PingAuth? auth,
+    XrayInboundAccount? auth,
   ) async {
     final delay = await NetClient().ping(port, url, auth);
     if (!_isConnectivityTestCurrent(testId)) {
@@ -692,7 +850,7 @@ final class VpnService {
   Future<void> _runGeoLocationProbe(
     int testId,
     String port,
-    PingAuth? auth,
+    XrayInboundAccount? auth,
   ) async {
     final location = await NetClient().geoLocation(port, auth);
     if (!_isConnectivityTestCurrent(testId)) {

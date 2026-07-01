@@ -1,4 +1,7 @@
 __pycache__/
+.venv/
+.ruff_cache/
+uv.lock
 .idea/
 .vscode/
 .DS_Store

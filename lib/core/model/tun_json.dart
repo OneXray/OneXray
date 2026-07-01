@@ -15,10 +15,8 @@ class TunJson {
   bool? metricsEnabled;
   // linux, windows
   String? tunName;
-  // linux
-  int? tunPriority;
   // linux, windows
-  String? bindInterface;
+  String? autoOutboundsInterface;
 
   // apple
   bool? onDemandEnabled;
@@ -37,8 +35,7 @@ class TunJson {
     this.enableIPv6,
     this.metricsEnabled,
     this.tunName,
-    this.tunPriority,
-    this.bindInterface,
+    this.autoOutboundsInterface,
     this.onDemandEnabled,
     this.disconnectOnSleep,
     this.onDemandRules,

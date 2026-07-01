@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:process/process.dart';
@@ -51,11 +52,39 @@ class LinuxFfiApi extends BaseFfiApi {
   var _coreProcess = 0;
 
   @override
-  Future<bool> startCore(String configPath) async {
-    final command = <String>[corePath, "-configPath", configPath];
-    final process = await _processManager.start(command);
-    _bindProcess(process);
-    _coreProcess = process.pid;
+  Future<bool> startCore(LibXrayRunConfig request) async {
+    try {
+      final xrayConfigPath = request.request.configPath;
+      final datDir = request.env?.assetLocation;
+      final certDir = request.env?.certLocation ?? datDir;
+      if (xrayConfigPath == null || xrayConfigPath.isEmpty) {
+        ygLogger("start core failed: configPath is empty");
+        return false;
+      }
+      if (datDir == null || datDir.isEmpty) {
+        ygLogger("start core failed: datDir is empty");
+        return false;
+      }
+
+      final command = <String>[
+        corePath,
+        "run",
+        "-config",
+        xrayConfigPath,
+        "--env",
+        "xray.location.asset=$datDir",
+      ];
+      if (certDir != null && certDir.isNotEmpty) {
+        command.addAll(["--env", "xray.location.cert=$certDir"]);
+      }
+      ygLogger("Running command: ${command.join(" ")}");
+      final process = await _processManager.start(command);
+      _bindProcess(process);
+      _coreProcess = process.pid;
+    } catch (e) {
+      ygLogger("start core failed: $e");
+      return false;
+    }
 
     await Future.delayed(Duration(seconds: 1));
 

@@ -2,8 +2,10 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/xray/metrics/state.dart';
+import 'package:onexray/service/xray/setting/simple_state.dart';
 
 enum VpnActionState {
   idle,
@@ -19,6 +21,7 @@ enum ConnectivityProbeState { idle, loading, success, failed }
 
 class AppEventBusState {
   final int xraySettingId;
+  final CoreRunMode coreRunMode;
   final bool vpnLoading;
   final int runningId;
   final int pendingConfigId;
@@ -38,6 +41,7 @@ class AppEventBusState {
 
   const AppEventBusState({
     required this.xraySettingId,
+    required this.coreRunMode,
     required this.vpnLoading,
     required this.runningId,
     required this.pendingConfigId,
@@ -57,7 +61,8 @@ class AppEventBusState {
   });
 
   factory AppEventBusState.initial() => AppEventBusState(
-    xraySettingId: DBConstants.defaultId,
+    xraySettingId: XraySettingSimple.simpleId,
+    coreRunMode: CoreRunMode.tun,
     vpnLoading: false,
     runningId: DBConstants.defaultId,
     pendingConfigId: DBConstants.defaultId,
@@ -77,6 +82,7 @@ class AppEventBusState {
 
   AppEventBusState copyWith({
     int? xraySettingId,
+    CoreRunMode? coreRunMode,
     bool? vpnLoading,
     int? runningId,
     int? pendingConfigId,
@@ -96,6 +102,7 @@ class AppEventBusState {
   }) {
     return AppEventBusState(
       xraySettingId: xraySettingId ?? this.xraySettingId,
+      coreRunMode: coreRunMode ?? this.coreRunMode,
       vpnLoading: vpnLoading ?? this.vpnLoading,
       runningId: runningId ?? this.runningId,
       pendingConfigId: pendingConfigId ?? this.pendingConfigId,

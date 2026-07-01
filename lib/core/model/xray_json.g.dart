@@ -279,6 +279,46 @@ Map<String, dynamic> _$XrayInboundToJson(XrayInbound instance) =>
       'sniffing': ?instance.sniffing?.toJson(),
     };
 
+XrayInboundAccount _$XrayInboundAccountFromJson(Map<String, dynamic> json) =>
+    XrayInboundAccount(json['user'] as String?, json['pass'] as String?);
+
+Map<String, dynamic> _$XrayInboundAccountToJson(XrayInboundAccount instance) =>
+    <String, dynamic>{'user': ?instance.user, 'pass': ?instance.pass};
+
+XrayInboundSocksSettings _$XrayInboundSocksSettingsFromJson(
+  Map<String, dynamic> json,
+) => XrayInboundSocksSettings(
+  json['auth'] as String?,
+  json['udp'] as bool?,
+  (json['users'] as List<dynamic>?)
+      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$XrayInboundSocksSettingsToJson(
+  XrayInboundSocksSettings instance,
+) => <String, dynamic>{
+  'auth': ?instance.auth,
+  'udp': ?instance.udp,
+  'users': ?instance.users?.map((e) => e.toJson()).toList(),
+};
+
+XrayInboundHttpSettings _$XrayInboundHttpSettingsFromJson(
+  Map<String, dynamic> json,
+) => XrayInboundHttpSettings(
+  json['allowTransparent'] as bool?,
+  (json['users'] as List<dynamic>?)
+      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$XrayInboundHttpSettingsToJson(
+  XrayInboundHttpSettings instance,
+) => <String, dynamic>{
+  'allowTransparent': ?instance.allowTransparent,
+  'users': ?instance.users?.map((e) => e.toJson()).toList(),
+};
+
 XrayInboundSniffing _$XrayInboundSniffingFromJson(
   Map<String, dynamic> json,
 ) => XrayInboundSniffing(
@@ -305,6 +345,11 @@ XrayInboundTun _$XrayInboundTunFromJson(Map<String, dynamic> json) =>
     XrayInboundTun(
       json['name'] as String?,
       (json['mtu'] as num?)?.toInt(),
+      (json['gateway'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      (json['dns'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      (json['autoSystemRoutingTable'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
       json['autoOutboundsInterface'] as String?,
     );
 
@@ -312,6 +357,9 @@ Map<String, dynamic> _$XrayInboundTunToJson(XrayInboundTun instance) =>
     <String, dynamic>{
       'name': ?instance.name,
       'mtu': ?instance.mtu,
+      'gateway': ?instance.gateway,
+      'dns': ?instance.dns,
+      'autoSystemRoutingTable': ?instance.autoSystemRoutingTable,
       'autoOutboundsInterface': ?instance.autoOutboundsInterface,
     };
 

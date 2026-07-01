@@ -189,16 +189,15 @@ class XraySettingListPage extends StatelessWidget {
   ) {
     final item = row as ConfigItem;
     final data = item.config;
+    final selected = data.id == state.xraySettingId;
     return ConfigRowView(
       data: data,
-      status: data.id == state.xraySettingId
-          ? ConfigRowStatus.selected
-          : ConfigRowStatus.unselected,
+      status: selected ? ConfigRowStatus.selected : ConfigRowStatus.unselected,
       moreMenus: [
         IconMenuId.edit,
         IconMenuId.share,
         IconMenuId.copy,
-        IconMenuId.delete,
+        if (!selected) IconMenuId.delete,
       ],
       tapCallback: () => controller.updateXraySettingId(context, data.id),
     );

@@ -8,6 +8,7 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/service/tun_setting/state.dart';
 
 class NetworkInterfacePage extends StatelessWidget {
   final NetworkInterfaceParams params;
@@ -59,7 +60,7 @@ class NetworkInterfacePage extends StatelessWidget {
     NetworkInterfaceState state,
     NetworkInterfaceController controller,
   ) {
-    if (state.interfaceList.isEmpty) {
+    if (state.interfaceList.isEmpty && !controller.params.showAuto) {
       return ListEmptyView(
         message: AppLocalizations.of(context)!.networkInterfacePageNoInterface,
       );
@@ -69,7 +70,8 @@ class NetworkInterfacePage extends StatelessWidget {
         groupValue: state.currentInterface,
         child: ListView.separated(
           itemBuilder: (ctx, index) => _cell(ctx, state, index),
-          itemCount: state.interfaceList.length,
+          itemCount:
+              state.interfaceList.length + (controller.params.showAuto ? 1 : 0),
           separatorBuilder: (_, _) => const Divider(),
         ),
       );
@@ -77,6 +79,20 @@ class NetworkInterfacePage extends StatelessWidget {
   }
 
   Widget _cell(BuildContext context, NetworkInterfaceState state, int index) {
+    if (context.read<NetworkInterfaceController>().params.showAuto) {
+      if (index == 0) {
+        return DataListRow(
+          title: AppLocalizations.of(context)!.networkInterfacePageAuto,
+          onTap: () => context
+              .read<NetworkInterfaceController>()
+              .updateInterface(TunSettingState.autoOutboundsInterfaceAuto),
+          trailing: const Radio<String>(
+            value: TunSettingState.autoOutboundsInterfaceAuto,
+          ),
+        );
+      }
+      index -= 1;
+    }
     final interface = state.interfaceList[index];
     final address = interface.addresses.map((e) => e.address).join("\n");
     return DataListRow(

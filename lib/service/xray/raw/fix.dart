@@ -1,85 +1,46 @@
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/network/constants.dart';
+import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/service/xray/constants.dart';
+import 'package:onexray/service/xray/runtime_inbounds.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/inbounds_state.dart';
 import 'package:onexray/service/xray/setting/log_state.dart';
 import 'package:onexray/service/xray/setting/state.dart';
+import 'package:onexray/service/xray/tun_route.dart';
 
 class XrayRawFix {
   static Future<void> fixConfig(
     Map<String, dynamic> jsonMap,
+    XraySettingState settingState,
+    CoreRunMode mode,
     TunSettingState tunSettingState,
     XrayPorts ports,
     bool metricsEnabled,
   ) async {
     final disableLog = await AppHostApi().useSystemExtension();
 
-    fixInboundsPort(jsonMap, ports);
+    settingState.inbounds.ping.port = ports.pingPort;
+    settingState.inbounds.ping.auth = ports.pingAuth;
+    XrayRuntimeInbounds.applyToRawJson(jsonMap, settingState.inbounds, mode);
+    _fixPingRoutingRule(jsonMap);
     fixLog(jsonMap, disableLog: disableLog);
     fixMetrics(jsonMap, metricsEnabled ? ports.metricsPort : null);
     if (!metricsEnabled) {
       ports.metricsPort = "";
     }
 
-    if (tunSettingState.shouldFixInterface) {
-      final networkInterface = await tunSettingState.networkInterface;
-      if (networkInterface != null) {
-        _fixConfigInterface(jsonMap, networkInterface);
-        tunSettingState.bindInterface = networkInterface;
-      } else {
-        _removeConfigInterface(jsonMap);
-        tunSettingState.bindInterface = "";
-      }
+    if (mode == CoreRunMode.tun &&
+        (AppPlatform.isWindows || AppPlatform.isLinux)) {
+      _removeConfigInterface(jsonMap);
+      _applyRawTunRouteConfig(
+        jsonMap,
+        XrayTunRouteConfig.fromTunSetting(tunSettingState),
+      );
     } else {
       _removeConfigInterface(jsonMap);
-      tunSettingState.bindInterface = "";
-    }
-  }
-
-  static void _fixConfigInterface(
-    Map<String, dynamic> jsonMap,
-    String bindInterface,
-  ) {
-    final List<dynamic>? outbounds = jsonMap["outbounds"];
-    if (outbounds == null) {
-      return;
-    }
-    for (final outbound in outbounds) {
-      final Map<String, dynamic>? streamSettings = outbound["streamSettings"];
-      if (streamSettings != null) {
-        final Map<String, dynamic>? sockopt = streamSettings["sockopt"];
-        if (sockopt != null) {
-          sockopt["interface"] = bindInterface;
-        } else {
-          streamSettings["sockopt"] = <String, dynamic>{
-            "interface": bindInterface,
-          };
-        }
-      } else {
-        final sockopt = <String, dynamic>{"interface": bindInterface};
-        outbound["streamSettings"] = <String, dynamic>{"sockopt": sockopt};
-      }
-    }
-
-    final List<dynamic>? inbounds = jsonMap["inbounds"];
-    if (inbounds == null) {
-      return;
-    }
-    for (final inbound in inbounds) {
-      if (inbound["tag"] == RoutingInboundTag.tunIn.name &&
-          inbound["protocol"] == XrayInboundProtocol.tun.name) {
-        final settings = inbound["settings"];
-        if (settings != null) {
-          settings["autoOutboundsInterface"] = bindInterface;
-        } else {
-          inbound["settings"] = <String, dynamic>{
-            "autoOutboundsInterface": bindInterface,
-          };
-        }
-        break;
-      }
     }
   }
 
@@ -106,14 +67,17 @@ class XrayRawFix {
           inbound["protocol"] == XrayInboundProtocol.tun.name) {
         final settings = inbound["settings"];
         if (settings is Map) {
-          settings.remove("autoOutboundsInterface");
+          XrayTunRouteConfig.removeFromRawTunSettings(settings);
         }
         return;
       }
     }
   }
 
-  static void fixInboundsTun(Map<String, dynamic> jsonMap) {
+  static void _applyRawTunRouteConfig(
+    Map<String, dynamic> jsonMap,
+    XrayTunRouteConfig config,
+  ) {
     final List<dynamic>? inbounds = jsonMap["inbounds"];
     if (inbounds == null) {
       return;
@@ -121,10 +85,25 @@ class XrayRawFix {
     for (final inbound in inbounds) {
       if (inbound["tag"] == RoutingInboundTag.tunIn.name &&
           inbound["protocol"] == XrayInboundProtocol.tun.name) {
-        inbounds.remove(inbound);
+        final settings = inbound["settings"];
+        if (settings is Map<String, dynamic>) {
+          config.applyToRawTunSettings(settings);
+        } else if (settings is Map) {
+          final newSettings = Map<String, dynamic>.from(settings);
+          config.applyToRawTunSettings(newSettings);
+          inbound["settings"] = newSettings;
+        } else {
+          final newSettings = <String, dynamic>{};
+          config.applyToRawTunSettings(newSettings);
+          inbound["settings"] = newSettings;
+        }
         return;
       }
     }
+  }
+
+  static void fixInboundsTun(Map<String, dynamic> jsonMap) {
+    XrayRuntimeInbounds.removeManagedRawInbounds(jsonMap);
   }
 
   static void fixInboundsPort(Map<String, dynamic> jsonMap, XrayPorts ports) {

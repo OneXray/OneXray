@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/setting/inbound_tun/controller.dart';
@@ -97,8 +98,39 @@ class InboundTunPage extends StatelessWidget {
           title: AppLocalizations.of(context)!.inboundTunPageSettingsMTU,
           value: "${state.tunState.settings.mtu}",
         ),
+        if (AppPlatform.isWindows || AppPlatform.isLinux)
+          SettingRow(
+            title: AppLocalizations.of(context)!.inboundTunPageSettingsGateway,
+            value: _formatList(state.tunState.settings.gateway),
+            valueMaxLines: 3,
+          ),
+        if (AppPlatform.isWindows || AppPlatform.isLinux)
+          SettingRow(
+            title: AppLocalizations.of(context)!.inboundTunPageSettingsDns,
+            value: _formatList(state.tunState.settings.dns),
+            valueMaxLines: 3,
+          ),
+        if (AppPlatform.isWindows || AppPlatform.isLinux)
+          SettingRow(
+            title: AppLocalizations.of(
+              context,
+            )!.inboundTunPageSettingsAutoSystemRoutingTable,
+            value: _formatList(state.tunState.settings.autoSystemRoutingTable),
+            valueMaxLines: 3,
+          ),
+        if (AppPlatform.isWindows || AppPlatform.isLinux)
+          SettingRow(
+            title: AppLocalizations.of(
+              context,
+            )!.inboundTunPageSettingsAutoOutboundsInterface,
+            value: state.tunState.settings.autoOutboundsInterface,
+          ),
       ],
     );
+  }
+
+  String _formatList(List<String> values) {
+    return values.join(", ");
   }
 
   Widget _tagSection(

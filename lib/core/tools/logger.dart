@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 
 void ygLogger(dynamic message) {
   if (!kReleaseMode) {
-    log(message);
+    final text = "$message";
+    debugPrint(text);
+    log(text);
   }
 }

@@ -8,6 +8,8 @@ end
 
 platform :mac do
   lane :deploy do
+    ENV['FIREBASE_ANALYTICS_WITHOUT_ADID'] = 'true'
+
     output_dir = File.expand_path('../../../output', __dir__)
     product_name = 'OneXraySE'
     app_path = File.join(output_dir, "#{product_name}.app")

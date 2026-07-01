@@ -426,14 +426,9 @@ class VPNManager {
     private func rewriteRequestForExtension(_ request: StartVpnRequest) -> StartVpnRequest {
         guard let mapping = pathMapping() else { return request }
         var newRequest = request
-        if let coreBase64 = request.coreBase64Text,
-           let data = Data(base64Encoded: coreBase64),
-           let text = String(data: data, encoding: .utf8)
-        {
+        if let text = request.coreInvokeText {
             let rewritten = text.replacingOccurrences(of: mapping.user, with: mapping.ext)
-            if let rewrittenData = rewritten.data(using: .utf8) {
-                newRequest.coreBase64Text = rewrittenData.base64EncodedString()
-            }
+            newRequest.coreInvokeText = rewritten
         }
         return newRequest
     }

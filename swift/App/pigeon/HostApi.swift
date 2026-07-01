@@ -56,93 +56,12 @@ class AppHostApi: BridgeHostApi {
         }
     }
     
-    func getFreePorts(num: Int64, completion: @escaping (Result<String, any Error>) -> Void) {
+    func invoke(requestJson: String, completion: @escaping (Result<String, any Error>) -> Void) {
         Task {
-            let res = CGoGetFreePorts(GoInt(num))
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func convertShareLinksToXrayJson(base64Text: String, completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = base64Text.withCString { p in
+            let res = requestJson.withCString { p in
                 let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoConvertShareLinksToXrayJson(p0)
+                return CGoInvoke(p0)
             }
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func convertXrayJsonToShareLinks(base64Text: String, completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = base64Text.withCString { p in
-                let p0 = UnsafeMutablePointer(mutating: p)
-                return CGOConvertXrayJsonToShareLinks(p0)
-            }
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func countGeoData(base64Text: String, completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = base64Text.withCString { p in
-                let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoCountGeoData(p0)
-            }
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func readGeoFiles(base64Text: String, completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = base64Text.withCString { p in
-                let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoReadGeoFiles(p0)
-            }
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func ping(base64Text: String, completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = base64Text.withCString { p in
-                let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoPing(p0)
-            }
-            callResponse(res, completion: completion)
-        }
-    }
-
-    func testXray(base64Text: String, completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = base64Text.withCString { p in
-                let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoTestXray(p0)
-            }
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func runXray(base64Text: String, completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = base64Text.withCString { p in
-                let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoRunXray(p0)
-            }
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func stopXray(completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = CGoStopXray()
-            callResponse(res, completion: completion)
-        }
-    }
-    
-    func xrayVersion(completion: @escaping (Result<String, any Error>) -> Void) {
-        Task {
-            let res = CGoXrayVersion()
             callResponse(res, completion: completion)
         }
     }

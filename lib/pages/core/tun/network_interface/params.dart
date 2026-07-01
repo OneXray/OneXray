@@ -1,5 +1,6 @@
 class NetworkInterfaceParams {
   final String currentInterface;
+  final bool showAuto;
 
-  NetworkInterfaceParams(this.currentInterface);
+  NetworkInterfaceParams(this.currentInterface, {this.showAuto = false});
 }

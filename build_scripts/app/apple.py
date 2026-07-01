@@ -3,6 +3,8 @@ import os
 from app.builder import Builder
 from app.command_line import run_command
 
+FIREBASE_ANALYTICS_WITHOUT_ADID = "FIREBASE_ANALYTICS_WITHOUT_ADID"
+
 
 class AppleBuilder(Builder):
     def __init__(self, project: str, system: str, build_scripts_dir: str):
@@ -34,4 +36,5 @@ class AppleBuilder(Builder):
 
     def build_app(self):
         os.chdir(self.project_dir)
+        os.environ[FIREBASE_ANALYTICS_WITHOUT_ADID] = "true"
         run_command(["fastlane", self.fastlane, "--verbose"])

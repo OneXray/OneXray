@@ -35,23 +35,23 @@ cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-In
 
 Файлов `.example` достаточно для локальной разработки. Позже замените их своими конфигурациями, если нужно тестировать настоящий Firebase.
 
-## 2. Подготовка артефактов libXray
+## 2. Подготовка артефактов libXray и Xray-core
 
-Локальная отладка OneXray зависит от артефактов, собранных из соседнего репозитория `libXray`. Основные выходные файлы из `libXray/build`:
+Локальная отладка OneXray зависит от артефактов, собранных из соседних репозиториев `libXray` и `Xray-core`. Основные выходные файлы:
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`, `libXray-sources.jar`
-- Linux: `linux_so/libXray.so`, `bin/xray`
-- Windows: `windows_dll/libXray.dll`, `bin/xray.exe`
+- Linux: `linux_so/libXray.so` и Xray-core CLI, переименованный в `OneXrayCore`
+- Windows: `windows_dll/libXray.dll` и Xray-core CLI, переименованный в `OneXrayCore.exe`
 
-Сначала соберите нужные targets в `libXray`:
+Сначала соберите нужные targets в `libXray`. Эти команды используют соседний checkout `Xray-core`:
 
 ```shell
 cd ../libXray
-python3 build/main.py apple go
-python3 build/main.py android
-python3 build/main.py linux
-python3 build/main.py windows
+python3 build/main.py apple go local
+python3 build/main.py android local
+python3 build/main.py linux local
+python3 build/main.py windows local
 ```
 
 Затем скопируйте артефакты в соответствующие каталоги OneXray.
@@ -78,22 +78,22 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` линкует `libXray.so` из `linux/app/` и устанавливает `OneXrayCore` в итоговый bundle. Скопируйте Linux-артефакты в `linux/app/` и переименуйте `bin/xray` в имя, которое ожидает OneXray:
+`linux/app.cmake` линкует `libXray.so` из `linux/app/` и устанавливает `OneXrayCore` в итоговый bundle. Скопируйте `libXray.so`, затем соберите Xray-core в имя, которое ожидает OneXray:
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-cp ../libXray/bin/xray linux/app/OneXrayCore
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 ### Windows
 
-`windows/app.cmake` устанавливает `libXray.dll` и `OneXrayCore.exe` из `windows/app/`. Скопируйте Windows-артефакты в `windows/app/` и переименуйте `bin/xray.exe` в имя, которое ожидает OneXray:
+`windows/app.cmake` устанавливает `libXray.dll` и `OneXrayCore.exe` из `windows/app/`. Скопируйте `libXray.dll`, затем соберите Xray-core в имя, которое ожидает OneXray:
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 > `windows/app.cmake` также упаковывает `wintun.dll`. Этот файл не входит в `libXray`; его нужно подготовить отдельно в Windows development environment.

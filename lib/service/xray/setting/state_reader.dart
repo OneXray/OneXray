@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:onexray/core/constants/preferences.dart';
-import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/empty.dart';
@@ -43,8 +42,6 @@ extension XraySettingStateReader on XraySettingState {
 
     final id = await PreferencesKey().readXraySettingId();
     switch (id) {
-      case DBConstants.defaultId:
-        break;
       case XraySettingSimple.simpleId:
         final xraySettingSimple = XraySettingSimple();
         await xraySettingSimple.readFromPreferences();
@@ -55,6 +52,11 @@ extension XraySettingStateReader on XraySettingState {
         final xraySettingData = await db.coreConfigDao.searchRow(id);
         if (xraySettingData != null && xraySettingData.data != null) {
           state.readFromDbData(xraySettingData);
+        } else {
+          await PreferencesKey().saveXraySettingId(XraySettingSimple.simpleId);
+          final xraySettingSimple = XraySettingSimple();
+          await xraySettingSimple.readFromPreferences();
+          state = xraySettingSimple.xraySettingState;
         }
         break;
     }
