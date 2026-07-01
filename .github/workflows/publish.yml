@@ -159,5 +159,6 @@ jobs:
           identifier: YuanDevLLC.OneXray
           release-tag: ${{ needs.release.outputs.tag }}
           installers-regex: '^OneXray-windows-amd64\.exe$'
+          max-versions-to-keep: 3
           fork-user: yiguodev
           token: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}

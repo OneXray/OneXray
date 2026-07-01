@@ -15,9 +15,10 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 | Platform | Requirements | Download |
 | --- | --- | --- |
 | iOS | iOS 15.0 and above, arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773), [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS | macOS 12.0 and above, Apple silicon or Intel | Mac App Store: [App Store](https://apps.apple.com/us/app/onexray/id6745748773)<br>Homebrew / Universal ZIP (OneXraySE): `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| macOS (Mac App Store) | macOS 12.0 and above, Apple silicon or Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
+| macOS (Outside App Store) | macOS 12.0 and above, Apple silicon or Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 and above, arm32, arm64, or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows | Windows 10 or Windows 11, x86_64 | [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Windows | Windows 10 or Windows 11, x86_64 | winget: `winget install --id YuanDevLLC.OneXray -e`, [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -25,11 +26,20 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 
 ### macOS
 
-The Mac App Store build is a separate store package. Homebrew and Universal ZIP use the same Developer ID `macos_se` package and install `OneXraySE.app`.
+The Mac App Store build is a separate store package. The outside-App-Store distribution uses the same Developer ID `macos_se` package for Homebrew and Universal ZIP, and installs `OneXraySE.app`.
 
 ```shell
 brew install --cask onexrayse
 brew uninstall --cask onexrayse
+```
+
+### Windows
+
+You can install and uninstall OneXray with winget.
+
+```shell
+winget install --id YuanDevLLC.OneXray -e
+winget uninstall --id YuanDevLLC.OneXray -e
 ```
 
 ### iOS
