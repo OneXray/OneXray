@@ -2,11 +2,16 @@
 # Publishes artifacts produced by the Build workflow.
 #
 # Trigger:
-#   - workflow_dispatch: manually publishes a pre-release from a specific Build
+#   - workflow_dispatch: manually publishes a stable release from a specific Build
 #     workflow run id and tag.
 #
 # The Build workflow owns compilation and artifact upload. This workflow only
-# downloads those artifacts and creates/updates a GitHub pre-release.
+# downloads those artifacts, creates/updates a GitHub release, and submits a
+# winget update PR.
+#
+# Required repository secrets:
+#   PACKAGE_MANAGER_GITHUB_TOKEN       GitHub PAT that can open PRs in
+#                                      microsoft/winget-pkgs
 #
 
 name: Publish
@@ -28,11 +33,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  pre_release:
+  release:
     runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Download build artifacts
         env:
@@ -91,12 +98,12 @@ jobs:
               --yes >/dev/null 2>&1 || true
           done
 
-      - name: Publish GitHub pre-release
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release.outputs.tag }}
-          prerelease: true
-          make_latest: false
+          prerelease: false
+          make_latest: true
           files: |
             artifacts/ios/**/*
             artifacts/macos_se/**/*
@@ -106,3 +113,51 @@ jobs:
             artifacts/linux-arm64/**/*
           fail_on_unmatched_files: false
           generate_release_notes: true
+
+  winget:
+    needs: release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Verify Windows release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          release_json="$(gh release view "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --json isDraft,isPrerelease,assets)"
+
+          if [ "$(jq -r '.isDraft' <<<"$release_json")" != "false" ]; then
+            echo "Release $RELEASE_TAG is still a draft." >&2
+            exit 1
+          fi
+
+          if [ "$(jq -r '.isPrerelease' <<<"$release_json")" != "false" ]; then
+            echo "Release $RELEASE_TAG is a pre-release; winget is updated only from stable releases." >&2
+            exit 1
+          fi
+
+          if [ -z "$(jq -r '.assets[] | select(.name == "OneXray-windows-amd64.exe") | .url' <<<"$release_json")" ]; then
+            echo "Release $RELEASE_TAG is missing required asset: OneXray-windows-amd64.exe" >&2
+            exit 1
+          fi
+
+      - name: Validate package manager token
+        run: |
+          if [ -z "${PACKAGE_MANAGER_GITHUB_TOKEN}" ]; then
+            echo "PACKAGE_MANAGER_GITHUB_TOKEN is required." >&2
+            exit 1
+          fi
+        env:
+          PACKAGE_MANAGER_GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
+
+      - name: Open winget package PR
+        uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: YuanDevLLC.OneXray
+          release-tag: ${{ needs.release.outputs.tag }}
+          installers-regex: '^OneXray-windows-amd64\.exe$'
+          fork-user: yiguodev
+          token: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
