@@ -50,7 +50,8 @@ platform :mac do
         installer_cert_name: installer_cert_name
     )
     upload_to_testflight(
-      api_key: api_key
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
     )
   end
 
