@@ -35,6 +35,14 @@ class PingService {
     });
   }
 
+  Future<void> pingHomeNodeConfigs(int subId) async {
+    final db = AppDatabase();
+    await _runPinging(() async {
+      final rows = await db.coreConfigDao.allHomeNodeRowsWithDataBySubId(subId);
+      await _pingConfigs(db, rows);
+    });
+  }
+
   Future<int> _pingOutbound(CoreConfigData row, PingState pingState) async {
     if (EmptyTool.checkString(row.data)) {
       final outbound = OutboundState();
@@ -42,14 +50,6 @@ class PingService {
       return outbound.ping(pingState);
     }
     return PingDelayConstants.unknown;
-  }
-
-  Future<void> pingRawConfigs() async {
-    final db = AppDatabase();
-    await _runPinging(() async {
-      final rows = await db.coreConfigDao.allRawRowsWithData;
-      await _pingConfigs(db, rows);
-    });
   }
 
   Future<int> _pingRawConfig(CoreConfigData row, PingState pingState) async {

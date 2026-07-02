@@ -143,6 +143,6 @@ class SubscriptionRowController {
       return;
     }
     final db = AppDatabase();
-    await db.coreConfigDao.deleteUnreachableRows(data.id);
+    await db.coreConfigDao.deleteUnreachableOutboundRows(data.id);
   }
 }

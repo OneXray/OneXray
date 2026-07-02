@@ -17,7 +17,6 @@ import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -30,40 +29,31 @@ import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-enum HomeWorkspace { connection, nodes }
-
 class HomeState {
   final int configId;
   final String configName;
-  final HomeWorkspace workspace;
   final bool vpnCommandLoading;
 
   const HomeState({
     required this.configId,
     required this.configName,
-    required this.workspace,
     required this.vpnCommandLoading,
   });
 
-  factory HomeState.initial({
-    HomeWorkspace workspace = HomeWorkspace.connection,
-  }) => HomeState(
+  factory HomeState.initial() => HomeState(
     configId: DBConstants.defaultId,
     configName: "",
-    workspace: workspace,
     vpnCommandLoading: false,
   );
 
   HomeState copyWith({
     int? configId,
     String? configName,
-    HomeWorkspace? workspace,
     bool? vpnCommandLoading,
   }) {
     return HomeState(
       configId: configId ?? this.configId,
       configName: configName ?? this.configName,
-      workspace: workspace ?? this.workspace,
       vpnCommandLoading: vpnCommandLoading ?? this.vpnCommandLoading,
     );
   }
@@ -75,6 +65,16 @@ enum HomeConnectionTone {
   connected,
   waitingForApproval,
   failed,
+}
+
+enum HomeAddMenuAction {
+  manualOutbound,
+  manualRaw,
+  subscribeLink,
+  scanQRCode,
+  pickImage,
+  pickFile,
+  readPasteboard,
 }
 
 class HomeConnectionViewState {
@@ -108,10 +108,7 @@ class HomeConnectionViewState {
 class HomeController extends Cubit<HomeState> {
   final BuildContext context;
 
-  HomeController(
-    this.context, {
-    HomeWorkspace initialWorkspace = HomeWorkspace.connection,
-  }) : super(HomeState.initial(workspace: initialWorkspace)) {
+  HomeController(this.context) : super(HomeState.initial()) {
     _asyncInit();
   }
 
@@ -324,15 +321,6 @@ class HomeController extends Cubit<HomeState> {
     );
   }
 
-  void gotoHome() {
-    emit(state.copyWith(workspace: HomeWorkspace.connection));
-  }
-
-  void gotoNodes(BuildContext context) {
-    emit(state.copyWith(workspace: HomeWorkspace.nodes));
-    DefaultTabController.of(context).animateTo(0);
-  }
-
   void gotoTunSetting(BuildContext context) {
     context.goScoped(AppSecondaryDestination.tun);
   }
@@ -355,52 +343,41 @@ class HomeController extends Cubit<HomeState> {
 
   Future<void> addMenuAction(
     BuildContext context,
-    String menuId,
-    int selectedTabIndex,
+    HomeAddMenuAction action,
   ) async {
-    final id = IconMenuId.fromString(menuId);
-    if (id == null) {
-      return;
-    }
-    switch (id) {
-      case IconMenuId.manualInput:
-        _addConfig(context, selectedTabIndex);
+    switch (action) {
+      case HomeAddMenuAction.manualOutbound:
+        _addOutboundConfig(context);
         break;
-      case IconMenuId.subscribeLink:
+      case HomeAddMenuAction.manualRaw:
+        _addRawConfig(context);
+        break;
+      case HomeAddMenuAction.subscribeLink:
         _addSubscription(context);
         break;
-      case IconMenuId.scanQRCode:
+      case HomeAddMenuAction.scanQRCode:
         await _scanQrCode(context);
         break;
-      case IconMenuId.pickImage:
+      case HomeAddMenuAction.pickImage:
         await ShareService().pickImage();
         break;
-      case IconMenuId.pickFile:
+      case HomeAddMenuAction.pickFile:
         await ShareService().pickFile();
         break;
-      case IconMenuId.readPasteboard:
+      case HomeAddMenuAction.readPasteboard:
         await ShareService().readPasteboard();
-        break;
-      default:
         break;
     }
   }
 
-  void _addConfig(BuildContext context, int selectedTabIndex) {
-    switch (selectedTabIndex) {
-      case 0:
-        final params = OutboundUIParams(
-          DBConstants.defaultId,
-          OutboundState(),
-          [],
-        );
-        context.pushScoped(AppSecondaryDestination.outboundUI, extra: params);
-        break;
-      case 1:
-        final params = XrayRawParams(DBConstants.defaultId);
-        context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
-        break;
-    }
+  void _addOutboundConfig(BuildContext context) {
+    final params = OutboundUIParams(DBConstants.defaultId, OutboundState(), []);
+    context.pushScoped(AppSecondaryDestination.outboundUI, extra: params);
+  }
+
+  void _addRawConfig(BuildContext context) {
+    final params = XrayRawParams(DBConstants.defaultId);
+    context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
   }
 
   void _addSubscription(BuildContext context) {

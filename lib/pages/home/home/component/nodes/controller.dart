@@ -8,40 +8,39 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
-import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/xray/setting/simple_state.dart';
 
-class HomeOutboundState {
+class HomeNodeState {
   final String xraySettingName;
   final List<ConfigQueryRow> configs;
   final String query;
   final bool searching;
 
-  const HomeOutboundState({
+  const HomeNodeState({
     required this.xraySettingName,
     required this.configs,
     required this.query,
     required this.searching,
   });
 
-  factory HomeOutboundState.initial({
-    int xraySettingId = DBConstants.defaultId,
-  }) => HomeOutboundState(
-    xraySettingName: _initialXraySettingName(xraySettingId),
-    configs: const [],
-    query: "",
-    searching: false,
-  );
+  factory HomeNodeState.initial({int xraySettingId = DBConstants.defaultId}) =>
+      HomeNodeState(
+        xraySettingName: _initialXraySettingName(xraySettingId),
+        configs: const [],
+        query: "",
+        searching: false,
+      );
 
-  HomeOutboundState copyWith({
+  HomeNodeState copyWith({
     String? xraySettingName,
     List<ConfigQueryRow>? configs,
     String? query,
     bool? searching,
   }) {
-    return HomeOutboundState(
+    return HomeNodeState(
       xraySettingName: xraySettingName ?? this.xraySettingName,
       configs: configs ?? this.configs,
       query: query ?? this.query,
@@ -61,10 +60,10 @@ String _initialXraySettingName(int xraySettingId) {
   }
 }
 
-class HomeOutboundController extends Cubit<HomeOutboundState> {
-  HomeOutboundController()
+class HomeNodeController extends Cubit<HomeNodeState> {
+  HomeNodeController()
     : super(
-        HomeOutboundState.initial(
+        HomeNodeState.initial(
           xraySettingId: AppEventBus.instance.state.xraySettingId,
         ),
       ) {
@@ -78,7 +77,7 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
 
   Future<void> _asyncInit() async {
     final db = AppDatabase();
-    _configsSubscription = db.coreConfigDao.allOutboundRowsStream().listen((
+    _configsSubscription = db.coreConfigDao.allHomeNodeRowsStream().listen((
       data,
     ) {
       _allConfigs = data;
@@ -139,12 +138,17 @@ class HomeOutboundController extends Cubit<HomeOutboundState> {
   }
 
   Future<void> ping(int subId) async {
-    await PingService().pingOutboundConfigs(subId);
+    await PingService().pingHomeNodeConfigs(subId);
+  }
+
+  Future<void> cleanUnreachable(int subId) async {
+    final db = AppDatabase();
+    await db.coreConfigDao.deleteUnreachableHomeNodeRows(subId);
   }
 
   Future<void> refreshData() async {
     final db = AppDatabase();
-    _allConfigs = await db.coreConfigDao.allOutboundRows;
+    _allConfigs = await db.coreConfigDao.allHomeNodeRows;
     _emitFilteredConfigs();
   }
 

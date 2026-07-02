@@ -24,8 +24,6 @@ enum AppPrimaryRoute {
 enum AppSecondaryDestination {
   overview("overview"),
   nodeInfo("node-info"),
-  outbound("outbound"),
-  raw("raw"),
   qrcode("qrcode"),
   share("share"),
   outboundSelect("outbound-select"),

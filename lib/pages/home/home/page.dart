@@ -3,10 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/home/home/component/outbound/controller.dart';
-import 'package:onexray/pages/home/home/component/outbound/view.dart';
-import 'package:onexray/pages/home/home/component/raw/controller.dart';
-import 'package:onexray/pages/home/home/component/raw/view.dart';
+import 'package:onexray/pages/home/home/component/nodes/controller.dart';
+import 'package:onexray/pages/home/home/component/nodes/view.dart';
 import 'package:onexray/pages/home/home/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
@@ -14,62 +12,46 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({
-    super.key,
-    this.initialWorkspace = HomeWorkspace.connection,
-    this.initialTabIndex = 0,
-  });
-
-  final HomeWorkspace initialWorkspace;
-  final int initialTabIndex;
+  const HomePage({super.key});
 
   static const double _adaptiveBreakpoint = 840;
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      initialIndex: initialTabIndex,
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) =>
-                HomeController(context, initialWorkspace: initialWorkspace),
-          ),
-          BlocProvider(create: (_) => HomeOutboundController()),
-          BlocProvider(create: (_) => HomeRawController()),
-        ],
-        child: BlocBuilder<HomeController, HomeState>(
-          builder: (context, homeState) {
-            final controller = context.read<HomeController>();
-            return BlocBuilder<AppEventBus, AppEventBusState>(
-              builder: (context, eventState) => LayoutBuilder(
-                builder: (context, constraints) {
-                  final connection = controller.buildConnectionViewState(
-                    context,
-                    homeState,
-                    eventState,
-                  );
-                  if (constraints.maxWidth >= _adaptiveBreakpoint) {
-                    return _adaptiveScaffold(
-                      context,
-                      controller,
-                      homeState,
-                      connection,
-                      eventState,
-                    );
-                  }
-                  return _compactScaffold(
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => HomeController(context)),
+        BlocProvider(create: (_) => HomeNodeController()),
+      ],
+      child: BlocBuilder<HomeController, HomeState>(
+        builder: (context, homeState) {
+          final controller = context.read<HomeController>();
+          return BlocBuilder<AppEventBus, AppEventBusState>(
+            builder: (context, eventState) => LayoutBuilder(
+              builder: (context, constraints) {
+                final connection = controller.buildConnectionViewState(
+                  context,
+                  homeState,
+                  eventState,
+                );
+                if (constraints.maxWidth >= _adaptiveBreakpoint) {
+                  return _adaptiveScaffold(
                     context,
                     controller,
                     connection,
                     eventState,
                   );
-                },
-              ),
-            );
-          },
-        ),
+                }
+                return _compactScaffold(
+                  context,
+                  controller,
+                  connection,
+                  eventState,
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -95,7 +77,6 @@ class HomePage extends StatelessWidget {
   Widget _adaptiveScaffold(
     BuildContext context,
     HomeController controller,
-    HomeState homeState,
     HomeConnectionViewState connection,
     AppEventBusState eventState,
   ) {
@@ -103,13 +84,7 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         child: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-          child: _adaptivePrimary(
-            context,
-            controller,
-            homeState,
-            connection,
-            eventState,
-          ),
+          child: _adaptivePrimary(context, controller, connection, eventState),
         ),
       ),
     );
@@ -118,26 +93,9 @@ class HomePage extends StatelessWidget {
   Widget _adaptivePrimary(
     BuildContext context,
     HomeController controller,
-    HomeState homeState,
     HomeConnectionViewState connection,
     AppEventBusState eventState,
   ) {
-    if (homeState.workspace == HomeWorkspace.nodes) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _adaptiveHeader(
-            context,
-            controller,
-            eventState,
-            title: AppLocalizations.of(context)!.homePageTabOutbound,
-          ),
-          Expanded(
-            child: _configSwitcherPanel(context, controller, showHeader: false),
-          ),
-        ],
-      );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -148,9 +106,7 @@ class HomePage extends StatelessWidget {
           onShowNodeInfo: () => controller.gotoNodeInfo(context),
         ),
         Divider(height: 1, color: ColorManager.border(context)),
-        Expanded(
-          child: _configSwitcherPanel(context, controller, showHeader: false),
-        ),
+        const Expanded(child: HomeNodePanel()),
       ],
     );
   }
@@ -158,9 +114,8 @@ class HomePage extends StatelessWidget {
   Widget _adaptiveHeader(
     BuildContext context,
     HomeController controller,
-    AppEventBusState eventState, {
-    String? title,
-  }) {
+    AppEventBusState eventState,
+  ) {
     return Material(
       color: ColorManager.surface(context),
       child: SizedBox(
@@ -171,7 +126,7 @@ class HomePage extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  title ?? AppLocalizations.of(context)!.homePageTitle,
+                  AppLocalizations.of(context)!.homePageTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -184,46 +139,6 @@ class HomePage extends StatelessWidget {
               _searchButton(context),
               _rightButton(context, controller, eventState),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _configSwitcherPanel(
-    BuildContext context,
-    HomeController controller, {
-    required bool showHeader,
-  }) {
-    return Material(
-      color: ColorManager.surface(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (showHeader) _configSwitcherHeader(context),
-          _tabBar(context, controller),
-          Expanded(child: _tabBarView(context, controller)),
-        ],
-      ),
-    );
-  }
-
-  Widget _configSwitcherHeader(BuildContext context) {
-    return SizedBox(
-      height: 64,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
-        child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(
-            AppLocalizations.of(context)!.homePageCurrentNode,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: ColorManager.primaryText(context),
-            ),
           ),
         ),
       ),
@@ -246,41 +161,19 @@ class HomePage extends StatelessWidget {
             onShowNodeInfo: () => controller.gotoNodeInfo(context),
           ),
           Divider(height: 1, color: ColorManager.border(context)),
-          Expanded(
-            child: _configSwitcherPanel(context, controller, showHeader: false),
-          ),
+          const Expanded(child: HomeNodePanel()),
         ],
       ),
     );
   }
 
   Widget _searchButton(BuildContext context) {
-    final tabController = DefaultTabController.of(context);
-    return AnimatedBuilder(
-      animation: tabController,
+    return BlocBuilder<HomeNodeController, HomeNodeState>(
+      buildWhen: (previous, current) => previous.searching != current.searching,
       builder: (context, child) {
-        if (tabController.index == 0) {
-          return BlocBuilder<HomeOutboundController, HomeOutboundState>(
-            buildWhen: (previous, current) =>
-                previous.searching != current.searching,
-            builder: (context, state) {
-              return IconButton(
-                onPressed: () =>
-                    context.read<HomeOutboundController>().toggleSearch(),
-                icon: Icon(state.searching ? Icons.close : Icons.search),
-              );
-            },
-          );
-        }
-        return BlocBuilder<HomeRawController, HomeRawState>(
-          buildWhen: (previous, current) =>
-              previous.searching != current.searching,
-          builder: (context, state) {
-            return IconButton(
-              onPressed: () => context.read<HomeRawController>().toggleSearch(),
-              icon: Icon(state.searching ? Icons.close : Icons.search),
-            );
-          },
+        return IconButton(
+          onPressed: () => context.read<HomeNodeController>().toggleSearch(),
+          icon: Icon(child.searching ? Icons.close : Icons.search),
         );
       },
     );
@@ -294,40 +187,79 @@ class HomePage extends StatelessWidget {
     if (eventState.downloading) {
       return CircularProgressIndicator();
     } else {
-      return IconMenuPicker(
-        icon: Icons.add,
-        menus: [
-          IconMenuId.manualInput,
-          IconMenuId.subscribeLink,
-          if (AppPlatform.isMobile) IconMenuId.scanQRCode,
-          IconMenuId.pickImage,
-          IconMenuId.pickFile,
-          IconMenuId.readPasteboard,
-        ],
-        callback: (actionId) => controller.addMenuAction(
-          context,
-          actionId,
-          DefaultTabController.of(context).index,
-        ),
+      return HomeAddMenuButton(
+        onSelected: (action) => controller.addMenuAction(context, action),
       );
     }
   }
+}
 
-  Widget _tabBar(BuildContext context, HomeController controller) {
-    return ColoredBox(
-      color: ColorManager.surface(context),
-      child: TabBar(
-        indicatorSize: TabBarIndicatorSize.tab,
-        tabs: [
-          Tab(text: AppLocalizations.of(context)!.homePageTabOutbound),
-          Tab(text: AppLocalizations.of(context)!.homePageTabRaw),
-        ],
-      ),
+class HomeAddMenuButton extends StatelessWidget {
+  const HomeAddMenuButton({super.key, required this.onSelected});
+
+  final ValueChanged<HomeAddMenuAction> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    return MenuAnchor(
+      builder: (context, menuController, child) {
+        return IconButton(
+          icon: const Icon(Icons.add),
+          onPressed: () {
+            if (menuController.isOpen) {
+              menuController.close();
+            } else {
+              menuController.open();
+            }
+          },
+        );
+      },
+      menuChildren: [
+        SubmenuButton(
+          leadingIcon: Icon(IconMenuId.manualInput.icon),
+          menuChildren: [
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.hub_outlined),
+              onPressed: () => onSelected(HomeAddMenuAction.manualOutbound),
+              child: Text(localizations.homeManualInputOutbound),
+            ),
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.data_object),
+              onPressed: () => onSelected(HomeAddMenuAction.manualRaw),
+              child: Text(localizations.homeManualInputRawJson),
+            ),
+          ],
+          child: Text(IconMenuId.manualInput.title),
+        ),
+        _menuItem(IconMenuId.subscribeLink, HomeAddMenuAction.subscribeLink),
+        if (AppPlatform.isMobile)
+          _menuItem(IconMenuId.scanQRCode, HomeAddMenuAction.scanQRCode),
+        _menuItem(IconMenuId.pickImage, HomeAddMenuAction.pickImage),
+        _menuItem(IconMenuId.pickFile, HomeAddMenuAction.pickFile),
+        _menuItem(IconMenuId.readPasteboard, HomeAddMenuAction.readPasteboard),
+      ],
     );
   }
 
-  Widget _tabBarView(BuildContext context, HomeController controller) {
-    return TabBarView(children: const [HomeOutboundView(), HomeRawView()]);
+  MenuItemButton _menuItem(IconMenuId menu, HomeAddMenuAction action) {
+    return MenuItemButton(
+      leadingIcon: Icon(menu.icon),
+      onPressed: () => onSelected(action),
+      child: Text(menu.title),
+    );
+  }
+}
+
+class HomeNodePanel extends StatelessWidget {
+  const HomeNodePanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ColorManager.surface(context),
+      child: const HomeNodeView(),
+    );
   }
 }
 

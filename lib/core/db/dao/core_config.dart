@@ -35,9 +35,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return data;
   }
 
-  Future<List<ConfigQueryRow>> _convertConfigQueryRows(
-    List<TypedResult> rows,
-  ) async {
+  Future<Map<int, ConfigGroup>> _buildSubscriptionGroups() async {
     final groups = <int, ConfigGroup>{};
     final subscriptions = await _getAllSubscriptions();
     final localSub = await _readLocalSubscription();
@@ -47,27 +45,10 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       final group = ConfigGroup(sub.id, subItem, []);
       groups[sub.id] = group;
     }
-    for (final row in rows) {
-      final data = _convertRowToCoreConfigData(row);
-      final subId = data.subId;
-      if (groups.containsKey(subId)) {
-        final group = groups[subId]!;
-        final outboundItem = ConfigItem(data, ConfigQueryRowType.config);
-        group.configs.add(outboundItem);
-        group.count += 1;
-      }
-    }
-    for (final group in groups.values) {
-      group.subscription.count = group.count;
-    }
-    // fix local count
-    final localGroup = groups[DBConstants.defaultId];
-    if (localGroup != null) {
-      var sub = localGroup.subscription.subscription;
-      sub = sub.copyWith(count: localGroup.count);
-      localGroup.subscription.subscription = sub;
-    }
+    return groups;
+  }
 
+  List<ConfigQueryRow> _flattenExpandedGroups(Map<int, ConfigGroup> groups) {
     final sortedGroups = groups.values
         .sorted((a, b) => a.subId.compareTo(b.subId))
         .toList();
@@ -82,36 +63,72 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return results;
   }
 
-  List<ConfigQueryRow> _convertSettingQueryRows(List<TypedResult> rows) {
-    if (rows.isEmpty) {
-      return [];
+  void _syncGroupCounts(Map<int, ConfigGroup> groups) {
+    for (final group in groups.values) {
+      group.subscription.count = group.count;
     }
-
-    final localSub = SubscriptionData(
-      id: DBConstants.defaultId,
-      name: "Local",
-      url: "",
-      timestamp: DateTime.now(),
-      count: rows.length,
-      expanded: true,
-    );
-    final localItem = SubscriptionItem(
-      localSub,
-      ConfigQueryRowType.subscription,
-    )..count = rows.length;
-
-    return [
-      localItem,
-      ...rows.map((row) {
-        final data = _convertRowToCoreConfigData(
-          row,
-        ).copyWith(subId: DBConstants.defaultId);
-        return ConfigItem(data, ConfigQueryRowType.config);
-      }),
-    ];
+    final localGroup = groups[DBConstants.defaultId];
+    if (localGroup == null) {
+      return;
+    }
+    var sub = localGroup.subscription.subscription;
+    sub = sub.copyWith(count: localGroup.count);
+    localGroup.subscription.subscription = sub;
   }
 
-  List<ConfigQueryRow> _convertRawQueryRows(List<TypedResult> rows) {
+  Future<List<ConfigQueryRow>> _convertGroupedQueryRows(
+    List<TypedResult> rows, {
+    required int? Function(CoreConfigData data, CoreConfigType? type)
+    resolveSubId,
+    CoreConfigData Function(CoreConfigData data, CoreConfigType? type)?
+    normalizeData,
+  }) async {
+    final groups = await _buildSubscriptionGroups();
+
+    for (final row in rows) {
+      var data = _convertRowToCoreConfigData(row);
+      final type = CoreConfigType.fromString(data.type);
+      final subId = resolveSubId(data, type);
+      if (subId == null || !groups.containsKey(subId)) {
+        continue;
+      }
+      data = normalizeData?.call(data, type) ?? data;
+      final group = groups[subId]!;
+      final configItem = ConfigItem(data, ConfigQueryRowType.config);
+      group.configs.add(configItem);
+      group.count += 1;
+    }
+
+    _syncGroupCounts(groups);
+    return _flattenExpandedGroups(groups);
+  }
+
+  Future<List<ConfigQueryRow>> _convertOutboundQueryRows(
+    List<TypedResult> rows,
+  ) {
+    return _convertGroupedQueryRows(
+      rows,
+      resolveSubId: (data, _) => data.subId,
+    );
+  }
+
+  Future<List<ConfigQueryRow>> _convertHomeNodeQueryRows(
+    List<TypedResult> rows,
+  ) {
+    return _convertGroupedQueryRows(
+      rows,
+      resolveSubId: (data, type) => switch (type) {
+        CoreConfigType.raw => DBConstants.defaultId,
+        CoreConfigType.outbound => data.subId,
+        _ => null,
+      },
+      normalizeData: (data, type) => type == CoreConfigType.raw
+          ? data.copyWith(subId: DBConstants.defaultId)
+          : data,
+    );
+  }
+
+  List<ConfigQueryRow> _convertSettingQueryRows(List<TypedResult> rows) {
     if (rows.isEmpty) {
       return [];
     }
@@ -160,17 +177,9 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       ..where(coreConfig.type.equals(CoreConfigType.outbound.name));
     final queryStream = query.watch();
     await for (final rows in queryStream) {
-      final results = await _convertConfigQueryRows(rows);
+      final results = await _convertOutboundQueryRows(rows);
       yield results;
     }
-  }
-
-  Future<List<ConfigQueryRow>> get allOutboundRows async {
-    final query = _allConfigRowsQuery
-      ..where(coreConfig.type.equals(CoreConfigType.outbound.name));
-    final rows = await query.get();
-    final results = await _convertConfigQueryRows(rows);
-    return results;
   }
 
   Future<List<CoreConfigData>> get allOutboundRowsWithData async =>
@@ -178,6 +187,30 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
             ..where((tbl) => tbl.type.equals(CoreConfigType.outbound.name))
             ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
           .get();
+
+  Stream<List<ConfigQueryRow>> allHomeNodeRowsStream() async* {
+    final query = _allConfigRowsQuery
+      ..where(
+        coreConfig.type.equals(CoreConfigType.outbound.name) |
+            coreConfig.type.equals(CoreConfigType.raw.name),
+      );
+    final queryStream = query.watch();
+    await for (final rows in queryStream) {
+      final results = await _convertHomeNodeQueryRows(rows);
+      yield results;
+    }
+  }
+
+  Future<List<ConfigQueryRow>> get allHomeNodeRows async {
+    final query = _allConfigRowsQuery
+      ..where(
+        coreConfig.type.equals(CoreConfigType.outbound.name) |
+            coreConfig.type.equals(CoreConfigType.raw.name),
+      );
+    final rows = await query.get();
+    final results = await _convertHomeNodeQueryRows(rows);
+    return results;
+  }
 
   Stream<List<ConfigQueryRow>> allSettingRowsStream() async* {
     final query = _allConfigRowsQuery
@@ -197,30 +230,13 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return results;
   }
 
-  Stream<List<ConfigQueryRow>> allRawRowsStream() async* {
-    final query = _allConfigRowsQuery
-      ..where(coreConfig.type.equals(CoreConfigType.raw.name));
-    final queryStream = query.watch();
-    await for (final rows in queryStream) {
-      final results = _convertRawQueryRows(rows);
-      yield results;
-    }
-  }
-
-  Future<List<ConfigQueryRow>> get allRawRows async {
-    final query = _allConfigRowsQuery
-      ..where(coreConfig.type.equals(CoreConfigType.raw.name));
-    final rows = await query.get();
-    final results = _convertRawQueryRows(rows);
-    return results;
-  }
-
   Future<List<CoreConfigData>> allOutboundRowsWithDataBySubId(
     int subId,
   ) async =>
       (select(coreConfig)
             ..where((tbl) => tbl.type.equals(CoreConfigType.outbound.name))
-            ..where((tbl) => tbl.subId.equals(subId)))
+            ..where((tbl) => tbl.subId.equals(subId))
+            ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
           .get();
 
   Stream<List<CoreConfigData>> allOutboundRowsWithDataBySubIdStream(int subId) {
@@ -231,11 +247,20 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
-  Future<List<CoreConfigData>> get allRawRowsWithData async =>
-      (select(coreConfig)
-            ..where((tbl) => tbl.type.equals(CoreConfigType.raw.name))
+  Future<List<CoreConfigData>> allHomeNodeRowsWithDataBySubId(int subId) async {
+    if (subId == DBConstants.defaultId) {
+      return (select(coreConfig)
+            ..where(
+              (tbl) =>
+                  (tbl.type.equals(CoreConfigType.outbound.name) &
+                      tbl.subId.equals(DBConstants.defaultId)) |
+                  tbl.type.equals(CoreConfigType.raw.name),
+            )
             ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
           .get();
+    }
+    return allOutboundRowsWithDataBySubId(subId);
+  }
 
   Future<List<CoreConfigData>> get allLocalRowsWithData async => (select(
     coreConfig,
@@ -314,7 +339,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return res;
   }
 
-  Future<int> deleteUnreachableRows(int subId) async {
+  Future<int> deleteUnreachableOutboundRows(int subId) async {
     final res =
         await (delete(coreConfig)
               ..where((tbl) => tbl.subId.equals(subId))
@@ -338,10 +363,18 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return res;
   }
 
-  Future<int> deleteUnreachableRawRows() async {
+  Future<int> deleteUnreachableHomeNodeRows(int subId) async {
+    if (subId != DBConstants.defaultId) {
+      return deleteUnreachableOutboundRows(subId);
+    }
     final res =
         await (delete(coreConfig)
-              ..where((tbl) => tbl.type.equals(CoreConfigType.raw.name))
+              ..where(
+                (tbl) =>
+                    (tbl.type.equals(CoreConfigType.outbound.name) &
+                        tbl.subId.equals(DBConstants.defaultId)) |
+                    tbl.type.equals(CoreConfigType.raw.name),
+              )
               ..where(
                 (tbl) =>
                     tbl.delay.isBiggerThanValue(PingDelayConstants.unknown),

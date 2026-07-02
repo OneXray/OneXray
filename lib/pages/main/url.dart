@@ -71,7 +71,6 @@ import 'package:onexray/pages/core/xray/setting/simple/page.dart';
 import 'package:onexray/pages/core/xray/setting/ui/page.dart';
 import 'package:onexray/pages/core/xray/setting/ui/params.dart';
 import 'package:onexray/pages/core/xray/setting_list/page.dart';
-import 'package:onexray/pages/home/home/controller.dart';
 import 'package:onexray/pages/home/home/page.dart';
 import 'package:onexray/pages/home/node_info/page.dart';
 import 'package:onexray/pages/home/outbound_select/page.dart';
@@ -181,17 +180,6 @@ _SharedSecondaryRoute _route(
 final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   _route(AppSecondaryDestination.overview, (_, _) => const HomePage()),
   _route(AppSecondaryDestination.nodeInfo, (_, _) => const NodeInfoPage()),
-  _route(
-    AppSecondaryDestination.outbound,
-    (_, _) => const HomePage(initialWorkspace: HomeWorkspace.nodes),
-  ),
-  _route(
-    AppSecondaryDestination.raw,
-    (_, _) => const HomePage(
-      initialWorkspace: HomeWorkspace.nodes,
-      initialTabIndex: 1,
-    ),
-  ),
   _route(AppSecondaryDestination.qrcode, (_, _) => const QrcodePage()),
   _route(
     AppSecondaryDestination.share,
