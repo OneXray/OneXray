@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/pages/app_update/dialog.dart';
+import 'package:onexray/pages/app_update/params.dart';
 import 'package:onexray/pages/core/geo_data/add/page.dart';
 import 'package:onexray/pages/core/geo_data/list/page.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
@@ -82,6 +84,7 @@ import 'package:onexray/pages/launch/first_run/page.dart';
 import 'package:onexray/pages/launch/privacy/page.dart';
 import 'package:onexray/pages/launch/splash/page.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
+import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/settings/auto_update/page.dart';
@@ -120,6 +123,16 @@ abstract final class RouterPath {
       GoRoute(
         path: RouterPath.firstRun,
         builder: (_, _) => const FirstRunPage(),
+      ),
+      GoRoute(
+        path: AppDialogRoutePath.appUpdate,
+        pageBuilder: (_, state) => AppDialogPage<void>(
+          builder: (_) => _withDialogExtra<AppUpdateDialogParams>(
+            state,
+            "AppUpdateDialogParams",
+            (params) => AppUpdateDialog(params: params),
+          ),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) {
@@ -511,6 +524,18 @@ Widget _withExtra<T>(
   return _InvalidRoutePage(destination: destination, expectedType: "$T");
 }
 
+Widget _withDialogExtra<T>(
+  GoRouterState state,
+  String expectedType,
+  Widget Function(T params) builder,
+) {
+  final extra = state.extra;
+  if (extra is T) {
+    return builder(extra);
+  }
+  return _InvalidRouteDialog(expectedType: expectedType);
+}
+
 class _InvalidRoutePage extends StatelessWidget {
   const _InvalidRoutePage({
     required this.destination,
@@ -536,6 +561,28 @@ class _InvalidRoutePage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _InvalidRouteDialog extends StatelessWidget {
+  const _InvalidRouteDialog({required this.expectedType});
+
+  final String expectedType;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Invalid route"),
+      content: Text(
+        "Missing or invalid route parameters. Expected $expectedType.",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Close"),
+        ),
+      ],
     );
   }
 }

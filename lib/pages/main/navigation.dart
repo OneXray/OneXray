@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/pages/app_update/params.dart';
+import 'package:onexray/service/app_update/service.dart';
+
+abstract final class AppDialogRoutePath {
+  static const appUpdate = "/app-update";
+}
 
 enum AppPrimaryRoute {
   home("/home"),
@@ -118,5 +124,12 @@ extension AppNavigationContext on BuildContext {
     Object? extra,
   }) {
     return push<T>(scopedPath(destination), extra: extra);
+  }
+
+  Future<T?> pushAppUpdateDialog<T>(AppUpdateInfo updateInfo) {
+    return push<T>(
+      AppDialogRoutePath.appUpdate,
+      extra: AppUpdateDialogParams(updateInfo: updateInfo),
+    );
   }
 }

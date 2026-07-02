@@ -6,7 +6,6 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/app_update/dialog.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
@@ -135,7 +134,7 @@ class SettingController extends Cubit<SettingState> {
     BuildContext context,
     AppUpdateInfo updateInfo,
   ) async {
-    await AppUpdateDialog.show(context, updateInfo);
+    await context.pushAppUpdateDialog(updateInfo);
   }
 
   Future<void> clearData(BuildContext context) async {

@@ -11,7 +11,6 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/app_update/dialog.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
@@ -211,7 +210,7 @@ class HomeController extends Cubit<HomeState> {
         return;
       }
       if (!isClosed && context.mounted) {
-        await AppUpdateDialog.show(context, updateInfo);
+        await context.pushAppUpdateDialog(updateInfo);
       }
     } catch (e) {
       ygLogger("checkAppUpdate error: $e");
