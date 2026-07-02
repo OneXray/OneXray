@@ -2,16 +2,13 @@
 # Publishes artifacts produced by the Build workflow.
 #
 # Trigger:
-#   - workflow_dispatch: manually publishes a stable release from a specific Build
+#   - workflow_dispatch: manually publishes a pre-release from a specific Build
 #     workflow run id and tag.
 #
 # The Build workflow owns compilation and artifact upload. This workflow only
-# downloads those artifacts, creates/updates a GitHub release, and submits a
-# winget update PR.
-#
-# Required repository secrets:
-#   PACKAGE_MANAGER_GITHUB_TOKEN       GitHub PAT that can open PRs in
-#                                      microsoft/winget-pkgs
+# downloads those artifacts and creates/updates a GitHub pre-release. Stable
+# release promotion is a manual decision, and package-manager updates are handled
+# by separate workflows after a release becomes stable.
 #
 
 name: Publish
@@ -80,61 +77,6 @@ jobs:
       - name: List release files
         run: find artifacts -type f | sort
 
-      - name: Verify complete release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          required_assets=(
-            "OneXray-ios.ipa"
-            "OneXray-macos-universal.zip"
-            "OneXray-android-universal.apk"
-            "OneXray-windows-amd64.exe"
-            "OneXray-windows-amd64.zip"
-            "OneXray-linux-x86_64.deb"
-            "OneXray-linux-x86_64.zip"
-            "OneXray-linux-aarch64.deb"
-            "OneXray-linux-aarch64.zip"
-          )
-
-          incoming_assets="$(mktemp)"
-          existing_assets="$(mktemp)"
-          final_assets="$(mktemp)"
-
-          find artifacts -type f ! -path '*/release-metadata/*' \
-            -exec basename {} \; | sort -u > "$incoming_assets"
-
-          if [ ! -s "$incoming_assets" ]; then
-            echo "No release assets found in the selected build run." >&2
-            exit 1
-          fi
-
-          if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release view "$RELEASE_TAG" \
-              --repo "${{ github.repository }}" \
-              --json assets \
-              --jq '.assets[].name' | sort -u > "$existing_assets"
-          else
-            : > "$existing_assets"
-          fi
-
-          grep -Fvx -f "$incoming_assets" "$existing_assets" > "$final_assets" || true
-          cat "$incoming_assets" >> "$final_assets"
-          sort -u -o "$final_assets" "$final_assets"
-
-          missing=0
-          for asset in "${required_assets[@]}"; do
-            if ! grep -Fxq "$asset" "$final_assets"; then
-              echo "Missing required release asset after publish: $asset" >&2
-              missing=1
-            fi
-          done
-
-          if [ "$missing" -ne 0 ]; then
-            echo "Stable/latest releases require the complete platform asset set." >&2
-            exit 1
-          fi
-
       - name: Delete matching existing release assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -157,8 +99,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release.outputs.tag }}
-          prerelease: false
-          make_latest: true
+          prerelease: true
+          make_latest: false
           files: |
             artifacts/ios/**/*
             artifacts/macos_se/**/*
@@ -168,52 +110,3 @@ jobs:
             artifacts/linux-arm64/**/*
           fail_on_unmatched_files: false
           generate_release_notes: true
-
-  winget:
-    needs: release
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - name: Verify Windows release asset
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.release.outputs.tag }}
-        run: |
-          release_json="$(gh release view "$RELEASE_TAG" \
-            --repo "${{ github.repository }}" \
-            --json isDraft,isPrerelease,assets)"
-
-          if [ "$(jq -r '.isDraft' <<<"$release_json")" != "false" ]; then
-            echo "Release $RELEASE_TAG is still a draft." >&2
-            exit 1
-          fi
-
-          if [ "$(jq -r '.isPrerelease' <<<"$release_json")" != "false" ]; then
-            echo "Release $RELEASE_TAG is a pre-release; winget is updated only from stable releases." >&2
-            exit 1
-          fi
-
-          if [ -z "$(jq -r '.assets[] | select(.name == "OneXray-windows-amd64.exe") | .url' <<<"$release_json")" ]; then
-            echo "Release $RELEASE_TAG is missing required asset: OneXray-windows-amd64.exe" >&2
-            exit 1
-          fi
-
-      - name: Validate package manager token
-        run: |
-          if [ -z "${PACKAGE_MANAGER_GITHUB_TOKEN}" ]; then
-            echo "PACKAGE_MANAGER_GITHUB_TOKEN is required." >&2
-            exit 1
-          fi
-        env:
-          PACKAGE_MANAGER_GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
-
-      - name: Open winget package PR
-        uses: vedantmgoyal9/winget-releaser@v2
-        with:
-          identifier: YuanDevLLC.OneXray
-          release-tag: ${{ needs.release.outputs.tag }}
-          installers-regex: '^OneXray-windows-amd64\.exe$'
-          max-versions-to-keep: 3
-          fork-user: yiguodev
-          token: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
