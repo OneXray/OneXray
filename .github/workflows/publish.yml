@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  pre_release:
     runs-on: ubuntu-24.04
     permissions:
       actions: read
@@ -95,7 +95,7 @@ jobs:
               --yes >/dev/null 2>&1 || true
           done
 
-      - name: Publish GitHub release
+      - name: Publish GitHub pre-release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release.outputs.tag }}

@@ -83,7 +83,7 @@ env:
 jobs:
   # =================================================================
   # Release metadata — lets the separate Publish workflow recover the
-  # tag name from this build run before creating a release.
+  # tag name from this build run before creating a pre-release.
   # =================================================================
   release_metadata:
     if: startsWith(github.ref, 'refs/tags/v')
