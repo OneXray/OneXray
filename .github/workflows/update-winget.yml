@@ -1,0 +1,103 @@
+#
+# Updates the Windows Package Manager manifest after a OneXray release becomes
+# stable. Pre-releases are intentionally ignored.
+#
+# Trigger:
+#   - release released: automatically opens a winget PR after a stable release
+#   - workflow_dispatch: manually updates winget for an existing stable release
+#
+# Required repository secrets:
+#   PACKAGE_MANAGER_GITHUB_TOKEN       GitHub PAT that can open PRs in
+#                                      microsoft/winget-pkgs
+#
+
+name: Update winget
+
+on:
+  release:
+    types:
+      - released
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Stable release tag, for example v26.6.1
+        required: true
+        type: string
+
+concurrency:
+  group: update-winget-${{ github.event.release.tag_name || inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  winget:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag_name }}
+        run: |
+          tag="${EVENT_TAG:-$INPUT_TAG}"
+
+          case "$tag" in
+            v*) ;;
+            *)
+              echo "Release tag must start with v: $tag" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Verify stable Windows release asset
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          echo "should_update=false" >> "$GITHUB_OUTPUT"
+
+          release_json="$(gh release view "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --json isDraft,isPrerelease,assets)"
+
+          if [ "$(jq -r '.isDraft' <<<"$release_json")" != "false" ]; then
+            echo "Release $RELEASE_TAG is still a draft." >&2
+            exit 1
+          fi
+
+          if [ "$(jq -r '.isPrerelease' <<<"$release_json")" != "false" ]; then
+            echo "Release $RELEASE_TAG is a pre-release; skipping winget update."
+            exit 0
+          fi
+
+          if [ -z "$(jq -r '.assets[] | select(.name == "OneXray-windows-amd64.exe") | .url' <<<"$release_json")" ]; then
+            echo "Release $RELEASE_TAG is missing required asset: OneXray-windows-amd64.exe" >&2
+            exit 1
+          fi
+
+          echo "should_update=true" >> "$GITHUB_OUTPUT"
+
+      - name: Validate package manager token
+        if: steps.verify.outputs.should_update == 'true'
+        env:
+          PACKAGE_MANAGER_GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
+        run: |
+          if [ -z "${PACKAGE_MANAGER_GITHUB_TOKEN}" ]; then
+            echo "PACKAGE_MANAGER_GITHUB_TOKEN is required." >&2
+            exit 1
+          fi
+
+      - name: Open winget package PR
+        if: steps.verify.outputs.should_update == 'true'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: YuanDevLLC.OneXray
+          release-tag: ${{ steps.release.outputs.tag }}
+          installers-regex: '^OneXray-windows-amd64\.exe$'
+          max-versions-to-keep: 3
+          fork-user: yiguodev
+          token: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}

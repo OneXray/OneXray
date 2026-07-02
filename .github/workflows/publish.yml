@@ -6,7 +6,9 @@
 #     workflow run id and tag.
 #
 # The Build workflow owns compilation and artifact upload. This workflow only
-# downloads those artifacts and creates/updates a GitHub pre-release.
+# downloads those artifacts and creates/updates a GitHub pre-release. Stable
+# release promotion is a manual decision, and package-manager updates are handled
+# by separate workflows after a release becomes stable.
 #
 
 name: Publish
@@ -33,6 +35,8 @@ jobs:
     permissions:
       actions: read
       contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Download build artifacts
         env:
