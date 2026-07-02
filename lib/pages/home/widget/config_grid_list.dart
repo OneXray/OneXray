@@ -47,7 +47,6 @@ class ConfigGridList extends StatelessWidget {
 
   static const double maxContentWidth = 1040;
   static const double adaptiveBreakpoint = 900;
-  static const double compactRowVerticalPadding = 4;
   static const double _minTileWidth = 200;
   static const int _minColumns = 2;
   static const int _maxColumns = 3;

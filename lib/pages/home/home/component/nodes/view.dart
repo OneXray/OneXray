@@ -29,8 +29,6 @@ class HomeNodeView extends StatelessWidget {
       child: ConfigGridContentFrame(
         child: Column(
           children: [
-            _xraySetting(context, controller, state),
-            const Divider(),
             if (state.searching) _search(context, controller),
             Expanded(child: _configList(context, controller, state)),
           ],
@@ -44,20 +42,6 @@ class HomeNodeView extends StatelessWidget {
       controller: controller.searchController,
       hintText: AppLocalizations.of(context)!.listSearchHint,
       onChanged: (value) => controller.updateSearchQuery(value),
-    );
-  }
-
-  Widget _xraySetting(
-    BuildContext context,
-    HomeNodeController controller,
-    HomeNodeState state,
-  ) {
-    return DataListRow(
-      title: AppLocalizations.of(context)!.homeOutboundViewXraySetting,
-      subtitle: state.xraySettingName,
-      verticalPadding: ConfigGridList.compactRowVerticalPadding,
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => controller.gotoXraySetting(context),
     );
   }
 

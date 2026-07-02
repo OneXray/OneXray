@@ -100,11 +100,7 @@ class HomePage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _adaptiveHeader(context, controller, eventState),
-        HomeConnectionSummary(
-          connection: connection,
-          onToggleConnection: () => controller.startVpn(context),
-          onShowNodeInfo: () => controller.gotoNodeInfo(context),
-        ),
+        _connectionSummary(context, controller, connection),
         Divider(height: 1, color: ColorManager.border(context)),
         const Expanded(child: HomeNodePanel()),
       ],
@@ -155,15 +151,32 @@ class HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HomeConnectionSummary(
-            connection: connection,
-            onToggleConnection: () => controller.startVpn(context),
-            onShowNodeInfo: () => controller.gotoNodeInfo(context),
-          ),
+          _connectionSummary(context, controller, connection),
           Divider(height: 1, color: ColorManager.border(context)),
           const Expanded(child: HomeNodePanel()),
         ],
       ),
+    );
+  }
+
+  Widget _connectionSummary(
+    BuildContext context,
+    HomeController controller,
+    HomeConnectionViewState connection,
+  ) {
+    return BlocBuilder<HomeNodeController, HomeNodeState>(
+      buildWhen: (previous, current) =>
+          previous.xraySettingName != current.xraySettingName,
+      builder: (context, nodeState) {
+        final nodeController = context.read<HomeNodeController>();
+        return HomeConnectionSummary(
+          connection: connection,
+          xraySettingName: nodeState.xraySettingName,
+          onToggleConnection: () => controller.startVpn(context),
+          onShowNodeInfo: () => controller.gotoNodeInfo(context),
+          onShowXraySetting: () => nodeController.gotoXraySetting(context),
+        );
+      },
     );
   }
 
@@ -260,13 +273,17 @@ class HomeConnectionSummary extends StatelessWidget {
   const HomeConnectionSummary({
     super.key,
     required this.connection,
+    required this.xraySettingName,
     required this.onToggleConnection,
     required this.onShowNodeInfo,
+    required this.onShowXraySetting,
   });
 
   final HomeConnectionViewState connection;
+  final String xraySettingName;
   final VoidCallback onToggleConnection;
   final VoidCallback onShowNodeInfo;
+  final VoidCallback onShowXraySetting;
 
   @override
   Widget build(BuildContext context) {
@@ -283,9 +300,9 @@ class HomeConnectionSummary extends StatelessWidget {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(child: status),
+                  Expanded(flex: 4, child: status),
                   const SizedBox(width: 16),
-                  Expanded(child: metrics),
+                  Expanded(flex: 6, child: metrics),
                 ],
               );
             }
@@ -406,17 +423,52 @@ class HomeConnectionSummary extends StatelessWidget {
   }
 
   Widget _metrics(BuildContext context) {
-    return _metricBar(context);
+    return Row(
+      children: [
+        Expanded(flex: 4, child: _xraySettingBar(context)),
+        const SizedBox(width: 10),
+        Expanded(flex: 6, child: _metricBar(context)),
+      ],
+    );
+  }
+
+  Widget _xraySettingBar(BuildContext context) {
+    return Tooltip(
+      message: xraySettingName,
+      child: _summaryBar(
+        context,
+        icon: Icons.tune,
+        title: AppLocalizations.of(context)!.homeOutboundViewXraySetting,
+        subtitle: xraySettingName,
+        onTap: onShowXraySetting,
+      ),
+    );
   }
 
   Widget _metricBar(BuildContext context) {
+    return _summaryBar(
+      context,
+      icon: Icons.swap_vert,
+      title: connection.trafficText,
+      subtitle: connection.metricsText,
+      onTap: onShowNodeInfo,
+    );
+  }
+
+  Widget _summaryBar(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     final borderRadius = BorderRadiusDirectional.circular(8);
     return Material(
       color: ColorManager.tagBackground(context),
       borderRadius: borderRadius,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onShowNodeInfo,
+        onTap: onTap,
         child: Container(
           height: 54,
           padding: const EdgeInsetsDirectional.symmetric(
@@ -429,11 +481,7 @@ class HomeConnectionSummary extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.swap_vert,
-                size: 18,
-                color: ColorManager.secondaryText(context),
-              ),
+              Icon(icon, size: 18, color: ColorManager.secondaryText(context)),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -441,7 +489,7 @@ class HomeConnectionSummary extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      connection.trafficText,
+                      title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -452,7 +500,7 @@ class HomeConnectionSummary extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      connection.metricsText,
+                      subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
