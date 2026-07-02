@@ -9,8 +9,10 @@ import 'package:onexray/pages/core/geo_data/select/page.dart';
 import 'package:onexray/pages/core/geo_data/select/params.dart';
 import 'package:onexray/pages/core/geo_data/show/page.dart';
 import 'package:onexray/pages/core/geo_data/show/params.dart';
-import 'package:onexray/pages/core/log/long_text/page.dart';
-import 'package:onexray/pages/core/log/long_text/params.dart';
+import 'package:onexray/pages/core/log/log_file_viewer/page.dart';
+import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
+import 'package:onexray/pages/core/log/config_file_viewer/page.dart';
+import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/page.dart';
 import 'package:onexray/pages/core/ping/page.dart';
 import 'package:onexray/pages/core/tun/installed_app/page.dart';
@@ -496,11 +498,19 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   _route(AppSecondaryDestination.ping, (_, _) => const PingPage()),
   _route(AppSecondaryDestination.logs, (_, _) => const LogPage()),
   _route(
-    AppSecondaryDestination.longText,
-    (_, state) => _withExtra<LongTextParams>(
+    AppSecondaryDestination.logFile,
+    (_, state) => _withExtra<LogFileViewerParams>(
       state,
-      AppSecondaryDestination.longText,
-      (params) => LongTextPage(params: params),
+      AppSecondaryDestination.logFile,
+      (params) => LogFileViewerPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.configFileViewer,
+    (_, state) => _withExtra<ConfigFileViewerParams>(
+      state,
+      AppSecondaryDestination.configFileViewer,
+      (params) => ConfigFileViewerPage(params: params),
     ),
   ),
   _route(AppSecondaryDestination.autoUpdate, (_, _) => const AutoUpdatePage()),

@@ -5,7 +5,8 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/core/log/long_text/params.dart';
+import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
+import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:path/path.dart' as p;
@@ -73,11 +74,16 @@ class LogController extends Cubit<LogCubitState> {
     await FileTool.saveFile(path, p.basename(path), ".txt");
   }
 
+  void gotoLogFile(BuildContext context, String title, String path) {
+    final params = LogFileViewerParams(title: title, path: path);
+    context.pushScoped(AppSecondaryDestination.logFile, extra: params);
+  }
+
   void gotoXrayConfigFile(BuildContext context) {
-    final params = LongTextParams(
+    final params = ConfigFileViewerParams(
       AppLocalizations.of(context)!.logPageXrayConfig,
       XrayStateConstants.configFilePath,
     );
-    context.pushScoped(AppSecondaryDestination.longText, extra: params);
+    context.pushScoped(AppSecondaryDestination.configFileViewer, extra: params);
   }
 }

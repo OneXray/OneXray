@@ -53,11 +53,18 @@ class LogPage extends StatelessWidget {
   }
 
   Widget _logSection(BuildContext context, LogController controller) {
+    final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: AppLocalizations.of(context)!.logPageLogFile,
+      title: localizations.logPageLogFile,
       children: [
         SettingRow(
-          title: AppLocalizations.of(context)!.logPageAccess,
+          title: localizations.logPageAccess,
+          showChevron: true,
+          onTap: () => controller.gotoLogFile(
+            context,
+            localizations.logPageAccess,
+            XrayStateConstants.accessLogPath,
+          ),
           trailing: AppMenuButton<IconMenuId>(
             icon: Icons.more_vert,
             entries: iconMenuEntries([
@@ -72,7 +79,13 @@ class LogPage extends StatelessWidget {
           ),
         ),
         SettingRow(
-          title: AppLocalizations.of(context)!.logPageError,
+          title: localizations.logPageError,
+          showChevron: true,
+          onTap: () => controller.gotoLogFile(
+            context,
+            localizations.logPageError,
+            XrayStateConstants.errorLogPath,
+          ),
           trailing: AppMenuButton<IconMenuId>(
             icon: Icons.more_vert,
             entries: iconMenuEntries([

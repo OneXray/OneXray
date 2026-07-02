@@ -2,22 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/core/log/long_text/controller.dart';
-import 'package:onexray/pages/core/log/long_text/params.dart';
+import 'package:onexray/pages/core/log/config_file_viewer/controller.dart';
+import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 
-class LongTextPage extends StatelessWidget {
-  final LongTextParams params;
+class ConfigFileViewerPage extends StatelessWidget {
+  final ConfigFileViewerParams params;
 
-  const LongTextPage({super.key, required this.params});
+  const ConfigFileViewerPage({super.key, required this.params});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => LongTextController(params),
-      child: BlocBuilder<LongTextController, LongTextState>(
+      create: (_) => ConfigFileViewerController(params),
+      child: BlocBuilder<ConfigFileViewerController, ConfigFileViewerState>(
         builder: (context, state) {
-          final controller = context.read<LongTextController>();
+          final controller = context.read<ConfigFileViewerController>();
           return Scaffold(
             appBar: AppBar(
               title: Text(state.title),
@@ -36,7 +36,7 @@ class LongTextPage extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context, LongTextState state) {
+  Widget _body(BuildContext context, ConfigFileViewerState state) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(

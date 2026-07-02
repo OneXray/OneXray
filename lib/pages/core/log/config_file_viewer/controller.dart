@@ -4,24 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/core/log/long_text/params.dart';
+import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:share_plus/share_plus.dart';
 
-class LongTextState {
+class ConfigFileViewerState {
   final String title;
   final String text;
 
-  const LongTextState({this.title = '', this.text = ''});
+  const ConfigFileViewerState({this.title = '', this.text = ''});
 
-  LongTextState copyWith({String? title, String? text}) {
-    return LongTextState(title: title ?? this.title, text: text ?? this.text);
+  ConfigFileViewerState copyWith({String? title, String? text}) {
+    return ConfigFileViewerState(
+      title: title ?? this.title,
+      text: text ?? this.text,
+    );
   }
 }
 
-class LongTextController extends Cubit<LongTextState> {
-  final LongTextParams params;
+class ConfigFileViewerController extends Cubit<ConfigFileViewerState> {
+  final ConfigFileViewerParams params;
 
-  LongTextController(this.params) : super(const LongTextState()) {
+  ConfigFileViewerController(this.params)
+    : super(const ConfigFileViewerState()) {
     _initParams();
     _readFile();
   }
@@ -62,7 +66,7 @@ class LongTextController extends Cubit<LongTextState> {
           ContextAlert.showToast(
             context,
             AppLocalizations.of(context)!.actionResult(
-              AppLocalizations.of(context)!.longTextPageShare,
+              AppLocalizations.of(context)!.configFileViewerPageShare,
               AppLocalizations.of(context)!.resultSuccess,
             ),
           );
@@ -72,7 +76,7 @@ class LongTextController extends Cubit<LongTextState> {
           ContextAlert.showToast(
             context,
             AppLocalizations.of(context)!.actionResult(
-              AppLocalizations.of(context)!.longTextPageShare,
+              AppLocalizations.of(context)!.configFileViewerPageShare,
               AppLocalizations.of(context)!.resultFailed,
             ),
           );
@@ -82,7 +86,7 @@ class LongTextController extends Cubit<LongTextState> {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.longTextPageFileNotExist,
+          AppLocalizations.of(context)!.configFileViewerPageFileNotExist,
         );
       }
     }
