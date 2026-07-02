@@ -26,7 +26,7 @@
 
 ### macOS
 
-Версия Mac App Store — отдельный пакет из магазина. Варианты распространения вне App Store, Homebrew и Universal ZIP, используют один и тот же Developer ID пакет `macos_se` и устанавливают `OneXraySE.app`.
+Версия Mac App Store — отдельный пакет из магазина. Варианты распространения вне App Store (Homebrew и Universal ZIP) используют один и тот же Developer ID пакет `macos_se` и устанавливают `OneXraySE.app`.
 
 ```shell
 brew install --cask onexrayse
