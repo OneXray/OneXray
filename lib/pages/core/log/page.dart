@@ -58,13 +58,13 @@ class LogPage extends StatelessWidget {
       children: [
         SettingRow(
           title: AppLocalizations.of(context)!.logPageAccess,
-          trailing: IconMenuPicker(
+          trailing: AppMenuButton<IconMenuId>(
             icon: Icons.more_vert,
-            menus: [
+            entries: iconMenuEntries([
               if (!AppPlatform.isLinux) IconMenuId.share,
               IconMenuId.save,
-            ],
-            callback: (menuId) => controller.moreAction(
+            ]),
+            onSelected: (menuId) => controller.moreAction(
               context,
               XrayStateConstants.accessLogPath,
               menuId,
@@ -73,13 +73,13 @@ class LogPage extends StatelessWidget {
         ),
         SettingRow(
           title: AppLocalizations.of(context)!.logPageError,
-          trailing: IconMenuPicker(
+          trailing: AppMenuButton<IconMenuId>(
             icon: Icons.more_vert,
-            menus: [
+            entries: iconMenuEntries([
               if (!AppPlatform.isLinux) IconMenuId.share,
               IconMenuId.save,
-            ],
-            callback: (menuId) => controller.moreAction(
+            ]),
+            onSelected: (menuId) => controller.moreAction(
               context,
               XrayStateConstants.errorLogPath,
               menuId,

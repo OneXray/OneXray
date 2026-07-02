@@ -14,14 +14,10 @@ class ConfigRowController {
   Future<void> moreAction(
     BuildContext context,
     CoreConfigData config,
-    String menuId,
+    IconMenuId menuId,
   ) async {
-    final id = IconMenuId.fromString(menuId);
-    if (id == null) {
-      return;
-    }
     final db = AppDatabase();
-    switch (id) {
+    switch (menuId) {
       case IconMenuId.edit:
         _gotoConfig(context, config);
         break;

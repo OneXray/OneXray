@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/xray/setting/dns/params.dart';
 import 'package:onexray/pages/core/xray/setting/dns_hosts/params.dart';
 import 'package:onexray/pages/core/xray/setting/dns_server/params.dart';
+import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/xray/setting/dns_server_state.dart';
 import 'package:onexray/service/xray/setting/dns_state.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
@@ -126,7 +127,7 @@ class DnsController extends Cubit<DnsCubitState> {
     }
   }
 
-  void moreAction(String menuId, int serverIndex) async {
+  void moreAction(IconMenuId menuId, int serverIndex) async {
     state.dnsState.servers.removeAt(serverIndex);
     emit(state.bumped());
   }

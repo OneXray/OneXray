@@ -202,35 +202,24 @@ class HomeAddMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    return MenuAnchor(
-      builder: (context, menuController, child) {
-        return IconButton(
-          icon: const Icon(Icons.add),
-          onPressed: () {
-            if (menuController.isOpen) {
-              menuController.close();
-            } else {
-              menuController.open();
-            }
-          },
-        );
-      },
-      menuChildren: [
-        SubmenuButton(
-          leadingIcon: Icon(IconMenuId.manualInput.icon),
-          menuChildren: [
-            MenuItemButton(
-              leadingIcon: const Icon(Icons.hub_outlined),
-              onPressed: () => onSelected(HomeAddMenuAction.manualOutbound),
-              child: Text(localizations.homeManualInputOutbound),
+    return AppMenuButton<HomeAddMenuAction>(
+      icon: Icons.add,
+      entries: [
+        AppMenuEntry<HomeAddMenuAction>.submenu(
+          title: IconMenuId.manualInput.title,
+          icon: IconMenuId.manualInput.icon,
+          children: [
+            AppMenuEntry<HomeAddMenuAction>.item(
+              value: HomeAddMenuAction.manualOutbound,
+              title: localizations.homeManualInputOutbound,
+              icon: Icons.hub_outlined,
             ),
-            MenuItemButton(
-              leadingIcon: const Icon(Icons.data_object),
-              onPressed: () => onSelected(HomeAddMenuAction.manualRaw),
-              child: Text(localizations.homeManualInputRawJson),
+            AppMenuEntry<HomeAddMenuAction>.item(
+              value: HomeAddMenuAction.manualRaw,
+              title: localizations.homeManualInputRawJson,
+              icon: Icons.data_object,
             ),
           ],
-          child: Text(IconMenuId.manualInput.title),
         ),
         _menuItem(IconMenuId.subscribeLink, HomeAddMenuAction.subscribeLink),
         if (AppPlatform.isMobile)
@@ -239,14 +228,18 @@ class HomeAddMenuButton extends StatelessWidget {
         _menuItem(IconMenuId.pickFile, HomeAddMenuAction.pickFile),
         _menuItem(IconMenuId.readPasteboard, HomeAddMenuAction.readPasteboard),
       ],
+      onSelected: onSelected,
     );
   }
 
-  MenuItemButton _menuItem(IconMenuId menu, HomeAddMenuAction action) {
-    return MenuItemButton(
-      leadingIcon: Icon(menu.icon),
-      onPressed: () => onSelected(action),
-      child: Text(menu.title),
+  AppMenuEntry<HomeAddMenuAction> _menuItem(
+    IconMenuId menu,
+    HomeAddMenuAction action,
+  ) {
+    return AppMenuEntry<HomeAddMenuAction>.item(
+      value: action,
+      title: menu.title,
+      icon: menu.icon,
     );
   }
 }

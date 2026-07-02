@@ -291,7 +291,7 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
   final String title;
   final String value;
   final List<T> selections;
-  final TextSelectCallback<T> onSelected;
+  final ValueChanged<T> onSelected;
 
   const SelectSettingRow({
     super.key,
@@ -305,10 +305,27 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
   Widget build(BuildContext context) {
     return SettingRow(
       title: title,
-      trailing: TextMenuPicker<T>(
-        title: value,
-        selections: selections,
-        callback: onSelected,
+      trailing: AppMenuButton<T>(
+        entries: selections
+            .map(
+              (selection) =>
+                  AppMenuEntry<T>.item(value: selection, title: "$selection"),
+            )
+            .toList(),
+        onSelected: onSelected,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: 8,
+            vertical: 8,
+          ),
+          child: Text(
+            value.isEmpty ? "-" : value,
+            style: TextStyle(
+              color: ColorManager.interactiveText(context),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
     );
   }

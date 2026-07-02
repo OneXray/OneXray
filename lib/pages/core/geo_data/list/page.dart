@@ -234,10 +234,10 @@ class GeoDataListPage extends StatelessWidget {
       tags: _tags(context, data),
       meta: DateView(date: data.timestamp),
       onTap: () => controller.gotoGeoData(context, data),
-      trailing: IconMenuPicker(
+      trailing: AppMenuButton<IconMenuId>(
         icon: Icons.more_vert,
-        menus: [IconMenuId.refresh, IconMenuId.delete],
-        callback: (menuId) => controller.moreAction(context, data, menuId),
+        entries: iconMenuEntries([IconMenuId.refresh, IconMenuId.delete]),
+        onSelected: (menuId) => controller.moreAction(context, data, menuId),
       ),
     );
   }

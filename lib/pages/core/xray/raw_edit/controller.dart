@@ -26,12 +26,8 @@ class XrayRawEditController extends Cubit<int> {
     controller.text = params.text;
   }
 
-  Future<void> importAction(BuildContext context, String menuId) async {
-    final id = IconMenuId.fromString(menuId);
-    if (id == null) {
-      return;
-    }
-    switch (id) {
+  Future<void> importAction(BuildContext context, IconMenuId menuId) async {
+    switch (menuId) {
       case IconMenuId.pickFile:
         await pickFile(context);
         break;

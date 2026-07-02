@@ -40,10 +40,10 @@ class ConfigRowView extends StatelessWidget {
       onTap: tapCallback,
       trailing: moreMenus.isEmpty
           ? null
-          : IconMenuPicker(
+          : AppMenuButton<IconMenuId>(
               icon: Icons.more_vert,
-              menus: moreMenus,
-              callback: (menuId) =>
+              entries: iconMenuEntries(moreMenus),
+              onSelected: (menuId) =>
                   controller.moreAction(context, data, menuId),
             ),
     );

@@ -134,10 +134,10 @@ class ConfigGridCard extends StatelessWidget {
                     size: 20,
                     color: ColorManager.secondaryText(context),
                   ),
-                  child: IconMenuPicker(
+                  child: AppMenuButton<IconMenuId>(
                     icon: Icons.more_vert,
-                    menus: moreMenus,
-                    callback: (menuId) =>
+                    entries: iconMenuEntries(moreMenus),
+                    onSelected: (menuId) =>
                         _controller.moreAction(context, data, menuId),
                   ),
                 ),

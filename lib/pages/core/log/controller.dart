@@ -40,12 +40,8 @@ class LogController extends Cubit<LogCubitState> {
     }
   }
 
-  void moreAction(BuildContext context, String path, String menuId) {
-    final id = IconMenuId.fromString(menuId);
-    if (id == null) {
-      return;
-    }
-    switch (id) {
+  void moreAction(BuildContext context, String path, IconMenuId menuId) {
+    switch (menuId) {
       case IconMenuId.share:
         _shareFile(context, path);
         break;

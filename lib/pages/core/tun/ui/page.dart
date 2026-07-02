@@ -345,10 +345,10 @@ class TunSettingContent extends StatelessWidget {
         tags: [TagView(tag: rule.mode.name)],
         trailing: ActionCluster(
           children: [
-            IconMenuPicker(
+            AppMenuButton<IconMenuId>(
               icon: Icons.more_vert,
-              menus: [IconMenuId.delete],
-              callback: (menuId) => controller.moreAction(menuId, index),
+              entries: iconMenuEntries([IconMenuId.delete]),
+              onSelected: (menuId) => controller.moreAction(menuId, index),
             ),
             ReorderDragHandle(
               index: index,

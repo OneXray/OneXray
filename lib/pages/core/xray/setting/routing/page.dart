@@ -180,10 +180,10 @@ class RoutingPage extends StatelessWidget {
         tags: [TagView(tag: rule.uiTag)],
         trailing: ActionCluster(
           children: [
-            IconMenuPicker(
+            AppMenuButton<IconMenuId>(
               icon: Icons.more_vert,
-              menus: [IconMenuId.delete],
-              callback: (menuId) =>
+              entries: iconMenuEntries([IconMenuId.delete]),
+              onSelected: (menuId) =>
                   controller.ruleMoreAction(menuId, ruleIndex),
             ),
             ReorderDragHandle(

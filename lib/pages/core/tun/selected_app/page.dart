@@ -89,10 +89,10 @@ class SelectedAppPage extends StatelessWidget {
     return DataListRow(
       title: app.name,
       subtitle: app.packageName,
-      trailing: IconMenuPicker(
+      trailing: AppMenuButton<IconMenuId>(
         icon: Icons.more_vert,
-        menus: [IconMenuId.delete],
-        callback: (menuId) => controller.moreAction(context, app, menuId),
+        entries: iconMenuEntries([IconMenuId.delete]),
+        onSelected: (menuId) => controller.moreAction(context, app, menuId),
       ),
     );
   }

@@ -31,14 +31,10 @@ class SubscriptionRowController {
   Future<void> moreAction(
     BuildContext context,
     SubscriptionData data,
-    String menuId, {
+    IconMenuId menuId, {
     Future<void> Function(SubscriptionData data)? cleanCallback,
   }) async {
-    final id = IconMenuId.fromString(menuId);
-    if (id == null) {
-      return;
-    }
-    switch (id) {
+    switch (menuId) {
       case IconMenuId.refresh:
         final eventBus = AppEventBus.instance;
         if (eventBus.state.downloading) {

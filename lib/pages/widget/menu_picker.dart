@@ -1,46 +1,81 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/service/localizations/service.dart';
 
-typedef TextSelectCallback<T extends Object> = Function(T selected);
-
-class TextMenuPicker<T extends Object> extends StatelessWidget {
+class AppMenuEntry<T extends Object> {
+  final T? value;
   final String title;
-  final List<T> selections;
-  final TextSelectCallback<T> callback;
+  final IconData? icon;
+  final List<AppMenuEntry<T>> children;
 
-  const TextMenuPicker({
-    super.key,
+  const AppMenuEntry.item({required this.value, required this.title, this.icon})
+    : children = const [];
+
+  const AppMenuEntry.submenu({
     required this.title,
-    required this.selections,
-    required this.callback,
-  });
+    required this.children,
+    this.icon,
+  }) : value = null;
+
+  bool get isSubmenu => children.isNotEmpty;
+}
+
+class AppMenuButton<T extends Object> extends StatelessWidget {
+  final IconData? icon;
+  final Widget? child;
+  final List<AppMenuEntry<T>> entries;
+  final ValueChanged<T> onSelected;
+
+  const AppMenuButton({
+    super.key,
+    this.icon,
+    this.child,
+    required this.entries,
+    required this.onSelected,
+  }) : assert(icon != null || child != null);
 
   @override
   Widget build(BuildContext context) {
-    final displayTitle = title.isEmpty ? "-" : title;
-    return PopupMenuButton<T>(
-      onSelected: callback,
-      itemBuilder: (context) => selections
-          .map(
-            (selection) =>
-                PopupMenuItem<T>(value: selection, child: Text("$selection")),
-          )
-          .toList(),
-      child: Padding(
-        padding: const EdgeInsetsDirectional.symmetric(
-          horizontal: 8,
-          vertical: 8,
-        ),
-        child: Text(
-          displayTitle,
-          style: TextStyle(
-            color: ColorManager.interactiveText(context),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+    return MenuAnchor(
+      builder: (context, menuController, _) {
+        void toggleMenu() {
+          if (menuController.isOpen) {
+            menuController.close();
+          } else {
+            menuController.open();
+          }
+        }
+
+        final icon = this.icon;
+        if (icon != null) {
+          return IconButton(icon: Icon(icon), onPressed: toggleMenu);
+        }
+        return InkWell(
+          borderRadius: BorderRadius.circular(4),
+          onTap: toggleMenu,
+          child: child,
+        );
+      },
+      menuChildren: _menuChildren(entries),
+    );
+  }
+
+  List<Widget> _menuChildren(List<AppMenuEntry<T>> entries) {
+    return entries.map(_menuEntry).toList();
+  }
+
+  Widget _menuEntry(AppMenuEntry<T> entry) {
+    final leadingIcon = entry.icon == null ? null : Icon(entry.icon);
+    if (entry.isSubmenu) {
+      return SubmenuButton(
+        leadingIcon: leadingIcon,
+        menuChildren: _menuChildren(entry.children),
+        child: Text(entry.title),
+      );
+    }
+    return MenuItemButton(
+      leadingIcon: leadingIcon,
+      onPressed: entry.value == null ? null : () => onSelected(entry.value!),
+      child: Text(entry.title),
     );
   }
 }
@@ -66,13 +101,6 @@ enum IconMenuId {
 
   @override
   String toString() => name;
-
-  static IconMenuId? fromString(String name) =>
-      IconMenuId.values.firstWhereOrNull((value) => value.name == name);
-
-  static List<String> get names {
-    return IconMenuId.values.map((e) => e.name).toList();
-  }
 
   String get title {
     switch (this) {
@@ -137,41 +165,12 @@ enum IconMenuId {
   }
 }
 
-typedef IconMenuCallback = Function(String id);
-
-class IconMenuPicker extends StatelessWidget {
-  final IconData icon;
-  final List<IconMenuId> menus;
-  final IconMenuCallback callback;
-
-  const IconMenuPicker({
-    super.key,
-    required this.icon,
-    required this.menus,
-    required this.callback,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final iconColor = ColorManager.secondaryText(context);
-    final textColor = ColorManager.primaryText(context);
-    return PopupMenuButton<IconMenuId>(
-      icon: Icon(icon),
-      onSelected: (menu) => callback(menu.name),
-      itemBuilder: (context) => menus
-          .map(
-            (menu) => PopupMenuItem<IconMenuId>(
-              value: menu,
-              child: Row(
-                children: [
-                  Icon(menu.icon, color: iconColor),
-                  const SizedBox(width: 12),
-                  Text(menu.title, style: TextStyle(color: textColor)),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-    );
+extension IconMenuEntry on IconMenuId {
+  AppMenuEntry<IconMenuId> get menuEntry {
+    return AppMenuEntry<IconMenuId>.item(value: this, title: title, icon: icon);
   }
+}
+
+List<AppMenuEntry<IconMenuId>> iconMenuEntries(List<IconMenuId> menus) {
+  return menus.map((menu) => menu.menuEntry).toList();
 }

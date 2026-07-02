@@ -95,13 +95,9 @@ class BackupController extends Cubit<BackupState> {
   Future<void> moreAction(
     BuildContext context,
     FileInfo file,
-    String menuId,
+    IconMenuId menuId,
   ) async {
-    final id = IconMenuId.fromString(menuId);
-    if (id == null) {
-      return;
-    }
-    switch (id) {
+    switch (menuId) {
       case IconMenuId.share:
         await _shareFile(context, file);
         break;

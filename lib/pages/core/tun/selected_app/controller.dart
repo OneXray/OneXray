@@ -6,6 +6,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/widget/menu_picker.dart';
 
 class SelectedAppState {
   final List<AndroidAppInfo> apps;
@@ -58,7 +59,11 @@ class SelectedAppController extends Cubit<SelectedAppState> {
     emit(state.copyWith(apps: selectedApps));
   }
 
-  void moreAction(BuildContext context, AndroidAppInfo appInfo, String menuId) {
+  void moreAction(
+    BuildContext context,
+    AndroidAppInfo appInfo,
+    IconMenuId menuId,
+  ) {
     _selections.remove(appInfo.packageName);
     final newApps = List<AndroidAppInfo>.from(state.apps)..remove(appInfo);
     emit(state.copyWith(apps: newApps));

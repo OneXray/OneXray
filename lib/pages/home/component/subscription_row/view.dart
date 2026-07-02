@@ -76,16 +76,16 @@ class SubscriptionRowView extends StatelessWidget {
 
   Widget _moreMenu(BuildContext context, SubscriptionRowController controller) {
     if (item.subscription.id > DBConstants.defaultId) {
-      return IconMenuPicker(
+      return AppMenuButton<IconMenuId>(
         icon: Icons.more_vert,
-        menus: [
+        entries: iconMenuEntries([
           IconMenuId.refresh,
           IconMenuId.share,
           IconMenuId.edit,
           IconMenuId.delete,
           IconMenuId.clean,
-        ],
-        callback: (menuId) => controller.moreAction(
+        ]),
+        onSelected: (menuId) => controller.moreAction(
           context,
           item.subscription,
           menuId,
@@ -93,10 +93,10 @@ class SubscriptionRowView extends StatelessWidget {
         ),
       );
     }
-    return IconMenuPicker(
+    return AppMenuButton<IconMenuId>(
       icon: Icons.more_vert,
-      menus: [IconMenuId.clean],
-      callback: (menuId) => controller.moreAction(
+      entries: iconMenuEntries([IconMenuId.clean]),
+      onSelected: (menuId) => controller.moreAction(
         context,
         item.subscription,
         menuId,

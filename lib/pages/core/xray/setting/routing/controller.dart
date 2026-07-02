@@ -6,6 +6,7 @@ import 'package:onexray/pages/core/xray/setting/routing_rule/params.dart';
 import 'package:onexray/pages/core/xray/setting/routing_rule_dns_dot/params.dart';
 import 'package:onexray/pages/core/xray/setting/routing_rule_dns_out/params.dart';
 import 'package:onexray/pages/core/xray/setting/routing_rule_dns_query/params.dart';
+import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/xray/setting/enum.dart';
 import 'package:onexray/service/xray/setting/routing_rule_state.dart';
 import 'package:onexray/service/xray/setting/routing_state.dart';
@@ -138,7 +139,7 @@ class RoutingController extends Cubit<RoutingCubitState> {
     }
   }
 
-  void ruleMoreAction(String menuId, int ruleIndex) async {
+  void ruleMoreAction(IconMenuId menuId, int ruleIndex) async {
     state.routingState.customRules.removeAt(ruleIndex);
     emit(state.bumped());
   }

@@ -7,6 +7,7 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/core/tun/network_interface/params.dart';
 import 'package:onexray/pages/core/tun/on_demand_rule/params.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
+import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/tun_setting/enum.dart';
 import 'package:onexray/service/tun_setting/state.dart';
 import 'package:onexray/service/tun_setting/state_validator.dart';
@@ -118,7 +119,7 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
     }
   }
 
-  void moreAction(String menuId, int serverIndex) async {
+  void moreAction(IconMenuId menuId, int serverIndex) async {
     state.tunSettingState.onDemandRules.removeAt(serverIndex);
     emit(state._copy());
   }

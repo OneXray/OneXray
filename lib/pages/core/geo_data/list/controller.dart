@@ -219,13 +219,9 @@ class GeoDataListController extends Cubit<GeoDataListState> {
   Future<void> moreAction(
     BuildContext context,
     GeoDataData geoDat,
-    String menuId,
+    IconMenuId menuId,
   ) async {
-    final id = IconMenuId.fromString(menuId);
-    if (id == null) {
-      return;
-    }
-    switch (id) {
+    switch (menuId) {
       case IconMenuId.refresh:
         await _updateGeoDat(context, geoDat);
         break;

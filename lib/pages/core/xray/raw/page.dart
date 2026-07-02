@@ -27,10 +27,13 @@ class XrayRawPage extends StatelessWidget {
             appBar: AppBar(
               title: Text(AppLocalizations.of(context)!.xrayRawPageTitle),
               actions: [
-                IconMenuPicker(
+                AppMenuButton<IconMenuId>(
                   icon: Icons.file_upload_outlined,
-                  menus: [IconMenuId.pickFile, IconMenuId.readPasteboard],
-                  callback: (menuId) =>
+                  entries: iconMenuEntries([
+                    IconMenuId.pickFile,
+                    IconMenuId.readPasteboard,
+                  ]),
+                  onSelected: (menuId) =>
                       controller.importAction(context, menuId),
                 ),
               ],

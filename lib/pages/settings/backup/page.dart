@@ -97,14 +97,15 @@ class BackupPage extends StatelessWidget {
       trailing: ActionCluster(
         children: [
           Radio<String>(value: file.name, toggleable: true),
-          IconMenuPicker(
+          AppMenuButton<IconMenuId>(
             icon: Icons.more_vert,
-            menus: [
+            entries: iconMenuEntries([
               if (!AppPlatform.isLinux) IconMenuId.share,
               IconMenuId.save,
               IconMenuId.delete,
-            ],
-            callback: (menuId) => controller.moreAction(context, file, menuId),
+            ]),
+            onSelected: (menuId) =>
+                controller.moreAction(context, file, menuId),
           ),
         ],
       ),

@@ -64,10 +64,17 @@ abstract final class AppTheme {
         hintStyle: TextStyle(color: colors.secondaryText),
         helperStyle: TextStyle(color: colors.secondaryText),
       ),
-      popupMenuTheme: PopupMenuThemeData(
-        color: colors.surface,
-        surfaceTintColor: Colors.transparent,
-        textStyle: TextStyle(color: colors.primaryText),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(colors.surface),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      menuButtonTheme: MenuButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: WidgetStatePropertyAll(colors.primaryText),
+          iconColor: WidgetStatePropertyAll(colors.secondaryText),
+        ),
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: colors.interactiveText,

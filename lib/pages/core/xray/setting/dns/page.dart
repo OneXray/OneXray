@@ -129,10 +129,11 @@ class DnsPage extends StatelessWidget {
         tags: [TagView(tag: queryStrategy.name)],
         trailing: ActionCluster(
           children: [
-            IconMenuPicker(
+            AppMenuButton<IconMenuId>(
               icon: Icons.more_vert,
-              menus: [IconMenuId.delete],
-              callback: (menuId) => controller.moreAction(menuId, serverIndex),
+              entries: iconMenuEntries([IconMenuId.delete]),
+              onSelected: (menuId) =>
+                  controller.moreAction(menuId, serverIndex),
             ),
             ReorderDragHandle(
               index: serverIndex,
