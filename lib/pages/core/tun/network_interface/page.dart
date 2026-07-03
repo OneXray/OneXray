@@ -8,7 +8,7 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/service/tun_setting/state.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 
 class NetworkInterfacePage extends StatelessWidget {
   final NetworkInterfaceParams params;
@@ -19,7 +19,7 @@ class NetworkInterfacePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => NetworkInterfaceController(params),
-      child: BlocBuilder<NetworkInterfaceController, NetworkInterfaceState>(
+      child: BlocBuilder<NetworkInterfaceController, NetworkInterfacePageState>(
         builder: (context, state) {
           final controller = context.read<NetworkInterfaceController>();
           return Scaffold(
@@ -37,7 +37,7 @@ class NetworkInterfacePage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    NetworkInterfaceState state,
+    NetworkInterfacePageState state,
     NetworkInterfaceController controller,
   ) {
     return DefaultTextStyle.merge(
@@ -57,7 +57,7 @@ class NetworkInterfacePage extends StatelessWidget {
 
   Widget _list(
     BuildContext context,
-    NetworkInterfaceState state,
+    NetworkInterfacePageState state,
     NetworkInterfaceController controller,
   ) {
     if (state.interfaceList.isEmpty && !controller.params.showAuto) {
@@ -78,16 +78,20 @@ class NetworkInterfacePage extends StatelessWidget {
     }
   }
 
-  Widget _cell(BuildContext context, NetworkInterfaceState state, int index) {
+  Widget _cell(
+    BuildContext context,
+    NetworkInterfacePageState state,
+    int index,
+  ) {
     if (context.read<NetworkInterfaceController>().params.showAuto) {
       if (index == 0) {
         return DataListRow(
           title: AppLocalizations.of(context)!.networkInterfacePageAuto,
           onTap: () => context
               .read<NetworkInterfaceController>()
-              .updateInterface(TunSettingState.autoOutboundsInterfaceAuto),
+              .updateInterface(TunSettingsState.autoOutboundsInterfaceAuto),
           trailing: const Radio<String>(
-            value: TunSettingState.autoOutboundsInterfaceAuto,
+            value: TunSettingsState.autoOutboundsInterfaceAuto,
           ),
         );
       }

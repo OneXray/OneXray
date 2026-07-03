@@ -20,42 +20,44 @@ import 'package:onexray/service/xray/outbound/state_ping.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
+import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/standard.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
-class OutboundUIState {
+class OutboundUIPageState {
   final OutboundState outboundState;
   final List<String> dialerProxies;
   final int version;
 
-  const OutboundUIState({
+  const OutboundUIPageState({
     required this.outboundState,
     required this.dialerProxies,
     this.version = 0,
   });
 
-  factory OutboundUIState.initial() =>
-      OutboundUIState(outboundState: OutboundState(), dialerProxies: const []);
+  factory OutboundUIPageState.initial() => OutboundUIPageState(
+    outboundState: OutboundState(),
+    dialerProxies: const [],
+  );
 
-  OutboundUIState copyWith({
+  OutboundUIPageState copyWith({
     OutboundState? outboundState,
     List<String>? dialerProxies,
     int? version,
   }) {
-    return OutboundUIState(
+    return OutboundUIPageState(
       outboundState: outboundState ?? this.outboundState,
       dialerProxies: dialerProxies ?? this.dialerProxies,
       version: version ?? this.version,
     );
   }
 
-  OutboundUIState bumped() => copyWith(version: version + 1);
+  OutboundUIPageState bumped() => copyWith(version: version + 1);
 }
 
-class OutboundUIController extends Cubit<OutboundUIState> {
+class OutboundUIController extends Cubit<OutboundUIPageState> {
   final OutboundUIParams params;
-  OutboundUIController(this.params) : super(OutboundUIState.initial()) {
+  OutboundUIController(this.params) : super(OutboundUIPageState.initial()) {
     _initParams();
   }
 

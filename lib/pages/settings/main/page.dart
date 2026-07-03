@@ -8,30 +8,30 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 
-class SettingPage extends StatelessWidget {
-  const SettingPage({super.key});
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.settingPageTitle),
+        title: Text(AppLocalizations.of(context)!.settingsPageTitle),
       ),
-      body: const SafeArea(child: SettingContent()),
+      body: const SafeArea(child: SettingsContent()),
     );
   }
 }
 
-class SettingContent extends StatelessWidget {
-  const SettingContent({super.key});
+class SettingsContent extends StatelessWidget {
+  const SettingsContent({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => SettingController(),
-      child: BlocBuilder<SettingController, SettingState>(
+      create: (_) => SettingsController(),
+      child: BlocBuilder<SettingsController, SettingsPageState>(
         builder: (context, state) {
-          final controller = context.read<SettingController>();
+          final controller = context.read<SettingsController>();
           return _body(context, state, controller);
         },
       ),
@@ -40,8 +40,8 @@ class SettingContent extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    SettingState state,
-    SettingController controller,
+    SettingsPageState state,
+    SettingsController controller,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -69,8 +69,8 @@ class SettingContent extends StatelessWidget {
 
   Widget _compactBody(
     BuildContext context,
-    SettingState state,
-    SettingController controller,
+    SettingsPageState state,
+    SettingsController controller,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,8 +86,8 @@ class SettingContent extends StatelessWidget {
 
   Widget _wideBody(
     BuildContext context,
-    SettingState state,
-    SettingController controller,
+    SettingsPageState state,
+    SettingsController controller,
   ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,11 +117,11 @@ class SettingContent extends StatelessWidget {
 
   Widget _dataSection(
     BuildContext context,
-    SettingState state,
-    SettingController controller,
+    SettingsPageState state,
+    SettingsController controller,
   ) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.settingPageSectionData,
+      title: AppLocalizations.of(context)!.settingsPageSectionData,
       children: [
         NavigationSettingRow(
           title: AppLocalizations.of(context)!.autoUpdatePageTitle,
@@ -148,13 +148,13 @@ class SettingContent extends StatelessWidget {
 
   Widget _clearData(
     BuildContext context,
-    SettingState state,
-    SettingController controller,
+    SettingsPageState state,
+    SettingsController controller,
   ) {
     final errorColor = Theme.of(context).colorScheme.error;
     return SettingRow(
-      title: AppLocalizations.of(context)!.settingPageClearData,
-      subtitle: AppLocalizations.of(context)!.settingPageClearDataSubtitle,
+      title: AppLocalizations.of(context)!.settingsPageClearData,
+      subtitle: AppLocalizations.of(context)!.settingsPageClearDataSubtitle,
       leading: Icon(Icons.delete_forever, color: errorColor),
       enabled: !state.clearingData,
       onTap: state.clearingData ? null : () => controller.clearData(context),
@@ -167,9 +167,9 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _appSection(BuildContext context, SettingController controller) {
+  Widget _appSection(BuildContext context, SettingsController controller) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.settingPageSectionApp,
+      title: AppLocalizations.of(context)!.settingsPageSectionApp,
       children: [
         _backup(context, controller),
         if (AppPlatform.isIOS) _appIcon(context, controller),
@@ -180,7 +180,7 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _backup(BuildContext context, SettingController controller) {
+  Widget _backup(BuildContext context, SettingsController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.backupPageTitle,
       leading: const Icon(Icons.backup_outlined),
@@ -188,7 +188,7 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _appIcon(BuildContext context, SettingController controller) {
+  Widget _appIcon(BuildContext context, SettingsController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.appIconPageTitle,
       leading: const Icon(Icons.apps_outlined),
@@ -196,7 +196,7 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _toolbox(BuildContext context, SettingController controller) {
+  Widget _toolbox(BuildContext context, SettingsController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.toolboxPageTitle,
       leading: const Icon(Icons.build_outlined),
@@ -204,7 +204,7 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _theme(BuildContext context, SettingController controller) {
+  Widget _theme(BuildContext context, SettingsController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.themePageTitle,
       leading: const Icon(Icons.palette_outlined),
@@ -212,7 +212,7 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _language(BuildContext context, SettingController controller) {
+  Widget _language(BuildContext context, SettingsController controller) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.languagePageTitle,
       leading: const Icon(Icons.translate_outlined),
@@ -220,43 +220,43 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _supportSection(BuildContext context, SettingController controller) {
+  Widget _supportSection(BuildContext context, SettingsController controller) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.settingPageSectionSupport,
+      title: AppLocalizations.of(context)!.settingsPageSectionSupport,
       children: [
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingPageDoc,
+          title: AppLocalizations.of(context)!.settingsPageDoc,
           leading: const Icon(Icons.menu_book_outlined),
           onTap: () => controller.openDoc(context),
         ),
         if (AppPlatform.isMobile || AppPlatform.isMacOS)
           NavigationSettingRow(
-            title: AppLocalizations.of(context)!.settingPageReview,
+            title: AppLocalizations.of(context)!.settingsPageReview,
             leading: const Icon(Icons.star_rate_outlined),
             onTap: () => controller.gotoReview(context),
           ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingPageTelegramChannel,
+          title: AppLocalizations.of(context)!.settingsPageTelegramChannel,
           leading: const Icon(Icons.send_outlined),
           onTap: () => controller.openTelegram(context),
         ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingPageSubmitIssue,
+          title: AppLocalizations.of(context)!.settingsPageSubmitIssue,
           leading: const Icon(Icons.bug_report_outlined),
           onTap: () => controller.submitIssue(context),
         ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingPageSourceCode,
+          title: AppLocalizations.of(context)!.settingsPageSourceCode,
           leading: const Icon(Icons.code_outlined),
           onTap: () => controller.openSourceCode(context),
         ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingPageCredits,
+          title: AppLocalizations.of(context)!.settingsPageCredits,
           leading: const Icon(Icons.info_outline),
           onTap: () => controller.openCredits(context),
         ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingPagePrivacy,
+          title: AppLocalizations.of(context)!.settingsPagePrivacy,
           leading: const Icon(Icons.privacy_tip_outlined),
           onTap: () => controller.openPrivacy(context),
         ),
@@ -264,17 +264,17 @@ class SettingContent extends StatelessWidget {
     );
   }
 
-  Widget _versionSection(BuildContext context, SettingState state) {
+  Widget _versionSection(BuildContext context, SettingsPageState state) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.settingPageSectionVersion,
+      title: AppLocalizations.of(context)!.settingsPageSectionVersion,
       children: [
         SettingRow(
-          title: AppLocalizations.of(context)!.settingPageAppVersion,
+          title: AppLocalizations.of(context)!.settingsPageAppVersion,
           leading: const Icon(Icons.apps_outlined),
           value: state.appVersion,
         ),
         SettingRow(
-          title: AppLocalizations.of(context)!.settingPageXrayVersion,
+          title: AppLocalizations.of(context)!.settingsPageXrayVersion,
           leading: const Icon(Icons.memory_outlined),
           value: state.xrayVersion,
         ),
@@ -290,7 +290,7 @@ class SettingContent extends StatelessWidget {
         bottom: 16,
       ),
       child: Text(
-        AppLocalizations.of(context)!.settingPageFooterTips,
+        AppLocalizations.of(context)!.settingsPageFooterTips,
         style: TextStyle(
           fontSize: 12,
           color: ColorManager.secondaryText(context),

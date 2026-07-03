@@ -1,6 +1,6 @@
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
+import 'package:onexray/service/xray/profile/enum.dart';
 
 class OutboundState {
   var name = XrayStateConstants.defaultName;

@@ -6,29 +6,33 @@ import 'package:onexray/pages/core/geo_data/show/params.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 
-class GeoDatShowState {
+class GeoDatShowPageState {
   final List<XrayGeoListCodes> geoDatCodes;
   final String geoDatName;
 
-  const GeoDatShowState({required this.geoDatCodes, required this.geoDatName});
+  const GeoDatShowPageState({
+    required this.geoDatCodes,
+    required this.geoDatName,
+  });
 
-  factory GeoDatShowState.initial(GeoDatShowParams params) =>
-      GeoDatShowState(geoDatCodes: const [], geoDatName: params.name);
+  factory GeoDatShowPageState.initial(GeoDatShowParams params) =>
+      GeoDatShowPageState(geoDatCodes: const [], geoDatName: params.name);
 
-  GeoDatShowState copyWith({
+  GeoDatShowPageState copyWith({
     List<XrayGeoListCodes>? geoDatCodes,
     String? geoDatName,
   }) {
-    return GeoDatShowState(
+    return GeoDatShowPageState(
       geoDatCodes: geoDatCodes ?? this.geoDatCodes,
       geoDatName: geoDatName ?? this.geoDatName,
     );
   }
 }
 
-class GeoDatShowController extends Cubit<GeoDatShowState> {
+class GeoDatShowController extends Cubit<GeoDatShowPageState> {
   final GeoDatShowParams params;
-  GeoDatShowController(this.params) : super(GeoDatShowState.initial(params)) {
+  GeoDatShowController(this.params)
+    : super(GeoDatShowPageState.initial(params)) {
     _readGeoList();
   }
 

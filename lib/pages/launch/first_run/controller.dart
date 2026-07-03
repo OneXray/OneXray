@@ -6,31 +6,31 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/tun_setting/interface.dart';
-import 'package:onexray/service/tun_setting/state.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
-import 'package:onexray/service/xray/setting/simple_state.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
+import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/xray/profile/enum.dart';
+import 'package:onexray/service/xray/profile/simple_state.dart';
 
-class FirstRunState {
+class FirstRunPageState {
   final SimpleCountry country;
   final List<NetworkInterface> interfaces;
   final String interface;
   final bool enableIPv6;
 
-  const FirstRunState({
+  const FirstRunPageState({
     this.country = SimpleCountry.cn,
     this.interfaces = const [],
-    this.interface = TunSettingState.autoOutboundsInterfaceAuto,
+    this.interface = TunSettingsState.autoOutboundsInterfaceAuto,
     this.enableIPv6 = true,
   });
 
-  FirstRunState copyWith({
+  FirstRunPageState copyWith({
     SimpleCountry? country,
     List<NetworkInterface>? interfaces,
     String? interface,
     bool? enableIPv6,
   }) {
-    return FirstRunState(
+    return FirstRunPageState(
       country: country ?? this.country,
       interfaces: interfaces ?? this.interfaces,
       interface: interface ?? this.interface,
@@ -39,8 +39,8 @@ class FirstRunState {
   }
 }
 
-class FirstRunController extends Cubit<FirstRunState> {
-  FirstRunController() : super(const FirstRunState()) {
+class FirstRunController extends Cubit<FirstRunPageState> {
+  FirstRunController() : super(const FirstRunPageState()) {
     _readNetworkInterfaces();
   }
 
@@ -67,7 +67,7 @@ class FirstRunController extends Cubit<FirstRunState> {
 
   Future<void> nextStep(BuildContext context) async {
     await _initSimpleSetting();
-    await _initTunSetting();
+    await _initTunSettings();
     await PreferencesKey().saveFirstRun(false);
     if (context.mounted) {
       context.go(RouterPath.home);
@@ -75,17 +75,17 @@ class FirstRunController extends Cubit<FirstRunState> {
   }
 
   Future<void> _initSimpleSetting() async {
-    final simple = XraySettingSimple();
+    final simple = XrayProfileSimple();
     simple.routing.directSet = state.country;
-    await PreferencesKey().saveXraySettingId(XraySettingSimple.simpleId);
+    await PreferencesKey().saveXrayProfileId(XrayProfileSimple.simpleId);
     await simple.saveToPreferences();
-    AppEventBus.instance.updateXraySettingId(XraySettingSimple.simpleId);
+    AppEventBus.instance.updateXrayProfileId(XrayProfileSimple.simpleId);
   }
 
-  Future<void> _initTunSetting() async {
-    final tunSetting = TunSettingState();
-    tunSetting.autoOutboundsInterface = state.interface;
-    tunSetting.enableIPv6 = state.enableIPv6;
-    await tunSetting.saveToPreferences();
+  Future<void> _initTunSettings() async {
+    final tunSettings = TunSettingsState();
+    tunSettings.autoOutboundsInterface = state.interface;
+    tunSettings.enableIPv6 = state.enableIPv6;
+    await tunSettings.saveToPreferences();
   }
 }

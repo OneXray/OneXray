@@ -18,8 +18,8 @@ import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/raw/ping.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
-import 'package:onexray/service/xray/setting/state.dart';
-import 'package:onexray/service/xray/setting/state_writer.dart';
+import 'package:onexray/service/xray/profile/state.dart';
+import 'package:onexray/service/xray/profile/state_writer.dart';
 import 'package:uuid/uuid.dart';
 
 class XrayRawController extends Cubit<int> {
@@ -64,7 +64,7 @@ class XrayRawController extends Cubit<int> {
   }
 
   String get _templateXrayJson {
-    final settings = XraySettingState();
+    final settings = XrayProfileState();
     final outbound = OutboundState();
     outbound.address = "example.com";
     outbound.port = "443";

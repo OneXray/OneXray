@@ -16,7 +16,7 @@ class LogPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => LogController(),
-      child: BlocBuilder<LogController, LogCubitState>(
+      child: BlocBuilder<LogController, LogPageState>(
         builder: (context, state) {
           final controller = context.read<LogController>();
           return Scaffold(

@@ -10,18 +10,18 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/service/launch/bootstrap.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class PrivacyState {
+class PrivacyPageState {
   final String md;
 
-  const PrivacyState({this.md = ""});
+  const PrivacyPageState({this.md = ""});
 
-  PrivacyState copyWith({String? md}) {
-    return PrivacyState(md: md ?? this.md);
+  PrivacyPageState copyWith({String? md}) {
+    return PrivacyPageState(md: md ?? this.md);
   }
 }
 
-class PrivacyController extends Cubit<PrivacyState> {
-  PrivacyController() : super(const PrivacyState()) {
+class PrivacyController extends Cubit<PrivacyPageState> {
+  PrivacyController() : super(const PrivacyPageState()) {
     _readPrivacy();
   }
 

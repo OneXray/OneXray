@@ -8,25 +8,25 @@ import 'package:onexray/pages/core/tun/network_interface/params.dart';
 import 'package:onexray/pages/core/tun/on_demand_rule/params.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/service/tun_setting/enum.dart';
-import 'package:onexray/service/tun_setting/state.dart';
-import 'package:onexray/service/tun_setting/state_validator.dart';
+import 'package:onexray/service/tun_settings/enum.dart';
+import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/tun_settings/state_validator.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
-class TunSettingUIState {
-  final TunSettingState tunSettingState;
+class TunSettingsPageState {
+  final TunSettingsState tunSettings;
 
-  TunSettingUIState({TunSettingState? tunSettingState})
-    : tunSettingState = tunSettingState ?? TunSettingState();
+  TunSettingsPageState({TunSettingsState? tunSettings})
+    : tunSettings = tunSettings ?? TunSettingsState();
 
-  TunSettingUIState _copy() {
-    return TunSettingUIState(tunSettingState: tunSettingState);
+  TunSettingsPageState _copy() {
+    return TunSettingsPageState(tunSettings: tunSettings);
   }
 }
 
-class TunSettingUIController extends Cubit<TunSettingUIState> {
-  TunSettingUIController() : super(TunSettingUIState()) {
-    _readTunSetting();
+class TunSettingsController extends Cubit<TunSettingsPageState> {
+  TunSettingsController() : super(TunSettingsPageState()) {
+    _readTunSettings();
   }
 
   final tunDnsIPv4Controller = TextEditingController();
@@ -41,37 +41,37 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
     return super.close();
   }
 
-  Future<void> _readTunSetting() async {
-    final tunState = TunSettingState();
+  Future<void> _readTunSettings() async {
+    final tunState = TunSettingsState();
     await tunState.readFromPreferences();
-    emit(TunSettingUIState(tunSettingState: tunState));
+    emit(TunSettingsPageState(tunSettings: tunState));
     _initInputs(tunState);
   }
 
-  void _initInputs(TunSettingState tunState) {
+  void _initInputs(TunSettingsState tunState) {
     tunDnsIPv4Controller.text = tunState.tunDnsIPv4;
     tunDnsIPv6Controller.text = tunState.tunDnsIPv6;
     tunDnsServerNameController.text = tunState.dnsServerName;
   }
 
   void updateEnableDot(bool value) {
-    state.tunSettingState.enableDot = value;
+    state.tunSettings.enableDot = value;
     emit(state._copy());
   }
 
   void updateEnableIPv6(bool value) {
-    state.tunSettingState.enableIPv6 = value;
+    state.tunSettings.enableIPv6 = value;
     emit(state._copy());
   }
 
   void updateMetricsEnabled(bool value) {
-    state.tunSettingState.metricsEnabled = value;
+    state.tunSettings.metricsEnabled = value;
     emit(state._copy());
   }
 
   Future<void> editInterface(BuildContext context) async {
     final params = NetworkInterfaceParams(
-      state.tunSettingState.autoOutboundsInterface,
+      state.tunSettings.autoOutboundsInterface,
       showAuto: true,
     );
     final networkInterface = await context.pushScoped<String>(
@@ -79,23 +79,23 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
       extra: params,
     );
     if (networkInterface != null) {
-      state.tunSettingState.autoOutboundsInterface = networkInterface;
+      state.tunSettings.autoOutboundsInterface = networkInterface;
       emit(state._copy());
     }
   }
 
   void updateOnDemandEnabled(bool value) {
-    state.tunSettingState.onDemandEnabled = value;
+    state.tunSettings.onDemandEnabled = value;
     emit(state._copy());
   }
 
   void appendOnDemandRule() {
-    state.tunSettingState.onDemandRules.add(OnDemandRuleState());
+    state.tunSettings.onDemandRules.add(OnDemandRuleState());
     emit(state._copy());
   }
 
   void sortOnDemandRule(int oldIndex, int newIndex) {
-    final rules = state.tunSettingState.onDemandRules;
+    final rules = state.tunSettings.onDemandRules;
     final rule = rules.removeAt(oldIndex);
     var index = newIndex;
     if (newIndex > oldIndex) {
@@ -106,28 +106,26 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
   }
 
   Future<void> editOnDemandRule(BuildContext context, int index) async {
-    final params = OnDemandRuleParams(
-      state.tunSettingState.onDemandRules[index],
-    );
+    final params = OnDemandRuleParams(state.tunSettings.onDemandRules[index]);
     final rule = await context.pushScoped<OnDemandRuleState>(
       AppSecondaryDestination.onDemandRule,
       extra: params,
     );
     if (rule != null) {
-      state.tunSettingState.onDemandRules[index] = rule;
+      state.tunSettings.onDemandRules[index] = rule;
       emit(state._copy());
     }
   }
 
   void moreAction(IconMenuId menuId, int serverIndex) async {
-    state.tunSettingState.onDemandRules.removeAt(serverIndex);
+    state.tunSettings.onDemandRules.removeAt(serverIndex);
     emit(state._copy());
   }
 
   void updatePerAppVPNMode(String value) {
     final mode = PerAppVPNMode.fromString(value);
     if (mode != null) {
-      state.tunSettingState.perAppVPNMode = mode;
+      state.tunSettings.perAppVPNMode = mode;
       emit(state._copy());
     }
   }
@@ -137,12 +135,12 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
     if (context.mounted) {
       if (accepted) {
         var apps = <String>{};
-        switch (state.tunSettingState.perAppVPNMode) {
+        switch (state.tunSettings.perAppVPNMode) {
           case PerAppVPNMode.allow:
-            apps = state.tunSettingState.allowAppList;
+            apps = state.tunSettings.allowAppList;
             break;
           case PerAppVPNMode.disallow:
-            apps = state.tunSettingState.disallowAppList;
+            apps = state.tunSettings.disallowAppList;
             break;
         }
         final params = SelectedAppParams(apps);
@@ -151,12 +149,12 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
           extra: params,
         );
         if (selectedApps != null) {
-          switch (state.tunSettingState.perAppVPNMode) {
+          switch (state.tunSettings.perAppVPNMode) {
             case PerAppVPNMode.allow:
-              state.tunSettingState.allowAppList = selectedApps;
+              state.tunSettings.allowAppList = selectedApps;
               break;
             case PerAppVPNMode.disallow:
-              state.tunSettingState.disallowAppList = selectedApps;
+              state.tunSettings.disallowAppList = selectedApps;
               break;
           }
           emit(state._copy());
@@ -172,7 +170,7 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
       context: context,
       builder: (ctx) => AlertDialog(
         content: Text(
-          AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNPermission,
+          AppLocalizations.of(context)!.tunSettingsPagePerAppVPNPermission,
         ),
         actions: <Widget>[
           TextButton(
@@ -199,31 +197,31 @@ class TunSettingUIController extends Cubit<TunSettingUIState> {
   }
 
   Future<void> save(BuildContext context) async {
-    _mergeInputToState(state.tunSettingState);
+    _mergeInputToState(state.tunSettings);
     emit(state._copy());
 
     final checked = await _validate(context);
     if (checked) {
-      await state.tunSettingState.saveToPreferences();
+      await state.tunSettings.saveToPreferences();
       if (context.mounted) {
         context.pop();
       }
     }
   }
 
-  void _mergeInputToState(TunSettingState tunState) {
+  void _mergeInputToState(TunSettingsState tunState) {
     _mergeInput(tunState);
     tunState.removeWhitespace();
   }
 
-  void _mergeInput(TunSettingState tunState) {
+  void _mergeInput(TunSettingsState tunState) {
     tunState.tunDnsIPv4 = tunDnsIPv4Controller.text;
     tunState.tunDnsIPv6 = tunDnsIPv6Controller.text;
     tunState.dnsServerName = tunDnsServerNameController.text;
   }
 
   Future<bool> _validate(BuildContext context) async {
-    final tuple = await state.tunSettingState.validate();
+    final tuple = await state.tunSettings.validate();
     if (!context.mounted) {
       return false;
     }

@@ -7,7 +7,7 @@ import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
 import 'package:onexray/service/xray/raw/writer.dart';
-import 'package:onexray/service/xray/setting/inbounds_state.dart';
+import 'package:onexray/service/xray/profile/inbounds_state.dart';
 
 class XrayRawPing {
   static Future<int> ping(String rawText, PingState pingState) async {

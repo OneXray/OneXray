@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesKey {
   final _prefs = SharedPreferencesAsync();
-  static const _defaultXraySettingId = -1;
+  static const _defaultXrayProfileId = -1;
 
   static final PreferencesKey _singleton = PreferencesKey._internal();
 
@@ -138,24 +138,25 @@ class PreferencesKey {
     await _prefs.setString(_pingState, text);
   }
 
-  static const _xraySettingId = "xraySettingId";
+  // Legacy storage key. Keep the original value to avoid migrating preferences.
+  static const _xrayProfileId = "xraySettingId";
 
-  Future<int> readXraySettingId() async {
-    final value = await _prefs.getInt(_xraySettingId);
+  Future<int> readXrayProfileId() async {
+    final value = await _prefs.getInt(_xrayProfileId);
     if (value == null) {
-      return _defaultXraySettingId;
+      return _defaultXrayProfileId;
     }
     if (value == DBConstants.defaultId) {
-      return _defaultXraySettingId;
+      return _defaultXrayProfileId;
     }
     return value;
   }
 
-  Future<void> saveXraySettingId(int value) async {
+  Future<void> saveXrayProfileId(int value) async {
     final nextValue = value == DBConstants.defaultId
-        ? _defaultXraySettingId
+        ? _defaultXrayProfileId
         : value;
-    await _prefs.setInt(_xraySettingId, nextValue);
+    await _prefs.setInt(_xrayProfileId, nextValue);
   }
 
   static const _coreRunMode = "coreRunMode";
@@ -169,34 +170,36 @@ class PreferencesKey {
     await _prefs.setString(_coreRunMode, value.name);
   }
 
-  static const _xraySettingSimple = "xraySettingSimple";
+  // Legacy storage key. Keep the original value to avoid migrating preferences.
+  static const _xrayProfileSimple = "xraySettingSimple";
 
-  Future<Map<String, dynamic>?> readXraySettingSimple() async {
-    final value = await _prefs.getString(_xraySettingSimple);
+  Future<Map<String, dynamic>?> readXrayProfileSimple() async {
+    final value = await _prefs.getString(_xrayProfileSimple);
     if (value != null) {
       return JsonTool.decodeBase64ToJson(value);
     }
     return null;
   }
 
-  Future<void> saveXraySettingSimple(Map<String, dynamic> value) async {
+  Future<void> saveXrayProfileSimple(Map<String, dynamic> value) async {
     final text = JsonTool.encodeJsonToBase64(value);
-    await _prefs.setString(_xraySettingSimple, text);
+    await _prefs.setString(_xrayProfileSimple, text);
   }
 
-  static const _tunSetting = "tunSetting";
+  // Legacy storage key. Keep the original value to avoid migrating preferences.
+  static const _tunSettings = "tunSetting";
 
-  Future<Map<String, dynamic>?> readTunSetting() async {
-    final value = await _prefs.getString(_tunSetting);
+  Future<Map<String, dynamic>?> readTunSettings() async {
+    final value = await _prefs.getString(_tunSettings);
     if (value != null) {
       return JsonTool.decodeBase64ToJson(value);
     }
     return null;
   }
 
-  Future<void> saveTunSetting(Map<String, dynamic> value) async {
+  Future<void> saveTunSettings(Map<String, dynamic> value) async {
     final text = JsonTool.encodeJsonToBase64(value);
-    await _prefs.setString(_tunSetting, text);
+    await _prefs.setString(_tunSettings, text);
   }
 
   static const _queryAllPackagesAccepted = "queryAllPackagesAccepted";
@@ -272,7 +275,7 @@ class PreferencesKey {
       _prefs.remove(_appUpdateSkippedVersion),
       _prefs.remove(_pingState),
       _prefs.remove(_autoUpdate),
-      _prefs.remove(_xraySettingId),
+      _prefs.remove(_xrayProfileId),
     ]);
   }
 }

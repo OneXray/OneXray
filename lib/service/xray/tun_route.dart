@@ -1,6 +1,6 @@
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/platform.dart';
-import 'package:onexray/service/tun_setting/state.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 
 class XrayTunRouteConfig {
   static const _gatewayKey = "gateway";
@@ -25,7 +25,7 @@ class XrayTunRouteConfig {
     this.autoOutboundsInterface,
   });
 
-  factory XrayTunRouteConfig.fromTunSetting(TunSettingState state) {
+  factory XrayTunRouteConfig.fromTunSetting(TunSettingsState state) {
     if (!AppPlatform.isWindows && !AppPlatform.isLinux) {
       return const XrayTunRouteConfig();
     }

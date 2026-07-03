@@ -16,7 +16,7 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/system_state.dart';
 
-class GeoDataListState {
+class GeoDataListPageState {
   final List<GeoDataData> systemGeoDataList;
   final List<GeoDataData> geoDataList;
   final GeoDataListType type;
@@ -24,7 +24,7 @@ class GeoDataListState {
   final String query;
   final bool searching;
 
-  const GeoDataListState({
+  const GeoDataListPageState({
     required this.systemGeoDataList,
     required this.geoDataList,
     required this.type,
@@ -33,8 +33,8 @@ class GeoDataListState {
     required this.searching,
   });
 
-  factory GeoDataListState.initial(GeoDataListParams params) =>
-      GeoDataListState(
+  factory GeoDataListPageState.initial(GeoDataListParams params) =>
+      GeoDataListPageState(
         systemGeoDataList: const [],
         geoDataList: const [],
         type: params.type,
@@ -43,7 +43,7 @@ class GeoDataListState {
         searching: false,
       );
 
-  GeoDataListState copyWith({
+  GeoDataListPageState copyWith({
     List<GeoDataData>? systemGeoDataList,
     List<GeoDataData>? geoDataList,
     GeoDataListType? type,
@@ -51,7 +51,7 @@ class GeoDataListState {
     String? query,
     bool? searching,
   }) {
-    return GeoDataListState(
+    return GeoDataListPageState(
       systemGeoDataList: systemGeoDataList ?? this.systemGeoDataList,
       geoDataList: geoDataList ?? this.geoDataList,
       type: type ?? this.type,
@@ -62,9 +62,10 @@ class GeoDataListState {
   }
 }
 
-class GeoDataListController extends Cubit<GeoDataListState> {
+class GeoDataListController extends Cubit<GeoDataListPageState> {
   final GeoDataListParams params;
-  GeoDataListController(this.params) : super(GeoDataListState.initial(params)) {
+  GeoDataListController(this.params)
+    : super(GeoDataListPageState.initial(params)) {
     _asyncInit();
   }
 

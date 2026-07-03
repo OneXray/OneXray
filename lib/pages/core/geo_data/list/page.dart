@@ -25,7 +25,7 @@ class GeoDataListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => GeoDataListController(params),
-      child: BlocBuilder<GeoDataListController, GeoDataListState>(
+      child: BlocBuilder<GeoDataListController, GeoDataListPageState>(
         builder: (context, state) {
           final controller = context.read<GeoDataListController>();
           return Scaffold(
@@ -58,7 +58,7 @@ class GeoDataListPage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     GeoDataListController controller,
-    GeoDataListState state,
+    GeoDataListPageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -69,7 +69,7 @@ class GeoDataListPage extends StatelessWidget {
   Widget _mainBody(
     BuildContext context,
     GeoDataListController controller,
-    GeoDataListState state,
+    GeoDataListPageState state,
   ) {
     switch (state.mode) {
       case GeoDatCodesMode.show:
@@ -93,7 +93,7 @@ class GeoDataListPage extends StatelessWidget {
   Widget _geoDataList(
     BuildContext context,
     GeoDataListController controller,
-    GeoDataListState state,
+    GeoDataListPageState state,
   ) {
     final systemGeoDataList = controller.filterSystemGeoDataList();
     if (state.query.isNotEmpty &&

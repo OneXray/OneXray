@@ -27,7 +27,7 @@ import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/toast/service.dart';
-import 'package:onexray/service/tun_setting/state.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/json_writer.dart';
@@ -35,12 +35,12 @@ import 'package:onexray/service/xray/metrics/service.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
-import 'package:onexray/service/xray/setting/inbounds_state.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
-import 'package:onexray/service/xray/setting/simple_state.dart';
-import 'package:onexray/service/xray/setting/state.dart';
-import 'package:onexray/service/xray/setting/state_reader.dart';
-import 'package:onexray/service/xray/setting/state_writer.dart';
+import 'package:onexray/service/xray/profile/inbounds_state.dart';
+import 'package:onexray/service/xray/profile/enum.dart';
+import 'package:onexray/service/xray/profile/simple_state.dart';
+import 'package:onexray/service/xray/profile/state.dart';
+import 'package:onexray/service/xray/profile/state_reader.dart';
+import 'package:onexray/service/xray/profile/state_writer.dart';
 
 class _VpnStartException implements Exception {
   final String message;
@@ -480,9 +480,9 @@ final class VpnService {
     final runDir = VpnConstants.runDir;
     await FileTool.checkDir(runDir);
 
-    final tunSettingState = TunSettingState();
-    await tunSettingState.readFromPreferences();
-    final settingState = await XraySettingStateReader.loadFromDb();
+    final tunSettingsState = TunSettingsState();
+    await tunSettingsState.readFromPreferences();
+    final settingState = await XrayProfileStateReader.loadFromDb();
     final proxyPortValidation = _validateProxyPorts(coreRunMode, settingState);
     if (proxyPortValidation != null) {
       return _commandFailed(proxyPortValidation);
@@ -512,7 +512,7 @@ final class VpnService {
           config,
           settingState,
           coreRunMode,
-          tunSettingState,
+          tunSettingsState,
           ports,
           runDir,
         );
@@ -523,7 +523,7 @@ final class VpnService {
           config,
           settingState,
           coreRunMode,
-          tunSettingState,
+          tunSettingsState,
           ports,
           runDir,
         );
@@ -545,14 +545,14 @@ final class VpnService {
           coreInvokeText,
           runDir,
           ports,
-          tunSettingState,
+          tunSettingsState,
         );
       case CoreRunMode.proxy:
         return _makeProxyRequestAndStart(coreInvokeText, configPath, ports);
     }
   }
 
-  String? _validateProxyPorts(CoreRunMode mode, XraySettingState settingState) {
+  String? _validateProxyPorts(CoreRunMode mode, XrayProfileState settingState) {
     if (mode != CoreRunMode.proxy) {
       return null;
     }
@@ -571,7 +571,7 @@ final class VpnService {
     return port != null && port > 0 && port <= 65535;
   }
 
-  Set<int> _localProxyPorts(CoreRunMode mode, XraySettingState settingState) {
+  Set<int> _localProxyPorts(CoreRunMode mode, XrayProfileState settingState) {
     if (mode != CoreRunMode.proxy) {
       return const {};
     }
@@ -594,9 +594,9 @@ final class VpnService {
 
   Future<String> _writeXrayUIConfig(
     CoreConfigData config,
-    XraySettingState settingState,
+    XrayProfileState settingState,
     CoreRunMode coreRunMode,
-    TunSettingState tunSettingState,
+    TunSettingsState tunSettingsState,
     XrayPorts port,
     String runDir,
   ) async {
@@ -615,7 +615,7 @@ final class VpnService {
 
     final xrayJson = await settingState.fixSetting(
       coreRunMode,
-      tunSettingState,
+      tunSettingsState,
       port,
     );
     final configPath = await xrayJson.writeConfig(runDir);
@@ -623,7 +623,7 @@ final class VpnService {
   }
 
   Future<void> _applyChainProxy(
-    XraySettingState settingState,
+    XrayProfileState settingState,
     OutboundState outboundState,
     CoreConfigData config,
   ) async {
@@ -650,11 +650,11 @@ final class VpnService {
   }
 
   Future<int?> _simpleChainProxyOutboundId() async {
-    final settingId = await PreferencesKey().readXraySettingId();
-    if (settingId != XraySettingSimple.simpleId) {
+    final settingId = await PreferencesKey().readXrayProfileId();
+    if (settingId != XrayProfileSimple.simpleId) {
       return null;
     }
-    final simple = XraySettingSimple();
+    final simple = XrayProfileSimple();
     await simple.readFromPreferences();
     return simple.chainProxyOutboundId;
   }
@@ -693,9 +693,9 @@ final class VpnService {
   Future<String> _writeXrayRawConfig(
     CoreConfigType coreConfigType,
     CoreConfigData config,
-    XraySettingState settingState,
+    XrayProfileState settingState,
     CoreRunMode coreRunMode,
-    TunSettingState tunSettingState,
+    TunSettingsState tunSettingsState,
     XrayPorts port,
     String runDir,
   ) async {
@@ -706,9 +706,9 @@ final class VpnService {
       jsonMap,
       settingState,
       coreRunMode,
-      tunSettingState,
+      tunSettingsState,
       port,
-      tunSettingState.metricsEnabled,
+      tunSettingsState.metricsEnabled,
     );
     final configText = JsonTool.encoderForFile.convert(jsonMap);
     final configPath = XrayStateConstants.configFilePath;
@@ -745,10 +745,10 @@ final class VpnService {
     String coreInvokeText,
     String runDir,
     XrayPorts port,
-    TunSettingState tunSettingState,
+    TunSettingsState tunSettingsState,
   ) async {
     final request = StartVpnRequest(
-      tunSettingState.tunJson,
+      tunSettingsState.tunJson,
       port.pingPort,
       port.pingAuth,
       port.metricsPort,

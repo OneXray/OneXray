@@ -27,7 +27,7 @@ class OutboundUIPage extends StatelessWidget
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => OutboundUIController(params),
-      child: BlocBuilder<OutboundUIController, OutboundUIState>(
+      child: BlocBuilder<OutboundUIController, OutboundUIPageState>(
         builder: (context, state) {
           final controller = context.read<OutboundUIController>();
           return Scaffold(
@@ -50,7 +50,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _body(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -98,7 +98,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _protocolSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: "",
@@ -109,7 +109,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _protocol(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageProtocol,
@@ -122,7 +122,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _settingsSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     switch (state.outboundState.protocol) {
       case XrayOutboundProtocol.vless:
@@ -224,7 +224,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _vmessSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageVMess,
@@ -248,7 +248,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _vmessSecurity(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageVmessSecurity,
@@ -261,7 +261,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _shadowsocksSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageShadowsocks,
@@ -277,7 +277,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _shadowsocksMethod(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageMethod,
@@ -387,7 +387,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _hysteriaSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageHysteria,
@@ -402,7 +402,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _tagSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: "",
@@ -416,7 +416,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _tag(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageTag,
@@ -427,7 +427,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _targetStrategy(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageTargetStrategy,
@@ -440,7 +440,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _networkSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: "",
@@ -451,7 +451,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _network(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageNetwork,
@@ -464,7 +464,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _networkSettings(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     switch (state.outboundState.network) {
       case StreamSettingsNetwork.raw:
@@ -487,7 +487,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _rawSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageRawSettings,
@@ -499,7 +499,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _rawHeaderSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSubsection(
       title: AppLocalizations.of(context)!.outboundUIPageRawHeader,
@@ -514,7 +514,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _rawHeaderType(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageRawHeaderType,
@@ -527,7 +527,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _rawHeader(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     final pathTitle = AppLocalizations.of(context)!.outboundUIPagePath;
     final hostTitle = AppLocalizations.of(context)!.outboundUIPageHost;
@@ -584,7 +584,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _xhttpSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageXhttpSettings,
@@ -616,7 +616,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _xhttpMode(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageXhttpMode,
@@ -636,7 +636,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _grpcSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageGrpcSettings,
@@ -734,7 +734,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _streamHysteriaSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageHysteriaSettings,
@@ -748,7 +748,7 @@ class OutboundUIPage extends StatelessWidget
   Widget _hysteriaVersion(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageHysteriaVersion,

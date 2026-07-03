@@ -39,7 +39,7 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<LogFileViewerController, LogFileViewerState>(
+    return BlocConsumer<LogFileViewerController, LogFileViewerPageState>(
       listenWhen: (previous, current) =>
           current.followTail &&
           (previous.lines.length != current.lines.length ||
@@ -85,7 +85,7 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
     );
   }
 
-  Widget _body(BuildContext context, LogFileViewerState state) {
+  Widget _body(BuildContext context, LogFileViewerPageState state) {
     if (!state.fileExists) {
       return Center(
         child: Text(

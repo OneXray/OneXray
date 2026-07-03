@@ -3,7 +3,7 @@ import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
-import 'package:onexray/service/xray/setting/inbounds_state.dart';
+import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/standard.dart';
 
 extension OutboundStatePing on OutboundState {

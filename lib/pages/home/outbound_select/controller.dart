@@ -4,25 +4,28 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
 
-class OutboundSelectState {
+class OutboundSelectPageState {
   final List<CoreConfigData> configs;
   final String query;
 
-  const OutboundSelectState({required this.configs, required this.query});
+  const OutboundSelectPageState({required this.configs, required this.query});
 
-  factory OutboundSelectState.initial() =>
-      const OutboundSelectState(configs: [], query: "");
+  factory OutboundSelectPageState.initial() =>
+      const OutboundSelectPageState(configs: [], query: "");
 
-  OutboundSelectState copyWith({List<CoreConfigData>? configs, String? query}) {
-    return OutboundSelectState(
+  OutboundSelectPageState copyWith({
+    List<CoreConfigData>? configs,
+    String? query,
+  }) {
+    return OutboundSelectPageState(
       configs: configs ?? this.configs,
       query: query ?? this.query,
     );
   }
 }
 
-class OutboundSelectController extends Cubit<OutboundSelectState> {
-  OutboundSelectController() : super(OutboundSelectState.initial()) {
+class OutboundSelectController extends Cubit<OutboundSelectPageState> {
+  OutboundSelectController() : super(OutboundSelectPageState.initial()) {
     _queryConfigs();
   }
 

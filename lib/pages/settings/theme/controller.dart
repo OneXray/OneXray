@@ -4,18 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
-class ThemeState {
+class ThemePageState {
   final ThemeCode themeCode;
 
-  const ThemeState({this.themeCode = ThemeCode.system});
+  const ThemePageState({this.themeCode = ThemeCode.system});
 
-  ThemeState copyWith({ThemeCode? themeCode}) {
-    return ThemeState(themeCode: themeCode ?? this.themeCode);
+  ThemePageState copyWith({ThemeCode? themeCode}) {
+    return ThemePageState(themeCode: themeCode ?? this.themeCode);
   }
 }
 
-class ThemeController extends Cubit<ThemeState> {
-  ThemeController() : super(const ThemeState()) {
+class ThemeController extends Cubit<ThemePageState> {
+  ThemeController() : super(const ThemePageState()) {
     _readData();
   }
 

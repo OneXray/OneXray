@@ -4,27 +4,30 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
 
-class InstalledAppState {
+class InstalledAppPageState {
   final List<AndroidAppInfo> apps;
   final Set<String> selections;
 
-  const InstalledAppState({this.apps = const [], this.selections = const {}});
+  const InstalledAppPageState({
+    this.apps = const [],
+    this.selections = const {},
+  });
 
-  InstalledAppState copyWith({
+  InstalledAppPageState copyWith({
     List<AndroidAppInfo>? apps,
     Set<String>? selections,
   }) {
-    return InstalledAppState(
+    return InstalledAppPageState(
       apps: apps ?? this.apps,
       selections: selections ?? this.selections,
     );
   }
 }
 
-class InstalledAppController extends Cubit<InstalledAppState> {
+class InstalledAppController extends Cubit<InstalledAppPageState> {
   final InstalledAppParams params;
 
-  InstalledAppController(this.params) : super(const InstalledAppState()) {
+  InstalledAppController(this.params) : super(const InstalledAppPageState()) {
     _initParams();
   }
 
@@ -41,7 +44,7 @@ class InstalledAppController extends Cubit<InstalledAppState> {
     _allApps.clear();
     _allApps.addAll(params.allApps);
     emit(
-      InstalledAppState(
+      InstalledAppPageState(
         apps: List.from(_allApps),
         selections: Set.from(params.selections),
       ),

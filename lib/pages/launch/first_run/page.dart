@@ -8,8 +8,8 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/service/tun_setting/state.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
+import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/xray/profile/enum.dart';
 
 class FirstRunPage extends StatelessWidget {
   const FirstRunPage({super.key});
@@ -18,7 +18,7 @@ class FirstRunPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => FirstRunController(),
-      child: BlocBuilder<FirstRunController, FirstRunState>(
+      child: BlocBuilder<FirstRunController, FirstRunPageState>(
         builder: (context, state) {
           final controller = context.read<FirstRunController>();
           return Scaffold(
@@ -34,7 +34,7 @@ class FirstRunPage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    FirstRunState state,
+    FirstRunPageState state,
     FirstRunController controller,
   ) {
     return DefaultTextStyle.merge(
@@ -63,7 +63,7 @@ class FirstRunPage extends StatelessWidget {
 
   Widget _countrySection(
     BuildContext context,
-    FirstRunState state,
+    FirstRunPageState state,
     FirstRunController controller,
   ) {
     final cells = SimpleCountry.values
@@ -87,17 +87,17 @@ class FirstRunPage extends StatelessWidget {
 
   Widget _interfaceSection(
     BuildContext context,
-    FirstRunState state,
+    FirstRunPageState state,
     FirstRunController controller,
   ) {
     final cells = <Widget>[
       SettingRow(
         title: AppLocalizations.of(context)!.networkInterfacePageAuto,
         onTap: () => controller.updateInterface(
-          TunSettingState.autoOutboundsInterfaceAuto,
+          TunSettingsState.autoOutboundsInterfaceAuto,
         ),
         trailing: const Radio<String>(
-          value: TunSettingState.autoOutboundsInterfaceAuto,
+          value: TunSettingsState.autoOutboundsInterfaceAuto,
         ),
       ),
     ];
@@ -127,15 +127,15 @@ class FirstRunPage extends StatelessWidget {
 
   Widget _ipv6Section(
     BuildContext context,
-    FirstRunState state,
+    FirstRunPageState state,
     FirstRunController controller,
   ) {
     return SettingSection(
       title: "",
       children: [
         SwitchSettingRow(
-          title: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6,
-          subtitle: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6Tip,
+          title: AppLocalizations.of(context)!.tunSettingsPageEnableIPv6,
+          subtitle: AppLocalizations.of(context)!.tunSettingsPageEnableIPv6Tip,
           value: state.enableIPv6,
           onChanged: (value) => controller.updateEnableIPv6(value),
         ),

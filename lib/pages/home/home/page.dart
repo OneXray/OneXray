@@ -23,7 +23,7 @@ class HomePage extends StatelessWidget {
         BlocProvider(create: (context) => HomeController(context)),
         BlocProvider(create: (_) => HomeNodeController()),
       ],
-      child: BlocBuilder<HomeController, HomeState>(
+      child: BlocBuilder<HomeController, HomePageState>(
         builder: (context, homeState) {
           final controller = context.read<HomeController>();
           return BlocBuilder<AppEventBus, AppEventBusState>(
@@ -59,7 +59,7 @@ class HomePage extends StatelessWidget {
   Widget _compactScaffold(
     BuildContext context,
     HomeController controller,
-    HomeConnectionViewState connection,
+    HomeConnectionViewPageState connection,
     AppEventBusState eventState,
   ) {
     return Scaffold(
@@ -77,7 +77,7 @@ class HomePage extends StatelessWidget {
   Widget _adaptiveScaffold(
     BuildContext context,
     HomeController controller,
-    HomeConnectionViewState connection,
+    HomeConnectionViewPageState connection,
     AppEventBusState eventState,
   ) {
     return Scaffold(
@@ -93,7 +93,7 @@ class HomePage extends StatelessWidget {
   Widget _adaptivePrimary(
     BuildContext context,
     HomeController controller,
-    HomeConnectionViewState connection,
+    HomeConnectionViewPageState connection,
     AppEventBusState eventState,
   ) {
     return Column(
@@ -144,7 +144,7 @@ class HomePage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     HomeController controller,
-    HomeConnectionViewState connection,
+    HomeConnectionViewPageState connection,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -162,26 +162,26 @@ class HomePage extends StatelessWidget {
   Widget _connectionSummary(
     BuildContext context,
     HomeController controller,
-    HomeConnectionViewState connection,
+    HomeConnectionViewPageState connection,
   ) {
-    return BlocBuilder<HomeNodeController, HomeNodeState>(
+    return BlocBuilder<HomeNodeController, HomeNodePageState>(
       buildWhen: (previous, current) =>
-          previous.xraySettingName != current.xraySettingName,
+          previous.xrayProfileName != current.xrayProfileName,
       builder: (context, nodeState) {
         final nodeController = context.read<HomeNodeController>();
         return HomeConnectionSummary(
           connection: connection,
-          xraySettingName: nodeState.xraySettingName,
+          xrayProfileName: nodeState.xrayProfileName,
           onToggleConnection: () => controller.startVpn(context),
           onShowNodeInfo: () => controller.gotoNodeInfo(context),
-          onShowXraySetting: () => nodeController.gotoXraySetting(context),
+          onShowXrayProfile: () => nodeController.gotoXrayProfile(context),
         );
       },
     );
   }
 
   Widget _searchButton(BuildContext context) {
-    return BlocBuilder<HomeNodeController, HomeNodeState>(
+    return BlocBuilder<HomeNodeController, HomeNodePageState>(
       buildWhen: (previous, current) => previous.searching != current.searching,
       builder: (context, child) {
         return IconButton(
@@ -273,17 +273,17 @@ class HomeConnectionSummary extends StatelessWidget {
   const HomeConnectionSummary({
     super.key,
     required this.connection,
-    required this.xraySettingName,
+    required this.xrayProfileName,
     required this.onToggleConnection,
     required this.onShowNodeInfo,
-    required this.onShowXraySetting,
+    required this.onShowXrayProfile,
   });
 
-  final HomeConnectionViewState connection;
-  final String xraySettingName;
+  final HomeConnectionViewPageState connection;
+  final String xrayProfileName;
   final VoidCallback onToggleConnection;
   final VoidCallback onShowNodeInfo;
-  final VoidCallback onShowXraySetting;
+  final VoidCallback onShowXrayProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -425,22 +425,22 @@ class HomeConnectionSummary extends StatelessWidget {
   Widget _metrics(BuildContext context) {
     return Row(
       children: [
-        Expanded(flex: 4, child: _xraySettingBar(context)),
+        Expanded(flex: 4, child: _xrayProfileBar(context)),
         const SizedBox(width: 10),
         Expanded(flex: 6, child: _metricBar(context)),
       ],
     );
   }
 
-  Widget _xraySettingBar(BuildContext context) {
+  Widget _xrayProfileBar(BuildContext context) {
     return Tooltip(
-      message: xraySettingName,
+      message: xrayProfileName,
       child: _summaryBar(
         context,
         icon: Icons.tune,
-        title: AppLocalizations.of(context)!.homeOutboundViewXraySetting,
-        subtitle: xraySettingName,
-        onTap: onShowXraySetting,
+        title: AppLocalizations.of(context)!.homeOutboundViewXrayProfile,
+        subtitle: xrayProfileName,
+        onTap: onShowXrayProfile,
       ),
     );
   }

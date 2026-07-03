@@ -50,18 +50,18 @@ enum AppIcon {
   }
 }
 
-class AppIconState {
+class AppIconPageState {
   final AppIcon appIcon;
 
-  const AppIconState({this.appIcon = AppIcon.primary});
+  const AppIconPageState({this.appIcon = AppIcon.primary});
 
-  AppIconState copyWith({AppIcon? appIcon}) {
-    return AppIconState(appIcon: appIcon ?? this.appIcon);
+  AppIconPageState copyWith({AppIcon? appIcon}) {
+    return AppIconPageState(appIcon: appIcon ?? this.appIcon);
   }
 }
 
-class AppIconController extends Cubit<AppIconState> {
-  AppIconController() : super(const AppIconState()) {
+class AppIconController extends Cubit<AppIconPageState> {
+  AppIconController() : super(const AppIconPageState()) {
     _readCurrentIcon();
   }
 

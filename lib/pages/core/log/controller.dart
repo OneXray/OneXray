@@ -13,17 +13,17 @@ import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
-class LogCubitState {
+class LogPageState {
   final bool hideLogFiles;
 
-  const LogCubitState({required this.hideLogFiles});
+  const LogPageState({required this.hideLogFiles});
 
-  factory LogCubitState.initial() =>
-      LogCubitState(hideLogFiles: AppPlatform.isMacOS);
+  factory LogPageState.initial() =>
+      LogPageState(hideLogFiles: AppPlatform.isMacOS);
 }
 
-class LogController extends Cubit<LogCubitState> {
-  LogController() : super(LogCubitState.initial()) {
+class LogController extends Cubit<LogPageState> {
+  LogController() : super(LogPageState.initial()) {
     _init();
   }
 
@@ -37,7 +37,7 @@ class LogController extends Cubit<LogCubitState> {
       ygLogger("LogController init error: $e");
     }
     if (!isClosed) {
-      emit(LogCubitState(hideLogFiles: hideLogFiles));
+      emit(LogPageState(hideLogFiles: hideLogFiles));
     }
   }
 

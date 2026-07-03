@@ -21,27 +21,28 @@ class SubscriptionNodesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SubscriptionNodesController(params),
-      child: BlocBuilder<SubscriptionNodesController, SubscriptionNodesState>(
-        builder: (context, state) {
-          final controller = context.read<SubscriptionNodesController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(_title(context, state)),
-              actions: [
-                IconButton(
-                  onPressed: () => controller.toggleSearch(),
-                  icon: Icon(state.searching ? Icons.close : Icons.search),
+      child:
+          BlocBuilder<SubscriptionNodesController, SubscriptionNodesPageState>(
+            builder: (context, state) {
+              final controller = context.read<SubscriptionNodesController>();
+              return Scaffold(
+                appBar: AppBar(
+                  title: Text(_title(context, state)),
+                  actions: [
+                    IconButton(
+                      onPressed: () => controller.toggleSearch(),
+                      icon: Icon(state.searching ? Icons.close : Icons.search),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            body: SafeArea(child: _body(context, controller, state)),
-          );
-        },
-      ),
+                body: SafeArea(child: _body(context, controller, state)),
+              );
+            },
+          ),
     );
   }
 
-  String _title(BuildContext context, SubscriptionNodesState state) {
+  String _title(BuildContext context, SubscriptionNodesPageState state) {
     if (state.subscriptionName.isNotEmpty) {
       return state.subscriptionName;
     }
@@ -51,7 +52,7 @@ class SubscriptionNodesPage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     SubscriptionNodesController controller,
-    SubscriptionNodesState state,
+    SubscriptionNodesPageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -74,7 +75,7 @@ class SubscriptionNodesPage extends StatelessWidget {
     );
   }
 
-  Widget _configList(BuildContext context, SubscriptionNodesState state) {
+  Widget _configList(BuildContext context, SubscriptionNodesPageState state) {
     if (state.configs.isEmpty) {
       return ListEmptyView(
         message: _emptyMessage(context, state),
@@ -92,7 +93,7 @@ class SubscriptionNodesPage extends StatelessWidget {
     );
   }
 
-  String _emptyMessage(BuildContext context, SubscriptionNodesState state) {
+  String _emptyMessage(BuildContext context, SubscriptionNodesPageState state) {
     if (state.missing) {
       return AppLocalizations.of(context)!.subscriptionListPageEmpty;
     }

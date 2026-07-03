@@ -17,7 +17,7 @@ class SubscriptionEditPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SubscriptionEditController(params),
-      child: BlocBuilder<SubscriptionEditController, SubscriptionEditState>(
+      child: BlocBuilder<SubscriptionEditController, SubscriptionEditPageState>(
         builder: (context, state) {
           final controller = context.read<SubscriptionEditController>();
           return Scaffold(
@@ -36,7 +36,7 @@ class SubscriptionEditPage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     SubscriptionEditController controller,
-    SubscriptionEditState state,
+    SubscriptionEditPageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -68,7 +68,7 @@ class SubscriptionEditPage extends StatelessWidget {
     );
   }
 
-  Widget _url(BuildContext context, SubscriptionEditState state) {
+  Widget _url(BuildContext context, SubscriptionEditPageState state) {
     return SettingRow(
       title: AppLocalizations.of(context)!.subscriptionAddPageUrl,
       value: state.url,

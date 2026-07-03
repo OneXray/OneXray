@@ -90,4 +90,4 @@ sudo apt remove onexray
 
 1. Поставить проекту star.
 2. Перевести документацию приложения [onexray.com](https://github.com/OneXray/onexray.com).
-3. Поделиться своими routing settings в [Routing](https://github.com/OneXray/Routing).
+3. Поделиться своими routing templates в [Routing](https://github.com/OneXray/Routing).

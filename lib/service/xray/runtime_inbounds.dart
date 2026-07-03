@@ -1,7 +1,7 @@
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
-import 'package:onexray/service/xray/setting/inbounds_state.dart';
+import 'package:onexray/service/xray/profile/enum.dart';
+import 'package:onexray/service/xray/profile/inbounds_state.dart';
 
 abstract final class XrayRuntimeInbounds {
   static void applyToXrayJson(

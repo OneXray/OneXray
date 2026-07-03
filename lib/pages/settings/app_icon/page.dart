@@ -15,7 +15,7 @@ class AppIconPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => AppIconController(),
-      child: BlocBuilder<AppIconController, AppIconState>(
+      child: BlocBuilder<AppIconController, AppIconPageState>(
         builder: (context, state) {
           final controller = context.read<AppIconController>();
           return Scaffold(
@@ -31,7 +31,7 @@ class AppIconPage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    AppIconState state,
+    AppIconPageState state,
     AppIconController controller,
   ) {
     return DefaultTextStyle.merge(
@@ -48,7 +48,7 @@ class AppIconPage extends StatelessWidget {
     );
   }
 
-  Widget _selectedIcon(BuildContext context, AppIconState state) {
+  Widget _selectedIcon(BuildContext context, AppIconPageState state) {
     return Padding(
       padding: EdgeInsetsDirectional.symmetric(horizontal: 15),
       child: Row(

@@ -18,7 +18,7 @@ class OutboundSelectPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => OutboundSelectController(),
-      child: BlocBuilder<OutboundSelectController, OutboundSelectState>(
+      child: BlocBuilder<OutboundSelectController, OutboundSelectPageState>(
         builder: (context, state) {
           final controller = context.read<OutboundSelectController>();
           return Scaffold(
@@ -37,7 +37,7 @@ class OutboundSelectPage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     OutboundSelectController controller,
-    OutboundSelectState state,
+    OutboundSelectPageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -66,7 +66,7 @@ class OutboundSelectPage extends StatelessWidget {
   Widget _configList(
     BuildContext context,
     OutboundSelectController controller,
-    OutboundSelectState state,
+    OutboundSelectPageState state,
   ) {
     if (state.configs.isEmpty) {
       return ListEmptyView(

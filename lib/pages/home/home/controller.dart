@@ -28,29 +28,29 @@ import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-class HomeState {
+class HomePageState {
   final int configId;
   final String configName;
   final bool vpnCommandLoading;
 
-  const HomeState({
+  const HomePageState({
     required this.configId,
     required this.configName,
     required this.vpnCommandLoading,
   });
 
-  factory HomeState.initial() => HomeState(
+  factory HomePageState.initial() => HomePageState(
     configId: DBConstants.defaultId,
     configName: "",
     vpnCommandLoading: false,
   );
 
-  HomeState copyWith({
+  HomePageState copyWith({
     int? configId,
     String? configName,
     bool? vpnCommandLoading,
   }) {
-    return HomeState(
+    return HomePageState(
       configId: configId ?? this.configId,
       configName: configName ?? this.configName,
       vpnCommandLoading: vpnCommandLoading ?? this.vpnCommandLoading,
@@ -76,7 +76,7 @@ enum HomeAddMenuAction {
   readPasteboard,
 }
 
-class HomeConnectionViewState {
+class HomeConnectionViewPageState {
   final HomeConnectionTone tone;
   final bool connected;
   final bool loading;
@@ -89,7 +89,7 @@ class HomeConnectionViewState {
   final IconData statusIcon;
   final IconData actionIcon;
 
-  const HomeConnectionViewState({
+  const HomeConnectionViewPageState({
     required this.tone,
     required this.connected,
     required this.loading,
@@ -104,10 +104,10 @@ class HomeConnectionViewState {
   });
 }
 
-class HomeController extends Cubit<HomeState> {
+class HomeController extends Cubit<HomePageState> {
   final BuildContext context;
 
-  HomeController(this.context) : super(HomeState.initial()) {
+  HomeController(this.context) : super(HomePageState.initial()) {
     _asyncInit();
   }
 
@@ -320,11 +320,11 @@ class HomeController extends Cubit<HomeState> {
     );
   }
 
-  void gotoTunSetting(BuildContext context) {
+  void gotoTunSettings(BuildContext context) {
     context.goScoped(AppSecondaryDestination.tun);
   }
 
-  void gotoXraySetting(BuildContext context) {
+  void gotoXrayProfile(BuildContext context) {
     context.goScoped(AppSecondaryDestination.xray);
   }
 
@@ -430,9 +430,9 @@ class HomeController extends Cubit<HomeState> {
     return XrayMetricsFormatter.formatTraffic(eventState.trafficMetrics);
   }
 
-  HomeConnectionViewState buildConnectionViewState(
+  HomeConnectionViewPageState buildConnectionViewState(
     BuildContext context,
-    HomeState homeState,
+    HomePageState homeState,
     AppEventBusState eventState,
   ) {
     final appLocalizations = AppLocalizations.of(context)!;
@@ -473,7 +473,7 @@ class HomeController extends Cubit<HomeState> {
         : disconnected
         ? Icons.public
         : Icons.private_connectivity;
-    return HomeConnectionViewState(
+    return HomeConnectionViewPageState(
       tone: tone,
       connected: connected,
       loading: eventState.vpnLoading || homeState.vpnCommandLoading,

@@ -8,21 +8,21 @@ import 'package:onexray/service/geo_data/enum.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/validator.dart';
 
-class GeoDatAddState {
+class GeoDatAddPageState {
   final GeoDataType type;
 
-  const GeoDatAddState({required this.type});
+  const GeoDatAddPageState({required this.type});
 
-  factory GeoDatAddState.initial() =>
-      const GeoDatAddState(type: GeoDataType.domain);
+  factory GeoDatAddPageState.initial() =>
+      const GeoDatAddPageState(type: GeoDataType.domain);
 
-  GeoDatAddState copyWith({GeoDataType? type}) {
-    return GeoDatAddState(type: type ?? this.type);
+  GeoDatAddPageState copyWith({GeoDataType? type}) {
+    return GeoDatAddPageState(type: type ?? this.type);
   }
 }
 
-class GeoDatAddController extends Cubit<GeoDatAddState> {
-  GeoDatAddController() : super(GeoDatAddState.initial());
+class GeoDatAddController extends Cubit<GeoDatAddPageState> {
+  GeoDatAddController() : super(GeoDatAddPageState.initial());
 
   final nameController = TextEditingController();
   final urlController = TextEditingController();

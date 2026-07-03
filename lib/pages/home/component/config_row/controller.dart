@@ -4,10 +4,10 @@ import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
-import 'package:onexray/pages/core/xray/setting/ui/params.dart';
+import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/setting/simple_state.dart';
+import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
 class ConfigRowController {
@@ -53,12 +53,12 @@ class ConfigRowController {
         context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
         break;
       case CoreConfigType.setting:
-        if (config.id == XraySettingSimple.simpleId) {
-          context.pushScoped(AppSecondaryDestination.xraySettingSimple);
+        if (config.id == XrayProfileSimple.simpleId) {
+          context.pushScoped(AppSecondaryDestination.xrayProfileSimple);
         } else {
-          final params = XraySettingUIParams(config.id);
+          final params = XrayProfileUIParams(config.id);
           context.pushScoped(
-            AppSecondaryDestination.xraySettingUI,
+            AppSecondaryDestination.xrayProfileUI,
             extra: params,
           );
         }

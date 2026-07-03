@@ -19,7 +19,7 @@ class GeoDatAddPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => GeoDatAddController(),
-      child: BlocBuilder<GeoDatAddController, GeoDatAddState>(
+      child: BlocBuilder<GeoDatAddController, GeoDatAddPageState>(
         builder: (context, state) {
           final controller = context.read<GeoDatAddController>();
           return Scaffold(
@@ -36,7 +36,7 @@ class GeoDatAddPage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     GeoDatAddController controller,
-    GeoDatAddState state,
+    GeoDatAddPageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -58,7 +58,7 @@ class GeoDatAddPage extends StatelessWidget {
   Widget _section(
     BuildContext context,
     GeoDatAddController controller,
-    GeoDatAddState state,
+    GeoDatAddPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.geoDatAddPageSection,
@@ -82,7 +82,7 @@ class GeoDatAddPage extends StatelessWidget {
   Widget _type(
     BuildContext context,
     GeoDatAddController controller,
-    GeoDatAddState state,
+    GeoDatAddPageState state,
   ) {
     return SelectSettingRow<GeoDataType>(
       title: AppLocalizations.of(context)!.geoDatAddPageType,

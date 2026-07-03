@@ -10,7 +10,7 @@ class SplashPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SplashController(),
-      child: BlocListener<SplashController, SplashState>(
+      child: BlocListener<SplashController, SplashPageState>(
         listenWhen: (previous, current) =>
             previous.route != current.route && current.route != null,
         listener: (context, state) {

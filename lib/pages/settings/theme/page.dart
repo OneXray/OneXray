@@ -16,7 +16,7 @@ class ThemePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ThemeController(),
-      child: BlocBuilder<ThemeController, ThemeState>(
+      child: BlocBuilder<ThemeController, ThemePageState>(
         builder: (context, state) {
           final controller = context.read<ThemeController>();
           return Scaffold(
@@ -32,7 +32,7 @@ class ThemePage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    ThemeState state,
+    ThemePageState state,
     ThemeController controller,
   ) {
     return DefaultTextStyle.merge(
@@ -54,7 +54,7 @@ class ThemePage extends StatelessWidget {
 
   Widget _themeSection(
     BuildContext context,
-    ThemeState state,
+    ThemePageState state,
     ThemeController controller,
   ) {
     final children = ThemeCode.values

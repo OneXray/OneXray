@@ -9,30 +9,30 @@ import 'package:onexray/pages/core/geo_data/select/params.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 
-class GeoDatSelectState {
+class GeoDatSelectPageState {
   final List<XrayGeoListCodes> geoDatCodes;
   final String geoDatName;
   final Set<String> selections;
 
-  const GeoDatSelectState({
+  const GeoDatSelectPageState({
     required this.geoDatCodes,
     required this.geoDatName,
     required this.selections,
   });
 
-  factory GeoDatSelectState.initial(GeoDatSelectParams params) =>
-      GeoDatSelectState(
+  factory GeoDatSelectPageState.initial(GeoDatSelectParams params) =>
+      GeoDatSelectPageState(
         geoDatCodes: const [],
         geoDatName: params.name,
         selections: const {},
       );
 
-  GeoDatSelectState copyWith({
+  GeoDatSelectPageState copyWith({
     List<XrayGeoListCodes>? geoDatCodes,
     String? geoDatName,
     Set<String>? selections,
   }) {
-    return GeoDatSelectState(
+    return GeoDatSelectPageState(
       geoDatCodes: geoDatCodes ?? this.geoDatCodes,
       geoDatName: geoDatName ?? this.geoDatName,
       selections: selections ?? this.selections,
@@ -40,10 +40,10 @@ class GeoDatSelectState {
   }
 }
 
-class GeoDatSelectController extends Cubit<GeoDatSelectState> {
+class GeoDatSelectController extends Cubit<GeoDatSelectPageState> {
   final GeoDatSelectParams params;
   GeoDatSelectController(this.params)
-    : super(GeoDatSelectState.initial(params)) {
+    : super(GeoDatSelectPageState.initial(params)) {
     _readGeoList();
   }
 

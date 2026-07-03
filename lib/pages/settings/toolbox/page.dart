@@ -13,7 +13,7 @@ class ToolboxPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ToolboxController(),
-      child: BlocBuilder<ToolboxController, ToolboxState>(
+      child: BlocBuilder<ToolboxController, ToolboxPageState>(
         builder: (context, state) {
           final controller = context.read<ToolboxController>();
           return Scaffold(
@@ -29,7 +29,7 @@ class ToolboxPage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    ToolboxState state,
+    ToolboxPageState state,
     ToolboxController controller,
   ) {
     return DefaultTextStyle.merge(
@@ -46,7 +46,7 @@ class ToolboxPage extends StatelessWidget {
 
   Widget _dockIconSection(
     BuildContext context,
-    ToolboxState state,
+    ToolboxPageState state,
     ToolboxController controller,
   ) {
     return SettingSection(

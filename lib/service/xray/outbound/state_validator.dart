@@ -5,7 +5,7 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
-import 'package:onexray/service/xray/setting/inbounds_state.dart';
+import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/standard.dart';
 import 'package:tuple/tuple.dart';
 

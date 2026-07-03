@@ -44,7 +44,7 @@ class CoreContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SettingSection(
-                  title: localizations.settingPageSectionNetwork,
+                  title: localizations.settingsPageSectionNetwork,
                   children: [
                     SelectSettingRow<CoreRunMode>(
                       title: localizations.coreRunModeTitle,
@@ -53,7 +53,7 @@ class CoreContent extends StatelessWidget {
                       onSelected: controller.updateRunMode,
                     ),
                     NavigationSettingRow(
-                      title: localizations.tunSettingUIPageTitle,
+                      title: localizations.tunSettingsPageTitle,
                       leading: const Icon(Icons.vpn_lock_outlined),
                       onTap: () => controller.gotoTun(context),
                     ),
@@ -70,10 +70,10 @@ class CoreContent extends StatelessWidget {
                   ],
                 ),
                 SettingSection(
-                  title: localizations.settingPageSectionData,
+                  title: localizations.settingsPageSectionData,
                   children: [
                     NavigationSettingRow(
-                      title: localizations.xraySettingListPageTitle,
+                      title: localizations.xrayProfileListPageTitle,
                       leading: const Icon(Icons.hub_outlined),
                       onTap: () => controller.gotoXray(context),
                     ),

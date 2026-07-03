@@ -11,7 +11,7 @@ class HomeNodeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<HomeNodeController, HomeNodeState>(
+    return BlocBuilder<HomeNodeController, HomeNodePageState>(
       builder: (context, state) {
         final controller = context.read<HomeNodeController>();
         return _body(context, controller, state);
@@ -22,7 +22,7 @@ class HomeNodeView extends StatelessWidget {
   Widget _body(
     BuildContext context,
     HomeNodeController controller,
-    HomeNodeState state,
+    HomeNodePageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -48,7 +48,7 @@ class HomeNodeView extends StatelessWidget {
   Widget _configList(
     BuildContext context,
     HomeNodeController controller,
-    HomeNodeState state,
+    HomeNodePageState state,
   ) {
     return ConfigGridList(
       rows: state.configs,

@@ -27,7 +27,7 @@ import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:zxing2/qrcode.dart';
 
-class ShareState {
+class SharePageState {
   final bool showLinkSection;
   final String linkSection;
   final String linkUrl;
@@ -39,7 +39,7 @@ class ShareState {
   final String jsonFileSection;
   final String jsonFileContent;
 
-  const ShareState({
+  const SharePageState({
     required this.showLinkSection,
     required this.linkSection,
     required this.linkUrl,
@@ -52,7 +52,7 @@ class ShareState {
     required this.jsonFileContent,
   });
 
-  factory ShareState.initial() => const ShareState(
+  factory SharePageState.initial() => const SharePageState(
     showLinkSection: false,
     linkSection: "",
     linkUrl: "",
@@ -65,7 +65,7 @@ class ShareState {
     jsonFileContent: "",
   );
 
-  ShareState copyWith({
+  SharePageState copyWith({
     bool? showLinkSection,
     String? linkSection,
     String? linkUrl,
@@ -77,7 +77,7 @@ class ShareState {
     String? jsonFileSection,
     String? jsonFileContent,
   }) {
-    return ShareState(
+    return SharePageState(
       showLinkSection: showLinkSection ?? this.showLinkSection,
       linkSection: linkSection ?? this.linkSection,
       linkUrl: linkUrl ?? this.linkUrl,
@@ -92,9 +92,9 @@ class ShareState {
   }
 }
 
-class ShareController extends Cubit<ShareState> {
+class ShareController extends Cubit<SharePageState> {
   final SharePageParams params;
-  ShareController(this.params) : super(ShareState.initial()) {
+  ShareController(this.params) : super(SharePageState.initial()) {
     _initParams();
   }
 

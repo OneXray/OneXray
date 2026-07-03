@@ -17,7 +17,7 @@ class SharePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ShareController(params),
-      child: BlocBuilder<ShareController, ShareState>(
+      child: BlocBuilder<ShareController, SharePageState>(
         builder: (context, state) => Scaffold(
           appBar: AppBar(
             title: Text(AppLocalizations.of(context)!.sharePageTitle),
@@ -28,7 +28,7 @@ class SharePage extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context, ShareState state) {
+  Widget _body(BuildContext context, SharePageState state) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(
@@ -45,7 +45,7 @@ class SharePage extends StatelessWidget {
     );
   }
 
-  Widget _linkSection(BuildContext context, ShareState state) {
+  Widget _linkSection(BuildContext context, SharePageState state) {
     final controller = context.read<ShareController>();
     return Column(
       children: [
@@ -101,7 +101,7 @@ class SharePage extends StatelessWidget {
     );
   }
 
-  Widget _textSection(BuildContext context, ShareState state) {
+  Widget _textSection(BuildContext context, SharePageState state) {
     final controller = context.read<ShareController>();
     return SettingSection(
       title:
@@ -119,7 +119,7 @@ class SharePage extends StatelessWidget {
     );
   }
 
-  Widget _jsonFileSection(BuildContext context, ShareState state) {
+  Widget _jsonFileSection(BuildContext context, SharePageState state) {
     final controller = context.read<ShareController>();
     return SettingSection(
       title:

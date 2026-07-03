@@ -5,18 +5,18 @@ import 'package:onexray/pages/launch/route.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/service/launch/bootstrap.dart';
 
-class SplashState {
+class SplashPageState {
   final String? route;
 
-  const SplashState({this.route});
+  const SplashPageState({this.route});
 
-  factory SplashState.initial() => const SplashState();
+  factory SplashPageState.initial() => const SplashPageState();
 
-  SplashState navigate(String route) => SplashState(route: route);
+  SplashPageState navigate(String route) => SplashPageState(route: route);
 }
 
-class SplashController extends Cubit<SplashState> {
-  SplashController() : super(SplashState.initial()) {
+class SplashController extends Cubit<SplashPageState> {
+  SplashController() : super(SplashPageState.initial()) {
     WidgetsBinding.instance.addPostFrameCallback((_) => _initRouter());
   }
 

@@ -5,14 +5,14 @@ import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 
-class LogFileViewerState {
+class LogFileViewerPageState {
   final String title;
   final List<String> lines;
   final bool fileExists;
   final bool followTail;
   final bool truncated;
 
-  const LogFileViewerState({
+  const LogFileViewerPageState({
     this.title = "",
     this.lines = const [],
     this.fileExists = false,
@@ -20,14 +20,14 @@ class LogFileViewerState {
     this.truncated = false,
   });
 
-  LogFileViewerState copyWith({
+  LogFileViewerPageState copyWith({
     String? title,
     List<String>? lines,
     bool? fileExists,
     bool? followTail,
     bool? truncated,
   }) {
-    return LogFileViewerState(
+    return LogFileViewerPageState(
       title: title ?? this.title,
       lines: lines ?? this.lines,
       fileExists: fileExists ?? this.fileExists,
@@ -37,7 +37,7 @@ class LogFileViewerState {
   }
 }
 
-class LogFileViewerController extends Cubit<LogFileViewerState> {
+class LogFileViewerController extends Cubit<LogFileViewerPageState> {
   static const int _maxBufferBytes = 1024 * 1024;
   static const Duration _pollInterval = Duration(seconds: 1);
 
@@ -49,7 +49,7 @@ class LogFileViewerController extends Cubit<LogFileViewerState> {
   List<int> _buffer = const [];
 
   LogFileViewerController(this.params)
-    : super(LogFileViewerState(title: params.title)) {
+    : super(LogFileViewerPageState(title: params.title)) {
     _loadTail();
     _timer = Timer.periodic(_pollInterval, (_) => _poll());
   }

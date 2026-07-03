@@ -6,14 +6,14 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/subscriptions/nodes/params.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
 
-class SubscriptionNodesState {
+class SubscriptionNodesPageState {
   final String subscriptionName;
   final List<CoreConfigData> configs;
   final String query;
   final bool searching;
   final bool missing;
 
-  const SubscriptionNodesState({
+  const SubscriptionNodesPageState({
     required this.subscriptionName,
     required this.configs,
     required this.query,
@@ -21,22 +21,23 @@ class SubscriptionNodesState {
     required this.missing,
   });
 
-  factory SubscriptionNodesState.initial() => const SubscriptionNodesState(
-    subscriptionName: "",
-    configs: [],
-    query: "",
-    searching: false,
-    missing: false,
-  );
+  factory SubscriptionNodesPageState.initial() =>
+      const SubscriptionNodesPageState(
+        subscriptionName: "",
+        configs: [],
+        query: "",
+        searching: false,
+        missing: false,
+      );
 
-  SubscriptionNodesState copyWith({
+  SubscriptionNodesPageState copyWith({
     String? subscriptionName,
     List<CoreConfigData>? configs,
     String? query,
     bool? searching,
     bool? missing,
   }) {
-    return SubscriptionNodesState(
+    return SubscriptionNodesPageState(
       subscriptionName: subscriptionName ?? this.subscriptionName,
       configs: configs ?? this.configs,
       query: query ?? this.query,
@@ -46,11 +47,11 @@ class SubscriptionNodesState {
   }
 }
 
-class SubscriptionNodesController extends Cubit<SubscriptionNodesState> {
+class SubscriptionNodesController extends Cubit<SubscriptionNodesPageState> {
   final SubscriptionNodesParams params;
 
   SubscriptionNodesController(this.params)
-    : super(SubscriptionNodesState.initial()) {
+    : super(SubscriptionNodesPageState.initial()) {
     _init();
   }
 

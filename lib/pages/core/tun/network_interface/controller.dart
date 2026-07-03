@@ -4,33 +4,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/tun/network_interface/params.dart';
-import 'package:onexray/service/tun_setting/interface.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
 
-class NetworkInterfaceState {
+class NetworkInterfacePageState {
   final String currentInterface;
   final List<NetworkInterface> interfaceList;
 
-  const NetworkInterfaceState({
+  const NetworkInterfacePageState({
     this.currentInterface = "",
     this.interfaceList = const [],
   });
 
-  NetworkInterfaceState copyWith({
+  NetworkInterfacePageState copyWith({
     String? currentInterface,
     List<NetworkInterface>? interfaceList,
   }) {
-    return NetworkInterfaceState(
+    return NetworkInterfacePageState(
       currentInterface: currentInterface ?? this.currentInterface,
       interfaceList: interfaceList ?? this.interfaceList,
     );
   }
 }
 
-class NetworkInterfaceController extends Cubit<NetworkInterfaceState> {
+class NetworkInterfaceController extends Cubit<NetworkInterfacePageState> {
   final NetworkInterfaceParams params;
 
   NetworkInterfaceController(this.params)
-    : super(const NetworkInterfaceState()) {
+    : super(const NetworkInterfacePageState()) {
     _initParams();
     _queryInterfaceList();
   }

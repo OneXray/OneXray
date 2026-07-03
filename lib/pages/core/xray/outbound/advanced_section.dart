@@ -4,7 +4,7 @@ mixin OutboundAdvancedSection {
   Widget _sockoptSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageSockopt,
@@ -31,7 +31,7 @@ mixin OutboundAdvancedSection {
   Widget _tcpFastOpen(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageTcpFastOpen,
@@ -43,7 +43,7 @@ mixin OutboundAdvancedSection {
   Widget _sockoptDomainStrategy(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageDomainStrategy,
@@ -56,7 +56,7 @@ mixin OutboundAdvancedSection {
   Widget _v6only(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageV6only,
@@ -68,7 +68,7 @@ mixin OutboundAdvancedSection {
   Widget _dialerProxy(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow<String>(
       title: AppLocalizations.of(context)!.outboundUIPageDialerProxy,
@@ -81,7 +81,7 @@ mixin OutboundAdvancedSection {
   Widget _interface(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return NavigationSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageInterface,
@@ -93,7 +93,7 @@ mixin OutboundAdvancedSection {
   Widget _tcpMptcp(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageTcpMptcp,
@@ -105,7 +105,7 @@ mixin OutboundAdvancedSection {
   Widget _addressPortStrategy(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageAddressPortStrategy,
@@ -118,7 +118,7 @@ mixin OutboundAdvancedSection {
   Widget _happyEyeballsEnabled(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageHappyEyeballs,
@@ -130,7 +130,7 @@ mixin OutboundAdvancedSection {
   Widget _happyEyeballsPrioritizeIPv6(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPagePrioritizeIPv6,
@@ -177,7 +177,7 @@ mixin OutboundAdvancedSection {
   Widget _muxSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageMux,
@@ -195,7 +195,7 @@ mixin OutboundAdvancedSection {
   Widget _muxEnabled(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.switchEnabled,
@@ -207,7 +207,7 @@ mixin OutboundAdvancedSection {
   Widget _muxXudpProxyUDP443(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageMuxXudpProxyUDP443,

@@ -7,23 +7,23 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
 import 'package:onexray/service/subscription/service.dart';
 
-class SubscriptionEditState {
+class SubscriptionEditPageState {
   final String url;
 
-  const SubscriptionEditState({required this.url});
+  const SubscriptionEditPageState({required this.url});
 
-  factory SubscriptionEditState.initial() =>
-      const SubscriptionEditState(url: "");
+  factory SubscriptionEditPageState.initial() =>
+      const SubscriptionEditPageState(url: "");
 
-  SubscriptionEditState copyWith({String? url}) {
-    return SubscriptionEditState(url: url ?? this.url);
+  SubscriptionEditPageState copyWith({String? url}) {
+    return SubscriptionEditPageState(url: url ?? this.url);
   }
 }
 
-class SubscriptionEditController extends Cubit<SubscriptionEditState> {
+class SubscriptionEditController extends Cubit<SubscriptionEditPageState> {
   final SubscriptionEditParams params;
   SubscriptionEditController(this.params)
-    : super(SubscriptionEditState.initial()) {
+    : super(SubscriptionEditPageState.initial()) {
     _init();
   }
 

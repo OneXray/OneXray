@@ -19,26 +19,26 @@ class FileInfo {
   FileInfo(this.name, this.path);
 }
 
-class BackupState {
+class BackupPageState {
   final List<FileInfo> files;
   final String selection;
   final bool backingUp;
   final bool restoring;
 
-  const BackupState({
+  const BackupPageState({
     this.files = const [],
     this.selection = "",
     this.backingUp = false,
     this.restoring = false,
   });
 
-  BackupState copyWith({
+  BackupPageState copyWith({
     List<FileInfo>? files,
     String? selection,
     bool? backingUp,
     bool? restoring,
   }) {
-    return BackupState(
+    return BackupPageState(
       files: files ?? this.files,
       selection: selection ?? this.selection,
       backingUp: backingUp ?? this.backingUp,
@@ -47,8 +47,8 @@ class BackupState {
   }
 }
 
-class BackupController extends Cubit<BackupState> {
-  BackupController() : super(const BackupState()) {
+class BackupController extends Cubit<BackupPageState> {
+  BackupController() : super(const BackupPageState()) {
     _readFiles();
   }
 

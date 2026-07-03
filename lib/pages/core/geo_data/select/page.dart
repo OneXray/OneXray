@@ -19,7 +19,7 @@ class GeoDatSelectPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => GeoDatSelectController(params),
-      child: BlocBuilder<GeoDatSelectController, GeoDatSelectState>(
+      child: BlocBuilder<GeoDatSelectController, GeoDatSelectPageState>(
         builder: (context, state) {
           final controller = context.read<GeoDatSelectController>();
           return Scaffold(
@@ -34,7 +34,7 @@ class GeoDatSelectPage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     GeoDatSelectController controller,
-    GeoDatSelectState state,
+    GeoDatSelectPageState state,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -49,7 +49,7 @@ class GeoDatSelectPage extends StatelessWidget {
   Widget _mainBody(
     BuildContext context,
     GeoDatSelectController controller,
-    GeoDatSelectState state,
+    GeoDatSelectPageState state,
   ) {
     return Column(
       children: [
@@ -70,7 +70,7 @@ class GeoDatSelectPage extends StatelessWidget {
   Widget _geoDataList(
     BuildContext context,
     GeoDatSelectController controller,
-    GeoDatSelectState state,
+    GeoDatSelectPageState state,
   ) {
     if (state.geoDatCodes.isEmpty) {
       return ListEmptyView(
@@ -88,7 +88,7 @@ class GeoDatSelectPage extends StatelessWidget {
   Widget _itemRow(
     BuildContext context,
     GeoDatSelectController controller,
-    GeoDatSelectState state,
+    GeoDatSelectPageState state,
     int index,
   ) {
     final code = state.geoDatCodes[index];

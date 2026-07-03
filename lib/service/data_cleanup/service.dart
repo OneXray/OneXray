@@ -10,7 +10,7 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/vpn/service.dart';
 import 'package:onexray/service/xray/metrics/service.dart';
-import 'package:onexray/service/xray/setting/simple_state.dart';
+import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:path_provider/path_provider.dart';
 
 final class AppDataCleanupService {
@@ -23,7 +23,7 @@ final class AppDataCleanupService {
 
   Future<bool> clearFromSettings() async {
     return _clear(
-      targetXraySettingId: XraySettingSimple.simpleId,
+      targetXrayProfileId: XrayProfileSimple.simpleId,
       clearUserDataPreferences: true,
       clearCache: true,
     );
@@ -31,14 +31,14 @@ final class AppDataCleanupService {
 
   Future<bool> clearForBackupRestore() async {
     return _clear(
-      targetXraySettingId: XraySettingSimple.simpleId,
+      targetXrayProfileId: XrayProfileSimple.simpleId,
       clearUserDataPreferences: false,
       clearCache: false,
     );
   }
 
   Future<bool> _clear({
-    required int targetXraySettingId,
+    required int targetXrayProfileId,
     required bool clearUserDataPreferences,
     required bool clearCache,
   }) async {
@@ -47,7 +47,7 @@ final class AppDataCleanupService {
         return false;
       }
       await _clearPreferences(
-        targetXraySettingId: targetXraySettingId,
+        targetXrayProfileId: targetXrayProfileId,
         clearUserDataPreferences: clearUserDataPreferences,
       );
       await _clearDatabase();
@@ -56,7 +56,7 @@ final class AppDataCleanupService {
       if (clearCache) {
         await _clearCache();
       }
-      _resetRuntimeState(targetXraySettingId);
+      _resetRuntimeState(targetXrayProfileId);
       return true;
     } catch (e, stackTrace) {
       ygLogger("clear app data error: $e\n$stackTrace");
@@ -79,7 +79,7 @@ final class AppDataCleanupService {
   }
 
   Future<void> _clearPreferences({
-    required int targetXraySettingId,
+    required int targetXrayProfileId,
     required bool clearUserDataPreferences,
   }) async {
     final preferences = PreferencesKey();
@@ -88,7 +88,7 @@ final class AppDataCleanupService {
     }
     await preferences.saveRunningConfigId(DBConstants.defaultId);
     await preferences.saveLastConfigId(DBConstants.defaultId);
-    await preferences.saveXraySettingId(targetXraySettingId);
+    await preferences.saveXrayProfileId(targetXrayProfileId);
   }
 
   Future<void> _clearDatabase() async {
@@ -123,12 +123,12 @@ final class AppDataCleanupService {
     }
   }
 
-  void _resetRuntimeState(int targetXraySettingId) {
+  void _resetRuntimeState(int targetXrayProfileId) {
     XrayMetricsService().stop();
     final eventBus = AppEventBus.instance;
     eventBus.updateRunningId(DBConstants.defaultId);
     eventBus.updatePendingConfigId(DBConstants.defaultId);
-    eventBus.updateXraySettingId(targetXraySettingId);
+    eventBus.updateXrayProfileId(targetXrayProfileId);
     eventBus.updateVpnActionState(VpnActionState.idle);
     eventBus.updateVpnErrorMessage("");
     eventBus.resetConnectivityProbe();

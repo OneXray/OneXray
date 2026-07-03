@@ -4,18 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
-class LanguageState {
+class LanguagePageState {
   final LanguageCode languageCode;
 
-  const LanguageState({this.languageCode = LanguageCode.system});
+  const LanguagePageState({this.languageCode = LanguageCode.system});
 
-  LanguageState copyWith({LanguageCode? languageCode}) {
-    return LanguageState(languageCode: languageCode ?? this.languageCode);
+  LanguagePageState copyWith({LanguageCode? languageCode}) {
+    return LanguagePageState(languageCode: languageCode ?? this.languageCode);
   }
 }
 
-class LanguageController extends Cubit<LanguageState> {
-  LanguageController() : super(const LanguageState()) {
+class LanguageController extends Cubit<LanguagePageState> {
+  LanguageController() : super(const LanguagePageState()) {
     _readData();
   }
 

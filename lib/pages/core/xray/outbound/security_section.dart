@@ -19,7 +19,7 @@ mixin OutboundSecuritySection {
   Widget _securitySection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: "",
@@ -30,7 +30,7 @@ mixin OutboundSecuritySection {
   Widget _security(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageSecurity,
@@ -43,7 +43,7 @@ mixin OutboundSecuritySection {
   Widget _securitySettings(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     switch (state.outboundState.security) {
       case StreamSettingsSecurity.tls:
@@ -66,7 +66,7 @@ mixin OutboundSecuritySection {
   Widget _fingerprint(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageFingerprint,
@@ -79,7 +79,7 @@ mixin OutboundSecuritySection {
   Widget _tlsSection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageTlsSettings,
@@ -97,7 +97,7 @@ mixin OutboundSecuritySection {
   Widget _alpn(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     final children = StreamSettingsSecurityALPN.values.map((value) {
       return FilterChip(
@@ -149,7 +149,7 @@ mixin OutboundSecuritySection {
   Widget _realitySection(
     BuildContext context,
     OutboundUIController controller,
-    OutboundUIState state,
+    OutboundUIPageState state,
   ) {
     return SettingSection(
       title: AppLocalizations.of(context)!.outboundUIPageRealitySettings,

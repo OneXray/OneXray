@@ -15,7 +15,7 @@ class PrivacyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => PrivacyController(),
-      child: BlocBuilder<PrivacyController, PrivacyState>(
+      child: BlocBuilder<PrivacyController, PrivacyPageState>(
         builder: (context, state) {
           final controller = context.read<PrivacyController>();
           return Scaffold(
@@ -31,7 +31,7 @@ class PrivacyPage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    PrivacyState state,
+    PrivacyPageState state,
     PrivacyController controller,
   ) {
     return DefaultTextStyle.merge(

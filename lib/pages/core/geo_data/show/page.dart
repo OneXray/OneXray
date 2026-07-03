@@ -17,7 +17,7 @@ class GeoDatShowPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => GeoDatShowController(params),
-      child: BlocBuilder<GeoDatShowController, GeoDatShowState>(
+      child: BlocBuilder<GeoDatShowController, GeoDatShowPageState>(
         builder: (context, state) => Scaffold(
           appBar: AppBar(title: Text(state.geoDatName)),
           body: SafeArea(child: _body(context, state)),
@@ -26,7 +26,7 @@ class GeoDatShowPage extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context, GeoDatShowState state) {
+  Widget _body(BuildContext context, GeoDatShowPageState state) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: ResponsiveContent(
@@ -37,7 +37,7 @@ class GeoDatShowPage extends StatelessWidget {
     );
   }
 
-  Widget _mainBody(BuildContext context, GeoDatShowState state) {
+  Widget _mainBody(BuildContext context, GeoDatShowPageState state) {
     final controller = context.read<GeoDatShowController>();
     return Column(
       children: [
@@ -54,7 +54,7 @@ class GeoDatShowPage extends StatelessWidget {
     );
   }
 
-  Widget _geoDataList(BuildContext context, GeoDatShowState state) {
+  Widget _geoDataList(BuildContext context, GeoDatShowPageState state) {
     if (state.geoDatCodes.isEmpty) {
       return ListEmptyView(
         message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
@@ -68,7 +68,7 @@ class GeoDatShowPage extends StatelessWidget {
     }
   }
 
-  Widget _itemRow(BuildContext context, GeoDatShowState state, int index) {
+  Widget _itemRow(BuildContext context, GeoDatShowPageState state, int index) {
     final code = state.geoDatCodes[index];
     final count = code.ruleCount ?? 0;
     return DataListRow(

@@ -2,18 +2,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
-class ToolboxState {
+class ToolboxPageState {
   final bool hideDockIcon;
 
-  const ToolboxState({this.hideDockIcon = false});
+  const ToolboxPageState({this.hideDockIcon = false});
 
-  ToolboxState copyWith({bool? hideDockIcon}) {
-    return ToolboxState(hideDockIcon: hideDockIcon ?? this.hideDockIcon);
+  ToolboxPageState copyWith({bool? hideDockIcon}) {
+    return ToolboxPageState(hideDockIcon: hideDockIcon ?? this.hideDockIcon);
   }
 }
 
-class ToolboxController extends Cubit<ToolboxState> {
-  ToolboxController() : super(const ToolboxState()) {
+class ToolboxController extends Cubit<ToolboxPageState> {
+  ToolboxController() : super(const ToolboxPageState()) {
     _readData();
   }
 

@@ -19,7 +19,7 @@ class SelectedAppPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SelectedAppController(params),
-      child: BlocBuilder<SelectedAppController, SelectedAppState>(
+      child: BlocBuilder<SelectedAppController, SelectedAppPageState>(
         builder: (context, state) {
           final controller = context.read<SelectedAppController>();
           return Scaffold(
@@ -35,7 +35,7 @@ class SelectedAppPage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    SelectedAppState state,
+    SelectedAppPageState state,
     SelectedAppController controller,
   ) {
     return DefaultTextStyle.merge(
@@ -50,7 +50,7 @@ class SelectedAppPage extends StatelessWidget {
 
   Widget _mainBody(
     BuildContext context,
-    SelectedAppState state,
+    SelectedAppPageState state,
     SelectedAppController controller,
   ) {
     return Column(
@@ -63,7 +63,7 @@ class SelectedAppPage extends StatelessWidget {
 
   Widget _appList(
     BuildContext context,
-    SelectedAppState state,
+    SelectedAppPageState state,
     SelectedAppController controller,
   ) {
     if (state.apps.isEmpty) {
@@ -81,7 +81,7 @@ class SelectedAppPage extends StatelessWidget {
 
   Widget _itemRow(
     BuildContext context,
-    SelectedAppState state,
+    SelectedAppPageState state,
     SelectedAppController controller,
     int index,
   ) {

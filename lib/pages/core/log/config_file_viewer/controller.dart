@@ -7,25 +7,25 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:share_plus/share_plus.dart';
 
-class ConfigFileViewerState {
+class ConfigFileViewerPageState {
   final String title;
   final String text;
 
-  const ConfigFileViewerState({this.title = '', this.text = ''});
+  const ConfigFileViewerPageState({this.title = '', this.text = ''});
 
-  ConfigFileViewerState copyWith({String? title, String? text}) {
-    return ConfigFileViewerState(
+  ConfigFileViewerPageState copyWith({String? title, String? text}) {
+    return ConfigFileViewerPageState(
       title: title ?? this.title,
       text: text ?? this.text,
     );
   }
 }
 
-class ConfigFileViewerController extends Cubit<ConfigFileViewerState> {
+class ConfigFileViewerController extends Cubit<ConfigFileViewerPageState> {
   final ConfigFileViewerParams params;
 
   ConfigFileViewerController(this.params)
-    : super(const ConfigFileViewerState()) {
+    : super(const ConfigFileViewerPageState()) {
     _initParams();
     _readFile();
   }

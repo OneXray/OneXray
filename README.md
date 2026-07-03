@@ -48,7 +48,7 @@ If you don't have an Apple ID, or your Apple ID cannot download OneXray, you can
 
 ### Linux
 
-If you use the zip package, you need to make the following settings to use OneXray normally.
+If you use the zip package, you need to run the following setup commands to use OneXray normally.
 
 Please confirm the directory before executing the command.
 
@@ -90,4 +90,4 @@ If this project is helpful to you, you can consider contributing to this project
 
 1. Give this project a star.
 2. Translate the app's documentation [onexray.com](https://github.com/OneXray/onexray.com) .
-3. Share your routing settings [Routing](https://github.com/OneXray/Routing) .
+3. Share your routing templates [Routing](https://github.com/OneXray/Routing).

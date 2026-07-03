@@ -2,21 +2,21 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
-import 'package:onexray/service/tun_setting/state.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/runtime_inbounds.dart';
-import 'package:onexray/service/xray/setting/enum.dart';
-import 'package:onexray/service/xray/setting/inbounds_state.dart';
-import 'package:onexray/service/xray/setting/log_state.dart';
-import 'package:onexray/service/xray/setting/state.dart';
+import 'package:onexray/service/xray/profile/enum.dart';
+import 'package:onexray/service/xray/profile/inbounds_state.dart';
+import 'package:onexray/service/xray/profile/log_state.dart';
+import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
 class XrayRawFix {
   static Future<void> fixConfig(
     Map<String, dynamic> jsonMap,
-    XraySettingState settingState,
+    XrayProfileState settingState,
     CoreRunMode mode,
-    TunSettingState tunSettingState,
+    TunSettingsState tunSettingsState,
     XrayPorts ports,
     bool metricsEnabled,
   ) async {
@@ -37,7 +37,7 @@ class XrayRawFix {
       _removeConfigInterface(jsonMap);
       _applyRawTunRouteConfig(
         jsonMap,
-        XrayTunRouteConfig.fromTunSetting(tunSettingState),
+        XrayTunRouteConfig.fromTunSetting(tunSettingsState),
       );
     } else {
       _removeConfigInterface(jsonMap);

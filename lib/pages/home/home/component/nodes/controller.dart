@@ -11,37 +11,38 @@ import 'package:onexray/pages/widget/config_query_filter.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/xray/setting/simple_state.dart';
+import 'package:onexray/service/xray/profile/simple_state.dart';
 
-class HomeNodeState {
-  final String xraySettingName;
+class HomeNodePageState {
+  final String xrayProfileName;
   final List<ConfigQueryRow> configs;
   final String query;
   final bool searching;
 
-  const HomeNodeState({
-    required this.xraySettingName,
+  const HomeNodePageState({
+    required this.xrayProfileName,
     required this.configs,
     required this.query,
     required this.searching,
   });
 
-  factory HomeNodeState.initial({int xraySettingId = DBConstants.defaultId}) =>
-      HomeNodeState(
-        xraySettingName: _initialXraySettingName(xraySettingId),
-        configs: const [],
-        query: "",
-        searching: false,
-      );
+  factory HomeNodePageState.initial({
+    int xrayProfileId = DBConstants.defaultId,
+  }) => HomeNodePageState(
+    xrayProfileName: _initialXrayProfileName(xrayProfileId),
+    configs: const [],
+    query: "",
+    searching: false,
+  );
 
-  HomeNodeState copyWith({
-    String? xraySettingName,
+  HomeNodePageState copyWith({
+    String? xrayProfileName,
     List<ConfigQueryRow>? configs,
     String? query,
     bool? searching,
   }) {
-    return HomeNodeState(
-      xraySettingName: xraySettingName ?? this.xraySettingName,
+    return HomeNodePageState(
+      xrayProfileName: xrayProfileName ?? this.xrayProfileName,
       configs: configs ?? this.configs,
       query: query ?? this.query,
       searching: searching ?? this.searching,
@@ -49,29 +50,29 @@ class HomeNodeState {
   }
 }
 
-String _initialXraySettingName(int xraySettingId) {
-  switch (xraySettingId) {
+String _initialXrayProfileName(int xrayProfileId) {
+  switch (xrayProfileId) {
     case DBConstants.defaultId:
-      return appLocalizationsNoContext().xraySettingListPageSimple;
-    case XraySettingSimple.simpleId:
-      return appLocalizationsNoContext().xraySettingListPageSimple;
+      return appLocalizationsNoContext().xrayProfileListPageSimple;
+    case XrayProfileSimple.simpleId:
+      return appLocalizationsNoContext().xrayProfileListPageSimple;
     default:
       return "";
   }
 }
 
-class HomeNodeController extends Cubit<HomeNodeState> {
+class HomeNodeController extends Cubit<HomeNodePageState> {
   HomeNodeController()
     : super(
-        HomeNodeState.initial(
-          xraySettingId: AppEventBus.instance.state.xraySettingId,
+        HomeNodePageState.initial(
+          xrayProfileId: AppEventBus.instance.state.xrayProfileId,
         ),
       ) {
     _asyncInit();
   }
 
   StreamSubscription<List<ConfigQueryRow>>? _configsSubscription;
-  StreamSubscription<int>? _xraySettingSubscription;
+  StreamSubscription<int>? _xrayProfileSubscription;
   final searchController = TextEditingController();
   var _allConfigs = <ConfigQueryRow>[];
 
@@ -83,49 +84,49 @@ class HomeNodeController extends Cubit<HomeNodeState> {
       _allConfigs = data;
       _emitFilteredConfigs();
     });
-    await _listenXraySetting();
+    await _listenXrayProfile();
   }
 
-  Future<void> _listenXraySetting() async {
+  Future<void> _listenXrayProfile() async {
     final eventBus = AppEventBus.instance;
-    var xraySettingId = eventBus.state.xraySettingId;
-    xraySettingId = await PreferencesKey().readXraySettingId();
-    await _readXraySetting(xraySettingId);
+    var xrayProfileId = eventBus.state.xrayProfileId;
+    xrayProfileId = await PreferencesKey().readXrayProfileId();
+    await _readXrayProfile(xrayProfileId);
 
-    _xraySettingSubscription = eventBus.stream
-        .map((s) => s.xraySettingId)
+    _xrayProfileSubscription = eventBus.stream
+        .map((s) => s.xrayProfileId)
         .distinct()
-        .listen((data) => _readXraySetting(data));
+        .listen((data) => _readXrayProfile(data));
   }
 
-  Future<void> _readXraySetting(int id) async {
+  Future<void> _readXrayProfile(int id) async {
     switch (id) {
       case DBConstants.defaultId:
         emit(
           state.copyWith(
-            xraySettingName:
-                appLocalizationsNoContext().xraySettingListPageSimple,
+            xrayProfileName:
+                appLocalizationsNoContext().xrayProfileListPageSimple,
           ),
         );
         break;
-      case XraySettingSimple.simpleId:
+      case XrayProfileSimple.simpleId:
         emit(
           state.copyWith(
-            xraySettingName:
-                appLocalizationsNoContext().xraySettingListPageSimple,
+            xrayProfileName:
+                appLocalizationsNoContext().xrayProfileListPageSimple,
           ),
         );
         break;
       default:
         final db = AppDatabase();
-        final xraySettingData = await db.coreConfigDao.searchRow(id);
-        if (xraySettingData != null) {
-          emit(state.copyWith(xraySettingName: xraySettingData.name));
+        final xrayProfileData = await db.coreConfigDao.searchRow(id);
+        if (xrayProfileData != null) {
+          emit(state.copyWith(xrayProfileName: xrayProfileData.name));
         } else {
           emit(
             state.copyWith(
-              xraySettingName:
-                  appLocalizationsNoContext().xraySettingListPageSimple,
+              xrayProfileName:
+                  appLocalizationsNoContext().xrayProfileListPageSimple,
             ),
           );
         }
@@ -133,7 +134,7 @@ class HomeNodeController extends Cubit<HomeNodeState> {
     }
   }
 
-  void gotoXraySetting(BuildContext context) {
+  void gotoXrayProfile(BuildContext context) {
     context.goScoped(AppSecondaryDestination.xray);
   }
 
@@ -177,7 +178,7 @@ class HomeNodeController extends Cubit<HomeNodeState> {
   Future<void> close() {
     searchController.dispose();
     _configsSubscription?.cancel();
-    _xraySettingSubscription?.cancel();
+    _xrayProfileSubscription?.cancel();
     return super.close();
   }
 }

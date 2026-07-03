@@ -15,7 +15,7 @@ class ConfigFileViewerPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ConfigFileViewerController(params),
-      child: BlocBuilder<ConfigFileViewerController, ConfigFileViewerState>(
+      child: BlocBuilder<ConfigFileViewerController, ConfigFileViewerPageState>(
         builder: (context, state) {
           final controller = context.read<ConfigFileViewerController>();
           return Scaffold(
@@ -36,7 +36,7 @@ class ConfigFileViewerPage extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context, ConfigFileViewerState state) {
+  Widget _body(BuildContext context, ConfigFileViewerPageState state) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
       child: SingleChildScrollView(

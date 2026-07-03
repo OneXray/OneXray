@@ -9,7 +9,7 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/service/tun_setting/enum.dart';
+import 'package:onexray/service/tun_settings/enum.dart';
 
 class OnDemandRulePage extends StatelessWidget {
   final OnDemandRuleParams params;

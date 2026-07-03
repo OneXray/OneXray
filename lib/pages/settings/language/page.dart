@@ -16,7 +16,7 @@ class LanguagePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => LanguageController(),
-      child: BlocBuilder<LanguageController, LanguageState>(
+      child: BlocBuilder<LanguageController, LanguagePageState>(
         builder: (context, state) {
           final controller = context.read<LanguageController>();
           return Scaffold(
@@ -32,7 +32,7 @@ class LanguagePage extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    LanguageState state,
+    LanguagePageState state,
     LanguageController controller,
   ) {
     return DefaultTextStyle.merge(
@@ -54,7 +54,7 @@ class LanguagePage extends StatelessWidget {
 
   Widget _languageSection(
     BuildContext context,
-    LanguageState state,
+    LanguagePageState state,
     LanguageController controller,
   ) {
     final children = LanguageCode.values

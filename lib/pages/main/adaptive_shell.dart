@@ -98,7 +98,7 @@ class AdaptiveMainShell extends StatelessWidget {
       AppPrimaryRoute.home => localizations.homePageTitle,
       AppPrimaryRoute.subscriptions => localizations.subscriptionListPageTitle,
       AppPrimaryRoute.core => localizations.mainNavigationCore,
-      AppPrimaryRoute.settings => localizations.settingPageTitle,
+      AppPrimaryRoute.settings => localizations.settingsPageTitle,
     };
   }
 }
@@ -114,7 +114,7 @@ class PrimaryRootContent extends StatelessWidget {
       AppPrimaryRoute.home => const HomePage(),
       AppPrimaryRoute.subscriptions => const SubscriptionListPage(),
       AppPrimaryRoute.core => const CorePage(),
-      AppPrimaryRoute.settings => const SettingPage(),
+      AppPrimaryRoute.settings => const SettingsPage(),
     };
   }
 }

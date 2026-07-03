@@ -12,33 +12,33 @@ import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
-import 'package:onexray/service/tun_setting/enum.dart';
-import 'package:onexray/service/tun_setting/state.dart';
+import 'package:onexray/service/tun_settings/enum.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 
-class TunSettingUIPage extends StatelessWidget {
-  const TunSettingUIPage({super.key});
+class TunSettingsPage extends StatelessWidget {
+  const TunSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.tunSettingUIPageTitle),
+        title: Text(AppLocalizations.of(context)!.tunSettingsPageTitle),
       ),
-      body: const SafeArea(child: TunSettingContent()),
+      body: const SafeArea(child: TunSettingsContent()),
     );
   }
 }
 
-class TunSettingContent extends StatelessWidget {
-  const TunSettingContent({super.key});
+class TunSettingsContent extends StatelessWidget {
+  const TunSettingsContent({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => TunSettingUIController(),
-      child: BlocBuilder<TunSettingUIController, TunSettingUIState>(
+      create: (_) => TunSettingsController(),
+      child: BlocBuilder<TunSettingsController, TunSettingsPageState>(
         builder: (context, state) {
-          final controller = context.read<TunSettingUIController>();
+          final controller = context.read<TunSettingsController>();
           return _body(context, state, controller);
         },
       ),
@@ -47,8 +47,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _body(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return DefaultTextStyle.merge(
       style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
@@ -69,8 +69,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _buildColumnView(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     if (AppPlatform.isIOS) {
       return _iOSView(context, state, controller);
@@ -92,8 +92,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _iOSView(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return Column(
       children: [
@@ -105,8 +105,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _macOSView(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return Column(
       children: [
@@ -118,8 +118,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _androidView(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return Column(
       children: [
@@ -131,8 +131,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _linuxView(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return Column(
       children: [
@@ -144,8 +144,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _windowsView(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return Column(
       children: [
@@ -157,23 +157,23 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _tunSection(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SettingSection(
       title: "",
       children: [
         if (AppPlatform.isLinux || AppPlatform.isWindows)
           SettingRow(
-            title: AppLocalizations.of(context)!.tunSettingUIPageTunName,
-            value: state.tunSettingState.tunName,
+            title: AppLocalizations.of(context)!.tunSettingsPageTunName,
+            value: state.tunSettings.tunName,
           ),
         _tunDnsIPv4(context, controller),
         _tunDnsIPv6(context, controller),
         if (AppPlatform.isIOS || AppPlatform.isMacOS)
           _enableDot(context, state, controller),
         if ((AppPlatform.isIOS || AppPlatform.isMacOS) &&
-            state.tunSettingState.enableDot)
+            state.tunSettings.enableDot)
           _tunDnsServerName(context, controller),
         _enableIPv6(context, state, controller),
         _metricsEnabled(context, state, controller),
@@ -181,76 +181,76 @@ class TunSettingContent extends StatelessWidget {
     );
   }
 
-  Widget _tunDnsIPv4(BuildContext context, TunSettingUIController controller) {
+  Widget _tunDnsIPv4(BuildContext context, TunSettingsController controller) {
     return TextFieldSettingRow(
       controller: controller.tunDnsIPv4Controller,
-      label: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv4,
-      hintText: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv4Example,
+      label: AppLocalizations.of(context)!.tunSettingsPageTunDnsIPv4,
+      hintText: AppLocalizations.of(context)!.tunSettingsPageTunDnsIPv4Example,
     );
   }
 
-  Widget _tunDnsIPv6(BuildContext context, TunSettingUIController controller) {
+  Widget _tunDnsIPv6(BuildContext context, TunSettingsController controller) {
     return TextFieldSettingRow(
       controller: controller.tunDnsIPv6Controller,
-      label: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv6,
-      hintText: AppLocalizations.of(context)!.tunSettingUIPageTunDnsIPv6Example,
+      label: AppLocalizations.of(context)!.tunSettingsPageTunDnsIPv6,
+      hintText: AppLocalizations.of(context)!.tunSettingsPageTunDnsIPv6Example,
     );
   }
 
   Widget _enableDot(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.tunSettingUIPageTunDnsEnableDot,
-      value: state.tunSettingState.enableDot,
+      title: AppLocalizations.of(context)!.tunSettingsPageTunDnsEnableDot,
+      value: state.tunSettings.enableDot,
       onChanged: (value) => controller.updateEnableDot(value),
     );
   }
 
   Widget _tunDnsServerName(
     BuildContext context,
-    TunSettingUIController controller,
+    TunSettingsController controller,
   ) {
     return TextFieldSettingRow(
       controller: controller.tunDnsServerNameController,
-      label: AppLocalizations.of(context)!.tunSettingUIPageTunDnsServerName,
+      label: AppLocalizations.of(context)!.tunSettingsPageTunDnsServerName,
       hintText: AppLocalizations.of(
         context,
-      )!.tunSettingUIPageTunDnsServerNameExample,
+      )!.tunSettingsPageTunDnsServerNameExample,
     );
   }
 
   Widget _enableIPv6(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6,
-      subtitle: AppLocalizations.of(context)!.tunSettingUIPageEnableIPv6Tip,
-      value: state.tunSettingState.enableIPv6,
+      title: AppLocalizations.of(context)!.tunSettingsPageEnableIPv6,
+      subtitle: AppLocalizations.of(context)!.tunSettingsPageEnableIPv6Tip,
+      value: state.tunSettings.enableIPv6,
       onChanged: (value) => controller.updateEnableIPv6(value),
     );
   }
 
   Widget _metricsEnabled(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.tunSettingUIPageMetrics,
-      value: state.tunSettingState.metricsEnabled,
+      title: AppLocalizations.of(context)!.tunSettingsPageMetrics,
+      value: state.tunSettings.metricsEnabled,
       onChanged: (value) => controller.updateMetricsEnabled(value),
     );
   }
 
   Widget _interfaceSection(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SettingSection(
       title: "",
@@ -260,26 +260,26 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _interface(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.tunSettingUIPageInterface,
-      value: state.tunSettingState.autoOutboundsInterface,
+      title: AppLocalizations.of(context)!.tunSettingsPageInterface,
+      value: state.tunSettings.autoOutboundsInterface,
       onTap: () => controller.editInterface(context),
     );
   }
 
   Widget _onDemandSection(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SettingSection(
       title: "",
       children: [
         _onDemandEnabled(context, state, controller),
-        if (state.tunSettingState.onDemandEnabled)
+        if (state.tunSettings.onDemandEnabled)
           ..._onDemandRulesSection(context, state, controller),
       ],
     );
@@ -287,29 +287,29 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _onDemandEnabled(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.tunSettingUIPageOnDemandEnabled,
-      value: state.tunSettingState.onDemandEnabled,
+      title: AppLocalizations.of(context)!.tunSettingsPageOnDemandEnabled,
+      value: state.tunSettings.onDemandEnabled,
       onChanged: (value) => controller.updateOnDemandEnabled(value),
     );
   }
 
   List<Widget> _onDemandRulesSection(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
-    final ruleViews = state.tunSettingState.onDemandRules
+    final ruleViews = state.tunSettings.onDemandRules
         .mapIndexed(
           (index, rule) => _onDemandRuleCell(context, controller, rule, index),
         )
         .toList();
     return [
       SettingRow(
-        title: AppLocalizations.of(context)!.tunSettingUIPageOnDemandRules,
+        title: AppLocalizations.of(context)!.tunSettingsPageOnDemandRules,
         subtitle: AppLocalizations.of(context)!.helpOrder,
         trailing: IconButton(
           onPressed: () => controller.appendOnDemandRule(),
@@ -332,7 +332,7 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _onDemandRuleCell(
     BuildContext context,
-    TunSettingUIController controller,
+    TunSettingsController controller,
     OnDemandRuleState rule,
     int index,
   ) {
@@ -362,8 +362,8 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _perAppVPNSection(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SettingSection(
       title: "",
@@ -376,12 +376,12 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _perAppVPNMode(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     return SelectSettingRow(
-      title: AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNMode,
-      value: state.tunSettingState.perAppVPNMode.name,
+      title: AppLocalizations.of(context)!.tunSettingsPagePerAppVPNMode,
+      value: state.tunSettings.perAppVPNMode.name,
       selections: PerAppVPNMode.names,
       onSelected: (value) => controller.updatePerAppVPNMode(value),
     );
@@ -389,32 +389,29 @@ class TunSettingContent extends StatelessWidget {
 
   Widget _appList(
     BuildContext context,
-    TunSettingUIState state,
-    TunSettingUIController controller,
+    TunSettingsPageState state,
+    TunSettingsController controller,
   ) {
     var length = 0;
-    switch (state.tunSettingState.perAppVPNMode) {
+    switch (state.tunSettings.perAppVPNMode) {
       case PerAppVPNMode.allow:
-        length = state.tunSettingState.allowAppList.length;
+        length = state.tunSettings.allowAppList.length;
         break;
       case PerAppVPNMode.disallow:
-        length = state.tunSettingState.disallowAppList.length;
+        length = state.tunSettings.disallowAppList.length;
         break;
     }
     return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.tunSettingUIPagePerAppVPN,
+      title: AppLocalizations.of(context)!.tunSettingsPagePerAppVPN,
       value: AppLocalizations.of(
         context,
-      )!.tunSettingUIPagePerAppVPNCount("$length"),
-      subtitle: AppLocalizations.of(context)!.tunSettingUIPagePerAppVPNHelp,
+      )!.tunSettingsPagePerAppVPNCount("$length"),
+      subtitle: AppLocalizations.of(context)!.tunSettingsPagePerAppVPNHelp,
       onTap: () => controller.editAppList(context),
     );
   }
 
-  Widget _bottomButton(
-    BuildContext context,
-    TunSettingUIController controller,
-  ) {
+  Widget _bottomButton(BuildContext context, TunSettingsController controller) {
     return BottomView(
       child: Row(
         children: [
