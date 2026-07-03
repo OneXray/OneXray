@@ -67,6 +67,7 @@ class OneVpnService : VpnService() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val invokeJson = Json {
         explicitNulls = false
+        encodeDefaults = true
         ignoreUnknownKeys = true
     }
 

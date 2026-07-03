@@ -118,7 +118,7 @@ class AppHostApi: BridgeHostApi {
         }
         UIApplication.shared.setAlternateIconName(iconName) { error in
             if let error = error {
-                print(error.localizedDescription)
+                YGLog(error.localizedDescription)
                 completion(.success(false))
             } else {
                 completion(.success(true))
