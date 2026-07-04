@@ -21,6 +21,9 @@ import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
+import 'package:onexray/service/xray/full_config/state.dart';
+import 'package:onexray/service/xray/full_config/state_reader.dart';
+import 'package:onexray/service/xray/full_config/state_writer.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/standard.dart';
 import 'package:path/path.dart' as p;
@@ -132,7 +135,12 @@ class ShareController extends Cubit<SharePageState> {
             final text = XrayRawDb.readFromDbData(config);
             await _finishJsonExport(text, config.name);
             break;
-          case CoreConfigType.setting:
+          case CoreConfigType.full:
+            final state = XrayFullConfigState()..readFromDbData(config);
+            final text = JsonTool.encoder.convert(state.xrayJson.toJson());
+            await _finishJsonExport(text, config.name);
+            break;
+          case CoreConfigType.profile:
             final text = _readConfigDataText(config);
             await _finishJsonExport(text, config.name);
             break;

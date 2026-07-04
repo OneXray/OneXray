@@ -148,6 +148,7 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
     final params = RoutingParams(
       _xrayProfileState.routing,
       _xrayProfileState.outbounds.outboundTags,
+      _routingInboundTags(_xrayProfileState.dns),
     );
     final routing = await context.pushScoped<RoutingState>(
       AppSecondaryDestination.routing,
@@ -157,6 +158,13 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
       _xrayProfileState.routing = routing;
       _notifyChanged();
     }
+  }
+
+  List<String> _routingInboundTags(DnsState dns) {
+    return <String>{
+      ...RoutingInboundTag.userVisibleNames,
+      ...dns.inboundTags,
+    }.toList();
   }
 
   Future<void> editInbounds(BuildContext context) async {

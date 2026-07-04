@@ -418,6 +418,13 @@ class OutboundUIPage extends StatelessWidget
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
+    if (params.editableTag && params.fixedTag.isEmpty) {
+      return TextFieldSettingRow(
+        controller: controller.tagController,
+        label: AppLocalizations.of(context)!.outboundUIPageTag,
+        hintText: AppLocalizations.of(context)!.outboundUIPageTag,
+      );
+    }
     return SettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageTag,
       value: state.outboundState.tag,

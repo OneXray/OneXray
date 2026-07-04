@@ -26,6 +26,10 @@ import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/core/tun/ui/page.dart';
 import 'package:onexray/pages/core/xray/outbound/page.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
+import 'package:onexray/pages/core/xray/full_config/outbounds/page.dart';
+import 'package:onexray/pages/core/xray/full_config/outbounds/params.dart';
+import 'package:onexray/pages/core/xray/full_config/page.dart';
+import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/core/xray/raw/page.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/page.dart';
@@ -270,6 +274,22 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     ),
   ),
   _route(AppSecondaryDestination.xray, (_, _) => const XrayProfileListPage()),
+  _route(
+    AppSecondaryDestination.xrayFullConfig,
+    (_, state) => _withExtra<XrayFullConfigParams>(
+      state,
+      AppSecondaryDestination.xrayFullConfig,
+      (params) => XrayFullConfigPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.xrayFullConfigOutbounds,
+    (_, state) => _withExtra<XrayFullConfigOutboundsParams>(
+      state,
+      AppSecondaryDestination.xrayFullConfigOutbounds,
+      (params) => XrayFullConfigOutboundsPage(params: params),
+    ),
+  ),
   _route(
     AppSecondaryDestination.xrayProfileSimple,
     (_, _) => const XrayProfileSimplePage(),

@@ -5,39 +5,35 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
+import 'package:onexray/service/xray/full_config/state.dart';
+import 'package:onexray/service/xray/full_config/state_writer.dart';
 
-extension XrayProfileStateDb on XrayProfileState {
+extension XrayFullConfigStateDb on XrayFullConfigState {
   CoreConfigCompanion configCompanion() {
     final jsonData = JsonTool.encoder.convert(xrayJson);
     final bytes = utf8.encode(jsonData);
     final base64Data = base64Encode(bytes);
-    final row = CoreConfigCompanion.insert(
+    return CoreConfigCompanion.insert(
       name: name,
-      type: CoreConfigType.profile.name,
+      type: CoreConfigType.full.name,
       tags: "",
       data: Value<String>(base64Data),
       delay: PingDelayConstants.unknown,
       subId: DBConstants.defaultId,
     );
-    return row;
   }
 
   Future<int> insertToDb() async {
     final db = AppDatabase();
-    final newRow = configCompanion();
-    final res = await db.coreConfigDao.insertRow(newRow);
-    return res;
+    return db.coreConfigDao.insertRow(configCompanion());
   }
 
-  Future<bool> updateToDb(CoreConfigData setting) async {
+  Future<bool> updateToDb(CoreConfigData config) async {
     final jsonData = JsonTool.encoder.convert(xrayJson);
     final bytes = utf8.encode(jsonData);
     final base64Data = base64Encode(bytes);
-    final row = setting.copyWith(name: name, data: Value<String>(base64Data));
+    final row = config.copyWith(name: name, data: Value<String>(base64Data));
     final db = AppDatabase();
-    final res = await db.coreConfigDao.updateRow(row);
-    return res;
+    return db.coreConfigDao.updateRow(row);
   }
 }

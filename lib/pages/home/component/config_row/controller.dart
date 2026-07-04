@@ -3,6 +3,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
+import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
@@ -52,7 +53,14 @@ class ConfigRowController {
         final params = XrayRawParams(config.id);
         context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
         break;
-      case CoreConfigType.setting:
+      case CoreConfigType.full:
+        final params = XrayFullConfigParams(config.id);
+        context.pushScoped(
+          AppSecondaryDestination.xrayFullConfig,
+          extra: params,
+        );
+        break;
+      case CoreConfigType.profile:
         if (config.id == XrayProfileSimple.simpleId) {
           context.pushScoped(AppSecondaryDestination.xrayProfileSimple);
         } else {

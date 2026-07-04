@@ -16,6 +16,9 @@ extension ConfigReader on CoreConfigData {
         case CoreConfigType.raw:
           tags.add("JSON");
           break;
+        case CoreConfigType.full:
+          tags.add("FULL");
+          break;
         default:
           break;
       }

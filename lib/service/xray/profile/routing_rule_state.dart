@@ -76,7 +76,6 @@ class RoutingRuleState {
   var attrs = <String, String>{};
   var process = <String>[];
   var outboundTag = RoutingOutboundTag.direct.name;
-  var balancerTag = "";
   var ruleTag = "custom";
 
   void removeWhitespace() {
@@ -102,7 +101,6 @@ class RoutingRuleState {
     attrs = newAttrs;
 
     outboundTag = outboundTag.removeWhitespace;
-    balancerTag = balancerTag.removeWhitespace;
     ruleTag = ruleTag.removeWhitespace;
   }
 
@@ -159,6 +157,10 @@ class RoutingRuleState {
     if (tags.isEmpty) {
       outboundTag = "";
     }
+  }
+
+  void fixInboundTags(List<String> inboundTags) {
+    inboundTag = inboundTag.where(inboundTags.contains).toSet();
   }
 
   XrayRoutingRule get xrayJson {

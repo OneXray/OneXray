@@ -103,7 +103,7 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
     final config = CoreConfigData(
       id: XrayProfileSimple.simpleId,
       name: appLocalizationsNoContext().xrayProfileListPageSimple,
-      type: CoreConfigType.setting.name,
+      type: CoreConfigType.profile.name,
       tags: "",
       delay: PingDelayConstants.unknown,
       subId: XrayProfileSimple.simpleId,

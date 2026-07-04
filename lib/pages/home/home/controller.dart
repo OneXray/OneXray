@@ -13,6 +13,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
+import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
@@ -69,6 +70,7 @@ enum HomeConnectionTone {
 enum HomeAddMenuAction {
   manualOutbound,
   manualRaw,
+  manualFull,
   subscribeLink,
   scanQRCode,
   pickImage,
@@ -351,6 +353,9 @@ class HomeController extends Cubit<HomePageState> {
       case HomeAddMenuAction.manualRaw:
         _addRawConfig(context);
         break;
+      case HomeAddMenuAction.manualFull:
+        _addFullConfig(context);
+        break;
       case HomeAddMenuAction.subscribeLink:
         _addSubscription(context);
         break;
@@ -377,6 +382,11 @@ class HomeController extends Cubit<HomePageState> {
   void _addRawConfig(BuildContext context) {
     final params = XrayRawParams(DBConstants.defaultId);
     context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
+  }
+
+  void _addFullConfig(BuildContext context) {
+    final params = XrayFullConfigParams(DBConstants.defaultId);
+    context.pushScoped(AppSecondaryDestination.xrayFullConfig, extra: params);
   }
 
   void _addSubscription(BuildContext context) {

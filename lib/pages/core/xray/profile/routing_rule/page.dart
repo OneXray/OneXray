@@ -57,6 +57,7 @@ class RoutingRulePage extends StatelessWidget {
                     _localIPSection(context, controller, state),
                     if (AppPlatform.isWindows || AppPlatform.isLinux)
                       _processSection(context, controller, state),
+                    _inboundTagSection(context, controller, state),
                     _protocolSection(context, controller, state),
                     _attrSection(context, controller, state),
                     _tagSection(context, controller, state),
@@ -300,6 +301,50 @@ class RoutingRulePage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _inboundTagSection(
+    BuildContext context,
+    RoutingRuleController controller,
+    RoutingRulePageState state,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.routingRulePageSectionInput,
+      separated: false,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: _inboundTag(context, controller, state),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _inboundTag(
+    BuildContext context,
+    RoutingRuleController controller,
+    RoutingRulePageState state,
+  ) {
+    return Wrap(
+      spacing: 5.0,
+      runSpacing: 5.0,
+      children: state.inboundTags
+          .map(
+            (value) => FilterChip(
+              label: Text(value),
+              selected: state.ruleState.inboundTag.contains(value),
+              onSelected: (bool selected) =>
+                  controller.updateInboundTag(selected, value),
+            ),
+          )
+          .toList(),
     );
   }
 

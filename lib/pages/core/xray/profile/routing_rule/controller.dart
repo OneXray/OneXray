@@ -16,15 +16,18 @@ class RoutingRulePageState {
   final RoutingRuleState ruleState;
   final List<XrayRuleAttr> ruleAttrs;
   final List<String> outboundTags;
+  final List<String> inboundTags;
   final int version;
 
   RoutingRulePageState({
     required this.ruleState,
     List<XrayRuleAttr>? ruleAttrs,
     List<String>? outboundTags,
+    List<String>? inboundTags,
     this.version = 0,
   }) : ruleAttrs = ruleAttrs ?? <XrayRuleAttr>[],
-       outboundTags = outboundTags ?? <String>[];
+       outboundTags = outboundTags ?? <String>[],
+       inboundTags = inboundTags ?? <String>[];
 
   factory RoutingRulePageState.initial() =>
       RoutingRulePageState(ruleState: RoutingRuleState());
@@ -33,6 +36,7 @@ class RoutingRulePageState {
     ruleState: ruleState,
     ruleAttrs: ruleAttrs,
     outboundTags: outboundTags,
+    inboundTags: inboundTags,
     version: version + 1,
   );
 }
@@ -74,6 +78,7 @@ class RoutingRuleController extends Cubit<RoutingRulePageState> {
   void _initParams() {
     final initS = params.state;
     initS.fixOutboundTag(params.outboundTags);
+    initS.fixInboundTags(params.inboundTags);
     _initInput(initS);
     _initInputs(initS);
     emit(
@@ -81,6 +86,7 @@ class RoutingRuleController extends Cubit<RoutingRulePageState> {
         ruleState: initS,
         ruleAttrs: _initAttrs(initS),
         outboundTags: List.of(params.outboundTags),
+        inboundTags: List.of(params.inboundTags),
         version: 1,
       ),
     );
@@ -287,9 +293,6 @@ class RoutingRuleController extends Cubit<RoutingRulePageState> {
 
   void updateOutboundTag(String value) {
     state.ruleState.outboundTag = value;
-    if (value.isNotEmpty) {
-      state.ruleState.balancerTag = "";
-    }
     emit(state.bumped());
   }
 

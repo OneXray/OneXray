@@ -228,6 +228,11 @@ class HomeAddMenuButton extends StatelessWidget {
               icon: Icons.hub_outlined,
             ),
             AppMenuEntry<HomeAddMenuAction>.item(
+              value: HomeAddMenuAction.manualFull,
+              title: localizations.homeManualInputFullConfig,
+              icon: Icons.schema_outlined,
+            ),
+            AppMenuEntry<HomeAddMenuAction>.item(
               value: HomeAddMenuAction.manualRaw,
               title: localizations.homeManualInputRawJson,
               icon: Icons.data_object,

@@ -2,8 +2,10 @@ import 'package:collection/collection.dart';
 
 enum CoreConfigType {
   outbound("outbound"),
-  setting("setting"),
-  raw("raw");
+  // Legacy persisted value. Product/code terminology is Xray Profile.
+  profile("setting"),
+  raw("raw"),
+  full("full");
 
   const CoreConfigType(this.name);
 

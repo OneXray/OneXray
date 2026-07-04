@@ -135,6 +135,7 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
   }
 
   void _updateState(OutboundState outboundState) {
+    _applyFixedTag(outboundState);
     final dialerProxies = _fixDialerProxies(outboundState);
     _initInputs(outboundState);
     _initInput(outboundState);
@@ -145,6 +146,12 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
         version: state.version + 1,
       ),
     );
+  }
+
+  void _applyFixedTag(OutboundState outboundState) {
+    if (params.fixedTag.isNotEmpty) {
+      outboundState.tag = params.fixedTag;
+    }
   }
 
   List<String> _fixDialerProxies(OutboundState outboundState) {
@@ -549,9 +556,15 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
     emit(state.bumped());
     final checked = await _validate(context);
     if (checked) {
-      await _updateDb();
+      if (params.saveToDb) {
+        await _updateDb();
+      }
       if (context.mounted) {
-        context.pop();
+        if (params.saveToDb) {
+          context.pop();
+        } else {
+          context.pop<OutboundState>(state.outboundState);
+        }
       }
     }
   }
@@ -597,6 +610,7 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
     outboundState.httpPass = httpPassController.text;
 
     outboundState.tag = tagController.text;
+    _applyFixedTag(outboundState);
 
     outboundState.xhttpHost = xhttpHostController.text;
     outboundState.xhttpPath = xhttpPathController.text;

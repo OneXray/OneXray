@@ -12,6 +12,7 @@ import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/ping/state.dart';
+import 'package:onexray/service/xray/full_config/state_ping.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_ping.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
@@ -141,7 +142,9 @@ class PingService {
 
   bool _isPingableConfig(CoreConfigData row) {
     final type = CoreConfigType.fromString(row.type);
-    return type == CoreConfigType.outbound || type == CoreConfigType.raw;
+    return type == CoreConfigType.outbound ||
+        type == CoreConfigType.raw ||
+        type == CoreConfigType.full;
   }
 
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
@@ -180,6 +183,9 @@ class PingService {
           break;
         case CoreConfigType.raw:
           group.add(_pingRawConfig(row, pingState));
+          break;
+        case CoreConfigType.full:
+          group.add(row.pingFullConfig(pingState));
           break;
         default:
           break;

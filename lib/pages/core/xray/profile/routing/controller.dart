@@ -31,10 +31,13 @@ class RoutingController extends Cubit<RoutingPageState> {
     _initParams();
   }
   final outboundTags = <String>[];
+  final inboundTags = <String>[];
 
   void _initParams() {
     outboundTags.clear();
     outboundTags.addAll(params.outboundTags);
+    inboundTags.clear();
+    inboundTags.addAll(params.inboundTags);
     emit(RoutingPageState(routingState: params.state, version: 1));
   }
 
@@ -128,6 +131,7 @@ class RoutingController extends Cubit<RoutingPageState> {
     final params = RoutingRuleParams(
       state.routingState.customRules[index],
       outboundTags,
+      inboundTags,
     );
     final rule = await context.pushScoped<RoutingRuleState>(
       AppSecondaryDestination.routingRule,

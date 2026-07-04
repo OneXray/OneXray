@@ -43,6 +43,8 @@ enum AppSecondaryDestination {
   selectedApp("selected-app"),
   installedApp("installed-app"),
   xray("xray"),
+  xrayFullConfig("xray-full-config"),
+  xrayFullConfigOutbounds("xray-full-config-outbounds"),
   xrayProfileSimple("xray-profile-simple"),
   xrayProfileUI("xray-profile-ui"),
   xrayLog("xray-log"),

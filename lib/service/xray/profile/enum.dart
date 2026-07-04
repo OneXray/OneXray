@@ -89,6 +89,14 @@ enum RoutingInboundTag {
   static List<String> get names {
     return RoutingInboundTag.values.map((e) => e.name).toList();
   }
+
+  static List<String> get userVisibleNames {
+    return [
+      RoutingInboundTag.tunIn.name,
+      RoutingInboundTag.socksIn.name,
+      RoutingInboundTag.httpIn.name,
+    ];
+  }
 }
 
 enum DnsNetwork {

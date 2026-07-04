@@ -32,6 +32,10 @@ import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/metrics/service.dart';
+import 'package:onexray/service/xray/full_config/state.dart';
+import 'package:onexray/service/xray/full_config/state_reader.dart';
+import 'package:onexray/service/xray/full_config/state_validator.dart';
+import 'package:onexray/service/xray/full_config/state_writer.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
@@ -528,6 +532,16 @@ final class VpnService {
           runDir,
         );
         break;
+      case CoreConfigType.full:
+        configPath = await _writeXrayFullConfig(
+          config,
+          settingState,
+          coreRunMode,
+          tunSettingsState,
+          ports,
+          runDir,
+        );
+        break;
       default:
         return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
     }
@@ -715,6 +729,33 @@ final class VpnService {
     final file = File(configPath);
     await file.writeAsString(configText);
     return configPath;
+  }
+
+  Future<String> _writeXrayFullConfig(
+    CoreConfigData config,
+    XrayProfileState settingState,
+    CoreRunMode coreRunMode,
+    TunSettingsState tunSettingsState,
+    XrayPorts port,
+    String runDir,
+  ) async {
+    final fullConfigState = XrayFullConfigState();
+    try {
+      fullConfigState.readFromDbData(config);
+    } catch (_) {
+      throw _VpnStartException(appLocalizationsNoContext().vpnOutboundInvalid);
+    }
+    final checked = await fullConfigState.validate();
+    if (!checked.item1) {
+      throw _VpnStartException(checked.item2);
+    }
+    fullConfigState.applyToXrayProfile(settingState);
+    final xrayJson = await settingState.fixSetting(
+      coreRunMode,
+      tunSettingsState,
+      port,
+    );
+    return xrayJson.writeConfig(runDir);
   }
 
   Future<NativeVpnCommandResult> _makeProxyRequestAndStart(

@@ -142,8 +142,12 @@ class OutboundsState {
   var dns = OutboundDnsState();
 
   void removeWhitespace() {
+    for (final outbound in outbounds) {
+      outbound.removeWhitespace();
+    }
     chainProxy?.removeWhitespace();
     freedom.removeWhitespace();
+    fragment.removeWhitespace();
     dns.removeWhitespace();
   }
 
@@ -184,6 +188,16 @@ class OutboundsState {
             this.chainProxy = chainProxy;
           }
           continue;
+        }
+        final customOutbound = OutboundState();
+        var valid = false;
+        try {
+          valid = customOutbound.readFromOutbound(outbound);
+        } catch (_) {
+          valid = false;
+        }
+        if (valid) {
+          this.outbounds.add(customOutbound);
         }
       }
     }
@@ -283,12 +297,19 @@ class OutboundsState {
   }
 
   List<String> get outboundTags {
+    final customTags = outbounds
+        .map((outbound) => outbound.tag)
+        .where((tag) => tag.isNotEmpty)
+        .toList();
     final tags = <String>[
-      RoutingOutboundTag.proxy.name,
+      if (!customTags.contains(RoutingOutboundTag.proxy.name))
+        RoutingOutboundTag.proxy.name,
+      ...customTags,
       if (chainProxy != null) RoutingOutboundTag.chainProxy.name,
       freedom.tag.name,
       fragment.tag.name,
       blackHole.tag.name,
+      dns.tag.name,
     ];
 
     return tags;
