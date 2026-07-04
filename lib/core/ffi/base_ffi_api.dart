@@ -47,7 +47,7 @@ abstract class BaseFfiApi {
 
   LibXrayRunConfig _readRunXrayRequest(StartVpnRequest request) {
     if (!EmptyTool.checkString(request.coreInvokeText)) {
-      return LibXrayRunConfig(null, RunXrayRequest(null));
+      return LibXrayRunConfig(RunXrayRequest(null));
     }
     return LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
   }

@@ -732,7 +732,7 @@ final class VpnService {
     await request.writeToStartFile();
 
     await _vpnStatusChanged(VpnStatus.connecting);
-    final error = await AppHostApi().runXray(VpnConstants.datDir, configPath);
+    final error = await AppHostApi().runXray(configPath);
     if (error.isNotEmpty) {
       await _vpnStatusChanged(VpnStatus.disconnected);
       return _commandFailed(error);
@@ -764,10 +764,6 @@ final class VpnService {
   Future<String?> _makeRunXrayRequest(String configPath) async {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.runXray,
-      env: LibXrayEnvJson(
-        assetLocation: VpnConstants.datDir,
-        certLocation: VpnConstants.datDir,
-      ),
       payload: RunXrayRequest(configPath).toJson(),
     );
     return JsonTool.encoderForDb.convert(request.toJson());

@@ -156,15 +156,11 @@ class AppHostApi {
     return "";
   }
 
-  Future<String> countGeoData(
-    String datDir,
-    CountGeoDataRequest request,
-  ) async {
+  Future<String> countGeoData(CountGeoDataRequest request) async {
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.countGeoData,
-          env: _datEnv(datDir),
           payload: request.toJson(),
         ),
       );
@@ -183,7 +179,6 @@ class AppHostApi {
   }
 
   Future<int> ping(
-    String datDir,
     String configPath,
     int timeout,
     String url,
@@ -193,7 +188,6 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.ping,
-          env: _datEnv(datDir),
           payload: PingRequest(configPath, timeout, url, proxy).toJson(),
         ),
       );
@@ -214,12 +208,11 @@ class AppHostApi {
     return PingDelayConstants.unknown;
   }
 
-  Future<String> testXray(String datDir, String configPath) async {
+  Future<String> testXray(String configPath) async {
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
-          env: _datEnv(datDir),
           payload: RunXrayRequest(configPath).toJson(),
         ),
       );
@@ -239,12 +232,11 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<String> runXray(String datDir, String configPath) async {
+  Future<String> runXray(String configPath) async {
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.runXray,
-          env: _datEnv(datDir),
           payload: RunXrayRequest(configPath).toJson(),
         ),
       );
@@ -326,10 +318,6 @@ class AppHostApi {
     final data = JsonTool.decoder.convert(res) as Map<String, dynamic>;
     final resp = LibXrayInvokeResponse.fromJson(data);
     return resp;
-  }
-
-  LibXrayEnvJson _datEnv(String datDir) {
-    return LibXrayEnvJson(assetLocation: datDir, certLocation: datDir);
   }
 
   // android

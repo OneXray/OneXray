@@ -5,6 +5,7 @@ part 'xray_json.g.dart';
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayJson {
   String? name;
+  XrayEnv? env;
   XrayLog? log;
   XrayDns? dns;
   XrayRouting? routing;
@@ -17,6 +18,7 @@ class XrayJson {
 
   XrayJson(
     this.name,
+    this.env,
     this.log,
     this.dns,
     this.routing,
@@ -32,6 +34,51 @@ class XrayJson {
       _$XrayJsonFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayJsonToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayEnv {
+  @JsonKey(name: "xray.location.asset")
+  String? assetLocation;
+  @JsonKey(name: "xray.location.cert")
+  String? certLocation;
+  @JsonKey(name: "xray.buf.readv")
+  String? useReadV;
+  @JsonKey(name: "xray.buf.splice")
+  String? useFreedomSplice;
+  @JsonKey(name: "xray.vmess.padding")
+  String? useVmessPadding;
+  @JsonKey(name: "xray.cone.disabled")
+  String? useCone;
+  @JsonKey(name: "xray.ray.buffer.size")
+  String? bufferSize;
+  @JsonKey(name: "xray.browser.dialer")
+  String? browserDialer;
+  @JsonKey(name: "xray.xudp.show")
+  String? xudpLog;
+  @JsonKey(name: "xray.xudp.basekey")
+  String? xudpBaseKey;
+  @JsonKey(name: "xray.tun.fd")
+  String? tunFd;
+
+  XrayEnv({
+    this.assetLocation,
+    this.certLocation,
+    this.useReadV,
+    this.useFreedomSplice,
+    this.useVmessPadding,
+    this.useCone,
+    this.bufferSize,
+    this.browserDialer,
+    this.xudpLog,
+    this.xudpBaseKey,
+    this.tunFd,
+  });
+
+  factory XrayEnv.fromJson(Map<String, dynamic> json) =>
+      _$XrayEnvFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayEnvToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

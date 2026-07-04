@@ -26,26 +26,15 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<bool> startCore(LibXrayRunConfig request) async {
     try {
       final xrayConfigPath = request.request.configPath;
-      final datDir = request.env?.assetLocation;
-      final certDir = request.env?.certLocation ?? datDir;
       if (xrayConfigPath == null || xrayConfigPath.isEmpty) {
         ygLogger("start core failed: configPath is empty");
         return false;
       }
-      if (datDir == null || datDir.isEmpty) {
-        ygLogger("start core failed: datDir is empty");
-        return false;
-      }
 
-      final envArgs = <String>["xray.location.asset=$datDir"];
-      if (certDir != null && certDir.isNotEmpty) {
-        envArgs.add("xray.location.cert=$certDir");
-      }
       final parameters = <String>[
         "run",
         "-config",
         _quoteArg(xrayConfigPath),
-        for (final envArg in envArgs) ...["--env", _quoteArg(envArg)],
       ].join(" ");
       final result = _runCommand(Tuple3("runas", corePath, parameters));
       if (!result.item1) {

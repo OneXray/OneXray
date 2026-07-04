@@ -1,5 +1,7 @@
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/network/constants.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_settings/state.dart';
@@ -24,6 +26,7 @@ class XrayRawFix {
 
     settingState.inbounds.ping.port = ports.pingPort;
     settingState.inbounds.ping.auth = ports.pingAuth;
+    fixEnv(jsonMap);
     XrayRuntimeInbounds.applyToRawJson(jsonMap, settingState.inbounds, mode);
     _fixPingRoutingRule(jsonMap);
     fixLog(jsonMap, disableLog: disableLog);
@@ -42,6 +45,16 @@ class XrayRawFix {
     } else {
       _removeConfigInterface(jsonMap);
     }
+  }
+
+  static void fixEnv(Map<String, dynamic> jsonMap) {
+    final current = jsonMap["env"];
+    final env = current is Map<String, dynamic>
+        ? XrayEnv.fromJson(current)
+        : XrayEnv();
+    env.assetLocation = VpnConstants.datDir;
+    env.certLocation = VpnConstants.datDir;
+    jsonMap["env"] = env.toJson();
   }
 
   static void _removeConfigInterface(Map<String, dynamic> jsonMap) {

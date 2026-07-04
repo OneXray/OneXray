@@ -6,6 +6,7 @@ enum TunnelError: Error {
     case noSocketFd
     case noStartModel
     case noGroupContainer
+    case noXrayConfigPath
     case startXrayTimeout
 }
 
@@ -325,13 +326,12 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             YGLog("PacketTunnelProvider TunnelError.noSocketFd")
             throw TunnelError.noSocketFd
         }
-        let request = try LibXrayInvokeRequest
-            .fromText(requestJson)
-            .withTunFd(fd)
-            .toText()
+        let request = try LibXrayInvokeRequest.fromText(requestJson)
+        try patchRuntimeEnv(fd: fd, request: request)
+        let requestText = try request.toText()
 
         Task {
-            let res = request.withCString { p in
+            let res = requestText.withCString { p in
                 let p0 = UnsafeMutablePointer(mutating: p)
                 return CGoInvoke(p0)
             }
@@ -342,6 +342,30 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
                 killProcess()
             }
         }
+    }
+
+    private func patchRuntimeEnv(fd: Int32, request: LibXrayInvokeRequest) throws {
+        guard let configPath = request.payload?.configPath, !configPath.isEmpty else {
+            YGLog("PacketTunnelProvider TunnelError.noXrayConfigPath")
+            throw TunnelError.noXrayConfigPath
+        }
+        let url = URL(fileURLWithPath: configPath)
+        let data = try Data(contentsOf: url)
+        var root = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        var env = root["env"] as? [String: Any] ?? [:]
+        env["xray.tun.fd"] = "\(fd)"
+        if Constants.useSystemExtension {
+            guard let dat = datDir() else {
+                YGLog("PacketTunnelProvider TunnelError.noGroupContainer")
+                throw TunnelError.noGroupContainer
+            }
+            let datPath = dat.adaptedPath()
+            env["xray.location.asset"] = datPath
+            env["xray.location.cert"] = datPath
+        }
+        root["env"] = env
+        let output = try JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
+        try output.write(to: url)
     }
 
     private func stopXray() {

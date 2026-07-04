@@ -107,8 +107,9 @@ class GetXrayStateResponse {
 class CountGeoDataRequest {
   String? name;
   String? geoType;
+  String? datDir;
 
-  CountGeoDataRequest(this.name, this.geoType);
+  CountGeoDataRequest(this.name, this.geoType, {this.datDir});
 
   factory CountGeoDataRequest.fromJson(Map<String, dynamic> json) =>
       _$CountGeoDataRequestFromJson(json);
@@ -169,67 +170,12 @@ enum LibXrayMethod {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class LibXrayEnvJson {
-  @JsonKey(name: "xray.location.config")
-  String? configLocation;
-  @JsonKey(name: "xray.location.confdir")
-  String? confdirLocation;
-  @JsonKey(name: "xray.location.asset")
-  String? assetLocation;
-  @JsonKey(name: "xray.location.cert")
-  String? certLocation;
-  @JsonKey(name: "xray.buf.readv")
-  String? useReadV;
-  @JsonKey(name: "xray.buf.splice")
-  String? useFreedomSplice;
-  @JsonKey(name: "xray.vmess.padding")
-  String? useVmessPadding;
-  @JsonKey(name: "xray.cone.disabled")
-  String? useCone;
-  @JsonKey(name: "xray.json.strict")
-  String? useStrictJson;
-  @JsonKey(name: "xray.ray.buffer.size")
-  String? bufferSize;
-  @JsonKey(name: "xray.browser.dialer")
-  String? browserDialerAddress;
-  @JsonKey(name: "xray.xudp.show")
-  String? xudpLog;
-  @JsonKey(name: "xray.xudp.basekey")
-  String? xudpBaseKey;
-  @JsonKey(name: "xray.tun.fd")
-  String? tunFd;
-
-  LibXrayEnvJson({
-    this.configLocation,
-    this.confdirLocation,
-    this.assetLocation,
-    this.certLocation,
-    this.useReadV,
-    this.useFreedomSplice,
-    this.useVmessPadding,
-    this.useCone,
-    this.useStrictJson,
-    this.bufferSize,
-    this.browserDialerAddress,
-    this.xudpLog,
-    this.xudpBaseKey,
-    this.tunFd,
-  });
-
-  factory LibXrayEnvJson.fromJson(Map<String, dynamic> json) =>
-      _$LibXrayEnvJsonFromJson(json);
-
-  Map<String, dynamic> toJson() => _$LibXrayEnvJsonToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class LibXrayInvokeRequest {
   int? apiVersion;
   LibXrayMethod? method;
-  LibXrayEnvJson? env;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.env, this.payload}) : apiVersion = 1;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 1;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);
@@ -290,15 +236,14 @@ class RunXrayFromJSONRequest {
 }
 
 class LibXrayRunConfig {
-  final LibXrayEnvJson? env;
   final RunXrayRequest request;
 
-  LibXrayRunConfig(this.env, this.request);
+  LibXrayRunConfig(this.request);
 
   factory LibXrayRunConfig.fromInvokeText(String text) {
     final data = JsonTool.decoder.convert(text) as Map<String, dynamic>;
     final invoke = LibXrayInvokeRequest.fromJson(data);
     final payload = invoke.payload ?? const <String, dynamic>{};
-    return LibXrayRunConfig(invoke.env, RunXrayRequest.fromJson(payload));
+    return LibXrayRunConfig(RunXrayRequest.fromJson(payload));
   }
 }

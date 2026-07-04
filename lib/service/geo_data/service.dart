@@ -165,8 +165,8 @@ class GeoDataService {
   }
 
   Future<bool> _generateCode(String cacheDir, String name, String type) async {
-    final request = CountGeoDataRequest(name, type);
-    final err = await AppHostApi().countGeoData(cacheDir, request);
+    final request = CountGeoDataRequest(name, type, datDir: cacheDir);
+    final err = await AppHostApi().countGeoData(request);
     return err.isEmpty;
   }
 

@@ -19,11 +19,15 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import libXray.DialerController
 import libXray.LibXray
 import net.yuandev.onexray.MainActivity
 import net.yuandev.onexray.R
-import net.yuandev.onexray.pigeon.LibXrayEnvJson
 import net.yuandev.onexray.pigeon.LibXrayInvokeRequest
 import net.yuandev.onexray.pigeon.LibXrayInvokeResponse
 import net.yuandev.onexray.pigeon.LibXrayMethod
@@ -414,7 +418,27 @@ class OneVpnService : VpnService() {
 
     private fun withTunFd(requestJson: String, fd: Int): String {
         val request = invokeJson.decodeFromString<LibXrayInvokeRequest>(requestJson)
-        val env = (request.env ?: LibXrayEnvJson()).copy(tunFd = fd.toString())
-        return invokeJson.encodeToString(request.copy(env = env))
+        val configPath = request.payload?.configPath
+            ?: throw IllegalStateException("configPath is empty")
+        if (configPath.isEmpty()) {
+            throw IllegalStateException("configPath is empty")
+        }
+        val configFile = File(configPath)
+        val root = invokeJson.parseToJsonElement(configFile.readText()).jsonObject
+        val currentEnv = root["env"]?.jsonObject ?: JsonObject(emptyMap())
+        val env = buildJsonObject {
+            currentEnv.forEach { (key, value) -> put(key, value) }
+            put("xray.tun.fd", JsonPrimitive(fd.toString()))
+        }
+        val updated = buildJsonObject {
+            root.forEach { (key, value) ->
+                if (key != "env") {
+                    put(key, value)
+                }
+            }
+            put("env", env)
+        }
+        configFile.writeText(updated.toString())
+        return invokeJson.encodeToString(request)
     }
 }

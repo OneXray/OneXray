@@ -33,13 +33,14 @@ class XrayRawValidator {
   static Future<String> _test(Map<String, dynamic> jsonMap) async {
     // remove app-managed runtime inbounds
     XrayRawFix.fixInboundsTun(jsonMap);
+    XrayRawFix.fixEnv(jsonMap);
     // remove metrics
     XrayRawFix.fixMetrics(jsonMap);
 
     final rawText = JsonTool.encoderForDb.convert(jsonMap);
     final configPath = await XrayRawWriter.writeConfig(rawText);
     await FileTool.checkDir(VpnConstants.runDir);
-    final res = await AppHostApi().testXray(VpnConstants.datDir, configPath);
+    final res = await AppHostApi().testXray(configPath);
     await FileTool.deleteFileIfExists(configPath);
 
     return res;

@@ -16,7 +16,7 @@ extension XrayJsonWriter on XrayJson {
     await _writeToPath(configPath);
     await FileTool.checkDir(VpnConstants.runDir);
 
-    final res = await AppHostApi().testXray(VpnConstants.datDir, configPath);
+    final res = await AppHostApi().testXray(configPath);
     ygLogger(configPath);
     await FileTool.deleteFileIfExists(configPath);
 
@@ -32,7 +32,6 @@ extension XrayJsonWriter on XrayJson {
     await _writeToPath(configPath);
 
     final res = await AppHostApi().ping(
-      VpnConstants.datDir,
       configPath,
       pingState.timeout.toInt(),
       pingState.realUrl,
@@ -44,12 +43,19 @@ extension XrayJsonWriter on XrayJson {
   }
 
   Future<void> _writeToPath(String configPath) async {
+    _fixRuntimeEnv();
     final jsonMap = toJson();
     final data = JsonTool.encodeJsonToSortedString(
       jsonMap,
       JsonTool.encoderForFile,
     );
     await File(configPath).writeAsString(data);
+  }
+
+  void _fixRuntimeEnv() {
+    env ??= XrayEnv();
+    env!.assetLocation = VpnConstants.datDir;
+    env!.certLocation = VpnConstants.datDir;
   }
 
   Future<String> writeConfig(String runDir) async {

@@ -82,38 +82,6 @@ enum class LibXrayMethod {
 }
 
 @Serializable
-data class LibXrayEnvJson(
-    @SerialName("xray.location.config")
-    val configLocation: String? = null,
-    @SerialName("xray.location.confdir")
-    val confdirLocation: String? = null,
-    @SerialName("xray.location.asset")
-    val assetLocation: String? = null,
-    @SerialName("xray.location.cert")
-    val certLocation: String? = null,
-    @SerialName("xray.buf.readv")
-    val useReadV: String? = null,
-    @SerialName("xray.buf.splice")
-    val useFreedomSplice: String? = null,
-    @SerialName("xray.vmess.padding")
-    val useVmessPadding: String? = null,
-    @SerialName("xray.cone.disabled")
-    val useCone: String? = null,
-    @SerialName("xray.json.strict")
-    val useStrictJson: String? = null,
-    @SerialName("xray.ray.buffer.size")
-    val bufferSize: String? = null,
-    @SerialName("xray.browser.dialer")
-    val browserDialerAddress: String? = null,
-    @SerialName("xray.xudp.show")
-    val xudpLog: String? = null,
-    @SerialName("xray.xudp.basekey")
-    val xudpBaseKey: String? = null,
-    @SerialName("xray.tun.fd")
-    val tunFd: String? = null,
-)
-
-@Serializable
 data class RunXrayRequest(
     val configPath: String? = null,
 )
@@ -122,7 +90,6 @@ data class RunXrayRequest(
 data class LibXrayInvokeRequest(
     val apiVersion: Int? = 1,
     val method: LibXrayMethod? = null,
-    val env: LibXrayEnvJson? = null,
     val payload: RunXrayRequest? = null,
 )
 

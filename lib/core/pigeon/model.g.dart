@@ -86,11 +86,19 @@ Map<String, dynamic> _$GetXrayStateResponseToJson(
 ) => <String, dynamic>{'running': ?instance.running};
 
 CountGeoDataRequest _$CountGeoDataRequestFromJson(Map<String, dynamic> json) =>
-    CountGeoDataRequest(json['name'] as String?, json['geoType'] as String?);
+    CountGeoDataRequest(
+      json['name'] as String?,
+      json['geoType'] as String?,
+      datDir: json['datDir'] as String?,
+    );
 
 Map<String, dynamic> _$CountGeoDataRequestToJson(
   CountGeoDataRequest instance,
-) => <String, dynamic>{'name': ?instance.name, 'geoType': ?instance.geoType};
+) => <String, dynamic>{
+  'name': ?instance.name,
+  'geoType': ?instance.geoType,
+  'datDir': ?instance.datDir,
+};
 
 PingRequest _$PingRequestFromJson(Map<String, dynamic> json) => PingRequest(
   json['configPath'] as String?,
@@ -113,49 +121,10 @@ RunXrayRequest _$RunXrayRequestFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$RunXrayRequestToJson(RunXrayRequest instance) =>
     <String, dynamic>{'configPath': ?instance.configPath};
 
-LibXrayEnvJson _$LibXrayEnvJsonFromJson(Map<String, dynamic> json) =>
-    LibXrayEnvJson(
-      configLocation: json['xray.location.config'] as String?,
-      confdirLocation: json['xray.location.confdir'] as String?,
-      assetLocation: json['xray.location.asset'] as String?,
-      certLocation: json['xray.location.cert'] as String?,
-      useReadV: json['xray.buf.readv'] as String?,
-      useFreedomSplice: json['xray.buf.splice'] as String?,
-      useVmessPadding: json['xray.vmess.padding'] as String?,
-      useCone: json['xray.cone.disabled'] as String?,
-      useStrictJson: json['xray.json.strict'] as String?,
-      bufferSize: json['xray.ray.buffer.size'] as String?,
-      browserDialerAddress: json['xray.browser.dialer'] as String?,
-      xudpLog: json['xray.xudp.show'] as String?,
-      xudpBaseKey: json['xray.xudp.basekey'] as String?,
-      tunFd: json['xray.tun.fd'] as String?,
-    );
-
-Map<String, dynamic> _$LibXrayEnvJsonToJson(LibXrayEnvJson instance) =>
-    <String, dynamic>{
-      'xray.location.config': ?instance.configLocation,
-      'xray.location.confdir': ?instance.confdirLocation,
-      'xray.location.asset': ?instance.assetLocation,
-      'xray.location.cert': ?instance.certLocation,
-      'xray.buf.readv': ?instance.useReadV,
-      'xray.buf.splice': ?instance.useFreedomSplice,
-      'xray.vmess.padding': ?instance.useVmessPadding,
-      'xray.cone.disabled': ?instance.useCone,
-      'xray.json.strict': ?instance.useStrictJson,
-      'xray.ray.buffer.size': ?instance.bufferSize,
-      'xray.browser.dialer': ?instance.browserDialerAddress,
-      'xray.xudp.show': ?instance.xudpLog,
-      'xray.xudp.basekey': ?instance.xudpBaseKey,
-      'xray.tun.fd': ?instance.tunFd,
-    };
-
 LibXrayInvokeRequest _$LibXrayInvokeRequestFromJson(
   Map<String, dynamic> json,
 ) => LibXrayInvokeRequest(
   method: $enumDecodeNullable(_$LibXrayMethodEnumMap, json['method']),
-  env: json['env'] == null
-      ? null
-      : LibXrayEnvJson.fromJson(json['env'] as Map<String, dynamic>),
   payload: json['payload'] as Map<String, dynamic>?,
 )..apiVersion = (json['apiVersion'] as num?)?.toInt();
 
@@ -164,7 +133,6 @@ Map<String, dynamic> _$LibXrayInvokeRequestToJson(
 ) => <String, dynamic>{
   'apiVersion': ?instance.apiVersion,
   'method': ?_$LibXrayMethodEnumMap[instance.method],
-  'env': ?instance.env?.toJson(),
   'payload': ?instance.payload,
 };
 
