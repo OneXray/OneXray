@@ -460,7 +460,7 @@ class ShareController extends Cubit<SharePageState> {
 String _readConfigDataText(CoreConfigData config) {
   try {
     final jsonData = JsonTool.decodeBase64ToJson(config.data ?? "");
-    return JsonTool.encoderForFile.convert(jsonData);
+    return JsonTool.encoder.convert(jsonData);
   } catch (_) {
     try {
       return utf8.decode(base64Decode(config.data ?? ""));
@@ -473,7 +473,7 @@ String _readConfigDataText(CoreConfigData config) {
 String _formatJsonText(String text) {
   try {
     final jsonData = JsonTool.decoder.convert(text);
-    return JsonTool.encoderForFile.convert(jsonData);
+    return JsonTool.encoder.convert(jsonData);
   } catch (_) {
     return text;
   }

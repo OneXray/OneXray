@@ -90,7 +90,7 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
   Future<void> gotoRawEdit(BuildContext context) async {
     final xrayJson = _xrayProfileState.xrayJson;
     final jsonMap = xrayJson.toJson();
-    final text = JsonTool.encoderForFile.convert(jsonMap);
+    final text = JsonTool.encoder.convert(jsonMap);
     final params = XrayRawEditParams(
       AppLocalizations.of(context)!.xrayProfileUIPageTitle,
       text,

@@ -45,10 +45,7 @@ extension XrayJsonWriter on XrayJson {
   Future<void> _writeToPath(String configPath) async {
     _fixRuntimeEnv();
     final jsonMap = toJson();
-    final data = JsonTool.encodeJsonToSortedString(
-      jsonMap,
-      JsonTool.encoderForFile,
-    );
+    final data = JsonTool.encodeJsonToSortedString(jsonMap);
     await File(configPath).writeAsString(data);
   }
 

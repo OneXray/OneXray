@@ -71,7 +71,7 @@ class XrayRawController extends Cubit<int> {
     outbound.vlessId = Uuid().v4();
     settings.outbounds.outbounds.add(outbound);
 
-    return JsonTool.encoderForFile.convert(settings.xrayJson.toJson());
+    return JsonTool.encoder.convert(settings.xrayJson.toJson());
   }
 
   Future<void> importAction(BuildContext context, IconMenuId menuId) async {

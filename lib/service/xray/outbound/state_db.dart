@@ -14,7 +14,7 @@ extension OutboundStateDb on OutboundState {
     final config = XrayJsonStandard.standard;
     config.outbounds = [xrayJson];
     final tags = [protocol.name, network.name, security.name].join(",");
-    final jsonData = JsonTool.encoderForDb.convert(config);
+    final jsonData = JsonTool.encoder.convert(config);
     final bytes = utf8.encode(jsonData);
     final base64Data = base64Encode(bytes);
     final row = CoreConfigCompanion.insert(
@@ -38,7 +38,7 @@ extension OutboundStateDb on OutboundState {
     final config = XrayJsonStandard.standard;
     config.outbounds = [xrayJson];
     final tags = [protocol.name, network.name, security.name].join(",");
-    final jsonData = JsonTool.encoderForDb.convert(config);
+    final jsonData = JsonTool.encoder.convert(config);
     final bytes = utf8.encode(jsonData);
     final base64Data = base64Encode(bytes);
     final row = outbound.copyWith(

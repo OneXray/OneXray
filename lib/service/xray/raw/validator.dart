@@ -37,7 +37,7 @@ class XrayRawValidator {
     // remove metrics
     XrayRawFix.fixMetrics(jsonMap);
 
-    final rawText = JsonTool.encoderForDb.convert(jsonMap);
+    final rawText = JsonTool.encoder.convert(jsonMap);
     final configPath = await XrayRawWriter.writeConfig(rawText);
     await FileTool.checkDir(VpnConstants.runDir);
     final res = await AppHostApi().testXray(configPath);

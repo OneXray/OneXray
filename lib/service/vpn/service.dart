@@ -710,7 +710,7 @@ final class VpnService {
       port,
       tunSettingsState.metricsEnabled,
     );
-    final configText = JsonTool.encoderForFile.convert(jsonMap);
+    final configText = JsonTool.encoder.convert(jsonMap);
     final configPath = XrayStateConstants.configFilePath;
     final file = File(configPath);
     await file.writeAsString(configText);
@@ -766,7 +766,7 @@ final class VpnService {
       method: LibXrayMethod.runXray,
       payload: RunXrayRequest(configPath).toJson(),
     );
-    return JsonTool.encoderForDb.convert(request.toJson());
+    return JsonTool.encoder.convert(request.toJson());
   }
 
   Future<void> retryConnectivityTest() {

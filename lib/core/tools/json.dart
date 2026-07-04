@@ -2,13 +2,9 @@ import 'dart:collection';
 import 'dart:convert';
 
 class JsonTool {
-  static const encoderForDb = JsonEncoder();
-  static const encoderForFile = JsonEncoder.withIndent("  ");
+  static const encoder = JsonEncoder.withIndent("  ");
 
-  static String encodeJsonToSortedString(
-    Map<String, dynamic> jsonMap,
-    JsonEncoder encoder,
-  ) {
+  static String encodeJsonToSortedString(Map<String, dynamic> jsonMap) {
     final sortedMap = SplayTreeMap.from(jsonMap);
     return encoder.convert(sortedMap);
   }
@@ -16,7 +12,7 @@ class JsonTool {
   static const decoder = JsonDecoder();
 
   static String encodeJsonToBase64(Map<String, dynamic> request) {
-    final jsonStr = encoderForDb.convert(request);
+    final jsonStr = encoder.convert(request);
     final data = utf8.encode(jsonStr);
     final base64Text = base64Encode(data);
     return base64Text;

@@ -68,7 +68,7 @@ final class JsonImporter {
     final rawText = text.trim();
     try {
       final decoded = JsonTool.decoder.convert(rawText);
-      return JsonImportResult.success(JsonTool.encoderForFile.convert(decoded));
+      return JsonImportResult.success(JsonTool.encoder.convert(decoded));
     } catch (_) {
       return const JsonImportResult.invalid();
     }

@@ -396,7 +396,7 @@ class BackupService {
       List<BackupGeoDataJson>() => data.map((e) => e.toJson()).toList(),
       _ => data,
     };
-    await File(path).writeAsString(JsonTool.encoderForFile.convert(json));
+    await File(path).writeAsString(JsonTool.encoder.convert(json));
   }
 
   Future<void> _restoreGeoData(_BackupPayload payload) async {

@@ -76,7 +76,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             throw TunnelError.noStartModel
         }
         guard let requestData = providerConfig["request"] as? Data,
-              let request = try? JSONDecoder().decode(StartVpnRequest.self, from: requestData) else {
+              let request = try? JsonTool.decode(StartVpnRequest.self, from: requestData) else {
             YGLog("startTunnel decode request failed")
             throw TunnelError.noStartModel
         }
@@ -351,7 +351,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
         let url = URL(fileURLWithPath: configPath)
         let data = try Data(contentsOf: url)
-        var root = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        var root = try JsonTool.decodeObject(from: data)
         var env = root["env"] as? [String: Any] ?? [:]
         env["xray.tun.fd"] = "\(fd)"
         if Constants.useSystemExtension {
@@ -364,7 +364,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             env["xray.location.cert"] = datPath
         }
         root["env"] = env
-        let output = try JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
+        let output = try JsonTool.encodeObject(root)
         try output.write(to: url)
     }
 

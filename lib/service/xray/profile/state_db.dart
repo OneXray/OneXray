@@ -10,7 +10,7 @@ import 'package:onexray/service/xray/profile/state_writer.dart';
 
 extension XrayProfileStateDb on XrayProfileState {
   CoreConfigCompanion configCompanion() {
-    final jsonData = JsonTool.encoderForDb.convert(xrayJson);
+    final jsonData = JsonTool.encoder.convert(xrayJson);
     final bytes = utf8.encode(jsonData);
     final base64Data = base64Encode(bytes);
     final row = CoreConfigCompanion.insert(
@@ -32,7 +32,7 @@ extension XrayProfileStateDb on XrayProfileState {
   }
 
   Future<bool> updateToDb(CoreConfigData setting) async {
-    final jsonData = JsonTool.encoderForDb.convert(xrayJson);
+    final jsonData = JsonTool.encoder.convert(xrayJson);
     final bytes = utf8.encode(jsonData);
     final base64Data = base64Encode(bytes);
     final row = setting.copyWith(name: name, data: Value<String>(base64Data));

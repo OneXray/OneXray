@@ -1,5 +1,44 @@
 import Foundation
 
+enum JsonTool {
+    static let decoder = JSONDecoder()
+    static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
+        return encoder
+    }()
+
+    private static let writingOptions: JSONSerialization.WritingOptions = [
+        .prettyPrinted,
+        .withoutEscapingSlashes,
+    ]
+
+    static func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+        try decoder.decode(type, from: data)
+    }
+
+    static func decode<T: Decodable>(_ type: T.Type, from text: String) throws -> T {
+        try decode(type, from: Data(text.utf8))
+    }
+
+    static func encode<T: Encodable>(_ value: T) throws -> Data {
+        try encoder.encode(value)
+    }
+
+    static func encodeText<T: Encodable>(_ value: T) throws -> String {
+        let data = try encode(value)
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    static func decodeObject(from data: Data) throws -> [String: Any] {
+        try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+    }
+
+    static func encodeObject(_ object: Any) throws -> Data {
+        try JSONSerialization.data(withJSONObject: object, options: writingOptions)
+    }
+}
+
 enum OnDemandRuleMode: String, Codable {
     case connect
     case disconnect
@@ -43,7 +82,7 @@ struct StartVpnRequest: Codable {
 
     private static func fromUrl(_ url: URL) throws -> Self {
         let data = try Data(contentsOf: url)
-        let request = try JSONDecoder().decode(self, from: data)
+        let request = try JsonTool.decode(self, from: data)
         return request
     }
 
@@ -96,13 +135,11 @@ struct LibXrayInvokeRequest: Codable, Hashable {
     }
 
     static func fromText(_ text: String) throws -> Self {
-        let data = Data(text.utf8)
-        return try JSONDecoder().decode(Self.self, from: data)
+        try JsonTool.decode(Self.self, from: text)
     }
 
     func toText() throws -> String {
-        let data = try JSONEncoder().encode(self)
-        return String(data: data, encoding: .utf8) ?? "{}"
+        try JsonTool.encodeText(self)
     }
 }
 
@@ -121,8 +158,7 @@ struct LibXrayInvokeResponse: Codable, Hashable {
 
             if let data = text.data(using: .utf8) {
                 do {
-                    let decoder = JSONDecoder()
-                    let model = try decoder.decode(self, from: data)
+                    let model = try JsonTool.decode(self, from: data)
                     return model
                 } catch {}
             }

@@ -21,7 +21,7 @@ class XrayRawPing {
     XrayRawFix.fixEnv(jsonMap);
     XrayRawFix.fixInboundsPort(jsonMap, ports);
     XrayRawFix.fixLog(jsonMap);
-    final text = JsonTool.encoderForDb.convert(jsonMap);
+    final text = JsonTool.encoder.convert(jsonMap);
 
     final configPath = await XrayRawWriter.writeConfig(text);
 

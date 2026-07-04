@@ -295,12 +295,12 @@ class VPNManager {
                 let encodedRequest: Data
                 if Constants.useSystemExtension {
                     let rewritten = rewriteRequestForExtension(request)
-                    encodedRequest = try JSONEncoder().encode(rewritten)
+                    encodedRequest = try JsonTool.encode(rewritten)
                     if let xrayJson = readAndRewriteXrayJson() {
                         providerConfig["xrayJson"] = xrayJson
                     }
                 } else {
-                    encodedRequest = try JSONEncoder().encode(request)
+                    encodedRequest = try JsonTool.encode(request)
                 }
                 providerConfig["request"] = encodedRequest
                 conf.providerConfiguration = providerConfig

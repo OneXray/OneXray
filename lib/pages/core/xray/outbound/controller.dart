@@ -240,7 +240,7 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
     final xrayJson = XrayJsonStandard.standard;
     xrayJson.outbounds = [state.outboundState.xrayJson];
     final jsonMap = xrayJson.toJson();
-    final text = JsonTool.encoderForFile.convert(jsonMap);
+    final text = JsonTool.encoder.convert(jsonMap);
     final params = XrayRawEditParams(
       AppLocalizations.of(context)!.outboundPageTitle,
       text,
@@ -300,7 +300,7 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
 
   Future<void> editHttpHeaders(BuildContext context) async {
     final headers = state.outboundState.httpHeaders;
-    final text = JsonTool.encoderForFile.convert(headers);
+    final text = JsonTool.encoder.convert(headers);
     final params = XrayRawEditParams(
       AppLocalizations.of(context)!.outboundUIPageHeaders,
       text,
@@ -391,7 +391,7 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
 
   Future<void> editXhttpExtra(BuildContext context) async {
     final xhttpExtra = state.outboundState.xhttpExtra;
-    final text = JsonTool.encoderForFile.convert(xhttpExtra);
+    final text = JsonTool.encoder.convert(xhttpExtra);
     final params = XrayRawEditParams(
       AppLocalizations.of(context)!.outboundUIPageXhttpExtra,
       text,
@@ -411,7 +411,7 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
 
   Future<void> editFinalMask(BuildContext context) async {
     final finalMask = state.outboundState.finalMask;
-    final text = JsonTool.encoderForFile.convert(finalMask);
+    final text = JsonTool.encoder.convert(finalMask);
     final params = XrayRawEditParams(
       AppLocalizations.of(context)!.outboundUIPageFinalmask,
       text,

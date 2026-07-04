@@ -136,7 +136,7 @@ class AppHostApi {
 
   Future<String> convertXrayJsonToShareLinks(XrayJson xrayJson) async {
     try {
-      final xrayJsonText = JsonTool.encoderForDb.convert(xrayJson.toJson());
+      final xrayJsonText = JsonTool.encoder.convert(xrayJson.toJson());
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.convertXrayJsonToShareLinks,
@@ -304,7 +304,7 @@ class AppHostApi {
   }
 
   Future<String> _invoke(LibXrayInvokeRequest request) async {
-    final requestJson = JsonTool.encoderForDb.convert(request.toJson());
+    final requestJson = JsonTool.encoder.convert(request.toJson());
     if (AppPlatform.isLinux) {
       return LinuxFfiApi().invoke(requestJson);
     } else if (AppPlatform.isWindows) {
