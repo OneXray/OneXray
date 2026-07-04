@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/home/component/config_row/enum.dart';
-import 'package:onexray/pages/home/component/config_row/view.dart';
-import 'package:onexray/pages/home/outbound_select/controller.dart';
+import 'package:onexray/pages/home/component/nodes/controller.dart';
+import 'package:onexray/pages/home/component/nodes/view.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
-import 'package:onexray/pages/widget/data_list.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 
 class OutboundSelectPage extends StatelessWidget {
   final OutboundSelectParams params;
@@ -16,78 +12,18 @@ class OutboundSelectPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => OutboundSelectController(),
-      child: BlocBuilder<OutboundSelectController, OutboundSelectPageState>(
-        builder: (context, state) {
-          final controller = context.read<OutboundSelectController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                AppLocalizations.of(context)!.outboundSelectPageTitle,
-              ),
-            ),
-            body: SafeArea(child: _body(context, controller, state)),
-          );
-        },
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.outboundSelectPageTitle),
       ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    OutboundSelectController controller,
-    OutboundSelectPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        desktopMaxWidth: 880,
-        adaptiveBreakpoint: 840,
-        child: Column(
-          children: [
-            if (state.configs.isNotEmpty || state.query.isNotEmpty)
-              _search(context, controller),
-            Expanded(child: _configList(context, controller, state)),
-          ],
+      body: SafeArea(
+        child: HomeNodeView(
+          queryType: HomeNodeQueryType.outboundOnly,
+          showSearch: true,
+          selectedId: params.selectedId,
+          onSelect: (config) => context.pop(config),
         ),
       ),
-    );
-  }
-
-  Widget _search(BuildContext context, OutboundSelectController controller) {
-    return ListSearchField(
-      controller: controller.searchController,
-      hintText: AppLocalizations.of(context)!.listSearchHint,
-      onChanged: (value) => controller.updateSearchQuery(value),
-    );
-  }
-
-  Widget _configList(
-    BuildContext context,
-    OutboundSelectController controller,
-    OutboundSelectPageState state,
-  ) {
-    if (state.configs.isEmpty) {
-      return ListEmptyView(
-        message: AppLocalizations.of(context)!.homeOutboundViewNoOutbound,
-      );
-    }
-    return ListView.separated(
-      itemBuilder: (context, index) {
-        final config = state.configs[index];
-        final status = config.id == params.selectedId
-            ? ConfigRowStatus.selected
-            : ConfigRowStatus.unselected;
-        return ConfigRowView(
-          data: config,
-          status: status,
-          moreMenus: const [],
-          tapCallback: () => controller.select(context, config),
-        );
-      },
-      separatorBuilder: (_, _) => const Divider(),
-      itemCount: state.configs.length,
     );
   }
 }

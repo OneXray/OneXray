@@ -192,6 +192,13 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
           .get();
 
+  Future<List<ConfigQueryRow>> get allOutboundRows async {
+    final query = _allConfigRowsQuery
+      ..where(coreConfig.type.equals(CoreConfigType.outbound.name));
+    final rows = await query.get();
+    return _convertOutboundQueryRows(rows);
+  }
+
   Stream<List<ConfigQueryRow>> allHomeNodeRowsStream() async* {
     final query = _allConfigRowsQuery
       ..where(

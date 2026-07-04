@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
+import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/home/component/config_row/grid_card.dart';
 import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
@@ -37,10 +38,12 @@ class ConfigGridList extends StatelessWidget {
   const ConfigGridList({
     super.key,
     required this.rows,
+    required this.onSelect,
     required this.emptyMessage,
     required this.emptyIcon,
     required this.onPingSubscription,
     required this.onRefresh,
+    this.selectedId,
     this.onCleanSubscription,
     this.subscriptionExpandable = true,
   });
@@ -52,6 +55,8 @@ class ConfigGridList extends StatelessWidget {
   static const int _maxColumns = 3;
 
   final List<ConfigQueryRow> rows;
+  final int? selectedId;
+  final ValueChanged<CoreConfigData> onSelect;
   final String emptyMessage;
   final IconData emptyIcon;
   final void Function(int subId) onPingSubscription;
@@ -127,7 +132,11 @@ class ConfigGridList extends StatelessWidget {
             ),
             delegate: SliverChildBuilderDelegate((context, offset) {
               final item = rows[start + offset] as ConfigItem;
-              return SelectableConfigGridCard(item: item);
+              return SelectableConfigGridCard(
+                item: item,
+                selectedId: selectedId,
+                onSelect: onSelect,
+              );
             }, childCount: count),
           );
         },

@@ -79,7 +79,7 @@ import 'package:onexray/pages/core/xray/profile/simple/page.dart';
 import 'package:onexray/pages/core/xray/profile/ui/page.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/core/xray/profile_list/page.dart';
-import 'package:onexray/pages/home/home/page.dart';
+import 'package:onexray/pages/home/main/page.dart';
 import 'package:onexray/pages/home/node_info/page.dart';
 import 'package:onexray/pages/home/outbound_select/page.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';

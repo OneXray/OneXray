@@ -22,40 +22,64 @@ import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/geo_data/system_dat_service.dart';
+import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
 import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class HomePageState {
   final int configId;
   final String configName;
+  final String xrayProfileName;
+  final bool nodeSearchVisible;
   final bool vpnCommandLoading;
 
   const HomePageState({
     required this.configId,
     required this.configName,
+    required this.xrayProfileName,
+    required this.nodeSearchVisible,
     required this.vpnCommandLoading,
   });
 
-  factory HomePageState.initial() => HomePageState(
-    configId: DBConstants.defaultId,
-    configName: "",
-    vpnCommandLoading: false,
-  );
+  factory HomePageState.initial({int xrayProfileId = DBConstants.defaultId}) =>
+      HomePageState(
+        configId: DBConstants.defaultId,
+        configName: "",
+        xrayProfileName: _initialXrayProfileName(xrayProfileId),
+        nodeSearchVisible: false,
+        vpnCommandLoading: false,
+      );
 
   HomePageState copyWith({
     int? configId,
     String? configName,
+    String? xrayProfileName,
+    bool? nodeSearchVisible,
     bool? vpnCommandLoading,
   }) {
     return HomePageState(
       configId: configId ?? this.configId,
       configName: configName ?? this.configName,
+      xrayProfileName: xrayProfileName ?? this.xrayProfileName,
+      nodeSearchVisible: nodeSearchVisible ?? this.nodeSearchVisible,
       vpnCommandLoading: vpnCommandLoading ?? this.vpnCommandLoading,
     );
+  }
+}
+
+String _initialXrayProfileName(int xrayProfileId) {
+  switch (xrayProfileId) {
+    case DBConstants.defaultId:
+      return appLocalizationsNoContext().xrayProfileListPageSimple;
+    case XrayProfileSimple.simpleId:
+      return appLocalizationsNoContext().xrayProfileListPageSimple;
+    default:
+      return "";
   }
 }
 
@@ -109,12 +133,18 @@ class HomeConnectionViewPageState {
 class HomeController extends Cubit<HomePageState> {
   final BuildContext context;
 
-  HomeController(this.context) : super(HomePageState.initial()) {
+  HomeController(this.context)
+    : super(
+        HomePageState.initial(
+          xrayProfileId: AppEventBus.instance.state.xrayProfileId,
+        ),
+      ) {
     _asyncInit();
   }
 
   late final StreamSubscription<void> _toastSubscription;
   late final StreamSubscription<RefreshVpnResult> _refreshVpnSubscription;
+  StreamSubscription<int>? _xrayProfileSubscription;
   Future<void>? _systemGeoDatFuture;
   Timer? _systemExtensionApprovalPollTimer;
   var _systemExtensionApprovalShown = false;
@@ -123,6 +153,7 @@ class HomeController extends Cubit<HomePageState> {
   Future<void> _asyncInit() async {
     _initToastStream();
     _initRefreshVpnStream();
+    unawaited(_listenXrayProfile());
     final pendingRefreshVpnResult = AppFlutterApi().consumeRefreshVpnResult();
     if (pendingRefreshVpnResult != null) {
       _handleRefreshVpn(pendingRefreshVpnResult);
@@ -234,6 +265,61 @@ class HomeController extends Cubit<HomePageState> {
   void _initRefreshVpnStream() {
     _refreshVpnSubscription = AppFlutterApi().refreshVpnController.stream
         .listen((result) => _handleRefreshVpn(result));
+  }
+
+  Future<void> _listenXrayProfile() async {
+    final eventBus = AppEventBus.instance;
+    var xrayProfileId = eventBus.state.xrayProfileId;
+    xrayProfileId = await PreferencesKey().readXrayProfileId();
+    if (isClosed) {
+      return;
+    }
+    await _readXrayProfile(xrayProfileId);
+
+    _xrayProfileSubscription = eventBus.stream
+        .map((s) => s.xrayProfileId)
+        .distinct()
+        .listen((data) => _readXrayProfile(data));
+  }
+
+  Future<void> _readXrayProfile(int id) async {
+    if (isClosed) {
+      return;
+    }
+    switch (id) {
+      case DBConstants.defaultId:
+        emit(
+          state.copyWith(
+            xrayProfileName:
+                appLocalizationsNoContext().xrayProfileListPageSimple,
+          ),
+        );
+        break;
+      case XrayProfileSimple.simpleId:
+        emit(
+          state.copyWith(
+            xrayProfileName:
+                appLocalizationsNoContext().xrayProfileListPageSimple,
+          ),
+        );
+        break;
+      default:
+        final xrayProfileData = await AppDatabase().coreConfigDao.searchRow(id);
+        if (isClosed) {
+          return;
+        }
+        if (xrayProfileData != null) {
+          emit(state.copyWith(xrayProfileName: xrayProfileData.name));
+        } else {
+          emit(
+            state.copyWith(
+              xrayProfileName:
+                  appLocalizationsNoContext().xrayProfileListPageSimple,
+            ),
+          );
+        }
+        break;
+    }
   }
 
   void _handleRefreshVpn(RefreshVpnResult result) async {
@@ -608,6 +694,10 @@ class HomeController extends Cubit<HomePageState> {
     unawaited(_updateConfigName(value));
   }
 
+  void toggleNodeSearch() {
+    emit(state.copyWith(nodeSearchVisible: !state.nodeSearchVisible));
+  }
+
   Future<void> startVpn(BuildContext context) async {
     if (state.vpnCommandLoading || AppEventBus.instance.state.vpnLoading) {
       return;
@@ -665,6 +755,7 @@ class HomeController extends Cubit<HomePageState> {
   Future<void> close() {
     _toastSubscription.cancel();
     _refreshVpnSubscription.cancel();
+    _xrayProfileSubscription?.cancel();
     _stopSystemExtensionApprovalPolling();
     return super.close();
   }

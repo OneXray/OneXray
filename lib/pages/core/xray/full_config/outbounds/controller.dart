@@ -210,6 +210,7 @@ class XrayFullConfigOutboundsController
   List<String> _dialerProxyTags(OutboundState outbound) {
     final tags = state.outboundsState.outboundTags
         .where((tag) => tag != outbound.tag)
+        .where((tag) => !_nonDialerProxyTags.contains(tag))
         .toList();
     return tags;
   }
@@ -352,6 +353,11 @@ class XrayFullConfigOutboundsController
     RoutingOutboundTag.block.name,
     RoutingOutboundTag.dnsOut.name,
     RoutingOutboundTag.chainProxy.name,
+  };
+
+  Set<String> get _nonDialerProxyTags => {
+    RoutingOutboundTag.block.name,
+    RoutingOutboundTag.dnsOut.name,
   };
 
   OutboundState _cloneOutbound(OutboundState outbound) {

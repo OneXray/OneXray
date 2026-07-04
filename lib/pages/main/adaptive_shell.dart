@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/home/home/page.dart';
+import 'package:onexray/pages/home/main/page.dart';
 import 'package:onexray/pages/core/main/page.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/settings/main/page.dart';

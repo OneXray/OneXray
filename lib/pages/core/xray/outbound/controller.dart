@@ -155,26 +155,23 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
   }
 
   List<String> _fixDialerProxies(OutboundState outboundState) {
-    final outboundTags = <String>[
+    final outboundTags = <String>{
       "",
       RoutingOutboundTag.direct.name,
       RoutingOutboundTag.fragment.name,
-    ];
-    params.outboundTags.clear();
-    params.outboundTags.addAll(outboundTags);
+      ...params.outboundTags,
+    }.toList();
 
     if (outboundState.tag.isNotEmpty) {
-      if (params.outboundTags.contains(outboundState.tag)) {
-        params.outboundTags.remove(outboundState.dialerProxy);
-      }
+      outboundTags.remove(outboundState.tag);
     }
     if (outboundState.dialerProxy.isNotEmpty) {
-      if (!params.outboundTags.contains(outboundState.dialerProxy)) {
+      if (!outboundTags.contains(outboundState.dialerProxy)) {
         outboundState.dialerProxy = "";
       }
     }
 
-    return List<String>.from(params.outboundTags);
+    return outboundTags;
   }
 
   void _initInputs(OutboundState outboundState) {

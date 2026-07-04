@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/home/home/component/nodes/controller.dart';
-import 'package:onexray/pages/home/home/component/nodes/view.dart';
-import 'package:onexray/pages/home/home/controller.dart';
+import 'package:onexray/pages/home/component/nodes/controller.dart';
+import 'package:onexray/pages/home/component/nodes/view.dart';
+import 'package:onexray/pages/home/main/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -19,10 +19,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => HomeController(context)),
-        BlocProvider(create: (_) => HomeNodeController()),
-      ],
+      providers: [BlocProvider(create: (context) => HomeController(context))],
       child: BlocBuilder<HomeController, HomePageState>(
         builder: (context, homeState) {
           final controller = context.read<HomeController>();
@@ -38,6 +35,7 @@ class HomePage extends StatelessWidget {
                   return _adaptiveScaffold(
                     context,
                     controller,
+                    homeState,
                     connection,
                     eventState,
                   );
@@ -45,6 +43,7 @@ class HomePage extends StatelessWidget {
                 return _compactScaffold(
                   context,
                   controller,
+                  homeState,
                   connection,
                   eventState,
                 );
@@ -59,6 +58,7 @@ class HomePage extends StatelessWidget {
   Widget _compactScaffold(
     BuildContext context,
     HomeController controller,
+    HomePageState homeState,
     HomeConnectionViewPageState connection,
     AppEventBusState eventState,
   ) {
@@ -66,17 +66,18 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.homePageTitle),
         actions: [
-          _searchButton(context),
+          _searchButton(controller, homeState),
           _rightButton(context, controller, eventState),
         ],
       ),
-      body: SafeArea(child: _body(context, controller, connection)),
+      body: SafeArea(child: _body(context, controller, homeState, connection)),
     );
   }
 
   Widget _adaptiveScaffold(
     BuildContext context,
     HomeController controller,
+    HomePageState homeState,
     HomeConnectionViewPageState connection,
     AppEventBusState eventState,
   ) {
@@ -84,7 +85,13 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         child: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-          child: _adaptivePrimary(context, controller, connection, eventState),
+          child: _adaptivePrimary(
+            context,
+            controller,
+            homeState,
+            connection,
+            eventState,
+          ),
         ),
       ),
     );
@@ -93,16 +100,17 @@ class HomePage extends StatelessWidget {
   Widget _adaptivePrimary(
     BuildContext context,
     HomeController controller,
+    HomePageState homeState,
     HomeConnectionViewPageState connection,
     AppEventBusState eventState,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _adaptiveHeader(context, controller, eventState),
+        _adaptiveHeader(context, controller, homeState, eventState),
         _connectionSummary(context, controller, connection),
         Divider(height: 1, color: ColorManager.border(context)),
-        const Expanded(child: HomeNodePanel()),
+        Expanded(child: HomeNodePanel(showSearch: homeState.nodeSearchVisible)),
       ],
     );
   }
@@ -110,6 +118,7 @@ class HomePage extends StatelessWidget {
   Widget _adaptiveHeader(
     BuildContext context,
     HomeController controller,
+    HomePageState homeState,
     AppEventBusState eventState,
   ) {
     return Material(
@@ -132,7 +141,7 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
               ),
-              _searchButton(context),
+              _searchButton(controller, homeState),
               _rightButton(context, controller, eventState),
             ],
           ),
@@ -144,6 +153,7 @@ class HomePage extends StatelessWidget {
   Widget _body(
     BuildContext context,
     HomeController controller,
+    HomePageState homeState,
     HomeConnectionViewPageState connection,
   ) {
     return DefaultTextStyle.merge(
@@ -153,7 +163,9 @@ class HomePage extends StatelessWidget {
         children: [
           _connectionSummary(context, controller, connection),
           Divider(height: 1, color: ColorManager.border(context)),
-          const Expanded(child: HomeNodePanel()),
+          Expanded(
+            child: HomeNodePanel(showSearch: homeState.nodeSearchVisible),
+          ),
         ],
       ),
     );
@@ -164,31 +176,15 @@ class HomePage extends StatelessWidget {
     HomeController controller,
     HomeConnectionViewPageState connection,
   ) {
-    return BlocBuilder<HomeNodeController, HomeNodePageState>(
-      buildWhen: (previous, current) =>
-          previous.xrayProfileName != current.xrayProfileName,
-      builder: (context, nodeState) {
-        final nodeController = context.read<HomeNodeController>();
-        return HomeConnectionSummary(
-          connection: connection,
-          xrayProfileName: nodeState.xrayProfileName,
-          onToggleConnection: () => controller.startVpn(context),
-          onShowNodeInfo: () => controller.gotoNodeInfo(context),
-          onShowXrayProfile: () => nodeController.gotoXrayProfile(context),
-        );
-      },
+    final xrayProfileName = context.select<HomeController, String>(
+      (controller) => controller.state.xrayProfileName,
     );
-  }
-
-  Widget _searchButton(BuildContext context) {
-    return BlocBuilder<HomeNodeController, HomeNodePageState>(
-      buildWhen: (previous, current) => previous.searching != current.searching,
-      builder: (context, child) {
-        return IconButton(
-          onPressed: () => context.read<HomeNodeController>().toggleSearch(),
-          icon: Icon(child.searching ? Icons.close : Icons.search),
-        );
-      },
+    return HomeConnectionSummary(
+      connection: connection,
+      xrayProfileName: xrayProfileName,
+      onToggleConnection: () => controller.startVpn(context),
+      onShowNodeInfo: () => controller.gotoNodeInfo(context),
+      onShowXrayProfile: () => controller.gotoXrayProfile(context),
     );
   }
 
@@ -204,6 +200,13 @@ class HomePage extends StatelessWidget {
         onSelected: (action) => controller.addMenuAction(context, action),
       );
     }
+  }
+
+  Widget _searchButton(HomeController controller, HomePageState homeState) {
+    return IconButton(
+      onPressed: controller.toggleNodeSearch,
+      icon: Icon(homeState.nodeSearchVisible ? Icons.close : Icons.search),
+    );
   }
 }
 
@@ -263,13 +266,24 @@ class HomeAddMenuButton extends StatelessWidget {
 }
 
 class HomeNodePanel extends StatelessWidget {
-  const HomeNodePanel({super.key});
+  const HomeNodePanel({super.key, required this.showSearch});
+
+  final bool showSearch;
 
   @override
   Widget build(BuildContext context) {
+    final selectedId = context.select<HomeController, int>(
+      (controller) => controller.state.configId,
+    );
     return Material(
       color: ColorManager.surface(context),
-      child: const HomeNodeView(),
+      child: HomeNodeView(
+        queryType: HomeNodeQueryType.homeNodes,
+        showSearch: showSearch,
+        selectedId: selectedId,
+        onSelect: (config) =>
+            context.read<HomeController>().updateConfigId(context, config.id),
+      ),
     );
   }
 }

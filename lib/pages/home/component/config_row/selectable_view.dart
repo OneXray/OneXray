@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/pages/home/component/config_row/enum.dart';
 import 'package:onexray/pages/home/component/config_row/view.dart';
-import 'package:onexray/pages/home/home/controller.dart';
+import 'package:onexray/pages/home/main/controller.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
