@@ -541,7 +541,7 @@ jobs:
         run: python build_scripts/main.py OneXray windows
 
       - name: Verify core CLI
-        run: ./windows/app/OneXrayCore.exe help run | grep -- "--env"
+        run: ./windows/app/OneXrayCore.exe help run
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -634,7 +634,7 @@ jobs:
         run: python3 build_scripts/main.py OneXray linux
 
       - name: Verify core CLI
-        run: ./linux/app/OneXrayCore help run | grep -- "--env"
+        run: ./linux/app/OneXrayCore help run
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

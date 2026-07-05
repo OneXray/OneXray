@@ -49,12 +49,16 @@ class XrayRawFix {
 
   static void fixEnv(Map<String, dynamic> jsonMap) {
     final current = jsonMap["env"];
-    final env = current is Map<String, dynamic>
-        ? XrayEnv.fromJson(current)
-        : XrayEnv();
-    env.assetLocation = VpnConstants.datDir;
-    env.certLocation = VpnConstants.datDir;
-    jsonMap["env"] = env.toJson();
+    final env = current is Map
+        ? Map<String, dynamic>.from(current)
+        : <String, dynamic>{};
+    env.addAll(
+      XrayEnv(
+        assetLocation: VpnConstants.datDir,
+        certLocation: VpnConstants.datDir,
+      ).toJson(),
+    );
+    jsonMap["env"] = env;
   }
 
   static void _removeConfigInterface(Map<String, dynamic> jsonMap) {

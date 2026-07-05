@@ -96,11 +96,23 @@ class XrayFullConfigController extends Cubit<XrayFullConfigPageState> {
       AppSecondaryDestination.xrayRawEdit,
       extra: params,
     );
-    if (newText != null) {
-      final state = XrayFullConfigState();
-      state.readFromText(newText);
-      _updateState(state);
+    if (newText == null) {
+      return;
     }
+    final state = XrayFullConfigState();
+    try {
+      state.readFromText(newText);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.validationJsonInvalid,
+      );
+      return;
+    }
+    _updateState(state);
   }
 
   Future<void> editOutbounds(BuildContext context) async {
