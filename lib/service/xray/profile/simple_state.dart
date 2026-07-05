@@ -55,6 +55,7 @@ class SimpleRouting {
   var localDirect = true;
   var enableIPRule = true;
   var localDns = true;
+  var blockAds = false;
 
   void readFromModel(XrayProfileSimpleModel model) {
     if (model.routing == null) {
@@ -94,6 +95,9 @@ class SimpleRouting {
     if (routing.localDns != null) {
       localDns = routing.localDns!;
     }
+    if (routing.blockAds != null) {
+      blockAds = routing.blockAds!;
+    }
   }
 
   SimpleRoutingModel get model => SimpleRoutingModel(
@@ -104,6 +108,7 @@ class SimpleRouting {
     localDirect,
     enableIPRule,
     localDns,
+    blockAds,
   );
 }
 

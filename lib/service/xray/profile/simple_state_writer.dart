@@ -43,6 +43,9 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
       rule.ruleTag = RoutingRuleTag.localDnsDirect;
       rules.add(rule);
     }
+    if (routing.blockAds) {
+      rules.add(_adBlockRule());
+    }
     if (domain.isNotEmpty) {
       final rule = RoutingRuleState();
       rule.domain = domain;
@@ -70,6 +73,14 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
     rule.inboundTag = <String>{DNSServerTag.defaultDns};
     rule.outboundTag = RoutingOutboundTag.proxy.name;
     rule.ruleTag = RoutingRuleTag.defaultDnsProxy;
+    return rule;
+  }
+
+  RoutingRuleState _adBlockRule() {
+    final rule = RoutingRuleState();
+    rule.domain = ["geosite:CATEGORY-ADS-ALL"];
+    rule.outboundTag = RoutingOutboundTag.block.name;
+    rule.ruleTag = RoutingRuleTag.adBlock;
     return rule;
   }
 

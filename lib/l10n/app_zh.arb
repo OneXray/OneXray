@@ -131,6 +131,7 @@
   "xrayProfileSimplePageDirectSet": "直连域名集",
   "xrayProfileSimplePageAppleDirect": "苹果直连",
   "xrayProfileSimplePageLocalDirect": "局域网直连",
+  "xrayProfileSimplePageBlockAds": "屏蔽广告",
   "xrayProfileSimplePageEnableIPRule": "开启 IP 规则",
   "xrayProfileSimplePageLocalDns": "本地 DNS",
   "xrayProfileSimplePageFakeDns": "FakeDNS",

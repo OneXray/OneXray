@@ -95,6 +95,7 @@ class XrayProfileSimplePage extends StatelessWidget {
         _directSet(context, controller, state),
         _appleDirect(context, controller, state),
         _localDirect(context, controller, state),
+        _blockAds(context, controller, state),
         _enableIPRule(context, controller, state),
         _localDns(context, controller, state),
       ],
@@ -217,6 +218,18 @@ class XrayProfileSimplePage extends StatelessWidget {
       title: AppLocalizations.of(context)!.xrayProfileSimplePageEnableIPRule,
       value: state.xrayProfile.routing.enableIPRule,
       onChanged: (value) => controller.updateEnableIPRule(value),
+    );
+  }
+
+  Widget _blockAds(
+    BuildContext context,
+    XrayProfileSimpleController controller,
+    XrayProfileSimplePageState state,
+  ) {
+    return SwitchSettingRow(
+      title: AppLocalizations.of(context)!.xrayProfileSimplePageBlockAds,
+      value: state.xrayProfile.routing.blockAds,
+      onChanged: (value) => controller.updateBlockAds(value),
     );
   }
 

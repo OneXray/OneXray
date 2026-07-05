@@ -14,6 +14,7 @@ abstract final class RoutingRuleTag {
   static const ping = "ping";
   static const localDnsDirect = "localDnsDirect";
   static const defaultDnsProxy = "defaultDnsProxy";
+  static const adBlock = "adBlock";
   static const domainDirect = "domainDirect";
   static const ipDirect = "IPDirect";
 }

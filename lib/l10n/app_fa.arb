@@ -131,6 +131,7 @@
     "xrayProfileSimplePageDirectSet": "مجموعه قوانین مستقیم دامنه",
     "xrayProfileSimplePageAppleDirect": "اپل مستقیم",
     "xrayProfileSimplePageLocalDirect": "شبکه محلی مستقیم",
+    "xrayProfileSimplePageBlockAds": "مسدودسازی تبلیغات",
     "xrayProfileSimplePageEnableIPRule": "فعال‌سازی قانون IP",
     "xrayProfileSimplePageLocalDns": "DNS محلی",
     "xrayProfileSimplePageFakeDns": "FakeDNS",

@@ -131,6 +131,7 @@
   "xrayProfileSimplePageDirectSet": "Direct Domain Rule Set",
   "xrayProfileSimplePageAppleDirect": "Apple Direct",
   "xrayProfileSimplePageLocalDirect": "Local Network Direct",
+  "xrayProfileSimplePageBlockAds": "Block Ads",
   "xrayProfileSimplePageEnableIPRule": "Enable IP Rule",
   "xrayProfileSimplePageLocalDns": "Local DNS",
   "xrayProfileSimplePageFakeDns": "FakeDNS",

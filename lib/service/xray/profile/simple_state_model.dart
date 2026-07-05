@@ -33,6 +33,7 @@ class SimpleRoutingModel {
   bool? localDirect;
   bool? enableIPRule;
   bool? localDns;
+  bool? blockAds;
 
   SimpleRoutingModel(
     this.domainStrategy,
@@ -42,6 +43,7 @@ class SimpleRoutingModel {
     this.localDirect,
     this.enableIPRule,
     this.localDns,
+    this.blockAds,
   );
 
   factory SimpleRoutingModel.fromJson(Map<String, dynamic> json) =>

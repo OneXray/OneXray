@@ -37,6 +37,7 @@ SimpleRoutingModel _$SimpleRoutingModelFromJson(Map<String, dynamic> json) =>
       json['localDirect'] as bool?,
       json['enableIPRule'] as bool?,
       json['localDns'] as bool?,
+      json['blockAds'] as bool?,
     );
 
 Map<String, dynamic> _$SimpleRoutingModelToJson(SimpleRoutingModel instance) =>
@@ -48,4 +49,5 @@ Map<String, dynamic> _$SimpleRoutingModelToJson(SimpleRoutingModel instance) =>
       'localDirect': ?instance.localDirect,
       'enableIPRule': ?instance.enableIPRule,
       'localDns': ?instance.localDns,
+      'blockAds': ?instance.blockAds,
     };

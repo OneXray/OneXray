@@ -123,6 +123,11 @@ class XrayProfileSimpleController extends Cubit<XrayProfileSimplePageState> {
     emit(state.bumped());
   }
 
+  void updateBlockAds(bool value) {
+    state.xrayProfile.routing.blockAds = value;
+    emit(state.bumped());
+  }
+
   Future<void> updateDnsId(int? id) async {
     if (id != null) {
       final dnsId = SimpleDns.fromInt(id);

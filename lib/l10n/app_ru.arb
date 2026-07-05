@@ -131,6 +131,7 @@
   "xrayProfileSimplePageDirectSet": "Прямые",
   "xrayProfileSimplePageAppleDirect": "Apple",
   "xrayProfileSimplePageLocalDirect": "LAN",
+  "xrayProfileSimplePageBlockAds": "Блокировать рекламу",
   "xrayProfileSimplePageEnableIPRule": "IP правила",
   "xrayProfileSimplePageLocalDns": "Лок DNS",
   "xrayProfileSimplePageFakeDns": "FakeDNS",
