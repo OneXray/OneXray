@@ -49,7 +49,7 @@ class LinuxFfiApi extends BaseFfiApi {
     }
   }
 
-  var _coreProcess = 0;
+  Process? _coreProcess;
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
@@ -64,7 +64,8 @@ class LinuxFfiApi extends BaseFfiApi {
       ygLogger("Running command: ${command.join(" ")}");
       final process = await _processManager.start(command);
       _bindProcess(process);
-      _coreProcess = process.pid;
+      _coreProcess = process;
+      _trackProcess(process);
     } catch (e) {
       ygLogger("start core failed: $e");
       return false;
@@ -72,15 +73,30 @@ class LinuxFfiApi extends BaseFfiApi {
 
     await Future.delayed(Duration(seconds: 1));
 
-    return true;
+    return proxyCoreRunning();
+  }
+
+  Future<bool> startProxyCore(String configPath) async {
+    await _killAll();
+    return startCore(LibXrayRunConfig(RunXrayRequest(configPath)));
   }
 
   @override
   void stopCore() {
-    if (_coreProcess != 0) {
-      _processManager.killPid(_coreProcess);
-      _coreProcess = 0;
+    final process = _coreProcess;
+    if (process != null) {
+      process.kill();
+      _coreProcess = null;
     }
+  }
+
+  String stopProxyCore() {
+    stopCore();
+    return "";
+  }
+
+  bool proxyCoreRunning() {
+    return _coreProcess != null;
   }
 
   String get corePath {
@@ -97,12 +113,24 @@ class LinuxFfiApi extends BaseFfiApi {
     }
   }
 
-  void _bindProcess(Process p) {
-    if (!kReleaseMode) {
-      p.stdout.listen((data) {
-        final text = utf8.decode(data);
-        ygLogger(text);
-      });
-    }
+  void _bindProcess(Process process) {
+    process.stdout.listen((data) {
+      if (!kReleaseMode) {
+        ygLogger(utf8.decode(data));
+      }
+    });
+    process.stderr.listen((data) {
+      if (!kReleaseMode) {
+        ygLogger(utf8.decode(data));
+      }
+    });
+  }
+
+  void _trackProcess(Process process) {
+    process.exitCode.then((_) {
+      if (identical(_coreProcess, process)) {
+        _coreProcess = null;
+      }
+    });
   }
 }

@@ -233,6 +233,15 @@ class AppHostApi {
   }
 
   Future<String> runXray(String configPath) async {
+    if (AppPlatform.isLinux) {
+      return await _runDesktopProxyCore(
+        () => LinuxFfiApi().startProxyCore(configPath),
+      );
+    } else if (AppPlatform.isWindows) {
+      return await _runDesktopProxyCore(
+        () => WindowsFfiApi().startProxyCore(configPath),
+      );
+    }
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
@@ -254,7 +263,22 @@ class AppHostApi {
     return _errorResult;
   }
 
+  Future<String> _runDesktopProxyCore(Future<bool> Function() start) async {
+    try {
+      final started = await start();
+      return started ? "" : _errorResult;
+    } catch (e) {
+      ygLogger("run desktop proxy core error: $e");
+      return _errorResult;
+    }
+  }
+
   Future<String> stopXray() async {
+    if (AppPlatform.isLinux) {
+      return LinuxFfiApi().stopProxyCore();
+    } else if (AppPlatform.isWindows) {
+      return WindowsFfiApi().stopProxyCore();
+    }
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.stopXray),
@@ -274,6 +298,11 @@ class AppHostApi {
   }
 
   Future<bool> getXrayState() async {
+    if (AppPlatform.isLinux) {
+      return LinuxFfiApi().proxyCoreRunning();
+    } else if (AppPlatform.isWindows) {
+      return WindowsFfiApi().proxyCoreRunning();
+    }
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.getXrayState),
