@@ -218,7 +218,11 @@ class InboundPingState {
 }
 
 class InboundSocksState {
-  final listen = NetConstants.proxyHost;
+  static const allInterfacesListen = "";
+  static final localListen = NetConstants.proxyHost;
+  static final listenValues = <String>[allInterfacesListen, localListen];
+
+  var listen = localListen;
   final protocol = XrayInboundProtocol.socks;
   final tag = RoutingInboundTag.socksIn;
   final defaultPort = "11024";
@@ -228,6 +232,7 @@ class InboundSocksState {
   var pass = "";
 
   void removeWhitespace() {
+    listen = listen.removeWhitespace;
     port = port.removeWhitespace;
     user = user.removeWhitespace;
     pass = pass.removeWhitespace;
@@ -241,6 +246,7 @@ class InboundSocksState {
     if (EmptyTool.checkString(inbound.port)) {
       port = inbound.port!;
     }
+    listen = inbound.listen == localListen ? localListen : allInterfacesListen;
     final settings = inbound.settings;
     if (settings == null) {
       return;
@@ -278,7 +284,9 @@ class InboundSocksState {
 
   XrayInbound get xrayJson {
     final inbound = XrayInboundStandard.standard;
-    inbound.listen = listen;
+    if (listen == localListen) {
+      inbound.listen = listen;
+    }
     inbound.port = port.isEmpty ? defaultPort : port;
     inbound.protocol = protocol.name;
     inbound.tag = tag.name;
@@ -292,7 +300,11 @@ class InboundSocksState {
 }
 
 class InboundHttpState {
-  final listen = NetConstants.proxyHost;
+  static const allInterfacesListen = "";
+  static final localListen = NetConstants.proxyHost;
+  static final listenValues = <String>[allInterfacesListen, localListen];
+
+  var listen = localListen;
   final protocol = XrayInboundProtocol.http;
   final tag = RoutingInboundTag.httpIn;
   final defaultPort = "11025";
@@ -301,6 +313,7 @@ class InboundHttpState {
   var pass = "";
 
   void removeWhitespace() {
+    listen = listen.removeWhitespace;
     port = port.removeWhitespace;
     user = user.removeWhitespace;
     pass = pass.removeWhitespace;
@@ -314,6 +327,7 @@ class InboundHttpState {
     if (EmptyTool.checkString(inbound.port)) {
       port = inbound.port!;
     }
+    listen = inbound.listen == localListen ? localListen : allInterfacesListen;
     final settings = inbound.settings;
     if (settings == null) {
       return;
@@ -351,7 +365,9 @@ class InboundHttpState {
 
   XrayInbound get xrayJson {
     final inbound = XrayInboundStandard.standard;
-    inbound.listen = listen;
+    if (listen == localListen) {
+      inbound.listen = listen;
+    }
     inbound.port = port.isEmpty ? defaultPort : port;
     inbound.protocol = protocol.name;
     inbound.tag = tag.name;

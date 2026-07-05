@@ -292,6 +292,8 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
   final String value;
   final List<T> selections;
   final ValueChanged<T> onSelected;
+  final String Function(T selection)? titleBuilder;
+  final String? displayValue;
 
   const SelectSettingRow({
     super.key,
@@ -299,6 +301,8 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
     required this.value,
     required this.selections,
     required this.onSelected,
+    this.titleBuilder,
+    this.displayValue,
   });
 
   @override
@@ -308,8 +312,10 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
       trailing: AppMenuButton<T>(
         entries: selections
             .map(
-              (selection) =>
-                  AppMenuEntry<T>.item(value: selection, title: "$selection"),
+              (selection) => AppMenuEntry<T>.item(
+                value: selection,
+                title: titleBuilder?.call(selection) ?? "$selection",
+              ),
             )
             .toList(),
         onSelected: onSelected,
@@ -319,7 +325,7 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
             vertical: 8,
           ),
           child: Text(
-            value.isEmpty ? "-" : value,
+            displayValue ?? (value.isEmpty ? "-" : value),
             style: TextStyle(
               color: ColorManager.interactiveText(context),
               fontWeight: FontWeight.bold,

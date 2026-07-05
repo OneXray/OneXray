@@ -10,6 +10,7 @@ import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
+import 'package:onexray/service/xray/profile/simple_state_writer.dart';
 
 class XrayProfileSimplePage extends StatelessWidget {
   const XrayProfileSimplePage({super.key});
@@ -51,6 +52,7 @@ class XrayProfileSimplePage extends StatelessWidget {
                   children: [
                     _logSection(context, controller, state),
                     _chainProxySection(context, controller, state),
+                    _proxySection(context, state),
                     _routingSection(context, controller, state),
                     _fakeDnsSection(context, controller, state),
                     _dnsSection(context, controller, state),
@@ -80,6 +82,38 @@ class XrayProfileSimplePage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _proxySection(BuildContext context, XrayProfileSimplePageState state) {
+    final inbounds = state.xrayProfile.xrayProfileState.inbounds;
+    return SettingSection(
+      title: AppLocalizations.of(context)!.xrayProfileSimplePageProxy,
+      children: [
+        SettingRow(
+          title: inbounds.socks.tag.name,
+          value: _proxyListenPort(
+            context,
+            inbounds.socks.listen,
+            inbounds.socks.port,
+          ),
+        ),
+        SettingRow(
+          title: inbounds.http.tag.name,
+          value: _proxyListenPort(
+            context,
+            inbounds.http.listen,
+            inbounds.http.port,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _proxyListenPort(BuildContext context, String listen, String port) {
+    final listenText = listen.isEmpty
+        ? AppLocalizations.of(context)!.inboundProxyPageAllInterfaces
+        : listen;
+    return "$listenText:$port";
   }
 
   Widget _routingSection(

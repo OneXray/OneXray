@@ -34,6 +34,11 @@ class InboundHttpController extends Cubit<InboundHttpPageState> {
     emit(InboundHttpPageState(httpState: state));
   }
 
+  void updateListen(String value) {
+    state.httpState.listen = value;
+    emit(InboundHttpPageState(httpState: state.httpState));
+  }
+
   void save(BuildContext context) {
     final port = portController.text.trim();
     final portValue = int.tryParse(port);

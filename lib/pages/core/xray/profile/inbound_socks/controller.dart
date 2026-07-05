@@ -34,6 +34,11 @@ class InboundSocksController extends Cubit<InboundSocksPageState> {
     emit(InboundSocksPageState(socksState: state));
   }
 
+  void updateListen(String value) {
+    state.socksState.listen = value;
+    emit(InboundSocksPageState(socksState: state.socksState));
+  }
+
   void save(BuildContext context) {
     final port = portController.text.trim();
     final portValue = int.tryParse(port);

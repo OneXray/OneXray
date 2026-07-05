@@ -8,6 +8,7 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/service/xray/profile/inbounds_state.dart';
 
 class InboundSocksPage extends StatelessWidget {
   final InboundSocksParams params;
@@ -69,9 +70,13 @@ class InboundSocksPage extends StatelessWidget {
     return SettingSection(
       title: "",
       children: [
-        SettingRow(
+        SelectSettingRow<String>(
           title: localizations.inboundProxyPageListen,
           value: state.socksState.listen,
+          displayValue: _listenDisplay(context, state.socksState.listen),
+          selections: InboundSocksState.listenValues,
+          titleBuilder: (value) => _listenDisplay(context, value),
+          onSelected: (value) => controller.updateListen(value),
         ),
         TextFieldSettingRow(
           controller: controller.portController,
@@ -88,6 +93,13 @@ class InboundSocksPage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _listenDisplay(BuildContext context, String listen) {
+    if (listen.isEmpty) {
+      return AppLocalizations.of(context)!.inboundProxyPageAllInterfaces;
+    }
+    return listen;
   }
 
   Widget _authSection(BuildContext context, InboundSocksController controller) {
