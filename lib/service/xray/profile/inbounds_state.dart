@@ -223,6 +223,9 @@ class InboundSocksState {
   static const _localhostListen = "localhost";
   static const _ipv6LoopbackListen = "::1";
   static const _bracketedIpv6LoopbackListen = "[::1]";
+  static const _ipv4AllInterfacesListen = "0.0.0.0";
+  static const _ipv6AllInterfacesListen = "::";
+  static const _bracketedIpv6AllInterfacesListen = "[::]";
   static final listenValues = <String>[allInterfacesListen, localListen];
 
   var listen = localListen;
@@ -292,8 +295,11 @@ class InboundSocksState {
   }
 
   String _normalizeListen(String? value) {
-    final listen = value?.removeWhitespace ?? "";
-    if (listen.isEmpty) {
+    final listen = (value?.removeWhitespace ?? "").toLowerCase();
+    if (listen.isEmpty ||
+        listen == _ipv4AllInterfacesListen ||
+        listen == _ipv6AllInterfacesListen ||
+        listen == _bracketedIpv6AllInterfacesListen) {
       return allInterfacesListen;
     }
     if (listen == localListen ||
@@ -330,6 +336,9 @@ class InboundHttpState {
   static const _localhostListen = "localhost";
   static const _ipv6LoopbackListen = "::1";
   static const _bracketedIpv6LoopbackListen = "[::1]";
+  static const _ipv4AllInterfacesListen = "0.0.0.0";
+  static const _ipv6AllInterfacesListen = "::";
+  static const _bracketedIpv6AllInterfacesListen = "[::]";
   static final listenValues = <String>[allInterfacesListen, localListen];
 
   var listen = localListen;
@@ -398,8 +407,11 @@ class InboundHttpState {
   }
 
   String _normalizeListen(String? value) {
-    final listen = value?.removeWhitespace ?? "";
-    if (listen.isEmpty) {
+    final listen = (value?.removeWhitespace ?? "").toLowerCase();
+    if (listen.isEmpty ||
+        listen == _ipv4AllInterfacesListen ||
+        listen == _ipv6AllInterfacesListen ||
+        listen == _bracketedIpv6AllInterfacesListen) {
       return allInterfacesListen;
     }
     if (listen == localListen ||

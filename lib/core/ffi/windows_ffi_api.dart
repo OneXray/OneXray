@@ -61,12 +61,19 @@ class WindowsFfiApi extends BaseFfiApi {
   }
 
   String stopProxyCore() {
-    _stopProcess(label: "proxy core");
+    if (_processHandle == null) {
+      _killExistingCoreProcessesSync();
+    } else {
+      _stopProcess(label: "proxy core");
+    }
     return "";
   }
 
   bool proxyCoreRunning() {
-    return _processRunning(label: "proxy core");
+    if (_processRunning(label: "proxy core")) {
+      return true;
+    }
+    return _existingCoreProcessRunning();
   }
 
   String get corePath {
@@ -139,11 +146,46 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<void> _killExistingCoreProcesses() async {
     try {
       final result = await Process.run("taskkill", ["/F", "/IM", _coreExe]);
-      if (result.exitCode == 0) {
-        ygLogger("Killed existing $_coreExe processes");
-      }
+      _logKillExistingCoreProcessesResult(result);
     } catch (e) {
       ygLogger("kill existing core processes failed: $e");
+    }
+  }
+
+  void _killExistingCoreProcessesSync() {
+    try {
+      final result = Process.runSync("taskkill", ["/F", "/IM", _coreExe]);
+      _logKillExistingCoreProcessesResult(result);
+    } catch (e) {
+      ygLogger("kill existing core processes failed: $e");
+    }
+  }
+
+  void _logKillExistingCoreProcessesResult(ProcessResult result) {
+    if (result.exitCode == 0) {
+      ygLogger("Killed existing $_coreExe processes");
+    }
+  }
+
+  bool _existingCoreProcessRunning() {
+    try {
+      final result = Process.runSync("tasklist", [
+        "/FI",
+        "IMAGENAME eq $_coreExe",
+        "/NH",
+      ]);
+      if (result.exitCode != 0) {
+        return false;
+      }
+      final output = result.stdout.toString().toLowerCase();
+      final coreExe = _coreExe.toLowerCase();
+      return output
+          .split("\n")
+          .map((line) => line.trim())
+          .any((line) => line.startsWith(coreExe));
+    } catch (e) {
+      ygLogger("check existing core process failed: $e");
+      return false;
     }
   }
 
