@@ -45,6 +45,7 @@ class WindowsFfiApi extends BaseFfiApi {
       return false;
     }
 
+    await _killExistingCoreProcesses();
     return _startCoreProcess(
       label: "proxy core",
       verb: "open",
@@ -133,6 +134,17 @@ class WindowsFfiApi extends BaseFfiApi {
 
   String _buildRunParameters(String configPath) {
     return <String>["run", "-config", _quoteArg(configPath)].join(" ");
+  }
+
+  Future<void> _killExistingCoreProcesses() async {
+    try {
+      final result = await Process.run("taskkill", ["/F", "/IM", _coreExe]);
+      if (result.exitCode == 0) {
+        ygLogger("Killed existing $_coreExe processes");
+      }
+    } catch (e) {
+      ygLogger("kill existing core processes failed: $e");
+    }
   }
 
   void _stopProcess({required String label}) {

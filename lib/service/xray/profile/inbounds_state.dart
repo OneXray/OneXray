@@ -220,6 +220,9 @@ class InboundPingState {
 class InboundSocksState {
   static const allInterfacesListen = "";
   static final localListen = NetConstants.proxyHost;
+  static const _localhostListen = "localhost";
+  static const _ipv6LoopbackListen = "::1";
+  static const _bracketedIpv6LoopbackListen = "[::1]";
   static final listenValues = <String>[allInterfacesListen, localListen];
 
   var listen = localListen;
@@ -230,6 +233,14 @@ class InboundSocksState {
   final udp = true;
   var user = "";
   var pass = "";
+
+  InboundSocksState copy() {
+    return InboundSocksState()
+      ..listen = listen
+      ..port = port
+      ..user = user
+      ..pass = pass;
+  }
 
   void removeWhitespace() {
     listen = listen.removeWhitespace;
@@ -246,7 +257,7 @@ class InboundSocksState {
     if (EmptyTool.checkString(inbound.port)) {
       port = inbound.port!;
     }
-    listen = inbound.listen == localListen ? localListen : allInterfacesListen;
+    listen = _normalizeListen(inbound.listen);
     final settings = inbound.settings;
     if (settings == null) {
       return;
@@ -280,6 +291,20 @@ class InboundSocksState {
     }
   }
 
+  String _normalizeListen(String? value) {
+    final listen = value?.removeWhitespace ?? "";
+    if (listen.isEmpty) {
+      return allInterfacesListen;
+    }
+    if (listen == localListen ||
+        listen == _localhostListen ||
+        listen == _ipv6LoopbackListen ||
+        listen == _bracketedIpv6LoopbackListen) {
+      return localListen;
+    }
+    return localListen;
+  }
+
   bool get authEnabled => user.isNotEmpty || pass.isNotEmpty;
 
   XrayInbound get xrayJson {
@@ -302,6 +327,9 @@ class InboundSocksState {
 class InboundHttpState {
   static const allInterfacesListen = "";
   static final localListen = NetConstants.proxyHost;
+  static const _localhostListen = "localhost";
+  static const _ipv6LoopbackListen = "::1";
+  static const _bracketedIpv6LoopbackListen = "[::1]";
   static final listenValues = <String>[allInterfacesListen, localListen];
 
   var listen = localListen;
@@ -311,6 +339,14 @@ class InboundHttpState {
   var port = "11025";
   var user = "";
   var pass = "";
+
+  InboundHttpState copy() {
+    return InboundHttpState()
+      ..listen = listen
+      ..port = port
+      ..user = user
+      ..pass = pass;
+  }
 
   void removeWhitespace() {
     listen = listen.removeWhitespace;
@@ -327,7 +363,7 @@ class InboundHttpState {
     if (EmptyTool.checkString(inbound.port)) {
       port = inbound.port!;
     }
-    listen = inbound.listen == localListen ? localListen : allInterfacesListen;
+    listen = _normalizeListen(inbound.listen);
     final settings = inbound.settings;
     if (settings == null) {
       return;
@@ -359,6 +395,20 @@ class InboundHttpState {
     if (account.pass != null) {
       pass = account.pass!;
     }
+  }
+
+  String _normalizeListen(String? value) {
+    final listen = value?.removeWhitespace ?? "";
+    if (listen.isEmpty) {
+      return allInterfacesListen;
+    }
+    if (listen == localListen ||
+        listen == _localhostListen ||
+        listen == _ipv6LoopbackListen ||
+        listen == _bracketedIpv6LoopbackListen) {
+      return localListen;
+    }
+    return localListen;
   }
 
   bool get authEnabled => user.isNotEmpty || pass.isNotEmpty;

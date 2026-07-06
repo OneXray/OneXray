@@ -27,11 +27,11 @@ class InboundSocksController extends Cubit<InboundSocksPageState> {
   final passController = TextEditingController();
 
   void _initParams() {
-    final state = params.state;
-    portController.text = state.port;
-    userController.text = state.user;
-    passController.text = state.pass;
-    emit(InboundSocksPageState(socksState: state));
+    final socksState = params.state.copy();
+    portController.text = socksState.port;
+    userController.text = socksState.user;
+    passController.text = socksState.pass;
+    emit(InboundSocksPageState(socksState: socksState));
   }
 
   void updateListen(String value) {

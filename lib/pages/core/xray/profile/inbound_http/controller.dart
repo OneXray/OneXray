@@ -27,11 +27,11 @@ class InboundHttpController extends Cubit<InboundHttpPageState> {
   final passController = TextEditingController();
 
   void _initParams() {
-    final state = params.state;
-    portController.text = state.port;
-    userController.text = state.user;
-    passController.text = state.pass;
-    emit(InboundHttpPageState(httpState: state));
+    final httpState = params.state.copy();
+    portController.text = httpState.port;
+    userController.text = httpState.user;
+    passController.text = httpState.pass;
+    emit(InboundHttpPageState(httpState: httpState));
   }
 
   void updateListen(String value) {
