@@ -540,7 +540,10 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
       eventBus.updatePinging(true);
       final pingState = PingState();
       await pingState.readFromPreferences();
-      final res = await state.outboundState.ping(pingState);
+      final res = await state.outboundState.ping(
+        pingState,
+        fallbackDelay: PingDelayConstants.error,
+      );
       eventBus.updatePinging(false);
       if (context.mounted) {
         await ContextAlert.showPingResultDialog(context, res);

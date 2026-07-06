@@ -13,10 +13,13 @@ import 'package:onexray/service/xray/raw/fix.dart';
 import 'package:onexray/service/xray/raw/writer.dart';
 
 extension XrayFullConfigStatePing on XrayFullConfigState {
-  Future<int> ping(PingState pingState) async {
+  Future<int> ping(
+    PingState pingState, {
+    int fallbackDelay = PingDelayConstants.unknown,
+  }) async {
     final ports = await XrayPorts.getPorts();
     if (ports == null) {
-      return PingDelayConstants.unknown;
+      return fallbackDelay;
     }
     final jsonMap = xrayJson.toJson();
     XrayRawFix.fixEnv(jsonMap);
@@ -35,12 +38,15 @@ extension XrayFullConfigStatePing on XrayFullConfigState {
 }
 
 extension XrayFullConfigDataPing on CoreConfigData {
-  Future<int> pingFullConfig(PingState pingState) async {
+  Future<int> pingFullConfig(
+    PingState pingState, {
+    int fallbackDelay = PingDelayConstants.unknown,
+  }) async {
     if (data == null || data!.isEmpty) {
-      return PingDelayConstants.unknown;
+      return fallbackDelay;
     }
     final state = XrayFullConfigState();
     state.readFromDbData(this);
-    return state.ping(pingState);
+    return state.ping(pingState, fallbackDelay: fallbackDelay);
   }
 }

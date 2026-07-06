@@ -133,7 +133,11 @@ class XrayRawController extends Cubit<int> {
       eventBus.updatePinging(true);
       final pingState = PingState();
       await pingState.readFromPreferences();
-      final res = await XrayRawPing.ping(rawText, pingState);
+      final res = await XrayRawPing.ping(
+        rawText,
+        pingState,
+        fallbackDelay: PingDelayConstants.error,
+      );
       eventBus.updatePinging(false);
       if (context.mounted) {
         await ContextAlert.showPingResultDialog(context, res);

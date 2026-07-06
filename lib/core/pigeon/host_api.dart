@@ -195,7 +195,7 @@ class AppHostApi {
       ygLogger(
         "ping result sucess:${resp.success} data:${resp.data} error:${resp.error}",
       );
-      if (resp.success == true && resp.data != null) {
+      if (resp.data != null) {
         final data = PingResponse.fromJson(resp.data!);
         if (data.delay != null) {
           ygLogger("ping delay: ${data.delay}");
@@ -205,7 +205,7 @@ class AppHostApi {
     } catch (e) {
       ygLogger("$e");
     }
-    return PingDelayConstants.unknown;
+    return PingDelayConstants.error;
   }
 
   Future<String> testXray(String configPath) async {
