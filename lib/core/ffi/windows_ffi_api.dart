@@ -215,6 +215,16 @@ class WindowsFfiApi extends BaseFfiApi {
     }
 
     ygLogger("Stopping $label process with handle: $processHandle");
+    final currentWaitResult = WaitForSingleObject(processHandle, 0);
+    if (currentWaitResult.value != _waitTimeout) {
+      ygLogger(
+        "$label process already stopped. wait result: $currentWaitResult",
+      );
+      _closeProcessHandle(label, processHandle);
+      _processHandle = null;
+      return true;
+    }
+
     final terminateResult = TerminateProcess(processHandle, 0);
     if (terminateResult.value) {
       final waitResult = WaitForSingleObject(processHandle, 3000);
