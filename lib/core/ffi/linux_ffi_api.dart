@@ -16,11 +16,12 @@ class LinuxFfiApi extends BaseFfiApi {
   factory LinuxFfiApi() => _singleton;
 
   LinuxFfiApi._internal() {
-    _killAll();
+    unawaited(_killAll());
   }
 
   //===================================
   static const _coreBin = "OneXrayCore";
+  static const _stopProxyCoreFailed = "stop proxy core failed";
   final _processManager = LocalProcessManager();
 
   @override
@@ -29,24 +30,28 @@ class LinuxFfiApi extends BaseFfiApi {
     return super.startVpn();
   }
 
-  Future<void> _killAll() async {
+  Future<bool> _killAll() async {
+    var success = true;
     final names = <String>[_coreBin];
     for (final name in names) {
-      await _killProcesses(name);
+      success = await _killProcesses(name) && success;
     }
+    return success;
   }
 
-  Future<void> _killProcesses(String name) async {
+  Future<bool> _killProcesses(String name) async {
     final command = <String>["pgrep", name];
     final p = await _processManager.run(command);
     final String stdout = p.stdout;
     final processes = stdout.trim().split("\n");
+    var success = true;
     for (final process in processes) {
       final pid = int.tryParse(process);
       if (pid != null) {
-        _processManager.killPid(pid);
+        success = _processManager.killPid(pid) && success;
       }
     }
+    return success;
   }
 
   Process? _coreProcess;
@@ -90,13 +95,30 @@ class LinuxFfiApi extends BaseFfiApi {
     }
   }
 
-  String stopProxyCore() {
-    stopCore();
-    return "";
+  Future<String> stopProxyCore() async {
+    final stopped = await _stopProxyCore();
+    return stopped ? "" : _stopProxyCoreFailed;
   }
 
   bool proxyCoreRunning() {
     return _coreProcess != null;
+  }
+
+  Future<bool> _stopProxyCore() async {
+    final process = _coreProcess;
+    if (process == null) {
+      return _killAll();
+    }
+    if (!process.kill()) {
+      return false;
+    }
+    try {
+      await process.exitCode.timeout(Duration(seconds: 3));
+      _coreProcess = null;
+      return true;
+    } on TimeoutException {
+      return false;
+    }
   }
 
   String get corePath {

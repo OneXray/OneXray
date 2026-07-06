@@ -19,7 +19,9 @@ class WindowsFfiApi extends BaseFfiApi {
   //===================================
 
   static const _coreExe = "OneXrayCore.exe";
+  static const _waitObject0 = 0;
   static const _waitTimeout = 258;
+  static const _stopProxyCoreFailed = "stop proxy core failed";
 
   HANDLE? _processHandle;
 
@@ -45,13 +47,19 @@ class WindowsFfiApi extends BaseFfiApi {
       return false;
     }
 
-    await _killExistingCoreProcesses();
+    if (!await _killExistingCoreProcesses()) {
+      return false;
+    }
+    if (_existingCoreProcessRunning()) {
+      ygLogger("start proxy core failed: existing $_coreExe is still running");
+      return false;
+    }
     return _startCoreProcess(
       label: "proxy core",
       verb: "open",
       configPath: configPath,
       verifyRunning: true,
-      isRunning: proxyCoreRunning,
+      isRunning: () => _processRunning(label: "proxy core"),
     );
   }
 
@@ -60,13 +68,11 @@ class WindowsFfiApi extends BaseFfiApi {
     _stopProcess(label: "core");
   }
 
-  String stopProxyCore() {
-    if (_processHandle == null) {
-      _killExistingCoreProcessesSync();
-    } else {
-      _stopProcess(label: "proxy core");
-    }
-    return "";
+  Future<String> stopProxyCore() async {
+    final stopped = _processHandle == null
+        ? _killExistingCoreProcessesSync()
+        : _stopProcess(label: "proxy core");
+    return stopped ? "" : _stopProxyCoreFailed;
   }
 
   bool proxyCoreRunning() {
@@ -117,7 +123,9 @@ class WindowsFfiApi extends BaseFfiApi {
     required bool verifyRunning,
     bool Function()? isRunning,
   }) async {
-    _stopProcess(label: label);
+    if (!_stopProcess(label: label)) {
+      return false;
+    }
 
     try {
       final result = _runCommand(
@@ -143,28 +151,39 @@ class WindowsFfiApi extends BaseFfiApi {
     return <String>["run", "-config", _quoteArg(configPath)].join(" ");
   }
 
-  Future<void> _killExistingCoreProcesses() async {
+  Future<bool> _killExistingCoreProcesses() async {
     try {
       final result = await Process.run("taskkill", ["/F", "/IM", _coreExe]);
-      _logKillExistingCoreProcessesResult(result);
+      return _handleKillExistingCoreProcessesResult(result);
     } catch (e) {
       ygLogger("kill existing core processes failed: $e");
+      return !_existingCoreProcessRunning();
     }
   }
 
-  void _killExistingCoreProcessesSync() {
+  bool _killExistingCoreProcessesSync() {
     try {
       final result = Process.runSync("taskkill", ["/F", "/IM", _coreExe]);
-      _logKillExistingCoreProcessesResult(result);
+      return _handleKillExistingCoreProcessesResult(result);
     } catch (e) {
       ygLogger("kill existing core processes failed: $e");
+      return !_existingCoreProcessRunning();
     }
   }
 
-  void _logKillExistingCoreProcessesResult(ProcessResult result) {
+  bool _handleKillExistingCoreProcessesResult(ProcessResult result) {
     if (result.exitCode == 0) {
       ygLogger("Killed existing $_coreExe processes");
+      return true;
     }
+    if (!_existingCoreProcessRunning()) {
+      return true;
+    }
+    ygLogger(
+      "kill existing core processes failed. "
+      "exitCode=${result.exitCode} stderr=${result.stderr}",
+    );
+    return false;
   }
 
   bool _existingCoreProcessRunning() {
@@ -189,10 +208,10 @@ class WindowsFfiApi extends BaseFfiApi {
     }
   }
 
-  void _stopProcess({required String label}) {
+  bool _stopProcess({required String label}) {
     final processHandle = _processHandle;
     if (processHandle == null) {
-      return;
+      return true;
     }
 
     ygLogger("Stopping $label process with handle: $processHandle");
@@ -200,13 +219,18 @@ class WindowsFfiApi extends BaseFfiApi {
     if (terminateResult.value) {
       final waitResult = WaitForSingleObject(processHandle, 3000);
       ygLogger("$label process termination wait result: $waitResult");
+      if (waitResult.value != _waitObject0) {
+        return false;
+      }
     } else {
       final errorCode = GetLastError();
       ygLogger("Terminate $label process failed. errorCode=$errorCode");
+      return false;
     }
 
     _closeProcessHandle(label, processHandle);
     _processHandle = null;
+    return true;
   }
 
   bool _processRunning({required String label}) {

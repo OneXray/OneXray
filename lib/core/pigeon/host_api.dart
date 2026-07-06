@@ -275,9 +275,9 @@ class AppHostApi {
 
   Future<String> stopXray() async {
     if (AppPlatform.isLinux) {
-      return LinuxFfiApi().stopProxyCore();
+      return await LinuxFfiApi().stopProxyCore();
     } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().stopProxyCore();
+      return await WindowsFfiApi().stopProxyCore();
     }
     try {
       final res = await _invoke(
