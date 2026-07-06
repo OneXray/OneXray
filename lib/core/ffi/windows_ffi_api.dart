@@ -21,6 +21,7 @@ class WindowsFfiApi extends BaseFfiApi {
   static const _coreExe = "OneXrayCore.exe";
   static const _waitObject0 = 0;
   static const _waitTimeout = 258;
+  static const _waitFailed = 0xFFFFFFFF;
   static const _stopProxyCoreFailed = "stop proxy core failed";
 
   HANDLE? _processHandle;
@@ -216,13 +217,17 @@ class WindowsFfiApi extends BaseFfiApi {
 
     ygLogger("Stopping $label process with handle: $processHandle");
     final currentWaitResult = WaitForSingleObject(processHandle, 0);
-    if (currentWaitResult.value != _waitTimeout) {
+    if (currentWaitResult.value == _waitObject0) {
       ygLogger(
         "$label process already stopped. wait result: $currentWaitResult",
       );
       _closeProcessHandle(label, processHandle);
       _processHandle = null;
       return true;
+    }
+    if (currentWaitResult.value != _waitTimeout) {
+      _logWaitError(label, currentWaitResult.value);
+      return false;
     }
 
     final terminateResult = TerminateProcess(processHandle, 0);
@@ -253,10 +258,21 @@ class WindowsFfiApi extends BaseFfiApi {
     if (waitResult.value == _waitTimeout) {
       return true;
     }
+    if (waitResult.value != _waitObject0) {
+      _logWaitError(label, waitResult.value);
+      return true;
+    }
 
     _closeProcessHandle(label, processHandle);
     _processHandle = null;
     return false;
+  }
+
+  void _logWaitError(String label, int waitResult) {
+    final errorCode = waitResult == _waitFailed ? GetLastError() : null;
+    ygLogger(
+      "Wait $label process failed. waitResult=$waitResult errorCode=$errorCode",
+    );
   }
 
   void _closeProcessHandle(String label, HANDLE processHandle) {

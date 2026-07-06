@@ -292,6 +292,8 @@
   "inboundProxyPageTitle": "本地代理",
   "inboundProxyPageListen": "listen",
   "inboundProxyPageAllInterfaces": "所有接口",
+  "inboundProxyPageOpenProxyWarningTitle": "开放代理风险",
+  "inboundProxyPageOpenProxyWarningContent": "所有接口且未设置认证时，网络中的其他设备也可以访问此代理。是否继续？",
   "inboundProxyPagePort": "port",
   "inboundProxyPageProtocol": "protocol",
   "inboundProxyPageUdp": "udp",

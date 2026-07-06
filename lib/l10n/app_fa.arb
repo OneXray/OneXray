@@ -292,6 +292,8 @@
     "inboundProxyPageTitle": "Local Proxy",
     "inboundProxyPageListen": "listen",
     "inboundProxyPageAllInterfaces": "همه رابط‌ها",
+    "inboundProxyPageOpenProxyWarningTitle": "خطر پروکسی باز",
+    "inboundProxyPageOpenProxyWarningContent": "همه رابط‌ها بدون احراز هویت، این پروکسی را برای دستگاه‌های دیگر شبکه قابل دسترسی می‌کند. ادامه می‌دهید؟",
     "inboundProxyPagePort": "port",
     "inboundProxyPageProtocol": "protocol",
     "inboundProxyPageUdp": "udp",

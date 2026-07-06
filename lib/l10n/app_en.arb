@@ -292,6 +292,8 @@
   "inboundProxyPageTitle": "Local Proxy",
   "inboundProxyPageListen": "listen",
   "inboundProxyPageAllInterfaces": "All Interfaces",
+  "inboundProxyPageOpenProxyWarningTitle": "Open Proxy Risk",
+  "inboundProxyPageOpenProxyWarningContent": "All Interfaces without authentication exposes this proxy to other devices on the network. Continue?",
   "inboundProxyPagePort": "port",
   "inboundProxyPageProtocol": "protocol",
   "inboundProxyPageUdp": "udp",

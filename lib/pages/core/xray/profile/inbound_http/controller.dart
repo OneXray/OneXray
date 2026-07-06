@@ -39,7 +39,7 @@ class InboundHttpController extends Cubit<InboundHttpPageState> {
     emit(InboundHttpPageState(httpState: state.httpState));
   }
 
-  void save(BuildContext context) {
+  Future<void> save(BuildContext context) async {
     final port = portController.text.trim();
     final portValue = int.tryParse(port);
     if (portValue == null || portValue <= 0 || portValue > 65535) {
@@ -53,7 +53,39 @@ class InboundHttpController extends Cubit<InboundHttpPageState> {
     httpState.user = userController.text.trim();
     httpState.pass = passController.text.trim();
     httpState.removeWhitespace();
+    if (_needsOpenProxyConfirmation(httpState)) {
+      final confirmed = await _showOpenProxyDialog(context);
+      if (confirmed != true || !context.mounted) {
+        return;
+      }
+    }
     context.pop<InboundHttpState>(httpState);
+  }
+
+  bool _needsOpenProxyConfirmation(InboundHttpState httpState) {
+    return httpState.listen == InboundHttpState.allInterfacesListen &&
+        !httpState.authEnabled;
+  }
+
+  Future<bool?> _showOpenProxyDialog(BuildContext context) {
+    final localizations = appLocalizationsNoContext();
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(localizations.inboundProxyPageOpenProxyWarningTitle),
+        content: Text(localizations.inboundProxyPageOpenProxyWarningContent),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(localizations.buttonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(localizations.buttonOK),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

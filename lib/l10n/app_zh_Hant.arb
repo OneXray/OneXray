@@ -292,6 +292,8 @@
   "inboundProxyPageTitle": "本地代理",
   "inboundProxyPageListen": "listen",
   "inboundProxyPageAllInterfaces": "所有介面",
+  "inboundProxyPageOpenProxyWarningTitle": "開放代理風險",
+  "inboundProxyPageOpenProxyWarningContent": "所有介面且未設定認證時，網路中的其他裝置也可以存取此代理。是否繼續？",
   "inboundProxyPagePort": "port",
   "inboundProxyPageProtocol": "protocol",
   "inboundProxyPageUdp": "udp",

@@ -22,7 +22,6 @@ dependencies:
   go_router: ^17.3.0
   image_picker: ^1.2.3
   process: ^5.0.5
-  webview_flutter: ^4.14.0
 
   #---------- dart.dev plugin
   # core

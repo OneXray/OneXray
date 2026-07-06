@@ -39,7 +39,7 @@ class InboundSocksController extends Cubit<InboundSocksPageState> {
     emit(InboundSocksPageState(socksState: state.socksState));
   }
 
-  void save(BuildContext context) {
+  Future<void> save(BuildContext context) async {
     final port = portController.text.trim();
     final portValue = int.tryParse(port);
     if (portValue == null || portValue <= 0 || portValue > 65535) {
@@ -53,7 +53,39 @@ class InboundSocksController extends Cubit<InboundSocksPageState> {
     socksState.user = userController.text.trim();
     socksState.pass = passController.text.trim();
     socksState.removeWhitespace();
+    if (_needsOpenProxyConfirmation(socksState)) {
+      final confirmed = await _showOpenProxyDialog(context);
+      if (confirmed != true || !context.mounted) {
+        return;
+      }
+    }
     context.pop<InboundSocksState>(socksState);
+  }
+
+  bool _needsOpenProxyConfirmation(InboundSocksState socksState) {
+    return socksState.listen == InboundSocksState.allInterfacesListen &&
+        !socksState.authEnabled;
+  }
+
+  Future<bool?> _showOpenProxyDialog(BuildContext context) {
+    final localizations = appLocalizationsNoContext();
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(localizations.inboundProxyPageOpenProxyWarningTitle),
+        content: Text(localizations.inboundProxyPageOpenProxyWarningContent),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(localizations.buttonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(localizations.buttonOK),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
