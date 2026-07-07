@@ -61,7 +61,7 @@ class LinuxFfiApi extends BaseFfiApi {
     try {
       final requestPath = await writeCoreInvokeRequest(request);
       if (requestPath == null || requestPath.isEmpty) {
-        ygLogger("start core failed: configPath is empty");
+        ygLogger("start core failed: invoke request path is empty");
         return false;
       }
 
