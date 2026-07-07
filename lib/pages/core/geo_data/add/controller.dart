@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/service/geo_data/enum.dart';
+import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/validator.dart';
 

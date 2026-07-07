@@ -59,13 +59,13 @@ class LinuxFfiApi extends BaseFfiApi {
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
     try {
-      final xrayConfigPath = request.request.configPath;
-      if (xrayConfigPath == null || xrayConfigPath.isEmpty) {
+      final requestPath = await writeCoreInvokeRequest(request);
+      if (requestPath == null || requestPath.isEmpty) {
         ygLogger("start core failed: configPath is empty");
         return false;
       }
 
-      final command = <String>[corePath, "run", "-config", xrayConfigPath];
+      final command = <String>[corePath, "-configPath", requestPath];
       ygLogger("Running command: ${command.join(" ")}");
       final process = await _processManager.start(command);
       _bindProcess(process);
@@ -81,9 +81,9 @@ class LinuxFfiApi extends BaseFfiApi {
     return proxyCoreRunning();
   }
 
-  Future<bool> startProxyCore(String configPath) async {
+  Future<bool> startProxyCore(LibXrayRunConfig request) async {
     await _killAll();
-    return startCore(LibXrayRunConfig(RunXrayRequest(configPath)));
+    return startCore(request);
   }
 
   @override

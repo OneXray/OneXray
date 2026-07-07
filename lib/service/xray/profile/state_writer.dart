@@ -10,7 +10,7 @@ import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/profile/log_state.dart';
 import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
 extension XrayProfileStateWriter on XrayProfileState {

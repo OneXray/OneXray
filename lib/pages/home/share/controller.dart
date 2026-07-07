@@ -25,7 +25,7 @@ import 'package:onexray/service/xray/full_config/state.dart';
 import 'package:onexray/service/xray/full_config/state_reader.dart';
 import 'package:onexray/service/xray/full_config/state_writer.dart';
 import 'package:onexray/service/xray/raw/db.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:zxing2/qrcode.dart';

@@ -41,8 +41,8 @@ OneXray 本地 debug 依赖同级目录下的 `libXray` 和 `Xray-core` 仓库�
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`、`libXray-sources.jar`
-- Linux: `linux_so/libXray.so`，以及重命名为 `OneXrayCore` 的 Xray-core CLI
-- Windows: `windows_dll/libXray.dll`，以及重命名为 `OneXrayCore.exe` 的 Xray-core CLI
+- Linux: `linux_so/libXray.so`，以及重命名为 `OneXrayCore` 的 libXray wrapper `bin/xray`
+- Windows: `windows_dll/libXray.dll`，以及重命名为 `OneXrayCore.exe` 的 libXray wrapper `bin/xray.exe`
 
 建议先在 `libXray` 仓库完成目标平台构建。以下命令会使用同级目录下的 `Xray-core`：
 
@@ -78,22 +78,23 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` 会从 `linux/app/` 链接 `libXray.so`，并安装 `OneXrayCore` 到最终包内。因此需要复制 `libXray.so`，并将 Xray-core 编译成 OneXray 约定的文件名：
+`linux/app.cmake` 会从 `linux/app/` 链接 `libXray.so`，并安装 `OneXrayCore` 到最终包内。因此需要复制 libXray 动态库和 wrapper：
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray linux/app/OneXrayCore
+chmod +x linux/app/OneXrayCore
 ```
 
 ### Windows
 
-`windows/app.cmake` 会从 `windows/app/` 安装 `libXray.dll` 和 `OneXrayCore.exe`。因此需要复制 `libXray.dll`，并将 Xray-core 编译成 OneXray 约定的文件名：
+`windows/app.cmake` 会从 `windows/app/` 安装 `libXray.dll` 和 `OneXrayCore.exe`。因此需要复制 libXray 动态库和 wrapper：
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
 ```
 
 > `windows/app.cmake` 还会打包 `wintun.dll`。这个文件不来自 `libXray`，需要按 Windows 开发环境另行准备。

@@ -1,6 +1,6 @@
 import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/model/core_run_mode.dart';
 import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesKey {

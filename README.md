@@ -70,19 +70,19 @@ If your machine's CPU architecture is Arm64, switching the language to a CJK lan
 
 ### Kernel Upgrade
 
-On Linux and Windows platforms, you can upgrade or replace Xray-core yourself. Build libXray only for the dynamic library, and download the official Xray-core release binary for `OneXrayCore`.
+On Linux and Windows platforms, `OneXrayCore` is the libXray desktop wrapper. Rebuild libXray for the target platform and replace both the dynamic library and wrapper binary together.
 
 #### Linux
 
 Replace `OneXray/lib/libXray.so` with the compiled product of libXray `linux_so/libXray.so`.
 
-Download the official Linux Xray-core release binary, rename `xray` to `OneXrayCore`, and replace `OneXray/bin/OneXrayCore`.
+Rename the libXray wrapper `bin/xray` to `OneXrayCore`, and replace `OneXray/bin/OneXrayCore`.
 
 #### Windows
 
 Replace `OneXray/libXray.dll` with the compiled product of libXray `windows_dll/libXray.dll`.
 
-Download the official Windows Xray-core release binary, rename `xray.exe` to `OneXrayCore.exe`, and replace `OneXray/bin/OneXrayCore.exe`.
+Rename the libXray wrapper `bin/xray.exe` to `OneXrayCore.exe`, and replace `OneXray/bin/OneXrayCore.exe`.
 
 ## Contribution
 

@@ -14,7 +14,7 @@ import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
-import 'package:onexray/service/geo_data/enum.dart';
+import 'package:onexray/core/model/geo_data_type.dart';
 
 class GeoDataListPage extends StatelessWidget {
   final GeoDataListParams params;

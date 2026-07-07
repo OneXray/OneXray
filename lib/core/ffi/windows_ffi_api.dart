@@ -28,8 +28,8 @@ class WindowsFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
-    final xrayConfigPath = request.request.configPath;
-    if (xrayConfigPath == null || xrayConfigPath.isEmpty) {
+    final requestPath = await writeCoreInvokeRequest(request);
+    if (requestPath == null || requestPath.isEmpty) {
       ygLogger("start core failed: configPath is empty");
       return false;
     }
@@ -37,13 +37,14 @@ class WindowsFfiApi extends BaseFfiApi {
     return _startCoreProcess(
       label: "core",
       verb: "runas",
-      configPath: xrayConfigPath,
+      requestPath: requestPath,
       verifyRunning: false,
     );
   }
 
-  Future<bool> startProxyCore(String configPath) async {
-    if (configPath.isEmpty) {
+  Future<bool> startProxyCore(LibXrayRunConfig request) async {
+    final requestPath = await writeCoreInvokeRequest(request);
+    if (requestPath == null || requestPath.isEmpty) {
       ygLogger("start proxy core failed: configPath is empty");
       return false;
     }
@@ -58,7 +59,7 @@ class WindowsFfiApi extends BaseFfiApi {
     return _startCoreProcess(
       label: "proxy core",
       verb: "open",
-      configPath: configPath,
+      requestPath: requestPath,
       verifyRunning: true,
       isRunning: () => _processRunning(label: "proxy core"),
     );
@@ -120,7 +121,7 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<bool> _startCoreProcess({
     required String label,
     required String verb,
-    required String configPath,
+    required String requestPath,
     required bool verifyRunning,
     bool Function()? isRunning,
   }) async {
@@ -130,7 +131,7 @@ class WindowsFfiApi extends BaseFfiApi {
 
     try {
       final result = _runCommand(
-        Tuple3(verb, corePath, _buildRunParameters(configPath)),
+        Tuple3(verb, corePath, _buildRunParameters(requestPath)),
       );
       if (!result.item1) {
         final errorCode = GetLastError();
@@ -148,8 +149,8 @@ class WindowsFfiApi extends BaseFfiApi {
     return verifyRunning ? isRunning?.call() ?? false : true;
   }
 
-  String _buildRunParameters(String configPath) {
-    return <String>["run", "-config", _quoteArg(configPath)].join(" ");
+  String _buildRunParameters(String requestPath) {
+    return <String>["-configPath", _quoteArg(requestPath)].join(" ");
   }
 
   Future<bool> _killExistingCoreProcesses() async {

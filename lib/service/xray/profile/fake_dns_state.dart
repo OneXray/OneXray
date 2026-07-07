@@ -4,7 +4,7 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 
 enum FakeDnsValidationError {
   ipPoolRequired,

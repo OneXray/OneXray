@@ -1,17 +1,9 @@
-import 'package:collection/collection.dart';
+import 'package:onexray/core/model/core_run_mode.dart';
 import 'package:onexray/service/localizations/service.dart';
 
-enum CoreRunMode {
-  tun("tun"),
-  proxy("proxy");
+export 'package:onexray/core/model/core_run_mode.dart';
 
-  const CoreRunMode(this.name);
-
-  final String name;
-
-  @override
-  String toString() => title;
-
+extension CoreRunModeTitle on CoreRunMode {
   String get title {
     switch (this) {
       case CoreRunMode.tun:
@@ -19,10 +11,5 @@ enum CoreRunMode {
       case CoreRunMode.proxy:
         return appLocalizationsNoContext().coreRunModeProxy;
     }
-  }
-
-  static CoreRunMode fromString(String? name) {
-    return values.firstWhereOrNull((value) => value.name == name) ??
-        CoreRunMode.tun;
   }
 }

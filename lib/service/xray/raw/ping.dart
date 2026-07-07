@@ -22,7 +22,7 @@ class XrayRawPing {
     //remove metrics
     XrayRawFix.fixMetrics(jsonMap);
     XrayRawFix.fixInboundsTun(jsonMap);
-    XrayRawFix.fixEnv(jsonMap);
+    XrayRawFix.removeEnv(jsonMap);
     XrayRawFix.fixInboundsPort(jsonMap, ports);
     XrayRawFix.fixLog(jsonMap);
     final text = JsonTool.encoder.convert(jsonMap);

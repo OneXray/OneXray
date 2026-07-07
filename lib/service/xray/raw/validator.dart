@@ -33,7 +33,7 @@ class XrayRawValidator {
   static Future<String> _test(Map<String, dynamic> jsonMap) async {
     // remove app-managed runtime inbounds
     XrayRawFix.fixInboundsTun(jsonMap);
-    XrayRawFix.fixEnv(jsonMap);
+    XrayRawFix.removeEnv(jsonMap);
     // remove metrics
     XrayRawFix.fixMetrics(jsonMap);
 

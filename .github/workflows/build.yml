@@ -40,12 +40,12 @@
 #
 # Layout:
 #   build_scripts/app/builder.py#build_core expects XTLS/libXray and
-#   OneXray/Xray-core to live as siblings of this repo. Every job therefore checks
+#   XTLS/Xray-core to live as siblings of this repo. Every job therefore checks
 #   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
-#   `Xray-core/` at the workspace root. libXray is built with local Xray-core,
-#   and Windows/Linux app packages compile OneXrayCore directly from that same
-#   sibling Xray-core checkout. fastforge/fastlane/flutter all produce their
-#   outputs under `<workspace>/output`.
+#   `Xray-core/` at the workspace root. libXray is built with local Xray-core.
+#   Windows/Linux app packages copy the libXray desktop wrapper as OneXrayCore.
+#   fastforge/fastlane/flutter all produce their outputs under
+#   `<workspace>/output`.
 
 name: Build
 
@@ -76,8 +76,8 @@ env:
   PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
   LIBXRAY_REF: main
-  XRAY_CORE_REPOSITORY: OneXray/Xray-core
-  XRAY_CORE_REF: build
+  XRAY_CORE_REPOSITORY: XTLS/Xray-core
+  XRAY_CORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -541,7 +541,7 @@ jobs:
         run: python build_scripts/main.py OneXray windows
 
       - name: Verify core CLI
-        run: ./windows/app/OneXrayCore.exe help run
+        run: ./windows/app/OneXrayCore.exe -h
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -634,7 +634,7 @@ jobs:
         run: python3 build_scripts/main.py OneXray linux
 
       - name: Verify core CLI
-        run: ./linux/app/OneXrayCore help run
+        run: ./linux/app/OneXrayCore -h
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

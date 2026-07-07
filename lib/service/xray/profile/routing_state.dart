@@ -3,7 +3,7 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/routing_rule_state.dart';
 import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 
 class RoutingState {
   var domainStrategy = RoutingDomainStrategy.ipIfNonMatch;

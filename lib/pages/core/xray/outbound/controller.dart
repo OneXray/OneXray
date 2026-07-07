@@ -21,7 +21,7 @@ import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
 class OutboundUIPageState {

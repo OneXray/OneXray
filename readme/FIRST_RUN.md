@@ -41,8 +41,8 @@ Local OneXray debugging depends on artifacts built from the sibling `libXray` an
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`, `libXray-sources.jar`
-- Linux: `linux_so/libXray.so` and an Xray-core CLI renamed to `OneXrayCore`
-- Windows: `windows_dll/libXray.dll` and an Xray-core CLI renamed to `OneXrayCore.exe`
+- Linux: `linux_so/libXray.so` and the libXray wrapper `bin/xray` renamed to `OneXrayCore`
+- Windows: `windows_dll/libXray.dll` and the libXray wrapper `bin/xray.exe` renamed to `OneXrayCore.exe`
 
 Build the required targets in `libXray` first. These commands use the sibling `Xray-core` checkout:
 
@@ -78,22 +78,23 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` links `libXray.so` from `linux/app/` and installs `OneXrayCore` into the final bundle. Copy `libXray.so`, then build Xray-core into OneXray's expected filename:
+`linux/app.cmake` links `libXray.so` from `linux/app/` and installs `OneXrayCore` into the final bundle. Copy both the libXray shared library and wrapper:
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray linux/app/OneXrayCore
+chmod +x linux/app/OneXrayCore
 ```
 
 ### Windows
 
-`windows/app.cmake` installs `libXray.dll` and `OneXrayCore.exe` from `windows/app/`. Copy `libXray.dll`, then build Xray-core into OneXray's expected filename:
+`windows/app.cmake` installs `libXray.dll` and `OneXrayCore.exe` from `windows/app/`. Copy both the libXray shared library and wrapper:
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
 ```
 
 > `windows/app.cmake` also packages `wintun.dll`. That file does not come from `libXray` and must be prepared separately in the Windows development environment.

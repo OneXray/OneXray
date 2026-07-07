@@ -43,16 +43,9 @@ extension XrayJsonWriter on XrayJson {
   }
 
   Future<void> _writeToPath(String configPath) async {
-    _fixRuntimeEnv();
     final jsonMap = toJson();
     final data = JsonTool.encodeJsonToSortedString(jsonMap);
     await File(configPath).writeAsString(data);
-  }
-
-  void _fixRuntimeEnv() {
-    env ??= XrayEnv();
-    env!.assetLocation = VpnConstants.datDir;
-    env!.certLocation = VpnConstants.datDir;
   }
 
   Future<String> writeConfig(String runDir) async {

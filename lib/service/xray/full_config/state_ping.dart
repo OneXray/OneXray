@@ -22,7 +22,6 @@ extension XrayFullConfigStatePing on XrayFullConfigState {
       return fallbackDelay;
     }
     final jsonMap = xrayJson.toJson();
-    XrayRawFix.fixEnv(jsonMap);
     XrayRawFix.fixInboundsPort(jsonMap, ports);
     final text = JsonTool.encoder.convert(jsonMap);
     final configPath = await XrayRawWriter.writeConfig(text);

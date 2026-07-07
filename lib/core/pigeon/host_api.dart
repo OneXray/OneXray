@@ -3,12 +3,12 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows_ffi_api.dart';
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/model/xray_standard.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/service/xray/standard.dart';
 
 class AppHostApi {
   final _api = BridgeHostApi();
@@ -38,7 +38,7 @@ class AppHostApi {
       return await _readVpnStatus();
     } catch (e) {
       ygLogger("readVpnStatus error: $e");
-      return _commandFailed(appLocalizationsNoContext().vpnCommandFailed);
+      return _commandFailed();
     }
   }
 
@@ -57,7 +57,7 @@ class AppHostApi {
       return await _startVpn();
     } catch (e) {
       ygLogger("startVpn error: $e");
-      return _commandFailed(appLocalizationsNoContext().vpnStartFailed);
+      return _commandFailed();
     }
   }
 
@@ -76,7 +76,7 @@ class AppHostApi {
       return await _stopVpn();
     } catch (e) {
       ygLogger("stopVpn error: $e");
-      return _commandFailed(appLocalizationsNoContext().vpnStopFailed);
+      return _commandFailed();
     }
   }
 
@@ -188,6 +188,7 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.ping,
+          env: _runtimeEnv(),
           payload: PingRequest(configPath, timeout, url, proxy).toJson(),
         ),
       );
@@ -213,6 +214,7 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
+          env: _runtimeEnv(),
           payload: RunXrayRequest(configPath).toJson(),
         ),
       );
@@ -232,23 +234,19 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<String> runXray(String configPath) async {
-    if (AppPlatform.isLinux) {
-      return await _runDesktopProxyCore(
-        () => LinuxFfiApi().startProxyCore(configPath),
-      );
-    } else if (AppPlatform.isWindows) {
-      return await _runDesktopProxyCore(
-        () => WindowsFfiApi().startProxyCore(configPath),
-      );
-    }
+  Future<String> runXray(String coreInvokeText) async {
     try {
-      final res = await _invoke(
-        LibXrayInvokeRequest(
-          method: LibXrayMethod.runXray,
-          payload: RunXrayRequest(configPath).toJson(),
-        ),
-      );
+      final request = _runXrayRequestFromText(coreInvokeText);
+      if (AppPlatform.isLinux) {
+        return await _runDesktopProxyCore(
+          () => LinuxFfiApi().startProxyCore(request),
+        );
+      } else if (AppPlatform.isWindows) {
+        return await _runDesktopProxyCore(
+          () => WindowsFfiApi().startProxyCore(request),
+        );
+      }
+      final res = await _invoke(request.invoke);
       final resp = parseLibXrayInvokeResponse(res);
       if (resp.success != null) {
         if (resp.success!) {
@@ -261,6 +259,10 @@ class AppHostApi {
       }
     } catch (_) {}
     return _errorResult;
+  }
+
+  LibXrayRunConfig _runXrayRequestFromText(String coreInvokeText) {
+    return LibXrayRunConfig.fromInvokeText(coreInvokeText);
   }
 
   Future<String> _runDesktopProxyCore(Future<bool> Function() start) async {
@@ -349,6 +351,13 @@ class AppHostApi {
     return resp;
   }
 
+  LibXrayEnvJson _runtimeEnv() {
+    return LibXrayEnvJson(
+      assetLocation: VpnConstants.datDir,
+      certLocation: VpnConstants.datDir,
+    );
+  }
+
   // android
   Future<bool> checkVpnPermission() async {
     if (AppPlatform.isAndroid || AppPlatform.isIOS || AppPlatform.isMacOS) {
@@ -368,9 +377,7 @@ class AppHostApi {
       return await _api.queryPlatformPermission();
     } catch (e) {
       ygLogger("queryPlatformPermission error: $e");
-      return _platformPermissionFailed(
-        appLocalizationsNoContext().vpnPlatformPermissionCheckFailed,
-      );
+      return _platformPermissionFailed();
     }
   }
 
@@ -382,9 +389,7 @@ class AppHostApi {
       return await _api.requestPlatformPermission();
     } catch (e) {
       ygLogger("requestPlatformPermission error: $e");
-      return _platformPermissionFailed(
-        appLocalizationsNoContext().vpnPlatformPermissionCheckFailed,
-      );
+      return _platformPermissionFailed();
     }
   }
 
@@ -433,19 +438,17 @@ class AppHostApi {
     );
   }
 
-  PlatformPermissionResult _platformPermissionFailed(String message) {
+  PlatformPermissionResult _platformPermissionFailed() {
     return PlatformPermissionResult(
       kind: PlatformPermissionKind.none,
       state: PlatformPermissionState.failed,
-      message: message,
     );
   }
 
-  NativeVpnCommandResult _commandFailed(String message) {
+  NativeVpnCommandResult _commandFailed() {
     return NativeVpnCommandResult(
       state: NativeVpnCommandState.failed,
-      permission: _platformPermissionFailed(message),
-      message: message,
+      permission: _platformPermissionFailed(),
     );
   }
 }

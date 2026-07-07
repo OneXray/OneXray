@@ -9,7 +9,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/geo_data/enum.dart';
+import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:path/path.dart' as p;
 

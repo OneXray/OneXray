@@ -50,6 +50,7 @@ class CoreContent extends StatelessWidget {
                       title: localizations.coreRunModeTitle,
                       value: eventState.coreRunMode.title,
                       selections: CoreRunMode.values,
+                      titleBuilder: (mode) => mode.title,
                       onSelected: controller.updateRunMode,
                     ),
                     NavigationSettingRow(

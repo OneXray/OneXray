@@ -4,7 +4,7 @@ import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/service/xray/profile/dns_server_state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 
 class DnsState {
   var hosts = <String, List<String>>{};

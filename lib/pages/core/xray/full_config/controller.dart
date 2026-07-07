@@ -25,7 +25,7 @@ import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/fake_dns_state.dart';
 import 'package:onexray/service/xray/profile/outbounds_state.dart';
 import 'package:onexray/service/xray/profile/routing_state.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 
 class XrayFullConfigPageState {
   final int version;

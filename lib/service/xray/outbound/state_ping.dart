@@ -4,7 +4,7 @@ import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 
 extension OutboundStatePing on OutboundState {
   Future<int> ping(

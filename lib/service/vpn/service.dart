@@ -562,7 +562,7 @@ final class VpnService {
           tunSettingsState,
         );
       case CoreRunMode.proxy:
-        return _makeProxyRequestAndStart(coreInvokeText, configPath, ports);
+        return _makeProxyRequestAndStart(coreInvokeText, ports);
     }
   }
 
@@ -760,7 +760,6 @@ final class VpnService {
 
   Future<NativeVpnCommandResult> _makeProxyRequestAndStart(
     String coreInvokeText,
-    String configPath,
     XrayPorts port,
   ) async {
     final request = StartVpnRequest(
@@ -773,7 +772,7 @@ final class VpnService {
     await request.writeToStartFile();
 
     await _vpnStatusChanged(VpnStatus.connecting);
-    final error = await AppHostApi().runXray(configPath);
+    final error = await AppHostApi().runXray(coreInvokeText);
     if (error.isNotEmpty) {
       await _vpnStatusChanged(VpnStatus.disconnected);
       return _commandFailed(error);
@@ -805,6 +804,10 @@ final class VpnService {
   Future<String?> _makeRunXrayRequest(String configPath) async {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.runXray,
+      env: LibXrayEnvJson(
+        assetLocation: VpnConstants.datDir,
+        certLocation: VpnConstants.datDir,
+      ),
       payload: RunXrayRequest(configPath).toJson(),
     );
     return JsonTool.encoder.convert(request.toJson());

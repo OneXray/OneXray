@@ -2,7 +2,7 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 
 extension OutboundStateWriter on OutboundState {
   XrayOutbound get xrayJson {

@@ -8,9 +8,6 @@ part of 'xray_json.dart';
 
 XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
   json['name'] as String?,
-  json['env'] == null
-      ? null
-      : XrayEnv.fromJson(json['env'] as Map<String, dynamic>),
   json['log'] == null
       ? null
       : XrayLog.fromJson(json['log'] as Map<String, dynamic>),
@@ -42,7 +39,6 @@ XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
 
 Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'name': ?instance.name,
-  'env': ?instance.env?.toJson(),
   'log': ?instance.log?.toJson(),
   'dns': ?instance.dns?.toJson(),
   'routing': ?instance.routing?.toJson(),
@@ -52,34 +48,6 @@ Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'stats': ?instance.stats?.toJson(),
   'metrics': ?instance.metrics?.toJson(),
   'fakeDns': ?instance.fakeDns?.map((e) => e.toJson()).toList(),
-};
-
-XrayEnv _$XrayEnvFromJson(Map<String, dynamic> json) => XrayEnv(
-  assetLocation: json['xray.location.asset'] as String?,
-  certLocation: json['xray.location.cert'] as String?,
-  useReadV: json['xray.buf.readv'] as String?,
-  useFreedomSplice: json['xray.buf.splice'] as String?,
-  useVmessPadding: json['xray.vmess.padding'] as String?,
-  useCone: json['xray.cone.disabled'] as String?,
-  bufferSize: json['xray.ray.buffer.size'] as String?,
-  browserDialer: json['xray.browser.dialer'] as String?,
-  xudpLog: json['xray.xudp.show'] as String?,
-  xudpBaseKey: json['xray.xudp.basekey'] as String?,
-  tunFd: json['xray.tun.fd'] as String?,
-);
-
-Map<String, dynamic> _$XrayEnvToJson(XrayEnv instance) => <String, dynamic>{
-  'xray.location.asset': ?instance.assetLocation,
-  'xray.location.cert': ?instance.certLocation,
-  'xray.buf.readv': ?instance.useReadV,
-  'xray.buf.splice': ?instance.useFreedomSplice,
-  'xray.vmess.padding': ?instance.useVmessPadding,
-  'xray.cone.disabled': ?instance.useCone,
-  'xray.ray.buffer.size': ?instance.bufferSize,
-  'xray.browser.dialer': ?instance.browserDialer,
-  'xray.xudp.show': ?instance.xudpLog,
-  'xray.xudp.basekey': ?instance.xudpBaseKey,
-  'xray.tun.fd': ?instance.tunFd,
 };
 
 XrayLog _$XrayLogFromJson(Map<String, dynamic> json) => XrayLog(

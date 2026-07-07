@@ -8,7 +8,7 @@ import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/standard.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
 class InboundTunState {

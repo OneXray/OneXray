@@ -1,16 +1,17 @@
+import 'dart:io';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
 import 'package:isolate_manager/isolate_manager.dart';
 import 'package:onexray/core/ffi/generated_bindings.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
-import 'package:onexray/service/localizations/service.dart';
 
 abstract class BaseFfiApi {
   Future<String> getTunFilesDir() async {
@@ -39,7 +40,7 @@ abstract class BaseFfiApi {
     var res = await startCore(coreRequest);
     if (!res) {
       await stopVpn();
-      return _commandFailed(appLocalizationsNoContext().vpnCoreStartFailed);
+      return _commandFailed();
     }
     await updateVpnStatus(VpnStatus.connected);
     return _commandSuccess();
@@ -47,13 +48,29 @@ abstract class BaseFfiApi {
 
   LibXrayRunConfig _readRunXrayRequest(StartVpnRequest request) {
     if (!EmptyTool.checkString(request.coreInvokeText)) {
-      return LibXrayRunConfig(RunXrayRequest(null));
+      return LibXrayRunConfig(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.runXray,
+          payload: RunXrayRequest(null).toJson(),
+        ),
+      );
     }
     return LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
   }
 
   Future<bool> startCore(LibXrayRunConfig request) async {
     return true;
+  }
+
+  Future<String?> writeCoreInvokeRequest(LibXrayRunConfig request) async {
+    if (request.request.configPath == null ||
+        request.request.configPath!.isEmpty) {
+      return null;
+    }
+    await Directory(VpnConstants.runDir).create(recursive: true);
+    final file = File(VpnConstants.coreConfigPath);
+    await file.writeAsString(request.toInvokeText());
+    return file.path;
   }
 
   void stopCore() {}
@@ -80,11 +97,10 @@ abstract class BaseFfiApi {
     );
   }
 
-  NativeVpnCommandResult _commandFailed(String message) {
+  NativeVpnCommandResult _commandFailed() {
     return NativeVpnCommandResult(
       state: NativeVpnCommandState.failed,
       permission: _permissionNotRequired(),
-      message: message,
     );
   }
 

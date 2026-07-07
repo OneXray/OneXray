@@ -9,7 +9,7 @@ import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
-import 'package:onexray/service/geo_data/enum.dart';
+import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
 class GeoDatAddPage extends StatelessWidget {
