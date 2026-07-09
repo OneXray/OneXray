@@ -99,11 +99,6 @@ class XrayFullConfigPage extends StatelessWidget {
           value: controller.dnsSummary(context),
           onTap: () => controller.editDns(context),
         ),
-        NavigationSettingRow(
-          title: localizations.xrayProfileUIPageEditFakeDns,
-          value: controller.fakeDnsSummary(context),
-          onTap: () => controller.editFakeDns(context),
-        ),
       ],
     );
   }

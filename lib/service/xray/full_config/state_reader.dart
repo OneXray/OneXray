@@ -28,6 +28,5 @@ extension XrayFullConfigStateReader on XrayFullConfigState {
     outbounds.readFromXrayJson(xrayJson);
     routing.readFromXrayJson(xrayJson);
     dns.readFromXrayJson(xrayJson);
-    fakeDns.readFromXrayJson(xrayJson);
   }
 }

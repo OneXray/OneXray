@@ -663,6 +663,8 @@ final class VpnService {
     outboundState.dialerProxy = "";
     finalOutbound.tag = RoutingOutboundTag.proxy.name;
     finalOutbound.dialerProxy = RoutingOutboundTag.chainProxy.name;
+    settingState.outbounds.finalOutbound = null;
+    settingState.outbounds.outbounds.add(finalOutbound);
   }
 
   Future<int?> _simpleFinalOutboundId() async {

@@ -10,7 +10,6 @@ extension XrayFullConfigStateWriter on XrayFullConfigState {
     xrayJson.outbounds = outbounds.xrayJson;
     xrayJson.routing = routing.xrayJson;
     xrayJson.dns = dns.xrayJson;
-    xrayJson.fakeDns = fakeDns.xrayJson(dns.queryStrategy);
     return xrayJson;
   }
 
@@ -18,6 +17,5 @@ extension XrayFullConfigStateWriter on XrayFullConfigState {
     profile.outbounds = outbounds;
     profile.routing = routing;
     profile.dns = dns;
-    profile.fakeDns = fakeDns;
   }
 }

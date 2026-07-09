@@ -10,7 +10,6 @@ import 'package:onexray/pages/core/xray/full_config/outbounds/params.dart';
 import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns/params.dart';
-import 'package:onexray/pages/core/xray/profile/fake_dns/params.dart';
 import 'package:onexray/pages/core/xray/profile/routing/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
@@ -22,7 +21,6 @@ import 'package:onexray/service/xray/full_config/state_validator.dart';
 import 'package:onexray/service/xray/full_config/state_writer.dart';
 import 'package:onexray/service/xray/profile/dns_state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/profile/fake_dns_state.dart';
 import 'package:onexray/service/xray/profile/outbounds_state.dart';
 import 'package:onexray/service/xray/profile/routing_state.dart';
 import 'package:onexray/core/model/xray_standard.dart';
@@ -192,18 +190,6 @@ class XrayFullConfigController extends Cubit<XrayFullConfigPageState> {
     }
   }
 
-  Future<void> editFakeDns(BuildContext context) async {
-    final params = FakeDnsParams(_fullConfigState.fakeDns);
-    final fakeDns = await context.pushScoped<FakeDnsPoolsState>(
-      AppSecondaryDestination.fakeDns,
-      extra: params,
-    );
-    if (fakeDns != null) {
-      _fullConfigState.fakeDns = fakeDns;
-      _notifyChanged();
-    }
-  }
-
   String outboundsSummary(BuildContext context) {
     final proxy = _fullConfigState.outbounds.outbounds
         .where((outbound) => outbound.tag == RoutingOutboundTag.proxy.name)
@@ -229,10 +215,6 @@ class XrayFullConfigController extends Cubit<XrayFullConfigPageState> {
       return firstServer;
     }
     return "$firstServer (+${dns.servers.length - 1})";
-  }
-
-  String fakeDnsSummary(BuildContext context) {
-    return AppLocalizations.of(context)!.xrayProfileDnsControlledByTunIPv6;
   }
 
   Future<void> save(BuildContext context) async {

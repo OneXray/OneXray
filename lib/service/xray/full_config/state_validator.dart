@@ -57,6 +57,5 @@ extension XrayFullConfigStateValidator on XrayFullConfigState {
     outbounds.removeWhitespace();
     routing.removeWhitespace();
     dns.removeWhitespace();
-    fakeDns.removeWhitespace();
   }
 }
