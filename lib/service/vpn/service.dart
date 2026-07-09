@@ -641,8 +641,6 @@ final class VpnService {
     OutboundState outboundState,
     CoreConfigData config,
   ) async {
-    outboundState.tag = RoutingOutboundTag.proxy.name;
-
     final simpleChainProxyId = await _simpleChainProxyOutboundId();
     if (simpleChainProxyId != null) {
       if (simpleChainProxyId == config.id) {
@@ -656,11 +654,15 @@ final class VpnService {
     }
 
     final chainProxy = settingState.outbounds.chainProxy;
-    if (chainProxy != null) {
-      chainProxy.tag = RoutingOutboundTag.chainProxy.name;
-      chainProxy.dialerProxy = "";
-      outboundState.dialerProxy = RoutingOutboundTag.chainProxy.name;
+    if (chainProxy == null) {
+      outboundState.tag = RoutingOutboundTag.proxy.name;
+      return;
     }
+
+    outboundState.tag = RoutingOutboundTag.chainProxy.name;
+    outboundState.dialerProxy = "";
+    chainProxy.tag = RoutingOutboundTag.proxy.name;
+    chainProxy.dialerProxy = RoutingOutboundTag.chainProxy.name;
   }
 
   Future<int?> _simpleChainProxyOutboundId() async {
@@ -699,7 +701,7 @@ final class VpnService {
       );
     }
     chainProxy.name = row.name;
-    chainProxy.tag = RoutingOutboundTag.chainProxy.name;
+    chainProxy.tag = RoutingOutboundTag.proxy.name;
     chainProxy.dialerProxy = "";
     return chainProxy;
   }
