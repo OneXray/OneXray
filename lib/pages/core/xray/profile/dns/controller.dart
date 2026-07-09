@@ -7,7 +7,6 @@ import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/xray/profile/dns_server_state.dart';
 import 'package:onexray/service/xray/profile/dns_state.dart';
-import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
 class DnsPageState {
@@ -47,14 +46,6 @@ class DnsController extends Cubit<DnsPageState> {
 
   final clientIpController = TextEditingController();
   final serveExpiredTTLController = TextEditingController();
-
-  void updateQueryStrategy(String value) {
-    final queryStrategy = DnsQueryStrategy.fromString(value);
-    if (queryStrategy != null) {
-      state.dnsState.queryStrategy = queryStrategy;
-      emit(state.bumped());
-    }
-  }
 
   void updateDisableCache(bool value) {
     state.dnsState.disableCache = value;

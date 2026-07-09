@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 
 enum XrayInboundProtocol {
   tun("tun"),
@@ -158,6 +159,12 @@ enum DnsQueryStrategy {
 
   static List<String> get names {
     return DnsQueryStrategy.values.map((e) => e.name).toList();
+  }
+
+  static DnsQueryStrategy fromTunSettings(TunSettingsState tunSettings) {
+    return tunSettings.enableIPv6
+        ? DnsQueryStrategy.useIP
+        : DnsQueryStrategy.useIPv4;
   }
 }
 

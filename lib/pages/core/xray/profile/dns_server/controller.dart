@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
 import 'package:onexray/service/xray/profile/dns_server_state.dart';
-import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
 class DnsServerPageState {
@@ -195,14 +194,6 @@ class DnsServerController extends Cubit<DnsServerPageState> {
     controller.dispose();
     state.serverState.unexpectedIPs.removeAt(index);
     emit(state.bumped());
-  }
-
-  void updateQueryStrategy(String value) {
-    final queryStrategy = DnsQueryStrategy.fromString(value);
-    if (queryStrategy != null) {
-      state.serverState.queryStrategy = queryStrategy;
-      emit(state.bumped());
-    }
   }
 
   final tagController = TextEditingController();

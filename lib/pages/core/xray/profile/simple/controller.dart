@@ -87,14 +87,6 @@ class XrayProfileSimpleController extends Cubit<XrayProfileSimplePageState> {
     }
   }
 
-  void updateQueryStrategy(String value) {
-    final queryStrategy = DnsQueryStrategy.fromString(value);
-    if (queryStrategy != null) {
-      state.xrayProfile.routing.queryStrategy = queryStrategy;
-      emit(state.bumped());
-    }
-  }
-
   void updateDirectSet(String value) {
     final directSet = SimpleCountry.fromString(value);
     if (directSet != null) {

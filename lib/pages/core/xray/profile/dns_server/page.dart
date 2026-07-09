@@ -9,7 +9,6 @@ import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/service/xray/profile/enum.dart';
 
 class DnsServerPage extends StatelessWidget {
   final DnsServerParams params;
@@ -52,7 +51,7 @@ class DnsServerPage extends StatelessWidget {
                     _domainsSection(context, controller, state),
                     _expectedIPsSection(context, controller, state),
                     _unexpectedIPsSection(context, controller, state),
-                    _queryStrategySection(context, controller, state),
+                    _policySection(context, controller, state),
                   ],
                 ),
               ),
@@ -245,7 +244,7 @@ class DnsServerPage extends StatelessWidget {
     );
   }
 
-  Widget _queryStrategySection(
+  Widget _policySection(
     BuildContext context,
     DnsServerController controller,
     DnsServerPageState state,
@@ -253,7 +252,6 @@ class DnsServerPage extends StatelessWidget {
     return SettingSection(
       title: AppLocalizations.of(context)!.dnsServerPageSectionPolicy,
       children: [
-        _queryStrategy(context, controller, state),
         _tag(context, controller),
         _timeoutMs(context, controller),
         _disableCache(context, controller, state),
@@ -261,19 +259,6 @@ class DnsServerPage extends StatelessWidget {
         _serveExpiredTTL(context, controller),
         _finalQuery(context, controller, state),
       ],
-    );
-  }
-
-  Widget _queryStrategy(
-    BuildContext context,
-    DnsServerController controller,
-    DnsServerPageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.dnsServerPageQueryStrategy,
-      value: state.serverState.queryStrategy.name,
-      selections: DnsQueryStrategy.names,
-      onSelected: (value) => controller.updateQueryStrategy(value),
     );
   }
 

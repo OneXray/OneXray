@@ -125,7 +125,6 @@ class XrayProfileSimplePage extends StatelessWidget {
       title: AppLocalizations.of(context)!.xrayProfileSimplePageRouting,
       children: [
         _domainStrategy(context, controller, state),
-        _queryStrategy(context, controller, state),
         _directSet(context, controller, state),
         _appleDirect(context, controller, state),
         _localDirect(context, controller, state),
@@ -190,19 +189,6 @@ class XrayProfileSimplePage extends StatelessWidget {
       value: state.xrayProfile.routing.domainStrategy.name,
       selections: RoutingDomainStrategy.simpleStrategy,
       onSelected: (value) => controller.updateDomainStrategy(value),
-    );
-  }
-
-  Widget _queryStrategy(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageQueryStrategy,
-      value: state.xrayProfile.routing.queryStrategy.name,
-      selections: DnsQueryStrategy.names,
-      onSelected: (value) => controller.updateQueryStrategy(value),
     );
   }
 
@@ -285,7 +271,7 @@ class XrayProfileSimplePage extends StatelessWidget {
     XrayProfileSimplePageState state,
   ) {
     final children = SimpleDns.values
-        .map((e) => _simpleDns(controller, state, e))
+        .map((e) => _simpleDns(controller, e))
         .toList();
     return RadioGroup<int>(
       groupValue: state.xrayProfile.dns.id,
@@ -297,20 +283,10 @@ class XrayProfileSimplePage extends StatelessWidget {
     );
   }
 
-  Widget _simpleDns(
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-    SimpleDns dns,
-  ) {
-    final queryStrategy = state.xrayProfile.routing.queryStrategy;
+  Widget _simpleDns(XrayProfileSimpleController controller, SimpleDns dns) {
     return SettingRow(
       title: dns.address,
-      subtitleWidget: Row(
-        children: [
-          TagView(tag: dns.outbound.name),
-          TagView(tag: queryStrategy.name),
-        ],
-      ),
+      subtitleWidget: Row(children: [TagView(tag: dns.outbound.name)]),
       onTap: () => controller.updateDnsId(dns.id),
       trailing: Radio<int>(value: dns.id),
     );

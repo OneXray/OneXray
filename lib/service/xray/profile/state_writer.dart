@@ -39,6 +39,7 @@ extension XrayProfileStateWriter on XrayProfileState {
     TunSettingsState tunSettingsState,
     XrayPorts ports,
   ) async {
+    _applyRuntimeDnsQueryStrategy(tunSettingsState);
     fixInboundsPort(ports);
     await _fixSystemExtensionLogs();
 
@@ -51,6 +52,10 @@ extension XrayProfileStateWriter on XrayProfileState {
     }
 
     return _fixedXrayJson(mode, ports, tunSettingsState.metricsEnabled);
+  }
+
+  void _applyRuntimeDnsQueryStrategy(TunSettingsState tunSettingsState) {
+    dns.applyQueryStrategy(DnsQueryStrategy.fromTunSettings(tunSettingsState));
   }
 
   XrayJson _fixedXrayJson(

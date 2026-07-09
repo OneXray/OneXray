@@ -41,6 +41,13 @@ class DnsState {
     serveExpiredTTL = serveExpiredTTL.removeWhitespace;
   }
 
+  void applyQueryStrategy(DnsQueryStrategy strategy) {
+    queryStrategy = strategy;
+    for (final server in servers) {
+      server.queryStrategy = strategy;
+    }
+  }
+
   void readFromXrayJson(XrayJson xrayJson) {
     if (xrayJson.dns == null) {
       return;

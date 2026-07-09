@@ -49,7 +49,6 @@ class XrayProfileSimple {
 
 class SimpleRouting {
   var domainStrategy = RoutingDomainStrategy.ipIfNonMatch;
-  var queryStrategy = DnsQueryStrategy.useIPv4;
   var directSet = SimpleCountry.cn;
   var appleDirect = true;
   var localDirect = true;
@@ -69,12 +68,6 @@ class SimpleRouting {
       );
       if (domainStrategy != null) {
         this.domainStrategy = domainStrategy;
-      }
-    }
-    if (EmptyTool.checkString(routing.queryStrategy)) {
-      final queryStrategy = DnsQueryStrategy.fromString(routing.queryStrategy!);
-      if (queryStrategy != null) {
-        this.queryStrategy = queryStrategy;
       }
     }
     if (EmptyTool.checkString(routing.directSet)) {
@@ -102,7 +95,7 @@ class SimpleRouting {
 
   SimpleRoutingModel get model => SimpleRoutingModel(
     domainStrategy.name,
-    queryStrategy.name,
+    null,
     directSet.name,
     appleDirect,
     localDirect,

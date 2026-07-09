@@ -25,6 +25,7 @@ class XrayRawFix {
     settingState.inbounds.ping.port = ports.pingPort;
     settingState.inbounds.ping.auth = ports.pingAuth;
     removeEnv(jsonMap);
+    _fixDnsQueryStrategy(jsonMap, tunSettingsState);
     XrayRuntimeInbounds.applyToRawJson(jsonMap, settingState.inbounds, mode);
     _fixPingRoutingRule(jsonMap);
     fixLog(jsonMap, disableLog: disableLog);
@@ -47,6 +48,28 @@ class XrayRawFix {
 
   static void removeEnv(Map<String, dynamic> jsonMap) {
     jsonMap.remove("env");
+  }
+
+  static void _fixDnsQueryStrategy(
+    Map<String, dynamic> jsonMap,
+    TunSettingsState tunSettingsState,
+  ) {
+    final dns = jsonMap["dns"];
+    if (dns is! Map) {
+      return;
+    }
+    final strategy = DnsQueryStrategy.fromTunSettings(tunSettingsState).name;
+    dns["queryStrategy"] = strategy;
+
+    final servers = dns["servers"];
+    if (servers is! List) {
+      return;
+    }
+    for (final server in servers) {
+      if (server is Map) {
+        server["queryStrategy"] = strategy;
+      }
+    }
   }
 
   static void _removeConfigInterface(Map<String, dynamic> jsonMap) {

@@ -11,9 +11,7 @@ import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/profile/dns_server_state.dart';
-import 'package:onexray/service/xray/profile/enum.dart';
 
 class DnsPage extends StatelessWidget {
   final DnsParams params;
@@ -119,14 +117,12 @@ class DnsPage extends StatelessWidget {
     DnsServerState server,
     int serverIndex,
   ) {
-    final queryStrategy = server.queryStrategy;
     return ReorderableDelayedDragStartListener(
       key: Key("$serverIndex"),
       index: serverIndex,
       child: DataListRow(
         onTap: () => controller.editServer(context, serverIndex),
         title: server.address,
-        tags: [TagView(tag: queryStrategy.name)],
         trailing: ActionCluster(
           children: [
             AppMenuButton<IconMenuId>(
@@ -155,7 +151,6 @@ class DnsPage extends StatelessWidget {
       children: [
         _tag(context, controller, state),
         _clientIp(context, controller),
-        _queryStrategy(context, controller, state),
         _disableCache(context, controller, state),
         _serveStale(context, controller, state),
         _serveExpiredTTL(context, controller),
@@ -183,19 +178,6 @@ class DnsPage extends StatelessWidget {
       controller: controller.clientIpController,
       label: AppLocalizations.of(context)!.dnsPageClientIp,
       hintText: AppLocalizations.of(context)!.dnsPageClientIpExample,
-    );
-  }
-
-  Widget _queryStrategy(
-    BuildContext context,
-    DnsController controller,
-    DnsPageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.dnsPageQueryStrategy,
-      value: state.dnsState.queryStrategy.name,
-      selections: DnsQueryStrategy.names,
-      onSelected: (value) => controller.updateQueryStrategy(value),
     );
   }
 
