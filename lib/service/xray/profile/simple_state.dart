@@ -11,7 +11,7 @@ class XrayProfileSimple {
   var dns = SimpleDns.cloudflareProxy;
   var enableLog = false;
   var fakeDns = false;
-  int? chainProxyOutboundId;
+  int? finalOutboundId;
 
   Future<void> readFromPreferences() async {
     final jsonMap = await PreferencesKey().readXrayProfileSimple();
@@ -29,8 +29,8 @@ class XrayProfileSimple {
     if (model.fakeDns != null) {
       fakeDns = model.fakeDns!;
     }
-    if (model.chainProxyOutboundId != null) {
-      chainProxyOutboundId = model.chainProxyOutboundId;
+    if (model.finalOutboundId != null) {
+      finalOutboundId = model.finalOutboundId;
     }
   }
 
@@ -43,7 +43,7 @@ class XrayProfileSimple {
     dns.id,
     enableLog,
     fakeDns,
-    chainProxyOutboundId,
+    finalOutboundId,
   );
 }
 

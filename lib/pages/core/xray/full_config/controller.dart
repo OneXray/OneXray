@@ -222,7 +222,7 @@ class XrayFullConfigController extends Cubit<XrayFullConfigPageState> {
   String dnsSummary(BuildContext context) {
     final dns = _fullConfigState.dns;
     if (dns.servers.isEmpty) {
-      return AppLocalizations.of(context)!.chainProxyPageDisabled;
+      return AppLocalizations.of(context)!.finalOutboundPageDisabled;
     }
     final firstServer = dns.servers.first.address;
     if (dns.servers.length == 1) {

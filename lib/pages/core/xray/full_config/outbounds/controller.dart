@@ -234,7 +234,7 @@ class XrayFullConfigOutboundsController
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.chainProxyValidationInvalid,
+          AppLocalizations.of(context)!.vpnOutboundInvalid,
         );
       }
       return null;

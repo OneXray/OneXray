@@ -10,12 +10,12 @@ import 'package:onexray/pages/main/navigation.dart';
 
 class XrayProfileSimplePageState {
   final XrayProfileSimple xrayProfile;
-  final String chainProxyName;
+  final String finalOutboundName;
   final int version;
 
   const XrayProfileSimplePageState({
     required this.xrayProfile,
-    this.chainProxyName = "",
+    this.finalOutboundName = "",
     this.version = 0,
   });
 
@@ -24,18 +24,18 @@ class XrayProfileSimplePageState {
 
   XrayProfileSimplePageState bumped() => XrayProfileSimplePageState(
     xrayProfile: xrayProfile,
-    chainProxyName: chainProxyName,
+    finalOutboundName: finalOutboundName,
     version: version + 1,
   );
 
   XrayProfileSimplePageState copyWith({
     XrayProfileSimple? xrayProfile,
-    String? chainProxyName,
+    String? finalOutboundName,
     int? version,
   }) {
     return XrayProfileSimplePageState(
       xrayProfile: xrayProfile ?? this.xrayProfile,
-      chainProxyName: chainProxyName ?? this.chainProxyName,
+      finalOutboundName: finalOutboundName ?? this.finalOutboundName,
       version: version ?? this.version,
     );
   }
@@ -49,19 +49,19 @@ class XrayProfileSimpleController extends Cubit<XrayProfileSimplePageState> {
   Future<void> _readXrayProfile() async {
     final xrayProfile = XrayProfileSimple();
     await xrayProfile.readFromPreferences();
-    final chainProxyName = await _readChainProxyName(
-      xrayProfile.chainProxyOutboundId,
+    final finalOutboundName = await _readFinalOutboundName(
+      xrayProfile.finalOutboundId,
     );
     emit(
       XrayProfileSimplePageState(
         xrayProfile: xrayProfile,
-        chainProxyName: chainProxyName,
+        finalOutboundName: finalOutboundName,
         version: 1,
       ),
     );
   }
 
-  Future<String> _readChainProxyName(int? id) async {
+  Future<String> _readFinalOutboundName(int? id) async {
     if (id == null) {
       return "";
     }
@@ -128,28 +128,28 @@ class XrayProfileSimpleController extends Cubit<XrayProfileSimplePageState> {
     }
   }
 
-  Future<void> editChainProxy(BuildContext context) async {
+  Future<void> editFinalOutbound(BuildContext context) async {
     final params = OutboundSelectParams(
-      selectedId: state.xrayProfile.chainProxyOutboundId,
+      selectedId: state.xrayProfile.finalOutboundId,
     );
     final outbound = await context.pushScoped<CoreConfigData>(
       AppSecondaryDestination.outboundSelect,
       extra: params,
     );
     if (outbound != null) {
-      state.xrayProfile.chainProxyOutboundId = outbound.id;
+      state.xrayProfile.finalOutboundId = outbound.id;
       emit(
         state.copyWith(
-          chainProxyName: outbound.name,
+          finalOutboundName: outbound.name,
           version: state.version + 1,
         ),
       );
     }
   }
 
-  void clearChainProxy() {
-    state.xrayProfile.chainProxyOutboundId = null;
-    emit(state.copyWith(chainProxyName: "", version: state.version + 1));
+  void clearFinalOutbound() {
+    state.xrayProfile.finalOutboundId = null;
+    emit(state.copyWith(finalOutboundName: "", version: state.version + 1));
   }
 
   Future<void> save(BuildContext context) async {

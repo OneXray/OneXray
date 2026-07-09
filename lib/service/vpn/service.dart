@@ -624,7 +624,7 @@ final class VpnService {
     if (!outboundValid) {
       throw _VpnStartException(appLocalizationsNoContext().vpnOutboundInvalid);
     }
-    await _applyChainProxy(settingState, outboundState, config);
+    await _applyFinalOutbound(settingState, outboundState, config);
     settingState.outbounds.outbounds.add(outboundState);
 
     final xrayJson = await settingState.fixSetting(
@@ -636,74 +636,74 @@ final class VpnService {
     return configPath;
   }
 
-  Future<void> _applyChainProxy(
+  Future<void> _applyFinalOutbound(
     XrayProfileState settingState,
     OutboundState outboundState,
     CoreConfigData config,
   ) async {
-    final simpleChainProxyId = await _simpleChainProxyOutboundId();
-    if (simpleChainProxyId != null) {
-      if (simpleChainProxyId == config.id) {
+    final simpleFinalOutboundId = await _simpleFinalOutboundId();
+    if (simpleFinalOutboundId != null) {
+      if (simpleFinalOutboundId == config.id) {
         throw _VpnStartException(
-          appLocalizationsNoContext().vpnChainProxySameAsOutbound,
+          appLocalizationsNoContext().vpnFinalOutboundSameAsOutbound,
         );
       }
-      settingState.outbounds.chainProxy = await _loadChainProxy(
-        simpleChainProxyId,
+      settingState.outbounds.finalOutbound = await _loadFinalOutbound(
+        simpleFinalOutboundId,
       );
     }
 
-    final chainProxy = settingState.outbounds.chainProxy;
-    if (chainProxy == null) {
+    final finalOutbound = settingState.outbounds.finalOutbound;
+    if (finalOutbound == null) {
       outboundState.tag = RoutingOutboundTag.proxy.name;
       return;
     }
 
     outboundState.tag = RoutingOutboundTag.chainProxy.name;
     outboundState.dialerProxy = "";
-    chainProxy.tag = RoutingOutboundTag.proxy.name;
-    chainProxy.dialerProxy = RoutingOutboundTag.chainProxy.name;
+    finalOutbound.tag = RoutingOutboundTag.proxy.name;
+    finalOutbound.dialerProxy = RoutingOutboundTag.chainProxy.name;
   }
 
-  Future<int?> _simpleChainProxyOutboundId() async {
+  Future<int?> _simpleFinalOutboundId() async {
     final settingId = await PreferencesKey().readXrayProfileId();
     if (settingId != XrayProfileSimple.simpleId) {
       return null;
     }
     final simple = XrayProfileSimple();
     await simple.readFromPreferences();
-    return simple.chainProxyOutboundId;
+    return simple.finalOutboundId;
   }
 
-  Future<OutboundState> _loadChainProxy(int id) async {
+  Future<OutboundState> _loadFinalOutbound(int id) async {
     final db = AppDatabase();
     final row = await db.coreConfigDao.searchRow(id);
     if (row == null) {
       throw _VpnStartException(
-        appLocalizationsNoContext().vpnChainProxyMissing,
+        appLocalizationsNoContext().vpnFinalOutboundMissing,
       );
     }
     if (CoreConfigType.fromString(row.type) != CoreConfigType.outbound) {
       throw _VpnStartException(
-        appLocalizationsNoContext().vpnChainProxyInvalid,
+        appLocalizationsNoContext().vpnFinalOutboundInvalid,
       );
     }
-    final chainProxy = OutboundState();
+    final finalOutbound = OutboundState();
     var valid = false;
     try {
-      valid = chainProxy.readFromDbData(row);
+      valid = finalOutbound.readFromDbData(row);
     } catch (_) {
       valid = false;
     }
     if (!valid) {
       throw _VpnStartException(
-        appLocalizationsNoContext().vpnChainProxyInvalid,
+        appLocalizationsNoContext().vpnFinalOutboundInvalid,
       );
     }
-    chainProxy.name = row.name;
-    chainProxy.tag = RoutingOutboundTag.proxy.name;
-    chainProxy.dialerProxy = "";
-    return chainProxy;
+    finalOutbound.name = row.name;
+    finalOutbound.tag = RoutingOutboundTag.proxy.name;
+    finalOutbound.dialerProxy = "";
+    return finalOutbound;
   }
 
   Future<String> _writeXrayRawConfig(

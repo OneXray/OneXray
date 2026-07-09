@@ -199,7 +199,7 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
   String dnsSummary(BuildContext context) {
     final dns = _xrayProfileState.dns;
     if (dns.servers.isEmpty) {
-      return AppLocalizations.of(context)!.chainProxyPageDisabled;
+      return AppLocalizations.of(context)!.finalOutboundPageDisabled;
     }
     final firstServer = dns.servers.first.address;
     if (dns.servers.length == 1) {
@@ -221,15 +221,15 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
     final sniffing = _xrayProfileState.inbounds.tun.sniffing;
     return sniffing.enabled
         ? AppLocalizations.of(context)!.switchEnabled
-        : AppLocalizations.of(context)!.chainProxyPageDisabled;
+        : AppLocalizations.of(context)!.finalOutboundPageDisabled;
   }
 
   String outboundsSummary(BuildContext context) {
-    final chainProxy = _xrayProfileState.outbounds.chainProxy;
-    if (chainProxy == null) {
-      return AppLocalizations.of(context)!.chainProxyPageDisabled;
+    final finalOutbound = _xrayProfileState.outbounds.finalOutbound;
+    if (finalOutbound == null) {
+      return AppLocalizations.of(context)!.finalOutboundPageDisabled;
     }
-    return chainProxy.name;
+    return finalOutbound.name;
   }
 
   Future<void> save(BuildContext context) async {

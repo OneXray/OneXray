@@ -46,7 +46,7 @@ class OutboundsPage extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    _chainProxySection(context, controller, state),
+                    _finalOutboundSection(context, controller, state),
                     _editSection(context, controller),
                   ],
                 ),
@@ -59,26 +59,26 @@ class OutboundsPage extends StatelessWidget {
     );
   }
 
-  Widget _chainProxySection(
+  Widget _finalOutboundSection(
     BuildContext context,
     OutboundsController controller,
     OutboundsPageState state,
   ) {
-    final chainProxy = state.outboundsState.chainProxy;
+    final finalOutbound = state.outboundsState.finalOutbound;
     final title =
-        chainProxy?.name ??
-        AppLocalizations.of(context)!.chainProxyPageDisabled;
+        finalOutbound?.name ??
+        AppLocalizations.of(context)!.finalOutboundPageDisabled;
     return SettingSection(
-      title: AppLocalizations.of(context)!.chainProxyPageTitle,
+      title: AppLocalizations.of(context)!.finalOutboundPageTitle,
       children: [
         NavigationSettingRow(
           title: title,
-          onTap: () => controller.importChainProxy(context),
+          onTap: () => controller.importFinalOutbound(context),
         ),
-        if (chainProxy != null)
+        if (finalOutbound != null)
           SettingRow(
-            title: AppLocalizations.of(context)!.chainProxyPageDelete,
-            onTap: () => controller.deleteChainProxy(),
+            title: AppLocalizations.of(context)!.finalOutboundPageDelete,
+            onTap: () => controller.deleteFinalOutbound(),
             trailing: const Icon(Icons.delete),
           ),
       ],
