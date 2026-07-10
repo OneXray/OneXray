@@ -30,6 +30,7 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
     }
 
     state.routing.dnsQueryRule.outboundTag = RoutingOutboundTag.proxy.name;
+    state.outbounds.dns.dialerProxy = RoutingOutboundTag.proxy.name;
 
     return state;
   }

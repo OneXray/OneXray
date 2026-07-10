@@ -339,6 +339,8 @@
     "outboundDnsPageRuleRCode": "کد پاسخ rCode",
     "outboundDnsPageRuleRCodeExample": "5",
     "outboundDnsPageTag": "tag",
+    "outboundDnsPageSockopt": "sockopt",
+    "outboundDnsPageDialerProxy": "dialerProxy",
     "outboundPageRealPing": "پینگ واقعی",
     "outboundPageRealPingResult": "نتیجه پینگ واقعی",
     "outboundPageTitle": "Xray Outbound",

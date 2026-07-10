@@ -67,7 +67,10 @@ class OutboundsController extends Cubit<OutboundsPageState> {
   }
 
   Future<void> editDns(BuildContext context) async {
-    final params = OutboundDnsParams(state.outboundsState.dns);
+    final params = OutboundDnsParams(
+      state.outboundsState.dns,
+      state.outboundsState.dnsDialerProxyTags,
+    );
     final dns = await context.pushScoped<OutboundDnsState>(
       AppSecondaryDestination.outboundDns,
       extra: params,
@@ -111,6 +114,7 @@ class OutboundsController extends Cubit<OutboundsPageState> {
 
   void deleteFinalOutbound() {
     state.outboundsState.finalOutbound = null;
+    state.outboundsState.fixDnsDialerProxy();
     emit(state.bumped());
   }
 

@@ -52,6 +52,7 @@ class OutboundDnsPage extends StatelessWidget {
                     _protocolSection(context, controller, state),
                     _settingSection(context, controller, state),
                     _rulesSection(context, controller, state),
+                    _sockoptSection(context, controller, state),
                   ],
                 ),
               ),
@@ -239,6 +240,24 @@ class OutboundDnsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _sockoptSection(
+    BuildContext context,
+    OutboundDnsController controller,
+    OutboundDnsPageState state,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.outboundDnsPageSockopt,
+      children: [
+        SelectSettingRow(
+          title: AppLocalizations.of(context)!.outboundDnsPageDialerProxy,
+          value: state.dnsState.dialerProxy,
+          selections: state.outboundTags,
+          onSelected: controller.updateDialerProxy,
+        ),
+      ],
     );
   }
 

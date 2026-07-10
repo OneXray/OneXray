@@ -339,6 +339,8 @@
   "outboundDnsPageRuleRCode": "Код ответа rCode",
   "outboundDnsPageRuleRCodeExample": "5",
   "outboundDnsPageTag": "tag",
+  "outboundDnsPageSockopt": "sockopt",
+  "outboundDnsPageDialerProxy": "dialerProxy",
   "outboundPageRealPing": "Тест соединения",
   "outboundPageRealPingResult": "Результат теста",
   "outboundPageTitle": "Xray узлы",

@@ -9,15 +9,23 @@ import 'package:onexray/service/xray/profile/outbounds_state.dart';
 
 class OutboundDnsPageState {
   final OutboundDnsState dnsState;
+  final List<String> outboundTags;
   final int version;
 
-  OutboundDnsPageState({required this.dnsState, this.version = 0});
+  OutboundDnsPageState({
+    required this.dnsState,
+    this.outboundTags = const [],
+    this.version = 0,
+  });
 
   factory OutboundDnsPageState.initial() =>
       OutboundDnsPageState(dnsState: OutboundDnsState());
 
-  OutboundDnsPageState bumped() =>
-      OutboundDnsPageState(dnsState: dnsState, version: version + 1);
+  OutboundDnsPageState bumped() => OutboundDnsPageState(
+    dnsState: dnsState,
+    outboundTags: outboundTags,
+    version: version + 1,
+  );
 }
 
 class OutboundDnsController extends Cubit<OutboundDnsPageState> {
@@ -46,7 +54,13 @@ class OutboundDnsController extends Cubit<OutboundDnsPageState> {
     final initS = params.state;
     _initInput(initS);
     _initRuleInputs(initS);
-    emit(OutboundDnsPageState(dnsState: initS, version: 1));
+    emit(
+      OutboundDnsPageState(
+        dnsState: initS,
+        outboundTags: List.of(params.outboundTags),
+        version: 1,
+      ),
+    );
   }
 
   void _initInput(OutboundDnsState state) {
@@ -75,6 +89,11 @@ class OutboundDnsController extends Cubit<OutboundDnsPageState> {
       state.dnsState.network = network;
       emit(state.bumped());
     }
+  }
+
+  void updateDialerProxy(String value) {
+    state.dnsState.dialerProxy = value;
+    emit(state.bumped());
   }
 
   final addressController = TextEditingController();
