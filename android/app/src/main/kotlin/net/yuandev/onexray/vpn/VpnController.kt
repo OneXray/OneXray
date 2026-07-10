@@ -78,9 +78,12 @@ object VpnController {
     }
 
     fun stopVpn(context: Context): Boolean = try {
-        context.stopService(Intent(context, OneVpnService::class.java))
+        context.sendBroadcast(
+            Intent(OneVpnService.ACTION_STOP_REQUEST).setPackage(context.packageName)
+        )
+        true
     } catch (error: RuntimeException) {
-        XLog.e("VpnController: failed to stop VPN service", error)
+        XLog.e("VpnController: failed to request VPN stop", error)
         false
     }
 

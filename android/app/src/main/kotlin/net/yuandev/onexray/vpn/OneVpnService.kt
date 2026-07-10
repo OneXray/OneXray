@@ -1,10 +1,14 @@
 package net.yuandev.onexray.vpn
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.drawable.Icon
@@ -43,6 +47,7 @@ class OneVpnService : VpnService() {
     companion object {
         const val ACTION_START: String = "vpn_start"
         const val ACTION_STOP: String = "vpn_stop"
+        const val ACTION_STOP_REQUEST: String = "net.yuandev.onexray.VPN_STOP_REQUEST"
 
         const val IPV4_ADDRESS = "198.18.0.1"
         const val IPV6_ADDRESS = "fc00::1"
@@ -71,6 +76,15 @@ class OneVpnService : VpnService() {
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val stopRequestReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ACTION_STOP_REQUEST) {
+                XLog.d("OneVpnService: received stop request")
+                stopTun()
+            }
+        }
+    }
+    private var stopRequestReceiverRegistered = false
 
     class VPNController : DialerController {
         var vpn: OneVpnService? = null
@@ -83,8 +97,21 @@ class OneVpnService : VpnService() {
 
     private var controllerInit = false
     private val controller = VPNController()
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    override fun onCreate() {
+        super.onCreate()
         initService()
+        val filter = IntentFilter(ACTION_STOP_REQUEST)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(stopRequestReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(stopRequestReceiver, filter)
+        }
+        stopRequestReceiverRegistered = true
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         XLog.d("OneVpnService: onStartCommand ${intent?.action}")
         if (intent != null && intent.action == ACTION_STOP) {
             XLog.d("OneVpnService: onStartCommand $ACTION_STOP running=$running")
@@ -102,6 +129,13 @@ class OneVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        if (stopRequestReceiverRegistered) {
+            try {
+                unregisterReceiver(stopRequestReceiver)
+            } catch (_: IllegalArgumentException) {
+            }
+            stopRequestReceiverRegistered = false
+        }
         releaseTun()
         scope.cancel()
         super.onDestroy()

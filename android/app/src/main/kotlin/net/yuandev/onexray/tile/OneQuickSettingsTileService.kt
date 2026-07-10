@@ -67,7 +67,6 @@ class OneQuickSettingsTileService : TileService() {
                 iconRes = R.drawable.pause_light,
             )
             VpnController.stopVpn(this)
-            VpnController.requestTileRefresh(this)
             return
         }
 
