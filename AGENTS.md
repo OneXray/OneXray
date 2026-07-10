@@ -80,3 +80,4 @@ Choose validation commands based on the change scope. Changes touching Pigeon, J
 # Development Rules
 
 1. The app's `core`, `service`, and `pages` layers must strictly follow the layering rules. Reverse calls are forbidden.
+2. Page and view files must not contain business logic. Data access, validation, data transformation, navigation decisions, and page actions must be managed by the corresponding controller. Pages and views should only compose UI and bind callbacks.

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/component/nodes/controller.dart';
 import 'package:onexray/pages/home/component/nodes/view.dart';
+import 'package:onexray/pages/home/outbound_select/controller.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
 
 class OutboundSelectPage extends StatelessWidget {
@@ -12,6 +12,7 @@ class OutboundSelectPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = OutboundSelectController();
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.outboundSelectPageTitle),
@@ -21,7 +22,7 @@ class OutboundSelectPage extends StatelessWidget {
           queryType: HomeNodeQueryType.outboundOnly,
           showSearch: true,
           selectedId: params.selectedId,
-          onSelect: (config) => context.pop(config),
+          onSelect: (config) => controller.select(context, config),
         ),
       ),
     );
