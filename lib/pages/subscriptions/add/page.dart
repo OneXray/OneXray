@@ -9,7 +9,6 @@ import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
-import 'package:onexray/pages/main/navigation.dart';
 
 class SubscriptionAddPage extends StatelessWidget {
   const SubscriptionAddPage({super.key});
@@ -49,7 +48,7 @@ class SubscriptionAddPage extends StatelessWidget {
                   children: [
                     _name(context, controller),
                     _url(context, controller),
-                    _autoUpdate(context),
+                    _autoUpdate(context, controller),
                   ],
                 ),
               ),
@@ -78,10 +77,13 @@ class SubscriptionAddPage extends StatelessWidget {
     );
   }
 
-  Widget _autoUpdate(BuildContext context) {
+  Widget _autoUpdate(
+    BuildContext context,
+    SubscriptionAddController controller,
+  ) {
     return SettingRow(
       title: AppLocalizations.of(context)!.autoUpdatePageTitle,
-      onTap: () => context.pushScoped(AppSecondaryDestination.autoUpdate),
+      onTap: () => controller.gotoAutoUpdate(context),
       showChevron: true,
     );
   }

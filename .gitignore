@@ -93,7 +93,6 @@ windows/app/
 generated_bindings.dart
 desiredFileName.txt
 dist/
-test/
 lib/l10n/localizations/
 android/fastlane/playservice.json
 android/keystore/

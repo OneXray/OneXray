@@ -36,8 +36,8 @@ class AppHostApi {
   Future<NativeVpnCommandResult> readVpnStatus() async {
     try {
       return await _readVpnStatus();
-    } catch (e) {
-      ygLogger("readVpnStatus error: $e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('readVpnStatus', error, stackTrace);
       return _commandFailed();
     }
   }
@@ -55,8 +55,8 @@ class AppHostApi {
   Future<NativeVpnCommandResult> startVpn() async {
     try {
       return await _startVpn();
-    } catch (e) {
-      ygLogger("startVpn error: $e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('startVpn', error, stackTrace);
       return _commandFailed();
     }
   }
@@ -74,8 +74,8 @@ class AppHostApi {
   Future<NativeVpnCommandResult> stopVpn() async {
     try {
       return await _stopVpn();
-    } catch (e) {
-      ygLogger("stopVpn error: $e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('stopVpn', error, stackTrace);
       return _commandFailed();
     }
   }
@@ -101,15 +101,17 @@ class AppHostApi {
         ),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null && resp.data != null) {
-        if (resp.success!) {
+      if (resp.data != null) {
+        if (resp.success) {
           final ports = GetFreePortsResponse.fromJson(resp.data!);
           if (ports.ports != null) {
             return ports.ports!;
           }
         }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportUnexpected('getFreePorts', error, stackTrace);
+    }
     return [];
   }
 
@@ -122,14 +124,14 @@ class AppHostApi {
         ),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null && resp.data != null) {
-        if (resp.success!) {
+      if (resp.data != null) {
+        if (resp.success) {
           final xrayJson = XrayJson.fromJson(resp.data!);
           return xrayJson;
         }
       }
-    } catch (e) {
-      ygLogger("$e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('convertShareLinksToXrayJson', error, stackTrace);
     }
     return XrayJsonStandard.standard;
   }
@@ -144,14 +146,14 @@ class AppHostApi {
         ),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null && resp.data != null) {
-        if (resp.success!) {
+      if (resp.data != null) {
+        if (resp.success) {
           final data = ConvertXrayJsonToShareLinksResponse.fromJson(resp.data!);
           return data.links ?? "";
         }
       }
-    } catch (e) {
-      ygLogger("$e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('convertXrayJsonToShareLinks', error, stackTrace);
     }
     return "";
   }
@@ -165,16 +167,13 @@ class AppHostApi {
         ),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null) {
-        if (resp.success!) {
-          return "";
-        } else {
-          if (resp.error != null) {
-            return resp.error!;
-          }
-        }
+      if (resp.success) {
+        return "";
       }
-    } catch (_) {}
+      return resp.error;
+    } catch (error, stackTrace) {
+      _reportUnexpected('countGeoData', error, stackTrace);
+    }
     return _errorResult;
   }
 
@@ -193,7 +192,7 @@ class AppHostApi {
       );
       final resp = parseLibXrayInvokeResponse(res);
       ygLogger(
-        "ping result sucess:${resp.success} data:${resp.data} error:${resp.error}",
+        "ping result success:${resp.success} data:${resp.data} error:${resp.error}",
       );
       if (resp.data != null) {
         final data = PingResponse.fromJson(resp.data!);
@@ -202,8 +201,8 @@ class AppHostApi {
           return data.delay!;
         }
       }
-    } catch (e) {
-      ygLogger("$e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('ping', error, stackTrace);
     }
     return PingDelayConstants.error;
   }
@@ -217,17 +216,12 @@ class AppHostApi {
         ),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null) {
-        if (resp.success!) {
-          return "";
-        } else {
-          if (resp.error != null) {
-            return resp.error!;
-          }
-        }
+      if (resp.success) {
+        return "";
       }
-    } catch (e) {
-      ygLogger("$e");
+      return resp.error;
+    } catch (error, stackTrace) {
+      _reportUnexpected('testXray', error, stackTrace);
     }
     return _errorResult;
   }
@@ -246,16 +240,13 @@ class AppHostApi {
       }
       final res = await _invoke(request.invoke);
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null) {
-        if (resp.success!) {
-          return "";
-        } else {
-          if (resp.error != null) {
-            return resp.error!;
-          }
-        }
+      if (resp.success) {
+        return "";
       }
-    } catch (_) {}
+      return resp.error;
+    } catch (error, stackTrace) {
+      _reportUnexpected('runXray', error, stackTrace);
+    }
     return _errorResult;
   }
 
@@ -267,8 +258,8 @@ class AppHostApi {
     try {
       final started = await start();
       return started ? "" : _errorResult;
-    } catch (e) {
-      ygLogger("run desktop proxy core error: $e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('runDesktopProxyCore', error, stackTrace);
       return _errorResult;
     }
   }
@@ -284,35 +275,32 @@ class AppHostApi {
         LibXrayInvokeRequest(method: LibXrayMethod.stopXray),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null) {
-        if (resp.success!) {
-          return "";
-        } else {
-          if (resp.error != null) {
-            return resp.error!;
-          }
-        }
+      if (resp.success) {
+        return "";
       }
-    } catch (_) {}
+      return resp.error;
+    } catch (error, stackTrace) {
+      _reportUnexpected('stopXray', error, stackTrace);
+    }
     return _errorResult;
   }
 
   Future<bool> getXrayState() async {
     if (AppPlatform.isLinux) {
-      return LinuxFfiApi().proxyCoreRunning();
+      return await LinuxFfiApi().proxyCoreRunning();
     } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().proxyCoreRunning();
+      return await WindowsFfiApi().proxyCoreRunning();
     }
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.getXrayState),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success == true && resp.data != null) {
+      if (resp.success && resp.data != null) {
         return GetXrayStateResponse.fromJson(resp.data!).running ?? false;
       }
-    } catch (e) {
-      ygLogger("getXrayState error: $e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('getXrayState', error, stackTrace);
     }
     return false;
   }
@@ -323,12 +311,14 @@ class AppHostApi {
         LibXrayInvokeRequest(method: LibXrayMethod.xrayVersion),
       );
       final resp = parseLibXrayInvokeResponse(res);
-      if (resp.success != null && resp.data != null) {
-        if (resp.success!) {
+      if (resp.data != null) {
+        if (resp.success) {
           return XrayVersionResponse.fromJson(resp.data!).version ?? "";
         }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _reportUnexpected('xrayVersion', error, stackTrace);
+    }
     return "";
   }
 
@@ -344,6 +334,12 @@ class AppHostApi {
       responseJson = await _api.invoke(requestJson);
     }
     LibXrayInvokeLimits.validate(responseJson, "response");
+    final response = parseLibXrayInvokeResponse(responseJson);
+    if (!response.success) {
+      ygLogger(
+        "libXray ${request.method?.name ?? 'unknown'} failed: ${response.error}",
+      );
+    }
     return responseJson;
   }
 
@@ -359,7 +355,9 @@ class AppHostApi {
       try {
         final result = await _api.checkVpnPermission();
         return result;
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        _reportUnexpected('checkVpnPermission', error, stackTrace);
+      }
     }
     return true;
   }
@@ -370,8 +368,8 @@ class AppHostApi {
     }
     try {
       return await _api.queryPlatformPermission();
-    } catch (e) {
-      ygLogger("queryPlatformPermission error: $e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('queryPlatformPermission', error, stackTrace);
       return _platformPermissionFailed();
     }
   }
@@ -382,8 +380,8 @@ class AppHostApi {
     }
     try {
       return await _api.requestPlatformPermission();
-    } catch (e) {
-      ygLogger("requestPlatformPermission error: $e");
+    } catch (error, stackTrace) {
+      _reportUnexpected('requestPlatformPermission', error, stackTrace);
       return _platformPermissionFailed();
     }
   }
@@ -393,7 +391,9 @@ class AppHostApi {
       try {
         final result = await _api.getInstalledApps();
         return result;
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        _reportUnexpected('getInstalledApps', error, stackTrace);
+      }
     }
     return [];
   }
@@ -412,7 +412,9 @@ class AppHostApi {
     if (AppPlatform.isIOS) {
       try {
         return await _api.setAppIcon(appIcon);
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        _reportUnexpected('setAppIcon', error, stackTrace);
+      }
     }
     return false;
   }
@@ -421,7 +423,9 @@ class AppHostApi {
     if (AppPlatform.isIOS) {
       try {
         return await _api.getCurrentAppIcon();
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        _reportUnexpected('getCurrentAppIcon', error, stackTrace);
+      }
     }
     return "";
   }
@@ -445,5 +449,13 @@ class AppHostApi {
       state: NativeVpnCommandState.failed,
       permission: _platformPermissionFailed(),
     );
+  }
+
+  void _reportUnexpected(
+    String operation,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    ygReportError(error, stackTrace, reason: 'AppHostApi.$operation failed');
   }
 }

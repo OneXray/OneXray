@@ -20,9 +20,17 @@ abstract class BaseFfiApi {
   var _vpnStatus = VpnStatus.disconnected;
 
   Future<NativeVpnCommandResult> readVpnStatus() async {
+    final running = await queryCoreRunning();
+    if (running != null &&
+        _vpnStatus != VpnStatus.connecting &&
+        _vpnStatus != VpnStatus.disconnecting) {
+      _vpnStatus = running ? VpnStatus.connected : VpnStatus.disconnected;
+    }
     await AppFlutterApi().vpnStatusChanged(_vpnStatus);
     return _commandSuccess();
   }
+
+  Future<bool?> queryCoreRunning() async => null;
 
   Future<void> updateVpnStatus(VpnStatus status) async {
     _vpnStatus = status;
@@ -60,11 +68,11 @@ abstract class BaseFfiApi {
     return true;
   }
 
-  void stopCore() {}
+  Future<void> stopCore() async {}
 
   Future<NativeVpnCommandResult> stopVpn() async {
     await updateVpnStatus(VpnStatus.disconnecting);
-    stopCore();
+    await stopCore();
     await Future.delayed(Duration(seconds: 1));
     await updateVpnStatus(VpnStatus.disconnected);
     return _commandSuccess();
@@ -124,10 +132,12 @@ class _CoreLib {
 @isolateManagerSharedWorker
 String _cgoInvoke(String requestJson) {
   final req = _convertStringToPointer(requestJson);
-  final resPointer = _CoreLib()._lib.CGoInvoke(req);
-  calloc.free(req);
-  final res = _convertPointerToString(resPointer);
-  return res;
+  try {
+    final resPointer = _CoreLib()._lib.CGoInvoke(req);
+    return _convertPointerToString(resPointer);
+  } finally {
+    calloc.free(req);
+  }
 }
 
 Pointer<Char> _convertStringToPointer(String text) {
@@ -136,7 +146,12 @@ Pointer<Char> _convertStringToPointer(String text) {
 }
 
 String _convertPointerToString(Pointer<Char> pointer) {
-  final text = pointer.cast<Utf8>().toDartString();
-  calloc.free(pointer);
-  return text;
+  if (pointer == nullptr) {
+    throw StateError('CGoInvoke returned a null response');
+  }
+  try {
+    return pointer.cast<Utf8>().toDartString();
+  } finally {
+    _CoreLib()._lib.CGoFree(pointer);
+  }
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
 
@@ -45,5 +46,9 @@ class SubscriptionAddController extends Cubit<int> {
         ContextAlert.showToast(context, check.item2);
       }
     }
+  }
+
+  void gotoAutoUpdate(BuildContext context) {
+    context.pushScoped(AppSecondaryDestination.autoUpdate);
   }
 }

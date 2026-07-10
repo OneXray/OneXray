@@ -26,9 +26,9 @@ data class TunJson(
     val enableDot: Boolean?,
     val dnsServerName: String?,
     val enableIPv6: Boolean?,
+    val metricsEnabled: Boolean?,
     val tunName: String?,
-    val tunPriority: Int?,
-    val bindInterface: String?,
+    val autoOutboundsInterface: String?,
     val onDemandEnabled: Boolean?,
     val disconnectOnSleep: Boolean?,
     val onDemandRules: List<OnDemandRule>?,
@@ -38,9 +38,16 @@ data class TunJson(
 )
 
 @Serializable
+data class XrayInboundAccount(
+    val user: String?,
+    val pass: String?,
+)
+
+@Serializable
 data class StartVpnRequest(
     val tun: TunJson?,
     val pingPort: String?,
+    val pingAuth: XrayInboundAccount?,
     val metricsPort: String?,
     val coreInvokeText: String?,
 )
@@ -105,6 +112,6 @@ data class LibXrayInvokeRequest(
 
 @Serializable
 data class LibXrayInvokeResponse(
-    val success: Boolean? = null,
-    val error: String? = null,
+    val success: Boolean,
+    val error: String,
 )

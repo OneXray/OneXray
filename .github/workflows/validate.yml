@@ -1,0 +1,51 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.44.5"
+
+jobs:
+  dart:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        run: bash build_scripts/setup_flutter.sh
+
+      - name: Prepare non-secret Firebase options
+        run: cp tool/firebase_options_stub.dart lib/firebase_options.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate sources
+        run: |
+          flutter gen-l10n
+          dart run build_runner build
+
+      - name: Verify generated sources
+        run: git diff --exit-code
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Verify native JSON model contract
+        run: dart run tool/check_native_model_contract.dart
+
+      - name: Test
+        run: flutter test
+
+      - name: Check whitespace
+        run: git diff --check

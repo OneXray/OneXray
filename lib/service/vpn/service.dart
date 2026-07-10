@@ -1,56 +1,25 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
-import 'package:duration/duration.dart';
-import 'package:duration/locale.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/db/database/enum.dart';
-import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
-import 'package:onexray/core/tools/file.dart';
-import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/localizations/service.dart';
+import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/menu/tray/service.dart';
 import 'package:onexray/service/notification/service.dart';
-import 'package:onexray/core/pigeon/model_reader.dart';
-import 'package:onexray/core/pigeon/model_writer.dart';
-import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
-import 'package:onexray/core/pigeon/constants.dart';
-import 'package:onexray/service/xray/constants.dart';
-import 'package:onexray/service/xray/json_writer.dart';
-import 'package:onexray/service/xray/metrics/service.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
-import 'package:onexray/service/xray/full_config/state_validator.dart';
-import 'package:onexray/service/xray/full_config/state_writer.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/raw/fix.dart';
+import 'package:onexray/service/vpn/connectivity.dart';
+import 'package:onexray/service/vpn/runtime_config.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
-import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/profile/simple_state.dart';
-import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/profile/state_reader.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
-
-class _VpnStartException implements Exception {
-  final String message;
-
-  _VpnStartException(this.message);
-}
 
 final class VpnService {
   static final VpnService _singleton = VpnService._internal();
@@ -66,6 +35,8 @@ final class VpnService {
   var _lastVpnStatus = VpnStatus.disconnected;
   var _runningMode = CoreRunMode.tun;
   var _pendingRunMode = CoreRunMode.tun;
+  late final _connectivity = VpnConnectivityService(() => _vpnRunning);
+  late final _runtimeConfig = XrayRuntimeConfigService();
 
   bool get vpnRunning => _vpnRunning;
 
@@ -82,6 +53,7 @@ final class VpnService {
   }
 
   void dispose() {
+    _connectivity.stop();
     final vpnStatusSubscription = _vpnStatusSubscription;
     _vpnStatusSubscription = null;
     unawaited(vpnStatusSubscription?.cancel() ?? Future.value());
@@ -133,8 +105,7 @@ final class VpnService {
         eventBus.updateVpnActionState(VpnActionState.idle);
         await _updateRunningId(DBConstants.defaultId);
         await TrayService().refreshTrayManager();
-        _stopDurationTimer();
-        XrayMetricsService().stop();
+        _connectivity.stop();
         break;
       case VpnStatus.connecting:
         eventBus.updateVpnActionState(VpnActionState.connecting);
@@ -150,8 +121,7 @@ final class VpnService {
         _pendingConfigId = DBConstants.defaultId;
         eventBus.updatePendingConfigId(DBConstants.defaultId);
         await TrayService().refreshTrayManager();
-        await _startDurationTimer();
-        await _startMetricsTimer();
+        await _connectivity.start();
         break;
     }
   }
@@ -294,7 +264,7 @@ final class VpnService {
       }
       eventBus.updateVpnActionState(VpnActionState.connected);
       return result;
-    } on _VpnStartException catch (e) {
+    } on XrayRuntimeConfigException catch (e) {
       await _handleStartFailure(e.message);
       return _commandFailed(e.message);
     }
@@ -424,7 +394,7 @@ final class VpnService {
     eventBus.updateVpnErrorMessage(message);
     await _updateRunningId(DBConstants.defaultId);
     ToastService().showToast(message);
-    XrayMetricsService().stop();
+    _connectivity.stop();
   }
 
   Future<bool> _waitForVpnStatus(
@@ -478,288 +448,18 @@ final class VpnService {
     await _updateLastConfigId(config.id);
     await PreferencesKey().saveVpnStartTimestamp();
 
-    final coreRunMode = await PreferencesKey().readCoreRunMode();
-    _pendingRunMode = coreRunMode;
-
-    final runDir = VpnConstants.runDir;
-    await FileTool.checkDir(runDir);
-
-    final tunSettingsState = TunSettingsState();
-    await tunSettingsState.readFromPreferences();
-    final settingState = await XrayProfileStateReader.loadFromDb();
-    final proxyPortValidation = _validateProxyPorts(coreRunMode, settingState);
-    if (proxyPortValidation != null) {
-      return _commandFailed(proxyPortValidation);
-    }
-
-    final ports = await XrayPorts.getPorts(
-      excludedPorts: _localProxyPorts(coreRunMode, settingState),
-    );
-    if (ports == null) {
-      return _commandFailed(appLocalizationsNoContext().vpnLocalPortFailed);
-    }
-
-    final db = AppDatabase();
-    final outbound = await db.coreConfigDao.searchRow(config.id);
-    if (outbound == null) {
-      return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
-    }
-
-    final coreConfigType = CoreConfigType.fromString(config.type);
-    if (coreConfigType == null) {
-      return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
-    }
-    var configPath = "";
-    switch (coreConfigType) {
-      case CoreConfigType.outbound:
-        configPath = await _writeXrayUIConfig(
-          config,
-          settingState,
-          coreRunMode,
-          tunSettingsState,
-          ports,
-          runDir,
-        );
-        break;
-      case CoreConfigType.raw:
-        configPath = await _writeXrayRawConfig(
-          coreConfigType,
-          config,
-          settingState,
-          coreRunMode,
-          tunSettingsState,
-          ports,
-          runDir,
-        );
-        break;
-      case CoreConfigType.full:
-        configPath = await _writeXrayFullConfig(
-          config,
-          settingState,
-          coreRunMode,
-          tunSettingsState,
-          ports,
-          runDir,
-        );
-        break;
-      default:
-        return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
-    }
-
-    await _clearXrayLog();
-
-    final coreInvokeText = await _makeRunXrayRequest(configPath);
-    if (coreInvokeText == null) {
-      return _commandFailed(appLocalizationsNoContext().vpnStartRequestFailed);
-    }
-
-    switch (coreRunMode) {
+    final runtime = await _runtimeConfig.prepare(config);
+    _pendingRunMode = runtime.mode;
+    switch (runtime.mode) {
       case CoreRunMode.tun:
         return _makeVpnRequestAndStart(
-          coreInvokeText,
-          runDir,
-          ports,
-          tunSettingsState,
+          runtime.coreInvokeText,
+          runtime.ports,
+          runtime.tunSettings,
         );
       case CoreRunMode.proxy:
-        return _makeProxyRequestAndStart(coreInvokeText, ports);
+        return _makeProxyRequestAndStart(runtime.coreInvokeText, runtime.ports);
     }
-  }
-
-  String? _validateProxyPorts(CoreRunMode mode, XrayProfileState settingState) {
-    if (mode != CoreRunMode.proxy) {
-      return null;
-    }
-    final socksPort = int.tryParse(settingState.inbounds.socks.port);
-    final httpPort = int.tryParse(settingState.inbounds.http.port);
-    if (!_isValidPort(socksPort) || !_isValidPort(httpPort)) {
-      return appLocalizationsNoContext().validationPortInvalid;
-    }
-    if (socksPort == httpPort) {
-      return appLocalizationsNoContext().validationPortDuplicate;
-    }
-    return null;
-  }
-
-  bool _isValidPort(int? port) {
-    return port != null && port > 0 && port <= 65535;
-  }
-
-  Set<int> _localProxyPorts(CoreRunMode mode, XrayProfileState settingState) {
-    if (mode != CoreRunMode.proxy) {
-      return const {};
-    }
-    final ports = <int>{};
-    final socksPort = int.tryParse(settingState.inbounds.socks.port);
-    final httpPort = int.tryParse(settingState.inbounds.http.port);
-    if (_isValidPort(socksPort)) {
-      ports.add(socksPort!);
-    }
-    if (_isValidPort(httpPort)) {
-      ports.add(httpPort!);
-    }
-    return ports;
-  }
-
-  Future<void> _clearXrayLog() async {
-    await File(XrayStateConstants.accessLogPath).writeAsString("");
-    await File(XrayStateConstants.errorLogPath).writeAsString("");
-  }
-
-  Future<String> _writeXrayUIConfig(
-    CoreConfigData config,
-    XrayProfileState settingState,
-    CoreRunMode coreRunMode,
-    TunSettingsState tunSettingsState,
-    XrayPorts port,
-    String runDir,
-  ) async {
-    final outboundState = OutboundState();
-    var outboundValid = false;
-    try {
-      outboundValid = outboundState.readFromDbData(config);
-    } catch (_) {
-      outboundValid = false;
-    }
-    if (!outboundValid) {
-      throw _VpnStartException(appLocalizationsNoContext().vpnOutboundInvalid);
-    }
-    await _applyFinalOutbound(settingState, outboundState, config);
-    settingState.outbounds.outbounds.add(outboundState);
-
-    final xrayJson = await settingState.fixSetting(
-      coreRunMode,
-      tunSettingsState,
-      port,
-    );
-    final configPath = await xrayJson.writeConfig(runDir);
-    return configPath;
-  }
-
-  Future<void> _applyFinalOutbound(
-    XrayProfileState settingState,
-    OutboundState outboundState,
-    CoreConfigData config,
-  ) async {
-    final simpleFinalOutboundId = await _simpleFinalOutboundId();
-    if (simpleFinalOutboundId != null) {
-      if (simpleFinalOutboundId == config.id) {
-        throw _VpnStartException(
-          appLocalizationsNoContext().vpnFinalOutboundSameAsOutbound,
-        );
-      }
-      settingState.outbounds.finalOutbound = await _loadFinalOutbound(
-        simpleFinalOutboundId,
-      );
-    }
-
-    final finalOutbound = settingState.outbounds.finalOutbound;
-    if (finalOutbound == null) {
-      outboundState.tag = RoutingOutboundTag.proxy.name;
-      return;
-    }
-
-    outboundState.tag = RoutingOutboundTag.chainProxy.name;
-    outboundState.dialerProxy = "";
-    finalOutbound.tag = RoutingOutboundTag.proxy.name;
-    finalOutbound.dialerProxy = RoutingOutboundTag.chainProxy.name;
-    settingState.outbounds.finalOutbound = null;
-    settingState.outbounds.outbounds.add(finalOutbound);
-  }
-
-  Future<int?> _simpleFinalOutboundId() async {
-    final settingId = await PreferencesKey().readXrayProfileId();
-    if (settingId != XrayProfileSimple.simpleId) {
-      return null;
-    }
-    final simple = XrayProfileSimple();
-    await simple.readFromPreferences();
-    return simple.finalOutboundId;
-  }
-
-  Future<OutboundState> _loadFinalOutbound(int id) async {
-    final db = AppDatabase();
-    final row = await db.coreConfigDao.searchRow(id);
-    if (row == null) {
-      throw _VpnStartException(
-        appLocalizationsNoContext().vpnFinalOutboundMissing,
-      );
-    }
-    if (CoreConfigType.fromString(row.type) != CoreConfigType.outbound) {
-      throw _VpnStartException(
-        appLocalizationsNoContext().vpnFinalOutboundInvalid,
-      );
-    }
-    final finalOutbound = OutboundState();
-    var valid = false;
-    try {
-      valid = finalOutbound.readFromDbData(row);
-    } catch (_) {
-      valid = false;
-    }
-    if (!valid) {
-      throw _VpnStartException(
-        appLocalizationsNoContext().vpnFinalOutboundInvalid,
-      );
-    }
-    finalOutbound.name = row.name;
-    finalOutbound.tag = RoutingOutboundTag.proxy.name;
-    finalOutbound.dialerProxy = "";
-    return finalOutbound;
-  }
-
-  Future<String> _writeXrayRawConfig(
-    CoreConfigType coreConfigType,
-    CoreConfigData config,
-    XrayProfileState settingState,
-    CoreRunMode coreRunMode,
-    TunSettingsState tunSettingsState,
-    XrayPorts port,
-    String runDir,
-  ) async {
-    final bytes = base64Decode(config.data!);
-    final rawText = utf8.decode(bytes);
-    final jsonMap = JsonTool.decoder.convert(rawText);
-    await XrayRawFix.fixConfig(
-      jsonMap,
-      settingState,
-      coreRunMode,
-      tunSettingsState,
-      port,
-      tunSettingsState.metricsEnabled,
-    );
-    final configText = JsonTool.encoder.convert(jsonMap);
-    final configPath = XrayStateConstants.configFilePath;
-    final file = File(configPath);
-    await file.writeAsString(configText);
-    return configPath;
-  }
-
-  Future<String> _writeXrayFullConfig(
-    CoreConfigData config,
-    XrayProfileState settingState,
-    CoreRunMode coreRunMode,
-    TunSettingsState tunSettingsState,
-    XrayPorts port,
-    String runDir,
-  ) async {
-    final fullConfigState = XrayFullConfigState();
-    try {
-      fullConfigState.readFromDbData(config);
-    } catch (_) {
-      throw _VpnStartException(appLocalizationsNoContext().vpnOutboundInvalid);
-    }
-    final checked = await fullConfigState.validate();
-    if (!checked.item1) {
-      throw _VpnStartException(checked.item2);
-    }
-    fullConfigState.applyToXrayProfile(settingState);
-    final xrayJson = await settingState.fixSetting(
-      coreRunMode,
-      tunSettingsState,
-      port,
-    );
-    return xrayJson.writeConfig(runDir);
   }
 
   Future<NativeVpnCommandResult> _makeProxyRequestAndStart(
@@ -787,7 +487,6 @@ final class VpnService {
 
   Future<NativeVpnCommandResult> _makeVpnRequestAndStart(
     String coreInvokeText,
-    String runDir,
     XrayPorts port,
     TunSettingsState tunSettingsState,
   ) async {
@@ -805,166 +504,7 @@ final class VpnService {
     return result;
   }
 
-  Future<String?> _makeRunXrayRequest(String configPath) async {
-    final request = LibXrayInvokeRequest(
-      method: LibXrayMethod.runXray,
-      payload: RunXrayRequest(configPath).toJson(),
-    );
-    return JsonTool.encoder.convert(request.toJson());
-  }
-
   Future<void> retryConnectivityTest() {
-    if (!_vpnRunning) {
-      AppEventBus.instance.resetConnectivityProbe();
-      return Future.value();
-    }
-    return _connectivityTest(initialDelay: Duration.zero);
-  }
-
-  Future<void> _connectivityTest({
-    Duration initialDelay = const Duration(seconds: 3),
-  }) async {
-    final eventBus = AppEventBus.instance;
-    if (!_vpnRunning) {
-      eventBus.resetConnectivityProbe();
-      return;
-    }
-    final testId = ++_connectivityTestId;
-    eventBus.startConnectivityProbe();
-
-    StartVpnRequest request;
-    try {
-      request = await StartVpnRequestReader.readFromStartFile();
-    } catch (e) {
-      ygLogger("read start vpn request error: $e");
-      eventBus.updateLocationPingFailed();
-      eventBus.updateGeoLocationFailed();
-      return;
-    }
-
-    final pingPort = request.pingPort;
-    if (pingPort == null) {
-      eventBus.updateLocationPingFailed();
-      eventBus.updateGeoLocationFailed();
-      return;
-    }
-
-    if (initialDelay > Duration.zero) {
-      await Future.delayed(initialDelay);
-    }
-    if (!_isConnectivityTestCurrent(testId)) {
-      return;
-    }
-
-    final pingState = PingState();
-    await pingState.readFromPreferences();
-
-    await Future.wait([
-      _runPingProbe(testId, pingPort, pingState.realUrl, request.pingAuth),
-      _runGeoLocationProbe(testId, pingPort, request.pingAuth),
-    ]);
-  }
-
-  bool _isConnectivityTestCurrent(int testId) {
-    return testId == _connectivityTestId && _vpnRunning;
-  }
-
-  Future<void> _runPingProbe(
-    int testId,
-    String port,
-    String url,
-    XrayInboundAccount? auth,
-  ) async {
-    final delay = await NetClient().ping(port, url, auth);
-    if (!_isConnectivityTestCurrent(testId)) {
-      return;
-    }
-    final eventBus = AppEventBus.instance;
-    if (delay == null) {
-      eventBus.updateLocationPingFailed();
-      return;
-    }
-    eventBus.updateLocationDelay(delay);
-  }
-
-  Future<void> _runGeoLocationProbe(
-    int testId,
-    String port,
-    XrayInboundAccount? auth,
-  ) async {
-    final location = await NetClient().geoLocation(port, auth);
-    if (!_isConnectivityTestCurrent(testId)) {
-      return;
-    }
-    final eventBus = AppEventBus.instance;
-    if (location == null) {
-      eventBus.updateGeoLocationFailed();
-      return;
-    }
-    eventBus.updateGeoLocation(location);
-  }
-
-  Timer? _timer;
-  var _startTime = DateTime.now();
-  var _connectivityTestId = 0;
-
-  Future<void> _startDurationTimer() async {
-    _stopDurationTimer();
-    _startTime = await PreferencesKey().readVpnStartTimestamp();
-    _timer = Timer.periodic(Duration(seconds: 1), (_) => _updateDuration());
-    await _connectivityTest();
-  }
-
-  Future<void> _startMetricsTimer() async {
-    try {
-      final request = await StartVpnRequestReader.readFromStartFile();
-      XrayMetricsService().start(request.metricsPort);
-    } catch (e) {
-      ygLogger("read metrics port error: $e");
-      XrayMetricsService().stop();
-    }
-  }
-
-  void _stopDurationTimer() {
-    _connectivityTestId++;
-    _timer?.cancel();
-    _timer = null;
-    final eventBus = AppEventBus.instance;
-    eventBus.resetConnectivityProbe();
-  }
-
-  void _updateDuration() {
-    final now = DateTime.now();
-    final duration = now.difference(_startTime);
-    final languageCode =
-        AppEventBus.instance.state.languageCode.locale.languageCode;
-    final locale =
-        DurationLocale.fromLanguageCode(languageCode) ??
-        EnglishDurationLocale();
-    final text = _formatDuration(duration, locale);
-    final eventBus = AppEventBus.instance;
-    eventBus.updateLocationDuration(text);
-  }
-
-  String _formatDuration(Duration duration, DurationLocale locale) {
-    if (duration.inHours >= 1) {
-      return duration.pretty(
-        locale: locale,
-        tersity: DurationTersity.hour,
-        upperTersity: DurationTersity.hour,
-      );
-    }
-    if (duration.inMinutes >= 1) {
-      return duration.pretty(
-        locale: locale,
-        tersity: DurationTersity.minute,
-        upperTersity: DurationTersity.minute,
-      );
-    }
-    return duration.pretty(
-      locale: locale,
-      tersity: DurationTersity.second,
-      upperTersity: DurationTersity.second,
-    );
+    return _connectivity.retry();
   }
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/validator.dart';
@@ -63,5 +64,9 @@ class GeoDatAddController extends Cubit<GeoDatAddPageState> {
         ContextAlert.showToast(context, check.item2);
       }
     }
+  }
+
+  void gotoAutoUpdate(BuildContext context) {
+    context.pushScoped(AppSecondaryDestination.autoUpdate);
   }
 }

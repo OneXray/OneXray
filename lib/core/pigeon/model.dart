@@ -29,9 +29,9 @@ class StartVpnRequest {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class LibXrayInvokeResponse {
-  bool? success;
-  Map<String, dynamic>? data;
-  String? error;
+  final bool success;
+  final Map<String, dynamic>? data;
+  final String error;
 
   LibXrayInvokeResponse(this.success, this.data, this.error);
 

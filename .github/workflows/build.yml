@@ -71,13 +71,14 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GO_VERSION: "stable"
-  XCODE_VERSION: "latest-stable"
+  GO_VERSION: "1.26.5"
+  XCODE_VERSION: "26.6"
+  FLUTTER_VERSION: "3.44.5"
   PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
-  LIBXRAY_REF: main
+  LIBXRAY_REF: 3519bfdeb4474b2488ae6f0c4a80a1c7a8bfd84d
   XRAY_CORE_REPOSITORY: XTLS/Xray-core
-  XRAY_CORE_REF: main
+  XRAY_CORE_REF: d5bc58dc6b7608e664515f970a9742e67e5f9623
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -94,6 +95,11 @@ jobs:
           mkdir -p release-metadata
           echo "${GITHUB_REF_NAME}" > release-metadata/tag.txt
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
+          echo "${LIBXRAY_REF}" > release-metadata/libxray-sha.txt
+          echo "${XRAY_CORE_REF}" > release-metadata/xray-core-sha.txt
+          echo "${FLUTTER_VERSION}" > release-metadata/flutter-version.txt
+          echo "${GO_VERSION}" > release-metadata/go-version.txt
+          echo "${XCODE_VERSION}" > release-metadata/xcode-version.txt
 
       - name: Upload release metadata
         uses: actions/upload-artifact@v7

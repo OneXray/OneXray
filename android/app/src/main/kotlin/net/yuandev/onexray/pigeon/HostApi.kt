@@ -18,11 +18,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import libXray.LibXray
 import net.yuandev.onexray.vpn.VpnController
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.seconds
 
 class AppHostApi(
     private val context: Context,
 ) : BridgeHostApi {
+    private val vpnStatusGeneration = AtomicInteger(0)
     private val activity = context as FragmentActivity
     private val prepareResult =
         activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -38,12 +40,15 @@ class AppHostApi(
 
     fun onVpnStatusChanged(running: Boolean) {
         XLog.d("AppHostApi: onVpnStatusChanged running=$running")
+        val generation = vpnStatusGeneration.incrementAndGet()
         scope.launch {
             if (running) {
                 flutterApi?.vpnStatusChanged(VpnStatus.CONNECTED)
             } else {
                 delay(2.seconds)
-                flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTED)
+                if (generation == vpnStatusGeneration.get()) {
+                    flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTED)
+                }
             }
         }
     }

@@ -1,13 +1,22 @@
+import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
+import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:tuple/tuple.dart';
 import 'package:win32/win32.dart';
+
+class _ShellLaunchResult {
+  final bool started;
+  final HANDLE processHandle;
+
+  const _ShellLaunchResult(this.started, this.processHandle);
+}
 
 class WindowsFfiApi extends BaseFfiApi {
   static final WindowsFfiApi _singleton = WindowsFfiApi._internal();
@@ -24,7 +33,11 @@ class WindowsFfiApi extends BaseFfiApi {
   static const _waitFailed = 0xFFFFFFFF;
   static const _stopProxyCoreFailed = "stop proxy core failed";
 
+  final _processStore = DesktopCoreProcessStore();
   HANDLE? _processHandle;
+  int? _processId;
+  Timer? _processMonitor;
+  bool _stopping = false;
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
@@ -38,7 +51,7 @@ class WindowsFfiApi extends BaseFfiApi {
       label: "core",
       verb: "runas",
       configPath: configPath,
-      verifyRunning: false,
+      mode: DesktopCoreMode.tun,
     );
   }
 
@@ -49,40 +62,25 @@ class WindowsFfiApi extends BaseFfiApi {
       return false;
     }
 
-    if (!await _killExistingCoreProcesses()) {
-      return false;
-    }
-    if (_existingCoreProcessRunning()) {
-      ygLogger("start proxy core failed: existing $_coreExe is still running");
-      return false;
-    }
     return _startCoreProcess(
       label: "proxy core",
       verb: "open",
       configPath: configPath,
-      verifyRunning: true,
-      isRunning: () => _processRunning(label: "proxy core"),
+      mode: DesktopCoreMode.proxy,
     );
   }
 
   @override
-  void stopCore() {
-    _stopProcess(label: "core");
+  Future<void> stopCore() async {
+    await _stopProcess(label: "core");
   }
 
   Future<String> stopProxyCore() async {
-    final stopped = _processHandle == null
-        ? _killExistingCoreProcessesSync()
-        : _stopProcess(label: "proxy core");
+    final stopped = await _stopProcess(label: "proxy core");
     return stopped ? "" : _stopProxyCoreFailed;
   }
 
-  bool proxyCoreRunning() {
-    if (_processRunning(label: "proxy core")) {
-      return true;
-    }
-    return _existingCoreProcessRunning();
-  }
+  Future<bool> proxyCoreRunning() async => await queryCoreRunning() ?? false;
 
   String get corePath {
     final bundleDir = p.dirname(Platform.resolvedExecutable);
@@ -90,13 +88,15 @@ class WindowsFfiApi extends BaseFfiApi {
     return corePath;
   }
 
-  Tuple2<bool, HANDLE> _runCommand(Tuple3<String, String, String> command) {
-    ygLogger(
-      "Running command: ${command.item1} ${command.item2} ${command.item3}",
-    );
-    final lpVerb = command.item1.toPwstr();
-    final lpFile = command.item2.toPwstr();
-    final lpParameters = command.item3.toPwstr();
+  _ShellLaunchResult _runCommand({
+    required String verb,
+    required String file,
+    required String parameters,
+  }) {
+    ygLogger("Running command: $verb $file $parameters");
+    final lpVerb = verb.toPwstr();
+    final lpFile = file.toPwstr();
+    final lpParameters = parameters.toPwstr();
 
     final Pointer<SHELLEXECUTEINFO> info = calloc<SHELLEXECUTEINFO>();
     try {
@@ -109,7 +109,7 @@ class WindowsFfiApi extends BaseFfiApi {
       info.ref.nShow = SW_HIDE;
       final result = ShellExecuteEx(info);
       final process = info.ref.hProcess;
-      return Tuple2(result.value, process);
+      return _ShellLaunchResult(result.value, process);
     } finally {
       free(info);
       free(lpVerb);
@@ -122,99 +122,116 @@ class WindowsFfiApi extends BaseFfiApi {
     required String label,
     required String verb,
     required String configPath,
-    required bool verifyRunning,
-    bool Function()? isRunning,
+    required DesktopCoreMode mode,
   }) async {
-    if (!_stopProcess(label: label)) {
+    if (!await _stopProcess(label: label)) {
       return false;
     }
 
     try {
       final result = _runCommand(
-        Tuple3(verb, corePath, _buildRunParameters(configPath)),
+        verb: verb,
+        file: corePath,
+        parameters: _buildRunParameters(configPath),
       );
-      if (!result.item1) {
+      if (!result.started || !result.processHandle.isValid) {
         final errorCode = GetLastError();
         ygLogger("Start $label failed. errorCode=$errorCode");
         return false;
       }
-      _processHandle = result.item2;
-      ygLogger("$label process started with handle: ${result.item2}");
+      _processHandle = result.processHandle;
+      _processId = GetProcessId(result.processHandle).value;
+      if (_processId == null || _processId == 0) {
+        ygLogger("Start $label failed: process id is unavailable");
+        await _stopProcess(label: label);
+        return false;
+      }
+      await _processStore.write(
+        DesktopCoreProcessRecord(
+          pid: _processId!,
+          executablePath: corePath,
+          mode: mode,
+        ),
+      );
+      _startProcessMonitor(label);
+      ygLogger("$label process started with pid: $_processId");
     } catch (e) {
       ygLogger("start $label failed: $e");
+      await _stopProcess(label: label);
       return false;
     }
 
     await Future.delayed(Duration(seconds: 1));
-    return verifyRunning ? isRunning?.call() ?? false : true;
+    return await queryCoreRunning() ?? false;
   }
 
   String _buildRunParameters(String configPath) {
     return <String>["run", "-config", _quoteArg(configPath)].join(" ");
   }
 
-  Future<bool> _killExistingCoreProcesses() async {
-    try {
-      final result = await Process.run("taskkill", ["/F", "/IM", _coreExe]);
-      return _handleKillExistingCoreProcessesResult(result);
-    } catch (e) {
-      ygLogger("kill existing core processes failed: $e");
-      return !_existingCoreProcessRunning();
-    }
-  }
-
-  bool _killExistingCoreProcessesSync() {
-    try {
-      final result = Process.runSync("taskkill", ["/F", "/IM", _coreExe]);
-      return _handleKillExistingCoreProcessesResult(result);
-    } catch (e) {
-      ygLogger("kill existing core processes failed: $e");
-      return !_existingCoreProcessRunning();
-    }
-  }
-
-  bool _handleKillExistingCoreProcessesResult(ProcessResult result) {
-    if (result.exitCode == 0) {
-      ygLogger("Killed existing $_coreExe processes");
-      return true;
-    }
-    if (!_existingCoreProcessRunning()) {
-      return true;
-    }
-    ygLogger(
-      "kill existing core processes failed. "
-      "exitCode=${result.exitCode} stderr=${result.stderr}",
-    );
-    return false;
-  }
-
-  bool _existingCoreProcessRunning() {
-    try {
-      final result = Process.runSync("tasklist", [
-        "/FI",
-        "IMAGENAME eq $_coreExe",
-        "/NH",
-      ]);
-      if (result.exitCode != 0) {
-        return false;
-      }
-      final output = result.stdout.toString().toLowerCase();
-      final coreExe = _coreExe.toLowerCase();
-      return output
-          .split("\n")
-          .map((line) => line.trim())
-          .any((line) => line.startsWith(coreExe));
-    } catch (e) {
-      ygLogger("check existing core process failed: $e");
+  @override
+  Future<bool?> queryCoreRunning() async {
+    if (!await _adoptOwnedProcess()) {
       return false;
     }
+    return _processRunning(label: "core");
   }
 
-  bool _stopProcess({required String label}) {
-    final processHandle = _processHandle;
-    if (processHandle == null) {
+  Future<bool> _adoptOwnedProcess() async {
+    if (_processHandle != null) {
       return true;
     }
+    final record = await _processStore.read();
+    if (record == null) {
+      return false;
+    }
+    if (!_samePath(record.executablePath, corePath)) {
+      await _processStore.clear(pid: record.pid);
+      return false;
+    }
+
+    var opened = OpenProcess(
+      PROCESS_QUERY_LIMITED_INFORMATION |
+          PROCESS_SYNCHRONIZE |
+          PROCESS_TERMINATE,
+      false,
+      record.pid,
+    );
+    if (!opened.value.isValid) {
+      opened = OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+        false,
+        record.pid,
+      );
+    }
+    final handle = opened.value;
+    if (!handle.isValid) {
+      await _processStore.clear(pid: record.pid);
+      return false;
+    }
+
+    final imagePath = _queryProcessImagePath(handle);
+    if (imagePath == null || !_samePath(imagePath, corePath)) {
+      _closeProcessHandle("core", handle);
+      await _processStore.clear(pid: record.pid);
+      return false;
+    }
+
+    _processHandle = handle;
+    _processId = record.pid;
+    _startProcessMonitor(record.mode.name);
+    return true;
+  }
+
+  Future<bool> _stopProcess({required String label}) async {
+    if (!await _adoptOwnedProcess()) {
+      return true;
+    }
+    final processHandle = _processHandle!;
+    final processId = _processId;
+    _stopping = true;
+    _processMonitor?.cancel();
+    _processMonitor = null;
 
     ygLogger("Stopping $label process with handle: $processHandle");
     final currentWaitResult = WaitForSingleObject(processHandle, 0);
@@ -222,30 +239,40 @@ class WindowsFfiApi extends BaseFfiApi {
       ygLogger(
         "$label process already stopped. wait result: $currentWaitResult",
       );
-      _closeProcessHandle(label, processHandle);
-      _processHandle = null;
+      await _releaseOwnedProcess(label, processHandle, processId);
+      _stopping = false;
       return true;
     }
     if (currentWaitResult.value != _waitTimeout) {
       _logWaitError(label, currentWaitResult.value);
+      _stopping = false;
       return false;
     }
 
     final terminateResult = TerminateProcess(processHandle, 0);
-    if (terminateResult.value) {
-      final waitResult = WaitForSingleObject(processHandle, 3000);
-      ygLogger("$label process termination wait result: $waitResult");
-      if (waitResult.value != _waitObject0) {
+    if (!terminateResult.value && processId != null) {
+      final errorCode = GetLastError();
+      ygLogger(
+        "Terminate $label process failed. errorCode=$errorCode; "
+        "requesting elevated PID termination",
+      );
+      if (!await _terminateOwnedPidElevated(processId)) {
+        _stopping = false;
+        _startProcessMonitor(label);
         return false;
       }
-    } else {
-      final errorCode = GetLastError();
-      ygLogger("Terminate $label process failed. errorCode=$errorCode");
+    }
+
+    final waitResult = WaitForSingleObject(processHandle, 3000);
+    ygLogger("$label process termination wait result: $waitResult");
+    if (waitResult.value != _waitObject0) {
+      _stopping = false;
+      _startProcessMonitor(label);
       return false;
     }
 
-    _closeProcessHandle(label, processHandle);
-    _processHandle = null;
+    await _releaseOwnedProcess(label, processHandle, processId);
+    _stopping = false;
     return true;
   }
 
@@ -264,9 +291,75 @@ class WindowsFfiApi extends BaseFfiApi {
       return true;
     }
 
+    final processId = _processId;
     _closeProcessHandle(label, processHandle);
     _processHandle = null;
+    _processId = null;
+    unawaited(_processStore.clear(pid: processId));
     return false;
+  }
+
+  void _startProcessMonitor(String label) {
+    _processMonitor?.cancel();
+    _processMonitor = Timer.periodic(Duration(seconds: 1), (_) async {
+      if (_stopping || _processRunning(label: label)) {
+        return;
+      }
+      _processMonitor?.cancel();
+      _processMonitor = null;
+      await updateVpnStatus(VpnStatus.disconnected);
+    });
+  }
+
+  Future<void> _releaseOwnedProcess(
+    String label,
+    HANDLE processHandle,
+    int? processId,
+  ) async {
+    _closeProcessHandle(label, processHandle);
+    _processHandle = null;
+    _processId = null;
+    await _processStore.clear(pid: processId);
+  }
+
+  Future<bool> _terminateOwnedPidElevated(int pid) async {
+    final result = _runCommand(
+      verb: "runas",
+      file: "taskkill.exe",
+      parameters: "/PID $pid /T /F",
+    );
+    if (!result.started || !result.processHandle.isValid) {
+      return false;
+    }
+    final waitResult = WaitForSingleObject(result.processHandle, 5000);
+    _closeProcessHandle("taskkill", result.processHandle);
+    return waitResult.value == _waitObject0;
+  }
+
+  String? _queryProcessImagePath(HANDLE handle) {
+    const capacity = 32768;
+    final buffer = wsalloc(capacity);
+    final length = calloc<Uint32>()..value = capacity;
+    try {
+      final result = QueryFullProcessImageName(
+        handle,
+        PROCESS_NAME_WIN32,
+        buffer,
+        length,
+      );
+      if (!result.value) {
+        return null;
+      }
+      return buffer.toDartString(length: length.value);
+    } finally {
+      free(buffer);
+      free(length);
+    }
+  }
+
+  bool _samePath(String first, String second) {
+    return p.normalize(first).toLowerCase() ==
+        p.normalize(second).toLowerCase();
   }
 
   void _logWaitError(String label, int waitResult) {

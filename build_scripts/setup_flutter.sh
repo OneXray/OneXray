@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-flutter_channel="${FLUTTER_CHANNEL:-stable}"
-flutter_root="${FLUTTER_ROOT:-$HOME/flutter/$flutter_channel}"
+flutter_version="${FLUTTER_VERSION:-3.44.5}"
+flutter_root="${FLUTTER_ROOT:-$HOME/flutter/$flutter_version}"
 flutter_bin_dir="$flutter_root/bin"
 
 uname_s="$(uname -s)"
@@ -48,7 +48,7 @@ add_to_github_env() {
 
 rm -rf "$flutter_root"
 mkdir -p "$(dirname "$flutter_root")"
-git clone --depth 1 --branch "$flutter_channel" https://github.com/flutter/flutter.git "$flutter_root"
+git clone --depth 1 --branch "$flutter_version" https://github.com/flutter/flutter.git "$flutter_root"
 
 export PATH="$flutter_bin_dir:$PATH"
 add_to_github_path "$flutter_bin_dir"

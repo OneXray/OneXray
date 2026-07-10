@@ -416,9 +416,8 @@ class OneVpnService : VpnService() {
 
     private fun validateRunXrayResult(result: String) {
         val response = JsonTool.json.decodeFromString<LibXrayInvokeResponse>(result)
-        if (response.success != true) {
-            val error = response.error ?: "runXray failed"
-            throw IllegalStateException(error)
+        if (!response.success) {
+            throw IllegalStateException(response.error)
         }
     }
 

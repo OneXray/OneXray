@@ -69,7 +69,7 @@ class AppHostApi: BridgeHostApi {
     private func callResponse(_ res: UnsafeMutablePointer<CChar>?, completion: @escaping (Result<String, any Error>) -> Void) {
         if let res = res {
             let text = String(cString: res)
-            free(res)
+            CGoFree(res)
             completion(.success(text))
         } else {
             completion(.failure(AppHostApiError.cgoFailed))

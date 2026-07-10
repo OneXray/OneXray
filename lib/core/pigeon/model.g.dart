@@ -33,17 +33,17 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
 LibXrayInvokeResponse _$LibXrayInvokeResponseFromJson(
   Map<String, dynamic> json,
 ) => LibXrayInvokeResponse(
-  json['success'] as bool?,
+  json['success'] as bool,
   json['data'] as Map<String, dynamic>?,
-  json['error'] as String?,
+  json['error'] as String,
 );
 
 Map<String, dynamic> _$LibXrayInvokeResponseToJson(
   LibXrayInvokeResponse instance,
 ) => <String, dynamic>{
-  'success': ?instance.success,
+  'success': instance.success,
   'data': ?instance.data,
-  'error': ?instance.error,
+  'error': instance.error,
 };
 
 GetFreePortsResponse _$GetFreePortsResponseFromJson(

@@ -10,7 +10,6 @@ import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
-import 'package:onexray/pages/main/navigation.dart';
 
 class GeoDatAddPage extends StatelessWidget {
   const GeoDatAddPage({super.key});
@@ -66,7 +65,7 @@ class GeoDatAddPage extends StatelessWidget {
         _name(context, controller),
         _type(context, controller, state),
         _url(context, controller),
-        _autoUpdate(context),
+        _autoUpdate(context, controller),
       ],
     );
   }
@@ -101,10 +100,10 @@ class GeoDatAddPage extends StatelessWidget {
     );
   }
 
-  Widget _autoUpdate(BuildContext context) {
+  Widget _autoUpdate(BuildContext context, GeoDatAddController controller) {
     return SettingRow(
       title: AppLocalizations.of(context)!.autoUpdatePageTitle,
-      onTap: () => context.pushScoped(AppSecondaryDestination.autoUpdate),
+      onTap: () => controller.gotoAutoUpdate(context),
       showChevron: true,
     );
   }

@@ -32,7 +32,7 @@ class SelectableConfigRow extends StatelessWidget {
       data: data,
       status: status,
       moreMenus: _moreMenus(),
-      tapCallback: () => homeController.updateConfigId(context, data.id),
+      tapCallback: () => homeController.updateConfigId(data.id),
     );
   }
 

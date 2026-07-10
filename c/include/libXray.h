@@ -21,6 +21,11 @@ extern const char *_GoStringPtr(_GoString_ s);
 /* Start of preamble from import "C" comments.  */
 
 
+#line 3 "main.go"
+
+#include <stdlib.h>
+
+#line 1 "cgo-generated-wrapper"
 
 
 /* End of preamble from import "C" comments.  */
@@ -83,6 +88,7 @@ extern "C" {
 #endif
 
 extern char* CGoInvoke(char* requestJSON);
+extern void CGoFree(char* value);
 
 #ifdef __cplusplus
 }

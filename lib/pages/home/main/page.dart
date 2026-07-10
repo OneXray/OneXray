@@ -5,7 +5,9 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/component/nodes/controller.dart';
 import 'package:onexray/pages/home/component/nodes/view.dart';
+import 'package:onexray/pages/home/main/actions.dart';
 import 'package:onexray/pages/home/main/controller.dart';
+import 'package:onexray/pages/home/main/state.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -182,9 +184,9 @@ class HomePage extends StatelessWidget {
     return HomeConnectionSummary(
       connection: connection,
       xrayProfileName: xrayProfileName,
-      onToggleConnection: () => controller.startVpn(context),
-      onShowNodeInfo: () => controller.gotoNodeInfo(context),
-      onShowXrayProfile: () => controller.gotoXrayProfile(context),
+      onToggleConnection: controller.startVpn,
+      onShowNodeInfo: controller.gotoNodeInfo,
+      onShowXrayProfile: controller.gotoXrayProfile,
     );
   }
 
@@ -196,9 +198,7 @@ class HomePage extends StatelessWidget {
     if (eventState.downloading) {
       return CircularProgressIndicator();
     } else {
-      return HomeAddMenuButton(
-        onSelected: (action) => controller.addMenuAction(context, action),
-      );
+      return HomeAddMenuButton(onSelected: controller.addMenuAction);
     }
   }
 
@@ -282,7 +282,7 @@ class HomeNodePanel extends StatelessWidget {
         showSearch: showSearch,
         selectedId: selectedId,
         onSelect: (config) =>
-            context.read<HomeController>().updateConfigId(context, config.id),
+            context.read<HomeController>().updateConfigId(config.id),
       ),
     );
   }

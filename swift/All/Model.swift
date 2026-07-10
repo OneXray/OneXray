@@ -1,4 +1,5 @@
 import Foundation
+import LibXray
 
 enum JsonTool {
     static let decoder = JSONDecoder()
@@ -63,9 +64,9 @@ struct TunJson: Codable {
     var enableDot: Bool?
     var dnsServerName: String?
     var enableIPv6: Bool?
+    var metricsEnabled: Bool?
     var tunName: String?
-    var tunPriority: Int?
-    var interface: String?
+    var autoOutboundsInterface: String?
     var onDemandEnabled: Bool?
     var disconnectOnSleep: Bool?
     var onDemandRules: [OnDemandRule]?
@@ -74,9 +75,15 @@ struct TunJson: Codable {
     var disallowAppList: [String]?
 }
 
+struct XrayInboundAccount: Codable {
+    var user: String?
+    var pass: String?
+}
+
 struct StartVpnRequest: Codable {
     var tun: TunJson?
     var pingPort: String?
+    var pingAuth: XrayInboundAccount?
     var metricsPort: String?
     var coreInvokeText: String?
 
@@ -167,17 +174,17 @@ struct LibXrayInvokeRequest: Codable, Hashable {
 }
 
 struct LibXrayInvokeResponse: Codable, Hashable {
-    var success: Bool?
-    var error: String?
+    var success: Bool
+    var error: String
 
     var isSuccess: Bool {
-        success == true
+        success
     }
 
     static func fromResponse(_ res: UnsafeMutablePointer<CChar>?) -> Self {
         if let res = res {
             let text = String(cString: res)
-            free(res)
+            CGoFree(res)
 
             if let data = text.data(using: .utf8) {
                 do {
@@ -186,7 +193,7 @@ struct LibXrayInvokeResponse: Codable, Hashable {
                 } catch {}
             }
         }
-        return LibXrayInvokeResponse(success: false)
+        return LibXrayInvokeResponse(success: false, error: "invalid response")
     }
 }
 
