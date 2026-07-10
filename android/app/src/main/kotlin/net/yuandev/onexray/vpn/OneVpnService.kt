@@ -1,6 +1,5 @@
 package net.yuandev.onexray.vpn
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -15,6 +14,7 @@ import android.graphics.drawable.Icon
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import androidx.core.content.ContextCompat
 import com.elvishew.xlog.XLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -98,16 +98,16 @@ class OneVpnService : VpnService() {
     private var controllerInit = false
     private val controller = VPNController()
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate() {
         super.onCreate()
         initService()
         val filter = IntentFilter(ACTION_STOP_REQUEST)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(stopRequestReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(stopRequestReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this,
+            stopRequestReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         stopRequestReceiverRegistered = true
     }
 

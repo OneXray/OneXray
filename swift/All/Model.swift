@@ -131,7 +131,7 @@ struct XrayEnv: Codable, Hashable {
     }
 
     static func fromObject(_ object: Any?) throws -> Self {
-        guard let object else {
+        guard let object, !(object is NSNull) else {
             return Self()
         }
         return try JsonTool.decode(Self.self, from: JsonTool.encodeObject(object))
