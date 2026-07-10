@@ -13,8 +13,8 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/data_cleanup/service.dart';
-import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/share/backup_archive.dart';
 import 'package:onexray/service/share/backup_model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:path/path.dart' as p;
@@ -48,6 +48,15 @@ class BackupService {
 
   // backup zip files dir, in application support directory
   static const _backupName = "backup";
+  static const _archiveExtractor = BackupArchiveExtractor(
+    rootFiles: {
+      _manifestFile,
+      _coreConfigsFile,
+      _subscriptionsFile,
+      _geoDataFile,
+    },
+    dataDirectory: _datDir,
+  );
 
   Future<String> get backupDir async {
     final rootPath = await getApplicationSupportDirectory();
@@ -113,22 +122,27 @@ class BackupService {
     eventBus.updateDownloading(true);
 
     final cacheDir = await FileTool.makeCacheDir();
+    _DatRestoreSwap? datRestore;
     try {
       final payload = await _readBackupPayload(zipPath, cacheDir);
       if (payload == null) {
         return false;
       }
 
-      final cleared = await AppDataCleanupService().clearForBackupRestore();
-      if (!cleared) {
+      final cleanupService = AppDataCleanupService();
+      if (!await cleanupService.prepareForBackupRestore()) {
         return false;
       }
 
-      await _restoreGeoData(payload);
-      await _restoreLocalConfigs(payload);
-      await _restoreSubscriptions(payload);
+      datRestore = await _DatRestoreSwap.prepare(payload.rootDir);
+      await datRestore.activate();
+      final subscriptions = await _restoreDatabase(payload);
+      await datRestore.commit();
+      await cleanupService.finishBackupRestore();
+      await _refreshRestoredSubscriptions(subscriptions);
       return true;
     } catch (e, stackTrace) {
+      await datRestore?.rollback();
       ygLogger("restore backup error: $e\n$stackTrace");
       return false;
     } finally {
@@ -142,7 +156,7 @@ class BackupService {
     String cacheDir,
   ) async {
     try {
-      await extractFileToDisk(zipPath, cacheDir);
+      await _archiveExtractor.extract(zipPath, cacheDir);
       return _readBackupDir(cacheDir);
     } catch (e, stackTrace) {
       ygLogger("read backup error: $e\n$stackTrace");
@@ -151,6 +165,9 @@ class BackupService {
   }
 
   Future<_BackupPayload?> _readBackupDir(String backupRoot) async {
+    if (!await Directory(p.join(backupRoot, _datDir)).exists()) {
+      return null;
+    }
     final manifest = await _readManifest(backupRoot);
     if (manifest == null) {
       return null;
@@ -306,7 +323,7 @@ class BackupService {
   }
 
   Future<void> _saveBackupFile(String filePath, DateTime date) async {
-    final dateStr = DateFormat("yyyy-MM-dd").format(date);
+    final dateStr = DateFormat("yyyy-MM-dd-HH-mm-ss").format(date);
     final zipName = "$_zipFilePrefix-$dateStr.zip";
     final backupRoot = await backupDir;
     final zipDstPath = p.join(backupRoot, zipName);
@@ -399,67 +416,85 @@ class BackupService {
     await File(path).writeAsString(JsonTool.encoder.convert(json));
   }
 
-  Future<void> _restoreGeoData(_BackupPayload payload) async {
-    final datSrcDir = p.join(payload.rootDir, _datDir);
-    if (await Directory(datSrcDir).exists()) {
-      await FileTool.copyDir(datSrcDir, VpnConstants.datDir);
-    }
-
+  Future<List<SubscriptionData>> _restoreDatabase(
+    _BackupPayload payload,
+  ) async {
     final db = AppDatabase();
-    for (final geoData in payload.geoDataList) {
-      await db.geoDataDao.insertRow(
-        GeoDataCompanion.insert(
-          name: geoData.name!,
-          type: geoData.type!,
-          url: geoData.url!,
-          timestamp: _readTimestamp(geoData.timestamp),
-          categoryCount: geoData.categoryCount!,
-          ruleCount: geoData.ruleCount!,
-        ),
-      );
-    }
-  }
+    return db.transaction(() async {
+      await db.coreConfigDao.clear();
+      await db.subscriptionDao.clear();
+      await db.geoDataDao.clear();
 
-  Future<void> _restoreLocalConfigs(_BackupPayload payload) async {
-    final configs = <CoreConfigCompanion>[];
-    for (final config in payload.coreConfigs) {
-      configs.add(
-        CoreConfigCompanion.insert(
-          name: config.name!,
-          type: config.type!,
-          tags: config.tags!,
-          data: Value<String?>(config.data),
-          delay: PingDelayConstants.unknown,
-          subId: DBConstants.defaultId,
-        ),
-      );
-    }
-    await ConfigWriter.writeRows(configs, null);
-  }
-
-  Future<void> _restoreSubscriptions(_BackupPayload payload) async {
-    final db = AppDatabase();
-    for (final row in payload.subscriptions) {
-      final timestamp = _readTimestamp(row.timestamp);
-      final subId = await db.subscriptionDao.insertRow(
-        SubscriptionCompanion.insert(
-          name: row.name!,
-          url: row.url!,
-          timestamp: timestamp,
-          count: 0,
-          expanded: row.expanded!,
-        ),
-      );
-      if (subId > DBConstants.defaultId) {
-        final subscription = SubscriptionData(
-          id: subId,
-          name: row.name!,
-          url: row.url!,
-          timestamp: timestamp,
-          count: 0,
-          expanded: row.expanded!,
+      for (final geoData in payload.geoDataList) {
+        final id = await db.geoDataDao.insertRow(
+          GeoDataCompanion.insert(
+            name: geoData.name!,
+            type: geoData.type!,
+            url: geoData.url!,
+            timestamp: _readTimestamp(geoData.timestamp),
+            categoryCount: geoData.categoryCount!,
+            ruleCount: geoData.ruleCount!,
+          ),
         );
+        if (id <= DBConstants.defaultId) {
+          throw StateError('restore GeoData failed');
+        }
+      }
+
+      for (final config in payload.coreConfigs) {
+        final id = await db.coreConfigDao.insertRow(
+          CoreConfigCompanion.insert(
+            name: config.name!,
+            type: config.type!,
+            tags: config.tags!,
+            data: Value<String?>(config.data),
+            delay: PingDelayConstants.unknown,
+            subId: DBConstants.defaultId,
+          ),
+        );
+        if (id <= DBConstants.defaultId) {
+          throw StateError('restore core config failed');
+        }
+      }
+
+      final subscriptions = <SubscriptionData>[];
+      for (final row in payload.subscriptions) {
+        final timestamp = _readTimestamp(row.timestamp);
+        final subId = await db.subscriptionDao.insertRow(
+          SubscriptionCompanion.insert(
+            name: row.name!,
+            url: row.url!,
+            timestamp: timestamp,
+            count: 0,
+            expanded: row.expanded!,
+          ),
+        );
+        if (subId <= DBConstants.defaultId) {
+          throw StateError('restore subscription failed');
+        }
+        subscriptions.add(
+          SubscriptionData(
+            id: subId,
+            name: row.name!,
+            url: row.url!,
+            timestamp: timestamp,
+            count: 0,
+            expanded: row.expanded!,
+          ),
+        );
+      }
+      return subscriptions;
+    });
+  }
+
+  Future<void> _refreshRestoredSubscriptions(
+    List<SubscriptionData> subscriptions,
+  ) async {
+    for (final subscription in subscriptions) {
+      try {
         await SubscriptionService().refreshSubscription(subscription, false);
+      } catch (e, stackTrace) {
+        ygLogger("refresh restored subscription error: $e\n$stackTrace");
       }
     }
   }
@@ -469,6 +504,91 @@ class BackupService {
       return DateTime.fromMillisecondsSinceEpoch(value);
     }
     return DateTime.now();
+  }
+}
+
+final class _DatRestoreSwap {
+  final Directory staged;
+  final Directory destination;
+  final Directory previous;
+
+  var _active = false;
+  var _committed = false;
+
+  _DatRestoreSwap({
+    required this.staged,
+    required this.destination,
+    required this.previous,
+  });
+
+  static Future<_DatRestoreSwap> prepare(String backupRoot) async {
+    final source = p.join(backupRoot, BackupService._datDir);
+    final destination = Directory(VpnConstants.datDir);
+    final parent = await Directory(
+      p.dirname(destination.path),
+    ).create(recursive: true);
+    final staged = await parent.createTemp('.onexray-dat-restore-');
+    try {
+      await FileTool.copyDir(source, staged.path);
+    } catch (_) {
+      await staged.delete(recursive: true);
+      rethrow;
+    }
+    final previous = Directory(
+      p.join(
+        parent.path,
+        '.onexray-dat-previous-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    );
+    return _DatRestoreSwap(
+      staged: staged,
+      destination: destination,
+      previous: previous,
+    );
+  }
+
+  Future<void> activate() async {
+    var movedPrevious = false;
+    try {
+      if (await destination.exists()) {
+        await destination.rename(previous.path);
+        movedPrevious = true;
+      }
+      await staged.rename(destination.path);
+      _active = true;
+    } catch (_) {
+      if (movedPrevious && !await destination.exists()) {
+        await previous.rename(destination.path);
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> commit() async {
+    _committed = true;
+    try {
+      if (await previous.exists()) {
+        await previous.delete(recursive: true);
+      }
+    } catch (e) {
+      ygLogger('delete previous dat directory failed: $e');
+    }
+  }
+
+  Future<void> rollback() async {
+    if (_committed) {
+      return;
+    }
+    if (_active && await destination.exists()) {
+      await destination.delete(recursive: true);
+    }
+    if (await previous.exists()) {
+      await previous.rename(destination.path);
+    }
+    if (await staged.exists()) {
+      await staged.delete(recursive: true);
+    }
+    _active = false;
   }
 }
 

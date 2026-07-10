@@ -29,12 +29,30 @@ final class AppDataCleanupService {
     );
   }
 
-  Future<bool> clearForBackupRestore() async {
-    return _clear(
-      targetXrayProfileId: XrayProfileSimple.simpleId,
-      clearUserDataPreferences: false,
-      clearCache: false,
-    );
+  Future<bool> prepareForBackupRestore() async {
+    try {
+      if (!await _stopVpnIfNeeded()) {
+        return false;
+      }
+      await _clearRuntimeFiles();
+      return true;
+    } catch (e, stackTrace) {
+      ygLogger("prepare backup restore error: $e\n$stackTrace");
+      return false;
+    }
+  }
+
+  Future<void> finishBackupRestore() async {
+    try {
+      await _clearPreferences(
+        targetXrayProfileId: XrayProfileSimple.simpleId,
+        clearUserDataPreferences: false,
+      );
+    } catch (e, stackTrace) {
+      ygLogger("finish backup restore preferences error: $e\n$stackTrace");
+    } finally {
+      _resetRuntimeState(XrayProfileSimple.simpleId);
+    }
   }
 
   Future<bool> _clear({

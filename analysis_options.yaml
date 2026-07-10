@@ -8,5 +8,3 @@ analyzer:
   exclude:
     - build/**
     - lib/core/ffi/generated_bindings.dart
-  plugins:
-    - custom_lint

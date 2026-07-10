@@ -8,6 +8,7 @@ import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/pages/launch/route.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/service/launch/bootstrap.dart';
+import 'package:onexray/service/firebase/service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPageState {
@@ -49,6 +50,7 @@ class PrivacyController extends Cubit<PrivacyPageState> {
     try {
       await PreferencesKey().savePrivacyAccepted(true);
       accepted = true;
+      await FirebaseService().initializeAfterPrivacyAccepted();
       final destination = await LaunchBootstrapService()
           .resolveAcceptedDestination();
       if (context.mounted) {

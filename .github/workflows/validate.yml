@@ -10,9 +10,6 @@ concurrency:
   group: validate-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FLUTTER_VERSION: "3.44.5"
-
 jobs:
   dart:
     runs-on: ubuntu-24.04
@@ -37,6 +34,19 @@ jobs:
 
       - name: Verify generated sources
         run: git diff --exit-code
+
+      - name: Check format
+        run: |
+          find lib test tool -name '*.dart' \
+            ! -name '*.g.dart' \
+            ! -path 'lib/gen/*' \
+            ! -path 'lib/l10n/*' \
+            ! -path 'lib/core/pigeon/messages.g.dart' \
+            ! -path 'lib/core/ffi/generated_bindings.dart' \
+            -print0 | xargs -0 dart format --output=none --set-exit-if-changed
+
+      - name: Verify layer dependencies
+        run: dart run tool/check_layer_dependencies.dart
 
       - name: Analyze
         run: flutter analyze

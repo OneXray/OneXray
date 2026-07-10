@@ -8,11 +8,7 @@ class XrayGeoList {
   int? categoryCount;
   int? ruleCount;
 
-  XrayGeoList(
-    this.codes,
-    this.categoryCount,
-    this.ruleCount,
-  );
+  XrayGeoList(this.codes, this.categoryCount, this.ruleCount);
 
   factory XrayGeoList.fromJson(Map<String, dynamic> json) =>
       _$XrayGeoListFromJson(json);
@@ -25,10 +21,7 @@ class XrayGeoListCodes {
   String? code;
   int? ruleCount;
 
-  XrayGeoListCodes(
-    this.code,
-    this.ruleCount,
-  );
+  XrayGeoListCodes(this.code, this.ruleCount);
 
   factory XrayGeoListCodes.fromJson(Map<String, dynamic> json) =>
       _$XrayGeoListCodesFromJson(json);

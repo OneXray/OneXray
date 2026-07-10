@@ -71,14 +71,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GO_VERSION: "1.26.5"
-  XCODE_VERSION: "26.6"
-  FLUTTER_VERSION: "3.44.5"
-  PYTHON_VERSION: "3.12"
   NDK_VERSION: r29
-  LIBXRAY_REF: 3519bfdeb4474b2488ae6f0c4a80a1c7a8bfd84d
+  LIBXRAY_REF: main
   XRAY_CORE_REPOSITORY: XTLS/Xray-core
-  XRAY_CORE_REF: d5bc58dc6b7608e664515f970a9742e67e5f9623
+  XRAY_CORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -97,9 +93,6 @@ jobs:
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
           echo "${LIBXRAY_REF}" > release-metadata/libxray-sha.txt
           echo "${XRAY_CORE_REF}" > release-metadata/xray-core-sha.txt
-          echo "${FLUTTER_VERSION}" > release-metadata/flutter-version.txt
-          echo "${GO_VERSION}" > release-metadata/go-version.txt
-          echo "${XCODE_VERSION}" > release-metadata/xcode-version.txt
 
       - name: Upload release metadata
         uses: actions/upload-artifact@v7
@@ -135,19 +128,20 @@ jobs:
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
-      - name: Select latest stable Xcode
+      - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: ${{ env.XCODE_VERSION }}
+          xcode-version: latest-stable
 
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: stable
           check-latest: true
 
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.x"
+          check-latest: true
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -158,7 +152,7 @@ jobs:
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: Install Python build deps
-        run: pip install pyyaml requests typer
+        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Firebase configs
         env:
@@ -226,19 +220,20 @@ jobs:
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
-      - name: Select latest stable Xcode
+      - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: ${{ env.XCODE_VERSION }}
+          xcode-version: latest-stable
 
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: stable
           check-latest: true
 
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.x"
+          check-latest: true
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -249,7 +244,7 @@ jobs:
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: Install Python build deps
-        run: pip install pyyaml requests typer
+        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Firebase configs
         env:
@@ -321,19 +316,20 @@ jobs:
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
-      - name: Select latest stable Xcode
+      - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: ${{ env.XCODE_VERSION }}
+          xcode-version: latest-stable
 
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: stable
           check-latest: true
 
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.x"
+          check-latest: true
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -344,7 +340,7 @@ jobs:
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: Install Python build deps
-        run: pip install pyyaml requests typer
+        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Firebase configs
         env:
@@ -419,12 +415,13 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: stable
           check-latest: true
 
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.x"
+          check-latest: true
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -438,7 +435,7 @@ jobs:
           add-to-path: true
 
       - name: Install Python build deps
-        run: pip install pyyaml requests typer
+        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Firebase configs
         env:
@@ -517,18 +514,19 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: stable
           check-latest: true
 
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.x"
+          check-latest: true
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
 
       - name: Install Python build deps
-        run: pip install pyyaml requests typer
+        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Firebase configs
         env:
@@ -601,12 +599,13 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version: stable
           check-latest: true
 
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.x"
+          check-latest: true
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -621,7 +620,7 @@ jobs:
             file
 
       - name: Install Python build deps
-        run: pip install pyyaml requests typer
+        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Firebase configs
         env:

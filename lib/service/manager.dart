@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/analytics/service.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/menu/short_cut/service.dart';
 import 'package:onexray/service/menu/tray/service.dart';
@@ -47,7 +46,6 @@ abstract final class ServiceManager {
       );
     }
     await _runInit("WindowService", () => WindowService().asyncInit());
-    await _runInit("AnalyticsService", () => AnalyticsService().init());
     await _runInit("ToastService", () => ToastService().init());
     _initialized = true;
   }
@@ -72,7 +70,6 @@ abstract final class ServiceManager {
     NotificationService().dispose();
     ShortCutService().dispose();
     WindowService().dispose();
-    AnalyticsService().dispose();
     BackgroundTaskService().dispose();
     ToastService().dispose();
   }

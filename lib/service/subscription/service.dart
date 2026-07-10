@@ -41,27 +41,42 @@ class SubscriptionService {
     if (showLoading) {
       eventBus.updateDownloading(true);
     }
-
-    final text = await NetClient().getText(url);
-    final rows = await _readConfigs(text);
     var count = 0;
     var subId = DBConstants.defaultId;
-    if (rows.isNotEmpty) {
-      final db = AppDatabase();
-      final row = SubscriptionCompanion.insert(
-        name: name,
-        url: url,
-        timestamp: DateTime.now(),
-        count: rows.length,
-        expanded: true,
-      );
-      subId = await db.subscriptionDao.insertRow(row);
-      if (subId > DBConstants.defaultId) {
-        count = await ConfigWriter.writeRows(rows, subId);
+    try {
+      final text = await NetClient().getText(url);
+      final rows = await _readConfigs(text);
+      if (rows.isNotEmpty) {
+        final db = AppDatabase();
+        final result = await db.transaction(() async {
+          final row = SubscriptionCompanion.insert(
+            name: name,
+            url: url,
+            timestamp: DateTime.now(),
+            count: rows.length,
+            expanded: true,
+          );
+          final nextSubId = await db.subscriptionDao.insertRow(row);
+          if (nextSubId <= DBConstants.defaultId) {
+            throw StateError('insert subscription failed');
+          }
+          final writeResult = await ConfigWriter.writeRowsInTransaction(
+            db,
+            rows,
+            nextSubId,
+          );
+          if (writeResult.count != rows.length) {
+            throw StateError('insert subscription configs failed');
+          }
+          return (subId: nextSubId, count: writeResult.count);
+        });
+        subId = result.subId;
+        count = result.count;
       }
-    }
-    if (showLoading) {
-      eventBus.updateDownloading(false);
+    } finally {
+      if (showLoading) {
+        eventBus.updateDownloading(false);
+      }
     }
 
     if (count > 0) {
@@ -87,21 +102,36 @@ class SubscriptionService {
     if (showLoading) {
       eventBus.updateDownloading(true);
     }
-    final text = await NetClient().getText(subscription.url);
-    final rows = await _readConfigs(text);
     var count = 0;
-    if (rows.isNotEmpty) {
-      final db = AppDatabase();
-      await db.subscriptionDao.deleteConfigs(subscription.id);
-      count = await ConfigWriter.writeRows(rows, subscription.id);
-      final newRow = subscription.copyWith(
-        timestamp: DateTime.now(),
-        count: count,
-      );
-      await db.subscriptionDao.updateRow(newRow);
-    }
-    if (showLoading) {
-      eventBus.updateDownloading(false);
+    try {
+      final text = await NetClient().getText(subscription.url);
+      final rows = await _readConfigs(text);
+      if (rows.isNotEmpty) {
+        final db = AppDatabase();
+        count = await db.transaction(() async {
+          await db.subscriptionDao.deleteConfigs(subscription.id);
+          final writeResult = await ConfigWriter.writeRowsInTransaction(
+            db,
+            rows,
+            subscription.id,
+          );
+          if (writeResult.count != rows.length) {
+            throw StateError('replace subscription configs failed');
+          }
+          final newRow = subscription.copyWith(
+            timestamp: DateTime.now(),
+            count: writeResult.count,
+          );
+          if (!await db.subscriptionDao.updateRow(newRow)) {
+            throw StateError('update subscription failed');
+          }
+          return writeResult.count;
+        });
+      }
+    } finally {
+      if (showLoading) {
+        eventBus.updateDownloading(false);
+      }
     }
     if (count > 0) {
       PingService().schedulePingSubscription(subscription.id);
@@ -129,14 +159,16 @@ class SubscriptionService {
     if (updateDownloading) {
       eventBus.updateDownloading(true);
     }
-
-    final db = AppDatabase();
-    final subscriptions = await db.subscriptionDao.allRows;
-    for (final subscription in subscriptions) {
-      await refreshSubscription(subscription, false);
-    }
-    if (updateDownloading) {
-      eventBus.updateDownloading(false);
+    try {
+      final db = AppDatabase();
+      final subscriptions = await db.subscriptionDao.allRows;
+      for (final subscription in subscriptions) {
+        await refreshSubscription(subscription, false);
+      }
+    } finally {
+      if (updateDownloading) {
+        eventBus.updateDownloading(false);
+      }
     }
   }
 
@@ -148,28 +180,26 @@ class SubscriptionService {
     if (updateDownloading) {
       eventBus.updateDownloading(true);
     }
-
-    final updateState = autoUpdateState ?? AutoUpdateState();
-    if (autoUpdateState == null) {
-      await updateState.readFromPreferences();
-    }
-    if (!updateState.subscriptionEnabled) {
+    try {
+      final updateState = autoUpdateState ?? AutoUpdateState();
+      if (autoUpdateState == null) {
+        await updateState.readFromPreferences();
+      }
+      if (!updateState.subscriptionEnabled) {
+        return;
+      }
+      final interval = updateState.subscriptionInterval.value;
+      final subs = await AppDatabase().subscriptionDao.allRows;
+      final now = DateTime.now();
+      for (final sub in subs) {
+        if (now.difference(sub.timestamp).inHours >= interval) {
+          await refreshSubscription(sub, false);
+        }
+      }
+    } finally {
       if (updateDownloading) {
         eventBus.updateDownloading(false);
       }
-      return;
-    }
-    final interval = updateState.subscriptionInterval.value;
-    final subs = await AppDatabase().subscriptionDao.allRows;
-    final now = DateTime.now();
-    for (final sub in subs) {
-      if (now.difference(sub.timestamp).inHours >= interval) {
-        await refreshSubscription(sub, false);
-      }
-    }
-
-    if (updateDownloading) {
-      eventBus.updateDownloading(false);
     }
   }
 }

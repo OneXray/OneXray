@@ -107,7 +107,6 @@ final class ShareService {
         } else {
           final pFile = File(file.path!);
           final text = await pFile.readAsString();
-          ygLogger('Picked file content: $text');
           await readShareText(text);
         }
       } else {
@@ -151,30 +150,35 @@ final class ShareService {
     if (text != null) {
       final eventBus = AppEventBus.instance;
       eventBus.updateDownloading(true);
-      final url = text.trim();
-      if (url.startsWith("https://")) {
-        final uri = Uri.tryParse(url);
-        if (uri != null) {
-          success = await SubscriptionService().addSubscription(
-            url,
-            uri.fragment,
-            true,
-          );
-        }
-      } else {
-        final rows = await XrayShareReader().parseShareText(url);
-        if (rows.isNotEmpty) {
-          final writeResult = await ConfigWriter.writeRowsWithResult(
-            rows,
-            null,
-          );
-          if (writeResult.count > 0) {
-            PingService().schedulePingConfigIds(writeResult.ids);
-            success = true;
+      try {
+        final url = text.trim();
+        if (url.startsWith("https://")) {
+          final uri = Uri.tryParse(url);
+          if (uri != null) {
+            success = await SubscriptionService().addSubscription(
+              url,
+              uri.fragment,
+              false,
+            );
+          }
+        } else {
+          final rows = await XrayShareReader().parseShareText(url);
+          if (rows.isNotEmpty) {
+            final writeResult = await ConfigWriter.writeRowsWithResult(
+              rows,
+              null,
+            );
+            if (writeResult.count > 0) {
+              PingService().schedulePingConfigIds(writeResult.ids);
+              success = true;
+            }
           }
         }
+      } catch (error, stackTrace) {
+        ygReportError(error, stackTrace, reason: 'import share text failed');
+      } finally {
+        eventBus.updateDownloading(false);
       }
-      eventBus.updateDownloading(false);
     }
 
     if (success) {
