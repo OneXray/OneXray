@@ -166,27 +166,28 @@ class TunSettingsController extends Cubit<TunSettingsPageState> {
   }
 
   Future<void> _showPermissionDialog(BuildContext context) async {
-    await showDialog<void>(
+    final accepted = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        content: Text(
-          AppLocalizations.of(context)!.tunSettingsPagePerAppVPNPermission,
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: Text(AppLocalizations.of(context)!.buttonDecline),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          TextButton(
-            child: Text(AppLocalizations.of(context)!.buttonAccept),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _acceptPermission(context);
-            },
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final localizations = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          content: Text(localizations.tunSettingsPagePerAppVPNPermission),
+          actions: <Widget>[
+            TextButton(
+              child: Text(localizations.buttonDecline),
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            TextButton(
+              child: Text(localizations.buttonAccept),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        );
+      },
     );
+    if (accepted == true && context.mounted) {
+      await _acceptPermission(context);
+    }
   }
 
   Future<void> _acceptPermission(BuildContext context) async {

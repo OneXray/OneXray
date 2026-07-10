@@ -85,9 +85,12 @@ class AppHostApi(
                 return@launch
             }
             flutterApi?.vpnStatusChanged(VpnStatus.CONNECTING)
-            val intent = VpnController.buildStartIntent(context)
-            context.startForegroundService(intent)
-            callback(Result.success(commandSuccess(permission)))
+            if (VpnController.startVpn(context)) {
+                callback(Result.success(commandSuccess(permission)))
+            } else {
+                flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTED)
+                callback(Result.success(commandFailed(permission)))
+            }
         }
     }
 
@@ -103,8 +106,9 @@ class AppHostApi(
                 VpnStatus.DISCONNECTED -> flutterApi?.refreshVpnStatus()
                 VpnStatus.CONNECTING, VpnStatus.CONNECTED, VpnStatus.DISCONNECTING -> {
                     flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTING)
-                    val intent = VpnController.buildStopIntent(context)
-                    context.startService(intent)
+                    if (!VpnController.stopVpn(context)) {
+                        flutterApi?.refreshVpnStatus()
+                    }
                 }
             }
 
@@ -248,6 +252,12 @@ class AppHostApi(
             )
         }
     }
+
+    private fun commandFailed(permission: PlatformPermissionResult): NativeVpnCommandResult =
+        NativeVpnCommandResult(
+            NativeVpnCommandState.FAILED,
+            permission,
+        )
 
     private fun androidPermissionGranted() = PlatformPermissionResult(
         PlatformPermissionKind.ANDROID_VPN,

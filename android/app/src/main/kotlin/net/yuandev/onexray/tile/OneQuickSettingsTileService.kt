@@ -81,7 +81,8 @@ class OneQuickSettingsTileService : TileService() {
                 VpnController.requestTileRefresh(this)
             }
             VpnController.StartResult.MISSING_START_SNAPSHOT,
-            VpnController.StartResult.NEED_PERMISSION -> launchMainActivity()
+            VpnController.StartResult.NEED_PERMISSION,
+            VpnController.StartResult.FAILED -> launchMainActivity()
         }
     }
 

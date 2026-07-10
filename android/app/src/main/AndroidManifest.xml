@@ -16,9 +16,10 @@
         tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
     <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
 
+    <!-- Routed dialogs currently complete twice during Android predictive back. -->
     <application
         android:name="${applicationName}"
-        android:enableOnBackInvokedCallback="true"
+        android:enableOnBackInvokedCallback="false"
         android:icon="@mipmap/ic_launcher"
         android:label="OneXray"
         tools:targetApi="tiramisu">

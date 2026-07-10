@@ -188,25 +188,28 @@ class BackupController extends Cubit<BackupPageState> {
     if (state.backingUp || state.restoring) {
       return;
     }
-    await showDialog<void>(
+    final restoreConfirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        content: Text(AppLocalizations.of(context)!.backupPageRestoreTips),
-        actions: <Widget>[
-          TextButton(
-            child: Text(AppLocalizations.of(context)!.buttonCancel),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          TextButton(
-            child: Text(AppLocalizations.of(context)!.buttonOK),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _restore(context);
-            },
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final localizations = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          content: Text(localizations.backupPageRestoreTips),
+          actions: <Widget>[
+            TextButton(
+              child: Text(localizations.buttonCancel),
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            TextButton(
+              child: Text(localizations.buttonOK),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        );
+      },
     );
+    if (restoreConfirmed == true && context.mounted) {
+      await _restore(context);
+    }
   }
 
   Future<void> _restore(BuildContext context) async {

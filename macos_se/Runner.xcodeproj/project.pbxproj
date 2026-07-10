@@ -484,6 +484,7 @@
 		};
 		AAA6AE00DA7B6969B8AF7983 /* FlutterFire: "flutterfire upload-crashlytics-symbols" */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);

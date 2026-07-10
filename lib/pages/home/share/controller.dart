@@ -304,7 +304,7 @@ class ShareController extends Cubit<SharePageState> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context)!.buttonOK),
+            child: Text(AppLocalizations.of(ctx)!.buttonOK),
           ),
         ],
       ),

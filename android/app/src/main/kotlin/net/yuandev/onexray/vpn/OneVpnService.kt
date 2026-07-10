@@ -35,6 +35,7 @@ import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
 import net.yuandev.onexray.pigeon.XrayEnv
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 
@@ -58,6 +59,7 @@ class OneVpnService : VpnService() {
     @Volatile
     private var running = false
     private val startGeneration = AtomicInteger(0)
+    private val released = AtomicBoolean(true)
 
     private fun sendStatusBroadcast(running: Boolean) {
         val intent = Intent(ACTION_VPN_STATUS).apply {
@@ -86,13 +88,7 @@ class OneVpnService : VpnService() {
         XLog.d("OneVpnService: onStartCommand ${intent?.action}")
         if (intent != null && intent.action == ACTION_STOP) {
             XLog.d("OneVpnService: onStartCommand $ACTION_STOP running=$running")
-            if (running || tunnel != null) {
-                stopTun()
-            } else {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                sendStatusBroadcast(false)
-                stopSelf()
-            }
+            stopTun()
             return START_NOT_STICKY
         }
         if (intent != null && intent.action == ACTION_START) {
@@ -106,8 +102,9 @@ class OneVpnService : VpnService() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        releaseTun()
         scope.cancel()
+        super.onDestroy()
     }
 
     private fun initService() {
@@ -116,25 +113,17 @@ class OneVpnService : VpnService() {
 
     private fun startTun(startId: Int) {
         XLog.d("OneVpnService: startTun $startId")
-        if (tunnel != null) {
-            XLog.d("OneVpnService: startTun ignored because tunnel already exists")
+        if (!released.compareAndSet(true, false)) {
+            XLog.d("OneVpnService: startTun ignored because VPN resources are active")
             return
         }
         val generation = startGeneration.incrementAndGet()
-
-        showNotification(startId)
-
-        val model = try {
-            readStartRequest()
-        } catch (e: Exception) {
-            failStart("OneVpnService: startTun failed to read/parse start.json", e, generation)
-            return
-        }
-
         try {
+            showNotification(startId)
+            val model = readStartRequest()
             runTun(model, generation)
         } catch (e: Exception) {
-            failStart("OneVpnService: startTun failed to establish tunnel", e, generation)
+            failStart("OneVpnService: startTun failed", e, generation)
         }
     }
 
@@ -146,18 +135,26 @@ class OneVpnService : VpnService() {
     }
 
     private fun stopTun() {
-        startGeneration.incrementAndGet()
-        if (tunnel == null) {
+        if (!releaseTun()) {
             stopForeground(STOP_FOREGROUND_REMOVE)
-            controller.vpn = null
-            running = false
             sendStatusBroadcast(false)
-            stopSelf()
-            return
         }
+        stopSelf()
+    }
+
+    private fun releaseTun(): Boolean {
+        if (!released.compareAndSet(false, true)) {
+            return false
+        }
+        startGeneration.incrementAndGet()
         XLog.d("OneVpnService: stopTun")
         stopForeground(STOP_FOREGROUND_REMOVE)
-        stopXray()
+        try {
+            stopXray()
+        } catch (e: Exception) {
+            XLog.d("OneVpnService: stopTun stopXray exception")
+            XLog.d(e)
+        }
         try {
             tunnel?.close()
         } catch (e: Exception) {
@@ -168,6 +165,7 @@ class OneVpnService : VpnService() {
         controller.vpn = null
         running = false
         sendStatusBroadcast(false)
+        return true
     }
 
     private fun failStart(message: String, error: Exception, generation: Int? = null) {
@@ -176,25 +174,8 @@ class OneVpnService : VpnService() {
             XLog.d(error)
             return
         }
-        startGeneration.incrementAndGet()
         XLog.e(message, error)
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        try {
-            stopXray()
-        } catch (e: Exception) {
-            XLog.d("OneVpnService: failStart stopXray exception")
-            XLog.d(e)
-        }
-        try {
-            tunnel?.close()
-        } catch (e: Exception) {
-            XLog.d("OneVpnService: failStart close tunnel exception")
-            XLog.d(e)
-        }
-        tunnel = null
-        controller.vpn = null
-        running = false
-        sendStatusBroadcast(false)
+        releaseTun()
         stopSelf()
     }
 

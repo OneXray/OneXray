@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.VpnService
 import android.service.quicksettings.TileService
 import androidx.core.content.ContextCompat
+import com.elvishew.xlog.XLog
 import net.yuandev.onexray.tile.OneQuickSettingsTileService
 import java.io.File
 import java.net.InetAddress
@@ -25,6 +26,7 @@ object VpnController {
         STARTED,
         MISSING_START_SNAPSHOT,
         NEED_PERMISSION,
+        FAILED,
     }
 
     fun readVpnRunning(context: Context): Boolean {
@@ -57,11 +59,6 @@ object VpnController {
             action = OneVpnService.ACTION_START
         }
 
-    fun buildStopIntent(context: Context): Intent =
-        Intent(context, OneVpnService::class.java).apply {
-            action = OneVpnService.ACTION_STOP
-        }
-
     fun startVpnWithLastProfile(context: Context): StartResult {
         if (!hasStartSnapshot(context)) {
             return StartResult.MISSING_START_SNAPSHOT
@@ -69,12 +66,22 @@ object VpnController {
         if (VpnService.prepare(context) != null) {
             return StartResult.NEED_PERMISSION
         }
-        ContextCompat.startForegroundService(context, buildStartIntent(context))
-        return StartResult.STARTED
+        return if (startVpn(context)) StartResult.STARTED else StartResult.FAILED
     }
 
-    fun stopVpn(context: Context) {
-        context.startService(buildStopIntent(context))
+    fun startVpn(context: Context): Boolean = try {
+        ContextCompat.startForegroundService(context, buildStartIntent(context))
+        true
+    } catch (error: RuntimeException) {
+        XLog.e("VpnController: failed to start VPN service", error)
+        false
+    }
+
+    fun stopVpn(context: Context): Boolean = try {
+        context.stopService(Intent(context, OneVpnService::class.java))
+    } catch (error: RuntimeException) {
+        XLog.e("VpnController: failed to stop VPN service", error)
+        false
     }
 
     fun requestTileRefresh(context: Context) {

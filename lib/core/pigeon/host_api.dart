@@ -5,6 +5,7 @@ import 'package:onexray/core/ffi/windows_ffi_api.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/invoke_limits.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -333,13 +334,17 @@ class AppHostApi {
 
   Future<String> _invoke(LibXrayInvokeRequest request) async {
     final requestJson = JsonTool.encoder.convert(request.toJson());
+    LibXrayInvokeLimits.validate(requestJson, "request");
+    late final String responseJson;
     if (AppPlatform.isLinux) {
-      return LinuxFfiApi().invoke(requestJson);
+      responseJson = await LinuxFfiApi().invoke(requestJson);
     } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().invoke(requestJson);
+      responseJson = await WindowsFfiApi().invoke(requestJson);
     } else {
-      return _api.invoke(requestJson);
+      responseJson = await _api.invoke(requestJson);
     }
+    LibXrayInvokeLimits.validate(responseJson, "response");
+    return responseJson;
   }
 
   LibXrayInvokeResponse parseLibXrayInvokeResponse(String res) {
