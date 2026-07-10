@@ -120,6 +120,11 @@ class OneVpnService : VpnService() {
         }
         if (intent != null && intent.action == ACTION_START) {
             XLog.d("OneVpnService: onStartCommand $ACTION_START running=$running")
+            if (VpnController.consumeStopRequest(this)) {
+                XLog.d("OneVpnService: start cancelled by pending stop request")
+                stopTun()
+                return START_NOT_STICKY
+            }
             if (!running && tunnel == null) {
                 startTun(startId)
             }

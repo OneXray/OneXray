@@ -35,7 +35,7 @@ The app manages nodes, subscriptions, Xray Profiles, Full Configs, Raw Json conf
 
 After a node is selected on Home, `VpnService` reads the selected node, selected Xray Profile, current TUN / Proxy mode, and TUN Settings.
 
-When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Full Config, the Full Config overrides the selected Xray Profile's `outbounds`, `routing`, `dns`, and `fakeDns`. When starting a Raw Json config, Raw Json remains the main JSON body, but runtime inbounds are generated from the selected Xray Profile and current runtime mode.
+When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Full Config, the Full Config overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but runtime inbounds are generated from the selected Xray Profile and current runtime mode.
 
 After the final runtime Xray JSON is written, TUN mode enters the platform VPN / TUN startup path. Proxy mode starts local Xray core and exposes SOCKS / HTTP proxy ports.
 

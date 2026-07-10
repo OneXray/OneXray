@@ -15,6 +15,7 @@ import java.net.SocketException
 
 object VpnController {
     private const val startSnapshotRelativePath = "run/start.json"
+    private const val stopRequestRelativePath = "run/vpn.stop"
     private val vpnAddresses by lazy {
         setOf(
             InetAddress.getByName(OneVpnService.IPV4_ADDRESS),
@@ -69,22 +70,48 @@ object VpnController {
         return if (startVpn(context)) StartResult.STARTED else StartResult.FAILED
     }
 
-    fun startVpn(context: Context): Boolean = try {
-        ContextCompat.startForegroundService(context, buildStartIntent(context))
-        true
-    } catch (error: RuntimeException) {
-        XLog.e("VpnController: failed to start VPN service", error)
-        false
+    fun startVpn(context: Context): Boolean {
+        if (!clearStopRequest(context)) {
+            return false
+        }
+        return try {
+            ContextCompat.startForegroundService(context, buildStartIntent(context))
+            true
+        } catch (error: RuntimeException) {
+            XLog.e("VpnController: failed to start VPN service", error)
+            false
+        }
     }
 
-    fun stopVpn(context: Context): Boolean = try {
-        context.sendBroadcast(
-            Intent(OneVpnService.ACTION_STOP_REQUEST).setPackage(context.packageName)
-        )
-        true
-    } catch (error: RuntimeException) {
-        XLog.e("VpnController: failed to request VPN stop", error)
-        false
+    fun stopVpn(context: Context): Boolean {
+        val markerWritten = writeStopRequest(context)
+        val broadcastSent = try {
+            context.sendBroadcast(
+                Intent(OneVpnService.ACTION_STOP_REQUEST).setPackage(context.packageName)
+            )
+            true
+        } catch (error: RuntimeException) {
+            XLog.e("VpnController: failed to broadcast VPN stop", error)
+            false
+        }
+        return markerWritten && broadcastSent
+    }
+
+    fun consumeStopRequest(context: Context): Boolean {
+        val file = stopRequestFile(context)
+        return try {
+            if (!file.isFile) {
+                false
+            } else {
+                if (!file.delete()) {
+                    XLog.w("VpnController: failed to consume VPN stop marker")
+                }
+                true
+            }
+        } catch (error: Exception) {
+            XLog.e("VpnController: failed to read VPN stop marker", error)
+            true
+        }
     }
 
     fun requestTileRefresh(context: Context) {
@@ -99,4 +126,34 @@ object VpnController {
 
     private fun matchesVpnAddress(address: InetAddress?): Boolean =
         address != null && vpnAddresses.any { it == address }
+
+    private fun stopRequestFile(context: Context): File =
+        File(context.filesDir, stopRequestRelativePath)
+
+    private fun writeStopRequest(context: Context): Boolean = try {
+        val file = stopRequestFile(context)
+        val parent = file.parentFile
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            XLog.e("VpnController: failed to create VPN run directory")
+            false
+        } else {
+            file.writeText("stop")
+            true
+        }
+    } catch (error: Exception) {
+        XLog.e("VpnController: failed to write VPN stop marker", error)
+        false
+    }
+
+    private fun clearStopRequest(context: Context): Boolean = try {
+        val file = stopRequestFile(context)
+        !file.exists() || file.delete().also { deleted ->
+            if (!deleted) {
+                XLog.e("VpnController: failed to clear VPN stop marker")
+            }
+        }
+    } catch (error: Exception) {
+        XLog.e("VpnController: failed to clear VPN stop marker", error)
+        false
+    }
 }
