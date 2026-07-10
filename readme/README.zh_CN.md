@@ -71,19 +71,19 @@ sudo apt remove onexray
 
 ### 内核升级
 
-在 Linux 和 Windows 平台，`OneXrayCore` 是 libXray desktop wrapper。请为目标平台重新编译 libXray，并同时替换动态库和 wrapper 二进制。
+在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core。请通过 libXray 编译动态库，并单独从 Xray-core 编译 `OneXrayCore` CLI。
 
 #### Linux
 
 将 `OneXray/lib/libXray.so` 替换为 libXray 的编译产物 `linux_so/libXray.so` 。
 
-将 libXray wrapper `bin/xray` 重命名为 `OneXrayCore`，然后替换 `OneXray/bin/OneXrayCore`。
+将 `OneXray/bin/OneXrayCore` 替换为 Xray-core CLI 的编译产物。
 
 #### Windows
 
 将 `OneXray/libXray.dll` 替换为 libXray 的编译产物 `windows_dll/libXray.dll` 。
 
-将 libXray wrapper `bin/xray.exe` 重命名为 `OneXrayCore.exe`，然后替换 `OneXray/bin/OneXrayCore.exe`。
+将 `OneXray/bin/OneXrayCore.exe` 替换为 Xray-core CLI 的编译产物。
 
 ## 贡献
 

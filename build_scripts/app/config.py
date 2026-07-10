@@ -7,8 +7,6 @@ PROJECT_CONFIG = {
         "core.lib.src.files.android": ["libXray-sources.jar", "libXray.aar"],
         "core.lib.src.files.linux": ["linux_so/libXray.so"],
         "core.lib.src.files.windows": ["windows_dll/libXray.dll"],
-        "core.bin.src.file.linux": "bin/xray",
-        "core.bin.src.file.windows": "bin/xray.exe",
         "core.lib.dst.dir.ios": "../swift/all",
         "core.lib.dst.dir.macos": "../swift/all",
         "core.lib.dst.dir.android": "app/libs",

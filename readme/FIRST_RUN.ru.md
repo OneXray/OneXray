@@ -41,8 +41,8 @@ cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-In
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`, `libXray-sources.jar`
-- Linux: `linux_so/libXray.so` и wrapper libXray `bin/xray`, переименованный в `OneXrayCore`
-- Windows: `windows_dll/libXray.dll` и wrapper libXray `bin/xray.exe`, переименованный в `OneXrayCore.exe`
+- Linux: `linux_so/libXray.so` и Xray-core CLI, переименованный в `OneXrayCore`
+- Windows: `windows_dll/libXray.dll` и Xray-core CLI, переименованный в `OneXrayCore.exe`
 
 Сначала соберите нужные targets в `libXray`. Эти команды используют соседний checkout `Xray-core`:
 
@@ -78,23 +78,22 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` линкует `libXray.so` из `linux/app/` и устанавливает `OneXrayCore` в итоговый bundle. Скопируйте shared library и wrapper из libXray:
+`linux/app.cmake` линкует `libXray.so` из `linux/app/` и устанавливает `OneXrayCore` в итоговый bundle. Скопируйте `libXray.so`, затем соберите Xray-core в имя, которое ожидает OneXray:
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-cp ../libXray/bin/xray linux/app/OneXrayCore
-chmod +x linux/app/OneXrayCore
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 ### Windows
 
-`windows/app.cmake` устанавливает `libXray.dll` и `OneXrayCore.exe` из `windows/app/`. Скопируйте shared library и wrapper из libXray:
+`windows/app.cmake` устанавливает `libXray.dll` и `OneXrayCore.exe` из `windows/app/`. Скопируйте `libXray.dll`, затем соберите Xray-core в имя, которое ожидает OneXray:
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
+(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
 > `windows/app.cmake` также упаковывает `wintun.dll`. Этот файл не входит в `libXray`; его нужно подготовить отдельно в Windows development environment.

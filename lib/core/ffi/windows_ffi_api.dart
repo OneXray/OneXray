@@ -28,24 +28,24 @@ class WindowsFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
-    final requestPath = await writeCoreInvokeRequest(request);
-    if (requestPath == null || requestPath.isEmpty) {
-      ygLogger("start core failed: invoke request path is empty");
+    final configPath = request.request.configPath;
+    if (configPath == null || configPath.isEmpty) {
+      ygLogger("start core failed: config path is empty");
       return false;
     }
 
     return _startCoreProcess(
       label: "core",
       verb: "runas",
-      requestPath: requestPath,
+      configPath: configPath,
       verifyRunning: false,
     );
   }
 
   Future<bool> startProxyCore(LibXrayRunConfig request) async {
-    final requestPath = await writeCoreInvokeRequest(request);
-    if (requestPath == null || requestPath.isEmpty) {
-      ygLogger("start proxy core failed: invoke request path is empty");
+    final configPath = request.request.configPath;
+    if (configPath == null || configPath.isEmpty) {
+      ygLogger("start proxy core failed: config path is empty");
       return false;
     }
 
@@ -59,7 +59,7 @@ class WindowsFfiApi extends BaseFfiApi {
     return _startCoreProcess(
       label: "proxy core",
       verb: "open",
-      requestPath: requestPath,
+      configPath: configPath,
       verifyRunning: true,
       isRunning: () => _processRunning(label: "proxy core"),
     );
@@ -121,7 +121,7 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<bool> _startCoreProcess({
     required String label,
     required String verb,
-    required String requestPath,
+    required String configPath,
     required bool verifyRunning,
     bool Function()? isRunning,
   }) async {
@@ -131,7 +131,7 @@ class WindowsFfiApi extends BaseFfiApi {
 
     try {
       final result = _runCommand(
-        Tuple3(verb, corePath, _buildRunParameters(requestPath)),
+        Tuple3(verb, corePath, _buildRunParameters(configPath)),
       );
       if (!result.item1) {
         final errorCode = GetLastError();
@@ -149,8 +149,8 @@ class WindowsFfiApi extends BaseFfiApi {
     return verifyRunning ? isRunning?.call() ?? false : true;
   }
 
-  String _buildRunParameters(String requestPath) {
-    return <String>["-configPath", _quoteArg(requestPath)].join(" ");
+  String _buildRunParameters(String configPath) {
+    return <String>["run", "-config", _quoteArg(configPath)].join(" ");
   }
 
   Future<bool> _killExistingCoreProcesses() async {

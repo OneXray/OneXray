@@ -18,18 +18,22 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import libXray.DialerController
 import libXray.LibXray
 import net.yuandev.onexray.MainActivity
 import net.yuandev.onexray.R
 import net.yuandev.onexray.pigeon.JsonTool
-import net.yuandev.onexray.pigeon.LibXrayEnvJson
 import net.yuandev.onexray.pigeon.LibXrayInvokeRequest
 import net.yuandev.onexray.pigeon.LibXrayInvokeResponse
 import net.yuandev.onexray.pigeon.LibXrayMethod
 import net.yuandev.onexray.pigeon.PerAppVPNMode
 import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
+import net.yuandev.onexray.pigeon.XrayEnv
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -372,7 +376,7 @@ class OneVpnService : VpnService() {
                 if (generation != startGeneration.get() || tunnel !== establishedTunnel) {
                     return@launch
                 }
-                val result = LibXray.invoke(withTunFd(coreInvokeText, establishedTunnel.fd))
+                val result = LibXray.invoke(patchRuntimeEnv(coreInvokeText, establishedTunnel.fd))
                 validateRunXrayResult(result)
                 if (generation != startGeneration.get() || tunnel !== establishedTunnel) {
                     XLog.d("OneVpnService: stale runXray result ignored")
@@ -403,11 +407,28 @@ class OneVpnService : VpnService() {
         LibXray.invoke(JsonTool.json.encodeToString(request))
     }
 
-    private fun withTunFd(requestJson: String, fd: Int): String {
+    private fun patchRuntimeEnv(requestJson: String, fd: Int): String {
         val request = JsonTool.json.decodeFromString<LibXrayInvokeRequest>(requestJson)
-        val env = request.env ?: LibXrayEnvJson()
-        return JsonTool.json.encodeToString(
-            request.copy(env = env.copy(tunFd = fd.toString()))
-        )
+        val configPath = request.payload?.configPath
+            ?: throw IllegalStateException("configPath is empty")
+        if (configPath.isEmpty()) {
+            throw IllegalStateException("configPath is empty")
+        }
+        val configFile = File(configPath)
+        val root = JsonTool.json.parseToJsonElement(configFile.readText()).jsonObject
+        val currentEnv = root["env"]?.let {
+            JsonTool.json.decodeFromJsonElement<XrayEnv>(it)
+        } ?: XrayEnv()
+        val env = currentEnv.copy(tunFd = fd.toString())
+        val updated = buildJsonObject {
+            root.forEach { (key, value) ->
+                if (key != "env") {
+                    put(key, value)
+                }
+            }
+            put("env", JsonTool.json.encodeToJsonElement(env))
+        }
+        configFile.writeText(JsonTool.json.encodeToString(updated))
+        return JsonTool.json.encodeToString(request)
     }
 }

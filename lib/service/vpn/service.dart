@@ -808,10 +808,6 @@ final class VpnService {
   Future<String?> _makeRunXrayRequest(String configPath) async {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.runXray,
-      env: LibXrayEnvJson(
-        assetLocation: VpnConstants.datDir,
-        certLocation: VpnConstants.datDir,
-      ),
       payload: RunXrayRequest(configPath).toJson(),
     );
     return JsonTool.encoder.convert(request.toJson());

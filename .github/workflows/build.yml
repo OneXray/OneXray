@@ -42,10 +42,10 @@
 #   build_scripts/app/builder.py#build_core expects XTLS/libXray and
 #   XTLS/Xray-core to live as siblings of this repo. Every job therefore checks
 #   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
-#   `Xray-core/` at the workspace root. libXray is built with local Xray-core.
-#   Windows/Linux app packages copy the libXray desktop wrapper as OneXrayCore.
-#   fastforge/fastlane/flutter all produce their outputs under
-#   `<workspace>/output`.
+#   `Xray-core/` at the workspace root. libXray is built with local Xray-core,
+#   and Windows/Linux app packages compile OneXrayCore directly from that same
+#   sibling Xray-core checkout. fastforge/fastlane/flutter all produce their
+#   outputs under `<workspace>/output`.
 
 name: Build
 

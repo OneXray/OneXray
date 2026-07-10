@@ -4,7 +4,6 @@ import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows_ffi_api.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/model/xray_standard.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/json.dart';
@@ -188,7 +187,6 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.ping,
-          env: _runtimeEnv(),
           payload: PingRequest(configPath, timeout, url, proxy).toJson(),
         ),
       );
@@ -214,7 +212,6 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
-          env: _runtimeEnv(),
           payload: RunXrayRequest(configPath).toJson(),
         ),
       );
@@ -349,13 +346,6 @@ class AppHostApi {
     final data = JsonTool.decoder.convert(res) as Map<String, dynamic>;
     final resp = LibXrayInvokeResponse.fromJson(data);
     return resp;
-  }
-
-  LibXrayEnvJson _runtimeEnv() {
-    return LibXrayEnvJson(
-      assetLocation: VpnConstants.datDir,
-      certLocation: VpnConstants.datDir,
-    );
   }
 
   // android

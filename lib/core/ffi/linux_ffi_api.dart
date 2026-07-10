@@ -59,13 +59,13 @@ class LinuxFfiApi extends BaseFfiApi {
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
     try {
-      final requestPath = await writeCoreInvokeRequest(request);
-      if (requestPath == null || requestPath.isEmpty) {
-        ygLogger("start core failed: invoke request path is empty");
+      final configPath = request.request.configPath;
+      if (configPath == null || configPath.isEmpty) {
+        ygLogger("start core failed: config path is empty");
         return false;
       }
 
-      final command = <String>[corePath, "-configPath", requestPath];
+      final command = <String>[corePath, "run", "-config", configPath];
       ygLogger("Running command: ${command.join(" ")}");
       final process = await _processManager.start(command);
       _bindProcess(process);

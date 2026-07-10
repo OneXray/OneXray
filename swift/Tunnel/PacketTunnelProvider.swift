@@ -326,8 +326,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             YGLog("PacketTunnelProvider TunnelError.noSocketFd")
             throw TunnelError.noSocketFd
         }
-        var request = try LibXrayInvokeRequest.fromText(requestJson)
-        try patchRuntimeEnv(fd: fd, request: &request)
+        let request = try LibXrayInvokeRequest.fromText(requestJson)
+        try patchRuntimeEnv(fd: fd, request: request)
         let requestText = try request.toText()
 
         Task {
@@ -344,8 +344,15 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
     }
 
-    private func patchRuntimeEnv(fd: Int32, request: inout LibXrayInvokeRequest) throws {
-        var env = request.env ?? LibXrayEnvJson()
+    private func patchRuntimeEnv(fd: Int32, request: LibXrayInvokeRequest) throws {
+        guard let configPath = request.payload?.configPath, !configPath.isEmpty else {
+            YGLog("PacketTunnelProvider TunnelError.noXrayConfigPath")
+            throw TunnelError.noXrayConfigPath
+        }
+        let url = URL(fileURLWithPath: configPath)
+        let data = try Data(contentsOf: url)
+        var root = try JsonTool.decodeObject(from: data)
+        var env = try XrayEnv.fromObject(root["env"])
         env.tunFd = "\(fd)"
         if Constants.useSystemExtension {
             guard let dat = datDir() else {
@@ -356,7 +363,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             env.assetLocation = datPath
             env.certLocation = datPath
         }
-        request.env = env
+        root["env"] = try env.toObject()
+        try JsonTool.encodeObject(root).write(to: url, options: .atomic)
     }
 
     private func stopXray() {

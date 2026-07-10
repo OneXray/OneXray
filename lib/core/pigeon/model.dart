@@ -173,32 +173,14 @@ enum LibXrayMethod {
 class LibXrayInvokeRequest {
   int? apiVersion;
   LibXrayMethod? method;
-  LibXrayEnvJson? env;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.env, this.payload}) : apiVersion = 1;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 1;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$LibXrayInvokeRequestToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class LibXrayEnvJson {
-  @JsonKey(name: "xray.location.asset")
-  String? assetLocation;
-  @JsonKey(name: "xray.location.cert")
-  String? certLocation;
-  @JsonKey(name: "xray.tun.fd")
-  String? tunFd;
-
-  LibXrayEnvJson({this.assetLocation, this.certLocation, this.tunFd});
-
-  factory LibXrayEnvJson.fromJson(Map<String, dynamic> json) =>
-      _$LibXrayEnvJsonFromJson(json);
-
-  Map<String, dynamic> toJson() => _$LibXrayEnvJsonToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -264,9 +246,5 @@ class LibXrayRunConfig {
     final data = JsonTool.decoder.convert(text) as Map<String, dynamic>;
     final invoke = LibXrayInvokeRequest.fromJson(data);
     return LibXrayRunConfig(invoke);
-  }
-
-  String toInvokeText() {
-    return JsonTool.encoder.convert(invoke.toJson());
   }
 }

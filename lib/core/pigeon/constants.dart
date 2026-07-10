@@ -12,5 +12,4 @@ class VpnConstants {
   static String get runDir => p.join(AppHostApi().tunFilesDir, "run");
 
   static String get startPath => p.join(runDir, "start.json");
-  static String get coreConfigPath => p.join(runDir, "core.json");
 }

@@ -1,5 +1,7 @@
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/network/constants.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_settings/state.dart';
@@ -24,7 +26,7 @@ class XrayRawFix {
 
     settingState.inbounds.ping.port = ports.pingPort;
     settingState.inbounds.ping.auth = ports.pingAuth;
-    removeEnv(jsonMap);
+    fixEnv(jsonMap);
     _fixDnsQueryStrategy(jsonMap, tunSettingsState);
     XrayRuntimeInbounds.applyToRawJson(jsonMap, settingState.inbounds, mode);
     _fixPingRoutingRule(jsonMap);
@@ -46,8 +48,11 @@ class XrayRawFix {
     }
   }
 
-  static void removeEnv(Map<String, dynamic> jsonMap) {
-    jsonMap.remove("env");
+  static void fixEnv(Map<String, dynamic> jsonMap) {
+    jsonMap["env"] = XrayEnv(
+      assetLocation: VpnConstants.datDir,
+      certLocation: VpnConstants.datDir,
+    ).toJson();
   }
 
   static void _fixDnsQueryStrategy(

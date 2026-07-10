@@ -87,7 +87,7 @@ data class RunXrayRequest(
 )
 
 @Serializable
-data class LibXrayEnvJson(
+data class XrayEnv(
     @SerialName("xray.location.asset")
     val assetLocation: String? = null,
     @SerialName("xray.location.cert")
@@ -100,7 +100,6 @@ data class LibXrayEnvJson(
 data class LibXrayInvokeRequest(
     val apiVersion: Int? = 1,
     val method: LibXrayMethod? = null,
-    val env: LibXrayEnvJson? = null,
     val payload: RunXrayRequest? = null,
 )
 

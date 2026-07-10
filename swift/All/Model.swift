@@ -119,7 +119,7 @@ struct RunXrayRequest: Codable, Hashable {
     var configPath: String?
 }
 
-struct LibXrayEnvJson: Codable, Hashable {
+struct XrayEnv: Codable, Hashable {
     var assetLocation: String?
     var certLocation: String?
     var tunFd: String?
@@ -129,23 +129,31 @@ struct LibXrayEnvJson: Codable, Hashable {
         case certLocation = "xray.location.cert"
         case tunFd = "xray.tun.fd"
     }
+
+    static func fromObject(_ object: Any?) throws -> Self {
+        guard let object else {
+            return Self()
+        }
+        return try JsonTool.decode(Self.self, from: JsonTool.encodeObject(object))
+    }
+
+    func toObject() throws -> [String: Any] {
+        try JsonTool.decodeObject(from: JsonTool.encode(self))
+    }
 }
 
 struct LibXrayInvokeRequest: Codable, Hashable {
     var apiVersion: Int?
     var method: LibXrayMethod?
-    var env: LibXrayEnvJson?
     var payload: RunXrayRequest?
 
     init(
         apiVersion: Int? = 1,
         method: LibXrayMethod? = nil,
-        env: LibXrayEnvJson? = nil,
         payload: RunXrayRequest? = nil
     ) {
         self.apiVersion = apiVersion
         self.method = method
-        self.env = env
         self.payload = payload
     }
 

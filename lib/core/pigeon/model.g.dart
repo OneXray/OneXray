@@ -125,9 +125,6 @@ LibXrayInvokeRequest _$LibXrayInvokeRequestFromJson(
   Map<String, dynamic> json,
 ) => LibXrayInvokeRequest(
   method: $enumDecodeNullable(_$LibXrayMethodEnumMap, json['method']),
-  env: json['env'] == null
-      ? null
-      : LibXrayEnvJson.fromJson(json['env'] as Map<String, dynamic>),
   payload: json['payload'] as Map<String, dynamic>?,
 )..apiVersion = (json['apiVersion'] as num?)?.toInt();
 
@@ -136,7 +133,6 @@ Map<String, dynamic> _$LibXrayInvokeRequestToJson(
 ) => <String, dynamic>{
   'apiVersion': ?instance.apiVersion,
   'method': ?_$LibXrayMethodEnumMap[instance.method],
-  'env': ?instance.env?.toJson(),
   'payload': ?instance.payload,
 };
 
@@ -153,20 +149,6 @@ const _$LibXrayMethodEnumMap = {
   LibXrayMethod.xrayVersion: 'xrayVersion',
   LibXrayMethod.getXrayState: 'getXrayState',
 };
-
-LibXrayEnvJson _$LibXrayEnvJsonFromJson(Map<String, dynamic> json) =>
-    LibXrayEnvJson(
-      assetLocation: json['xray.location.asset'] as String?,
-      certLocation: json['xray.location.cert'] as String?,
-      tunFd: json['xray.tun.fd'] as String?,
-    );
-
-Map<String, dynamic> _$LibXrayEnvJsonToJson(LibXrayEnvJson instance) =>
-    <String, dynamic>{
-      'xray.location.asset': ?instance.assetLocation,
-      'xray.location.cert': ?instance.certLocation,
-      'xray.tun.fd': ?instance.tunFd,
-    };
 
 GetFreePortsRequest _$GetFreePortsRequestFromJson(Map<String, dynamic> json) =>
     GetFreePortsRequest((json['count'] as num?)?.toInt());

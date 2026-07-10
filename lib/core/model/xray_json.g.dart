@@ -8,6 +8,9 @@ part of 'xray_json.dart';
 
 XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
   json['name'] as String?,
+  json['env'] == null
+      ? null
+      : XrayEnv.fromJson(json['env'] as Map<String, dynamic>),
   json['log'] == null
       ? null
       : XrayLog.fromJson(json['log'] as Map<String, dynamic>),
@@ -39,6 +42,7 @@ XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
 
 Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'name': ?instance.name,
+  'env': ?instance.env?.toJson(),
   'log': ?instance.log?.toJson(),
   'dns': ?instance.dns?.toJson(),
   'routing': ?instance.routing?.toJson(),
@@ -48,6 +52,18 @@ Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'stats': ?instance.stats?.toJson(),
   'metrics': ?instance.metrics?.toJson(),
   'fakeDns': ?instance.fakeDns?.map((e) => e.toJson()).toList(),
+};
+
+XrayEnv _$XrayEnvFromJson(Map<String, dynamic> json) => XrayEnv(
+  assetLocation: json['xray.location.asset'] as String?,
+  certLocation: json['xray.location.cert'] as String?,
+  tunFd: json['xray.tun.fd'] as String?,
+);
+
+Map<String, dynamic> _$XrayEnvToJson(XrayEnv instance) => <String, dynamic>{
+  'xray.location.asset': ?instance.assetLocation,
+  'xray.location.cert': ?instance.certLocation,
+  'xray.tun.fd': ?instance.tunFd,
 };
 
 XrayLog _$XrayLogFromJson(Map<String, dynamic> json) => XrayLog(
