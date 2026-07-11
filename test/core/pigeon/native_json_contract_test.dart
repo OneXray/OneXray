@@ -72,22 +72,10 @@ void main() {
   });
 
   test('desktop core cleanup record contains minimal process identity', () {
-    const record = DesktopCoreProcessRecord(
-      pid: 42,
-      executablePath: '/opt/onexray/OneXrayCore',
-    );
+    const record = DesktopCoreProcessRecord(pid: 42);
 
     expect(DesktopCoreProcessRecord.fromJson(record.toJson()).toJson(), {
       'pid': 42,
-      'executablePath': '/opt/onexray/OneXrayCore',
     });
-  });
-
-  test('Linux executable matching accepts a replaced recorded binary', () {
-    const path = '/opt/onexray/OneXrayCore';
-
-    expect(linuxExecutableMatches(path, path), isTrue);
-    expect(linuxExecutableMatches('$path (deleted)', path), isTrue);
-    expect(linuxExecutableMatches('/opt/other/OneXrayCore', path), isFalse);
   });
 }

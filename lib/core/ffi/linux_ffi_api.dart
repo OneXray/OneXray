@@ -50,9 +50,7 @@ class LinuxFfiApi extends BaseFfiApi {
       _bindProcess(process);
       _coreProcess = process;
       _trackProcess(process);
-      await _processStore.write(
-        DesktopCoreProcessRecord(pid: process.pid, executablePath: corePath),
-      );
+      await _processStore.write(DesktopCoreProcessRecord(pid: process.pid));
     } catch (e) {
       ygLogger("start core failed: $e");
       await _stopCoreProcess();
@@ -72,11 +70,7 @@ class LinuxFfiApi extends BaseFfiApi {
     if (_coreProcess != null) {
       return true;
     }
-    final record = await _processStore.read();
-    if (record == null) {
-      return true;
-    }
-    return _stopRecordedCore(record);
+    return _stopCoreProcessesByName();
   }
 
   @override
@@ -98,8 +92,7 @@ class LinuxFfiApi extends BaseFfiApi {
     if (process != null) {
       return _stopCurrentCore(process);
     }
-    final record = await _processStore.read();
-    return record == null ? true : _stopRecordedCore(record);
+    return _stopCoreProcessesByName();
   }
 
   Future<bool> _stopCurrentCore(Process process) async {
@@ -126,33 +119,6 @@ class LinuxFfiApi extends BaseFfiApi {
     }
   }
 
-  Future<bool> _stopRecordedCore(DesktopCoreProcessRecord record) async {
-    if (!await _recordIsRunning(record)) {
-      await _processStore.clear(pid: record.pid);
-      return true;
-    }
-
-    final terminated = Process.killPid(record.pid, ProcessSignal.sigterm);
-    if (!terminated && await _recordIsRunning(record)) {
-      return false;
-    }
-    try {
-      await _waitForRecordedCoreExit(record, Duration(seconds: 3));
-    } on TimeoutException {
-      final killed = Process.killPid(record.pid, ProcessSignal.sigkill);
-      if (!killed && await _recordIsRunning(record)) {
-        return false;
-      }
-      try {
-        await _waitForRecordedCoreExit(record, Duration(seconds: 2));
-      } on TimeoutException {
-        return false;
-      }
-    }
-    await _processStore.clear(pid: record.pid);
-    return true;
-  }
-
   @override
   Future<bool?> queryCoreRunning() async {
     final process = _coreProcess;
@@ -162,26 +128,89 @@ class LinuxFfiApi extends BaseFfiApi {
     final record = await _processStore.read();
     return record != null &&
         record.pid == process.pid &&
-        await _recordIsRunning(record);
+        await _coreProcessIsRunning(process.pid);
   }
 
-  Future<bool> _recordIsRunning(DesktopCoreProcessRecord record) async {
+  Future<bool> _coreProcessIsRunning(int pid) async {
     try {
-      final executable = await Link('/proc/${record.pid}/exe').target();
-      return linuxExecutableMatches(executable, record.executablePath);
+      final name = await File('/proc/$pid/comm').readAsString();
+      return name.trim() == _coreBin;
     } catch (_) {
       return false;
     }
   }
 
-  Future<void> _waitForRecordedCoreExit(
-    DesktopCoreProcessRecord record,
-    Duration timeout,
-  ) async {
+  Future<bool> _stopCoreProcessesByName() async {
+    var processIds = await _coreProcessIds();
+    if (processIds == null) {
+      return false;
+    }
+    if (processIds.isEmpty) {
+      await _processStore.clear();
+      return true;
+    }
+
+    for (final pid in processIds) {
+      Process.killPid(pid, ProcessSignal.sigterm);
+    }
+    if (!await _waitForCoreProcessesExit(Duration(seconds: 3))) {
+      processIds = await _coreProcessIds();
+      if (processIds == null) {
+        return false;
+      }
+      for (final pid in processIds) {
+        Process.killPid(pid, ProcessSignal.sigkill);
+      }
+      if (!await _waitForCoreProcessesExit(Duration(seconds: 2))) {
+        return false;
+      }
+    }
+
+    await _processStore.clear();
+    return true;
+  }
+
+  Future<List<int>?> _coreProcessIds() async {
+    try {
+      final result = await _processManager.run(<String>[
+        'pgrep',
+        '-x',
+        _coreBin,
+      ]);
+      if (result.exitCode == 1) {
+        return <int>[];
+      }
+      if (result.exitCode != 0) {
+        ygLogger(
+          'find core processes failed. exitCode=${result.exitCode} '
+          'stderr=${result.stderr}',
+        );
+        return null;
+      }
+      return result.stdout
+          .toString()
+          .split('\n')
+          .map((value) => int.tryParse(value.trim()))
+          .whereType<int>()
+          .toList(growable: false);
+    } catch (error) {
+      ygLogger('find core processes failed: $error');
+      return null;
+    }
+  }
+
+  Future<bool> _waitForCoreProcessesExit(Duration timeout) async {
     final deadline = DateTime.now().add(timeout);
-    while (await _recordIsRunning(record)) {
+    while (true) {
+      final processIds = await _coreProcessIds();
+      if (processIds == null) {
+        return false;
+      }
+      if (processIds.isEmpty) {
+        return true;
+      }
       if (DateTime.now().isAfter(deadline)) {
-        throw TimeoutException('core process did not exit', timeout);
+        return false;
       }
       await Future.delayed(Duration(milliseconds: 100));
     }

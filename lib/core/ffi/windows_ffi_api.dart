@@ -72,7 +72,7 @@ class WindowsFfiApi extends BaseFfiApi {
     if (_processHandle != null) {
       return true;
     }
-    return _stopRecordedCore();
+    return _stopCoreProcessesByName();
   }
 
   @override
@@ -149,9 +149,7 @@ class WindowsFfiApi extends BaseFfiApi {
         return false;
       }
       _processId = pid;
-      await _processStore.write(
-        DesktopCoreProcessRecord(pid: pid, executablePath: corePath),
-      );
+      await _processStore.write(DesktopCoreProcessRecord(pid: pid));
       _startProcessMonitor(label);
       ygLogger("$label process started with pid: $pid");
     } catch (e) {
@@ -176,87 +174,100 @@ class WindowsFfiApi extends BaseFfiApi {
     return _processRunning(label: "core");
   }
 
-  Future<bool> _stopRecordedCore() async {
-    final record = await _processStore.read();
-    if (record == null) {
-      return true;
-    }
-
-    var opened = OpenProcess(
-      PROCESS_QUERY_LIMITED_INFORMATION |
-          PROCESS_SYNCHRONIZE |
-          PROCESS_TERMINATE,
-      false,
-      record.pid,
-    );
-    if (!opened.value.isValid) {
-      opened = OpenProcess(
-        PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
-        false,
-        record.pid,
-      );
-    }
-    final handle = opened.value;
-    if (!handle.isValid) {
-      final errorCode = GetLastError();
-      ygLogger(
-        "Open stale core process failed. pid=${record.pid} "
-        "errorCode=$errorCode",
-      );
-      if (errorCode == ERROR_INVALID_PARAMETER) {
-        await _processStore.clear(pid: record.pid);
-        return true;
-      }
+  Future<bool> _stopCoreProcessesByName() async {
+    final running = await _coreProcessesRunning();
+    if (running == null) {
       return false;
+    }
+    if (!running) {
+      await _processStore.clear();
+      return true;
     }
 
     try {
-      final imagePath = _queryProcessImagePath(handle);
-      if (imagePath == null) {
-        return false;
-      }
-      if (!_samePath(imagePath, record.executablePath)) {
-        await _processStore.clear(pid: record.pid);
-        return true;
-      }
-
-      final currentWaitResult = WaitForSingleObject(handle, 0);
-      if (currentWaitResult.value == _waitObject0) {
-        await _processStore.clear(pid: record.pid);
-        return true;
-      }
-      if (currentWaitResult.value != _waitTimeout) {
-        _logWaitError("stale core", currentWaitResult.value);
-        return false;
-      }
-
-      final terminateResult = TerminateProcess(handle, 0);
-      if (!terminateResult.value) {
-        final errorCode = GetLastError();
+      final result = await Process.run('taskkill.exe', <String>[
+        '/F',
+        '/T',
+        '/IM',
+        _coreExe,
+      ]);
+      if (result.exitCode != 0) {
         ygLogger(
-          "Terminate stale core process failed. errorCode=$errorCode; "
-          "requesting elevated PID termination",
+          'stop core processes failed. exitCode=${result.exitCode} '
+          'stderr=${result.stderr}',
         );
-        if (!await _terminatePidElevated(record.pid)) {
-          return false;
-        }
       }
+    } catch (error) {
+      ygLogger('stop core processes failed: $error');
+    }
 
-      final waitResult = WaitForSingleObject(handle, 3000);
-      ygLogger("stale core process termination wait result: $waitResult");
-      if (waitResult.value != _waitObject0) {
+    if (!await _waitForCoreProcessesExit(Duration(milliseconds: 500))) {
+      final result = _runCommand(
+        verb: 'runas',
+        file: 'taskkill.exe',
+        parameters: '/F /T /IM $_coreExe',
+      );
+      if (!result.started || !result.processHandle.isValid) {
         return false;
       }
-      await _processStore.clear(pid: record.pid);
-      return true;
-    } finally {
-      _closeProcessHandle("stale core", handle);
+      final waitResult = WaitForSingleObject(result.processHandle, 5000);
+      _closeProcessHandle('taskkill', result.processHandle);
+      if (waitResult.value != _waitObject0 ||
+          !await _waitForCoreProcessesExit(Duration(seconds: 3))) {
+        return false;
+      }
+    }
+
+    await _processStore.clear();
+    return true;
+  }
+
+  Future<bool?> _coreProcessesRunning() async {
+    try {
+      final result = await Process.run('tasklist.exe', <String>[
+        '/FI',
+        'IMAGENAME eq $_coreExe',
+        '/NH',
+      ]);
+      if (result.exitCode != 0) {
+        ygLogger(
+          'find core processes failed. exitCode=${result.exitCode} '
+          'stderr=${result.stderr}',
+        );
+        return null;
+      }
+      final coreExe = _coreExe.toLowerCase();
+      return result.stdout
+          .toString()
+          .split('\n')
+          .map((line) => line.trim().toLowerCase())
+          .any((line) => line.startsWith(coreExe));
+    } catch (error) {
+      ygLogger('find core processes failed: $error');
+      return null;
+    }
+  }
+
+  Future<bool> _waitForCoreProcessesExit(Duration timeout) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final running = await _coreProcessesRunning();
+      if (running == null) {
+        return false;
+      }
+      if (!running) {
+        return true;
+      }
+      if (DateTime.now().isAfter(deadline)) {
+        return false;
+      }
+      await Future.delayed(Duration(milliseconds: 100));
     }
   }
 
   Future<bool> _stopProcess({required String label}) async {
     if (_processHandle == null) {
-      return _stopRecordedCore();
+      return _stopCoreProcessesByName();
     }
     final processHandle = _processHandle!;
     final processId = _processId;
@@ -366,32 +377,6 @@ class WindowsFfiApi extends BaseFfiApi {
     final waitResult = WaitForSingleObject(result.processHandle, 5000);
     _closeProcessHandle("taskkill", result.processHandle);
     return waitResult.value == _waitObject0;
-  }
-
-  String? _queryProcessImagePath(HANDLE handle) {
-    const capacity = 32768;
-    final buffer = wsalloc(capacity);
-    final length = calloc<Uint32>()..value = capacity;
-    try {
-      final result = QueryFullProcessImageName(
-        handle,
-        PROCESS_NAME_WIN32,
-        buffer,
-        length,
-      );
-      if (!result.value) {
-        return null;
-      }
-      return buffer.toDartString(length: length.value);
-    } finally {
-      free(buffer);
-      free(length);
-    }
-  }
-
-  bool _samePath(String first, String second) {
-    return p.normalize(first).toLowerCase() ==
-        p.normalize(second).toLowerCase();
   }
 
   void _logWaitError(String label, int waitResult) {

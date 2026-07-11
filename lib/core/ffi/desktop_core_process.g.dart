@@ -8,14 +8,8 @@ part of 'desktop_core_process.dart';
 
 DesktopCoreProcessRecord _$DesktopCoreProcessRecordFromJson(
   Map<String, dynamic> json,
-) => DesktopCoreProcessRecord(
-  pid: (json['pid'] as num).toInt(),
-  executablePath: json['executablePath'] as String,
-);
+) => DesktopCoreProcessRecord(pid: (json['pid'] as num).toInt());
 
 Map<String, dynamic> _$DesktopCoreProcessRecordToJson(
   DesktopCoreProcessRecord instance,
-) => <String, dynamic>{
-  'pid': instance.pid,
-  'executablePath': instance.executablePath,
-};
+) => <String, dynamic>{'pid': instance.pid};

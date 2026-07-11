@@ -11,13 +11,8 @@ part 'desktop_core_process.g.dart';
 @JsonSerializable(includeIfNull: false)
 class DesktopCoreProcessRecord {
   final int pid;
-  // Guards stale-PID cleanup against terminating an unrelated process.
-  final String executablePath;
 
-  const DesktopCoreProcessRecord({
-    required this.pid,
-    required this.executablePath,
-  });
+  const DesktopCoreProcessRecord({required this.pid});
 
   factory DesktopCoreProcessRecord.fromJson(Map<String, dynamic> json) =>
       _$DesktopCoreProcessRecordFromJson(json);
@@ -74,11 +69,4 @@ class DesktopCoreProcessStore {
     final directory = await getApplicationSupportDirectory();
     return File(p.join(directory.path, 'run', _fileName));
   }
-}
-
-bool linuxExecutableMatches(String executable, String recordedPath) {
-  final normalizedExecutable = p.normalize(executable);
-  final normalizedRecordedPath = p.normalize(recordedPath);
-  return normalizedExecutable == normalizedRecordedPath ||
-      normalizedExecutable == '$normalizedRecordedPath (deleted)';
 }
