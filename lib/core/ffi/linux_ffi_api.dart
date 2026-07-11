@@ -23,6 +23,7 @@ class LinuxFfiApi extends BaseFfiApi {
   static const _stopProxyCoreFailed = "stop proxy core failed";
   final _processManager = LocalProcessManager();
   final _processStore = DesktopCoreProcessStore();
+  Future<String?>? _effectiveUserIdFuture;
   Process? _coreProcess;
   bool _stopping = false;
 
@@ -171,10 +172,17 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   Future<List<int>?> _coreProcessIds() async {
+    final effectiveUserId = await (_effectiveUserIdFuture ??=
+        _readEffectiveUserId());
+    if (effectiveUserId == null) {
+      return null;
+    }
     try {
       final result = await _processManager.run(<String>[
         'pgrep',
         '-x',
+        '-u',
+        effectiveUserId,
         _coreBin,
       ]);
       if (result.exitCode == 1) {
@@ -197,6 +205,23 @@ class LinuxFfiApi extends BaseFfiApi {
       ygLogger('find core processes failed: $error');
       return null;
     }
+  }
+
+  Future<String?> _readEffectiveUserId() async {
+    try {
+      final result = await _processManager.run(<String>['id', '-u']);
+      final value = result.stdout.toString().trim();
+      if (result.exitCode == 0 && int.tryParse(value) != null) {
+        return value;
+      }
+      ygLogger(
+        'read effective user id failed. exitCode=${result.exitCode} '
+        'stderr=${result.stderr}',
+      );
+    } catch (error) {
+      ygLogger('read effective user id failed: $error');
+    }
+    return null;
   }
 
   Future<bool> _waitForCoreProcessesExit(Duration timeout) async {

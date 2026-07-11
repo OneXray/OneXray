@@ -175,7 +175,11 @@ class WindowsFfiApi extends BaseFfiApi {
   }
 
   Future<bool> _stopCoreProcessesByName() async {
-    final running = await _coreProcessesRunning();
+    final sessionId = _currentSessionId();
+    if (sessionId == null) {
+      return false;
+    }
+    final running = await _coreProcessesRunning(sessionId);
     if (running == null) {
       return false;
     }
@@ -188,6 +192,8 @@ class WindowsFfiApi extends BaseFfiApi {
       final result = await Process.run('taskkill.exe', <String>[
         '/F',
         '/T',
+        '/FI',
+        'SESSION eq $sessionId',
         '/IM',
         _coreExe,
       ]);
@@ -201,11 +207,14 @@ class WindowsFfiApi extends BaseFfiApi {
       ygLogger('stop core processes failed: $error');
     }
 
-    if (!await _waitForCoreProcessesExit(Duration(milliseconds: 500))) {
+    if (!await _waitForCoreProcessesExit(
+      sessionId,
+      Duration(milliseconds: 500),
+    )) {
       final result = _runCommand(
         verb: 'runas',
         file: 'taskkill.exe',
-        parameters: '/F /T /IM $_coreExe',
+        parameters: '/F /T /FI "SESSION eq $sessionId" /IM $_coreExe',
       );
       if (!result.started || !result.processHandle.isValid) {
         return false;
@@ -213,7 +222,7 @@ class WindowsFfiApi extends BaseFfiApi {
       final waitResult = WaitForSingleObject(result.processHandle, 5000);
       _closeProcessHandle('taskkill', result.processHandle);
       if (waitResult.value != _waitObject0 ||
-          !await _waitForCoreProcessesExit(Duration(seconds: 3))) {
+          !await _waitForCoreProcessesExit(sessionId, Duration(seconds: 3))) {
         return false;
       }
     }
@@ -222,11 +231,13 @@ class WindowsFfiApi extends BaseFfiApi {
     return true;
   }
 
-  Future<bool?> _coreProcessesRunning() async {
+  Future<bool?> _coreProcessesRunning(int sessionId) async {
     try {
       final result = await Process.run('tasklist.exe', <String>[
         '/FI',
         'IMAGENAME eq $_coreExe',
+        '/FI',
+        'SESSION eq $sessionId',
         '/NH',
       ]);
       if (result.exitCode != 0) {
@@ -248,10 +259,13 @@ class WindowsFfiApi extends BaseFfiApi {
     }
   }
 
-  Future<bool> _waitForCoreProcessesExit(Duration timeout) async {
+  Future<bool> _waitForCoreProcessesExit(
+    int sessionId,
+    Duration timeout,
+  ) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
-      final running = await _coreProcessesRunning();
+      final running = await _coreProcessesRunning(sessionId);
       if (running == null) {
         return false;
       }
@@ -262,6 +276,22 @@ class WindowsFfiApi extends BaseFfiApi {
         return false;
       }
       await Future.delayed(Duration(milliseconds: 100));
+    }
+  }
+
+  int? _currentSessionId() {
+    final sessionId = calloc<Uint32>();
+    try {
+      final result = ProcessIdToSessionId(GetCurrentProcessId(), sessionId);
+      if (!result.value) {
+        ygLogger(
+          'read current Windows session id failed. errorCode=${result.error}',
+        );
+        return null;
+      }
+      return sessionId.value;
+    } finally {
+      free(sessionId);
     }
   }
 

@@ -346,8 +346,10 @@ final class VpnService {
         eventBus.updateVpnActionState(VpnActionState.preparing);
       }
 
-      startAttempted = true;
-      final result = await _realStartXray(outbound);
+      final result = await _realStartXray(
+        outbound,
+        onStartInvoked: () => startAttempted = true,
+      );
       if (result.state == NativeVpnCommandState.waitingForPlatformPermission) {
         if (result.permission != null) {
           eventBus.updatePlatformPermission(result.permission!);
@@ -754,7 +756,10 @@ final class VpnService {
     );
   }
 
-  Future<NativeVpnCommandResult> _realStartXray(CoreConfigData config) async {
+  Future<NativeVpnCommandResult> _realStartXray(
+    CoreConfigData config, {
+    required void Function() onStartInvoked,
+  }) async {
     await _updateLastConfigId(config.id);
     await PreferencesKey().saveVpnStartTimestamp();
 
@@ -766,15 +771,21 @@ final class VpnService {
           runtime.coreInvokeText,
           runtime.ports,
           runtime.tunSettings,
+          onStartInvoked,
         );
       case CoreRunMode.proxy:
-        return _makeProxyRequestAndStart(runtime.coreInvokeText, runtime.ports);
+        return _makeProxyRequestAndStart(
+          runtime.coreInvokeText,
+          runtime.ports,
+          onStartInvoked,
+        );
     }
   }
 
   Future<NativeVpnCommandResult> _makeProxyRequestAndStart(
     String coreInvokeText,
     XrayPorts port,
+    void Function() onStartInvoked,
   ) async {
     final request = StartVpnRequest(
       null,
@@ -786,6 +797,7 @@ final class VpnService {
     await request.writeToStartFile();
 
     await _queueVpnStatus(VpnStatus.connecting);
+    onStartInvoked();
     final error = await AppHostApi().runXray(coreInvokeText);
     if (error.isNotEmpty) {
       await _queueVpnStatus(VpnStatus.disconnected);
@@ -799,6 +811,7 @@ final class VpnService {
     String coreInvokeText,
     XrayPorts port,
     TunSettingsState tunSettingsState,
+    void Function() onStartInvoked,
   ) async {
     final request = StartVpnRequest(
       tunSettingsState.tunJson,
@@ -809,6 +822,7 @@ final class VpnService {
     );
     await request.writeToStartFile();
 
+    onStartInvoked();
     final result = await AppHostApi().startVpn();
     _applyNativeCommandResult(result);
     return result;
