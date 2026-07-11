@@ -29,7 +29,7 @@ final class SystemGeoDatService {
     final dstTimestampFile = File(dstTimestampPath);
     final exists = await dstTimestampFile.exists();
     if (!exists) {
-      await FileTool.copyAssets(Assets.dat.values, datPath);
+      await copyAssetsTo(datPath);
       return;
     }
 
@@ -38,7 +38,21 @@ final class SystemGeoDatService {
     var srcTimestamp = await rootBundle.loadString(Assets.dat.timestamp);
     srcTimestamp = srcTimestamp.trim();
     if (srcTimestamp.compareTo(dstTimestamp) > 0) {
-      await FileTool.copyAssets(Assets.dat.values, datPath);
+      await copyAssetsTo(datPath);
+    }
+  }
+
+  Future<void> copyAssetsTo(String datPath) async {
+    await FileTool.checkDir(datPath);
+    for (final asset in Assets.dat.values) {
+      final data = await rootBundle.load(asset);
+      final bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
+      await File(
+        p.join(datPath, p.basename(asset)),
+      ).writeAsBytes(bytes, flush: true);
     }
   }
 }

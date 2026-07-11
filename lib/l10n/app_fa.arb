@@ -76,6 +76,7 @@
     "vpnStartTimeout": "مهلت راه‌اندازی VPN تمام شد",
     "vpnStopFailed": "توقف VPN ناموفق بود",
     "vpnCommandFailed": "فرمان VPN ناموفق بود",
+    "vpnStaleCoreCleanupFailed": "توقف فرایند Core قبلی ناموفق بود",
     "vpnLocalPortFailed": "اختصاص پورت‌های محلی ناموفق بود",
     "vpnStartRequestFailed": "ایجاد درخواست راه‌اندازی Xray ناموفق بود",
     "vpnCoreStartFailed": "راه‌اندازی هسته ناموفق بود",

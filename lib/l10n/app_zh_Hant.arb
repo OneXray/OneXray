@@ -76,6 +76,7 @@
   "vpnStartTimeout": "VPN 啟動超時",
   "vpnStopFailed": "VPN 停止失敗",
   "vpnCommandFailed": "VPN 命令執行失敗",
+  "vpnStaleCoreCleanupFailed": "無法停止上次執行的 Core 程序",
   "vpnLocalPortFailed": "本地端口分配失敗",
   "vpnStartRequestFailed": "建立 Xray 啟動請求失敗",
   "vpnCoreStartFailed": "核心啟動失敗",

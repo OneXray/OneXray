@@ -38,6 +38,7 @@ final class VpnService {
   var _lastVpnStatus = VpnStatus.disconnected;
   var _runningMode = CoreRunMode.tun;
   var _pendingRunMode = CoreRunMode.tun;
+  var _staleDesktopCoreCleanupRequired = false;
   final _commands = CommandSerialExecutor();
   late final _connectivity = VpnConnectivityService(() => _vpnRunning);
   late final _runtimeConfig = XrayRuntimeConfigService();
@@ -49,6 +50,7 @@ final class VpnService {
     final eventBus = AppEventBus.instance;
     final preferences = PreferencesKey();
     final cleanupResult = await AppHostApi().cleanupStaleDesktopCore();
+    _staleDesktopCoreCleanupRequired = cleanupResult == false;
     var savedRunningId = await preferences.readRunningConfigId();
     if (cleanupResult != null) {
       if (!cleanupResult) {
@@ -65,6 +67,9 @@ final class VpnService {
     _pendingRunMode = _runningMode;
 
     _listenVpnStatus();
+    if (_staleDesktopCoreCleanupRequired) {
+      _showStaleDesktopCoreCleanupFailure();
+    }
   }
 
   void dispose() {
@@ -90,6 +95,9 @@ final class VpnService {
   Future<void> refreshVpnStatus() => _commands.run(_refreshVpnStatus);
 
   Future<void> _refreshVpnStatus(int generation) async {
+    if (!await _ensureStaleDesktopCoreCleaned(generation)) {
+      return;
+    }
     final mode = await PreferencesKey().readCoreRunMode();
     if (!_commands.isCurrent(generation)) {
       return;
@@ -271,6 +279,11 @@ final class VpnService {
     if (configId == DBConstants.defaultId) {
       return _stopCurrentVpn(generation);
     }
+    if (!await _ensureStaleDesktopCoreCleaned(generation)) {
+      return _commandFailed(
+        appLocalizationsNoContext().vpnStaleCoreCleanupFailed,
+      );
+    }
     if (configId == eventBus.state.runningId) {
       return _stopCurrentVpn(generation);
     }
@@ -392,6 +405,30 @@ final class VpnService {
       }
       return _commandFailed(message);
     }
+  }
+
+  Future<bool> _ensureStaleDesktopCoreCleaned(int generation) async {
+    if (!_staleDesktopCoreCleanupRequired) {
+      return true;
+    }
+    final cleanupResult = await AppHostApi().cleanupStaleDesktopCore();
+    if (!_commands.isCurrent(generation)) {
+      return false;
+    }
+    if (cleanupResult == true) {
+      _staleDesktopCoreCleanupRequired = false;
+      return true;
+    }
+    _showStaleDesktopCoreCleanupFailure();
+    return false;
+  }
+
+  void _showStaleDesktopCoreCleanupFailure() {
+    final eventBus = AppEventBus.instance;
+    eventBus.updateVpnActionState(VpnActionState.failed);
+    eventBus.updateVpnErrorMessage(
+      appLocalizationsNoContext().vpnStaleCoreCleanupFailed,
+    );
   }
 
   Future<NativeVpnCommandResult> _stopCurrentVpn(int generation) async {

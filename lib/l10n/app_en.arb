@@ -76,6 +76,7 @@
   "vpnStartTimeout": "VPN start timed out",
   "vpnStopFailed": "VPN stop failed",
   "vpnCommandFailed": "VPN command failed",
+  "vpnStaleCoreCleanupFailed": "Failed to stop the previous Core process",
   "vpnLocalPortFailed": "Failed to allocate local ports",
   "vpnStartRequestFailed": "Failed to create Xray start request",
   "vpnCoreStartFailed": "Failed to start core",

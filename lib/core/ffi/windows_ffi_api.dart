@@ -144,17 +144,18 @@ class WindowsFfiApi extends BaseFfiApi {
         return false;
       }
       _processHandle = result.processHandle;
-      _processId = GetProcessId(result.processHandle).value;
-      if (_processId == null || _processId == 0) {
+      final pid = GetProcessId(result.processHandle).value;
+      if (pid == 0) {
         ygLogger("Start $label failed: process id is unavailable");
         await _stopProcess(label: label);
         return false;
       }
+      _processId = pid;
       await _processStore.write(
-        DesktopCoreProcessRecord(pid: _processId!, executablePath: corePath),
+        DesktopCoreProcessRecord(pid: pid, executablePath: corePath),
       );
       _startProcessMonitor(label);
-      ygLogger("$label process started with pid: $_processId");
+      ygLogger("$label process started with pid: $pid");
     } catch (e) {
       ygLogger("start $label failed: $e");
       await _stopProcess(label: label);

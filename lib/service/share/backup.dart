@@ -15,6 +15,7 @@ import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/share/backup_archive.dart';
+import 'package:onexray/service/share/backup_dat_stager.dart';
 import 'package:onexray/service/share/backup_model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:path/path.dart' as p;
@@ -529,7 +530,10 @@ final class _DatRestoreSwap {
     ).create(recursive: true);
     final staged = await parent.createTemp('.onexray-dat-restore-');
     try {
-      await FileTool.copyDir(source, staged.path);
+      await BackupDatStager().stage(
+        backupDatDir: source,
+        destination: staged.path,
+      );
     } catch (_) {
       await staged.delete(recursive: true);
       rethrow;
