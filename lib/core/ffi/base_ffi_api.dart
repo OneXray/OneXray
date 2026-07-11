@@ -68,11 +68,15 @@ abstract class BaseFfiApi {
     return true;
   }
 
-  Future<void> stopCore() async {}
+  Future<bool> stopCore() async => true;
 
   Future<NativeVpnCommandResult> stopVpn() async {
     await updateVpnStatus(VpnStatus.disconnecting);
-    await stopCore();
+    final stopped = await stopCore();
+    if (!stopped) {
+      await updateVpnStatus(VpnStatus.connected);
+      return _commandFailed();
+    }
     await Future.delayed(Duration(seconds: 1));
     await updateVpnStatus(VpnStatus.disconnected);
     return _commandSuccess();

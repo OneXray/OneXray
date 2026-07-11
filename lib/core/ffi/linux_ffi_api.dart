@@ -80,9 +80,7 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   @override
-  Future<void> stopCore() async {
-    await _stopCoreProcess();
-  }
+  Future<bool> stopCore() => _stopCoreProcess();
 
   Future<String> stopProxyCore() async {
     final stopped = await _stopProxyCore();

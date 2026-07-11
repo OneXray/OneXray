@@ -76,9 +76,7 @@ class WindowsFfiApi extends BaseFfiApi {
   }
 
   @override
-  Future<void> stopCore() async {
-    await _stopProcess(label: "core");
-  }
+  Future<bool> stopCore() => _stopProcess(label: "core");
 
   Future<String> stopProxyCore() async {
     final stopped = await _stopProcess(label: "proxy core");
