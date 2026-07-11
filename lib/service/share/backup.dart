@@ -166,9 +166,6 @@ class BackupService {
   }
 
   Future<_BackupPayload?> _readBackupDir(String backupRoot) async {
-    if (!await Directory(p.join(backupRoot, _datDir)).exists()) {
-      return null;
-    }
     final manifest = await _readManifest(backupRoot);
     if (manifest == null) {
       return null;

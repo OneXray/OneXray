@@ -32,7 +32,7 @@ final class HomeSystemExtensionCoordinator {
       return;
     }
     _subscription = AppFlutterApi().refreshVpnController.stream.listen(
-      _handleRefresh,
+      (result) => unawaited(_handleRefresh(result)),
     );
     final pending = AppFlutterApi().consumeRefreshVpnResult();
     if (pending != null) {
@@ -53,34 +53,44 @@ final class HomeSystemExtensionCoordinator {
   }
 
   Future<void> _handleRefresh(RefreshVpnResult result) async {
-    final useSystemExtension = await AppHostApi().useSystemExtension();
-    if (_closed ||
-        !context.mounted ||
-        !AppPlatform.isMacOS ||
-        !useSystemExtension) {
-      return;
-    }
-
-    final eventBus = context.read<AppEventBus>();
-    eventBus.updatePlatformPermission(_permissionFromRefresh(result));
-    if (result != RefreshVpnResult.waitForApproval) {
-      _stopApprovalPolling();
-      _approvalShown = false;
-      if (eventBus.state.vpnActionState ==
-          VpnActionState.waitingForPlatformPermission) {
-        eventBus.updateVpnActionState(VpnActionState.idle);
+    try {
+      final useSystemExtension = await AppHostApi().useSystemExtension();
+      if (_closed ||
+          !context.mounted ||
+          !AppPlatform.isMacOS ||
+          !useSystemExtension) {
+        return;
       }
-      return;
-    }
 
-    _startApprovalPolling();
-    eventBus.updateVpnActionState(VpnActionState.waitingForPlatformPermission);
-    if (_approvalShown || !context.mounted) {
-      return;
+      final eventBus = context.read<AppEventBus>();
+      eventBus.updatePlatformPermission(_permissionFromRefresh(result));
+      if (result != RefreshVpnResult.waitForApproval) {
+        _stopApprovalPolling();
+        _approvalShown = false;
+        if (eventBus.state.vpnActionState ==
+            VpnActionState.waitingForPlatformPermission) {
+          eventBus.updateVpnActionState(VpnActionState.idle);
+        }
+        return;
+      }
+
+      _startApprovalPolling();
+      eventBus.updateVpnActionState(
+        VpnActionState.waitingForPlatformPermission,
+      );
+      if (_approvalShown || !context.mounted) {
+        return;
+      }
+      _approvalShown = true;
+      ygLogger('VPN is waiting for approval, showing alert dialog');
+      await _showApprovalDialog();
+    } catch (error, stackTrace) {
+      ygReportError(
+        error,
+        stackTrace,
+        reason: 'System Extension refresh handling failed',
+      );
     }
-    _approvalShown = true;
-    ygLogger('VPN is waiting for approval, showing alert dialog');
-    await _showApprovalDialog();
   }
 
   void _startApprovalPolling() {
