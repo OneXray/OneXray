@@ -36,6 +36,7 @@ jobs:
         run: |
           flutter gen-l10n
           dart run build_runner build
+          dart run ffigen
 
       - name: Verify generated sources
         run: git diff --exit-code
