@@ -27,6 +27,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Prepare generated asset paths
+        run: |
+          mkdir -p assets/dat
+          touch assets/dat/{geoip.dat,geoip.json,geosite.dat,geosite.json,timestamp.txt}
+
       - name: Generate sources
         run: |
           flutter gen-l10n
