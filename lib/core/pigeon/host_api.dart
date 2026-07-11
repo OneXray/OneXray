@@ -7,6 +7,7 @@ import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/invoke_limits.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 
@@ -114,7 +115,7 @@ class AppHostApi {
           payload: GetFreePortsRequest(num).toJson(),
         ),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.data != null) {
         if (resp.success) {
           final ports = GetFreePortsResponse.fromJson(resp.data!);
@@ -137,7 +138,7 @@ class AppHostApi {
           payload: ConvertShareLinksToXrayJsonRequest(text).toJson(),
         ),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.data != null) {
         if (resp.success) {
           final xrayJson = XrayJson.fromJson(resp.data!);
@@ -159,7 +160,7 @@ class AppHostApi {
           payload: ConvertXrayJsonToShareLinksRequest(xrayJsonText).toJson(),
         ),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.data != null) {
         if (resp.success) {
           final data = ConvertXrayJsonToShareLinksResponse.fromJson(resp.data!);
@@ -180,7 +181,7 @@ class AppHostApi {
           payload: request.toJson(),
         ),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
         return "";
       }
@@ -204,7 +205,7 @@ class AppHostApi {
           payload: PingRequest(configPath, timeout, url, proxy).toJson(),
         ),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       ygLogger(
         "ping result success:${resp.success} data:${resp.data} error:${resp.error}",
       );
@@ -229,7 +230,7 @@ class AppHostApi {
           payload: RunXrayRequest(configPath).toJson(),
         ),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
         return "";
       }
@@ -253,7 +254,7 @@ class AppHostApi {
         );
       }
       final res = await _invoke(request.invoke);
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
         return "";
       }
@@ -288,7 +289,7 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.stopXray),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
         return "";
       }
@@ -309,7 +310,7 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.getXrayState),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success && resp.data != null) {
         return GetXrayStateResponse.fromJson(resp.data!).running ?? false;
       }
@@ -324,7 +325,7 @@ class AppHostApi {
       final res = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.xrayVersion),
       );
-      final resp = parseLibXrayInvokeResponse(res);
+      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.data != null) {
         if (resp.success) {
           return XrayVersionResponse.fromJson(resp.data!).version ?? "";
@@ -348,19 +349,13 @@ class AppHostApi {
       responseJson = await _api.invoke(requestJson);
     }
     LibXrayInvokeLimits.validate(responseJson, "response");
-    final response = parseLibXrayInvokeResponse(responseJson);
+    final response = LibXrayInvokeResponseParser.parse(responseJson);
     if (!response.success) {
       ygLogger(
         "libXray ${request.method?.name ?? 'unknown'} failed: ${response.error}",
       );
     }
     return responseJson;
-  }
-
-  LibXrayInvokeResponse parseLibXrayInvokeResponse(String res) {
-    final data = JsonTool.decoder.convert(res) as Map<String, dynamic>;
-    final resp = LibXrayInvokeResponse.fromJson(data);
-    return resp;
   }
 
   // android

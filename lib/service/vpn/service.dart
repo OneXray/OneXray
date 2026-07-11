@@ -21,6 +21,7 @@ import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/vpn/command_serial_executor.dart';
 import 'package:onexray/service/vpn/connectivity.dart';
+import 'package:onexray/service/vpn/running_config_id_writer.dart';
 import 'package:onexray/service/vpn/runtime_config.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 
@@ -40,6 +41,12 @@ final class VpnService {
   var _pendingRunMode = CoreRunMode.tun;
   var _staleDesktopCoreCleanupRequired = false;
   final _commands = CommandSerialExecutor();
+  late final _runningConfigIdWriter = RunningConfigIdWriter(
+    persist: PreferencesKey().saveRunningConfigId,
+    apply: (value) => AppEventBus.instance.updateRunningId(value),
+    readCurrent: () => AppEventBus.instance.state.runningId,
+    isCurrent: _commands.isCurrent,
+  );
   late final _connectivity = VpnConnectivityService(() => _vpnRunning);
   late final _runtimeConfig = XrayRuntimeConfigService();
   Future<void> _statusTail = Future<void>.value();
@@ -199,14 +206,8 @@ final class VpnService {
     }
   }
 
-  Future<void> _updateRunningId(int id, [int? generation]) async {
-    await PreferencesKey().saveRunningConfigId(id);
-    if (generation != null && !_commands.isCurrent(generation)) {
-      return;
-    }
-    final eventBus = AppEventBus.instance;
-    eventBus.updateRunningId(id);
-  }
+  Future<void> _updateRunningId(int id, int generation) =>
+      _runningConfigIdWriter.write(id, generation);
 
   Future<void> _updateLastConfigId(int id) async {
     await PreferencesKey().saveLastConfigId(id);

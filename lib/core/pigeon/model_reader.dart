@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 
 extension StartVpnRequestReader on StartVpnRequest {
   static Future<StartVpnRequest> readFromStartFile() async {
@@ -12,4 +12,23 @@ extension StartVpnRequestReader on StartVpnRequest {
     final request = StartVpnRequest.fromJson(requestMap);
     return request;
   }
+}
+
+abstract final class LibXrayInvokeResponseParser {
+  static const invalidResponseError = 'invalid libXray response';
+
+  static LibXrayInvokeResponse parse(String response) {
+    try {
+      final value = JsonTool.decoder.convert(response);
+      if (value is! Map<String, dynamic>) {
+        return _invalidResponse();
+      }
+      return LibXrayInvokeResponse.fromJson(value);
+    } catch (_) {
+      return _invalidResponse();
+    }
+  }
+
+  static LibXrayInvokeResponse _invalidResponse() =>
+      LibXrayInvokeResponse(false, null, invalidResponseError);
 }
