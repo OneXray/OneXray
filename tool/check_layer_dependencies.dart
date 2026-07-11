@@ -1,9 +1,18 @@
 import 'dart:io';
 
-final _packageImportPattern = RegExp(
-  r'''^import\s+['"]package:onexray/([^/'"]+)/''',
+final _packageDirectivePattern = RegExp(
+  r'''^[ \t]*(?:import|export)\s+['"]package:onexray/([^/'"]+)/''',
   multiLine: true,
 );
+
+Iterable<String> packageDirectiveLayers(String source) sync* {
+  for (final match in _packageDirectivePattern.allMatches(source)) {
+    final layer = match.group(1);
+    if (layer != null) {
+      yield layer;
+    }
+  }
+}
 
 Future<void> main() async {
   final violations = <String>[];
@@ -40,10 +49,9 @@ Future<void> _checkLayer({
       continue;
     }
     final source = await entity.readAsString();
-    for (final match in _packageImportPattern.allMatches(source)) {
-      final importedLayer = match.group(1);
-      if (importedLayer != null && forbiddenLayers.contains(importedLayer)) {
-        violations.add('${entity.path} imports $importedLayer');
+    for (final layer in packageDirectiveLayers(source)) {
+      if (forbiddenLayers.contains(layer)) {
+        violations.add('${entity.path} depends on $layer');
       }
     }
   }
