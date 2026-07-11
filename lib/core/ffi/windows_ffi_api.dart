@@ -51,7 +51,6 @@ class WindowsFfiApi extends BaseFfiApi {
       label: "core",
       verb: "runas",
       configPath: configPath,
-      mode: DesktopCoreMode.tun,
     );
   }
 
@@ -66,8 +65,14 @@ class WindowsFfiApi extends BaseFfiApi {
       label: "proxy core",
       verb: "open",
       configPath: configPath,
-      mode: DesktopCoreMode.proxy,
     );
+  }
+
+  Future<bool> cleanupStaleCore() async {
+    if (_processHandle != null) {
+      return true;
+    }
+    return _stopRecordedCore();
   }
 
   @override
@@ -122,7 +127,6 @@ class WindowsFfiApi extends BaseFfiApi {
     required String label,
     required String verb,
     required String configPath,
-    required DesktopCoreMode mode,
   }) async {
     if (!await _stopProcess(label: label)) {
       return false;
@@ -147,11 +151,7 @@ class WindowsFfiApi extends BaseFfiApi {
         return false;
       }
       await _processStore.write(
-        DesktopCoreProcessRecord(
-          pid: _processId!,
-          executablePath: corePath,
-          mode: mode,
-        ),
+        DesktopCoreProcessRecord(pid: _processId!, executablePath: corePath),
       );
       _startProcessMonitor(label);
       ygLogger("$label process started with pid: $_processId");
@@ -171,23 +171,16 @@ class WindowsFfiApi extends BaseFfiApi {
 
   @override
   Future<bool?> queryCoreRunning() async {
-    if (!await _adoptOwnedProcess()) {
+    if (_processHandle == null) {
       return false;
     }
     return _processRunning(label: "core");
   }
 
-  Future<bool> _adoptOwnedProcess() async {
-    if (_processHandle != null) {
-      return true;
-    }
+  Future<bool> _stopRecordedCore() async {
     final record = await _processStore.read();
     if (record == null) {
-      return false;
-    }
-    if (!_samePath(record.executablePath, corePath)) {
-      await _processStore.clear(pid: record.pid);
-      return false;
+      return true;
     }
 
     var opened = OpenProcess(
@@ -206,26 +199,65 @@ class WindowsFfiApi extends BaseFfiApi {
     }
     final handle = opened.value;
     if (!handle.isValid) {
-      await _processStore.clear(pid: record.pid);
+      final errorCode = GetLastError();
+      ygLogger(
+        "Open stale core process failed. pid=${record.pid} "
+        "errorCode=$errorCode",
+      );
+      if (errorCode == ERROR_INVALID_PARAMETER) {
+        await _processStore.clear(pid: record.pid);
+        return true;
+      }
       return false;
     }
 
-    final imagePath = _queryProcessImagePath(handle);
-    if (imagePath == null || !_samePath(imagePath, corePath)) {
-      _closeProcessHandle("core", handle);
-      await _processStore.clear(pid: record.pid);
-      return false;
-    }
+    try {
+      final imagePath = _queryProcessImagePath(handle);
+      if (imagePath == null) {
+        return false;
+      }
+      if (!_samePath(imagePath, record.executablePath)) {
+        await _processStore.clear(pid: record.pid);
+        return true;
+      }
 
-    _processHandle = handle;
-    _processId = record.pid;
-    _startProcessMonitor(record.mode.name);
-    return true;
+      final currentWaitResult = WaitForSingleObject(handle, 0);
+      if (currentWaitResult.value == _waitObject0) {
+        await _processStore.clear(pid: record.pid);
+        return true;
+      }
+      if (currentWaitResult.value != _waitTimeout) {
+        _logWaitError("stale core", currentWaitResult.value);
+        return false;
+      }
+
+      final terminateResult = TerminateProcess(handle, 0);
+      if (!terminateResult.value) {
+        final errorCode = GetLastError();
+        ygLogger(
+          "Terminate stale core process failed. errorCode=$errorCode; "
+          "requesting elevated PID termination",
+        );
+        if (!await _terminatePidElevated(record.pid)) {
+          return false;
+        }
+      }
+
+      final waitResult = WaitForSingleObject(handle, 3000);
+      ygLogger("stale core process termination wait result: $waitResult");
+      if (waitResult.value != _waitObject0) {
+        return false;
+      }
+      await _processStore.clear(pid: record.pid);
+      return true;
+    } finally {
+      _closeProcessHandle("stale core", handle);
+    }
   }
 
   Future<bool> _stopProcess({required String label}) async {
-    if (!await _adoptOwnedProcess()) {
-      return true;
+    if (_processHandle == null) {
+      return _stopRecordedCore();
     }
     final processHandle = _processHandle!;
     final processId = _processId;
@@ -239,12 +271,13 @@ class WindowsFfiApi extends BaseFfiApi {
       ygLogger(
         "$label process already stopped. wait result: $currentWaitResult",
       );
-      await _releaseOwnedProcess(label, processHandle, processId);
+      await _releaseProcess(label, processHandle, processId);
       _stopping = false;
       return true;
     }
     if (currentWaitResult.value != _waitTimeout) {
       _logWaitError(label, currentWaitResult.value);
+      _startProcessMonitor(label);
       _stopping = false;
       return false;
     }
@@ -256,9 +289,9 @@ class WindowsFfiApi extends BaseFfiApi {
         "Terminate $label process failed. errorCode=$errorCode; "
         "requesting elevated PID termination",
       );
-      if (!await _terminateOwnedPidElevated(processId)) {
-        _stopping = false;
+      if (!await _terminatePidElevated(processId)) {
         _startProcessMonitor(label);
+        _stopping = false;
         return false;
       }
     }
@@ -266,12 +299,12 @@ class WindowsFfiApi extends BaseFfiApi {
     final waitResult = WaitForSingleObject(processHandle, 3000);
     ygLogger("$label process termination wait result: $waitResult");
     if (waitResult.value != _waitObject0) {
-      _stopping = false;
       _startProcessMonitor(label);
+      _stopping = false;
       return false;
     }
 
-    await _releaseOwnedProcess(label, processHandle, processId);
+    await _releaseProcess(label, processHandle, processId);
     _stopping = false;
     return true;
   }
@@ -311,7 +344,7 @@ class WindowsFfiApi extends BaseFfiApi {
     });
   }
 
-  Future<void> _releaseOwnedProcess(
+  Future<void> _releaseProcess(
     String label,
     HANDLE processHandle,
     int? processId,
@@ -322,7 +355,7 @@ class WindowsFfiApi extends BaseFfiApi {
     await _processStore.clear(pid: processId);
   }
 
-  Future<bool> _terminateOwnedPidElevated(int pid) async {
+  Future<bool> _terminatePidElevated(int pid) async {
     final result = _runCommand(
       verb: "runas",
       file: "taskkill.exe",

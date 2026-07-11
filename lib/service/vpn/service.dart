@@ -47,11 +47,21 @@ final class VpnService {
 
   Future<void> asyncInit() async {
     final eventBus = AppEventBus.instance;
-    final savedRunningId = await PreferencesKey().readRunningConfigId();
+    final preferences = PreferencesKey();
+    final cleanupResult = await AppHostApi().cleanupStaleDesktopCore();
+    var savedRunningId = await preferences.readRunningConfigId();
+    if (cleanupResult != null) {
+      if (!cleanupResult) {
+        ygLogger('stale desktop core cleanup failed');
+      }
+      savedRunningId = DBConstants.defaultId;
+      await preferences.saveRunningConfigId(savedRunningId);
+      await _clearStartSnapshot();
+    }
     eventBus.updateRunningId(savedRunningId);
 
-    _lastConfigId = await PreferencesKey().readLastConfigId();
-    _runningMode = await PreferencesKey().readCoreRunMode();
+    _lastConfigId = await preferences.readLastConfigId();
+    _runningMode = await preferences.readCoreRunMode();
     _pendingRunMode = _runningMode;
 
     _listenVpnStatus();

@@ -71,17 +71,23 @@ void main() {
     });
   });
 
-  test('desktop core ownership record round-trips process identity', () {
+  test('desktop core cleanup record contains minimal process identity', () {
     const record = DesktopCoreProcessRecord(
       pid: 42,
       executablePath: '/opt/onexray/OneXrayCore',
-      mode: DesktopCoreMode.proxy,
     );
 
     expect(DesktopCoreProcessRecord.fromJson(record.toJson()).toJson(), {
       'pid': 42,
       'executablePath': '/opt/onexray/OneXrayCore',
-      'mode': 'proxy',
     });
+  });
+
+  test('Linux executable matching accepts a replaced recorded binary', () {
+    const path = '/opt/onexray/OneXrayCore';
+
+    expect(linuxExecutableMatches(path, path), isTrue);
+    expect(linuxExecutableMatches('$path (deleted)', path), isTrue);
+    expect(linuxExecutableMatches('/opt/other/OneXrayCore', path), isFalse);
   });
 }

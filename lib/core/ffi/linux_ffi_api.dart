@@ -24,18 +24,14 @@ class LinuxFfiApi extends BaseFfiApi {
   final _processManager = LocalProcessManager();
   final _processStore = DesktopCoreProcessStore();
   Process? _coreProcess;
-  Timer? _processMonitor;
   bool _stopping = false;
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
-    return _startCore(request, DesktopCoreMode.tun);
+    return _startCore(request);
   }
 
-  Future<bool> _startCore(
-    LibXrayRunConfig request,
-    DesktopCoreMode mode,
-  ) async {
+  Future<bool> _startCore(LibXrayRunConfig request) async {
     try {
       final configPath = request.request.configPath;
       if (configPath == null || configPath.isEmpty) {
@@ -43,8 +39,8 @@ class LinuxFfiApi extends BaseFfiApi {
         return false;
       }
 
-      if (!await _stopOwnedCore()) {
-        ygLogger("start core failed: previous owned core is still running");
+      if (!await _stopCoreProcess()) {
+        ygLogger("start core failed: previous core is still running");
         return false;
       }
 
@@ -55,15 +51,11 @@ class LinuxFfiApi extends BaseFfiApi {
       _coreProcess = process;
       _trackProcess(process);
       await _processStore.write(
-        DesktopCoreProcessRecord(
-          pid: process.pid,
-          executablePath: corePath,
-          mode: mode,
-        ),
+        DesktopCoreProcessRecord(pid: process.pid, executablePath: corePath),
       );
     } catch (e) {
       ygLogger("start core failed: $e");
-      await _stopOwnedCore();
+      await _stopCoreProcess();
       return false;
     }
 
@@ -73,12 +65,23 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   Future<bool> startProxyCore(LibXrayRunConfig request) async {
-    return _startCore(request, DesktopCoreMode.proxy);
+    return _startCore(request);
+  }
+
+  Future<bool> cleanupStaleCore() async {
+    if (_coreProcess != null) {
+      return true;
+    }
+    final record = await _processStore.read();
+    if (record == null) {
+      return true;
+    }
+    return _stopRecordedCore(record);
   }
 
   @override
   Future<void> stopCore() async {
-    await _stopOwnedCore();
+    await _stopCoreProcess();
   }
 
   Future<String> stopProxyCore() async {
@@ -89,98 +92,96 @@ class LinuxFfiApi extends BaseFfiApi {
   Future<bool> proxyCoreRunning() async => await queryCoreRunning() ?? false;
 
   Future<bool> _stopProxyCore() async {
-    return _stopOwnedCore();
+    return _stopCoreProcess();
   }
 
-  Future<bool> _stopOwnedCore() async {
-    _processMonitor?.cancel();
-    _processMonitor = null;
+  Future<bool> _stopCoreProcess() async {
     final process = _coreProcess;
+    if (process != null) {
+      return _stopCurrentCore(process);
+    }
     final record = await _processStore.read();
-    if (process == null && record == null) {
-      return true;
-    }
+    return record == null ? true : _stopRecordedCore(record);
+  }
 
-    final pid = process?.pid ?? record!.pid;
-    if (record != null && !await _recordIsRunning(record)) {
-      await _processStore.clear(pid: record.pid);
-      return true;
-    }
-
+  Future<bool> _stopCurrentCore(Process process) async {
     _stopping = true;
     try {
-      final terminated =
-          process?.kill(ProcessSignal.sigterm) ??
-          Process.killPid(pid, ProcessSignal.sigterm);
-      if (!terminated && await _pidIsRunning(pid)) {
-        return false;
-      }
-      await _waitForPidExit(pid, Duration(seconds: 3));
-      _coreProcess = null;
-      await _processStore.clear(pid: pid);
-      return true;
-    } on TimeoutException {
-      final killed = Process.killPid(pid, ProcessSignal.sigkill);
-      if (!killed) {
-        return false;
-      }
+      process.kill(ProcessSignal.sigterm);
       try {
-        await _waitForPidExit(pid, Duration(seconds: 2));
-        _coreProcess = null;
-        await _processStore.clear(pid: pid);
-        return true;
+        await process.exitCode.timeout(Duration(seconds: 3));
       } on TimeoutException {
-        return false;
+        if (!process.kill(ProcessSignal.sigkill)) {
+          return false;
+        }
+        try {
+          await process.exitCode.timeout(Duration(seconds: 2));
+        } on TimeoutException {
+          return false;
+        }
       }
+      _coreProcess = null;
+      await _processStore.clear(pid: process.pid);
+      return true;
     } finally {
       _stopping = false;
     }
   }
 
-  @override
-  Future<bool?> queryCoreRunning() async {
-    final process = _coreProcess;
-    if (process != null) {
-      return _pidIsRunning(process.pid);
-    }
-    final record = await _processStore.read();
-    if (record == null) {
-      return false;
-    }
-    final running = await _recordIsRunning(record);
-    if (!running) {
+  Future<bool> _stopRecordedCore(DesktopCoreProcessRecord record) async {
+    if (!await _recordIsRunning(record)) {
       await _processStore.clear(pid: record.pid);
-    } else if (_coreProcess == null) {
-      _startProcessMonitor(record);
+      return true;
     }
-    return running;
-  }
 
-  Future<bool> _recordIsRunning(DesktopCoreProcessRecord record) async {
-    if (p.normalize(record.executablePath) != p.normalize(corePath)) {
+    final terminated = Process.killPid(record.pid, ProcessSignal.sigterm);
+    if (!terminated && await _recordIsRunning(record)) {
       return false;
     }
     try {
-      final executable = await File(
-        '/proc/${record.pid}/exe',
-      ).resolveSymbolicLinks();
-      return p.normalize(executable) == p.normalize(corePath);
+      await _waitForRecordedCoreExit(record, Duration(seconds: 3));
+    } on TimeoutException {
+      final killed = Process.killPid(record.pid, ProcessSignal.sigkill);
+      if (!killed && await _recordIsRunning(record)) {
+        return false;
+      }
+      try {
+        await _waitForRecordedCoreExit(record, Duration(seconds: 2));
+      } on TimeoutException {
+        return false;
+      }
+    }
+    await _processStore.clear(pid: record.pid);
+    return true;
+  }
+
+  @override
+  Future<bool?> queryCoreRunning() async {
+    final process = _coreProcess;
+    if (process == null) {
+      return false;
+    }
+    final record = await _processStore.read();
+    return record != null &&
+        record.pid == process.pid &&
+        await _recordIsRunning(record);
+  }
+
+  Future<bool> _recordIsRunning(DesktopCoreProcessRecord record) async {
+    try {
+      final executable = await Link('/proc/${record.pid}/exe').target();
+      return linuxExecutableMatches(executable, record.executablePath);
     } catch (_) {
       return false;
     }
   }
 
-  Future<bool> _pidIsRunning(int pid) async {
-    final record = await _processStore.read();
-    if (record == null || record.pid != pid) {
-      return false;
-    }
-    return _recordIsRunning(record);
-  }
-
-  Future<void> _waitForPidExit(int pid, Duration timeout) async {
+  Future<void> _waitForRecordedCoreExit(
+    DesktopCoreProcessRecord record,
+    Duration timeout,
+  ) async {
     final deadline = DateTime.now().add(timeout);
-    while (await _pidIsRunning(pid)) {
+    while (await _recordIsRunning(record)) {
       if (DateTime.now().isAfter(deadline)) {
         throw TimeoutException('core process did not exit', timeout);
       }
@@ -224,19 +225,6 @@ class LinuxFfiApi extends BaseFfiApi {
           unawaited(updateVpnStatus(VpnStatus.disconnected));
         }
       }
-    });
-  }
-
-  void _startProcessMonitor(DesktopCoreProcessRecord record) {
-    _processMonitor?.cancel();
-    _processMonitor = Timer.periodic(Duration(seconds: 1), (_) async {
-      if (_stopping || await _recordIsRunning(record)) {
-        return;
-      }
-      _processMonitor?.cancel();
-      _processMonitor = null;
-      await _processStore.clear(pid: record.pid);
-      await updateVpnStatus(VpnStatus.disconnected);
     });
   }
 }

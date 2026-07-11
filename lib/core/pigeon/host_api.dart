@@ -33,6 +33,20 @@ class AppHostApi {
     }
   }
 
+  Future<bool?> cleanupStaleDesktopCore() async {
+    try {
+      if (AppPlatform.isLinux) {
+        return LinuxFfiApi().cleanupStaleCore();
+      } else if (AppPlatform.isWindows) {
+        return WindowsFfiApi().cleanupStaleCore();
+      }
+    } catch (error, stackTrace) {
+      _reportUnexpected('cleanupStaleDesktopCore', error, stackTrace);
+      return false;
+    }
+    return null;
+  }
+
   Future<NativeVpnCommandResult> readVpnStatus() async {
     try {
       return await _readVpnStatus();

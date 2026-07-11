@@ -11,7 +11,6 @@ DesktopCoreProcessRecord _$DesktopCoreProcessRecordFromJson(
 ) => DesktopCoreProcessRecord(
   pid: (json['pid'] as num).toInt(),
   executablePath: json['executablePath'] as String,
-  mode: $enumDecode(_$DesktopCoreModeEnumMap, json['mode']),
 );
 
 Map<String, dynamic> _$DesktopCoreProcessRecordToJson(
@@ -19,10 +18,4 @@ Map<String, dynamic> _$DesktopCoreProcessRecordToJson(
 ) => <String, dynamic>{
   'pid': instance.pid,
   'executablePath': instance.executablePath,
-  'mode': _$DesktopCoreModeEnumMap[instance.mode]!,
-};
-
-const _$DesktopCoreModeEnumMap = {
-  DesktopCoreMode.tun: 'tun',
-  DesktopCoreMode.proxy: 'proxy',
 };
