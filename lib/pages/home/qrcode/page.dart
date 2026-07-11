@@ -3,12 +3,24 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/qrcode/controller.dart';
 
-class QrcodePage extends StatelessWidget {
+class QrcodePage extends StatefulWidget {
   const QrcodePage({super.key});
 
   @override
+  State<QrcodePage> createState() => _QrcodePageState();
+}
+
+class _QrcodePageState extends State<QrcodePage> {
+  late final QrcodeController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = QrcodeController();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = QrcodeController();
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.qrcodePageTitle),
@@ -22,7 +34,7 @@ class QrcodePage extends StatelessWidget {
               height: double.infinity,
               child: MobileScanner(
                 onDetect: (barcodes) =>
-                    controller.handleBarcode(context, barcodes),
+                    _controller.handleBarcode(context, barcodes),
               ),
             ),
           ),

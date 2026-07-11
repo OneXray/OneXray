@@ -185,16 +185,24 @@ struct LibXrayInvokeResponse: Codable, Hashable {
         if let res = res {
             let text = String(cString: res)
             CGoFree(res)
-
-            if let data = text.data(using: .utf8) {
-                do {
-                    let model = try JsonTool.decode(self, from: data)
-                    return model
-                } catch {}
-            }
+            return fromText(text)
         }
-        return LibXrayInvokeResponse(success: false, error: "invalid response")
+        return invalidResponse
     }
+
+    static func fromText(_ text: String?) -> Self {
+        if let text, let data = text.data(using: .utf8) {
+            do {
+                return try JsonTool.decode(self, from: data)
+            } catch {}
+        }
+        return invalidResponse
+    }
+
+    private static let invalidResponse = LibXrayInvokeResponse(
+        success: false,
+        error: "invalid response"
+    )
 }
 
 // MARK: - System extension XPC protocol (app ↔ tunnel)

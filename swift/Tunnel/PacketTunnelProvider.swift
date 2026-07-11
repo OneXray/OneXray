@@ -331,11 +331,15 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         try patchRuntimeEnv(fd: fd, request: request)
         let requestText = try request.toText()
 
-        let res = requestText.withCString { p in
-            let p0 = UnsafeMutablePointer(mutating: p)
-            return CGoInvoke(p0)
-        }
-        let result = LibXrayInvokeResponse.fromResponse(res)
+        let responseText = await Task.detached(priority: .userInitiated) {
+            requestText.withCString { p -> String? in
+                let p0 = UnsafeMutablePointer(mutating: p)
+                guard let response = CGoInvoke(p0) else { return nil }
+                defer { CGoFree(response) }
+                return String(cString: response)
+            }
+        }.value
+        let result = LibXrayInvokeResponse.fromText(responseText)
         if !result.isSuccess {
             let error = result.error
             YGLog("PacketTunnelProvider startXray \(error)")
