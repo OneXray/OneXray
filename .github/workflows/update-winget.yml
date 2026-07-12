@@ -7,8 +7,9 @@
 #   - workflow_dispatch: manually updates winget for an existing stable release
 #
 # Required repository secrets:
-#   PACKAGE_MANAGER_GITHUB_TOKEN       GitHub PAT that can open PRs in
-#                                      microsoft/winget-pkgs
+#   PACKAGE_MANAGER_GITHUB_TOKEN       Classic GitHub PAT with public_repo
+#                                      scope and write access to the
+#                                      OneXray/winget-pkgs fork
 #
 
 name: Update winget
@@ -81,13 +82,27 @@ jobs:
 
           echo "should_update=true" >> "$GITHUB_OUTPUT"
 
-      - name: Validate package manager token
+      - name: Validate winget fork and token
         if: steps.verify.outputs.should_update == 'true'
         env:
           PACKAGE_MANAGER_GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
+          WINGET_FORK: ${{ github.repository_owner }}/winget-pkgs
         run: |
           if [ -z "${PACKAGE_MANAGER_GITHUB_TOKEN}" ]; then
             echo "PACKAGE_MANAGER_GITHUB_TOKEN is required." >&2
+            exit 1
+          fi
+
+          export GH_TOKEN="${PACKAGE_MANAGER_GITHUB_TOKEN}"
+          fork_json="$(gh api "repos/${WINGET_FORK}")"
+
+          if [ "$(jq -r '.parent.full_name // empty' <<<"$fork_json")" != "microsoft/winget-pkgs" ]; then
+            echo "${WINGET_FORK} must be a fork of microsoft/winget-pkgs." >&2
+            exit 1
+          fi
+
+          if [ "$(jq -r '.permissions.push // false' <<<"$fork_json")" != "true" ]; then
+            echo "PACKAGE_MANAGER_GITHUB_TOKEN cannot push to ${WINGET_FORK}." >&2
             exit 1
           fi
 
@@ -99,5 +114,4 @@ jobs:
           release-tag: ${{ steps.release.outputs.tag }}
           installers-regex: '^OneXray-windows-amd64\.exe$'
           max-versions-to-keep: 3
-          fork-user: yiguodev
           token: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
