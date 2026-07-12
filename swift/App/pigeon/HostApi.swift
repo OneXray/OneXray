@@ -76,13 +76,6 @@ class AppHostApi: BridgeHostApi {
         }
     }
     
-    func checkVpnPermission(completion: @escaping (Result<Bool, any Error>) -> Void) {
-        Task {
-            await VPNManager.shared.refreshVpn()
-        }
-        completion(.success(true))
-    }
-
     func queryPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, any Error>) -> Void) {
         Task {
             completion(.success(await VPNManager.shared.queryPlatformPermission()))

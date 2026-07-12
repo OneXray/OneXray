@@ -79,6 +79,7 @@ dependencies:
   tray_manager: ^0.5.3
   window_manager: ^0.5.2
   win32: ^6.3.0
+  cupertino_icons: ^1.0.9
 
 dev_dependencies:
   flutter_test:

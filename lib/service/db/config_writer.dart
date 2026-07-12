@@ -10,14 +10,6 @@ class ConfigWriteResult {
 }
 
 class ConfigWriter {
-  static Future<int> writeRows(
-    List<CoreConfigCompanion> rows,
-    int? subId,
-  ) async {
-    final result = await writeRowsWithResult(rows, subId);
-    return result.count;
-  }
-
   static Future<ConfigWriteResult> writeRowsWithResult(
     List<CoreConfigCompanion> rows,
     int? subId,

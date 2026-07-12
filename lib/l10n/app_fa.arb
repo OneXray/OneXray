@@ -79,7 +79,6 @@
     "vpnStaleCoreCleanupFailed": "توقف فرایند Core قبلی ناموفق بود",
     "vpnLocalPortFailed": "اختصاص پورت‌های محلی ناموفق بود",
     "vpnStartRequestFailed": "ایجاد درخواست راه‌اندازی Xray ناموفق بود",
-    "vpnCoreStartFailed": "راه‌اندازی هسته ناموفق بود",
     "actionResult": "{action} {result}",
     "@actionResult": {
         "placeholders": {

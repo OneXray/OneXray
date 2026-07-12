@@ -482,7 +482,6 @@ interface BridgeHostApi {
   fun startVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
   fun stopVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
   fun invoke(requestJson: String, callback: (Result<String>) -> Unit)
-  fun checkVpnPermission(callback: (Result<Boolean>) -> Unit)
   fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
   fun requestPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
   fun getInstalledApps(callback: (Result<List<AndroidAppInfo>>) -> Unit)
@@ -578,24 +577,6 @@ interface BridgeHostApi {
             val args = message as List<Any?>
             val requestJsonArg = args[0] as String
             api.invoke(requestJsonArg) { result: Result<String> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(MessagesPigeonUtils.wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.checkVpnPermission$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.checkVpnPermission{ result: Result<Boolean> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

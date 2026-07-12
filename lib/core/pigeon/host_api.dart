@@ -358,19 +358,6 @@ class AppHostApi {
     return responseJson;
   }
 
-  // android
-  Future<bool> checkVpnPermission() async {
-    if (AppPlatform.isAndroid || AppPlatform.isIOS || AppPlatform.isMacOS) {
-      try {
-        final result = await _api.checkVpnPermission();
-        return result;
-      } catch (error, stackTrace) {
-        _reportUnexpected('checkVpnPermission', error, stackTrace);
-      }
-    }
-    return true;
-  }
-
   Future<PlatformPermissionResult> queryPlatformPermission() async {
     if (AppPlatform.isLinux || AppPlatform.isWindows) {
       return _platformPermissionNotRequired();

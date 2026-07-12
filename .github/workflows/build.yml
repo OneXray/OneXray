@@ -617,7 +617,7 @@ jobs:
             ninja-build clang cmake pkg-config \
             libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev \
             libayatana-appindicator3-dev \
-            file
+            file lintian
 
       - name: Install Python build deps
         run: python -m pip install --upgrade pip pyyaml requests typer
@@ -637,6 +637,15 @@ jobs:
 
       - name: Build
         run: python3 build_scripts/main.py OneXray linux
+
+      - name: Verify Debian package
+        run: |
+          deb_file="$(find output -maxdepth 1 -type f -name 'OneXray-*.deb' -print -quit)"
+          test -n "$deb_file"
+          test "$(dpkg-deb --field "$deb_file" Package)" = "onexray"
+          dpkg-deb --contents "$deb_file" | grep -q '/opt/onexray/bin/OneXrayCore$'
+          dpkg-deb --info "$deb_file"
+          lintian "$deb_file"
 
       - name: Verify core CLI
         run: ./linux/app/OneXrayCore -h

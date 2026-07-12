@@ -90,7 +90,6 @@
   "vpnStaleCoreCleanupFailed": "Не удалось остановить ранее запущенный процесс Core",
   "vpnLocalPortFailed": "Не удалось выделить локальные порты",
   "vpnStartRequestFailed": "Не удалось создать запрос запуска Xray",
-  "vpnCoreStartFailed": "Не удалось запустить ядро",
   "privacyPageTitle": "Приватность",
   "privacyPageAccept": "Принять",
   "firstRunPageTitle": "Старт",

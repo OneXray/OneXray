@@ -111,6 +111,8 @@ class FlutterBuilder(Builder):
             "build",
             self.build_type[self.system],
         ]
+        if self.system == "android":
+            cmd.extend(["--target-platform", "android-arm64,android-x64"])
         run_command(cmd)
 
         self.builder.build_app()

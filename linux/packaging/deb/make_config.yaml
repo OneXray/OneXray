@@ -1,11 +1,13 @@
 display_name: OneXray
-package_name: OneXray
+package_name: onexray
 maintainer:
-  name: YuanDevLLC
+  name: Yuan Dev LLC
   email: yuan@yuandev.net
 priority: optional
-section: x11
-installed_size: 6604
+section: net
+# Fallback for direct Fastforge use. The App build script replaces this with
+# the release bundle's actual size before creating the DEB.
+installed_size: 130000
 dependencies:
   - procps
   - libcap2-bin
@@ -13,14 +15,14 @@ dependencies:
 essential: false
 icon: assets/logo.png
 postinstall_scripts:
-  - echo "Thanks using our app!"
-  - setcap cap_net_admin,cap_net_raw+eip /usr/share/OneXray/bin/OneXrayCore
-postuninstall_scripts:
-  - echo "Goodbye!"
+  - setcap cap_net_admin,cap_net_raw+eip /opt/onexray/bin/OneXrayCore
 keywords:
   - OneXray
   - Xray
-generic_name: OneXray
+  - VPN
+  - Proxy
+generic_name: VPN and Proxy Client
 categories:
-  - Netowrk
+  - Network
 startup_notify: true
+startup_wm_class: OneXray

@@ -214,22 +214,6 @@ final class VpnService {
     _lastConfigId = id;
   }
 
-  Future<NativeVpnCommandResult> restartCurrentVpn() =>
-      _commands.run(_restartCurrentVpn);
-
-  Future<NativeVpnCommandResult> _restartCurrentVpn(int generation) async {
-    final eventBus = AppEventBus.instance;
-    final configId = eventBus.state.runningId;
-    final stopResult = await _stopCurrentVpn(generation);
-    if (stopResult.state == NativeVpnCommandState.failed) {
-      return stopResult;
-    }
-    if (configId == DBConstants.defaultId) {
-      return _commandSuccess();
-    }
-    return _startVpn(configId, generation);
-  }
-
   Future<NativeVpnCommandResult> startDefaultVpn() =>
       _commands.run(_startDefaultVpn);
 

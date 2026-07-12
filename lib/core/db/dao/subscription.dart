@@ -11,9 +11,6 @@ class SubscriptionDao extends DatabaseAccessor<AppDatabase>
     with _$SubscriptionDaoMixin {
   SubscriptionDao(super.db);
 
-  Stream<List<SubscriptionData>> get allRowsStream =>
-      select(subscription).watch();
-
   Future<List<SubscriptionData>> get allRows async =>
       select(subscription).get();
 

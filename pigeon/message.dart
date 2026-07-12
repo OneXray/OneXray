@@ -31,9 +31,6 @@ abstract class BridgeHostApi {
 
   //platform======================
   @async
-  bool checkVpnPermission();
-
-  @async
   PlatformPermissionResult queryPlatformPermission();
 
   @async

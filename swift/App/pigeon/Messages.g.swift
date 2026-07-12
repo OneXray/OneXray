@@ -451,7 +451,6 @@ protocol BridgeHostApi {
   func startVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
   func stopVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
   func invoke(requestJson: String, completion: @escaping (Result<String, Error>) -> Void)
-  func checkVpnPermission(completion: @escaping (Result<Bool, Error>) -> Void)
   func queryPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
   func requestPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
   func getInstalledApps(completion: @escaping (Result<[AndroidAppInfo], Error>) -> Void)
@@ -542,21 +541,6 @@ class BridgeHostApiSetup {
       }
     } else {
       invokeChannel.setMessageHandler(nil)
-    }
-    let checkVpnPermissionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.checkVpnPermission\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      checkVpnPermissionChannel.setMessageHandler { _, reply in
-        api.checkVpnPermission { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      checkVpnPermissionChannel.setMessageHandler(nil)
     }
     let queryPlatformPermissionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.queryPlatformPermission\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

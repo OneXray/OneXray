@@ -128,30 +128,6 @@ class AppHostApi(
         }
     }
 
-    // android
-    override fun checkVpnPermission(callback: (Result<Boolean>) -> Unit) {
-        scope.launch {
-            val permissions = mutableListOf<String>()
-            permissions.add(Manifest.permission.INTERNET)
-            permissions.add(Manifest.permission.ACCESS_NETWORK_STATE)
-            permissions.add(Manifest.permission.FOREGROUND_SERVICE)
-
-            // android 13, level 33
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            // android 14, level 34
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                permissions.add(Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE)
-            }
-            XXPermissions.with(context)
-                .permission(permissions)
-                .request { _, allGranted ->
-                    callback(Result.success(allGranted))
-                }
-        }
-    }
-
     override fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit) {
         scope.launch {
             callback(Result.success(queryPermissionNow()))

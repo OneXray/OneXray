@@ -79,7 +79,6 @@
   "vpnStaleCoreCleanupFailed": "無法停止上次執行的 Core 程序",
   "vpnLocalPortFailed": "本地端口分配失敗",
   "vpnStartRequestFailed": "建立 Xray 啟動請求失敗",
-  "vpnCoreStartFailed": "核心啟動失敗",
   "actionResult": "{action} {result}",
   "@actionResult": {
     "placeholders": {
