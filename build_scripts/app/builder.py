@@ -2,6 +2,7 @@ import os
 import platform
 import shutil
 import subprocess
+from contextlib import contextmanager
 
 import yaml
 
@@ -17,6 +18,28 @@ from app.config import PROJECT_CONFIG
 
 XRAY_CORE_DIR_NAME = "Xray-core"
 LOCAL_XRAY_CORE_ARG = "local"
+
+
+@contextmanager
+def temporary_pubspec_version(file_path: str, version: str):
+    with open(file_path, mode="rb") as f:
+        original_content = f.read()
+
+    try:
+        pubspec = yaml.load(original_content, Loader=yaml.CLoader)
+        pubspec["version"] = version
+        with open(file_path, mode="w", encoding="utf-8", newline="\n") as f:
+            yaml.dump(
+                pubspec,
+                f,
+                Dumper=yaml.CDumper,
+                allow_unicode=True,
+                sort_keys=False,
+            )
+        yield
+    finally:
+        with open(file_path, mode="wb") as f:
+            f.write(original_content)
 
 
 class Builder(object):
@@ -151,6 +174,12 @@ class Builder(object):
         with open(file_path, mode="r") as f:
             pubspec = yaml.load(f, Loader=yaml.CLoader)
             return pubspec["version"]
+
+    def package_with_marketing_version(self, targets: str):
+        file_path = os.path.join(self.project_dir, "..", "pubspec.yaml")
+        marketing_version = self.read_version().split("+", maxsplit=1)[0]
+        with temporary_pubspec_version(file_path, marketing_version):
+            self.fastforge_build(targets)
 
     def find_file(self, file_type: str) -> str:
         for entry in os.listdir(self.output_dir):

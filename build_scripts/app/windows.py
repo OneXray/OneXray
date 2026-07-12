@@ -53,7 +53,7 @@ class WindowsBuilder(Builder):
 
     def build_app(self):
         self.fastforge_build("zip")
-        self.fastforge_build("exe")
+        self.package_with_marketing_version("exe")
 
     def after_build(self):
         super().after_build()
