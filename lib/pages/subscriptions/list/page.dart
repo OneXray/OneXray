@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
-import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/home/component/subscription_row/view.dart';
 import 'package:onexray/pages/subscriptions/list/controller.dart';
-import 'package:onexray/pages/widget/data_list.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/subscriptions/list/view.dart';
+import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/event_bus/state.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SubscriptionListPage extends StatelessWidget {
   const SubscriptionListPage({super.key});
@@ -31,12 +30,22 @@ class SubscriptionListPage extends StatelessWidget {
   }
 
   Widget _addButton(BuildContext context) {
-    return IconButton(
-      tooltip: AppLocalizations.of(context)!.subscriptionAddPageTitle,
-      onPressed: () =>
-          context.read<SubscriptionListController>().addSubscription(context),
-      icon: const Icon(Icons.add),
-    );
+    final localizations = AppLocalizations.of(context)!;
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return compact
+        ? ShadIconButton(
+            icon: const Icon(LucideIcons.plus),
+            onPressed: () => context
+                .read<SubscriptionListController>()
+                .addSubscription(context),
+          )
+        : ShadButton(
+            leading: const Icon(LucideIcons.plus),
+            onPressed: () => context
+                .read<SubscriptionListController>()
+                .addSubscription(context),
+            child: Text(localizations.buttonAdd),
+          );
   }
 }
 
@@ -58,55 +67,28 @@ class _SubscriptionListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.read<SubscriptionListController>();
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: StreamBuilder<List<ConfigQueryRow>>(
-        stream: controller.rowsStream,
-        builder: (context, snapshot) {
-          final items = (snapshot.data ?? const <ConfigQueryRow>[])
-              .whereType<SubscriptionItem>()
-              .where((item) => item.subscription.id > DBConstants.defaultId)
-              .toList();
-          return ResponsiveContent(
-            desktopMaxWidth: 1040,
-            adaptiveBreakpoint: 900,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [Expanded(child: _list(context, items))],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _list(BuildContext context, List<SubscriptionItem> items) {
-    if (items.isEmpty) {
-      return ListEmptyView(
-        message: AppLocalizations.of(context)!.subscriptionListPageEmpty,
-        icon: Icons.dynamic_feed_outlined,
-        actionLabel: AppLocalizations.of(context)!.subscriptionAddPageTitle,
-        actionIcon: Icons.add,
-        onAction: () =>
-            context.read<SubscriptionListController>().addSubscription(context),
-      );
-    }
-    return ListView.separated(
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return SubscriptionRowView(
-          item: item,
-          tapCallback: () => context
-              .read<SubscriptionListController>()
-              .openNodes(context, item.subscription.id),
-          pingCallback: () => context.read<SubscriptionListController>().ping(
-            item.subscription.id,
+    return StreamBuilder<List<SubscriptionItem>>(
+      stream: controller.rowsStream,
+      builder: (context, snapshot) {
+        return BlocBuilder<AppEventBus, AppEventBusState>(
+          buildWhen: (previous, current) => previous.pinging != current.pinging,
+          builder: (context, eventState) => SubscriptionListView(
+            items: snapshot.data ?? const [],
+            emptyMessage: AppLocalizations.of(
+              context,
+            )!.subscriptionListPageEmpty,
+            addLabel: AppLocalizations.of(context)!.buttonAdd,
+            pingLabel: AppLocalizations.of(context)!.outboundPageRealPing,
+            pinging: eventState.pinging,
+            onAdd: () => controller.addSubscription(context),
+            onOpen: (subscription) =>
+                controller.openNodes(context, subscription.id),
+            onPing: (subscription) => controller.ping(subscription.id),
+            onAction: (subscription, menuId) =>
+                controller.moreAction(context, subscription, menuId),
           ),
-          expandCallback: null,
         );
       },
-      separatorBuilder: (_, _) => const Divider(),
-      itemCount: items.length,
     );
   }
 }

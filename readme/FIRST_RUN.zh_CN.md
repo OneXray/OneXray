@@ -26,14 +26,9 @@ flutter pub get
 
 ```shell
 cp .env.example .env
-cp firebase.json.example firebase.json
-cp lib/firebase_options.dart.example lib/firebase_options.dart
-cp android/app/google-services.json.example android/app/google-services.json
-cp swift/AppStore/GoogleService-Info.plist.example swift/AppStore/GoogleService-Info.plist
-cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-Info.plist
 ```
 
-这些文件的 `.example` 版本已经足够用于本地开发；如果后续需要联调真实 Firebase，再替换成你自己的配置。
+`.env.example` 中的默认值已经足够用于本地开发。
 
 ## 2. 准备 libXray 和 Xray-core 产物
 
@@ -147,8 +142,6 @@ flutter run -d ios
 | `ios/fastlane/AuthKey.p8` | 不参与 | 仅 iOS 发布时使用。 |
 | `macos/fastlane/AuthKey.p8` | 不参与 | 仅 Mac App Store 发布时使用。 |
 | `macos_se/fastlane/AuthKey.p8` | 不参与 | 仅 macOS SE 发布 / notarization 时使用。 |
-| `swift/AppStore/GoogleService-Info.plist` | 按需提供 | 调试 iOS / macOS 且需要 Firebase 时使用。 |
-| `swift/macOSSE/GoogleService-Info.plist` | 按需提供 | 调试 macOS SE 且需要 Firebase 时使用。 |
 
 ## 6. Debug 更常用的配置文件
 
@@ -163,18 +156,14 @@ flutter run -d ios
 | `linux/app/OneXrayCore` | Linux 桌面端运行的核心二进制。 |
 | `windows/app/libXray.dll` | Windows 桌面端加载的动态库。 |
 | `windows/app/OneXrayCore.exe` | Windows 桌面端运行的核心二进制。 |
-| `lib/firebase_options.dart` | Flutter 侧 Firebase 初始化配置。 |
-| `android/app/google-services.json` | Android 的 Firebase 配置。 |
-| `swift/AppStore/GoogleService-Info.plist` | iOS / macOS App Store 目标使用的 Firebase plist。 |
-| `swift/macOSSE/GoogleService-Info.plist` | macOS SE 目标使用的 Firebase plist。 |
 
-仓库已经提供对应的 `.example` 文件。首次配置 debug 环境时直接复制即可。
+仓库已经提供本地调试所需的其余非敏感默认配置。
 
 ## 7. 最小配置结论
 
 如果目标是本地开发和断点调试，最小步骤如下：
 
-1. 复制 `.example` 配置文件。
+1. 将 `.env.example` 复制为 `.env`。
 2. 构建 `libXray` 并把产物复制到 OneXray 对应目录。
 3. 安装最新 stable Flutter SDK，并执行 `flutter pub get`。
 4. 按平台安装额外依赖，例如 Apple 平台的 `pod install` 和 Linux 平台的 `libayatana-appindicator3-dev`。

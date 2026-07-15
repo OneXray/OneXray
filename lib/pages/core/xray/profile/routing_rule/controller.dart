@@ -289,6 +289,13 @@ class RoutingRuleController extends Cubit<RoutingRulePageState> {
     emit(state.bumped());
   }
 
+  void deleteAttr(int index) {
+    final attr = state.ruleAttrs.removeAt(index);
+    attr.key.dispose();
+    attr.value.dispose();
+    emit(state.bumped());
+  }
+
   final ruleTagController = TextEditingController();
 
   void updateOutboundTag(String value) {

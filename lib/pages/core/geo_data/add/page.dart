@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/geo_data/add/controller.dart';
-import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class GeoDatAddPage extends StatelessWidget {
   const GeoDatAddPage({super.key});
@@ -21,11 +19,20 @@ class GeoDatAddPage extends StatelessWidget {
       child: BlocBuilder<GeoDatAddController, GeoDatAddPageState>(
         builder: (context, state) {
           final controller = context.read<GeoDatAddController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.geoDatAddPageTitle),
-            ),
-            body: SafeArea(child: _body(context, controller, state)),
+          return BlocBuilder<AppEventBus, AppEventBusState>(
+            bloc: AppEventBus.instance,
+            builder: (context, eventState) {
+              final localizations = AppLocalizations.of(context)!;
+              return SettingsPageScaffold(
+                title: localizations.geoDatAddPageTitle,
+                saveLabel: localizations.buttonAdd,
+                saveLoading: eventState.downloading,
+                onSave: eventState.downloading
+                    ? null
+                    : () => controller.save(context),
+                body: _body(context, controller, state),
+              );
+            },
           );
         },
       ),
@@ -37,20 +44,9 @@ class GeoDatAddPage extends StatelessWidget {
     GeoDatAddController controller,
     GeoDatAddPageState state,
   ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: _section(context, controller, state),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
+    return SettingsPageScroll(
+      desktopMaxWidth: 920,
+      child: _section(context, controller, state),
     );
   }
 
@@ -65,7 +61,7 @@ class GeoDatAddPage extends StatelessWidget {
         _name(context, controller),
         _type(context, controller, state),
         _url(context, controller),
-        _autoUpdate(context, controller),
+        _autoUpdate(context, controller, state),
       ],
     );
   }
@@ -74,6 +70,7 @@ class GeoDatAddPage extends StatelessWidget {
     return TextFieldSettingRow(
       controller: controller.nameController,
       label: AppLocalizations.of(context)!.geoDatAddPageName,
+      leading: const Icon(LucideIcons.tag),
       hintText: AppLocalizations.of(context)!.geoDatAddPageName,
     );
   }
@@ -85,6 +82,7 @@ class GeoDatAddPage extends StatelessWidget {
   ) {
     return SelectSettingRow<GeoDataType>(
       title: AppLocalizations.of(context)!.geoDatAddPageType,
+      leading: const Icon(LucideIcons.listFilter),
       value: state.type.name,
       selections: GeoDataType.values,
       onSelected: (value) => controller.updateType(value),
@@ -95,44 +93,28 @@ class GeoDatAddPage extends StatelessWidget {
     return TextFieldSettingRow(
       controller: controller.urlController,
       label: AppLocalizations.of(context)!.geoDatAddPageUrl,
+      leading: const Icon(LucideIcons.link),
       hintText: AppLocalizations.of(context)!.geoDatAddPageUrlExample,
       helperText: AppLocalizations.of(context)!.helpURL,
     );
   }
 
-  Widget _autoUpdate(BuildContext context, GeoDatAddController controller) {
-    return SettingRow(
-      title: AppLocalizations.of(context)!.autoUpdatePageTitle,
-      onTap: () => controller.gotoAutoUpdate(context),
-      showChevron: true,
-    );
-  }
-
-  Widget _bottomButton(BuildContext context, GeoDatAddController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          BlocBuilder<AppEventBus, AppEventBusState>(
-            builder: (context, state) =>
-                _saveButton(context, controller, state),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _saveButton(
+  Widget _autoUpdate(
     BuildContext context,
     GeoDatAddController controller,
-    AppEventBusState state,
+    GeoDatAddPageState state,
   ) {
-    final downloading = state.downloading;
-    return Expanded(
-      child: PrimaryBottomButton(
-        title: AppLocalizations.of(context)!.buttonAdd,
-        callback: downloading ? null : () => controller.save(context),
-        loading: downloading,
-      ),
+    final localizations = AppLocalizations.of(context)!;
+    final autoUpdate = state.autoUpdateState;
+    final value = autoUpdate.geoDataEnable
+        ? "${localizations.autoUpdatePageEnabled} · ${autoUpdate.geoDataInterval}"
+        : localizations.autoUpdatePageDisabled;
+    return SettingRow(
+      title: localizations.autoUpdatePageTitle,
+      value: value,
+      leading: const Icon(LucideIcons.refreshCw),
+      onTap: () => controller.gotoAutoUpdate(context),
+      showChevron: true,
     );
   }
 }

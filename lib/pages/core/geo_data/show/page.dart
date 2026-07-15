@@ -3,10 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/geo_data/show/controller.dart';
 import 'package:onexray/pages/core/geo_data/show/params.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class GeoDatShowPage extends StatelessWidget {
   final GeoDatShowParams params;
@@ -20,24 +20,19 @@ class GeoDatShowPage extends StatelessWidget {
       child: BlocBuilder<GeoDatShowController, GeoDatShowPageState>(
         builder: (context, state) => Scaffold(
           appBar: AppBar(title: Text(state.geoDatName)),
-          body: SafeArea(child: _body(context, state)),
+          body: SafeArea(
+            child: ResponsiveContent(
+              desktopMaxWidth: 920,
+              adaptiveBreakpoint: 840,
+              child: _body(context, state),
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _body(BuildContext context, GeoDatShowPageState state) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        desktopMaxWidth: 880,
-        adaptiveBreakpoint: 840,
-        child: _mainBody(context, state),
-      ),
-    );
-  }
-
-  Widget _mainBody(BuildContext context, GeoDatShowPageState state) {
     final controller = context.read<GeoDatShowController>();
     return Column(
       children: [
@@ -55,17 +50,25 @@ class GeoDatShowPage extends StatelessWidget {
   }
 
   Widget _geoDataList(BuildContext context, GeoDatShowPageState state) {
-    if (state.geoDatCodes.isEmpty) {
-      return ListEmptyView(
-        message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
-      );
-    } else {
-      return ListView.separated(
-        itemBuilder: (ctx, index) => _itemRow(ctx, state, index),
-        itemCount: state.geoDatCodes.length,
-        separatorBuilder: (_, _) => const Divider(),
-      );
-    }
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 16),
+      child: ShadCard(
+        width: double.infinity,
+        padding: EdgeInsets.zero,
+        radius: const BorderRadius.all(Radius.circular(8)),
+        clipBehavior: Clip.antiAlias,
+        child: state.geoDatCodes.isEmpty
+            ? ListEmptyView(
+                message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
+                icon: LucideIcons.searchX,
+              )
+            : ListView.separated(
+                itemBuilder: (ctx, index) => _itemRow(ctx, state, index),
+                itemCount: state.geoDatCodes.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+              ),
+      ),
+    );
   }
 
   Widget _itemRow(BuildContext context, GeoDatShowPageState state, int index) {

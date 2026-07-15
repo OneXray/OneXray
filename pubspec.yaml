@@ -38,9 +38,6 @@ dependencies:
   #---------- google.dev plugin
   json_annotation: ^4.12.0
   tuple: ^2.0.2
-  firebase_core: ^4.11.0
-  firebase_analytics: ^12.4.3
-  firebase_crashlytics: ^5.2.4
 
   #---------- flutter community
   package_info_plus: ^10.2.0
@@ -48,25 +45,26 @@ dependencies:
   share_plus: ^13.2.0
 
   #---------- third party plugin
-  drift: ^2.34.0
-  drift_flutter: ^0.3.0
-  sqlite3: ^3.3.4
+  drift: ^2.34.2
+  drift_flutter: ^0.3.1
+  sqlite3: ^3.4.0
 
   dio: ^5.10.0
   uuid: ^4.5.3
   permission_handler: ^12.0.3
   # qrcode
   file_picker: ^12.0.0-beta.7
-  mobile_scanner: ^7.2.0
-  image: ^4.8.0
+  mobile_scanner: ^7.2.1
+  image: ^4.9.1
   zxing2: ^0.2.4
   # export
   archive: ^4.0.9
   # state management
   flutter_bloc: ^9.1.1
-  flex_seed_scheme: ^4.0.1
+  shadcn_ui: ^0.55.0
+  lucide_icons_flutter: ^3.1.15
   # markdown
-  flutter_markdown_plus: ^1.0.7
+  flutter_markdown_plus: ^1.0.12
   duration: ^4.0.3
 
   flutter_local_notifications: ^22.0.1
@@ -80,17 +78,23 @@ dependencies:
   window_manager: ^0.5.2
   win32: ^6.3.0
   cupertino_icons: ^1.0.9
+  re_editor: ^0.10.0
+  re_highlight: ^0.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  build_runner: ^2.15.0
+  build_runner: ^2.15.1
   json_serializable: ^6.14.0
   drift_dev: ^2.34.0
-  pigeon: ^27.1.0
+  pigeon: ^27.1.2
   flutter_lints: ^6.0.0
-  flutter_gen_runner: ^5.14.1
+  flutter_gen_runner: ^5.15.0
   ffigen: ^20.1.1
+
+# re_editor only uses APIs that remain compatible with isolate_manager 6.x.
+dependency_overrides:
+  isolate_manager: ^6.3.2
 
 flutter_gen:
   output: lib/gen/

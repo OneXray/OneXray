@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/service/localizations/service.dart';
 
 class AppMenuEntry<T extends Object> {
@@ -6,15 +7,32 @@ class AppMenuEntry<T extends Object> {
   final String title;
   final IconData? icon;
   final List<AppMenuEntry<T>> children;
+  final bool destructive;
+  final bool separator;
 
-  const AppMenuEntry.item({required this.value, required this.title, this.icon})
-    : children = const [];
+  const AppMenuEntry.item({
+    required this.value,
+    required this.title,
+    this.icon,
+    this.destructive = false,
+  }) : children = const [],
+       separator = false;
 
   const AppMenuEntry.submenu({
     required this.title,
     required this.children,
     this.icon,
-  }) : value = null;
+  }) : value = null,
+       destructive = false,
+       separator = false;
+
+  const AppMenuEntry.separator()
+    : value = null,
+      title = "",
+      icon = null,
+      children = const [],
+      destructive = false,
+      separator = true;
 
   bool get isSubmenu => children.isNotEmpty;
 }
@@ -22,6 +40,7 @@ class AppMenuEntry<T extends Object> {
 class AppMenuButton<T extends Object> extends StatelessWidget {
   final IconData? icon;
   final Widget? child;
+  final Widget Function(VoidCallback toggleMenu)? triggerBuilder;
   final List<AppMenuEntry<T>> entries;
   final ValueChanged<T> onSelected;
 
@@ -29,9 +48,10 @@ class AppMenuButton<T extends Object> extends StatelessWidget {
     super.key,
     this.icon,
     this.child,
+    this.triggerBuilder,
     required this.entries,
     required this.onSelected,
-  }) : assert(icon != null || child != null);
+  }) : assert(icon != null || child != null || triggerBuilder != null);
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +65,11 @@ class AppMenuButton<T extends Object> extends StatelessWidget {
           }
         }
 
+        final triggerBuilder = this.triggerBuilder;
+        if (triggerBuilder != null) {
+          return triggerBuilder(toggleMenu);
+        }
+
         final icon = this.icon;
         if (icon != null) {
           return IconButton(icon: Icon(icon), onPressed: toggleMenu);
@@ -55,25 +80,41 @@ class AppMenuButton<T extends Object> extends StatelessWidget {
           child: child,
         );
       },
-      menuChildren: _menuChildren(entries),
+      menuChildren: _menuChildren(context, entries),
     );
   }
 
-  List<Widget> _menuChildren(List<AppMenuEntry<T>> entries) {
-    return entries.map(_menuEntry).toList();
+  List<Widget> _menuChildren(
+    BuildContext context,
+    List<AppMenuEntry<T>> entries,
+  ) {
+    return entries.map((entry) => _menuEntry(context, entry)).toList();
   }
 
-  Widget _menuEntry(AppMenuEntry<T> entry) {
+  Widget _menuEntry(BuildContext context, AppMenuEntry<T> entry) {
+    if (entry.separator) {
+      return const Divider(height: 1);
+    }
     final leadingIcon = entry.icon == null ? null : Icon(entry.icon);
     if (entry.isSubmenu) {
       return SubmenuButton(
         leadingIcon: leadingIcon,
-        menuChildren: _menuChildren(entry.children),
+        menuChildren: _menuChildren(context, entry.children),
         child: Text(entry.title),
       );
     }
     return MenuItemButton(
       leadingIcon: leadingIcon,
+      style: entry.destructive
+          ? ButtonStyle(
+              foregroundColor: WidgetStatePropertyAll(
+                Theme.of(context).colorScheme.error,
+              ),
+              iconColor: WidgetStatePropertyAll(
+                Theme.of(context).colorScheme.error,
+              ),
+            )
+          : null,
       onPressed: entry.value == null ? null : () => onSelected(entry.value!),
       child: Text(entry.title),
     );
@@ -136,38 +177,43 @@ enum IconMenuId {
   IconData get icon {
     switch (this) {
       case IconMenuId.edit:
-        return Icons.edit;
+        return LucideIcons.pencil;
       case IconMenuId.share:
-        return Icons.share;
+        return LucideIcons.share2;
       case IconMenuId.save:
-        return Icons.save;
+        return LucideIcons.save;
       case IconMenuId.copy:
-        return Icons.copy;
+        return LucideIcons.copy;
       case IconMenuId.delete:
-        return Icons.delete;
+        return LucideIcons.trash2;
       case IconMenuId.clean:
-        return Icons.clear;
+        return LucideIcons.listX;
       case IconMenuId.refresh:
-        return Icons.refresh;
+        return LucideIcons.refreshCw;
       case IconMenuId.manualInput:
-        return Icons.edit;
+        return LucideIcons.folderInput;
       case IconMenuId.subscribeLink:
-        return Icons.link;
+        return LucideIcons.link;
       case IconMenuId.scanQRCode:
-        return Icons.qr_code_scanner;
+        return LucideIcons.scanLine;
       case IconMenuId.pickImage:
-        return Icons.image;
+        return LucideIcons.image;
       case IconMenuId.pickFile:
-        return Icons.file_open;
+        return LucideIcons.fileJson;
       case IconMenuId.readPasteboard:
-        return Icons.paste;
+        return LucideIcons.clipboardPaste;
     }
   }
 }
 
 extension IconMenuEntry on IconMenuId {
   AppMenuEntry<IconMenuId> get menuEntry {
-    return AppMenuEntry<IconMenuId>.item(value: this, title: title, icon: icon);
+    return AppMenuEntry<IconMenuId>.item(
+      value: this,
+      title: title,
+      icon: icon,
+      destructive: this == IconMenuId.delete,
+    );
   }
 }
 

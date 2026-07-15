@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
@@ -27,6 +29,7 @@ import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
 import 'package:onexray/service/xray/profile/state_writer.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
+import 'package:onexray/service/xray/routing_mode.dart';
 
 class XrayRuntimeConfigException implements Exception {
   final String message;
@@ -36,12 +39,14 @@ class XrayRuntimeConfigException implements Exception {
 
 class XrayRuntimeConfig {
   final CoreRunMode mode;
+  final CoreRoutingMode routingMode;
   final TunSettingsState tunSettings;
   final XrayPorts ports;
   final String coreInvokeText;
 
   const XrayRuntimeConfig({
     required this.mode,
+    required this.routingMode,
     required this.tunSettings,
     required this.ports,
     required this.coreInvokeText,
@@ -49,7 +54,7 @@ class XrayRuntimeConfig {
 }
 
 final class XrayRuntimeConfigService {
-  Future<XrayRuntimeConfig> prepare(CoreConfigData config) async {
+  Future<XrayRuntimeConfig> prepare(CoreConfigData? config) async {
     try {
       return await _prepare(config);
     } on XrayRuntimeConfigException {
@@ -66,8 +71,9 @@ final class XrayRuntimeConfigService {
     }
   }
 
-  Future<XrayRuntimeConfig> _prepare(CoreConfigData config) async {
+  Future<XrayRuntimeConfig> _prepare(CoreConfigData? config) async {
     final mode = await PreferencesKey().readCoreRunMode();
+    final routingMode = await PreferencesKey().readCoreRoutingMode();
     final runDir = VpnConstants.runDir;
     await FileTool.checkDir(runDir);
 
@@ -85,35 +91,17 @@ final class XrayRuntimeConfigService {
       );
     }
 
-    final type = CoreConfigType.fromString(config.type);
-    final configPath = switch (type) {
-      CoreConfigType.outbound => await _writeOutbound(
-        config,
-        profile,
-        mode,
-        tunSettings,
-        ports,
-        runDir,
-      ),
-      CoreConfigType.raw => await _writeRaw(
-        config,
-        profile,
-        mode,
-        tunSettings,
-        ports,
-      ),
-      CoreConfigType.full => await _writeFull(
-        config,
-        profile,
-        mode,
-        tunSettings,
-        ports,
-        runDir,
-      ),
-      _ => throw XrayRuntimeConfigException(
-        appLocalizationsNoContext().vpnSelectOneConfig,
-      ),
-    };
+    final configPath = routingMode == CoreRoutingMode.direct
+        ? await _writeDirect(profile, mode, tunSettings, ports, runDir)
+        : await _writeSelectedConfig(
+            config,
+            profile,
+            mode,
+            routingMode,
+            tunSettings,
+            ports,
+            runDir,
+          );
 
     await _clearXrayLogs();
     final invoke = LibXrayInvokeRequest(
@@ -122,10 +110,59 @@ final class XrayRuntimeConfigService {
     );
     return XrayRuntimeConfig(
       mode: mode,
+      routingMode: routingMode,
       tunSettings: tunSettings,
       ports: ports,
       coreInvokeText: JsonTool.encoder.convert(invoke.toJson()),
     );
+  }
+
+  Future<String> _writeSelectedConfig(
+    CoreConfigData? config,
+    XrayProfileState profile,
+    CoreRunMode mode,
+    CoreRoutingMode routingMode,
+    TunSettingsState tunSettings,
+    XrayPorts ports,
+    String runDir,
+  ) async {
+    if (config == null) {
+      throw XrayRuntimeConfigException(
+        appLocalizationsNoContext().vpnSelectOneConfig,
+      );
+    }
+    final type = CoreConfigType.fromString(config.type);
+    return switch (type) {
+      CoreConfigType.outbound => _writeOutbound(
+        config,
+        profile,
+        mode,
+        routingMode,
+        tunSettings,
+        ports,
+        runDir,
+      ),
+      CoreConfigType.raw => _writeRaw(
+        config,
+        profile,
+        mode,
+        routingMode,
+        tunSettings,
+        ports,
+      ),
+      CoreConfigType.full => _writeFull(
+        config,
+        profile,
+        mode,
+        routingMode,
+        tunSettings,
+        ports,
+        runDir,
+      ),
+      _ => throw XrayRuntimeConfigException(
+        appLocalizationsNoContext().vpnSelectOneConfig,
+      ),
+    };
   }
 
   void _validateProxyPorts(CoreRunMode mode, XrayProfileState profile) {
@@ -162,6 +199,7 @@ final class XrayRuntimeConfigService {
     CoreConfigData config,
     XrayProfileState profile,
     CoreRunMode mode,
+    CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
     XrayPorts ports,
     String runDir,
@@ -179,7 +217,7 @@ final class XrayRuntimeConfigService {
     await _applyFinalOutbound(profile, outbound, config);
     profile.outbounds.outbounds.add(outbound);
     final xrayJson = await profile.fixSetting(mode, tunSettings, ports);
-    return xrayJson.writeConfig(runDir);
+    return _writeTypedConfig(xrayJson, routingMode, runDir);
   }
 
   Future<void> _applyFinalOutbound(
@@ -255,6 +293,7 @@ final class XrayRuntimeConfigService {
     CoreConfigData config,
     XrayProfileState profile,
     CoreRunMode mode,
+    CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
     XrayPorts ports,
   ) async {
@@ -268,6 +307,12 @@ final class XrayRuntimeConfigService {
       ports,
       tunSettings.metricsEnabled,
     );
+    if (routingMode == CoreRoutingMode.global &&
+        !XrayRoutingModeFix.applyGlobalToRawJson(jsonMap)) {
+      throw XrayRuntimeConfigException(
+        appLocalizationsNoContext().vpnRoutingModeProxyMissing,
+      );
+    }
     final file = File(XrayStateConstants.configFilePath);
     await file.writeAsString(JsonTool.encoder.convert(jsonMap));
     return file.path;
@@ -277,6 +322,7 @@ final class XrayRuntimeConfigService {
     CoreConfigData config,
     XrayProfileState profile,
     CoreRunMode mode,
+    CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
     XrayPorts ports,
     String runDir,
@@ -295,6 +341,30 @@ final class XrayRuntimeConfigService {
     }
     full.applyToXrayProfile(profile);
     final xrayJson = await profile.fixSetting(mode, tunSettings, ports);
+    return _writeTypedConfig(xrayJson, routingMode, runDir);
+  }
+
+  Future<String> _writeDirect(
+    XrayProfileState profile,
+    CoreRunMode mode,
+    TunSettingsState tunSettings,
+    XrayPorts ports,
+    String runDir,
+  ) async {
+    final xrayJson = await profile.fixSetting(mode, tunSettings, ports);
+    return _writeTypedConfig(xrayJson, CoreRoutingMode.direct, runDir);
+  }
+
+  Future<String> _writeTypedConfig(
+    XrayJson xrayJson,
+    CoreRoutingMode routingMode,
+    String runDir,
+  ) async {
+    if (!XrayRoutingModeFix.applyToXrayJson(xrayJson, routingMode)) {
+      throw XrayRuntimeConfigException(
+        appLocalizationsNoContext().vpnRoutingModeProxyMissing,
+      );
+    }
     return xrayJson.writeConfig(runDir);
   }
 

@@ -4,6 +4,8 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/app_update/service.dart';
+import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -38,11 +40,13 @@ class AppEventBus extends Cubit<AppEventBusState> {
   Future<void> asyncInitState() async {
     final xrayProfileId = await PreferencesKey().readXrayProfileId();
     final coreRunMode = await PreferencesKey().readCoreRunMode();
+    final coreRoutingMode = await PreferencesKey().readCoreRoutingMode();
     final runningId = await PreferencesKey().readRunningConfigId();
     emit(
       state.copyWith(
         xrayProfileId: xrayProfileId,
         coreRunMode: coreRunMode,
+        coreRoutingMode: coreRoutingMode,
         runningId: runningId,
       ),
     );
@@ -54,6 +58,10 @@ class AppEventBus extends Cubit<AppEventBusState> {
 
   void updateCoreRunMode(CoreRunMode value) {
     emit(state.copyWith(coreRunMode: value));
+  }
+
+  void updateCoreRoutingMode(CoreRoutingMode value) {
+    emit(state.copyWith(coreRoutingMode: value));
   }
 
   void updateVpnActionState(VpnActionState value) {
@@ -234,6 +242,14 @@ class AppEventBus extends Cubit<AppEventBusState> {
 
   void updateDownloading(bool value) {
     emit(state.copyWith(downloading: value));
+  }
+
+  void updateAppUpdateInfo(AppUpdateInfo? value) {
+    emit(
+      value == null
+          ? state.copyWith(clearAppUpdateInfo: true)
+          : state.copyWith(appUpdateInfo: value),
+    );
   }
 
   Future<void> updateThemeCode(ThemeCode value) async {

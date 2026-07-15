@@ -297,7 +297,8 @@ class ShareController extends Cubit<SharePageState> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Container(
+        title: Text(_name),
+        content: Container(
           constraints: const BoxConstraints(maxWidth: 300, maxHeight: 300),
           child: Image.memory(qrcode),
         ),

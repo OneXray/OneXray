@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -13,51 +15,73 @@ class SectionHeader extends StatelessWidget {
         vertical: 5,
         horizontal: 10,
       ),
-      child: Text(title, style: Theme.of(context).textTheme.bodySmall),
+      child: Text(title, style: AppTypography.supporting),
     );
   }
 }
 
 class SectionView extends StatelessWidget {
   final String title;
+  final String? description;
+  final Widget? action;
   final Widget child;
 
-  const SectionView({super.key, required this.title, required this.child});
+  const SectionView({
+    super.key,
+    required this.title,
+    this.description,
+    this.action,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsetsDirectional.all(16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 11, 16, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title.isNotEmpty)
             Padding(
-              padding: EdgeInsetsDirectional.only(bottom: 8),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: ColorManager.sectionTitle(context),
-                ),
+              padding: const EdgeInsetsDirectional.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: AppTypography.sectionTitle.copyWith(
+                            color: ColorManager.primaryText(context),
+                          ),
+                        ),
+                        if (description != null && description!.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            description!,
+                            style: AppTypography.supporting.copyWith(
+                              color: ColorManager.secondaryText(context),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (action != null) ...[const SizedBox(width: 12), action!],
+                ],
               ),
             ),
-          Material(
-            color: ColorManager.surface(context),
-            shape: _sectionShape(context),
+          ShadCard(
+            width: double.infinity,
+            padding: EdgeInsets.zero,
+            radius: const BorderRadius.all(Radius.circular(8)),
             clipBehavior: Clip.antiAlias,
             child: child,
           ),
         ],
       ),
-    );
-  }
-
-  ShapeBorder _sectionShape(BuildContext context) {
-    return RoundedRectangleBorder(
-      side: BorderSide(color: ColorManager.border(context), width: 1),
-      borderRadius: BorderRadiusDirectional.circular(8),
     );
   }
 }

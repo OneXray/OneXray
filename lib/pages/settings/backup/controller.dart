@@ -52,7 +52,7 @@ class BackupController extends Cubit<BackupPageState> {
     _readFiles();
   }
 
-  Future<void> _readFiles() async {
+  Future<void> _readFiles({bool selectNewest = false}) async {
     final backupDir = await BackupService().backupDir;
     final zipFiles = await Directory(backupDir).list().toList();
     final fileInfos = <FileInfo>[];
@@ -65,8 +65,17 @@ class BackupController extends Cubit<BackupPageState> {
         fileInfos.add(info);
       }
     }
-
-    emit(state.copyWith(files: fileInfos));
+    fileInfos.sort((a, b) {
+      final aTime = a.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = b.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+    final selection = selectNewest && fileInfos.isNotEmpty
+        ? fileInfos.first.name
+        : fileInfos.any((file) => file.name == state.selection)
+        ? state.selection
+        : "";
+    emit(state.copyWith(files: fileInfos, selection: selection));
   }
 
   void updateSelection(String? value) {
@@ -89,7 +98,7 @@ class BackupController extends Cubit<BackupPageState> {
         AppLocalizations.of(context)!.backupPageImport,
       );
     }
-    await _readFiles();
+    await _readFiles(selectNewest: success);
   }
 
   Future<void> moreAction(
@@ -176,7 +185,7 @@ class BackupController extends Cubit<BackupPageState> {
     emit(state.copyWith(backingUp: true));
     try {
       await BackupService().backup();
-      await _readFiles();
+      await _readFiles(selectNewest: true);
     } finally {
       if (!isClosed) {
         emit(state.copyWith(backingUp: false));

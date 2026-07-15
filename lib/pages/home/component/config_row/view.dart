@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/component/config_row/enum.dart';
@@ -41,7 +42,7 @@ class ConfigRowView extends StatelessWidget {
       trailing: moreMenus.isEmpty
           ? null
           : AppMenuButton<IconMenuId>(
-              icon: Icons.more_vert,
+              icon: LucideIcons.ellipsis,
               entries: iconMenuEntries(moreMenus),
               onSelected: (menuId) =>
                   controller.moreAction(context, data, menuId),
@@ -65,9 +66,9 @@ class ConfigRowView extends StatelessWidget {
       case ConfigRowStatus.unselected:
         return null;
       case ConfigRowStatus.selected:
-        return Icons.check;
+        return LucideIcons.check;
       case ConfigRowStatus.running:
-        return Icons.radio_button_checked;
+        return LucideIcons.radio;
     }
   }
 

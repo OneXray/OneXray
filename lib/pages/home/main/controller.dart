@@ -11,10 +11,10 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/main/actions.dart';
 import 'package:onexray/pages/home/main/state.dart';
 import 'package:onexray/pages/home/main/system_extension_coordinator.dart';
-import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/background_task/service.dart';
+import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/geo_data/system_dat_service.dart';
@@ -37,6 +37,7 @@ class HomeController extends Cubit<HomePageState> {
 
   late final StreamSubscription<void> _toastSubscription;
   StreamSubscription<int>? _xrayProfileSubscription;
+  StreamSubscription<int>? _runtimeConfigSubscription;
   Future<void>? _systemGeoDatFuture;
   late final _actions = HomeActions(context);
   late final _systemExtension = HomeSystemExtensionCoordinator(
@@ -46,6 +47,7 @@ class HomeController extends Cubit<HomePageState> {
 
   Future<void> _asyncInit() async {
     _initToastStream();
+    _listenRuntimeConfig();
     _systemExtension.start();
     unawaited(_listenXrayProfile());
     _systemGeoDatFuture = _checkSystemGeoDatAssets();
@@ -130,18 +132,27 @@ class HomeController extends Cubit<HomePageState> {
       }
       await service.recordAutomaticCheck();
       final result = await service.checkForUpdate();
-      if (isClosed ||
-          !context.mounted ||
-          result.status != AppUpdateCheckStatus.available ||
-          result.updateInfo == null) {
+      if (isClosed || !context.mounted) {
         return;
       }
-      final updateInfo = result.updateInfo!;
-      if (!await service.shouldShowAutomaticReminder(updateInfo)) {
-        return;
-      }
-      if (!isClosed && context.mounted) {
-        await context.pushAppUpdateDialog(updateInfo);
+      switch (result.status) {
+        case AppUpdateCheckStatus.available:
+          final updateInfo = result.updateInfo;
+          if (updateInfo == null) {
+            return;
+          }
+          final shouldShow = await service.shouldShowAutomaticReminder(
+            updateInfo,
+          );
+          if (!isClosed) {
+            AppEventBus.instance.updateAppUpdateInfo(
+              shouldShow ? updateInfo : null,
+            );
+          }
+        case AppUpdateCheckStatus.upToDate:
+          AppEventBus.instance.updateAppUpdateInfo(null);
+        case AppUpdateCheckStatus.failed:
+          return;
       }
     } catch (e, stackTrace) {
       ygReportError(e, stackTrace, reason: 'Automatic update check failed');
@@ -223,7 +234,7 @@ class HomeController extends Cubit<HomePageState> {
     return HomeConnectionViewStateBuilder.build(context, homeState, eventState);
   }
 
-  void gotoNodeInfo() => _actions.gotoNodeInfo();
+  void gotoNodeInfo() => _actions.gotoNodeInfo(state.configId);
 
   void gotoXrayProfile() => _actions.gotoXrayProfile();
 
@@ -235,6 +246,34 @@ class HomeController extends Cubit<HomePageState> {
     final configName = await _readConfigName(value);
     if (!isClosed && state.configId == value) {
       emit(state.copyWith(configName: configName));
+    }
+  }
+
+  void _listenRuntimeConfig() {
+    final eventBus = AppEventBus.instance;
+    unawaited(
+      _updateRuntimeConfigName(
+        HomeConnectionViewStateBuilder.runtimeConfigId(eventBus.state),
+      ),
+    );
+    _runtimeConfigSubscription = eventBus.stream
+        .map(HomeConnectionViewStateBuilder.runtimeConfigId)
+        .distinct()
+        .listen(_updateRuntimeConfigName);
+  }
+
+  Future<void> _updateRuntimeConfigName(int id) async {
+    if (isClosed) {
+      return;
+    }
+    emit(state.copyWith(runtimeConfigId: id, runtimeConfigName: ''));
+    if (id == DBConstants.defaultId) {
+      return;
+    }
+
+    final configName = await _readConfigName(id);
+    if (!isClosed && state.runtimeConfigId == id) {
+      emit(state.copyWith(runtimeConfigName: configName));
     }
   }
 
@@ -259,7 +298,9 @@ class HomeController extends Cubit<HomePageState> {
     if (state.vpnCommandLoading || AppEventBus.instance.state.vpnLoading) {
       return;
     }
-    if (state.configId == DBConstants.defaultId) {
+    final routingMode = AppEventBus.instance.state.coreRoutingMode;
+    if (routingMode != CoreRoutingMode.direct &&
+        state.configId == DBConstants.defaultId) {
       ContextAlert.showToast(
         context,
         AppLocalizations.of(context)!.vpnSelectOneConfig,
@@ -275,6 +316,28 @@ class HomeController extends Cubit<HomePageState> {
     } finally {
       if (!isClosed) {
         emit(state.copyWith(vpnCommandLoading: false));
+      }
+    }
+  }
+
+  Future<void> switchRoutingMode(CoreRoutingMode mode) async {
+    final eventState = AppEventBus.instance.state;
+    if (state.vpnCommandLoading || eventState.vpnLoading) {
+      return;
+    }
+    emit(state.copyWith(vpnCommandLoading: true, pendingRoutingMode: mode));
+    try {
+      await _ensureSystemGeoDatAssets();
+      final result = await VpnService().switchRoutingMode(mode);
+      await _handleVpnCommandResult(result);
+    } finally {
+      if (!isClosed) {
+        emit(
+          state.copyWith(
+            vpnCommandLoading: false,
+            clearPendingRoutingMode: true,
+          ),
+        );
       }
     }
   }
@@ -312,6 +375,7 @@ class HomeController extends Cubit<HomePageState> {
   Future<void> close() async {
     await _toastSubscription.cancel();
     await _xrayProfileSubscription?.cancel();
+    await _runtimeConfigSubscription?.cancel();
     await _systemExtension.close();
     return super.close();
   }

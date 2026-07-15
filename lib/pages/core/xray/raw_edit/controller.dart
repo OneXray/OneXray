@@ -7,19 +7,48 @@ import 'package:onexray/pages/core/xray/raw_edit/params.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/xray/json_importer.dart';
+import 'package:re_editor/re_editor.dart';
 
-class XrayRawEditController extends Cubit<int> {
+class XrayRawEditPageState {
+  final bool validJson;
+  final int lineCount;
+
+  const XrayRawEditPageState({this.validJson = false, this.lineCount = 1});
+}
+
+class XrayRawEditController extends Cubit<XrayRawEditPageState> {
   final XrayRawEditParams params;
-  XrayRawEditController(this.params) : super(0) {
+  XrayRawEditController(this.params) : super(const XrayRawEditPageState()) {
+    controller.addListener(_updateEditorState);
     _initParams();
   }
 
-  final controller = TextEditingController();
+  final controller = CodeLineEditingController();
 
   @override
   Future<void> close() {
+    controller.removeListener(_updateEditorState);
     controller.dispose();
     return super.close();
+  }
+
+  void _updateEditorState() {
+    final text = controller.text;
+    var validJson = false;
+    try {
+      JsonTool.decoder.convert(text);
+      validJson = true;
+    } catch (_) {
+      validJson = false;
+    }
+    if (!isClosed) {
+      emit(
+        XrayRawEditPageState(
+          validJson: validJson,
+          lineCount: controller.lineCount,
+        ),
+      );
+    }
   }
 
   void _initParams() {
@@ -67,7 +96,11 @@ class XrayRawEditController extends Cubit<int> {
 
   void _updateEditorText(String text) {
     controller.text = text;
-    controller.selection = TextSelection.collapsed(offset: text.length);
+    final lastLineIndex = controller.lineCount - 1;
+    controller.selection = CodeLineSelection.collapsed(
+      index: lastLineIndex,
+      offset: controller.codeLines[lastLineIndex].length,
+    );
   }
 
   void _showJsonInvalid(BuildContext context) {

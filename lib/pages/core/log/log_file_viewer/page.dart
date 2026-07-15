@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/controller.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class LogFileViewerPage extends StatelessWidget {
   final LogFileViewerParams params;
@@ -52,25 +54,33 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
           body: SafeArea(
             child: Stack(
               children: [
-                NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    _handleScrollNotification(controller, notification);
-                    return false;
-                  },
-                  child: _body(context, state),
+                ResponsiveContent(
+                  desktopMaxWidth: 1080,
+                  child: SelectionArea(
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        _handleScrollNotification(controller, notification);
+                        return false;
+                      },
+                      child: _body(context, state),
+                    ),
+                  ),
                 ),
                 if (!state.followTail)
                   PositionedDirectional(
-                    end: 16,
-                    bottom: 16,
-                    child: FloatingActionButton.extended(
-                      heroTag: null,
+                    end: 18,
+                    bottom: 18,
+                    child: ShadButton(
+                      height: 36,
                       onPressed: () {
                         controller.setFollowTail(true);
                         _scrollToBottom();
                       },
-                      icon: const Icon(Icons.south),
-                      label: Text(
+                      leading: const Icon(
+                        LucideIcons.arrowDownToLine,
+                        size: 16,
+                      ),
+                      child: Text(
                         AppLocalizations.of(
                           context,
                         )!.logFileViewerContinueFollowing,
@@ -88,15 +98,32 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
   Widget _body(BuildContext context, LogFileViewerPageState state) {
     if (!state.fileExists) {
       return Center(
-        child: Text(
-          AppLocalizations.of(context)!.logFileViewerFileNotExist,
-          textAlign: TextAlign.center,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                LucideIcons.fileX,
+                size: 36,
+                color: ColorManager.secondaryText(context),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                AppLocalizations.of(context)!.logFileViewerFileNotExist,
+                textAlign: TextAlign.center,
+                style: AppTypography.supporting.copyWith(
+                  color: ColorManager.secondaryText(context),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 20),
+      padding: const EdgeInsetsDirectional.fromSTEB(22, 18, 22, 30),
       itemCount: state.lines.length + (state.truncated ? 1 : 0),
       itemBuilder: (context, index) {
         if (state.truncated && index == 0) {
@@ -105,10 +132,7 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
         final lineIndex = state.truncated ? index - 1 : index;
         return Text(
           state.lines[lineIndex],
-          style: TextStyle(
-            fontFamily: "monospace",
-            fontSize: GlobalConstants.bodyFontSize,
-            height: 1.35,
+          style: AppTypography.code.copyWith(
             color: ColorManager.primaryText(context),
           ),
         );
@@ -118,11 +142,10 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
 
   Widget _recentLogHint(BuildContext context) {
     return Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: 8),
+      padding: const EdgeInsetsDirectional.only(bottom: 9),
       child: Text(
         AppLocalizations.of(context)!.logFileViewerShowingRecent,
-        style: TextStyle(
-          fontSize: 12,
+        style: AppTypography.badge.copyWith(
           color: ColorManager.secondaryText(context),
         ),
       ),

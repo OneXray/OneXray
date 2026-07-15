@@ -26,14 +26,9 @@ flutter pub get
 
 ```shell
 cp .env.example .env
-cp firebase.json.example firebase.json
-cp lib/firebase_options.dart.example lib/firebase_options.dart
-cp android/app/google-services.json.example android/app/google-services.json
-cp swift/AppStore/GoogleService-Info.plist.example swift/AppStore/GoogleService-Info.plist
-cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-Info.plist
 ```
 
-Файлов `.example` достаточно для локальной разработки. Позже замените их своими конфигурациями, если нужно тестировать настоящий Firebase.
+Значений по умолчанию из `.env.example` достаточно для локальной разработки.
 
 ## 2. Подготовка артефактов libXray и Xray-core
 
@@ -147,8 +142,6 @@ flutter run -d ios
 | `ios/fastlane/AuthKey.p8` | Не используется | Только для iOS release. |
 | `macos/fastlane/AuthKey.p8` | Не используется | Только для Mac App Store release. |
 | `macos_se/fastlane/AuthKey.p8` | Не используется | Только для macOS SE release / notarization. |
-| `swift/AppStore/GoogleService-Info.plist` | Предоставить при необходимости | Используется при debug iOS / macOS с включенным Firebase. |
-| `swift/macOSSE/GoogleService-Info.plist` | Предоставить при необходимости | Используется при debug macOS SE с включенным Firebase. |
 
 ## 6. Файлы, часто используемые в debug
 
@@ -163,18 +156,14 @@ flutter run -d ios
 | `linux/app/OneXrayCore` | Core binary для Linux desktop app. |
 | `windows/app/libXray.dll` | Dynamic library, загружаемая Windows desktop app. |
 | `windows/app/OneXrayCore.exe` | Core binary для Windows desktop app. |
-| `lib/firebase_options.dart` | Flutter-side Firebase initialization config. |
-| `android/app/google-services.json` | Android Firebase config. |
-| `swift/AppStore/GoogleService-Info.plist` | Firebase plist для iOS / macOS App Store targets. |
-| `swift/macOSSE/GoogleService-Info.plist` | Firebase plist для macOS SE target. |
 
-Репозиторий уже содержит соответствующие `.example` файлы. Для первой настройки debug достаточно их скопировать.
+Репозиторий содержит остальные несекретные настройки по умолчанию для локальной отладки.
 
 ## 7. Минимальная настройка
 
 Для локальной разработки и breakpoint debugging минимальные шаги такие:
 
-1. Скопировать `.example` конфигурационные файлы.
+1. Скопировать `.env.example` в `.env`.
 2. Собрать `libXray` и скопировать его артефакты в соответствующие каталоги OneXray.
 3. Установить последний stable Flutter SDK и выполнить `flutter pub get`.
 4. Установить platform-specific dependencies, например `pod install` на Apple platforms и `libayatana-appindicator3-dev` на Linux.

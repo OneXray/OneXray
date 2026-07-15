@@ -21,9 +21,6 @@ jobs:
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
 
-      - name: Prepare non-secret Firebase options
-        run: cp tool/firebase_options_stub.dart lib/firebase_options.dart
-
       - name: Install dependencies
         run: flutter pub get
 

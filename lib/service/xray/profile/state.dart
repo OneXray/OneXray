@@ -17,6 +17,7 @@ abstract final class RoutingRuleTag {
   static const adBlock = "adBlock";
   static const domainDirect = "domainDirect";
   static const ipDirect = "IPDirect";
+  static const routingMode = "routingMode";
 }
 
 abstract final class DNSServerTag {

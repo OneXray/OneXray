@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/component/config_row/controller.dart';
 import 'package:onexray/pages/home/component/config_row/enum.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/db/config_reader.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SelectableConfigGridCard extends StatelessWidget {
   const SelectableConfigGridCard({
@@ -36,15 +39,14 @@ class SelectableConfigGridCard extends StatelessWidget {
     return ConfigGridCard(
       data: data,
       status: status,
-      moreMenus: _moreMenus(),
+      moreMenus: const [
+        IconMenuId.edit,
+        IconMenuId.share,
+        IconMenuId.copy,
+        IconMenuId.delete,
+      ],
       tapCallback: () => onSelect(data),
     );
-  }
-
-  List<IconMenuId> _moreMenus() {
-    final menus = <IconMenuId>[IconMenuId.edit, IconMenuId.share];
-    menus.addAll([IconMenuId.copy, IconMenuId.delete]);
-    return menus;
   }
 }
 
@@ -58,6 +60,7 @@ class ConfigGridCard extends StatelessWidget {
   });
 
   static final _controller = ConfigRowController();
+  static double get mainAxisExtent => AppPlatform.isMobile ? 96 : 108;
 
   final CoreConfigData data;
   final ConfigRowStatus status;
@@ -66,247 +69,179 @@ class ConfigGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadiusDirectional.circular(8);
-    return Material(
-      color: _background(context),
-      borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: tapCallback,
-        hoverColor: _hoverColor(context),
-        focusColor: _hoverColor(context),
-        mouseCursor: tapCallback == null
-            ? MouseCursor.defer
-            : SystemMouseCursors.click,
-        child: Stack(
-          children: [
-            if (status != ConfigRowStatus.unselected)
-              PositionedDirectional(
-                start: 0,
-                top: 0,
-                bottom: 0,
-                child: ColoredBox(
-                  color: _accentColor(context),
-                  child: const SizedBox(width: 4),
-                ),
-              ),
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: borderRadius,
-                  border: Border.all(color: ColorManager.border(context)),
-                ),
-                padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 10),
-                child: _content(context),
-              ),
-            ),
-          ],
+    final radius = BorderRadius.circular(8);
+    return ShadCard(
+      width: double.infinity,
+      height: double.infinity,
+      padding: EdgeInsets.zero,
+      radius: radius,
+      backgroundColor: _background(context),
+      border: ShadBorder.all(
+        color: status == ConfigRowStatus.unselected
+            ? ColorManager.border(context)
+            : _borderAccentColor(context),
+        width: status == ConfigRowStatus.unselected ? 1 : 1.5,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: tapCallback,
+          hoverColor: Theme.of(
+            context,
+          ).colorScheme.primary.withValues(alpha: 0.06),
+          mouseCursor: tapCallback == null
+              ? MouseCursor.defer
+              : SystemMouseCursors.click,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(12, 9, 8, 10),
+            child: _content(context),
+          ),
         ),
       ),
     );
   }
 
   Widget _content(BuildContext context) {
+    final detail = data.readConnectionDetail(context);
+    final delay = data.readDelayLabel(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Text(
-                data.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.2,
-                  fontWeight: status == ConfigRowStatus.unselected
-                      ? FontWeight.w600
-                      : FontWeight.w800,
-                  color: ColorManager.primaryText(context),
-                ),
+              child: Row(
+                children: [
+                  ShadBadge.outline(
+                    padding: const EdgeInsetsDirectional.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      data.readProtocolLabel(),
+                      style: AppTypography.badge,
+                    ),
+                  ),
+                  if (_statusLabel(context) case final label?) ...[
+                    const SizedBox(width: 6),
+                    Flexible(child: _statusBadge(context, label)),
+                  ],
+                ],
               ),
             ),
             if (moreMenus.isNotEmpty)
-              SizedBox.square(
-                dimension: 36,
-                child: IconTheme.merge(
-                  data: IconThemeData(
-                    size: 20,
-                    color: ColorManager.secondaryText(context),
-                  ),
-                  child: AppMenuButton<IconMenuId>(
-                    icon: Icons.more_vert,
-                    entries: iconMenuEntries(moreMenus),
-                    onSelected: (menuId) =>
-                        _controller.moreAction(context, data, menuId),
-                  ),
+              AppMenuButton<IconMenuId>(
+                triggerBuilder: (toggleMenu) => ShadIconButton.ghost(
+                  icon: const Icon(LucideIcons.ellipsis),
+                  width: 30,
+                  height: 30,
+                  iconSize: 17,
+                  onPressed: toggleMenu,
                 ),
+                entries: iconMenuEntries(moreMenus),
+                onSelected: (menuId) =>
+                    _controller.moreAction(context, data, menuId),
               ),
           ],
         ),
-        const Spacer(),
-        if (_statusLabel(context) != null) ...[
-          _statusBadge(context),
-          const SizedBox(height: 6),
-        ],
-        _tagArea(context),
+        const SizedBox(height: 1),
+        Text(
+          data.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.sectionTitle.copyWith(
+            color: ColorManager.primaryText(context),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                detail.isEmpty ? ' ' : detail,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.supporting.copyWith(
+                  color: ColorManager.secondaryText(context),
+                ),
+              ),
+            ),
+            if (delay.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Text(
+                delay,
+                style: AppTypography.numeric.copyWith(
+                  color: _delayColor(context),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
     );
   }
 
-  Widget _tagArea(BuildContext context) {
-    final labels = _tagLabels(context);
-    return SizedBox(
-      height: 42,
-      child: Column(
-        children: [
-          _tagRow(context, labels[0]),
-          const SizedBox(height: 4),
-          _tagRow(context, labels[1]),
-        ],
-      ),
-    );
-  }
-
-  Widget _tagRow(BuildContext context, String label) {
-    return SizedBox(
-      height: 19,
-      child: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: _tagSlot(context, label),
-      ),
-    );
-  }
-
-  Widget _tagSlot(BuildContext context, String tag) {
-    if (tag.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return _compactTag(context, tag);
-  }
-
-  List<String> _tagLabels(BuildContext context) {
-    final tags = data.readTags(context).take(2).toList();
-    while (tags.length < 2) {
-      tags.add("");
-    }
-    return tags;
-  }
-
-  Widget _compactTag(BuildContext context, String tag) {
+  Widget _statusBadge(BuildContext context, String label) {
     return Container(
-      decoration: ShapeDecoration(
-        color: ColorManager.tagBackground(context),
-        shape: StadiumBorder(
-          side: BorderSide(color: ColorManager.border(context), width: 1),
-        ),
-      ),
       padding: const EdgeInsetsDirectional.symmetric(
-        vertical: 2,
-        horizontal: 6,
+        horizontal: 7,
+        vertical: 3,
+      ),
+      decoration: BoxDecoration(
+        color: _accentColor(context).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
-        tag,
+        label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 10,
-          color: ColorManager.secondaryText(context),
-        ),
-      ),
-    );
-  }
-
-  Widget _statusBadge(BuildContext context) {
-    return Container(
-      padding: const EdgeInsetsDirectional.symmetric(
-        horizontal: 6,
-        vertical: 2,
-      ),
-      decoration: ShapeDecoration(
-        color: _accentColor(context),
-        shape: const StadiumBorder(),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_statusIcon, size: 12, color: _onAccentColor(context)),
-          const SizedBox(width: 3),
-          Text(
-            _statusLabel(context)!,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: _onAccentColor(context),
-            ),
-          ),
-        ],
+        style: AppTypography.badge.copyWith(color: _accentColor(context)),
       ),
     );
   }
 
   String? _statusLabel(BuildContext context) {
-    switch (status) {
-      case ConfigRowStatus.unselected:
-        return null;
-      case ConfigRowStatus.selected:
-        return AppLocalizations.of(context)!.listStatusSelected;
-      case ConfigRowStatus.running:
-        return AppLocalizations.of(context)!.listStatusRunning;
-    }
-  }
-
-  IconData get _statusIcon {
-    switch (status) {
-      case ConfigRowStatus.unselected:
-        return Icons.circle_outlined;
-      case ConfigRowStatus.selected:
-        return Icons.check;
-      case ConfigRowStatus.running:
-        return Icons.radio_button_checked;
-    }
+    return switch (status) {
+      ConfigRowStatus.unselected => null,
+      ConfigRowStatus.selected => AppLocalizations.of(
+        context,
+      )!.listStatusSelected,
+      ConfigRowStatus.running => AppLocalizations.of(
+        context,
+      )!.listStatusRunning,
+    };
   }
 
   Color _background(BuildContext context) {
-    switch (status) {
-      case ConfigRowStatus.unselected:
-        return ColorManager.surface(context);
-      case ConfigRowStatus.selected:
-        return ColorManager.selected(context);
-      case ConfigRowStatus.running:
-        return ColorManager.running(context);
-    }
+    return switch (status) {
+      ConfigRowStatus.unselected => ColorManager.surface(context),
+      ConfigRowStatus.selected => ColorManager.selected(context),
+      ConfigRowStatus.running => ColorManager.running(context),
+    };
   }
 
   Color _accentColor(BuildContext context) {
-    switch (status) {
-      case ConfigRowStatus.unselected:
-      case ConfigRowStatus.selected:
-        return Theme.of(context).colorScheme.primary;
-      case ConfigRowStatus.running:
-        return Theme.of(context).brightness == Brightness.light
-            ? const Color(0xFF15803D)
-            : const Color(0xFF86EFAC);
-    }
+    return switch (status) {
+      ConfigRowStatus.unselected ||
+      ConfigRowStatus.selected => Theme.of(context).colorScheme.primary,
+      ConfigRowStatus.running => ColorManager.palette(context).runningBadge,
+    };
   }
 
-  Color _onAccentColor(BuildContext context) {
-    switch (status) {
-      case ConfigRowStatus.unselected:
-      case ConfigRowStatus.selected:
-        return Theme.of(context).colorScheme.onPrimary;
-      case ConfigRowStatus.running:
-        return Theme.of(context).brightness == Brightness.light
-            ? Colors.white
-            : const Color(0xFF052E16);
-    }
+  Color _borderAccentColor(BuildContext context) {
+    return switch (status) {
+      ConfigRowStatus.unselected ||
+      ConfigRowStatus.selected => Theme.of(context).colorScheme.primary,
+      ConfigRowStatus.running => ColorManager.palette(context).running,
+    };
   }
 
-  Color _hoverColor(BuildContext context) {
-    return Theme.of(context).colorScheme.primary.withValues(alpha: 0.08);
+  Color _delayColor(BuildContext context) {
+    if (data.delay > 0 && data.delay < 1000) {
+      return ColorManager.palette(context).runningText;
+    }
+    return ColorManager.secondaryText(context);
   }
 }

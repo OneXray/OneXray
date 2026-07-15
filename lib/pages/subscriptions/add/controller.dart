@@ -5,11 +5,23 @@ import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/service/auto_update/state.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
 
-class SubscriptionAddController extends Cubit<int> {
-  SubscriptionAddController() : super(0);
+class SubscriptionAddPageState {
+  const SubscriptionAddPageState({required this.autoUpdateState});
+
+  factory SubscriptionAddPageState.initial() =>
+      SubscriptionAddPageState(autoUpdateState: AutoUpdateState());
+
+  final AutoUpdateState autoUpdateState;
+}
+
+class SubscriptionAddController extends Cubit<SubscriptionAddPageState> {
+  SubscriptionAddController() : super(SubscriptionAddPageState.initial()) {
+    _readAutoUpdateState();
+  }
 
   final nameController = TextEditingController();
   final urlController = TextEditingController();
@@ -48,7 +60,16 @@ class SubscriptionAddController extends Cubit<int> {
     }
   }
 
-  void gotoAutoUpdate(BuildContext context) {
-    context.pushScoped(AppSecondaryDestination.autoUpdate);
+  Future<void> gotoAutoUpdate(BuildContext context) async {
+    await context.pushScoped(AppSecondaryDestination.autoUpdate);
+    await _readAutoUpdateState();
+  }
+
+  Future<void> _readAutoUpdateState() async {
+    final autoUpdateState = AutoUpdateState();
+    await autoUpdateState.readFromPreferences();
+    if (!isClosed) {
+      emit(SubscriptionAddPageState(autoUpdateState: autoUpdateState));
+    }
   }
 }

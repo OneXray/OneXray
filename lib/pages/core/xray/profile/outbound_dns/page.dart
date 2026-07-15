@@ -2,15 +2,13 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_dns/controller.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_dns/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class OutboundDnsPage extends StatelessWidget {
   final OutboundDnsParams params;
@@ -24,42 +22,25 @@ class OutboundDnsPage extends StatelessWidget {
       child: BlocBuilder<OutboundDnsController, OutboundDnsPageState>(
         builder: (context, state) {
           final controller = context.read<OutboundDnsController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.outboundDnsPageTitle),
-            ),
-            body: SafeArea(child: _body(context, controller, state)),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    OutboundDnsController controller,
-    OutboundDnsPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: ResponsiveContent(
-                child: Column(
-                  children: [
-                    _protocolSection(context, controller, state),
-                    _settingSection(context, controller, state),
-                    _rulesSection(context, controller, state),
-                    _sockoptSection(context, controller, state),
-                  ],
-                ),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.outboundDnsPageTitle,
+            onSave: () => controller.save(context),
+            body: SettingsPageScroll(
+              desktopMaxWidth: 980,
+              child: SettingsResponsiveColumns(
+                firstFlex: 4,
+                secondFlex: 6,
+                first: [
+                  _protocolSection(context, controller, state),
+                  _settingSection(context, controller, state),
+                  _sockoptSection(context, controller, state),
+                ],
+                second: [_rulesSection(context, controller, state)],
               ),
             ),
-          ),
-          _bottomButton(context, controller),
-        ],
+          );
+        },
       ),
     );
   }
@@ -70,13 +51,15 @@ class OutboundDnsPage extends StatelessWidget {
     OutboundDnsPageState state,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.outboundDnsPageTitle,
       children: [
         SettingRow(
+          leading: const Icon(LucideIcons.waypoints),
           title: AppLocalizations.of(context)!.outboundDnsPageProtocol,
           value: state.dnsState.protocol.name,
         ),
         SettingRow(
+          leading: const Icon(LucideIcons.tag),
           title: AppLocalizations.of(context)!.outboundDnsPageTag,
           value: state.dnsState.tag.name,
         ),
@@ -138,25 +121,21 @@ class OutboundDnsPage extends StatelessWidget {
           (index, rule) => _ruleCell(context, controller, state, index),
         )
         .toList();
+    final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: AppLocalizations.of(context)!.outboundDnsPageRules,
+      title: localizations.outboundDnsPageRules,
+      action: IconButton(
+        tooltip: localizations.buttonAdd,
+        onPressed: controller.appendRule,
+        icon: const Icon(LucideIcons.plus),
+      ),
       separated: false,
       children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.outboundDnsPageRules,
-          trailing: IconButton(
-            onPressed: () => controller.appendRule(),
-            icon: const Icon(Icons.add),
-          ),
-        ),
         if (views.isNotEmpty)
           ReorderableListView(
             buildDefaultDragHandles: false,
             shrinkWrap: true,
-            onReorderItem: (oldIndex, newIndex) => controller.sortRule(
-              oldIndex,
-              _legacyReorderNewIndex(oldIndex, newIndex),
-            ),
+            onReorderItem: controller.sortRule,
             children: views,
           ),
       ],
@@ -183,8 +162,9 @@ class OutboundDnsPage extends StatelessWidget {
             trailing: ActionCluster(
               children: [
                 IconButton(
+                  tooltip: AppLocalizations.of(context)!.menuDelete,
                   onPressed: () => controller.deleteRule(ruleIndex),
-                  icon: const Icon(Icons.delete),
+                  icon: const Icon(LucideIcons.trash2),
                 ),
                 ReorderDragHandle(
                   index: ruleIndex,
@@ -228,21 +208,6 @@ class OutboundDnsPage extends StatelessWidget {
     );
   }
 
-  Widget _bottomButton(BuildContext context, OutboundDnsController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _sockoptSection(
     BuildContext context,
     OutboundDnsController controller,
@@ -259,12 +224,5 @@ class OutboundDnsPage extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  int _legacyReorderNewIndex(int oldIndex, int newIndex) {
-    if (newIndex > oldIndex) {
-      return newIndex + 1;
-    }
-    return newIndex;
   }
 }

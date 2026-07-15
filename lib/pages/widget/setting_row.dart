@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/section.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SettingSection extends StatelessWidget {
   final String title;
+  final String? description;
+  final Widget? action;
   final List<Widget> children;
   final bool separated;
 
   const SettingSection({
     super.key,
     required this.title,
+    this.description,
+    this.action,
     required this.children,
     this.separated = true,
   });
@@ -19,6 +25,8 @@ class SettingSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionView(
       title: title,
+      description: description,
+      action: action,
       child: Column(
         children: _buildSettingChildren(context, children, separated),
       ),
@@ -48,9 +56,7 @@ class SettingSubsection extends StatelessWidget {
             padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 4),
             child: Text(
               title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+              style: AppTypography.sectionTitle.copyWith(
                 color: ColorManager.sectionTitle(context),
               ),
             ),
@@ -112,31 +118,43 @@ class SettingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 48),
+      constraints: const BoxConstraints(minHeight: 62),
       child: Padding(
         padding: const EdgeInsetsDirectional.symmetric(
-          horizontal: 16,
-          vertical: 8,
+          horizontal: 13,
+          vertical: 10,
         ),
         child: Row(
           children: [
             if (leading != null) ...[
-              IconTheme.merge(data: _iconTheme(context), child: leading!),
-              const SizedBox(width: 12),
+              Container(
+                width: 31,
+                height: 31,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: ColorManager.tagBackground(context),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: IconTheme.merge(
+                  data: _iconTheme(context),
+                  child: leading!,
+                ),
+              ),
+              const SizedBox(width: 11),
             ],
             Expanded(flex: value == null ? 1 : 5, child: _title(context)),
             if (value != null) ...[
-              const SizedBox(width: 12),
+              const SizedBox(width: 11),
               Expanded(flex: 4, child: _value(context)),
             ],
             if (trailing != null) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 7),
               IconTheme.merge(data: _iconTheme(context), child: trailing!),
             ] else if (showChevron) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 7),
               IconTheme.merge(
                 data: _iconTheme(context),
-                child: const Icon(Icons.chevron_right),
+                child: const Icon(LucideIcons.chevronRight),
               ),
             ],
           ],
@@ -156,12 +174,10 @@ class SettingRow extends StatelessWidget {
     final color = enabled
         ? ColorManager.primaryText(context)
         : Theme.of(context).disabledColor;
-    final titleStyle = Theme.of(
-      context,
-    ).textTheme.bodyMedium?.copyWith(fontSize: 14, color: color);
-    final subtitleStyle = Theme.of(
-      context,
-    ).textTheme.bodySmall?.copyWith(color: ColorManager.secondaryText(context));
+    final titleStyle = AppTypography.rowTitle.copyWith(color: color);
+    final subtitleStyle = AppTypography.supporting.copyWith(
+      color: ColorManager.secondaryText(context),
+    );
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,7 +189,7 @@ class SettingRow extends StatelessWidget {
           style: titleStyle,
         ),
         if (subtitle != null) ...[
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             subtitle!,
             maxLines: 2,
@@ -194,8 +210,7 @@ class SettingRow extends StatelessWidget {
       maxLines: valueMaxLines,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.end,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        fontSize: 14,
+      style: AppTypography.code.copyWith(
         color: ColorManager.secondaryText(context),
       ),
     );
@@ -227,7 +242,7 @@ class ReorderDragHandle extends StatelessWidget {
           child: SizedBox(
             width: 40,
             height: 48,
-            child: Icon(Icons.drag_handle, size: 20),
+            child: Icon(LucideIcons.gripHorizontal, size: 20),
           ),
         ),
       ),
@@ -238,6 +253,7 @@ class ReorderDragHandle extends StatelessWidget {
 class SwitchSettingRow extends StatelessWidget {
   final String title;
   final String? subtitle;
+  final Widget? leading;
   final bool value;
   final ValueChanged<bool>? onChanged;
 
@@ -245,6 +261,7 @@ class SwitchSettingRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.leading,
     required this.value,
     required this.onChanged,
   });
@@ -254,9 +271,14 @@ class SwitchSettingRow extends StatelessWidget {
     return SettingRow(
       title: title,
       subtitle: subtitle,
+      leading: leading,
       enabled: onChanged != null,
       onTap: onChanged == null ? null : () => onChanged!(!value),
-      trailing: Switch(value: value, onChanged: onChanged),
+      trailing: ShadSwitch(
+        value: value,
+        enabled: onChanged != null,
+        onChanged: onChanged,
+      ),
     );
   }
 }
@@ -289,6 +311,8 @@ class CheckboxSettingRow extends StatelessWidget {
 
 class SelectSettingRow<T extends Object> extends StatelessWidget {
   final String title;
+  final String? subtitle;
+  final Widget? leading;
   final String value;
   final List<T> selections;
   final ValueChanged<T> onSelected;
@@ -298,6 +322,8 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
   const SelectSettingRow({
     super.key,
     required this.title,
+    this.subtitle,
+    this.leading,
     required this.value,
     required this.selections,
     required this.onSelected,
@@ -309,6 +335,8 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
   Widget build(BuildContext context) {
     return SettingRow(
       title: title,
+      subtitle: subtitle,
+      leading: leading,
       trailing: AppMenuButton<T>(
         entries: selections
             .map(
@@ -319,17 +347,35 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
             )
             .toList(),
         onSelected: onSelected,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.symmetric(
-            horizontal: 8,
-            vertical: 8,
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 92, maxWidth: 220),
+          padding: const EdgeInsetsDirectional.fromSTEB(10, 7, 8, 7),
+          decoration: BoxDecoration(
+            border: Border.all(color: ColorManager.border(context)),
+            borderRadius: BorderRadius.circular(6),
+            color: ColorManager.surface(context),
           ),
-          child: Text(
-            displayValue ?? (value.isEmpty ? "-" : value),
-            style: TextStyle(
-              color: ColorManager.interactiveText(context),
-              fontWeight: FontWeight.bold,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  displayValue ?? (value.isEmpty ? "-" : value),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.supporting.copyWith(
+                    color: ColorManager.primaryText(context),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Icon(
+                LucideIcons.chevronsUpDown,
+                size: 14,
+                color: ColorManager.secondaryText(context),
+              ),
+            ],
           ),
         ),
       ),
@@ -339,6 +385,8 @@ class SelectSettingRow<T extends Object> extends StatelessWidget {
 
 class SliderSettingRow extends StatelessWidget {
   final String title;
+  final String? subtitle;
+  final Widget? leading;
   final double value;
   final double min;
   final double max;
@@ -349,6 +397,8 @@ class SliderSettingRow extends StatelessWidget {
   const SliderSettingRow({
     super.key,
     required this.title,
+    this.subtitle,
+    this.leading,
     required this.value,
     required this.min,
     required this.max,
@@ -359,26 +409,62 @@ class SliderSettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 56),
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: 16),
-        child: Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 520;
+        final header = Row(
           children: [
-            Expanded(
-              flex: 2,
-              child: Text(
-                title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: 14,
-                  color: ColorManager.primaryText(context),
+            if (leading != null) ...[
+              Container(
+                width: 31,
+                height: 31,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: ColorManager.tagBackground(context),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: IconTheme.merge(
+                  data: IconThemeData(
+                    size: 16,
+                    color: ColorManager.secondaryText(context),
+                  ),
+                  child: leading!,
                 ),
               ),
-            ),
+              const SizedBox(width: 11),
+            ],
             Expanded(
-              flex: 5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.rowTitle.copyWith(
+                      color: ColorManager.primaryText(context),
+                    ),
+                  ),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.supporting.copyWith(
+                        color: ColorManager.secondaryText(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+        final control = Row(
+          children: [
+            Expanded(
               child: Slider(
                 min: min,
                 max: max,
@@ -388,9 +474,55 @@ class SliderSettingRow extends StatelessWidget {
                 onChanged: onChanged,
               ),
             ),
+            Container(
+              constraints: const BoxConstraints(minWidth: 40),
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: 7,
+                vertical: 6,
+              ),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: ColorManager.tagBackground(context),
+                border: Border.all(color: ColorManager.border(context)),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                label ?? value.round().toString(),
+                style: AppTypography.code.copyWith(
+                  color: ColorManager.primaryText(context),
+                ),
+              ),
+            ),
           ],
-        ),
-      ),
+        );
+        return ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 62),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(13, 10, 13, 10),
+            child: compact
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      header,
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(
+                          start: leading == null ? 0 : 42,
+                        ),
+                        child: control,
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(flex: 4, child: header),
+                      const SizedBox(width: 18),
+                      Expanded(flex: 6, child: control),
+                    ],
+                  ),
+          ),
+        );
+      },
     );
   }
 }
@@ -398,8 +530,10 @@ class SliderSettingRow extends StatelessWidget {
 class TextFieldSettingRow extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final bool showLabel;
   final String? hintText;
   final String? helperText;
+  final Widget? leading;
   final TextInputType? keyboardType;
   final int? maxLines;
   final bool enabled;
@@ -408,8 +542,10 @@ class TextFieldSettingRow extends StatelessWidget {
     super.key,
     required this.controller,
     required this.label,
+    this.showLabel = true,
     this.hintText,
     this.helperText,
+    this.leading,
     this.keyboardType,
     this.maxLines = 1,
     this.enabled = true,
@@ -417,26 +553,19 @@ class TextFieldSettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(
-        horizontal: 16,
-        vertical: 6,
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        enabled: enabled,
-        decoration: InputDecoration(
-          label: Text(label),
-          hintText: hintText,
-          helperText: helperText,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          focusedErrorBorder: InputBorder.none,
+    return _FormSettingRow(
+      label: label,
+      showLabel: showLabel,
+      helperText: helperText,
+      leading: leading,
+      child: Semantics(
+        label: label,
+        child: ShadInput(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines ?? 1,
+          enabled: enabled,
+          placeholder: hintText == null ? null : Text(hintText!),
         ),
       ),
     );
@@ -446,6 +575,7 @@ class TextFieldSettingRow extends StatelessWidget {
 class TextFieldActionSettingRow extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final bool showLabel;
   final String? hintText;
   final TextInputType? keyboardType;
   final int? maxLines;
@@ -456,6 +586,7 @@ class TextFieldActionSettingRow extends StatelessWidget {
     super.key,
     required this.controller,
     required this.label,
+    this.showLabel = true,
     this.hintText,
     this.keyboardType,
     this.maxLines = 1,
@@ -465,36 +596,115 @@ class TextFieldActionSettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(
-        start: 16,
-        end: 8,
-        top: 6,
-        bottom: 6,
-      ),
+    return _FormSettingRow(
+      label: label,
+      showLabel: showLabel,
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              maxLines: maxLines,
-              enabled: enabled,
-              decoration: InputDecoration(
-                label: Text(label),
-                hintText: hintText,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
+            child: Semantics(
+              label: label,
+              child: ShadInput(
+                controller: controller,
+                keyboardType: keyboardType,
+                maxLines: maxLines ?? 1,
+                enabled: enabled,
+                placeholder: hintText == null ? null : Text(hintText!),
               ),
             ),
           ),
+          const SizedBox(width: 6),
           trailing,
         ],
       ),
+    );
+  }
+}
+
+class _FormSettingRow extends StatelessWidget {
+  final String label;
+  final bool showLabel;
+  final String? helperText;
+  final Widget? leading;
+  final Widget child;
+
+  const _FormSettingRow({
+    required this.label,
+    this.showLabel = true,
+    this.helperText,
+    this.leading,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!showLabel) {
+      return Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(13, 12, 13, 12),
+        child: child,
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 520;
+        final labelWidget = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (leading != null) ...[
+              Container(
+                width: 31,
+                height: 31,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: ColorManager.tagBackground(context),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: IconTheme.merge(
+                  data: IconThemeData(
+                    size: 16,
+                    color: ColorManager.secondaryText(context),
+                  ),
+                  child: leading!,
+                ),
+              ),
+              const SizedBox(width: 11),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: AppTypography.rowTitle),
+                  if (helperText != null && helperText!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      helperText!,
+                      style: AppTypography.supporting.copyWith(
+                        color: ColorManager.secondaryText(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+        return Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(13, 12, 13, 12),
+          child: compact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [labelWidget, const SizedBox(height: 9), child],
+                )
+              : Row(
+                  children: [
+                    Expanded(flex: 4, child: labelWidget),
+                    const SizedBox(width: 22),
+                    Expanded(flex: 6, child: child),
+                  ],
+                ),
+        );
+      },
     );
   }
 }

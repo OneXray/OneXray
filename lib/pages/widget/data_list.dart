@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 enum DataListRowTone { normal, selected, running }
 
@@ -7,42 +9,39 @@ class ListSearchField extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final String? hintText;
+  final EdgeInsetsGeometry padding;
 
   const ListSearchField({
     super.key,
     required this.controller,
     required this.onChanged,
     this.hintText,
+    this.padding = const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
+      padding: padding,
       child: ValueListenableBuilder<TextEditingValue>(
         valueListenable: controller,
         builder: (context, value, _) {
-          return TextField(
+          return ShadInput(
             controller: controller,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: value.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: () {
-                        controller.clear();
-                        onChanged("");
-                      },
-                      icon: const Icon(Icons.close),
-                    ),
-              hintText: hintText,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              isDense: true,
-            ),
+            placeholder: hintText == null ? null : Text(hintText!),
+            leading: const Icon(LucideIcons.search, size: 16),
+            trailing: value.text.isEmpty
+                ? null
+                : ShadIconButton.ghost(
+                    icon: const Icon(LucideIcons.x),
+                    width: 40,
+                    height: 40,
+                    iconSize: 15,
+                    onPressed: () {
+                      controller.clear();
+                      onChanged("");
+                    },
+                  ),
             onChanged: onChanged,
           );
         },
@@ -82,8 +81,7 @@ class ListEmptyView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
+              style: AppTypography.rowValue.copyWith(
                 color: ColorManager.secondaryText(context),
               ),
             ),
@@ -91,7 +89,7 @@ class ListEmptyView extends StatelessWidget {
               const SizedBox(height: 12),
               TextButton.icon(
                 onPressed: onAction,
-                icon: Icon(actionIcon ?? Icons.add),
+                icon: Icon(actionIcon ?? LucideIcons.plus),
                 label: Text(actionLabel!),
               ),
             ],
@@ -109,7 +107,7 @@ class DataListInlineEmptyRow extends StatelessWidget {
   const DataListInlineEmptyRow({
     super.key,
     required this.message,
-    this.icon = Icons.inbox_outlined,
+    this.icon = LucideIcons.inbox,
   });
 
   @override
@@ -130,8 +128,7 @@ class DataListInlineEmptyRow extends StatelessWidget {
                 message,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
+                style: AppTypography.supporting.copyWith(
                   color: ColorManager.secondaryText(context),
                 ),
               ),
@@ -164,9 +161,7 @@ class DataListSectionHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                  style: AppTypography.listSectionTitle.copyWith(
                     color: ColorManager.primaryText(context),
                   ),
                 ),
@@ -191,6 +186,7 @@ class DataListRow extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget? subtitleWidget;
+  final Widget? leading;
   final List<Widget> tags;
   final Widget? meta;
   final Widget? trailing;
@@ -209,6 +205,7 @@ class DataListRow extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.subtitleWidget,
+    this.leading,
     this.tags = const [],
     this.meta,
     this.trailing,
@@ -234,6 +231,22 @@ class DataListRow extends StatelessWidget {
         ),
         child: Row(
           children: [
+            if (leading != null) ...[
+              Container(
+                width: 31,
+                height: 31,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: ColorManager.tagBackground(context),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: IconTheme.merge(
+                  data: _iconTheme(context),
+                  child: leading!,
+                ),
+              ),
+              const SizedBox(width: 11),
+            ],
             Expanded(child: _mainContent(context)),
             if (trailing != null) ...[
               const SizedBox(width: 8),
@@ -292,11 +305,10 @@ class DataListRow extends StatelessWidget {
                 title,
                 maxLines: titleMaxLines,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 15,
+                style: AppTypography.rowTitle.copyWith(
                   fontWeight: tone == DataListRowTone.normal
-                      ? FontWeight.normal
-                      : FontWeight.bold,
+                      ? FontWeight.w500
+                      : FontWeight.w600,
                   color: ColorManager.primaryText(context),
                 ),
               ),
@@ -313,8 +325,7 @@ class DataListRow extends StatelessWidget {
             subtitle!,
             maxLines: subtitleMaxLines,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
+            style: AppTypography.supporting.copyWith(
               color: ColorManager.secondaryText(context),
             ),
           ),
@@ -350,11 +361,7 @@ class DataListRow extends StatelessWidget {
           ],
           Text(
             statusLabel!,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: _onAccentColor(context),
-            ),
+            style: AppTypography.badge.copyWith(color: _onAccentColor(context)),
           ),
         ],
       ),
@@ -378,9 +385,7 @@ class DataListRow extends StatelessWidget {
       case DataListRowTone.selected:
         return Theme.of(context).colorScheme.primary;
       case DataListRowTone.running:
-        return Theme.of(context).brightness == Brightness.light
-            ? const Color(0xFF15803D)
-            : const Color(0xFF86EFAC);
+        return ColorManager.palette(context).runningBadge;
     }
   }
 
@@ -390,9 +395,7 @@ class DataListRow extends StatelessWidget {
       case DataListRowTone.selected:
         return Theme.of(context).colorScheme.onPrimary;
       case DataListRowTone.running:
-        return Theme.of(context).brightness == Brightness.light
-            ? Colors.white
-            : const Color(0xFF052E16);
+        return ColorManager.palette(context).runningBadgeForeground;
     }
   }
 

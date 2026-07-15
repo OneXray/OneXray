@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/subscriptions/edit/controller.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/subscriptions/widget/form_view.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 
 class SubscriptionEditPage extends StatelessWidget {
   final SubscriptionEditParams params;
@@ -20,76 +17,20 @@ class SubscriptionEditPage extends StatelessWidget {
       child: BlocBuilder<SubscriptionEditController, SubscriptionEditPageState>(
         builder: (context, state) {
           final controller = context.read<SubscriptionEditController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                AppLocalizations.of(context)!.subscriptionAddPageTitle,
-              ),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.subscriptionEditPageTitle,
+            onSave: () => controller.save(context),
+            saveLabel: localizations.buttonSave,
+            body: SubscriptionFormView(
+              supportText: localizations.subscriptionAddPageSection,
+              nameLabel: localizations.subscriptionAddPageName,
+              nameController: controller.nameController,
+              urlLabel: localizations.subscriptionAddPageUrl,
+              readOnlyUrl: state.url,
             ),
-            body: SafeArea(child: _body(context, controller, state)),
           );
         },
-      ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    SubscriptionEditController controller,
-    SubscriptionEditPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: SettingSection(
-                  title: AppLocalizations.of(
-                    context,
-                  )!.subscriptionAddPageSection,
-                  children: [_name(context, controller), _url(context, state)],
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _name(BuildContext context, SubscriptionEditController controller) {
-    return TextFieldSettingRow(
-      controller: controller.nameController,
-      label: AppLocalizations.of(context)!.subscriptionAddPageName,
-      hintText: AppLocalizations.of(context)!.subscriptionAddPageName,
-    );
-  }
-
-  Widget _url(BuildContext context, SubscriptionEditPageState state) {
-    return SettingRow(
-      title: AppLocalizations.of(context)!.subscriptionAddPageUrl,
-      value: state.url,
-      valueMaxLines: 3,
-    );
-  }
-
-  Widget _bottomButton(
-    BuildContext context,
-    SubscriptionEditController controller,
-  ) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
       ),
     );
   }

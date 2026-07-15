@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/component/nodes/controller.dart';
 import 'package:onexray/pages/home/widget/config_grid_list.dart';
 import 'package:onexray/pages/widget/data_list.dart';
@@ -66,15 +66,12 @@ class _HomeNodeViewState extends State<HomeNodeView> {
     HomeNodeController controller,
     HomeNodeViewState state,
   ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ConfigGridContentFrame(
-        child: Column(
-          children: [
-            if (widget.showSearch) _search(context, controller),
-            Expanded(child: _configList(context, controller, state)),
-          ],
-        ),
+    return ConfigGridContentFrame(
+      child: Column(
+        children: [
+          if (widget.showSearch) _search(context, controller),
+          Expanded(child: _configList(context, controller, state)),
+        ],
       ),
     );
   }
@@ -99,7 +96,9 @@ class _HomeNodeViewState extends State<HomeNodeView> {
       emptyMessage: state.query.isEmpty
           ? AppLocalizations.of(context)!.homeOutboundViewNoOutbound
           : AppLocalizations.of(context)!.listNoSearchResult,
-      emptyIcon: state.query.isEmpty ? Icons.hub_outlined : Icons.search_off,
+      emptyIcon: state.query.isEmpty
+          ? LucideIcons.network
+          : LucideIcons.searchX,
       onPingSubscription: (subId) => controller.ping(subId),
       onRefresh: () => controller.refreshData(),
       onCleanSubscription: (subId) => controller.cleanUnreachable(subId),

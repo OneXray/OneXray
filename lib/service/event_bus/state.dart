@@ -2,6 +2,8 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/network/standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/app_update/service.dart';
+import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/xray/metrics/state.dart';
@@ -22,6 +24,7 @@ enum ConnectivityProbeState { idle, loading, success, failed }
 class AppEventBusState {
   final int xrayProfileId;
   final CoreRunMode coreRunMode;
+  final CoreRoutingMode coreRoutingMode;
   final bool vpnLoading;
   final int runningId;
   final int pendingConfigId;
@@ -36,12 +39,14 @@ class AppEventBusState {
   final ConnectivityProbeState geoLocationProbeState;
   final TrafficMetricsState trafficMetrics;
   final bool downloading;
+  final AppUpdateInfo? appUpdateInfo;
   final ThemeCode themeCode;
   final LanguageCode languageCode;
 
   const AppEventBusState({
     required this.xrayProfileId,
     required this.coreRunMode,
+    required this.coreRoutingMode,
     required this.vpnLoading,
     required this.runningId,
     required this.pendingConfigId,
@@ -56,6 +61,7 @@ class AppEventBusState {
     required this.geoLocationProbeState,
     required this.trafficMetrics,
     required this.downloading,
+    required this.appUpdateInfo,
     required this.themeCode,
     required this.languageCode,
   });
@@ -63,6 +69,7 @@ class AppEventBusState {
   factory AppEventBusState.initial() => AppEventBusState(
     xrayProfileId: XrayProfileSimple.simpleId,
     coreRunMode: CoreRunMode.tun,
+    coreRoutingMode: CoreRoutingMode.rule,
     vpnLoading: false,
     runningId: DBConstants.defaultId,
     pendingConfigId: DBConstants.defaultId,
@@ -76,6 +83,7 @@ class AppEventBusState {
     geoLocationProbeState: ConnectivityProbeState.idle,
     trafficMetrics: const TrafficMetricsState.unavailable(),
     downloading: false,
+    appUpdateInfo: null,
     themeCode: ThemeCode.system,
     languageCode: LanguageCode.en,
   );
@@ -83,6 +91,7 @@ class AppEventBusState {
   AppEventBusState copyWith({
     int? xrayProfileId,
     CoreRunMode? coreRunMode,
+    CoreRoutingMode? coreRoutingMode,
     bool? vpnLoading,
     int? runningId,
     int? pendingConfigId,
@@ -97,12 +106,15 @@ class AppEventBusState {
     ConnectivityProbeState? geoLocationProbeState,
     TrafficMetricsState? trafficMetrics,
     bool? downloading,
+    AppUpdateInfo? appUpdateInfo,
+    bool clearAppUpdateInfo = false,
     ThemeCode? themeCode,
     LanguageCode? languageCode,
   }) {
     return AppEventBusState(
       xrayProfileId: xrayProfileId ?? this.xrayProfileId,
       coreRunMode: coreRunMode ?? this.coreRunMode,
+      coreRoutingMode: coreRoutingMode ?? this.coreRoutingMode,
       vpnLoading: vpnLoading ?? this.vpnLoading,
       runningId: runningId ?? this.runningId,
       pendingConfigId: pendingConfigId ?? this.pendingConfigId,
@@ -120,6 +132,9 @@ class AppEventBusState {
           geoLocationProbeState ?? this.geoLocationProbeState,
       trafficMetrics: trafficMetrics ?? this.trafficMetrics,
       downloading: downloading ?? this.downloading,
+      appUpdateInfo: clearAppUpdateInfo
+          ? null
+          : appUpdateInfo ?? this.appUpdateInfo,
       themeCode: themeCode ?? this.themeCode,
       languageCode: languageCode ?? this.languageCode,
     );

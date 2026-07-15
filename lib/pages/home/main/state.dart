@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/event_bus/state.dart';
+import 'package:onexray/service/core_routing_mode/state.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
@@ -10,40 +13,58 @@ import 'package:onexray/service/xray/profile/simple_state.dart';
 class HomePageState {
   final int configId;
   final String configName;
+  final int runtimeConfigId;
+  final String runtimeConfigName;
   final String xrayProfileName;
   final bool nodeSearchVisible;
   final bool vpnCommandLoading;
+  final CoreRoutingMode? pendingRoutingMode;
 
   const HomePageState({
     required this.configId,
     required this.configName,
+    required this.runtimeConfigId,
+    required this.runtimeConfigName,
     required this.xrayProfileName,
     required this.nodeSearchVisible,
     required this.vpnCommandLoading,
+    required this.pendingRoutingMode,
   });
 
   factory HomePageState.initial({int xrayProfileId = DBConstants.defaultId}) =>
       HomePageState(
         configId: DBConstants.defaultId,
         configName: '',
+        runtimeConfigId: DBConstants.defaultId,
+        runtimeConfigName: '',
         xrayProfileName: _initialXrayProfileName(xrayProfileId),
         nodeSearchVisible: false,
         vpnCommandLoading: false,
+        pendingRoutingMode: null,
       );
 
   HomePageState copyWith({
     int? configId,
     String? configName,
+    int? runtimeConfigId,
+    String? runtimeConfigName,
     String? xrayProfileName,
     bool? nodeSearchVisible,
     bool? vpnCommandLoading,
+    CoreRoutingMode? pendingRoutingMode,
+    bool clearPendingRoutingMode = false,
   }) {
     return HomePageState(
       configId: configId ?? this.configId,
       configName: configName ?? this.configName,
+      runtimeConfigId: runtimeConfigId ?? this.runtimeConfigId,
+      runtimeConfigName: runtimeConfigName ?? this.runtimeConfigName,
       xrayProfileName: xrayProfileName ?? this.xrayProfileName,
       nodeSearchVisible: nodeSearchVisible ?? this.nodeSearchVisible,
       vpnCommandLoading: vpnCommandLoading ?? this.vpnCommandLoading,
+      pendingRoutingMode: clearPendingRoutingMode
+          ? null
+          : pendingRoutingMode ?? this.pendingRoutingMode,
     );
   }
 }
@@ -70,32 +91,38 @@ class HomeConnectionViewPageState {
   final HomeConnectionTone tone;
   final bool connected;
   final bool loading;
+  final bool destructiveAction;
+  final String actionLabel;
   final String statusText;
   final String nodeName;
-  final String detailText;
   final String? summaryDetailText;
-  final String trafficText;
-  final String metricsText;
+  final String locationText;
+  final String downloadText;
+  final String uploadText;
+  final String runModeText;
   final IconData statusIcon;
-  final IconData actionIcon;
 
   const HomeConnectionViewPageState({
     required this.tone,
     required this.connected,
     required this.loading,
+    required this.destructiveAction,
+    required this.actionLabel,
     required this.statusText,
     required this.nodeName,
-    required this.detailText,
     required this.summaryDetailText,
-    required this.trafficText,
-    required this.metricsText,
+    required this.locationText,
+    required this.downloadText,
+    required this.uploadText,
+    required this.runModeText,
     required this.statusIcon,
-    required this.actionIcon,
   });
 }
 
 final class HomeConnectionViewStateBuilder {
   const HomeConnectionViewStateBuilder._();
+
+  static const emptyNodeName = '--';
 
   static HomeConnectionViewPageState build(
     BuildContext context,
@@ -103,12 +130,12 @@ final class HomeConnectionViewStateBuilder {
     AppEventBusState eventState,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final connected = eventState.runningId != DBConstants.defaultId;
+    final connected = eventState.vpnActionState == VpnActionState.connected;
+    final direct = eventState.coreRoutingMode == CoreRoutingMode.direct;
+    final destructiveAction = _hasActiveCore(eventState);
     final waitingForMacApproval = _isWaitingForMacApproval(eventState);
     final failed = eventState.vpnActionState == VpnActionState.failed;
-    final nodeName = homeState.configName.isEmpty
-        ? localizations.homePageNoSelectedNode
-        : homeState.configName;
+    final nodeName = _nodeName(homeState, eventState);
     final tone = _connectionTone(
       eventState,
       connected,
@@ -119,6 +146,7 @@ final class HomeConnectionViewStateBuilder {
       localizations,
       eventState,
       connected,
+      direct,
       waitingForMacApproval,
       failed,
     );
@@ -132,29 +160,124 @@ final class HomeConnectionViewStateBuilder {
     final summaryDetailText = failed || waitingForMacApproval
         ? detailText
         : null;
-    final disconnected = eventState.runningId == DBConstants.defaultId;
     final actionIcon = failed
-        ? Icons.error_outline
+        ? LucideIcons.shieldAlert
         : waitingForMacApproval
-        ? Icons.admin_panel_settings
-        : disconnected
-        ? Icons.public
-        : Icons.private_connectivity;
+        ? LucideIcons.shieldAlert
+        : connected
+        ? LucideIcons.shieldCheck
+        : LucideIcons.shieldOff;
     return HomeConnectionViewPageState(
       tone: tone,
       connected: connected,
       loading: eventState.vpnLoading || homeState.vpnCommandLoading,
+      destructiveAction: destructiveAction,
+      actionLabel: _connectionActionLabel(
+        localizations,
+        homeState,
+        eventState,
+        direct,
+        destructiveAction,
+      ),
       statusText: statusText,
       nodeName: nodeName,
-      detailText: detailText,
       summaryDetailText: summaryDetailText,
-      trafficText: XrayMetricsFormatter.formatTraffic(
-        eventState.trafficMetrics,
+      locationText: _formatGeoValue(
+        localizations,
+        eventState,
+        eventState.location.country,
       ),
-      metricsText: _formatSummaryMetrics(localizations, eventState),
+      downloadText: eventState.trafficMetrics.available
+          ? XrayMetricsFormatter.formatSpeed(
+              eventState.trafficMetrics.downloadSpeed,
+            )
+          : '--',
+      uploadText: eventState.trafficMetrics.available
+          ? XrayMetricsFormatter.formatSpeed(
+              eventState.trafficMetrics.uploadSpeed,
+            )
+          : '--',
+      runModeText: eventState.coreRunMode.title,
       statusIcon: actionIcon,
-      actionIcon: actionIcon,
     );
+  }
+
+  static int runtimeConfigId(AppEventBusState eventState) {
+    if (eventState.runningId != DBConstants.defaultId) {
+      return eventState.runningId;
+    }
+    if (eventState.vpnActionState == VpnActionState.connecting ||
+        eventState.vpnActionState == VpnActionState.connected) {
+      return eventState.pendingConfigId;
+    }
+    return DBConstants.defaultId;
+  }
+
+  static String _nodeName(
+    HomePageState homeState,
+    AppEventBusState eventState,
+  ) {
+    if (!_runtimeActive(eventState)) {
+      return _displayName(homeState.configName);
+    }
+
+    final id = runtimeConfigId(eventState);
+    if (id == DBConstants.defaultId || id != homeState.runtimeConfigId) {
+      return emptyNodeName;
+    }
+    return _displayName(homeState.runtimeConfigName);
+  }
+
+  static bool _runtimeActive(AppEventBusState eventState) {
+    return switch (eventState.vpnActionState) {
+      VpnActionState.connecting ||
+      VpnActionState.connected ||
+      VpnActionState.disconnecting => true,
+      VpnActionState.preparing ||
+      VpnActionState.waitingForPlatformPermission ||
+      VpnActionState.failed => eventState.runningId != DBConstants.defaultId,
+      VpnActionState.idle => false,
+    };
+  }
+
+  static bool _hasActiveCore(AppEventBusState eventState) {
+    return switch (eventState.vpnActionState) {
+      VpnActionState.connected || VpnActionState.disconnecting => true,
+      VpnActionState.preparing ||
+      VpnActionState.waitingForPlatformPermission ||
+      VpnActionState.connecting ||
+      VpnActionState.failed => eventState.runningId != DBConstants.defaultId,
+      VpnActionState.idle => false,
+    };
+  }
+
+  static String _connectionActionLabel(
+    AppLocalizations localizations,
+    HomePageState homeState,
+    AppEventBusState eventState,
+    bool direct,
+    bool destructiveAction,
+  ) {
+    if (direct) {
+      return destructiveAction
+          ? localizations.homePageActionDisconnect
+          : localizations.homePageActionStartDirect;
+    }
+
+    final selectedName = _displayName(homeState.configName);
+    if (!destructiveAction) {
+      return localizations.homePageActionConnectToNode(selectedName);
+    }
+
+    final runtimeId = runtimeConfigId(eventState);
+    if (runtimeId == homeState.configId) {
+      return localizations.homePageActionDisconnect;
+    }
+    return localizations.homePageActionSwitchToNode(selectedName);
+  }
+
+  static String _displayName(String name) {
+    return name.isEmpty ? emptyNodeName : name;
   }
 
   static HomeConnectionTone _connectionTone(
@@ -182,6 +305,7 @@ final class HomeConnectionViewStateBuilder {
     AppLocalizations localizations,
     AppEventBusState eventState,
     bool connected,
+    bool direct,
     bool waitingForMacApproval,
     bool failed,
   ) {
@@ -198,6 +322,10 @@ final class HomeConnectionViewStateBuilder {
       return localizations.homePageStatusConnecting;
     }
     if (connected) {
+      if (direct) {
+        return '${localizations.homePageStatusConnected} · '
+            '${localizations.homePageTrafficNotProxied}';
+      }
       return localizations.homePageStatusConnected;
     }
     return localizations.homePageStatusDisconnected;
@@ -221,21 +349,6 @@ final class HomeConnectionViewStateBuilder {
         '${_formatDelay(localizations, eventState)} '
         '${localizations.nodeInfoPageLocation}: '
         '${_formatGeoValue(localizations, eventState, location.country)} ';
-  }
-
-  static String _formatSummaryMetrics(
-    AppLocalizations localizations,
-    AppEventBusState eventState,
-  ) {
-    final location = eventState.location;
-    final duration = location.duration ?? localizations.nodeInfoPageFetching;
-    final country = _formatGeoValue(
-      localizations,
-      eventState,
-      location.country,
-    );
-    final delay = _formatDelay(localizations, eventState);
-    return '$duration · $country · $delay';
   }
 
   static String _formatDelay(

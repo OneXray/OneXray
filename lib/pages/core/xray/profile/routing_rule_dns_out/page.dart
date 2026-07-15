@@ -1,11 +1,11 @@
-import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/controller.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/params.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/controller.dart';
+import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/params.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class RoutingRuleDnsOutPage extends StatelessWidget {
   final RoutingRuleDnsOutParams params;
@@ -19,89 +19,40 @@ class RoutingRuleDnsOutPage extends StatelessWidget {
       child:
           BlocBuilder<RoutingRuleDnsOutController, RoutingRuleDnsOutPageState>(
             builder: (context, state) {
-              final controller = context.read<RoutingRuleDnsOutController>();
-              return Scaffold(
-                appBar: AppBar(
-                  title: Text(
-                    AppLocalizations.of(context)!.routingRulePageTitle,
+              final localizations = AppLocalizations.of(context)!;
+              return SettingsPageScaffold(
+                title: localizations.routingRulePageTitle,
+                body: SettingsPageScroll(
+                  desktopMaxWidth: 760,
+                  child: SettingSection(
+                    title: state.ruleState.ruleTag,
+                    children: [
+                      SettingRow(
+                        leading: const Icon(LucideIcons.logIn),
+                        title: localizations.routingRulePageInboundTag,
+                        value: state.ruleState.inboundTag.join(', '),
+                      ),
+                      SettingRow(
+                        leading: const Icon(LucideIcons.radioTower),
+                        title: localizations.routingRulePagePort,
+                        value: state.ruleState.port,
+                      ),
+                      SettingRow(
+                        leading: const Icon(LucideIcons.logOut),
+                        title: localizations.routingRulePageOutboundTag,
+                        value: state.ruleState.outboundTag,
+                      ),
+                      SettingRow(
+                        leading: const Icon(LucideIcons.tag),
+                        title: localizations.routingRulePageRuleTag,
+                        value: state.ruleState.ruleTag,
+                      ),
+                    ],
                   ),
                 ),
-                body: SafeArea(child: _body(context, controller, state)),
               );
             },
           ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    RoutingRuleDnsOutController controller,
-    RoutingRuleDnsOutPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: SingleChildScrollView(
-        child: ResponsiveContent(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _inboundTagSection(context, controller, state),
-              _portSection(context, controller, state),
-              _tagSection(context, controller, state),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _inboundTagSection(
-    BuildContext context,
-    RoutingRuleDnsOutController controller,
-    RoutingRuleDnsOutPageState state,
-  ) {
-    final views = state.ruleState.inboundTag
-        .map((tag) => SettingRow(title: tag))
-        .toList();
-    return SettingSection(
-      title: AppLocalizations.of(context)!.routingRulePageInboundTag,
-      children: views,
-    );
-  }
-
-  Widget _portSection(
-    BuildContext context,
-    RoutingRuleDnsOutController controller,
-    RoutingRuleDnsOutPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.routingRulePagePort,
-          value: state.ruleState.port,
-        ),
-      ],
-    );
-  }
-
-  Widget _tagSection(
-    BuildContext context,
-    RoutingRuleDnsOutController controller,
-    RoutingRuleDnsOutPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.routingRulePageOutboundTag,
-          value: state.ruleState.outboundTag,
-        ),
-        SettingRow(
-          title: AppLocalizations.of(context)!.routingRulePageRuleTag,
-          value: state.ruleState.ruleTag,
-        ),
-      ],
     );
   }
 }

@@ -3,12 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_http/controller.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_http/params.dart';
-import 'package:onexray/pages/global/constants.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class InboundHttpPage extends StatelessWidget {
   final InboundHttpParams params;
@@ -22,61 +20,42 @@ class InboundHttpPage extends StatelessWidget {
       child: BlocBuilder<InboundHttpController, InboundHttpPageState>(
         builder: (context, state) {
           final controller = context.read<InboundHttpController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.inboundHttpPageTitle),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.inboundHttpPageTitle,
+            onSave: () => controller.save(context),
+            body: SettingsPageScroll(
+              desktopMaxWidth: 900,
+              child: SettingsResponsiveColumns(
+                firstFlex: 6,
+                secondFlex: 4,
+                first: [_identitySection(context, controller, state)],
+                second: [_authSection(context, controller)],
+              ),
             ),
-            body: SafeArea(child: _body(context, controller, state)),
           );
         },
       ),
     );
   }
 
-  Widget _body(
-    BuildContext context,
-    InboundHttpController controller,
-    InboundHttpPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _listenSection(context, controller, state),
-                    _authSection(context, controller),
-                    _tagSection(context, state),
-                  ],
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _listenSection(
+  Widget _identitySection(
     BuildContext context,
     InboundHttpController controller,
     InboundHttpPageState state,
   ) {
     final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: "",
+      title: localizations.inboundHttpPageTitle,
       children: [
         SelectSettingRow<String>(
+          leading: const Icon(LucideIcons.ear),
           title: localizations.inboundProxyPageListen,
           value: state.httpState.listen,
           displayValue: _listenDisplay(context, state.httpState.listen),
           selections: InboundHttpState.listenValues,
           titleBuilder: (value) => _listenDisplay(context, value),
-          onSelected: (value) => controller.updateListen(value),
+          onSelected: controller.updateListen,
         ),
         TextFieldSettingRow(
           controller: controller.portController,
@@ -84,18 +63,17 @@ class InboundHttpPage extends StatelessWidget {
           keyboardType: TextInputType.number,
         ),
         SettingRow(
+          leading: const Icon(LucideIcons.waypoints),
           title: localizations.inboundProxyPageProtocol,
           value: state.httpState.protocol.name,
         ),
+        SettingRow(
+          leading: const Icon(LucideIcons.tag),
+          title: localizations.inboundProxyPageTag,
+          value: state.httpState.tag.name,
+        ),
       ],
     );
-  }
-
-  String _listenDisplay(BuildContext context, String listen) {
-    if (listen.isEmpty) {
-      return AppLocalizations.of(context)!.inboundProxyPageAllInterfaces;
-    }
-    return listen;
   }
 
   Widget _authSection(BuildContext context, InboundHttpController controller) {
@@ -115,30 +93,10 @@ class InboundHttpPage extends StatelessWidget {
     );
   }
 
-  Widget _tagSection(BuildContext context, InboundHttpPageState state) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.inboundProxyPageTag,
-          value: state.httpState.tag.name,
-        ),
-      ],
-    );
-  }
-
-  Widget _bottomButton(BuildContext context, InboundHttpController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
-    );
+  String _listenDisplay(BuildContext context, String listen) {
+    if (listen.isEmpty) {
+      return AppLocalizations.of(context)!.inboundProxyPageAllInterfaces;
+    }
+    return listen;
   }
 }

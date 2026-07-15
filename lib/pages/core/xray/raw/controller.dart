@@ -22,9 +22,17 @@ import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_writer.dart';
 import 'package:uuid/uuid.dart';
 
-class XrayRawController extends Cubit<int> {
+class XrayRawPageState {
+  final bool validJson;
+  final int lineCount;
+
+  const XrayRawPageState({this.validJson = false, this.lineCount = 1});
+}
+
+class XrayRawController extends Cubit<XrayRawPageState> {
   final XrayRawParams params;
-  XrayRawController(this.params) : super(0) {
+  XrayRawController(this.params) : super(const XrayRawPageState()) {
+    controller.addListener(_updateEditorState);
     _initParams();
     _queryOutbound();
   }
@@ -36,8 +44,28 @@ class XrayRawController extends Cubit<int> {
 
   @override
   Future<void> close() {
+    controller.removeListener(_updateEditorState);
     controller.dispose();
     return super.close();
+  }
+
+  void _updateEditorState() {
+    final text = controller.text;
+    var validJson = false;
+    try {
+      JsonTool.decoder.convert(text);
+      validJson = true;
+    } catch (_) {
+      validJson = false;
+    }
+    if (!isClosed) {
+      emit(
+        XrayRawPageState(
+          validJson: validJson,
+          lineCount: "\n".allMatches(text).length + 1,
+        ),
+      );
+    }
   }
 
   void _initParams() {

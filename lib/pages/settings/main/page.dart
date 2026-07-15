@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/settings/main/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -32,267 +33,279 @@ class SettingsContent extends StatelessWidget {
       child: BlocBuilder<SettingsController, SettingsPageState>(
         builder: (context, state) {
           final controller = context.read<SettingsController>();
-          return _body(context, state, controller);
+          return SettingsOverviewView(
+            state: state,
+            showAppIcon: AppPlatform.isIOS,
+            showToolbox: AppPlatform.isMacOS,
+            showReview: AppPlatform.isMobile || AppPlatform.isMacOS,
+            onAutoUpdate: () => controller.gotoAutoUpdate(context),
+            onCheckUpdate: () => controller.checkUpdate(context),
+            onClearData: () => controller.clearData(context),
+            onBackup: () => controller.gotoBackup(context),
+            onAppIcon: () => controller.gotoAppIcon(context),
+            onToolbox: () => controller.gotoToolbox(context),
+            onTheme: () => controller.gotoTheme(context),
+            onLanguage: () => controller.gotoLanguage(context),
+            onDocumentation: () => controller.openDoc(context),
+            onReview: () => controller.gotoReview(context),
+            onTelegram: () => controller.openTelegram(context),
+            onIssue: () => controller.submitIssue(context),
+            onSourceCode: () => controller.openSourceCode(context),
+            onCredits: () => controller.openCredits(context),
+            onPrivacy: () => controller.openPrivacy(context),
+          );
         },
       ),
     );
   }
+}
 
-  Widget _body(
-    BuildContext context,
-    SettingsPageState state,
-    SettingsController controller,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: SingleChildScrollView(
-        child: ResponsiveContent(
-          desktopMaxWidth: 1040,
-          adaptiveBreakpoint: 900,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth >= 900) {
-                    return _wideBody(context, state, controller);
-                  }
-                  return _compactBody(context, state, controller);
-                },
-              ),
-            ],
+class SettingsOverviewView extends StatelessWidget {
+  final SettingsPageState state;
+  final bool showAppIcon;
+  final bool showToolbox;
+  final bool showReview;
+  final VoidCallback onAutoUpdate;
+  final VoidCallback onCheckUpdate;
+  final VoidCallback onClearData;
+  final VoidCallback onBackup;
+  final VoidCallback onAppIcon;
+  final VoidCallback onToolbox;
+  final VoidCallback onTheme;
+  final VoidCallback onLanguage;
+  final VoidCallback onDocumentation;
+  final VoidCallback onReview;
+  final VoidCallback onTelegram;
+  final VoidCallback onIssue;
+  final VoidCallback onSourceCode;
+  final VoidCallback onCredits;
+  final VoidCallback onPrivacy;
+
+  const SettingsOverviewView({
+    super.key,
+    required this.state,
+    required this.showAppIcon,
+    required this.showToolbox,
+    required this.showReview,
+    required this.onAutoUpdate,
+    required this.onCheckUpdate,
+    required this.onClearData,
+    required this.onBackup,
+    required this.onAppIcon,
+    required this.onToolbox,
+    required this.onTheme,
+    required this.onLanguage,
+    required this.onDocumentation,
+    required this.onReview,
+    required this.onTelegram,
+    required this.onIssue,
+    required this.onSourceCode,
+    required this.onCredits,
+    required this.onPrivacy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsPageScroll(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 900) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [_dataSection(context), _appSection(context)],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _versionSection(context),
+                          _supportSection(context),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  _dataSection(context),
+                  _appSection(context),
+                  _versionSection(context),
+                  _supportSection(context),
+                ],
+              );
+            },
           ),
-        ),
+          _footer(context),
+        ],
       ),
     );
   }
 
-  Widget _compactBody(
-    BuildContext context,
-    SettingsPageState state,
-    SettingsController controller,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _dataSection(context, state, controller),
-        _appSection(context, controller),
-        _supportSection(context, controller),
-        _versionSection(context, state),
-        _footerTips(context),
-      ],
-    );
-  }
-
-  Widget _wideBody(
-    BuildContext context,
-    SettingsPageState state,
-    SettingsController controller,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _dataSection(context, state, controller),
-              _versionSection(context, state),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _appSection(context, controller),
-              _supportSection(context, controller),
-              _footerTips(context),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _dataSection(
-    BuildContext context,
-    SettingsPageState state,
-    SettingsController controller,
-  ) {
+  Widget _dataSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SettingSection(
-      title: AppLocalizations.of(context)!.settingsPageSectionData,
+      title: l10n.settingsPageSectionData,
       children: [
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.autoUpdatePageTitle,
-          leading: const Icon(Icons.update_outlined),
-          onTap: () => controller.gotoAutoUpdate(context),
+          title: l10n.autoUpdatePageTitle,
+          subtitle: l10n.settingsPageAutoUpdateDescription,
+          leading: const Icon(LucideIcons.refreshCw),
+          onTap: onAutoUpdate,
         ),
         SettingRow(
-          title: AppLocalizations.of(context)!.appUpdateCheck,
-          leading: const Icon(Icons.system_update_outlined),
-          onTap: state.checkingUpdate
-              ? null
-              : () => controller.checkUpdate(context),
+          title: l10n.appUpdateCheck,
+          subtitle: l10n.settingsPageCheckUpdateDescription,
+          leading: const Icon(LucideIcons.download),
+          onTap: state.checkingUpdate ? null : onCheckUpdate,
           trailing: state.checkingUpdate
               ? const SizedBox.square(
-                  dimension: 24,
-                  child: CircularProgressIndicator(),
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : null,
+              : const Icon(LucideIcons.chevronRight),
         ),
-        _clearData(context, state, controller),
+        _clearDataRow(context),
       ],
     );
   }
 
-  Widget _clearData(
-    BuildContext context,
-    SettingsPageState state,
-    SettingsController controller,
-  ) {
+  Widget _clearDataRow(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final errorColor = Theme.of(context).colorScheme.error;
     return SettingRow(
-      title: AppLocalizations.of(context)!.settingsPageClearData,
-      subtitle: AppLocalizations.of(context)!.settingsPageClearDataSubtitle,
-      leading: Icon(Icons.delete_forever, color: errorColor),
+      title: l10n.settingsPageClearData,
+      subtitle: l10n.settingsPageClearDataSubtitle,
+      leading: Icon(LucideIcons.trash2, color: errorColor),
       enabled: !state.clearingData,
-      onTap: state.clearingData ? null : () => controller.clearData(context),
+      onTap: state.clearingData ? null : onClearData,
       trailing: state.clearingData
           ? const SizedBox.square(
-              dimension: 24,
-              child: CircularProgressIndicator(),
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Icon(Icons.chevron_right, color: errorColor),
+          : Icon(LucideIcons.chevronRight, color: errorColor),
     );
   }
 
-  Widget _appSection(BuildContext context, SettingsController controller) {
+  Widget _appSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SettingSection(
-      title: AppLocalizations.of(context)!.settingsPageSectionApp,
-      children: [
-        _backup(context, controller),
-        if (AppPlatform.isIOS) _appIcon(context, controller),
-        if (AppPlatform.isMacOS) _toolbox(context, controller),
-        _theme(context, controller),
-        _language(context, controller),
-      ],
-    );
-  }
-
-  Widget _backup(BuildContext context, SettingsController controller) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.backupPageTitle,
-      leading: const Icon(Icons.backup_outlined),
-      onTap: () => controller.gotoBackup(context),
-    );
-  }
-
-  Widget _appIcon(BuildContext context, SettingsController controller) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.appIconPageTitle,
-      leading: const Icon(Icons.apps_outlined),
-      onTap: () => controller.gotoAppIcon(context),
-    );
-  }
-
-  Widget _toolbox(BuildContext context, SettingsController controller) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.toolboxPageTitle,
-      leading: const Icon(Icons.build_outlined),
-      onTap: () => controller.gotoToolbox(context),
-    );
-  }
-
-  Widget _theme(BuildContext context, SettingsController controller) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.themePageTitle,
-      leading: const Icon(Icons.palette_outlined),
-      onTap: () => controller.gotoTheme(context),
-    );
-  }
-
-  Widget _language(BuildContext context, SettingsController controller) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.languagePageTitle,
-      leading: const Icon(Icons.translate_outlined),
-      onTap: () => controller.gotoLanguage(context),
-    );
-  }
-
-  Widget _supportSection(BuildContext context, SettingsController controller) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.settingsPageSectionSupport,
+      title: l10n.settingsPageSectionApp,
       children: [
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingsPageDoc,
-          leading: const Icon(Icons.menu_book_outlined),
-          onTap: () => controller.openDoc(context),
+          title: l10n.backupPageTitle,
+          subtitle: l10n.settingsPageBackupDescription,
+          leading: const Icon(LucideIcons.archive),
+          onTap: onBackup,
         ),
-        if (AppPlatform.isMobile || AppPlatform.isMacOS)
+        if (showAppIcon)
           NavigationSettingRow(
-            title: AppLocalizations.of(context)!.settingsPageReview,
-            leading: const Icon(Icons.star_rate_outlined),
-            onTap: () => controller.gotoReview(context),
+            title: l10n.appIconPageTitle,
+            subtitle: l10n.settingsPageAppIconDescription,
+            leading: const Icon(LucideIcons.sparkles),
+            onTap: onAppIcon,
+          ),
+        if (showToolbox)
+          NavigationSettingRow(
+            title: l10n.toolboxPageTitle,
+            subtitle: l10n.settingsPageToolboxDescription,
+            leading: const Icon(LucideIcons.monitorCog),
+            onTap: onToolbox,
           ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingsPageTelegramChannel,
-          leading: const Icon(Icons.send_outlined),
-          onTap: () => controller.openTelegram(context),
+          title: l10n.themePageTitle,
+          subtitle: l10n.settingsPageThemeDescription,
+          leading: const Icon(LucideIcons.palette),
+          onTap: onTheme,
         ),
         NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingsPageSubmitIssue,
-          leading: const Icon(Icons.bug_report_outlined),
-          onTap: () => controller.submitIssue(context),
-        ),
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingsPageSourceCode,
-          leading: const Icon(Icons.code_outlined),
-          onTap: () => controller.openSourceCode(context),
-        ),
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingsPageCredits,
-          leading: const Icon(Icons.info_outline),
-          onTap: () => controller.openCredits(context),
-        ),
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.settingsPagePrivacy,
-          leading: const Icon(Icons.privacy_tip_outlined),
-          onTap: () => controller.openPrivacy(context),
+          title: l10n.languagePageTitle,
+          subtitle: l10n.settingsPageLanguageDescription,
+          leading: const Icon(LucideIcons.languages),
+          onTap: onLanguage,
         ),
       ],
     );
   }
 
-  Widget _versionSection(BuildContext context, SettingsPageState state) {
+  Widget _versionSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SettingSection(
-      title: AppLocalizations.of(context)!.settingsPageSectionVersion,
+      title: l10n.settingsPageSectionVersion,
       children: [
         SettingRow(
-          title: AppLocalizations.of(context)!.settingsPageAppVersion,
-          leading: const Icon(Icons.apps_outlined),
+          title: l10n.settingsPageAppVersion,
+          leading: const Icon(LucideIcons.smartphone),
           value: state.appVersion,
         ),
         SettingRow(
-          title: AppLocalizations.of(context)!.settingsPageXrayVersion,
-          leading: const Icon(Icons.memory_outlined),
+          title: l10n.settingsPageXrayVersion,
+          leading: const Icon(LucideIcons.appWindow),
           value: state.xrayVersion,
         ),
       ],
     );
   }
 
-  Widget _footerTips(BuildContext context) {
+  Widget _supportSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SettingSection(
+      title: l10n.settingsPageSectionSupport,
+      children: [
+        _externalRow(
+          l10n.settingsPageDoc,
+          LucideIcons.bookOpen,
+          onDocumentation,
+        ),
+        if (showReview)
+          _externalRow(l10n.settingsPageReview, LucideIcons.star, onReview),
+        _externalRow(
+          l10n.settingsPageTelegramChannel,
+          LucideIcons.send,
+          onTelegram,
+        ),
+        _externalRow(l10n.settingsPageSubmitIssue, LucideIcons.bug, onIssue),
+        _externalRow(
+          l10n.settingsPageSourceCode,
+          LucideIcons.code2,
+          onSourceCode,
+        ),
+        _externalRow(
+          l10n.settingsPageCredits,
+          LucideIcons.circleHelp,
+          onCredits,
+        ),
+        _externalRow(
+          l10n.settingsPagePrivacy,
+          LucideIcons.shieldCheck,
+          onPrivacy,
+        ),
+      ],
+    );
+  }
+
+  Widget _externalRow(String title, IconData icon, VoidCallback onTap) {
+    return SettingRow(
+      title: title,
+      leading: Icon(icon),
+      trailing: const Icon(LucideIcons.externalLink),
+      onTap: onTap,
+    );
+  }
+
+  Widget _footer(BuildContext context) {
     return Padding(
-      padding: const EdgeInsetsDirectional.only(
-        start: 16.0,
-        end: 16.0,
-        bottom: 16,
-      ),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 16),
       child: Text(
         AppLocalizations.of(context)!.settingsPageFooterTips,
-        style: TextStyle(
-          fontSize: 12,
+        style: AppTypography.supporting.copyWith(
           color: ColorManager.secondaryText(context),
         ),
       ),

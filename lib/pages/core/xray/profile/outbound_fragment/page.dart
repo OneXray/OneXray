@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_fragment/controller.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_fragment/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class OutboundFragmentPage extends StatelessWidget {
   final OutboundFragmentParams params;
@@ -22,159 +20,70 @@ class OutboundFragmentPage extends StatelessWidget {
       child: BlocBuilder<OutboundFragmentController, OutboundFragmentPageState>(
         builder: (context, state) {
           final controller = context.read<OutboundFragmentController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                AppLocalizations.of(context)!.outboundFragmentPageTitle,
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.outboundFragmentPageTitle,
+            onSave: () => controller.save(context),
+            body: SettingsPageScroll(
+              desktopMaxWidth: 860,
+              child: SettingsResponsiveColumns(
+                firstFlex: 4,
+                secondFlex: 6,
+                first: [
+                  SettingSection(
+                    title: localizations.outboundFragmentPageTitle,
+                    children: [
+                      SettingRow(
+                        leading: const Icon(LucideIcons.waypoints),
+                        title: localizations.outboundFragmentPageProtocol,
+                        value: state.fragmentState.protocol.name,
+                      ),
+                      SettingRow(
+                        leading: const Icon(LucideIcons.tag),
+                        title: localizations.outboundFragmentPageTag,
+                        value: state.fragmentState.tag.name,
+                      ),
+                    ],
+                  ),
+                  if (AppPlatform.isLinux || AppPlatform.isWindows)
+                    SettingSection(
+                      title: localizations.outboundFragmentPageSockopt,
+                      children: [
+                        NavigationSettingRow(
+                          leading: const Icon(LucideIcons.network),
+                          title: localizations.outboundFragmentPageInterface,
+                          value: state.fragmentState.interface,
+                          onTap: () => controller.editInterface(context),
+                        ),
+                      ],
+                    ),
+                ],
+                second: [
+                  SettingSection(
+                    title: localizations.outboundFragmentPageSettings,
+                    children: [
+                      TextFieldSettingRow(
+                        controller: controller.packetsController,
+                        label: localizations.outboundFragmentPagePackets,
+                        hintText: localizations.outboundFragmentPagePackets,
+                      ),
+                      TextFieldSettingRow(
+                        controller: controller.lengthController,
+                        label: localizations.outboundFragmentPageLength,
+                        hintText: localizations.outboundFragmentPageLength,
+                      ),
+                      TextFieldSettingRow(
+                        controller: controller.intervalController,
+                        label: localizations.outboundFragmentPageInterval,
+                        hintText: localizations.outboundFragmentPageInterval,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            body: SafeArea(child: _body(context, controller, state)),
           );
         },
-      ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    OutboundFragmentController controller,
-    OutboundFragmentPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _protocolSection(context, controller, state),
-                    _settingSection(context, controller),
-                    _tagSection(context, controller, state),
-                    if (AppPlatform.isLinux || AppPlatform.isWindows)
-                      _sockoptSection(context, controller, state),
-                  ],
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _protocolSection(
-    BuildContext context,
-    OutboundFragmentController controller,
-    OutboundFragmentPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.outboundFragmentPageProtocol,
-          value: state.fragmentState.protocol.name,
-        ),
-      ],
-    );
-  }
-
-  Widget _settingSection(
-    BuildContext context,
-    OutboundFragmentController controller,
-  ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundFragmentPageSettings,
-      children: [
-        _packets(context, controller),
-        _length(context, controller),
-        _interval(context, controller),
-      ],
-    );
-  }
-
-  Widget _packets(BuildContext context, OutboundFragmentController controller) {
-    return TextFieldSettingRow(
-      controller: controller.packetsController,
-      label: AppLocalizations.of(context)!.outboundFragmentPagePackets,
-      hintText: AppLocalizations.of(context)!.outboundFragmentPagePackets,
-    );
-  }
-
-  Widget _length(BuildContext context, OutboundFragmentController controller) {
-    return TextFieldSettingRow(
-      controller: controller.lengthController,
-      label: AppLocalizations.of(context)!.outboundFragmentPageLength,
-      hintText: AppLocalizations.of(context)!.outboundFragmentPageLength,
-    );
-  }
-
-  Widget _interval(
-    BuildContext context,
-    OutboundFragmentController controller,
-  ) {
-    return TextFieldSettingRow(
-      controller: controller.intervalController,
-      label: AppLocalizations.of(context)!.outboundFragmentPageInterval,
-      hintText: AppLocalizations.of(context)!.outboundFragmentPageInterval,
-    );
-  }
-
-  Widget _tagSection(
-    BuildContext context,
-    OutboundFragmentController controller,
-    OutboundFragmentPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.outboundFragmentPageTag,
-          value: state.fragmentState.tag.name,
-        ),
-      ],
-    );
-  }
-
-  Widget _sockoptSection(
-    BuildContext context,
-    OutboundFragmentController controller,
-    OutboundFragmentPageState state,
-  ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundFragmentPageSockopt,
-      children: [_interface(context, controller, state)],
-    );
-  }
-
-  Widget _interface(
-    BuildContext context,
-    OutboundFragmentController controller,
-    OutboundFragmentPageState state,
-  ) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.outboundFragmentPageInterface,
-      value: state.fragmentState.interface,
-      onTap: () => controller.editInterface(context),
-    );
-  }
-
-  Widget _bottomButton(
-    BuildContext context,
-    OutboundFragmentController controller,
-  ) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
       ),
     );
   }

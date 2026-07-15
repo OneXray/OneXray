@@ -3,12 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/geo_data/select/controller.dart';
 import 'package:onexray/pages/core/geo_data/select/params.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/widget/bottom_button.dart';
 import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class GeoDatSelectPage extends StatelessWidget {
   final GeoDatSelectParams params;
@@ -24,7 +24,13 @@ class GeoDatSelectPage extends StatelessWidget {
           final controller = context.read<GeoDatSelectController>();
           return Scaffold(
             appBar: AppBar(title: Text(state.geoDatName)),
-            body: SafeArea(child: _body(context, controller, state)),
+            body: SafeArea(
+              child: ResponsiveContent(
+                desktopMaxWidth: 920,
+                adaptiveBreakpoint: 840,
+                child: _body(context, controller, state),
+              ),
+            ),
           );
         },
       ),
@@ -32,21 +38,6 @@ class GeoDatSelectPage extends StatelessWidget {
   }
 
   Widget _body(
-    BuildContext context,
-    GeoDatSelectController controller,
-    GeoDatSelectPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        desktopMaxWidth: 880,
-        adaptiveBreakpoint: 840,
-        child: _mainBody(context, controller, state),
-      ),
-    );
-  }
-
-  Widget _mainBody(
     BuildContext context,
     GeoDatSelectController controller,
     GeoDatSelectPageState state,
@@ -72,17 +63,26 @@ class GeoDatSelectPage extends StatelessWidget {
     GeoDatSelectController controller,
     GeoDatSelectPageState state,
   ) {
-    if (state.geoDatCodes.isEmpty) {
-      return ListEmptyView(
-        message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
-      );
-    } else {
-      return ListView.separated(
-        itemBuilder: (ctx, index) => _itemRow(ctx, controller, state, index),
-        itemCount: state.geoDatCodes.length,
-        separatorBuilder: (_, _) => const Divider(),
-      );
-    }
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
+      child: ShadCard(
+        width: double.infinity,
+        padding: EdgeInsets.zero,
+        radius: const BorderRadius.all(Radius.circular(8)),
+        clipBehavior: Clip.antiAlias,
+        child: state.geoDatCodes.isEmpty
+            ? ListEmptyView(
+                message: AppLocalizations.of(context)!.geoDatCodesPageNoCodes,
+                icon: LucideIcons.searchX,
+              )
+            : ListView.separated(
+                itemBuilder: (ctx, index) =>
+                    _itemRow(ctx, controller, state, index),
+                itemCount: state.geoDatCodes.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+              ),
+      ),
+    );
   }
 
   Widget _itemRow(
@@ -105,7 +105,7 @@ class GeoDatSelectPage extends StatelessWidget {
       statusLabel: selected
           ? AppLocalizations.of(context)!.listStatusSelected
           : null,
-      statusIcon: selected ? Icons.check : null,
+      statusIcon: selected ? LucideIcons.check : null,
       onTap: () => controller.updateSelections(!selected, code.code),
       trailing: Checkbox(
         value: selected,

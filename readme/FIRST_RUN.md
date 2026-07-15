@@ -26,14 +26,9 @@ Then prepare the local config files needed for debugging:
 
 ```shell
 cp .env.example .env
-cp firebase.json.example firebase.json
-cp lib/firebase_options.dart.example lib/firebase_options.dart
-cp android/app/google-services.json.example android/app/google-services.json
-cp swift/AppStore/GoogleService-Info.plist.example swift/AppStore/GoogleService-Info.plist
-cp swift/macOSSE/GoogleService-Info.plist.example swift/macOSSE/GoogleService-Info.plist
 ```
 
-The `.example` files are enough for local development. Replace them with your own config later if you need to test real Firebase behavior.
+The `.env.example` defaults are enough for local development.
 
 ## 2. Prepare libXray and Xray-core artifacts
 
@@ -147,8 +142,6 @@ The following paths are ignored by `.gitignore`. In the **debug environment**, t
 | `ios/fastlane/AuthKey.p8` | Not used | Only used for iOS release. |
 | `macos/fastlane/AuthKey.p8` | Not used | Only used for Mac App Store release. |
 | `macos_se/fastlane/AuthKey.p8` | Not used | Only used for macOS SE release / notarization. |
-| `swift/AppStore/GoogleService-Info.plist` | Provide when needed | Used when debugging iOS / macOS with Firebase enabled. |
-| `swift/macOSSE/GoogleService-Info.plist` | Provide when needed | Used when debugging macOS SE with Firebase enabled. |
 
 ## 6. Files commonly used in debug
 
@@ -163,18 +156,14 @@ These are the files you will usually touch more often in local development:
 | `linux/app/OneXrayCore` | Core binary used by the Linux desktop app. |
 | `windows/app/libXray.dll` | Dynamic library loaded by the Windows desktop app. |
 | `windows/app/OneXrayCore.exe` | Core binary used by the Windows desktop app. |
-| `lib/firebase_options.dart` | Flutter-side Firebase initialization config. |
-| `android/app/google-services.json` | Android Firebase config. |
-| `swift/AppStore/GoogleService-Info.plist` | Firebase plist for the iOS / macOS App Store targets. |
-| `swift/macOSSE/GoogleService-Info.plist` | Firebase plist for the macOS SE target. |
 
-The repository already provides matching `.example` files. For the first debug setup, copying those files is enough.
+The repository provides the remaining non-secret defaults required for local debugging.
 
 ## 7. Minimal setup summary
 
 For local development and breakpoint debugging, the minimum setup is:
 
-1. Copy the `.example` config files.
+1. Copy `.env.example` to `.env`.
 2. Build `libXray` and copy its artifacts into the corresponding OneXray directories.
 3. Install the latest stable Flutter SDK and run `flutter pub get`.
 4. Install platform-specific dependencies when needed, such as `pod install` on Apple platforms and `libayatana-appindicator3-dev` on Linux.

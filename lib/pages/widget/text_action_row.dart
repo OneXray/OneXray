@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/pages/theme/font.dart';
 
 class TextActionRow extends StatelessWidget {
   final String title;
@@ -22,10 +24,10 @@ class TextActionRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(title, style: TextStyle(fontSize: 14)),
+            Text(title, style: AppTypography.rowTitle),
             const Spacer(),
-            Text(detail, style: TextStyle(fontSize: 14)),
-            Icon(Icons.chevron_right),
+            Text(detail, style: AppTypography.rowValue),
+            const Icon(LucideIcons.chevronRight),
           ],
         ),
       ),

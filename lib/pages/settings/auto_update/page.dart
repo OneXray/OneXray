@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/settings/auto_update/controller.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/auto_update/state.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AutoUpdatePage extends StatelessWidget {
   const AutoUpdatePage({super.key});
@@ -19,11 +17,12 @@ class AutoUpdatePage extends StatelessWidget {
       child: BlocBuilder<AutoUpdateController, AutoUpdatePageState>(
         builder: (context, state) {
           final controller = context.read<AutoUpdateController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.autoUpdatePageTitle),
-            ),
-            body: SafeArea(child: _body(context, state, controller)),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.autoUpdatePageTitle,
+            onSave: () => controller.save(context),
+            saveLabel: localizations.buttonSave,
+            body: _body(context, state, controller),
           );
         },
       ),
@@ -35,28 +34,15 @@ class AutoUpdatePage extends StatelessWidget {
     AutoUpdatePageState state,
     AutoUpdateController controller,
   ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        desktopMaxWidth: 1040,
-        adaptiveBreakpoint: 900,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 900) {
-                      return _wideSections(context, state, controller);
-                    }
-                    return _compactSections(context, state, controller);
-                  },
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
+    return SettingsPageScroll(
+      desktopMaxWidth: 1040,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 760) {
+            return _wideSections(context, state, controller);
+          }
+          return _compactSections(context, state, controller);
+        },
       ),
     );
   }
@@ -127,6 +113,7 @@ class AutoUpdatePage extends StatelessWidget {
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.autoUpdatePageEnable,
+      leading: const Icon(LucideIcons.refreshCw),
       value: state.autoUpdateState.subscriptionEnabled,
       onChanged: (value) => controller.updateSubscriptionEnabled(value),
     );
@@ -152,6 +139,7 @@ class AutoUpdatePage extends StatelessWidget {
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.autoUpdatePageEnable,
+      leading: const Icon(LucideIcons.database),
       value: state.autoUpdateState.geoDataEnable,
       onChanged: (value) => controller.updateGeoDataEnable(value),
     );
@@ -179,24 +167,10 @@ class AutoUpdatePage extends StatelessWidget {
       title: AppLocalizations.of(
         context,
       )!.autoUpdatePageGeoDataUpdateAfterVpnConnected,
+      leading: const Icon(LucideIcons.cloudDownload),
       value: state.autoUpdateState.geoDataUpdateAfterVpnConnected,
       onChanged: (value) =>
           controller.updateGeoDataUpdateAfterVpnConnected(value),
-    );
-  }
-
-  Widget _bottomButton(BuildContext context, AutoUpdateController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

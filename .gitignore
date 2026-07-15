@@ -71,12 +71,6 @@ app.*.map.json
 android/key.properties
 android/app/key.properties
 
-# Firebase / Google Services (any path)
-**/GoogleService-Info.plist
-**/google-services.json
-firebase.json
-lib/firebase_options.dart
-
 # Fastlane artifacts (but Fastfiles themselves stay public)
 **/fastlane/report.xml
 **/fastlane/Preview.html
@@ -100,10 +94,9 @@ ios/fastlane/AuthKey.p8
 macos/fastlane/AuthKey.p8
 macos_se/fastlane/AuthKey.p8
 ios/Flutter/AdMob.xcconfig
-swift/AppStore/GoogleService-Info.plist
-swift/macOSSE/GoogleService-Info.plist
 .fvm/
 
 # ai
 .cursor/
 .ai/
+/docs/

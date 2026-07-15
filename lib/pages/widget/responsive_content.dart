@@ -8,8 +8,8 @@ class ResponsiveContent extends StatelessWidget {
   const ResponsiveContent({
     super.key,
     required this.child,
-    this.desktopMaxWidth = 720,
-    this.adaptiveBreakpoint = 720,
+    this.desktopMaxWidth = 1040,
+    this.adaptiveBreakpoint = 840,
   });
 
   @override

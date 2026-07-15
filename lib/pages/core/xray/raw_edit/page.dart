@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/raw_edit/controller.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class XrayRawEditPage extends StatelessWidget {
   final XrayRawEditParams params;
@@ -18,64 +17,49 @@ class XrayRawEditPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => XrayRawEditController(params),
-      child: Builder(
-        builder: (context) {
+      child: BlocBuilder<XrayRawEditController, XrayRawEditPageState>(
+        builder: (context, state) {
           final controller = context.read<XrayRawEditController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(params.title),
-              actions: [
-                AppMenuButton<IconMenuId>(
-                  icon: Icons.file_upload_outlined,
-                  entries: iconMenuEntries([
-                    IconMenuId.pickFile,
-                    IconMenuId.readPasteboard,
-                  ]),
-                  onSelected: (menuId) =>
-                      controller.importAction(context, menuId),
-                ),
-              ],
-            ),
-            body: SafeArea(child: _body(context, controller)),
+          return SettingsPageScaffold(
+            title: params.title,
+            onSave: () => controller.save(context),
+            actions: [
+              AppMenuButton<IconMenuId>(
+                icon: LucideIcons.upload,
+                entries: iconMenuEntries([
+                  IconMenuId.pickFile,
+                  IconMenuId.readPasteboard,
+                ]),
+                onSelected: (menuId) =>
+                    controller.importAction(context, menuId),
+              ),
+            ],
+            body: _body(context, controller, state),
           );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, XrayRawEditController controller) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
+  Widget _body(
+    BuildContext context,
+    XrayRawEditController controller,
+    XrayRawEditPageState state,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 16),
       child: ResponsiveContent(
         desktopMaxWidth: 900,
         adaptiveBreakpoint: 840,
-        child: Column(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller.controller,
-                decoration: InputDecoration(border: InputBorder.none),
-                maxLines: null,
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
+        child: SettingsCodeEditor(
+          controller: controller.controller,
+          valid: state.validJson,
+          validLabel: l10n.jsonEditorValid,
+          invalidLabel: l10n.jsonEditorInvalid,
+          linesLabel: "${state.lineCount} ${l10n.jsonEditorLines}",
+          spacesLabel: l10n.jsonEditorSpaces,
         ),
-      ),
-    );
-  }
-
-  Widget _bottomButton(BuildContext context, XrayRawEditController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
       ),
     );
   }

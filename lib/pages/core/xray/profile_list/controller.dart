@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:onexray/pages/main/navigation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,49 +8,52 @@ import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
-import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
+import 'package:onexray/pages/home/share/params.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 
+class XrayProfileListItem {
+  final CoreConfigData config;
+  final bool builtIn;
+
+  const XrayProfileListItem({required this.config, required this.builtIn});
+}
+
 class XrayProfileListPageState {
   final int xrayProfileId;
-  final List<ConfigQueryRow> simpleConfigs;
-  final List<ConfigQueryRow> configs;
+  final List<XrayProfileListItem> profiles;
   final String query;
   final bool searching;
 
   const XrayProfileListPageState({
     required this.xrayProfileId,
-    required this.simpleConfigs,
-    required this.configs,
+    required this.profiles,
     required this.query,
     required this.searching,
   });
 
   factory XrayProfileListPageState.initial() => const XrayProfileListPageState(
     xrayProfileId: XrayProfileSimple.simpleId,
-    simpleConfigs: [],
-    configs: [],
+    profiles: [],
     query: "",
     searching: false,
   );
 
   XrayProfileListPageState copyWith({
     int? xrayProfileId,
-    List<ConfigQueryRow>? simpleConfigs,
-    List<ConfigQueryRow>? configs,
+    List<XrayProfileListItem>? profiles,
     String? query,
     bool? searching,
   }) {
     return XrayProfileListPageState(
       xrayProfileId: xrayProfileId ?? this.xrayProfileId,
-      simpleConfigs: simpleConfigs ?? this.simpleConfigs,
-      configs: configs ?? this.configs,
+      profiles: profiles ?? this.profiles,
       query: query ?? this.query,
       searching: searching ?? this.searching,
     );
@@ -65,13 +67,18 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
 
   StreamSubscription<List<ConfigQueryRow>>? _configsSubscription;
   final searchController = TextEditingController();
-  var _allSimpleConfigs = <ConfigQueryRow>[];
-  var _allConfigs = <ConfigQueryRow>[];
+  XrayProfileListItem? _simpleProfile;
+  var _customProfiles = <XrayProfileListItem>[];
+
+  List<XrayProfileListItem> get _allProfiles => [
+    ?_simpleProfile,
+    ..._customProfiles,
+  ];
 
   Future<void> _readData() async {
     await _readXrayProfileId();
+    _initSimpleProfile();
     _queryXrayProfileList();
-    _initSimpleConfigs();
   }
 
   Future<void> _readXrayProfileId() async {
@@ -84,22 +91,12 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
     _configsSubscription = db.coreConfigDao.allSettingRowsStream().listen((
       data,
     ) {
-      _allConfigs = data;
-      _emitFilteredConfigs();
+      _updateCustomProfiles(data);
+      _emitFilteredProfiles();
     });
   }
 
-  void _initSimpleConfigs() {
-    final sub = SubscriptionData(
-      id: XrayProfileSimple.simpleId,
-      name: appLocalizationsNoContext().xrayProfileListPageSimple,
-      url: "",
-      timestamp: DateTime.now(),
-      count: 1,
-      expanded: true,
-    );
-    final simpleSub = SubscriptionItem(sub, ConfigQueryRowType.subscription);
-
+  void _initSimpleProfile() {
     final config = CoreConfigData(
       id: XrayProfileSimple.simpleId,
       name: appLocalizationsNoContext().xrayProfileListPageSimple,
@@ -108,10 +105,15 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
       delay: PingDelayConstants.unknown,
       subId: XrayProfileSimple.simpleId,
     );
-    final simpleConfig = ConfigItem(config, ConfigQueryRowType.config);
+    _simpleProfile = XrayProfileListItem(config: config, builtIn: true);
+    _emitFilteredProfiles();
+  }
 
-    _allSimpleConfigs = [simpleSub, simpleConfig];
-    _emitFilteredConfigs();
+  void _updateCustomProfiles(List<ConfigQueryRow> rows) {
+    _customProfiles = rows
+        .whereType<ConfigItem>()
+        .map((item) => XrayProfileListItem(config: item.config, builtIn: false))
+        .toList();
   }
 
   void updateXrayProfileId(BuildContext context, int? id) {
@@ -127,32 +129,35 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
 
   Future<void> refreshData() async {
     final db = AppDatabase();
-    _allConfigs = await db.coreConfigDao.allSettingRows;
-    _emitFilteredConfigs();
+    _updateCustomProfiles(await db.coreConfigDao.allSettingRows);
+    _emitFilteredProfiles();
   }
 
   void updateSearchQuery(String value) {
-    _emitFilteredConfigs(query: value);
+    _emitFilteredProfiles(query: value);
   }
 
   void toggleSearch() {
     if (state.searching) {
       searchController.clear();
-      _emitFilteredConfigs(query: "", searching: false);
+      _emitFilteredProfiles(query: "", searching: false);
     } else {
       emit(state.copyWith(searching: true));
     }
   }
 
-  void _emitFilteredConfigs({String? query, bool? searching}) {
+  void _emitFilteredProfiles({String? query, bool? searching}) {
     final nextQuery = query ?? state.query;
+    final profiles = _allProfiles;
+    final filteredIds = ConfigQueryFilter.filterConfigs(
+      profiles.map((item) => item.config).toList(),
+      nextQuery,
+    ).map((config) => config.id).toSet();
     emit(
       state.copyWith(
-        simpleConfigs: ConfigQueryFilter.filterRows(
-          _allSimpleConfigs,
-          nextQuery,
-        ),
-        configs: ConfigQueryFilter.filterRows(_allConfigs, nextQuery),
+        profiles: profiles
+            .where((item) => filteredIds.contains(item.config.id))
+            .toList(),
         query: nextQuery,
         searching: searching,
       ),
@@ -167,7 +172,7 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
     final db = AppDatabase();
     switch (menuId) {
       case IconMenuId.edit:
-        _gotoXrayProfileUI(context, config.id);
+        _editXrayProfile(context, config.id);
         break;
       case IconMenuId.share:
         if (context.mounted) {
@@ -184,6 +189,21 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
       default:
         break;
     }
+  }
+
+  void _editXrayProfile(BuildContext context, int id) {
+    final destination = editorDestination(id);
+    if (destination == AppSecondaryDestination.xrayProfileSimple) {
+      context.pushScoped(destination);
+      return;
+    }
+    _gotoXrayProfileUI(context, id);
+  }
+
+  static AppSecondaryDestination editorDestination(int id) {
+    return id == XrayProfileSimple.simpleId
+        ? AppSecondaryDestination.xrayProfileSimple
+        : AppSecondaryDestination.xrayProfileUI;
   }
 
   void _gotoXrayProfileUI(BuildContext context, int id) {

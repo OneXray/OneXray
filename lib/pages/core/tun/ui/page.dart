@@ -1,16 +1,14 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/tun/ui/controller.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/tun_settings/enum.dart';
 import 'package:onexray/service/tun_settings/state.dart';
@@ -20,12 +18,7 @@ class TunSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.tunSettingsPageTitle),
-      ),
-      body: const SafeArea(child: TunSettingsContent()),
-    );
+    return const TunSettingsContent();
   }
 }
 
@@ -39,7 +32,11 @@ class TunSettingsContent extends StatelessWidget {
       child: BlocBuilder<TunSettingsController, TunSettingsPageState>(
         builder: (context, state) {
           final controller = context.read<TunSettingsController>();
-          return _body(context, state, controller);
+          return SettingsPageScaffold(
+            title: AppLocalizations.of(context)!.tunSettingsPageTitle,
+            onSave: () => controller.save(context),
+            body: _body(context, state, controller),
+          );
         },
       ),
     );
@@ -50,133 +47,80 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsPageState state,
     TunSettingsController controller,
   ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: _buildColumnView(context, state, controller),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
+    return SettingsPageScroll(
+      child: Column(
+        children: [
+          SettingsPageIntro(
+            title: AppLocalizations.of(context)!.tunSettingsPageTitle,
+          ),
+          SettingsResponsiveColumns(
+            firstFlex: 5,
+            secondFlex: 5,
+            first: [
+              _dnsSection(context, controller),
+              _runtimeSection(context, state, controller),
+            ],
+            second: _platformSections(context, state, controller),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildColumnView(
+  List<Widget> _platformSections(
     BuildContext context,
     TunSettingsPageState state,
     TunSettingsController controller,
   ) {
-    if (AppPlatform.isIOS) {
-      return _iOSView(context, state, controller);
-    }
-    if (AppPlatform.isMacOS) {
-      return _macOSView(context, state, controller);
+    if (AppPlatform.isIOS || AppPlatform.isMacOS) {
+      return [
+        _dotSection(context, state, controller),
+        _onDemandSection(context, state, controller),
+      ];
     }
     if (AppPlatform.isAndroid) {
-      return _androidView(context, state, controller);
+      return [_perAppVPNSection(context, state, controller)];
     }
-    if (AppPlatform.isLinux) {
-      return _linuxView(context, state, controller);
+    if (AppPlatform.isLinux || AppPlatform.isWindows) {
+      return [_interfaceSection(context, state, controller)];
     }
-    if (AppPlatform.isWindows) {
-      return _windowsView(context, state, controller);
-    }
-    return Container();
+    return const [];
   }
 
-  Widget _iOSView(
-    BuildContext context,
-    TunSettingsPageState state,
-    TunSettingsController controller,
-  ) {
-    return Column(
+  Widget _dnsSection(BuildContext context, TunSettingsController controller) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.xrayProfileSimplePageDns,
       children: [
-        _tunSection(context, state, controller),
-        _onDemandSection(context, state, controller),
+        _tunDnsIPv4(context, controller),
+        _tunDnsIPv6(context, controller),
       ],
     );
   }
 
-  Widget _macOSView(
-    BuildContext context,
-    TunSettingsPageState state,
-    TunSettingsController controller,
-  ) {
-    return Column(
-      children: [
-        _tunSection(context, state, controller),
-        _onDemandSection(context, state, controller),
-      ],
-    );
-  }
-
-  Widget _androidView(
-    BuildContext context,
-    TunSettingsPageState state,
-    TunSettingsController controller,
-  ) {
-    return Column(
-      children: [
-        _tunSection(context, state, controller),
-        _perAppVPNSection(context, state, controller),
-      ],
-    );
-  }
-
-  Widget _linuxView(
-    BuildContext context,
-    TunSettingsPageState state,
-    TunSettingsController controller,
-  ) {
-    return Column(
-      children: [
-        _tunSection(context, state, controller),
-        _interfaceSection(context, state, controller),
-      ],
-    );
-  }
-
-  Widget _windowsView(
-    BuildContext context,
-    TunSettingsPageState state,
-    TunSettingsController controller,
-  ) {
-    return Column(
-      children: [
-        _tunSection(context, state, controller),
-        _interfaceSection(context, state, controller),
-      ],
-    );
-  }
-
-  Widget _tunSection(
+  Widget _runtimeSection(
     BuildContext context,
     TunSettingsPageState state,
     TunSettingsController controller,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.settingsPageSectionNetwork,
       children: [
-        if (AppPlatform.isLinux || AppPlatform.isWindows)
-          SettingRow(
-            title: AppLocalizations.of(context)!.tunSettingsPageTunName,
-            value: state.tunSettings.tunName,
-          ),
-        _tunDnsIPv4(context, controller),
-        _tunDnsIPv6(context, controller),
-        if (AppPlatform.isIOS || AppPlatform.isMacOS)
-          _enableDot(context, state, controller),
-        if ((AppPlatform.isIOS || AppPlatform.isMacOS) &&
-            state.tunSettings.enableDot)
-          _tunDnsServerName(context, controller),
         _enableIPv6(context, state, controller),
         _metricsEnabled(context, state, controller),
+      ],
+    );
+  }
+
+  Widget _dotSection(
+    BuildContext context,
+    TunSettingsPageState state,
+    TunSettingsController controller,
+  ) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.tunSettingsPageTunDnsEnableDot,
+      children: [
+        _enableDot(context, state, controller),
+        if (state.tunSettings.enableDot) _tunDnsServerName(context, controller),
       ],
     );
   }
@@ -203,6 +147,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SwitchSettingRow(
+      leading: const Icon(LucideIcons.lockKeyhole),
       title: AppLocalizations.of(context)!.tunSettingsPageTunDnsEnableDot,
       value: state.tunSettings.enableDot,
       onChanged: (value) => controller.updateEnableDot(value),
@@ -228,6 +173,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SwitchSettingRow(
+      leading: const Icon(LucideIcons.globe2),
       title: AppLocalizations.of(context)!.tunSettingsPageEnableIPv6,
       subtitle: AppLocalizations.of(context)!.tunSettingsPageEnableIPv6Tip,
       value: state.tunSettings.enableIPv6,
@@ -241,6 +187,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SwitchSettingRow(
+      leading: const Icon(LucideIcons.activity),
       title: AppLocalizations.of(context)!.tunSettingsPageMetrics,
       value: state.tunSettings.metricsEnabled,
       onChanged: (value) => controller.updateMetricsEnabled(value),
@@ -253,8 +200,16 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SettingSection(
-      title: "",
-      children: [_interface(context, state, controller)],
+      title: AppLocalizations.of(context)!.tunSettingsPageInterface,
+      children: [
+        SettingRow(
+          leading: const Icon(LucideIcons.radioTower),
+          title: AppLocalizations.of(context)!.tunSettingsPageTunName,
+          value: state.tunSettings.tunName,
+          enabled: false,
+        ),
+        _interface(context, state, controller),
+      ],
     );
   }
 
@@ -264,6 +219,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return NavigationSettingRow(
+      leading: const Icon(LucideIcons.network),
       title: AppLocalizations.of(context)!.tunSettingsPageInterface,
       value: state.tunSettings.autoOutboundsInterface,
       onTap: () => controller.editInterface(context),
@@ -276,7 +232,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.tunSettingsPageOnDemandEnabled,
       children: [
         _onDemandEnabled(context, state, controller),
         if (state.tunSettings.onDemandEnabled)
@@ -291,6 +247,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SwitchSettingRow(
+      leading: const Icon(LucideIcons.zap),
       title: AppLocalizations.of(context)!.tunSettingsPageOnDemandEnabled,
       value: state.tunSettings.onDemandEnabled,
       onChanged: (value) => controller.updateOnDemandEnabled(value),
@@ -309,22 +266,19 @@ class TunSettingsContent extends StatelessWidget {
         .toList();
     return [
       SettingRow(
+        leading: const Icon(LucideIcons.listOrdered),
         title: AppLocalizations.of(context)!.tunSettingsPageOnDemandRules,
         subtitle: AppLocalizations.of(context)!.helpOrder,
         trailing: IconButton(
           onPressed: () => controller.appendOnDemandRule(),
-          icon: const Icon(Icons.add),
+          icon: const Icon(LucideIcons.plus),
         ),
       ),
       if (ruleViews.isNotEmpty)
         ReorderableListView(
           buildDefaultDragHandles: false,
           shrinkWrap: true,
-          onReorderItem: (int oldIndex, int newIndex) =>
-              controller.sortOnDemandRule(
-                oldIndex,
-                _legacyReorderNewIndex(oldIndex, newIndex),
-              ),
+          onReorderItem: controller.sortOnDemandRule,
           children: ruleViews,
         ),
     ];
@@ -346,7 +300,7 @@ class TunSettingsContent extends StatelessWidget {
         trailing: ActionCluster(
           children: [
             AppMenuButton<IconMenuId>(
-              icon: Icons.more_vert,
+              icon: LucideIcons.ellipsis,
               entries: iconMenuEntries([IconMenuId.delete]),
               onSelected: (menuId) => controller.moreAction(menuId, index),
             ),
@@ -366,7 +320,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.tunSettingsPagePerAppVPN,
       children: [
         _perAppVPNMode(context, state, controller),
         _appList(context, state, controller),
@@ -380,6 +334,7 @@ class TunSettingsContent extends StatelessWidget {
     TunSettingsController controller,
   ) {
     return SelectSettingRow(
+      leading: const Icon(LucideIcons.smartphone),
       title: AppLocalizations.of(context)!.tunSettingsPagePerAppVPNMode,
       value: state.tunSettings.perAppVPNMode.name,
       selections: PerAppVPNMode.names,
@@ -402,6 +357,7 @@ class TunSettingsContent extends StatelessWidget {
         break;
     }
     return NavigationSettingRow(
+      leading: const Icon(LucideIcons.appWindow),
       title: AppLocalizations.of(context)!.tunSettingsPagePerAppVPN,
       value: AppLocalizations.of(
         context,
@@ -409,27 +365,5 @@ class TunSettingsContent extends StatelessWidget {
       subtitle: AppLocalizations.of(context)!.tunSettingsPagePerAppVPNHelp,
       onTap: () => controller.editAppList(context),
     );
-  }
-
-  Widget _bottomButton(BuildContext context, TunSettingsController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _legacyReorderNewIndex(int oldIndex, int newIndex) {
-    if (newIndex > oldIndex) {
-      return newIndex + 1;
-    }
-    return newIndex;
   }
 }

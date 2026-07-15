@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/pages/app_update/dialog.dart';
-import 'package:onexray/pages/app_update/params.dart';
 import 'package:onexray/pages/core/geo_data/add/page.dart';
 import 'package:onexray/pages/core/geo_data/list/page.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
@@ -13,7 +11,6 @@ import 'package:onexray/pages/core/log/log_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
-import 'package:onexray/pages/core/log/page.dart';
 import 'package:onexray/pages/core/ping/page.dart';
 import 'package:onexray/pages/core/tun/installed_app/page.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
@@ -26,22 +23,16 @@ import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/core/tun/ui/page.dart';
 import 'package:onexray/pages/core/xray/outbound/page.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
-import 'package:onexray/pages/core/xray/full_config/outbounds/page.dart';
-import 'package:onexray/pages/core/xray/full_config/outbounds/params.dart';
 import 'package:onexray/pages/core/xray/full_config/page.dart';
 import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/core/xray/raw/page.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/page.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
-import 'package:onexray/pages/core/xray/profile/dns/page.dart';
-import 'package:onexray/pages/core/xray/profile/dns/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/page.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/page.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
-import 'package:onexray/pages/core/xray/profile/fake_dns/page.dart';
-import 'package:onexray/pages/core/xray/profile/fake_dns/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_http/page.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_http/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/page.dart';
@@ -52,10 +43,6 @@ import 'package:onexray/pages/core/xray/profile/inbound_sniffing/page.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_sniffing/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_tun/page.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_tun/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbounds/page.dart';
-import 'package:onexray/pages/core/xray/profile/inbounds/params.dart';
-import 'package:onexray/pages/core/xray/profile/log/page.dart';
-import 'package:onexray/pages/core/xray/profile/log/params.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_black_hole/page.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_dns/page.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_dns/params.dart';
@@ -63,10 +50,6 @@ import 'package:onexray/pages/core/xray/profile/outbound_fragment/page.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_fragment/params.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_freedom/page.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_freedom/params.dart';
-import 'package:onexray/pages/core/xray/profile/outbounds/page.dart';
-import 'package:onexray/pages/core/xray/profile/outbounds/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing/page.dart';
-import 'package:onexray/pages/core/xray/profile/routing/params.dart';
 import 'package:onexray/pages/core/xray/profile/routing_rule/page.dart';
 import 'package:onexray/pages/core/xray/profile/routing_rule/params.dart';
 import 'package:onexray/pages/core/xray/profile/routing_rule_dns_dot/page.dart';
@@ -81,6 +64,7 @@ import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/core/xray/profile_list/page.dart';
 import 'package:onexray/pages/home/main/page.dart';
 import 'package:onexray/pages/home/node_info/page.dart';
+import 'package:onexray/pages/home/node_info/params.dart';
 import 'package:onexray/pages/home/outbound_select/page.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/pages/home/qrcode/page.dart';
@@ -92,6 +76,8 @@ import 'package:onexray/pages/launch/splash/page.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/settings/app_update/dialog.dart';
+import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/settings/auto_update/page.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
@@ -198,7 +184,14 @@ _SharedSecondaryRoute _route(
 
 final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   _route(AppSecondaryDestination.overview, (_, _) => const HomePage()),
-  _route(AppSecondaryDestination.nodeInfo, (_, _) => const NodeInfoPage()),
+  _route(
+    AppSecondaryDestination.nodeInfo,
+    (_, state) => _withExtra<NodeInfoPageParams>(
+      state,
+      AppSecondaryDestination.nodeInfo,
+      (params) => NodeInfoPage(params: params),
+    ),
+  ),
   _route(AppSecondaryDestination.qrcode, (_, _) => const QrcodePage()),
   _route(
     AppSecondaryDestination.share,
@@ -283,14 +276,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     ),
   ),
   _route(
-    AppSecondaryDestination.xrayFullConfigOutbounds,
-    (_, state) => _withExtra<XrayFullConfigOutboundsParams>(
-      state,
-      AppSecondaryDestination.xrayFullConfigOutbounds,
-      (params) => XrayFullConfigOutboundsPage(params: params),
-    ),
-  ),
-  _route(
     AppSecondaryDestination.xrayProfileSimple,
     (_, _) => const XrayProfileSimplePage(),
   ),
@@ -300,30 +285,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       state,
       AppSecondaryDestination.xrayProfileUI,
       (params) => XrayProfileUIPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.xrayLog,
-    (_, state) => _withExtra<XrayLogParams>(
-      state,
-      AppSecondaryDestination.xrayLog,
-      (params) => XrayLogPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.dns,
-    (_, state) => _withExtra<DnsParams>(
-      state,
-      AppSecondaryDestination.dns,
-      (params) => DnsPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.fakeDns,
-    (_, state) => _withExtra<FakeDnsParams>(
-      state,
-      AppSecondaryDestination.fakeDns,
-      (params) => FakeDnsPage(params: params),
     ),
   ),
   _route(
@@ -340,14 +301,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       state,
       AppSecondaryDestination.dnsServer,
       (params) => DnsServerPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.routing,
-    (_, state) => _withExtra<RoutingParams>(
-      state,
-      AppSecondaryDestination.routing,
-      (params) => RoutingPage(params: params),
     ),
   ),
   _route(
@@ -380,14 +333,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       state,
       AppSecondaryDestination.routingRuleDnsDot,
       (params) => RoutingRuleDnsDoTPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.inbounds,
-    (_, state) => _withExtra<InboundsParams>(
-      state,
-      AppSecondaryDestination.inbounds,
-      (params) => InboundsPage(params: params),
     ),
   ),
   _route(
@@ -428,14 +373,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       state,
       AppSecondaryDestination.inboundPing,
       (params) => InboundPingPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.outbounds,
-    (_, state) => _withExtra<OutboundsParams>(
-      state,
-      AppSecondaryDestination.outbounds,
-      (params) => OutboundsPage(params: params),
     ),
   ),
   _route(
@@ -516,7 +453,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     ),
   ),
   _route(AppSecondaryDestination.ping, (_, _) => const PingPage()),
-  _route(AppSecondaryDestination.logs, (_, _) => const LogPage()),
   _route(
     AppSecondaryDestination.logFile,
     (_, state) => _withExtra<LogFileViewerParams>(

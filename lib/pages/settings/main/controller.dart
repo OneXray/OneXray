@@ -9,6 +9,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/doc/helper.dart';
@@ -78,10 +79,6 @@ class SettingsController extends Cubit<SettingsPageState> {
     context.goScoped(AppSecondaryDestination.geoData, extra: params);
   }
 
-  void gotoLog(BuildContext context) {
-    context.goScoped(AppSecondaryDestination.logs);
-  }
-
   Future<void> checkUpdate(BuildContext context) async {
     if (state.checkingUpdate) {
       ContextAlert.showToast(
@@ -113,9 +110,11 @@ class SettingsController extends Cubit<SettingsPageState> {
       case AppUpdateCheckStatus.available:
         final updateInfo = result.updateInfo;
         if (updateInfo != null) {
+          AppEventBus.instance.updateAppUpdateInfo(updateInfo);
           await _showUpdateDialog(context, updateInfo);
         }
       case AppUpdateCheckStatus.upToDate:
+        AppEventBus.instance.updateAppUpdateInfo(null);
         if (showUpToDate) {
           ContextAlert.showToast(
             context,
@@ -185,22 +184,12 @@ class SettingsController extends Cubit<SettingsPageState> {
     final localizations = AppLocalizations.of(context)!;
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(localizations.settingsPageClearDataDialogTitle),
-        content: Text(localizations.settingsPageClearDataDialogContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(localizations.buttonCancel),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(localizations.buttonOK),
-          ),
-        ],
+      builder: (_) => AppConfirmationDialog(
+        title: localizations.settingsPageClearDataDialogTitle,
+        content: localizations.settingsPageClearDataDialogContent,
+        cancelLabel: localizations.buttonCancel,
+        confirmLabel: localizations.buttonOK,
+        destructive: true,
       ),
     );
   }

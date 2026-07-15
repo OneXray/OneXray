@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_freedom/controller.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_freedom/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class OutboundFreedomPage extends StatelessWidget {
   final OutboundFreedomParams params;
@@ -22,105 +20,47 @@ class OutboundFreedomPage extends StatelessWidget {
       child: BlocBuilder<OutboundFreedomController, OutboundFreedomPageState>(
         builder: (context, state) {
           final controller = context.read<OutboundFreedomController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                AppLocalizations.of(context)!.outboundFreedomPageTitle,
+          final localizations = AppLocalizations.of(context)!;
+          final editable = AppPlatform.isLinux || AppPlatform.isWindows;
+          return SettingsPageScaffold(
+            title: localizations.outboundFreedomPageTitle,
+            onSave: editable ? () => controller.save(context) : null,
+            body: SettingsPageScroll(
+              desktopMaxWidth: 760,
+              child: Column(
+                children: [
+                  SettingSection(
+                    title: localizations.outboundFreedomPageTitle,
+                    children: [
+                      SettingRow(
+                        leading: const Icon(LucideIcons.waypoints),
+                        title: localizations.outboundFreedomPageProtocol,
+                        value: state.freedomState.protocol.name,
+                      ),
+                      SettingRow(
+                        leading: const Icon(LucideIcons.tag),
+                        title: localizations.outboundFreedomPageTag,
+                        value: state.freedomState.tag.name,
+                      ),
+                    ],
+                  ),
+                  if (editable)
+                    SettingSection(
+                      title: localizations.outboundFreedomPageSockopt,
+                      children: [
+                        NavigationSettingRow(
+                          leading: const Icon(LucideIcons.network),
+                          title: localizations.outboundFreedomPageInterface,
+                          value: state.freedomState.interface,
+                          onTap: () => controller.editInterface(context),
+                        ),
+                      ],
+                    ),
+                ],
               ),
             ),
-            body: SafeArea(child: _body(context, controller, state)),
           );
         },
-      ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    OutboundFreedomController controller,
-    OutboundFreedomPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _protocolSection(context, controller, state),
-                    if (AppPlatform.isLinux || AppPlatform.isWindows)
-                      _sockoptSection(context, controller, state),
-                  ],
-                ),
-              ),
-            ),
-            if (AppPlatform.isLinux || AppPlatform.isWindows)
-              _bottomButton(context, controller),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _protocolSection(
-    BuildContext context,
-    OutboundFreedomController controller,
-    OutboundFreedomPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.outboundFreedomPageProtocol,
-          value: state.freedomState.protocol.name,
-        ),
-        SettingRow(
-          title: AppLocalizations.of(context)!.outboundFreedomPageTag,
-          value: state.freedomState.tag.name,
-        ),
-      ],
-    );
-  }
-
-  Widget _sockoptSection(
-    BuildContext context,
-    OutboundFreedomController controller,
-    OutboundFreedomPageState state,
-  ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundFreedomPageSockopt,
-      children: [_interface(context, controller, state)],
-    );
-  }
-
-  Widget _interface(
-    BuildContext context,
-    OutboundFreedomController controller,
-    OutboundFreedomPageState state,
-  ) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.outboundFreedomPageInterface,
-      value: state.freedomState.interface,
-      onTap: () => controller.editInterface(context),
-    );
-  }
-
-  Widget _bottomButton(
-    BuildContext context,
-    OutboundFreedomController controller,
-  ) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
       ),
     );
   }

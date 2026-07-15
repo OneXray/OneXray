@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_tun/controller.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_tun/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class InboundTunPage extends StatelessWidget {
   final InboundTunParams params;
@@ -22,129 +20,94 @@ class InboundTunPage extends StatelessWidget {
       child: BlocBuilder<InboundTunController, InboundTunPageState>(
         builder: (context, state) {
           final controller = context.read<InboundTunController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.inboundTunPageTitle),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.inboundTunPageTitle,
+            onSave: () => controller.save(context),
+            body: SettingsPageScroll(
+              desktopMaxWidth: 900,
+              child: SettingsResponsiveColumns(
+                firstFlex: 5,
+                secondFlex: 5,
+                first: [_identitySection(context, state)],
+                second: [
+                  _settingsSection(context, state),
+                  _sniffingSection(context, controller),
+                ],
+              ),
             ),
-            body: SafeArea(child: _body(context, controller, state)),
           );
         },
       ),
     );
   }
 
-  Widget _body(
-    BuildContext context,
-    InboundTunController controller,
-    InboundTunPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _listenSection(context, controller, state),
-                    _settingsSection(context, controller, state),
-                    _tagSection(context, controller, state),
-                    _sniffingSection(context, controller),
-                  ],
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _listenSection(
-    BuildContext context,
-    InboundTunController controller,
-    InboundTunPageState state,
-  ) {
+  Widget _identitySection(BuildContext context, InboundTunPageState state) {
+    final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: "",
+      title: localizations.inboundTunPageTitle,
       children: [
         SettingRow(
-          title: AppLocalizations.of(context)!.inboundTunPageListen,
+          leading: const Icon(LucideIcons.ear),
+          title: localizations.inboundTunPageListen,
           value: state.tunState.listen,
         ),
         SettingRow(
-          title: AppLocalizations.of(context)!.inboundTunPageProtocol,
+          leading: const Icon(LucideIcons.waypoints),
+          title: localizations.inboundTunPageProtocol,
           value: state.tunState.protocol.name,
+        ),
+        SettingRow(
+          leading: const Icon(LucideIcons.tag),
+          title: localizations.inboundTunPageTag,
+          value: state.tunState.tag.name,
         ),
       ],
     );
   }
 
-  Widget _settingsSection(
-    BuildContext context,
-    InboundTunController controller,
-    InboundTunPageState state,
-  ) {
+  Widget _settingsSection(BuildContext context, InboundTunPageState state) {
+    final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: AppLocalizations.of(context)!.inboundTunPageSettings,
+      title: localizations.inboundTunPageSettings,
       children: [
         SettingRow(
-          title: AppLocalizations.of(context)!.inboundTunPageSettingsName,
+          leading: const Icon(LucideIcons.network),
+          title: localizations.inboundTunPageSettingsName,
           value: state.tunState.settings.name,
         ),
         SettingRow(
-          title: AppLocalizations.of(context)!.inboundTunPageSettingsMTU,
-          value: "${state.tunState.settings.mtu}",
+          leading: const Icon(LucideIcons.gauge),
+          title: localizations.inboundTunPageSettingsMTU,
+          value: '${state.tunState.settings.mtu}',
         ),
         if (AppPlatform.isWindows || AppPlatform.isLinux)
           SettingRow(
-            title: AppLocalizations.of(context)!.inboundTunPageSettingsGateway,
+            leading: const Icon(LucideIcons.router),
+            title: localizations.inboundTunPageSettingsGateway,
             value: _formatList(state.tunState.settings.gateway),
             valueMaxLines: 3,
           ),
         if (AppPlatform.isWindows || AppPlatform.isLinux)
           SettingRow(
-            title: AppLocalizations.of(context)!.inboundTunPageSettingsDns,
+            leading: const Icon(LucideIcons.server),
+            title: localizations.inboundTunPageSettingsDns,
             value: _formatList(state.tunState.settings.dns),
             valueMaxLines: 3,
           ),
         if (AppPlatform.isWindows || AppPlatform.isLinux)
           SettingRow(
-            title: AppLocalizations.of(
-              context,
-            )!.inboundTunPageSettingsAutoSystemRoutingTable,
+            leading: const Icon(LucideIcons.route),
+            title: localizations.inboundTunPageSettingsAutoSystemRoutingTable,
             value: _formatList(state.tunState.settings.autoSystemRoutingTable),
             valueMaxLines: 3,
           ),
         if (AppPlatform.isWindows || AppPlatform.isLinux)
           SettingRow(
-            title: AppLocalizations.of(
-              context,
-            )!.inboundTunPageSettingsAutoOutboundsInterface,
+            leading: const Icon(LucideIcons.panelTopOpen),
+            title: localizations.inboundTunPageSettingsAutoOutboundsInterface,
             value: state.tunState.settings.autoOutboundsInterface,
           ),
-      ],
-    );
-  }
-
-  String _formatList(List<String> values) {
-    return values.join(", ");
-  }
-
-  Widget _tagSection(
-    BuildContext context,
-    InboundTunController controller,
-    InboundTunPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.inboundTunPageTag,
-          value: state.tunState.tag.name,
-        ),
       ],
     );
   }
@@ -154,9 +117,10 @@ class InboundTunPage extends StatelessWidget {
     InboundTunController controller,
   ) {
     return SettingSection(
-      title: "",
+      title: '',
       children: [
         NavigationSettingRow(
+          leading: const Icon(LucideIcons.scanSearch),
           title: AppLocalizations.of(context)!.inboundTunPageSniffing,
           onTap: () => controller.editSniffing(context),
         ),
@@ -164,18 +128,5 @@ class InboundTunPage extends StatelessWidget {
     );
   }
 
-  Widget _bottomButton(BuildContext context, InboundTunController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  String _formatList(List<String> values) => values.join(', ');
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/pages/app_update/params.dart';
+import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/service/app_update/service.dart';
 
 abstract final class AppDialogRoutePath {
@@ -44,26 +44,19 @@ enum AppSecondaryDestination {
   installedApp("installed-app"),
   xray("xray"),
   xrayFullConfig("xray-full-config"),
-  xrayFullConfigOutbounds("xray-full-config-outbounds"),
   xrayProfileSimple("xray-profile-simple"),
   xrayProfileUI("xray-profile-ui"),
-  xrayLog("xray-log"),
-  dns("dns"),
-  fakeDns("fake-dns"),
   dnsHosts("dns-hosts"),
   dnsServer("dns-server"),
-  routing("routing"),
   routingRule("routing-rule"),
   routingRuleDnsQuery("routing-rule-dns-query"),
   routingRuleDnsOut("routing-rule-dns-out"),
   routingRuleDnsDot("routing-rule-dns-dot"),
-  inbounds("inbounds"),
   inboundTun("inbound-tun"),
   inboundSocks("inbound-socks"),
   inboundHttp("inbound-http"),
   inboundSniffing("inbound-sniffing"),
   inboundPing("inbound-ping"),
-  outbounds("outbounds"),
   outboundFreedom("outbound-freedom"),
   outboundFragment("outbound-fragment"),
   outboundBlackHole("outbound-black-hole"),
@@ -76,7 +69,6 @@ enum AppSecondaryDestination {
   geoDatSelect("geo-data-select"),
   geoDatShow("geo-data-show"),
   ping("ping"),
-  logs("logs"),
   logFile("log-file"),
   configFileViewer("config-file-viewer"),
   autoUpdate("auto-update"),

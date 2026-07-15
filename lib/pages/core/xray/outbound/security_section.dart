@@ -1,29 +1,10 @@
 part of 'page.dart';
 
 mixin OutboundSecuritySection {
-  Widget _finalMaskSection(
-    BuildContext context,
-    OutboundUIController controller,
-  ) {
-    return SettingSection(
+  Widget _finalMask(BuildContext context, OutboundUIController controller) {
+    return NavigationSettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageFinalmask,
-      children: [
-        NavigationSettingRow(
-          title: AppLocalizations.of(context)!.outboundUIPageFinalmask,
-          onTap: () => controller.editFinalMask(context),
-        ),
-      ],
-    );
-  }
-
-  Widget _securitySection(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [_security(context, controller, state)],
+      onTap: () => controller.editFinalMask(context),
     );
   }
 
@@ -40,18 +21,18 @@ mixin OutboundSecuritySection {
     );
   }
 
-  Widget _securitySettings(
+  List<Widget> _securitySettingsFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
     switch (state.outboundState.security) {
       case StreamSettingsSecurity.tls:
-        return _tlsSection(context, controller, state);
+        return _tlsFields(context, controller, state);
       case StreamSettingsSecurity.reality:
-        return _realitySection(context, controller, state);
+        return _realityFields(context, controller, state);
       case StreamSettingsSecurity.none:
-        return Container();
+        return const [];
     }
   }
 
@@ -76,22 +57,19 @@ mixin OutboundSecuritySection {
     );
   }
 
-  Widget _tlsSection(
+  List<Widget> _tlsFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageTlsSettings,
-      children: [
-        _serverName(context, controller),
-        _alpn(context, controller, state),
-        _fingerprint(context, controller, state),
-        _pinnedPeerCertSha256(context, controller),
-        _verifyPeerCertByName(context, controller),
-        _echConfigList(context, controller),
-      ],
-    );
+    return [
+      _serverName(context, controller),
+      _alpn(context, controller, state),
+      _fingerprint(context, controller, state),
+      _pinnedPeerCertSha256(context, controller),
+      _verifyPeerCertByName(context, controller),
+      _echConfigList(context, controller),
+    ];
   }
 
   Widget _alpn(
@@ -146,22 +124,19 @@ mixin OutboundSecuritySection {
     );
   }
 
-  Widget _realitySection(
+  List<Widget> _realityFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageRealitySettings,
-      children: [
-        _fingerprint(context, controller, state),
-        _serverName(context, controller),
-        _password(context, controller),
-        _shortId(context, controller),
-        _mldsa65Verify(context, controller),
-        _spiderX(context, controller),
-      ],
-    );
+    return [
+      _fingerprint(context, controller, state),
+      _serverName(context, controller),
+      _password(context, controller),
+      _shortId(context, controller),
+      _mldsa65Verify(context, controller),
+      _spiderX(context, controller),
+    ];
   }
 
   Widget _password(BuildContext context, OutboundUIController controller) {

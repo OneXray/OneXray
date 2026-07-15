@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/tun/selected_app/controller.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/data_list.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SelectedAppPage extends StatelessWidget {
   final SelectedAppParams params;
@@ -22,100 +21,91 @@ class SelectedAppPage extends StatelessWidget {
       child: BlocBuilder<SelectedAppController, SelectedAppPageState>(
         builder: (context, state) {
           final controller = context.read<SelectedAppController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.selectedAppPageTitle),
+          return SettingsPageScaffold(
+            title: AppLocalizations.of(context)!.selectedAppPageTitle,
+            onSave: () => controller.save(context),
+            body: ResponsiveContent(
+              desktopMaxWidth: 760,
+              child: LayoutBuilder(
+                builder: (context, constraints) => Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    16,
+                    constraints.maxWidth < 560 ? 12 : 16,
+                    16,
+                    16,
+                  ),
+                  child: Column(
+                    children: [
+                      _toolbar(context, controller, state),
+                      const SizedBox(height: 10),
+                      Expanded(child: _appCard(context, controller, state)),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            body: SafeArea(child: _body(context, state, controller)),
           );
         },
       ),
     );
   }
 
-  Widget _body(
+  Widget _toolbar(
     BuildContext context,
-    SelectedAppPageState state,
     SelectedAppController controller,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        desktopMaxWidth: 880,
-        adaptiveBreakpoint: 840,
-        child: _mainBody(context, state, controller),
-      ),
-    );
-  }
-
-  Widget _mainBody(
-    BuildContext context,
     SelectedAppPageState state,
-    SelectedAppController controller,
   ) {
-    return Column(
+    return Row(
       children: [
-        Expanded(child: _appList(context, state, controller)),
-        _bottomButton(context, controller),
+        Expanded(
+          child: Text(
+            "${state.apps.length} ${AppLocalizations.of(context)!.selectedAppPageTitle}",
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.navigationLabel,
+          ),
+        ),
+        const SizedBox(width: 12),
+        ShadButton.outline(
+          size: ShadButtonSize.sm,
+          leading: const Icon(LucideIcons.plus, size: 16),
+          onPressed: () => controller.gotoInstalledApp(context),
+          child: Text(AppLocalizations.of(context)!.buttonAdd),
+        ),
       ],
     );
   }
 
-  Widget _appList(
+  Widget _appCard(
     BuildContext context,
-    SelectedAppPageState state,
     SelectedAppController controller,
-  ) {
-    if (state.apps.isEmpty) {
-      return ListEmptyView(
-        message: AppLocalizations.of(context)!.selectedAppPageNoApp,
-      );
-    } else {
-      return ListView.separated(
-        itemBuilder: (ctx, index) => _itemRow(ctx, state, controller, index),
-        itemCount: state.apps.length,
-        separatorBuilder: (_, _) => const Divider(),
-      );
-    }
-  }
-
-  Widget _itemRow(
-    BuildContext context,
     SelectedAppPageState state,
-    SelectedAppController controller,
-    int index,
   ) {
-    final app = state.apps[index];
-    return DataListRow(
-      title: app.name,
-      subtitle: app.packageName,
-      trailing: AppMenuButton<IconMenuId>(
-        icon: Icons.more_vert,
-        entries: iconMenuEntries([IconMenuId.delete]),
-        onSelected: (menuId) => controller.moreAction(context, app, menuId),
-      ),
-    );
-  }
-
-  Widget _bottomButton(BuildContext context, SelectedAppController controller) {
-    return BottomView(
-      child: Row(
-        spacing: 12,
-        children: [
-          Expanded(
-            child: SecondaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonAdd,
-              callback: () => controller.gotoInstalledApp(context),
+    return ShadCard(
+      width: double.infinity,
+      height: double.infinity,
+      padding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: state.apps.isEmpty
+          ? ListEmptyView(
+              message: AppLocalizations.of(context)!.selectedAppPageNoApp,
+            )
+          : ListView.separated(
+              itemCount: state.apps.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final app = state.apps[index];
+                return DataListRow(
+                  title: app.name,
+                  subtitle: app.packageName,
+                  trailing: IconButton(
+                    tooltip: AppLocalizations.of(context)!.menuDelete,
+                    onPressed: () => controller.removeApp(app),
+                    icon: const Icon(LucideIcons.trash2, size: 18),
+                  ),
+                );
+              },
             ),
-          ),
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

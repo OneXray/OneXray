@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/profile/simple/controller.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
@@ -23,47 +21,42 @@ class XrayProfileSimplePage extends StatelessWidget {
           BlocBuilder<XrayProfileSimpleController, XrayProfileSimplePageState>(
             builder: (context, state) {
               final controller = context.read<XrayProfileSimpleController>();
-              return Scaffold(
-                appBar: AppBar(
-                  title: Text(
-                    AppLocalizations.of(context)!.xrayProfileSimplePageTitle,
+              return SettingsPageScaffold(
+                title: AppLocalizations.of(context)!.xrayProfileSimplePageTitle,
+                onSave: () => controller.save(context),
+                body: SettingsPageScroll(
+                  child: Column(
+                    children: [
+                      SettingsPageIntro(
+                        title: AppLocalizations.of(
+                          context,
+                        )!.xrayProfileSimplePageTitle,
+                        trailing: SettingsBadge(
+                          label: AppLocalizations.of(
+                            context,
+                          )!.xrayProfileListPageSimple,
+                        ),
+                      ),
+                      SettingsResponsiveColumns(
+                        firstFlex: 4,
+                        secondFlex: 6,
+                        first: [
+                          _logSection(context, controller, state),
+                          _finalOutboundSection(context, controller, state),
+                          _proxySection(context, state),
+                        ],
+                        second: [
+                          _routingSection(context, controller, state),
+                          _fakeDnsSection(context, controller, state),
+                          _dnsSection(context, controller, state),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                body: SafeArea(child: _body(context, controller, state)),
               );
             },
           ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: ResponsiveContent(
-                child: Column(
-                  children: [
-                    _logSection(context, controller, state),
-                    _finalOutboundSection(context, controller, state),
-                    _proxySection(context, state),
-                    _routingSection(context, controller, state),
-                    _fakeDnsSection(context, controller, state),
-                    _dnsSection(context, controller, state),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          _bottomButton(context, controller),
-        ],
-      ),
     );
   }
 
@@ -76,9 +69,41 @@ class XrayProfileSimplePage extends StatelessWidget {
       title: AppLocalizations.of(context)!.logPageTitle,
       children: [
         SwitchSettingRow(
+          leading: const Icon(LucideIcons.fileText),
           title: AppLocalizations.of(context)!.xrayProfileSimplePageEnableLog,
           value: state.xrayProfile.enableLog,
-          onChanged: (value) => controller.updateEnableLog(value),
+          onChanged: controller.updateEnableLog,
+        ),
+      ],
+    );
+  }
+
+  Widget _finalOutboundSection(
+    BuildContext context,
+    XrayProfileSimpleController controller,
+    XrayProfileSimplePageState state,
+  ) {
+    final finalOutboundName = state.finalOutboundName.isEmpty
+        ? AppLocalizations.of(context)!.finalOutboundPageDisabled
+        : state.finalOutboundName;
+    return SettingSection(
+      title: AppLocalizations.of(context)!.xrayProfileSimplePageFinalOutbound,
+      children: [
+        SettingRow(
+          leading: const Icon(LucideIcons.waypoints),
+          title: AppLocalizations.of(
+            context,
+          )!.xrayProfileSimplePageFinalOutbound,
+          value: finalOutboundName,
+          onTap: () => controller.editFinalOutbound(context),
+          showChevron: state.xrayProfile.finalOutboundId == null,
+          trailing: state.xrayProfile.finalOutboundId == null
+              ? null
+              : IconButton(
+                  tooltip: AppLocalizations.of(context)!.buttonCancel,
+                  onPressed: controller.clearFinalOutbound,
+                  icon: const Icon(LucideIcons.x, size: 17),
+                ),
         ),
       ],
     );
@@ -90,20 +115,24 @@ class XrayProfileSimplePage extends StatelessWidget {
       title: AppLocalizations.of(context)!.xrayProfileSimplePageProxy,
       children: [
         SettingRow(
+          leading: const Icon(LucideIcons.network),
           title: inbounds.socks.tag.name,
           value: _proxyListenPort(
             context,
             inbounds.socks.listen,
             inbounds.socks.port,
           ),
+          enabled: false,
         ),
         SettingRow(
+          leading: const Icon(LucideIcons.globe2),
           title: inbounds.http.tag.name,
           value: _proxyListenPort(
             context,
             inbounds.http.listen,
             inbounds.http.port,
           ),
+          enabled: false,
         ),
       ],
     );
@@ -124,13 +153,55 @@ class XrayProfileSimplePage extends StatelessWidget {
     return SettingSection(
       title: AppLocalizations.of(context)!.xrayProfileSimplePageRouting,
       children: [
-        _domainStrategy(context, controller, state),
-        _directSet(context, controller, state),
-        _appleDirect(context, controller, state),
-        _localDirect(context, controller, state),
-        _blockAds(context, controller, state),
-        _enableIPRule(context, controller, state),
-        _localDns(context, controller, state),
+        SelectSettingRow(
+          leading: const Icon(LucideIcons.route),
+          title: AppLocalizations.of(
+            context,
+          )!.xrayProfileSimplePageDomainStrategy,
+          value: state.xrayProfile.routing.domainStrategy.name,
+          selections: RoutingDomainStrategy.simpleStrategy,
+          onSelected: controller.updateDomainStrategy,
+        ),
+        SelectSettingRow(
+          leading: const Icon(LucideIcons.globe2),
+          title: AppLocalizations.of(context)!.xrayProfileSimplePageDirectSet,
+          value: state.xrayProfile.routing.directSet.name,
+          selections: SimpleCountry.names,
+          onSelected: controller.updateDirectSet,
+        ),
+        SwitchSettingRow(
+          leading: const Icon(LucideIcons.apple),
+          title: AppLocalizations.of(context)!.xrayProfileSimplePageAppleDirect,
+          value: state.xrayProfile.routing.appleDirect,
+          onChanged: controller.updateAppleDirect,
+        ),
+        SwitchSettingRow(
+          leading: const Icon(LucideIcons.wifi),
+          title: AppLocalizations.of(context)!.xrayProfileSimplePageLocalDirect,
+          value: state.xrayProfile.routing.localDirect,
+          onChanged: controller.updateLocalDirect,
+        ),
+        SwitchSettingRow(
+          leading: const Icon(LucideIcons.ban),
+          title: AppLocalizations.of(context)!.xrayProfileSimplePageBlockAds,
+          subtitle: "geosite:CATEGORY-ADS-ALL",
+          value: state.xrayProfile.routing.blockAds,
+          onChanged: controller.updateBlockAds,
+        ),
+        SwitchSettingRow(
+          leading: const Icon(LucideIcons.listFilter),
+          title: AppLocalizations.of(
+            context,
+          )!.xrayProfileSimplePageEnableIPRule,
+          value: state.xrayProfile.routing.enableIPRule,
+          onChanged: controller.updateEnableIPRule,
+        ),
+        SwitchSettingRow(
+          leading: const Icon(LucideIcons.database),
+          title: AppLocalizations.of(context)!.xrayProfileSimplePageLocalDns,
+          value: state.xrayProfile.routing.localDns,
+          onChanged: controller.updateLocalDns,
+        ),
       ],
     );
   }
@@ -144,126 +215,12 @@ class XrayProfileSimplePage extends StatelessWidget {
       title: AppLocalizations.of(context)!.fakeDnsPageTitle,
       children: [
         SwitchSettingRow(
+          leading: const Icon(LucideIcons.radioTower),
           title: AppLocalizations.of(context)!.xrayProfileSimplePageFakeDns,
           value: state.xrayProfile.fakeDns,
-          onChanged: (value) => controller.updateFakeDns(value),
+          onChanged: controller.updateFakeDns,
         ),
       ],
-    );
-  }
-
-  Widget _finalOutboundSection(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    final finalOutboundName = state.finalOutboundName.isEmpty
-        ? AppLocalizations.of(context)!.finalOutboundPageDisabled
-        : state.finalOutboundName;
-    return SettingSection(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageFinalOutbound,
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(
-            context,
-          )!.xrayProfileSimplePageFinalOutbound,
-          value: finalOutboundName,
-          onTap: () => controller.editFinalOutbound(context),
-          showChevron: state.xrayProfile.finalOutboundId == null,
-          trailing: state.xrayProfile.finalOutboundId == null
-              ? null
-              : IconButton(
-                  onPressed: () => controller.clearFinalOutbound(),
-                  icon: const Icon(Icons.clear),
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _domainStrategy(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageDomainStrategy,
-      value: state.xrayProfile.routing.domainStrategy.name,
-      selections: RoutingDomainStrategy.simpleStrategy,
-      onSelected: (value) => controller.updateDomainStrategy(value),
-    );
-  }
-
-  Widget _directSet(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageDirectSet,
-      value: state.xrayProfile.routing.directSet.name,
-      selections: SimpleCountry.names,
-      onSelected: (value) => controller.updateDirectSet(value),
-    );
-  }
-
-  Widget _appleDirect(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageAppleDirect,
-      value: state.xrayProfile.routing.appleDirect,
-      onChanged: (value) => controller.updateAppleDirect(value),
-    );
-  }
-
-  Widget _localDirect(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageLocalDirect,
-      value: state.xrayProfile.routing.localDirect,
-      onChanged: (value) => controller.updateLocalDirect(value),
-    );
-  }
-
-  Widget _enableIPRule(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageEnableIPRule,
-      value: state.xrayProfile.routing.enableIPRule,
-      onChanged: (value) => controller.updateEnableIPRule(value),
-    );
-  }
-
-  Widget _blockAds(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageBlockAds,
-      value: state.xrayProfile.routing.blockAds,
-      onChanged: (value) => controller.updateBlockAds(value),
-    );
-  }
-
-  Widget _localDns(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageLocalDns,
-      value: state.xrayProfile.routing.localDns,
-      onChanged: (value) => controller.updateLocalDns(value),
     );
   }
 
@@ -272,43 +229,25 @@ class XrayProfileSimplePage extends StatelessWidget {
     XrayProfileSimpleController controller,
     XrayProfileSimplePageState state,
   ) {
-    final children = SimpleDns.values
-        .map((e) => _simpleDns(controller, e))
-        .toList();
     return RadioGroup<int>(
       groupValue: state.xrayProfile.dns.id,
-      onChanged: (value) => controller.updateDnsId(value),
+      onChanged: controller.updateDnsId,
       child: SettingSection(
         title: AppLocalizations.of(context)!.xrayProfileSimplePageDns,
-        children: children,
+        children: SimpleDns.values
+            .map((dns) => _simpleDns(controller, dns))
+            .toList(),
       ),
     );
   }
 
   Widget _simpleDns(XrayProfileSimpleController controller, SimpleDns dns) {
     return SettingRow(
+      leading: const Icon(LucideIcons.database),
       title: dns.address,
       subtitleWidget: Row(children: [TagView(tag: dns.outbound.name)]),
       onTap: () => controller.updateDnsId(dns.id),
       trailing: Radio<int>(value: dns.id),
-    );
-  }
-
-  Widget _bottomButton(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-  ) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

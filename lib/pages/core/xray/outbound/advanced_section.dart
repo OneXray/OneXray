@@ -242,40 +242,4 @@ mixin OutboundAdvancedSection {
       )!.outboundUIPageMuxXudpConcurrencyExample,
     );
   }
-
-  Widget _bottomButton(BuildContext context, OutboundUIController controller) {
-    return BottomView(
-      child: Row(
-        spacing: 12,
-        children: [
-          BlocBuilder<AppEventBus, AppEventBusState>(
-            bloc: AppEventBus.instance,
-            builder: (context, eventState) =>
-                _bottomPingButton(context, controller, eventState),
-          ),
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bottomPingButton(
-    BuildContext context,
-    OutboundUIController controller,
-    AppEventBusState eventState,
-  ) {
-    final pinging = eventState.pinging;
-    return Expanded(
-      child: SecondaryBottomButton(
-        title: AppLocalizations.of(context)!.outboundPageRealPing,
-        callback: pinging ? null : () => controller.realPing(context),
-        loading: pinging,
-      ),
-    );
-  }
 }

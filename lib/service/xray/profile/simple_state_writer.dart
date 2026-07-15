@@ -155,12 +155,7 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
         domain.add("geosite:CATEGORY-IR");
         break;
       case SimpleCountry.ru:
-        domain.addAll([
-          "geosite:CATEGORY-GOV-RU",
-          "geosite:YANDEX",
-          "geosite:MAILRU",
-          r"regexp:.ru$",
-        ]);
+        domain.add("geosite:CATEGORY-RU");
         break;
     }
     return domain;

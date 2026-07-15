@@ -85,3 +85,7 @@ Choose validation commands based on the change scope. Changes touching Pigeon, J
 
 1. The app's `core`, `service`, and `pages` layers must strictly follow the layering rules. Reverse calls are forbidden.
 2. Page and view files must not contain business logic. Data access, validation, data transformation, navigation decisions, and page actions must be managed by the corresponding controller. Pages and views should only compose UI and bind callbacks.
+3. UI refactoring may reorganize UI elements and change interaction patterns. It must not add or remove fields without explicit approval from the project owner. Existing field semantics, platform visibility, persistence, validation, and runtime behavior must remain intact.
+4. App bar visual styling must be defined by `AppTheme.appBarTheme`. Page-level `AppBar` instances should only declare semantic content such as `title`, `leading`, `actions`, and `bottom`, unless a behavior cannot be expressed by the shared theme.
+5. Flutter UI icons must use `LucideIcons`. Do not introduce Material `Icons` or `CupertinoIcons` constants.
+6. UI typography must use `ThemeData.textTheme` or semantic styles from `AppTypography`. Page and view files must not define numeric font sizes, font families, letter spacing, or line heights directly. Code, logs, metrics, and compact labels must use their corresponding `AppTypography` styles.

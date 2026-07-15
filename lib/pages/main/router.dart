@@ -5,6 +5,7 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class GoRouteApp extends StatelessWidget {
   const GoRouteApp({super.key});
@@ -56,12 +57,16 @@ class GoRouteApp extends StatelessWidget {
         }
         return supportedLocales.first;
       },
-      builder: (_, child) {
+      builder: (context, child) {
         final routedChild = Directionality(
           textDirection: state.languageCode.textDirection,
           child: child ?? const SizedBox.shrink(),
         );
-        return routedChild;
+        final brightness = Theme.of(context).brightness;
+        return ShadTheme(
+          data: AppTheme.shad(brightness),
+          child: ShadToaster(child: routedChild),
+        );
       },
     );
   }

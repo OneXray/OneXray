@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/home/component/config_row/enum.dart';
 import 'package:onexray/pages/home/component/config_row/grid_card.dart';
 import 'package:onexray/pages/home/widget/config_grid_list.dart';
@@ -11,6 +10,7 @@ import 'package:onexray/pages/subscriptions/nodes/params.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SubscriptionNodesPage extends StatelessWidget {
   final SubscriptionNodesParams params;
@@ -29,9 +29,11 @@ class SubscriptionNodesPage extends StatelessWidget {
                 appBar: AppBar(
                   title: Text(_title(context, state)),
                   actions: [
-                    IconButton(
-                      onPressed: () => controller.toggleSearch(),
-                      icon: Icon(state.searching ? Icons.close : Icons.search),
+                    ShadIconButton.ghost(
+                      icon: Icon(
+                        state.searching ? LucideIcons.x : LucideIcons.search,
+                      ),
+                      onPressed: controller.toggleSearch,
                     ),
                   ],
                 ),
@@ -54,15 +56,12 @@ class SubscriptionNodesPage extends StatelessWidget {
     SubscriptionNodesController controller,
     SubscriptionNodesPageState state,
   ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ConfigGridContentFrame(
-        child: Column(
-          children: [
-            if (state.searching) _search(context, controller),
-            Expanded(child: _configList(context, state)),
-          ],
-        ),
+    return ConfigGridContentFrame(
+      child: Column(
+        children: [
+          if (state.searching) _search(context, controller),
+          Expanded(child: _configList(context, state)),
+        ],
       ),
     );
   }
@@ -79,7 +78,7 @@ class SubscriptionNodesPage extends StatelessWidget {
     if (state.configs.isEmpty) {
       return ListEmptyView(
         message: _emptyMessage(context, state),
-        icon: state.query.isEmpty ? Icons.hub_outlined : Icons.search_off,
+        icon: state.query.isEmpty ? LucideIcons.network : LucideIcons.searchX,
       );
     }
     final runningId = context.select<AppEventBus, int>(
@@ -117,7 +116,7 @@ class SubscriptionNodesPage extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              mainAxisExtent: 128,
+              mainAxisExtent: ConfigGridCard.mainAxisExtent,
             ),
             delegate: SliverChildBuilderDelegate((context, index) {
               final config = configs[index];
@@ -142,8 +141,8 @@ class SubscriptionNodesPage extends StatelessWidget {
   }
 
   int _columnCount(double width) {
-    const minTileWidth = 200;
-    const minColumns = 2;
+    const minTileWidth = 290;
+    const minColumns = 1;
     const maxColumns = 3;
     final rawCount = (width / minTileWidth).floor();
     return rawCount.clamp(minColumns, maxColumns).toInt();

@@ -5,6 +5,39 @@ import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 
 extension ConfigReader on CoreConfigData {
+  String readProtocolLabel() {
+    return switch (CoreConfigType.fromString(type)) {
+      CoreConfigType.outbound =>
+        tags
+            .split(',')
+            .firstWhere((tag) => tag.isNotEmpty, orElse: () => type)
+            .toUpperCase(),
+      CoreConfigType.raw => 'JSON',
+      CoreConfigType.full => 'FULL',
+      CoreConfigType.profile || null => '',
+    };
+  }
+
+  String readConnectionDetail(BuildContext context) {
+    return switch (CoreConfigType.fromString(type)) {
+      CoreConfigType.outbound =>
+        tags
+            .split(',')
+            .skip(1)
+            .where((tag) => tag.isNotEmpty && tag.toLowerCase() != 'none')
+            .join(' · '),
+      CoreConfigType.raw => AppLocalizations.of(
+        context,
+      )!.homeManualInputRawJson,
+      CoreConfigType.full => AppLocalizations.of(
+        context,
+      )!.homeManualInputFullConfig,
+      CoreConfigType.profile || null => '',
+    };
+  }
+
+  String readDelayLabel(BuildContext context) => _readDelayTag(context);
+
   List<String> readTags(BuildContext context) {
     final tags = <String>[];
     final type = CoreConfigType.fromString(this.type);

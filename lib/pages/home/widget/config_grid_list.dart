@@ -50,8 +50,8 @@ class ConfigGridList extends StatelessWidget {
 
   static const double maxContentWidth = 1040;
   static const double adaptiveBreakpoint = 900;
-  static const double _minTileWidth = 200;
-  static const int _minColumns = 2;
+  static const double _minTileWidth = 290;
+  static const int _minColumns = 1;
   static const int _maxColumns = 3;
 
   final List<ConfigQueryRow> rows;
@@ -109,9 +109,7 @@ class ConfigGridList extends StatelessWidget {
             cleanCallback: onCleanSubscription == null
                 ? null
                 : (subscription) => onCleanSubscription!(subscription.id),
-            compact: true,
           ),
-          const Divider(height: 1),
         ],
       ),
     );
@@ -119,7 +117,7 @@ class ConfigGridList extends StatelessWidget {
 
   Widget _configGridSliver({required int start, required int count}) {
     return SliverPadding(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 16, 12),
       sliver: SliverLayoutBuilder(
         builder: (context, constraints) {
           final columns = _columnCount(constraints.crossAxisExtent);
@@ -128,7 +126,7 @@ class ConfigGridList extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              mainAxisExtent: 128,
+              mainAxisExtent: ConfigGridCard.mainAxisExtent,
             ),
             delegate: SliverChildBuilderDelegate((context, offset) {
               final item = rows[start + offset] as ConfigItem;

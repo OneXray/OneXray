@@ -11,6 +11,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -39,6 +40,8 @@ final class VpnService {
   var _lastVpnStatus = VpnStatus.disconnected;
   var _runningMode = CoreRunMode.tun;
   var _pendingRunMode = CoreRunMode.tun;
+  var _runningRoutingMode = CoreRoutingMode.rule;
+  var _pendingRoutingMode = CoreRoutingMode.rule;
   var _staleDesktopCoreCleanupRequired = false;
   final _commands = CommandSerialExecutor();
   late final _runningConfigIdWriter = RunningConfigIdWriter(
@@ -72,6 +75,8 @@ final class VpnService {
     _lastConfigId = await preferences.readLastConfigId();
     _runningMode = await preferences.readCoreRunMode();
     _pendingRunMode = _runningMode;
+    _runningRoutingMode = await preferences.readCoreRoutingMode();
+    _pendingRoutingMode = _runningRoutingMode;
 
     _listenVpnStatus();
     if (_staleDesktopCoreCleanupRequired) {
@@ -178,8 +183,12 @@ final class VpnService {
       case VpnStatus.connected:
         _vpnRunning = true;
         _runningMode = _pendingRunMode;
+        _runningRoutingMode = _pendingRoutingMode;
+        eventBus.updateCoreRoutingMode(_runningRoutingMode);
         eventBus.updateVpnActionState(VpnActionState.connected);
-        final runningId = _pendingConfigId == DBConstants.defaultId
+        final runningId = _runningRoutingMode == CoreRoutingMode.direct
+            ? DBConstants.defaultId
+            : _pendingConfigId == DBConstants.defaultId
             ? _lastConfigId
             : _pendingConfigId;
         await _updateRunningId(runningId, generation);
@@ -218,9 +227,13 @@ final class VpnService {
       _commands.run(_startDefaultVpn);
 
   Future<NativeVpnCommandResult> _startDefaultVpn(int generation) async {
-    final eventBus = AppEventBus.instance;
-    if (eventBus.state.runningId != DBConstants.defaultId) {
+    if (_isCoreActive) {
       return _commandSuccess();
+    }
+
+    final routingMode = await PreferencesKey().readCoreRoutingMode();
+    if (routingMode == CoreRoutingMode.direct) {
+      return _startVpn(_lastConfigId, generation);
     }
 
     final db = AppDatabase();
@@ -258,10 +271,15 @@ final class VpnService {
   Future<NativeVpnCommandResult> _startVpn(int configId, int generation) async {
     final eventBus = AppEventBus.instance;
     final coreRunMode = await PreferencesKey().readCoreRunMode();
+    final routingMode = await PreferencesKey().readCoreRoutingMode();
     if (!_commands.isCurrent(generation)) {
       return _commandFailed(appLocalizationsNoContext().vpnCommandFailed);
     }
-    if (configId == DBConstants.defaultId) {
+    if (configId == DBConstants.defaultId &&
+        (routingMode != CoreRoutingMode.direct || _isCoreActive)) {
+      return _stopCurrentVpn(generation);
+    }
+    if (routingMode == CoreRoutingMode.direct && _isCoreActive) {
       return _stopCurrentVpn(generation);
     }
     if (!await _ensureStaleDesktopCoreCleaned(generation)) {
@@ -269,25 +287,28 @@ final class VpnService {
         appLocalizationsNoContext().vpnStaleCoreCleanupFailed,
       );
     }
-    if (configId == eventBus.state.runningId) {
+    if (routingMode != CoreRoutingMode.direct &&
+        configId == eventBus.state.runningId) {
       return _stopCurrentVpn(generation);
     }
 
-    final hadRunningCore =
-        eventBus.state.runningId != DBConstants.defaultId ||
-        _lastVpnStatus == VpnStatus.connected ||
-        _lastVpnStatus == VpnStatus.connecting;
+    final hadRunningCore = _isCoreActive;
 
-    _pendingConfigId = configId;
-    eventBus.updatePendingConfigId(configId);
+    _pendingRoutingMode = routingMode;
+    _pendingConfigId = routingMode == CoreRoutingMode.direct
+        ? DBConstants.defaultId
+        : configId;
+    eventBus.updatePendingConfigId(_pendingConfigId);
     eventBus.updateVpnActionState(VpnActionState.preparing);
     eventBus.updateVpnErrorMessage("");
 
     var previousCoreStopped = false;
     var startAttempted = false;
     try {
-      final outbound = await AppDatabase().coreConfigDao.searchRow(configId);
-      if (outbound == null) {
+      final outbound = routingMode == CoreRoutingMode.direct
+          ? null
+          : await AppDatabase().coreConfigDao.searchRow(configId);
+      if (routingMode != CoreRoutingMode.direct && outbound == null) {
         final message = appLocalizationsNoContext().vpnSelectOneConfig;
         await _handlePreflightFailure(
           message,
@@ -325,8 +346,11 @@ final class VpnService {
           return stopResult;
         }
         previousCoreStopped = true;
-        _pendingConfigId = configId;
-        eventBus.updatePendingConfigId(configId);
+        _pendingRoutingMode = routingMode;
+        _pendingConfigId = routingMode == CoreRoutingMode.direct
+            ? DBConstants.defaultId
+            : configId;
+        eventBus.updatePendingConfigId(_pendingConfigId);
         eventBus.updateVpnActionState(VpnActionState.preparing);
       }
 
@@ -471,9 +495,11 @@ final class VpnService {
 
     final eventBus = AppEventBus.instance;
     final runningId = eventBus.state.runningId;
-    if (runningId != DBConstants.defaultId ||
-        _lastVpnStatus == VpnStatus.connected ||
-        _lastVpnStatus == VpnStatus.connecting) {
+    final restartConfigId = runningId == DBConstants.defaultId
+        ? _lastConfigId
+        : runningId;
+    final wasRunning = _isCoreActive;
+    if (wasRunning) {
       final stopResult = await _stopCurrentVpn(generation);
       if (stopResult.state == NativeVpnCommandState.failed) {
         return stopResult;
@@ -486,10 +512,51 @@ final class VpnService {
     eventBus.updateCoreRunMode(mode);
     await TrayService().refreshTrayManager();
 
-    if (runningId == DBConstants.defaultId) {
+    if (!wasRunning) {
       return _commandSuccess();
     }
-    return _startVpn(runningId, generation);
+    return _startVpn(restartConfigId, generation);
+  }
+
+  Future<NativeVpnCommandResult> switchRoutingMode(CoreRoutingMode mode) =>
+      _commands.run((generation) => _switchRoutingMode(mode, generation));
+
+  Future<NativeVpnCommandResult> _switchRoutingMode(
+    CoreRoutingMode mode,
+    int generation,
+  ) async {
+    final preferences = PreferencesKey();
+    final currentMode = await preferences.readCoreRoutingMode();
+    if (currentMode == mode) {
+      return _commandSuccess();
+    }
+
+    final eventBus = AppEventBus.instance;
+    final runningId = eventBus.state.runningId;
+    final restartConfigId = runningId == DBConstants.defaultId
+        ? _lastConfigId
+        : runningId;
+    final wasRunning = _isCoreActive;
+    if (wasRunning) {
+      final stopResult = await _stopCurrentVpn(generation);
+      if (stopResult.state == NativeVpnCommandState.failed) {
+        return stopResult;
+      }
+    }
+
+    await preferences.saveCoreRoutingMode(mode);
+    _pendingRoutingMode = mode;
+    _runningRoutingMode = mode;
+    eventBus.updateCoreRoutingMode(mode);
+
+    if (!wasRunning) {
+      return _commandSuccess();
+    }
+    if (mode != CoreRoutingMode.direct &&
+        restartConfigId == DBConstants.defaultId) {
+      return _commandFailed(appLocalizationsNoContext().vpnSelectOneConfig);
+    }
+    return _startVpn(restartConfigId, generation);
   }
 
   Future<NativeVpnCommandResult> _stopCurrentCore() async {
@@ -653,7 +720,9 @@ final class VpnService {
     _lastVpnStatus = VpnStatus.connected;
     final eventBus = AppEventBus.instance;
     final currentRunningId = eventBus.state.runningId;
-    final runningId = currentRunningId != DBConstants.defaultId
+    final runningId = _runningRoutingMode == CoreRoutingMode.direct
+        ? DBConstants.defaultId
+        : currentRunningId != DBConstants.defaultId
         ? currentRunningId
         : _pendingConfigId != DBConstants.defaultId
         ? _pendingConfigId
@@ -741,14 +810,17 @@ final class VpnService {
   }
 
   Future<NativeVpnCommandResult> _realStartXray(
-    CoreConfigData config, {
+    CoreConfigData? config, {
     required void Function() onStartInvoked,
   }) async {
-    await _updateLastConfigId(config.id);
+    if (config != null) {
+      await _updateLastConfigId(config.id);
+    }
     await PreferencesKey().saveVpnStartTimestamp();
 
     final runtime = await _runtimeConfig.prepare(config);
     _pendingRunMode = runtime.mode;
+    _pendingRoutingMode = runtime.routingMode;
     switch (runtime.mode) {
       case CoreRunMode.tun:
         return _makeVpnRequestAndStart(
@@ -815,4 +887,9 @@ final class VpnService {
   Future<void> retryConnectivityTest() {
     return _connectivity.retry();
   }
+
+  bool get _isCoreActive =>
+      _vpnRunning ||
+      _lastVpnStatus == VpnStatus.connected ||
+      _lastVpnStatus == VpnStatus.connecting;
 }

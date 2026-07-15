@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/tun/installed_app/controller.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class InstalledAppPage extends StatelessWidget {
   final InstalledAppParams params;
@@ -21,106 +20,88 @@ class InstalledAppPage extends StatelessWidget {
       child: BlocBuilder<InstalledAppController, InstalledAppPageState>(
         builder: (context, state) {
           final controller = context.read<InstalledAppController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.installedAppPageTitle),
+          return SettingsPageScaffold(
+            title: AppLocalizations.of(context)!.installedAppPageTitle,
+            onSave: () => controller.save(context),
+            body: ResponsiveContent(
+              desktopMaxWidth: 760,
+              child: LayoutBuilder(
+                builder: (context, constraints) => Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    16,
+                    constraints.maxWidth < 560 ? 12 : 16,
+                    16,
+                    16,
+                  ),
+                  child: Column(
+                    children: [
+                      _toolbar(context, controller, state),
+                      const SizedBox(height: 10),
+                      Expanded(child: _appCard(context, controller, state)),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            body: SafeArea(child: _body(context, state, controller)),
           );
         },
       ),
     );
   }
 
-  Widget _body(
+  Widget _toolbar(
     BuildContext context,
-    InstalledAppPageState state,
     InstalledAppController controller,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        desktopMaxWidth: 880,
-        adaptiveBreakpoint: 840,
-        child: _mainBody(context, state, controller),
-      ),
-    );
-  }
-
-  Widget _mainBody(
-    BuildContext context,
     InstalledAppPageState state,
-    InstalledAppController controller,
   ) {
-    return Column(
+    return Row(
       children: [
-        _search(context, controller),
-        Expanded(child: _appList(context, state, controller)),
-        _bottomButton(context, controller),
+        Expanded(
+          child: ListSearchField(
+            controller: controller.searchController,
+            onChanged: controller.keywordChanged,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        const SizedBox(width: 12),
+        SettingsBadge(label: "${state.selections.length}"),
       ],
     );
   }
 
-  Widget _search(BuildContext context, InstalledAppController controller) {
-    return ListSearchField(
-      controller: controller.searchController,
-      onChanged: (value) => controller.keywordChanged(value),
-    );
-  }
-
-  Widget _appList(
+  Widget _appCard(
     BuildContext context,
+    InstalledAppController controller,
     InstalledAppPageState state,
-    InstalledAppController controller,
   ) {
-    if (state.apps.isEmpty) {
-      return ListEmptyView(
-        message: AppLocalizations.of(context)!.installedAppPageNoApp,
-      );
-    } else {
-      return ListView.separated(
-        itemBuilder: (ctx, index) => _itemRow(ctx, state, controller, index),
-        itemCount: state.apps.length,
-        separatorBuilder: (_, _) => const Divider(),
-      );
-    }
-  }
-
-  Widget _itemRow(
-    BuildContext context,
-    InstalledAppPageState state,
-    InstalledAppController controller,
-    int index,
-  ) {
-    final app = state.apps[index];
-    final selected = state.selections.contains(app.packageName);
-    return DataListRow(
-      title: app.name,
-      subtitle: app.packageName,
-      onTap: () => controller.updateSelections(!selected, app.packageName),
-      trailing: Checkbox(
-        value: selected,
-        onChanged: (value) =>
-            controller.updateSelections(value, app.packageName),
-      ),
-    );
-  }
-
-  Widget _bottomButton(
-    BuildContext context,
-    InstalledAppController controller,
-  ) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
+    return ShadCard(
+      width: double.infinity,
+      height: double.infinity,
+      padding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: state.apps.isEmpty
+          ? ListEmptyView(
+              message: AppLocalizations.of(context)!.installedAppPageNoApp,
+            )
+          : ListView.separated(
+              itemCount: state.apps.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final app = state.apps[index];
+                final selected = state.selections.contains(app.packageName);
+                return DataListRow(
+                  title: app.name,
+                  subtitle: app.packageName,
+                  onTap: () =>
+                      controller.updateSelections(!selected, app.packageName),
+                  trailing: Checkbox(
+                    value: selected,
+                    onChanged: (value) =>
+                        controller.updateSelections(value, app.packageName),
+                  ),
+                );
+              },
             ),
-          ),
-        ],
-      ),
     );
   }
 }

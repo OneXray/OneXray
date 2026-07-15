@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/ping/controller.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/ping/state.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class PingPage extends StatelessWidget {
   const PingPage({super.key});
@@ -19,11 +17,12 @@ class PingPage extends StatelessWidget {
       child: BlocBuilder<PingController, PingPageState>(
         builder: (context, state) {
           final controller = context.read<PingController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.pingPageTitle),
-            ),
-            body: SafeArea(child: _body(context, state, controller)),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.pingPageTitle,
+            saveLabel: localizations.buttonSave,
+            onSave: () => controller.save(context),
+            body: _body(context, state, controller),
           );
         },
       ),
@@ -35,20 +34,9 @@ class PingPage extends StatelessWidget {
     PingPageState state,
     PingController controller,
   ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: _section(context, state, controller),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
+    return SettingsPageScroll(
+      desktopMaxWidth: 920,
+      child: _section(context, state, controller),
     );
   }
 
@@ -58,7 +46,8 @@ class PingPage extends StatelessWidget {
     PingController controller,
   ) {
     return SettingSection(
-      title: "",
+      title: AppLocalizations.of(context)!.pingPageTitle,
+      description: AppLocalizations.of(context)!.pingPageDescription,
       children: [
         _timeout(context, state, controller),
         _concurrency(context, state, controller),
@@ -76,6 +65,10 @@ class PingPage extends StatelessWidget {
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.pingPageAutoPingNewConfigs,
+      subtitle: AppLocalizations.of(
+        context,
+      )!.pingPageAutoPingNewConfigsDescription,
+      leading: const Icon(LucideIcons.wifi),
       value: state.pingState.autoPingNewConfigs,
       onChanged: (value) => controller.updateAutoPingNewConfigs(value),
     );
@@ -88,10 +81,12 @@ class PingPage extends StatelessWidget {
   ) {
     return SliderSettingRow(
       title: AppLocalizations.of(context)!.pingPageTimeout,
+      subtitle: AppLocalizations.of(context)!.pingPageTimeoutDescription,
+      leading: const Icon(LucideIcons.activity),
       min: PingTimeout.min,
       max: PingTimeout.max,
       divisions: PingTimeout.divisions,
-      label: state.pingState.timeout.round().toString(),
+      label: "${state.pingState.timeout.round()}s",
       value: state.pingState.timeout,
       onChanged: (value) => controller.updateTimeout(value),
     );
@@ -104,6 +99,8 @@ class PingPage extends StatelessWidget {
   ) {
     return SliderSettingRow(
       title: AppLocalizations.of(context)!.pingPageConcurrency,
+      subtitle: AppLocalizations.of(context)!.pingPageConcurrencyDescription,
+      leading: const Icon(LucideIcons.slidersHorizontal),
       min: PingConcurrency.min,
       max: PingConcurrency.max,
       divisions: PingConcurrency.divisions,
@@ -120,6 +117,7 @@ class PingPage extends StatelessWidget {
   ) {
     return SelectSettingRow(
       title: AppLocalizations.of(context)!.pingPageUrl,
+      leading: const Icon(LucideIcons.globe2),
       value: state.pingState.url.name,
       selections: PingUrl.names,
       onSelected: (value) => controller.updateUrl(value),
@@ -127,21 +125,12 @@ class PingPage extends StatelessWidget {
   }
 
   Widget _realUrl(BuildContext context, PingPageState state) {
-    return SettingRow(title: state.pingState.url.url, titleMaxLines: 3);
-  }
-
-  Widget _bottomButton(BuildContext context, PingController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
-            ),
-          ),
-        ],
-      ),
+    return SettingRow(
+      title: AppLocalizations.of(context)!.pingPageResolvedUrl,
+      subtitle: state.pingState.url.url,
+      leading: const Icon(LucideIcons.link),
+      onTap: () => context.read<PingController>().copyResolvedUrl(context),
+      trailing: const Icon(LucideIcons.copy),
     );
   }
 }

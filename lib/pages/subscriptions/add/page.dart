@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/subscriptions/add/controller.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/subscriptions/widget/form_view.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
@@ -17,104 +14,47 @@ class SubscriptionAddPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SubscriptionAddController(),
-      child: Builder(
-        builder: (context) {
+      child: BlocBuilder<SubscriptionAddController, SubscriptionAddPageState>(
+        builder: (context, state) {
           final controller = context.read<SubscriptionAddController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                AppLocalizations.of(context)!.subscriptionAddPageTitle,
-              ),
-            ),
-            body: SafeArea(child: _body(context, controller)),
+          return BlocBuilder<AppEventBus, AppEventBusState>(
+            buildWhen: (previous, current) =>
+                previous.downloading != current.downloading,
+            builder: (context, eventState) =>
+                _page(context, controller, state, eventState.downloading),
           );
         },
       ),
     );
   }
 
-  Widget _body(BuildContext context, SubscriptionAddController controller) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: SettingSection(
-                  title: AppLocalizations.of(
-                    context,
-                  )!.subscriptionAddPageSection,
-                  children: [
-                    _name(context, controller),
-                    _url(context, controller),
-                    _autoUpdate(context, controller),
-                  ],
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _name(BuildContext context, SubscriptionAddController controller) {
-    return TextFieldSettingRow(
-      controller: controller.nameController,
-      label: AppLocalizations.of(context)!.subscriptionAddPageName,
-      hintText: AppLocalizations.of(context)!.subscriptionAddPageName,
-    );
-  }
-
-  Widget _url(BuildContext context, SubscriptionAddController controller) {
-    return TextFieldSettingRow(
-      controller: controller.urlController,
-      label: AppLocalizations.of(context)!.subscriptionAddPageUrl,
-      hintText: AppLocalizations.of(context)!.subscriptionAddPageUrlExample,
-      helperText: AppLocalizations.of(context)!.helpURL,
-    );
-  }
-
-  Widget _autoUpdate(
+  Widget _page(
     BuildContext context,
     SubscriptionAddController controller,
+    SubscriptionAddPageState state,
+    bool downloading,
   ) {
-    return SettingRow(
-      title: AppLocalizations.of(context)!.autoUpdatePageTitle,
-      onTap: () => controller.gotoAutoUpdate(context),
-      showChevron: true,
-    );
-  }
-
-  Widget _bottomButton(
-    BuildContext context,
-    SubscriptionAddController controller,
-  ) {
-    return BottomView(
-      child: Row(
-        children: [
-          BlocBuilder<AppEventBus, AppEventBusState>(
-            builder: (context, state) =>
-                _saveButton(context, controller, state),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _saveButton(
-    BuildContext context,
-    SubscriptionAddController controller,
-    AppEventBusState state,
-  ) {
-    final downloading = state.downloading;
-    return Expanded(
-      child: PrimaryBottomButton(
-        title: AppLocalizations.of(context)!.buttonSave,
-        callback: downloading ? null : () => controller.save(context),
-        loading: downloading,
+    final localizations = AppLocalizations.of(context)!;
+    final autoUpdate = state.autoUpdateState;
+    final autoUpdateValue = autoUpdate.subscriptionEnabled
+        ? "${localizations.autoUpdatePageEnabled} · ${autoUpdate.subscriptionInterval}"
+        : localizations.autoUpdatePageDisabled;
+    return SettingsPageScaffold(
+      title: localizations.subscriptionAddPageTitle,
+      onSave: downloading ? null : () => controller.save(context),
+      saveLoading: downloading,
+      saveLabel: localizations.buttonSave,
+      body: SubscriptionFormView(
+        supportText: localizations.subscriptionAddPageSection,
+        nameLabel: localizations.subscriptionAddPageName,
+        nameController: controller.nameController,
+        urlLabel: localizations.subscriptionAddPageUrl,
+        urlController: controller.urlController,
+        urlHint: localizations.subscriptionAddPageUrlExample,
+        urlHelper: localizations.helpURL,
+        autoUpdateTitle: localizations.autoUpdatePageTitle,
+        autoUpdateValue: autoUpdateValue,
+        onOpenAutoUpdate: () => controller.gotoAutoUpdate(context),
       ),
     );
   }

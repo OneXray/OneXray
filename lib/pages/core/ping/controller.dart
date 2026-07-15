@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/ping/state.dart';
 
 class PingPageState {
@@ -45,6 +48,20 @@ class PingController extends Cubit<PingPageState> {
   void updateAutoPingNewConfigs(bool value) {
     state.pingState.autoPingNewConfigs = value;
     emit(state._copy());
+  }
+
+  Future<void> copyResolvedUrl(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: state.pingState.url.url));
+    if (context.mounted) {
+      final localizations = AppLocalizations.of(context)!;
+      ContextAlert.showToast(
+        context,
+        localizations.actionResult(
+          localizations.menuCopy,
+          localizations.resultSuccess,
+        ),
+      );
+    }
   }
 
   Future<void> save(BuildContext context) async {

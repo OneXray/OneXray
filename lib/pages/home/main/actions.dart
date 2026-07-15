@@ -3,6 +3,7 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
+import 'package:onexray/pages/home/node_info/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/share/service.dart';
@@ -29,8 +30,11 @@ final class HomeActions {
     context.goScoped(AppSecondaryDestination.xray);
   }
 
-  void gotoNodeInfo() {
-    context.goScoped(AppSecondaryDestination.nodeInfo);
+  void gotoNodeInfo(int selectedConfigId) {
+    context.goScoped(
+      AppSecondaryDestination.nodeInfo,
+      extra: NodeInfoPageParams(selectedConfigId: selectedConfigId),
+    );
   }
 
   Future<void> addMenuAction(HomeAddMenuAction action) async {

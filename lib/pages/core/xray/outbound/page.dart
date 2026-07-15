@@ -3,16 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/outbound/controller.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 part 'advanced_section.dart';
 part 'security_section.dart';
@@ -30,17 +28,35 @@ class OutboundUIPage extends StatelessWidget
       child: BlocBuilder<OutboundUIController, OutboundUIPageState>(
         builder: (context, state) {
           final controller = context.read<OutboundUIController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.outboundPageTitle),
-              actions: [
-                IconButton(
-                  onPressed: () => controller.gotoRawEdit(context),
-                  icon: Icon(Icons.edit),
-                ),
-              ],
-            ),
-            body: SafeArea(child: _body(context, controller, state)),
+          return SettingsPageScaffold(
+            title: AppLocalizations.of(context)!.outboundPageTitle,
+            onSave: () => controller.save(context),
+            actions: [
+              IconButton(
+                tooltip: AppLocalizations.of(context)!.menuEdit,
+                onPressed: () => controller.gotoRawEdit(context),
+                icon: const Icon(LucideIcons.braces),
+              ),
+              BlocBuilder<AppEventBus, AppEventBusState>(
+                bloc: AppEventBus.instance,
+                builder: (context, eventState) {
+                  final pinging = eventState.pinging;
+                  return IconButton(
+                    tooltip: AppLocalizations.of(context)!.outboundPageRealPing,
+                    onPressed: pinging
+                        ? null
+                        : () => controller.realPing(context),
+                    icon: pinging
+                        ? const SizedBox.square(
+                            dimension: 17,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(LucideIcons.gauge),
+                  );
+                },
+              ),
+            ],
+            body: _body(context, controller, state),
           );
         },
       ),
@@ -52,39 +68,43 @@ class OutboundUIPage extends StatelessWidget
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _nameSection(context, controller),
-                    _protocolSection(context, controller, state),
-                    _settingsSection(context, controller, state),
-                    _tagSection(context, controller, state),
-                    _networkSection(context, controller, state),
-                    _networkSettings(context, controller, state),
-                    _finalMaskSection(context, controller),
-                    _securitySection(context, controller, state),
-                    _securitySettings(context, controller, state),
-                    _sockoptSection(context, controller, state),
-                    _muxSection(context, controller, state),
-                  ],
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
+    return SettingsPageScroll(
+      desktopMaxWidth: 1080,
+      child: Column(
+        children: [
+          SettingsPageIntro(
+            title: AppLocalizations.of(context)!.outboundPageTitle,
+          ),
+          SettingSection(
+            title: AppLocalizations.of(context)!.outboundPageTitle,
+            children: [
+              _name(context, controller),
+              _protocol(context, controller, state),
+              ..._settingsFields(context, controller, state),
+              _tag(context, controller, state),
+              _targetStrategy(context, controller, state),
+            ],
+          ),
+          SettingSection(
+            title: AppLocalizations.of(context)!.outboundUIPageNetwork,
+            children: [
+              _network(context, controller, state),
+              ..._networkSettingsFields(context, controller, state),
+              _finalMask(context, controller),
+            ],
+          ),
+          SettingSection(
+            title: AppLocalizations.of(context)!.outboundUIPageSecurity,
+            children: [
+              _security(context, controller, state),
+              ..._securitySettingsFields(context, controller, state),
+            ],
+          ),
+          _sockoptSection(context, controller, state),
+          _muxSection(context, controller, state),
+        ],
       ),
     );
-  }
-
-  Widget _nameSection(BuildContext context, OutboundUIController controller) {
-    return SettingSection(title: "", children: [_name(context, controller)]);
   }
 
   Widget _name(BuildContext context, OutboundUIController controller) {
@@ -92,17 +112,6 @@ class OutboundUIPage extends StatelessWidget
       controller: controller.nameController,
       label: AppLocalizations.of(context)!.outboundUIPageName,
       hintText: AppLocalizations.of(context)!.outboundUIPageName,
-    );
-  }
-
-  Widget _protocolSection(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [_protocol(context, controller, state)],
     );
   }
 
@@ -119,28 +128,28 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _settingsSection(
+  List<Widget> _settingsFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
     switch (state.outboundState.protocol) {
       case XrayOutboundProtocol.vless:
-        return _vlessSection(context, controller);
+        return _vlessFields(context, controller);
       case XrayOutboundProtocol.vmess:
-        return _vmessSection(context, controller, state);
+        return _vmessFields(context, controller, state);
       case XrayOutboundProtocol.shadowsocks:
-        return _shadowsocksSection(context, controller, state);
+        return _shadowsocksFields(context, controller, state);
       case XrayOutboundProtocol.trojan:
-        return _trojanSection(context, controller);
+        return _trojanFields(context, controller);
       case XrayOutboundProtocol.socks:
-        return _socksSection(context, controller);
+        return _socksFields(context, controller);
       case XrayOutboundProtocol.http:
-        return _httpSection(context, controller);
+        return _httpFields(context, controller);
       case XrayOutboundProtocol.hysteria:
-        return _hysteriaSection(context, controller, state);
+        return _hysteriaFields(context, controller, state);
       default:
-        return Container();
+        return const [];
     }
   }
 
@@ -160,18 +169,18 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _vlessSection(BuildContext context, OutboundUIController controller) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageVLESS,
-      children: [
-        _address(context, controller),
-        _port(context, controller),
-        _vlessId(context, controller),
-        _vlessEncryption(context, controller),
-        _vlessFlow(context, controller),
-        _vlessReverse(context, controller),
-      ],
-    );
+  List<Widget> _vlessFields(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return [
+      _address(context, controller),
+      _port(context, controller),
+      _vlessId(context, controller),
+      _vlessEncryption(context, controller),
+      _vlessFlow(context, controller),
+      _vlessReverse(context, controller),
+    ];
   }
 
   Widget _vlessId(BuildContext context, OutboundUIController controller) {
@@ -221,20 +230,17 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _vmessSection(
+  List<Widget> _vmessFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageVMess,
-      children: [
-        _address(context, controller),
-        _port(context, controller),
-        _vmessId(context, controller),
-        _vmessSecurity(context, controller, state),
-      ],
-    );
+    return [
+      _address(context, controller),
+      _port(context, controller),
+      _vmessId(context, controller),
+      _vmessSecurity(context, controller, state),
+    ];
   }
 
   Widget _vmessId(BuildContext context, OutboundUIController controller) {
@@ -258,20 +264,17 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _shadowsocksSection(
+  List<Widget> _shadowsocksFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageShadowsocks,
-      children: [
-        _address(context, controller),
-        _port(context, controller),
-        _shadowsocksMethod(context, controller, state),
-        _shadowsocksPassword(context, controller),
-      ],
-    );
+    return [
+      _address(context, controller),
+      _port(context, controller),
+      _shadowsocksMethod(context, controller, state),
+      _shadowsocksPassword(context, controller),
+    ];
   }
 
   Widget _shadowsocksMethod(
@@ -298,15 +301,15 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _trojanSection(BuildContext context, OutboundUIController controller) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageTrojan,
-      children: [
-        _address(context, controller),
-        _port(context, controller),
-        _trojanPassword(context, controller),
-      ],
-    );
+  List<Widget> _trojanFields(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return [
+      _address(context, controller),
+      _port(context, controller),
+      _trojanPassword(context, controller),
+    ];
   }
 
   Widget _trojanPassword(
@@ -320,16 +323,16 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _socksSection(BuildContext context, OutboundUIController controller) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageSocks,
-      children: [
-        _address(context, controller),
-        _port(context, controller),
-        _socksUser(context, controller),
-        _socksPass(context, controller),
-      ],
-    );
+  List<Widget> _socksFields(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return [
+      _address(context, controller),
+      _port(context, controller),
+      _socksUser(context, controller),
+      _socksPass(context, controller),
+    ];
   }
 
   Widget _socksUser(BuildContext context, OutboundUIController controller) {
@@ -348,17 +351,17 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _httpSection(BuildContext context, OutboundUIController controller) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageHTTP,
-      children: [
-        _address(context, controller),
-        _port(context, controller),
-        _httpUser(context, controller),
-        _httpPass(context, controller),
-        _httpHeaders(context, controller),
-      ],
-    );
+  List<Widget> _httpFields(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return [
+      _address(context, controller),
+      _port(context, controller),
+      _httpUser(context, controller),
+      _httpPass(context, controller),
+      _httpHeaders(context, controller),
+    ];
   }
 
   Widget _httpUser(BuildContext context, OutboundUIController controller) {
@@ -384,33 +387,16 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _hysteriaSection(
+  List<Widget> _hysteriaFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageHysteria,
-      children: [
-        _hysteriaVersion(context, controller, state),
-        _address(context, controller),
-        _port(context, controller),
-      ],
-    );
-  }
-
-  Widget _tagSection(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        _tag(context, controller, state),
-        _targetStrategy(context, controller, state),
-      ],
-    );
+    return [
+      _hysteriaVersion(context, controller, state),
+      _address(context, controller),
+      _port(context, controller),
+    ];
   }
 
   Widget _tag(
@@ -444,17 +430,6 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _networkSection(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [_network(context, controller, state)],
-    );
-  }
-
   Widget _network(
     BuildContext context,
     OutboundUIController controller,
@@ -468,54 +443,39 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _networkSettings(
+  List<Widget> _networkSettingsFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
     switch (state.outboundState.network) {
       case StreamSettingsNetwork.raw:
-        return _rawSection(context, controller, state);
+        return _rawFields(context, controller, state);
       case StreamSettingsNetwork.xhttp:
-        return _xhttpSection(context, controller, state);
+        return _xhttpFields(context, controller, state);
       case StreamSettingsNetwork.kcp:
-        return const SizedBox.shrink();
+        return const [];
       case StreamSettingsNetwork.grpc:
-        return _grpcSection(context, controller, state);
+        return _grpcFields(context, controller, state);
       case StreamSettingsNetwork.ws:
-        return _wsSection(context, controller);
+        return _wsFields(context, controller);
       case StreamSettingsNetwork.httpupgrade:
-        return _httpupgradeSection(context, controller);
+        return _httpupgradeFields(context, controller);
       case StreamSettingsNetwork.hysteria:
-        return _streamHysteriaSection(context, controller, state);
+        return _streamHysteriaFields(context, controller, state);
     }
   }
 
-  Widget _rawSection(
+  List<Widget> _rawFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageRawSettings,
-      separated: false,
-      children: [_rawHeaderSection(context, controller, state)],
-    );
-  }
-
-  Widget _rawHeaderSection(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SettingSubsection(
-      title: AppLocalizations.of(context)!.outboundUIPageRawHeader,
-      children: [
-        _rawHeaderType(context, controller, state),
-        if (state.outboundState.rawHeaderType == RawHeaderType.http)
-          _rawHeader(context, controller, state),
-      ],
-    );
+    return [
+      _rawHeaderType(context, controller, state),
+      if (state.outboundState.rawHeaderType == RawHeaderType.http)
+        _rawHeader(context, controller, state),
+    ];
   }
 
   Widget _rawHeaderType(
@@ -543,10 +503,11 @@ class OutboundUIPage extends StatelessWidget
           (index, path) => TextFieldActionSettingRow(
             controller: controller.rawPathControllers[index],
             label: pathTitle,
+            showLabel: false,
             hintText: AppLocalizations.of(context)!.outboundUIPagePathExample,
             trailing: IconButton(
               onPressed: () => controller.deleteRawPath(context, index),
-              icon: const Icon(Icons.delete),
+              icon: const Icon(LucideIcons.trash2),
             ),
           ),
         )
@@ -557,22 +518,23 @@ class OutboundUIPage extends StatelessWidget
           (index, host) => TextFieldActionSettingRow(
             controller: controller.rawHostControllers[index],
             label: hostTitle,
+            showLabel: false,
             hintText: AppLocalizations.of(context)!.outboundUIPageHostExample,
             trailing: IconButton(
               onPressed: () => controller.deleteRawHost(context, index),
-              icon: const Icon(Icons.delete),
+              icon: const Icon(LucideIcons.trash2),
             ),
           ),
         )
         .toList();
-    return SettingSection(
-      title: "",
+    return SettingSubsection(
+      title: AppLocalizations.of(context)!.outboundUIPageRawHeader,
       children: [
         SettingRow(
           title: pathTitle,
           trailing: IconButton(
             onPressed: () => controller.appendRawPath(),
-            icon: const Icon(Icons.add),
+            icon: const Icon(LucideIcons.plus),
           ),
         ),
         ...rawPathViews,
@@ -580,7 +542,7 @@ class OutboundUIPage extends StatelessWidget
           title: hostTitle,
           trailing: IconButton(
             onPressed: () => controller.appendRawHost(),
-            icon: const Icon(Icons.add),
+            icon: const Icon(LucideIcons.plus),
           ),
         ),
         ...rawHostViews,
@@ -588,20 +550,17 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _xhttpSection(
+  List<Widget> _xhttpFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageXhttpSettings,
-      children: [
-        _xhttpHost(context, controller),
-        _xhttpPath(context, controller),
-        _xhttpMode(context, controller, state),
-        _xhttpExtra(context, controller),
-      ],
-    );
+    return [
+      _xhttpHost(context, controller),
+      _xhttpPath(context, controller),
+      _xhttpMode(context, controller, state),
+      _xhttpExtra(context, controller),
+    ];
   }
 
   Widget _xhttpHost(BuildContext context, OutboundUIController controller) {
@@ -640,23 +599,20 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _grpcSection(
+  List<Widget> _grpcFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageGrpcSettings,
-      children: [
-        _grpcAuthority(context, controller),
-        _grpcServiceName(context, controller),
-        SwitchSettingRow(
-          title: AppLocalizations.of(context)!.outboundUIPageGrpcMultiMode,
-          value: state.outboundState.grpcMultiMode,
-          onChanged: (value) => controller.updateGrpcMultiMode(value),
-        ),
-      ],
-    );
+    return [
+      _grpcAuthority(context, controller),
+      _grpcServiceName(context, controller),
+      SwitchSettingRow(
+        title: AppLocalizations.of(context)!.outboundUIPageGrpcMultiMode,
+        value: state.outboundState.grpcMultiMode,
+        onChanged: (value) => controller.updateGrpcMultiMode(value),
+      ),
+    ];
   }
 
   Widget _grpcAuthority(BuildContext context, OutboundUIController controller) {
@@ -680,11 +636,11 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _wsSection(BuildContext context, OutboundUIController controller) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageWsSettings,
-      children: [_wsPath(context, controller), _wsHost(context, controller)],
-    );
+  List<Widget> _wsFields(
+    BuildContext context,
+    OutboundUIController controller,
+  ) {
+    return [_wsPath(context, controller), _wsHost(context, controller)];
   }
 
   Widget _wsPath(BuildContext context, OutboundUIController controller) {
@@ -703,17 +659,14 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _httpupgradeSection(
+  List<Widget> _httpupgradeFields(
     BuildContext context,
     OutboundUIController controller,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageHttpupgradeSettings,
-      children: [
-        _httpupgradeHost(context, controller),
-        _httpupgradePath(context, controller),
-      ],
-    );
+    return [
+      _httpupgradeHost(context, controller),
+      _httpupgradePath(context, controller),
+    ];
   }
 
   Widget _httpupgradeHost(
@@ -738,18 +691,15 @@ class OutboundUIPage extends StatelessWidget
     );
   }
 
-  Widget _streamHysteriaSection(
+  List<Widget> _streamHysteriaFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.outboundUIPageHysteriaSettings,
-      children: [
-        _hysteriaVersion(context, controller, state),
-        _hysteriaAuth(context, controller),
-      ],
-    );
+    return [
+      _hysteriaVersion(context, controller, state),
+      _hysteriaAuth(context, controller),
+    ];
   }
 
   Widget _hysteriaVersion(

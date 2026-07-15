@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 
 class DateView extends StatelessWidget {
   final DateTime date;
@@ -15,8 +16,7 @@ class DateView extends StatelessWidget {
       padding: EdgeInsetsDirectional.only(top: 4),
       child: Text(
         "${AppLocalizations.of(context)!.dateViewLastUpdateTime} $dateStr",
-        style: TextStyle(
-          fontSize: 11,
+        style: AppTypography.supporting.copyWith(
           color: ColorManager.secondaryText(context),
         ),
       ),

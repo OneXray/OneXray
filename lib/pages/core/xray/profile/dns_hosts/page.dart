@@ -2,13 +2,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/controller.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
-import 'package:onexray/pages/widget/bottom_button.dart';
-import 'package:onexray/pages/widget/bottom_view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class DnsHostsPage extends StatelessWidget {
   final DnsHostsParams params;
@@ -22,70 +20,32 @@ class DnsHostsPage extends StatelessWidget {
       child: BlocBuilder<DnsHostsController, DnsHostsPageState>(
         builder: (context, state) {
           final controller = context.read<DnsHostsController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.dnsHostsPageTitle),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.dnsHostsPageTitle,
+            onSave: () => controller.save(context),
+            actions: [
+              IconButton(
+                tooltip: localizations.dnsHostsPageAdd,
+                onPressed: controller.appendHostAddress,
+                icon: const Icon(LucideIcons.plus),
+              ),
+            ],
+            body: SettingsPageScroll(
+              desktopMaxWidth: 820,
+              child: Column(
+                children: state.hosts
+                    .mapIndexed(
+                      (index, host) =>
+                          _hostSection(context, controller, host, index),
+                    )
+                    .toList(),
+              ),
             ),
-            body: SafeArea(child: _body(context, controller, state)),
           );
         },
       ),
     );
-  }
-
-  Widget _body(
-    BuildContext context,
-    DnsHostsController controller,
-    DnsHostsPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: ResponsiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _addSection(context, controller),
-                    _hosts(context, controller, state),
-                  ],
-                ),
-              ),
-            ),
-            _bottomButton(context, controller),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _addSection(BuildContext context, DnsHostsController controller) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.dnsHostsPageAdd,
-          trailing: IconButton(
-            onPressed: () => controller.appendHostAddress(),
-            icon: const Icon(Icons.add),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _hosts(
-    BuildContext context,
-    DnsHostsController controller,
-    DnsHostsPageState state,
-  ) {
-    final hostViews = state.hosts
-        .mapIndexed(
-          (index, server) => _hostSection(context, controller, server, index),
-        )
-        .toList();
-    return Column(children: hostViews);
   }
 
   Widget _hostSection(
@@ -94,65 +54,44 @@ class DnsHostsPage extends StatelessWidget {
     XrayHostAddress host,
     int hostIndex,
   ) {
-    final addressViews = host.address
-        .mapIndexed(
-          (index, address) => Row(
-            children: [
-              Expanded(
-                child: TextFieldActionSettingRow(
-                  controller: address,
-                  label: AppLocalizations.of(context)!.dnsHostsPageAddress,
-                  hintText: AppLocalizations.of(
-                    context,
-                  )!.dnsHostsPageAddressExample,
-                  trailing: IconButton(
-                    onPressed: () =>
-                        controller.deleteAddress(context, hostIndex, index),
-                    icon: Icon(Icons.delete),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        )
-        .toList();
+    final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: "",
-      separated: false,
+      title: '${localizations.dnsHostsPageHost} ${hostIndex + 1}',
+      action: IconButton(
+        tooltip: localizations.menuDelete,
+        onPressed: () => controller.deleteHostAddress(context, hostIndex),
+        icon: const Icon(LucideIcons.trash2),
+      ),
       children: [
-        TextFieldActionSettingRow(
+        TextFieldSettingRow(
           controller: host.host,
-          label: AppLocalizations.of(context)!.dnsHostsPageHost,
-          hintText: AppLocalizations.of(context)!.dnsHostsPageHostExample,
-          trailing: IconButton(
-            onPressed: () => controller.deleteHostAddress(context, hostIndex),
-            icon: Icon(Icons.delete),
-          ),
+          label: localizations.dnsHostsPageHost,
+          hintText: localizations.dnsHostsPageHostExample,
         ),
         SettingRow(
-          title: AppLocalizations.of(context)!.dnsHostsPageAddress,
+          leading: const Icon(LucideIcons.mapPin),
+          title: localizations.dnsHostsPageAddress,
           trailing: IconButton(
+            tooltip: localizations.buttonAdd,
             onPressed: () => controller.appendAddress(context, hostIndex),
-            icon: const Icon(Icons.add),
+            icon: const Icon(LucideIcons.plus),
           ),
         ),
-        Column(children: addressViews),
-      ],
-    );
-  }
-
-  Widget _bottomButton(BuildContext context, DnsHostsController controller) {
-    return BottomView(
-      child: Row(
-        children: [
-          Expanded(
-            child: PrimaryBottomButton(
-              title: AppLocalizations.of(context)!.buttonSave,
-              callback: () => controller.save(context),
+        ...host.address.mapIndexed(
+          (index, address) => TextFieldActionSettingRow(
+            controller: address,
+            label: localizations.dnsHostsPageAddress,
+            showLabel: false,
+            hintText: localizations.dnsHostsPageAddressExample,
+            trailing: IconButton(
+              tooltip: localizations.menuDelete,
+              onPressed: () =>
+                  controller.deleteAddress(context, hostIndex, index),
+              icon: const Icon(LucideIcons.trash2),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

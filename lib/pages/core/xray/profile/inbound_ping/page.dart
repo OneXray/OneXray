@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/global/constants.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/controller.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class InboundPingPage extends StatelessWidget {
   final InboundPingParams params;
@@ -18,75 +18,40 @@ class InboundPingPage extends StatelessWidget {
       create: (_) => InboundPingController(params),
       child: BlocBuilder<InboundPingController, InboundPingPageState>(
         builder: (context, state) {
-          final controller = context.read<InboundPingController>();
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(AppLocalizations.of(context)!.inboundPingPageTitle),
+          final localizations = AppLocalizations.of(context)!;
+          return SettingsPageScaffold(
+            title: localizations.inboundPingPageTitle,
+            body: SettingsPageScroll(
+              desktopMaxWidth: 760,
+              child: SettingSection(
+                title: localizations.inboundPingPageTitle,
+                children: [
+                  SettingRow(
+                    leading: const Icon(LucideIcons.ear),
+                    title: localizations.inboundPingPageListen,
+                    value: state.httpState.listen,
+                  ),
+                  SettingRow(
+                    leading: const Icon(LucideIcons.radioTower),
+                    title: localizations.inboundPingPagePort,
+                    value: state.httpState.port,
+                  ),
+                  SettingRow(
+                    leading: const Icon(LucideIcons.waypoints),
+                    title: localizations.inboundPingPageProtocol,
+                    value: state.httpState.protocol.name,
+                  ),
+                  SettingRow(
+                    leading: const Icon(LucideIcons.tag),
+                    title: localizations.inboundPingPageTag,
+                    value: state.httpState.tag.name,
+                  ),
+                ],
+              ),
             ),
-            body: SafeArea(child: _body(context, controller, state)),
           );
         },
       ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    InboundPingController controller,
-    InboundPingPageState state,
-  ) {
-    return DefaultTextStyle.merge(
-      style: const TextStyle(fontSize: GlobalConstants.bodyFontSize),
-      child: SingleChildScrollView(
-        child: ResponsiveContent(
-          child: Column(
-            children: [
-              _listenSection(context, controller, state),
-              _tagSection(context, controller, state),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _listenSection(
-    BuildContext context,
-    InboundPingController controller,
-    InboundPingPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.inboundPingPageListen,
-          value: state.httpState.listen,
-        ),
-        SettingRow(
-          title: AppLocalizations.of(context)!.inboundPingPagePort,
-          value: state.httpState.port,
-        ),
-        SettingRow(
-          title: AppLocalizations.of(context)!.inboundPingPageProtocol,
-          value: state.httpState.protocol.name,
-        ),
-      ],
-    );
-  }
-
-  Widget _tagSection(
-    BuildContext context,
-    InboundPingController controller,
-    InboundPingPageState state,
-  ) {
-    return SettingSection(
-      title: "",
-      children: [
-        SettingRow(
-          title: AppLocalizations.of(context)!.inboundPingPageTag,
-          value: state.httpState.tag.name,
-        ),
-      ],
     );
   }
 }

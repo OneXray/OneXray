@@ -2,28 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class ContextAlert {
   static Future<void> showPermissionDialog(BuildContext context) async {
-    await showDialog<void>(
+    final openSettings = await showShadDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        content: Text(AppLocalizations.of(ctx)!.homePageOpenSettings),
-        actions: <Widget>[
-          TextButton(
+      variant: ShadDialogVariant.alert,
+      builder: (ctx) => ShadDialog.alert(
+        description: Text(AppLocalizations.of(ctx)!.homePageOpenSettings),
+        actions: [
+          ShadButton.outline(
             child: Text(AppLocalizations.of(ctx)!.buttonCancel),
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.of(ctx).pop(false),
           ),
-          TextButton(
+          ShadButton(
             child: Text(AppLocalizations.of(ctx)!.buttonOK),
-            onPressed: () {
-              Navigator.pop(ctx);
-              openAppSettings();
-            },
+            onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
       ),
     );
+    if (openSettings == true) {
+      await openAppSettings();
+    }
   }
 
   static Future<void> showPingResultDialog(
@@ -43,14 +45,14 @@ class ContextAlert {
     String title,
     String content,
   ) async {
-    await showDialog<void>(
+    await showShadDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => ShadDialog(
         title: Text(title),
-        content: Text(content),
+        description: Text(content),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
+          ShadButton(
+            onPressed: () => Navigator.of(ctx).pop(),
             child: Text(AppLocalizations.of(ctx)!.buttonOK),
           ),
         ],
@@ -59,8 +61,8 @@ class ContextAlert {
   }
 
   static void showToast(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ShadToaster.of(context).show(
+      ShadToast(title: Text(message), duration: const Duration(seconds: 4)),
+    );
   }
 }

@@ -6,24 +6,36 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
+import 'package:onexray/service/auto_update/state.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/validator.dart';
 
 class GeoDatAddPageState {
   final GeoDataType type;
+  final AutoUpdateState autoUpdateState;
 
-  const GeoDatAddPageState({required this.type});
+  const GeoDatAddPageState({required this.type, required this.autoUpdateState});
 
-  factory GeoDatAddPageState.initial() =>
-      const GeoDatAddPageState(type: GeoDataType.domain);
+  factory GeoDatAddPageState.initial() => GeoDatAddPageState(
+    type: GeoDataType.domain,
+    autoUpdateState: AutoUpdateState(),
+  );
 
-  GeoDatAddPageState copyWith({GeoDataType? type}) {
-    return GeoDatAddPageState(type: type ?? this.type);
+  GeoDatAddPageState copyWith({
+    GeoDataType? type,
+    AutoUpdateState? autoUpdateState,
+  }) {
+    return GeoDatAddPageState(
+      type: type ?? this.type,
+      autoUpdateState: autoUpdateState ?? this.autoUpdateState,
+    );
   }
 }
 
 class GeoDatAddController extends Cubit<GeoDatAddPageState> {
-  GeoDatAddController() : super(GeoDatAddPageState.initial());
+  GeoDatAddController() : super(GeoDatAddPageState.initial()) {
+    _readAutoUpdateState();
+  }
 
   final nameController = TextEditingController();
   final urlController = TextEditingController();
@@ -66,7 +78,16 @@ class GeoDatAddController extends Cubit<GeoDatAddPageState> {
     }
   }
 
-  void gotoAutoUpdate(BuildContext context) {
-    context.pushScoped(AppSecondaryDestination.autoUpdate);
+  Future<void> gotoAutoUpdate(BuildContext context) async {
+    await context.pushScoped(AppSecondaryDestination.autoUpdate);
+    await _readAutoUpdateState();
+  }
+
+  Future<void> _readAutoUpdateState() async {
+    final autoUpdateState = AutoUpdateState();
+    await autoUpdateState.readFromPreferences();
+    if (!isClosed) {
+      emit(state.copyWith(autoUpdateState: autoUpdateState));
+    }
   }
 }

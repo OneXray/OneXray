@@ -97,11 +97,7 @@ class TunSettingsController extends Cubit<TunSettingsPageState> {
   void sortOnDemandRule(int oldIndex, int newIndex) {
     final rules = state.tunSettings.onDemandRules;
     final rule = rules.removeAt(oldIndex);
-    var index = newIndex;
-    if (newIndex > oldIndex) {
-      index = newIndex - 1;
-    }
-    rules.insert(index, rule);
+    rules.insert(newIndex, rule);
     emit(state._copy());
   }
 

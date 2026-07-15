@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 
 class TagView extends StatelessWidget {
   final String tag;
@@ -22,8 +23,7 @@ class TagView extends StatelessWidget {
       margin: const EdgeInsetsDirectional.only(end: 4),
       child: Text(
         tag,
-        style: TextStyle(
-          fontSize: 10,
+        style: AppTypography.badge.copyWith(
           color: ColorManager.secondaryText(context),
         ),
       ),

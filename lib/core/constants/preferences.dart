@@ -1,4 +1,5 @@
 import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/model/core_routing_mode.dart';
 import 'package:onexray/core/model/core_run_mode.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +14,7 @@ class PreferencesKey {
 
   PreferencesKey._internal();
 
-  static const _privacyAccepted = "privacyAccepted03";
+  static const _privacyAccepted = "privacyAccepted04";
 
   Future<bool> readPrivacyAccepted() async {
     final value = await _prefs.getBool(_privacyAccepted);
@@ -168,6 +169,17 @@ class PreferencesKey {
 
   Future<void> saveCoreRunMode(CoreRunMode value) async {
     await _prefs.setString(_coreRunMode, value.name);
+  }
+
+  static const _coreRoutingMode = "coreRoutingMode";
+
+  Future<CoreRoutingMode> readCoreRoutingMode() async {
+    final value = await _prefs.getString(_coreRoutingMode);
+    return CoreRoutingMode.fromString(value);
+  }
+
+  Future<void> saveCoreRoutingMode(CoreRoutingMode value) async {
+    await _prefs.setString(_coreRoutingMode, value.name);
   }
 
   // Legacy storage key. Keep the original value to avoid migrating preferences.

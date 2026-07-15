@@ -26,7 +26,6 @@
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		EB9A10062FE6000000000006 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10052FE6000000000005 /* IconBlue.icon */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
-		EB68C6F02F94D08D007C293A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = EB68C6EE2F94D08D007C293A /* GoogleService-Info.plist */; };
 		EB68C6F22F94D08D007C293A /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6EC2F94D08D007C293A /* SystemExtensionManager.swift */; };
 		EB68C6F32F94D08D007C293A /* Vpn.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6E82F94D08D007C293A /* Vpn.swift */; };
 		EB68C6F42F94D08D007C293A /* FlutterApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6E32F94D08D007C293A /* FlutterApi.swift */; };
@@ -120,7 +119,6 @@
 		EB68C6EA2F94D08D007C293A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		EB68C6EB2F94D08D007C293A /* MainFlutterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFlutterWindow.swift; sourceTree = "<group>"; };
 		EB68C6EC2F94D08D007C293A /* SystemExtensionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemExtensionManager.swift; sourceTree = "<group>"; };
-		EB68C6EE2F94D08D007C293A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		EB68C71B2F9514B8007C293A /* AppStart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStart.swift; sourceTree = "<group>"; };
 		EB7E98392F93C204002151DD /* net.yuandev.onexray.se.tun.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = net.yuandev.onexray.se.tun.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB7E984B2F93C268002151DD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -278,7 +276,6 @@
 			isa = PBXGroup;
 			children = (
 				EB68C71B2F9514B8007C293A /* AppStart.swift */,
-				EB68C6EE2F94D08D007C293A /* GoogleService-Info.plist */,
 			);
 			name = macOSSE;
 			path = ../swift/macOSSE;
@@ -332,7 +329,6 @@
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				EB7E984A2F93C204002151DD /* Embed System Extensions */,
-				AAA6AE00DA7B6969B8AF7983 /* FlutterFire: "flutterfire upload-crashlytics-symbols" */,
 			);
 			buildRules = (
 			);
@@ -430,7 +426,6 @@
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				EB9A10062FE6000000000006 /* IconBlue.icon in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
-				EB68C6F02F94D08D007C293A /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -481,25 +476,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh && touch Flutter/ephemeral/tripwire\n";
-		};
-		AAA6AE00DA7B6969B8AF7983 /* FlutterFire: "flutterfire upload-crashlytics-symbols" */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "FlutterFire: \"flutterfire upload-crashlytics-symbols\"";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\n#!/bin/bash\nPATH=\"${PATH}:$FLUTTER_ROOT/bin:${PUB_CACHE}/bin:$HOME/.pub-cache/bin\"\n\nPATH_TO_CRASHLYTICS_UPLOAD_SCRIPT=\"${SRCROOT}/../build/macos/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nif [ ! -f \"$PATH_TO_CRASHLYTICS_UPLOAD_SCRIPT\" ]; then\n  echo \"warning: Crashlytics upload script not found: $PATH_TO_CRASHLYTICS_UPLOAD_SCRIPT\"\n  exit 0\nfi\n\n# Command to upload symbols script used to upload symbols to Firebase server\nflutterfire upload-crashlytics-symbols --upload-symbols-script-path=\"$PATH_TO_CRASHLYTICS_UPLOAD_SCRIPT\" --platform=macos --apple-project-path=\"${SRCROOT}\" --env-platform-name=\"${PLATFORM_NAME}\" --env-configuration=\"${CONFIGURATION}\" --env-project-dir=\"${PROJECT_DIR}\" --env-built-products-dir=\"${BUILT_PRODUCTS_DIR}\" --env-dwarf-dsym-folder-path=\"${DWARF_DSYM_FOLDER_PATH}\" --env-dwarf-dsym-file-name=\"${DWARF_DSYM_FILE_NAME}\" --env-infoplist-path=\"${INFOPLIST_PATH}\" --default-config=default\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
