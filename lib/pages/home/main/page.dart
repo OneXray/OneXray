@@ -696,41 +696,51 @@ class HomeConnectionSummary extends StatelessWidget {
 
   Widget _powerButton(BuildContext context) {
     final destructive = connection.destructiveAction;
-    final colorScheme = ShadTheme.of(context).colorScheme;
-    final destructiveColor = colorScheme.destructive;
+    final palette = ColorManager.palette(context);
+    final connected = connection.tone == HomeConnectionTone.connected;
+    final backgroundColor = connected ? palette.runningBadge : palette.primary;
+    final foregroundColor = connected
+        ? palette.runningBadgeForeground
+        : palette.primaryForeground;
     final darkMode = Theme.of(context).brightness == Brightness.dark;
     final destructiveBackgroundAlpha = darkMode ? 0.2 : 0.1;
     final destructiveHoverAlpha = darkMode ? 0.3 : 0.2;
     final button = ShadIconButton.raw(
-      variant: destructive
-          ? ShadButtonVariant.destructive
-          : ShadButtonVariant.primary,
+      variant: ShadButtonVariant.primary,
       icon: connection.loading
           ? SizedBox.square(
-              dimension: 16,
+              dimension: 18,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: destructive
-                    ? destructiveColor
-                    : colorScheme.primaryForeground,
+                color: foregroundColor,
               ),
             )
           : const Icon(LucideIcons.power),
-      iconSize: 16,
+      iconSize: 18,
       width: 40,
       height: 40,
-      backgroundColor: destructive
-          ? destructiveColor.withValues(alpha: destructiveBackgroundAlpha)
-          : null,
+      backgroundColor: backgroundColor,
       hoverBackgroundColor: destructive
-          ? destructiveColor.withValues(alpha: destructiveHoverAlpha)
+          ? palette.destructive.withValues(alpha: destructiveHoverAlpha)
+          : connected
+          ? palette.primary
           : null,
       pressedBackgroundColor: destructive
-          ? destructiveColor.withValues(alpha: destructiveHoverAlpha)
+          ? palette.destructive.withValues(alpha: destructiveBackgroundAlpha)
+          : connected
+          ? palette.primary
           : null,
-      foregroundColor: destructive ? destructiveColor : null,
-      hoverForegroundColor: destructive ? destructiveColor : null,
-      pressedForegroundColor: destructive ? destructiveColor : null,
+      foregroundColor: foregroundColor,
+      hoverForegroundColor: destructive
+          ? palette.destructive
+          : connected
+          ? palette.primaryForeground
+          : null,
+      pressedForegroundColor: destructive
+          ? palette.destructive
+          : connected
+          ? palette.primaryForeground
+          : null,
       decoration: const ShadDecoration(
         shape: BoxShape.circle,
         border: ShadBorder.none,

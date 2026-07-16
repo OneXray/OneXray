@@ -4,6 +4,7 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/main/page.dart';
 import 'package:onexray/pages/home/main/state.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -130,7 +131,7 @@ void main() {
       ),
     );
 
-    expect(viewState.destructiveAction, isTrue);
+    expect(viewState.destructiveAction, isFalse);
     expect(viewState.actionLabel, 'Switch to Selected Node');
   });
 
@@ -218,7 +219,7 @@ void main() {
     final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
     expect(button.width, 40);
     expect(button.height, 40);
-    expect(button.iconSize, 16);
+    expect(button.iconSize, 18);
     expect(button.decoration?.shape, BoxShape.circle);
     expect(tooltip.message, 'Connect to Selected Node');
     final profileRow = find.ancestor(
@@ -233,6 +234,42 @@ void main() {
       );
       expect(tester.getSize(modeButton.first).height, greaterThanOrEqualTo(40));
     }
+  });
+
+  testWidgets('connected power action uses the running color', (tester) async {
+    await tester.pumpWidget(
+      _testApp(
+        HomeConnectionSummary(
+          connection: const HomeConnectionViewPageState(
+            tone: HomeConnectionTone.connected,
+            connected: true,
+            loading: false,
+            destructiveAction: true,
+            actionLabel: 'Disconnect',
+            statusText: 'Connected',
+            nodeName: 'Running Node',
+            summaryDetailText: null,
+            locationText: 'Singapore',
+            downloadText: '1 MB/s',
+            uploadText: '128 KB/s',
+            runModeText: 'TUN',
+            statusIcon: LucideIcons.shieldCheck,
+          ),
+          xrayProfileName: 'Simple Profile',
+          routingMode: CoreRoutingMode.rule,
+          pendingRoutingMode: null,
+          onToggleConnection: _noop,
+          onShowNodeInfo: _noop,
+          onShowXrayProfile: _noop,
+          onRoutingModeChanged: _noopRoutingMode,
+        ),
+      ),
+    );
+
+    final button = tester.widget<ShadIconButton>(find.byType(ShadIconButton));
+    expect(button.backgroundColor, AppPalette.light.runningBadge);
+    expect(button.foregroundColor, AppPalette.light.runningBadgeForeground);
+    expect(button.hoverForegroundColor, AppPalette.light.destructive);
   });
 
   testWidgets('Direct mode does not display the selected node as running', (

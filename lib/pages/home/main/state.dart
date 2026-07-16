@@ -132,7 +132,13 @@ final class HomeConnectionViewStateBuilder {
     final localizations = AppLocalizations.of(context)!;
     final connected = eventState.vpnActionState == VpnActionState.connected;
     final direct = eventState.coreRoutingMode == CoreRoutingMode.direct;
-    final destructiveAction = _hasActiveCore(eventState);
+    final activeCore = _hasActiveCore(eventState);
+    final destructiveAction = _isDisconnectAction(
+      homeState,
+      eventState,
+      direct,
+      activeCore,
+    );
     final waitingForMacApproval = _isWaitingForMacApproval(eventState);
     final failed = eventState.vpnActionState == VpnActionState.failed;
     final nodeName = _nodeName(homeState, eventState);
@@ -177,7 +183,7 @@ final class HomeConnectionViewStateBuilder {
         homeState,
         eventState,
         direct,
-        destructiveAction,
+        activeCore,
       ),
       statusText: statusText,
       nodeName: nodeName,
@@ -251,21 +257,36 @@ final class HomeConnectionViewStateBuilder {
     };
   }
 
+  static bool _isDisconnectAction(
+    HomePageState homeState,
+    AppEventBusState eventState,
+    bool direct,
+    bool activeCore,
+  ) {
+    if (!activeCore) {
+      return false;
+    }
+    if (direct) {
+      return true;
+    }
+    return runtimeConfigId(eventState) == homeState.configId;
+  }
+
   static String _connectionActionLabel(
     AppLocalizations localizations,
     HomePageState homeState,
     AppEventBusState eventState,
     bool direct,
-    bool destructiveAction,
+    bool activeCore,
   ) {
     if (direct) {
-      return destructiveAction
+      return activeCore
           ? localizations.homePageActionDisconnect
           : localizations.homePageActionStartDirect;
     }
 
     final selectedName = _displayName(homeState.configName);
-    if (!destructiveAction) {
+    if (!activeCore) {
       return localizations.homePageActionConnectToNode(selectedName);
     }
 
