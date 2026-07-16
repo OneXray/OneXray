@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_sniffing/params.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
@@ -19,7 +19,7 @@ class InboundSniffingPageState {
   );
 }
 
-class InboundSniffingController extends Cubit<InboundSniffingPageState> {
+class InboundSniffingController extends PageCubit<InboundSniffingPageState> {
   final InboundSniffingParams params;
   InboundSniffingController(this.params)
     : super(InboundSniffingPageState.initial()) {
@@ -27,14 +27,13 @@ class InboundSniffingController extends Cubit<InboundSniffingPageState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     for (final controller in domainsExcludedControllers) {
       controller.dispose();
     }
     for (final controller in ipsExcludedControllers) {
       controller.dispose();
     }
-    return super.close();
   }
 
   void _initParams() {

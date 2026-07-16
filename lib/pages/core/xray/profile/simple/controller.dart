@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
@@ -41,7 +41,8 @@ class XrayProfileSimplePageState {
   }
 }
 
-class XrayProfileSimpleController extends Cubit<XrayProfileSimplePageState> {
+class XrayProfileSimpleController
+    extends PageCubit<XrayProfileSimplePageState> {
   XrayProfileSimpleController() : super(XrayProfileSimplePageState.initial()) {
     _readXrayProfile();
   }

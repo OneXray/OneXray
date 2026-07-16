@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
@@ -41,14 +41,14 @@ class RoutingRulePageState {
   );
 }
 
-class RoutingRuleController extends Cubit<RoutingRulePageState> {
+class RoutingRuleController extends PageCubit<RoutingRulePageState> {
   final RoutingRuleParams params;
   RoutingRuleController(this.params) : super(RoutingRulePageState.initial()) {
     _initParams();
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     portController.dispose();
     sourcePortController.dispose();
     localPortController.dispose();
@@ -72,7 +72,6 @@ class RoutingRuleController extends Cubit<RoutingRulePageState> {
       controller.key.dispose();
       controller.value.dispose();
     }
-    return super.close();
   }
 
   void _initParams() {

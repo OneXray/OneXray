@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/subscriptions/nodes/params.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
@@ -47,7 +47,8 @@ class SubscriptionNodesPageState {
   }
 }
 
-class SubscriptionNodesController extends Cubit<SubscriptionNodesPageState> {
+class SubscriptionNodesController
+    extends PageCubit<SubscriptionNodesPageState> {
   final SubscriptionNodesParams params;
 
   SubscriptionNodesController(this.params)
@@ -62,7 +63,7 @@ class SubscriptionNodesController extends Cubit<SubscriptionNodesPageState> {
   Future<void> _init() async {
     final db = AppDatabase();
     final subscription = await db.subscriptionDao.searchRow(params.subId);
-    if (isClosed) {
+    if (!isPageActive) {
       return;
     }
     if (subscription == null) {
@@ -73,6 +74,9 @@ class SubscriptionNodesController extends Cubit<SubscriptionNodesPageState> {
     _configsSubscription = db.coreConfigDao
         .allOutboundRowsWithDataBySubIdStream(params.subId)
         .listen((data) {
+          if (!isPageActive) {
+            return;
+          }
           _allConfigs = data;
           _emitFilteredConfigs();
         });
@@ -100,9 +104,8 @@ class SubscriptionNodesController extends Cubit<SubscriptionNodesPageState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
+    await _configsSubscription?.cancel();
     searchController.dispose();
-    _configsSubscription?.cancel();
-    return super.close();
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -18,7 +18,7 @@ class SubscriptionAddPageState {
   final AutoUpdateState autoUpdateState;
 }
 
-class SubscriptionAddController extends Cubit<SubscriptionAddPageState> {
+class SubscriptionAddController extends PageCubit<SubscriptionAddPageState> {
   SubscriptionAddController() : super(SubscriptionAddPageState.initial()) {
     _readAutoUpdateState();
   }
@@ -27,10 +27,9 @@ class SubscriptionAddController extends Cubit<SubscriptionAddPageState> {
   final urlController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     nameController.dispose();
     urlController.dispose();
-    return super.close();
   }
 
   Future<void> save(BuildContext context) async {
@@ -68,7 +67,7 @@ class SubscriptionAddController extends Cubit<SubscriptionAddPageState> {
   Future<void> _readAutoUpdateState() async {
     final autoUpdateState = AutoUpdateState();
     await autoUpdateState.readFromPreferences();
-    if (!isClosed) {
+    if (isPageActive) {
       emit(SubscriptionAddPageState(autoUpdateState: autoUpdateState));
     }
   }

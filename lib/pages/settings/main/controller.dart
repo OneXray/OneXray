@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -45,7 +45,7 @@ class SettingsPageState {
   }
 }
 
-class SettingsController extends Cubit<SettingsPageState> {
+class SettingsController extends PageCubit<SettingsPageState> {
   SettingsController() : super(const SettingsPageState()) {
     _readVersion();
   }
@@ -54,7 +54,7 @@ class SettingsController extends Cubit<SettingsPageState> {
     final packageInfo = await PackageInfo.fromPlatform();
     final appVersion = "${packageInfo.version}+${packageInfo.buildNumber}";
     final xrayVersion = await AppHostApi().xrayVersion();
-    if (!isClosed) {
+    if (isPageActive) {
       emit(state.copyWith(appVersion: appVersion, xrayVersion: xrayVersion));
     }
   }
@@ -95,7 +95,7 @@ class SettingsController extends Cubit<SettingsPageState> {
       }
       await _handleUpdateResult(context, result, showUpToDate: true);
     } finally {
-      if (!isClosed) {
+      if (isPageActive) {
         emit(state.copyWith(checkingUpdate: false));
       }
     }
@@ -158,7 +158,7 @@ class SettingsController extends Cubit<SettingsPageState> {
       success = await AppDataCleanupService().clearFromSettings();
     } finally {
       eventBus.updateDownloading(false);
-      if (!isClosed) {
+      if (isPageActive) {
         emit(state.copyWith(clearingData: false));
       }
     }

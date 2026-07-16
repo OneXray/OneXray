@@ -4,7 +4,7 @@ import 'dart:isolate';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:onexray/core/db/database/constants.dart';
@@ -95,7 +95,7 @@ class SharePageState {
   }
 }
 
-class ShareController extends Cubit<SharePageState> {
+class ShareController extends PageCubit<SharePageState> {
   final SharePageParams params;
   ShareController(this.params) : super(SharePageState.initial()) {
     _initParams();

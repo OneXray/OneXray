@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_fragment/params.dart';
 import 'package:onexray/pages/core/tun/network_interface/params.dart';
@@ -24,7 +24,7 @@ class OutboundFragmentPageState {
   );
 }
 
-class OutboundFragmentController extends Cubit<OutboundFragmentPageState> {
+class OutboundFragmentController extends PageCubit<OutboundFragmentPageState> {
   final OutboundFragmentParams params;
   OutboundFragmentController(this.params)
     : super(OutboundFragmentPageState.initial()) {
@@ -32,11 +32,10 @@ class OutboundFragmentController extends Cubit<OutboundFragmentPageState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     packetsController.dispose();
     lengthController.dispose();
     intervalController.dispose();
-    return super.close();
   }
 
   void _initParams() {

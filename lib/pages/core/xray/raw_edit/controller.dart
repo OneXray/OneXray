@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -16,7 +16,7 @@ class XrayRawEditPageState {
   const XrayRawEditPageState({this.validJson = false, this.lineCount = 1});
 }
 
-class XrayRawEditController extends Cubit<XrayRawEditPageState> {
+class XrayRawEditController extends PageCubit<XrayRawEditPageState> {
   final XrayRawEditParams params;
   XrayRawEditController(this.params) : super(const XrayRawEditPageState()) {
     controller.addListener(_updateEditorState);
@@ -26,10 +26,9 @@ class XrayRawEditController extends Cubit<XrayRawEditPageState> {
   final controller = CodeLineEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     controller.removeListener(_updateEditorState);
     controller.dispose();
-    return super.close();
   }
 
   void _updateEditorState() {
@@ -41,7 +40,7 @@ class XrayRawEditController extends Cubit<XrayRawEditPageState> {
     } catch (_) {
       validJson = false;
     }
-    if (!isClosed) {
+    if (isPageActive) {
       emit(
         XrayRawEditPageState(
           validJson: validJson,

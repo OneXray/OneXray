@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/tun/on_demand_rule/params.dart';
 import 'package:onexray/service/tun_settings/enum.dart';
@@ -18,7 +18,7 @@ class OnDemandRulePageState {
   }
 }
 
-class OnDemandRuleController extends Cubit<OnDemandRulePageState> {
+class OnDemandRuleController extends PageCubit<OnDemandRulePageState> {
   final OnDemandRuleParams params;
 
   OnDemandRuleController(this.params) : super(OnDemandRulePageState()) {
@@ -28,11 +28,10 @@ class OnDemandRuleController extends Cubit<OnDemandRulePageState> {
   final ssidControllers = <TextEditingController>[];
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     for (final controller in ssidControllers) {
       controller.dispose();
     }
-    return super.close();
   }
 
   void _initParams() {

@@ -2,7 +2,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 
@@ -60,7 +60,7 @@ class AppIconPageState {
   }
 }
 
-class AppIconController extends Cubit<AppIconPageState> {
+class AppIconController extends PageCubit<AppIconPageState> {
   AppIconController() : super(const AppIconPageState()) {
     _readCurrentIcon();
   }

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
@@ -60,7 +60,7 @@ class XrayProfileListPageState {
   }
 }
 
-class XrayProfileListController extends Cubit<XrayProfileListPageState> {
+class XrayProfileListController extends PageCubit<XrayProfileListPageState> {
   XrayProfileListController() : super(XrayProfileListPageState.initial()) {
     _readData();
   }
@@ -77,6 +77,9 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
 
   Future<void> _readData() async {
     await _readXrayProfileId();
+    if (!isPageActive) {
+      return;
+    }
     _initSimpleProfile();
     _queryXrayProfileList();
   }
@@ -91,6 +94,9 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
     _configsSubscription = db.coreConfigDao.allSettingRowsStream().listen((
       data,
     ) {
+      if (!isPageActive) {
+        return;
+      }
       _updateCustomProfiles(data);
       _emitFilteredProfiles();
     });
@@ -239,9 +245,8 @@ class XrayProfileListController extends Cubit<XrayProfileListPageState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
+    await _configsSubscription?.cancel();
     searchController.dispose();
-    _configsSubscription?.cancel();
-    return super.close();
   }
 }

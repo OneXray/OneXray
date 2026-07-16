@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -24,7 +24,7 @@ class TunSettingsPageState {
   }
 }
 
-class TunSettingsController extends Cubit<TunSettingsPageState> {
+class TunSettingsController extends PageCubit<TunSettingsPageState> {
   TunSettingsController() : super(TunSettingsPageState()) {
     _readTunSettings();
   }
@@ -34,16 +34,18 @@ class TunSettingsController extends Cubit<TunSettingsPageState> {
   final tunDnsServerNameController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     tunDnsIPv4Controller.dispose();
     tunDnsIPv6Controller.dispose();
     tunDnsServerNameController.dispose();
-    return super.close();
   }
 
   Future<void> _readTunSettings() async {
     final tunState = TunSettingsState();
     await tunState.readFromPreferences();
+    if (!isPageActive) {
+      return;
+    }
     emit(TunSettingsPageState(tunSettings: tunState));
     _initInputs(tunState);
   }

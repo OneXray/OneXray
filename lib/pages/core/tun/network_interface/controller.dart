@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/tun/network_interface/params.dart';
 import 'package:onexray/service/tun_settings/interface.dart';
@@ -26,7 +26,7 @@ class NetworkInterfacePageState {
   }
 }
 
-class NetworkInterfaceController extends Cubit<NetworkInterfacePageState> {
+class NetworkInterfaceController extends PageCubit<NetworkInterfacePageState> {
   final NetworkInterfaceParams params;
 
   NetworkInterfaceController(this.params)

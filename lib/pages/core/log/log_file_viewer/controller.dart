@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 
 class LogFileViewerPageState {
@@ -37,7 +37,7 @@ class LogFileViewerPageState {
   }
 }
 
-class LogFileViewerController extends Cubit<LogFileViewerPageState> {
+class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
   static const int _maxBufferBytes = 1024 * 1024;
   static const Duration _pollInterval = Duration(seconds: 1);
 
@@ -134,7 +134,7 @@ class LogFileViewerController extends Cubit<LogFileViewerPageState> {
   }
 
   void _emitBuffer({required bool fileExists, required bool truncated}) {
-    if (isClosed) {
+    if (!isPageActive) {
       return;
     }
     final text = utf8.decode(_buffer, allowMalformed: true);
@@ -165,8 +165,7 @@ class LogFileViewerController extends Cubit<LogFileViewerPageState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     _timer?.cancel();
-    return super.close();
   }
 }

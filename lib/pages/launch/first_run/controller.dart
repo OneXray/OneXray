@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/pages/main/url.dart';
@@ -39,7 +39,7 @@ class FirstRunPageState {
   }
 }
 
-class FirstRunController extends Cubit<FirstRunPageState> {
+class FirstRunController extends PageCubit<FirstRunPageState> {
   FirstRunController() : super(const FirstRunPageState()) {
     _readNetworkInterfaces();
   }

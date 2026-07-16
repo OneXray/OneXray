@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/params.dart';
 import 'package:onexray/service/xray/profile/routing_rule_state.dart';
 
@@ -15,7 +15,8 @@ class RoutingRuleDnsOutPageState {
       RoutingRuleDnsOutPageState(ruleState: ruleState, version: version + 1);
 }
 
-class RoutingRuleDnsOutController extends Cubit<RoutingRuleDnsOutPageState> {
+class RoutingRuleDnsOutController
+    extends PageCubit<RoutingRuleDnsOutPageState> {
   final RoutingRuleDnsOutParams params;
   RoutingRuleDnsOutController(this.params)
     : super(RoutingRuleDnsOutPageState.initial()) {

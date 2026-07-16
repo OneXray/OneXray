@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/pages/launch/route.dart';
 import 'package:onexray/pages/main/url.dart';
@@ -15,7 +15,7 @@ class SplashPageState {
   SplashPageState navigate(String route) => SplashPageState(route: route);
 }
 
-class SplashController extends Cubit<SplashPageState> {
+class SplashController extends PageCubit<SplashPageState> {
   SplashController() : super(SplashPageState.initial()) {
     WidgetsBinding.instance.addPostFrameCallback((_) => _initRouter());
   }
@@ -23,7 +23,7 @@ class SplashController extends Cubit<SplashPageState> {
   Future<void> _initRouter() async {
     try {
       final destination = await LaunchBootstrapService().resolveDestination();
-      if (!isClosed) {
+      if (isPageActive) {
         emit(state.navigate(destination.route));
       }
     } catch (e, stackTrace) {
@@ -36,7 +36,7 @@ class SplashController extends Cubit<SplashPageState> {
           context: ErrorDescription("while initializing the launch router"),
         ),
       );
-      if (!isClosed) {
+      if (isPageActive) {
         emit(state.navigate(RouterPath.privacy));
       }
     }

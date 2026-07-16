@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
@@ -24,7 +24,7 @@ class InstalledAppPageState {
   }
 }
 
-class InstalledAppController extends Cubit<InstalledAppPageState> {
+class InstalledAppController extends PageCubit<InstalledAppPageState> {
   final InstalledAppParams params;
 
   InstalledAppController(this.params) : super(const InstalledAppPageState()) {
@@ -35,9 +35,8 @@ class InstalledAppController extends Cubit<InstalledAppPageState> {
   final searchController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     searchController.dispose();
-    return super.close();
   }
 
   void _initParams() {

@@ -1,6 +1,6 @@
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
 
@@ -21,21 +21,20 @@ class DnsHostsPageState {
       DnsHostsPageState(hosts: hosts, version: version + 1);
 }
 
-class DnsHostsController extends Cubit<DnsHostsPageState> {
+class DnsHostsController extends PageCubit<DnsHostsPageState> {
   final DnsHostsParams params;
   DnsHostsController(this.params) : super(DnsHostsPageState.initial()) {
     _initParams();
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     for (final host in state.hosts) {
       host.host.dispose();
       for (final address in host.address) {
         address.dispose();
       }
     }
-    return super.close();
   }
 
   void _initParams() {

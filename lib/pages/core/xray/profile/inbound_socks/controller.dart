@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_socks/params.dart';
 import 'package:onexray/service/localizations/service.dart';
@@ -15,7 +15,7 @@ class InboundSocksPageState {
       InboundSocksPageState(socksState: InboundSocksState());
 }
 
-class InboundSocksController extends Cubit<InboundSocksPageState> {
+class InboundSocksController extends PageCubit<InboundSocksPageState> {
   final InboundSocksParams params;
 
   InboundSocksController(this.params) : super(InboundSocksPageState.initial()) {
@@ -89,10 +89,9 @@ class InboundSocksController extends Cubit<InboundSocksPageState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     portController.dispose();
     userController.dispose();
     passController.dispose();
-    return super.close();
   }
 }

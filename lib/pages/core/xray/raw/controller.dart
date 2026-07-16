@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -29,7 +29,7 @@ class XrayRawPageState {
   const XrayRawPageState({this.validJson = false, this.lineCount = 1});
 }
 
-class XrayRawController extends Cubit<XrayRawPageState> {
+class XrayRawController extends PageCubit<XrayRawPageState> {
   final XrayRawParams params;
   XrayRawController(this.params) : super(const XrayRawPageState()) {
     controller.addListener(_updateEditorState);
@@ -43,10 +43,9 @@ class XrayRawController extends Cubit<XrayRawPageState> {
   final controller = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     controller.removeListener(_updateEditorState);
     controller.dispose();
-    return super.close();
   }
 
   void _updateEditorState() {
@@ -58,7 +57,7 @@ class XrayRawController extends Cubit<XrayRawPageState> {
     } catch (_) {
       validJson = false;
     }
-    if (!isClosed) {
+    if (isPageActive) {
       emit(
         XrayRawPageState(
           validJson: validJson,
@@ -76,7 +75,7 @@ class XrayRawController extends Cubit<XrayRawPageState> {
     final db = AppDatabase();
     if (_configId != DBConstants.defaultId) {
       final config = await db.coreConfigDao.searchRow(_configId);
-      if (isClosed) {
+      if (!isPageActive) {
         return;
       }
       if (config != null) {

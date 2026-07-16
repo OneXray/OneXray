@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
@@ -47,7 +47,7 @@ class BackupPageState {
   }
 }
 
-class BackupController extends Cubit<BackupPageState> {
+class BackupController extends PageCubit<BackupPageState> {
   BackupController() : super(const BackupPageState()) {
     _readFiles();
   }
@@ -187,7 +187,7 @@ class BackupController extends Cubit<BackupPageState> {
       await BackupService().backup();
       await _readFiles(selectNewest: true);
     } finally {
-      if (!isClosed) {
+      if (isPageActive) {
         emit(state.copyWith(backingUp: false));
       }
     }
@@ -235,7 +235,7 @@ class BackupController extends Cubit<BackupPageState> {
       try {
         success = await BackupService().restore(zipPath);
       } finally {
-        if (!isClosed) {
+        if (isPageActive) {
           emit(state.copyWith(restoring: false));
         }
       }

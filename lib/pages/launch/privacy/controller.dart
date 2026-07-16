@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -20,7 +20,7 @@ class PrivacyPageState {
   }
 }
 
-class PrivacyController extends Cubit<PrivacyPageState> {
+class PrivacyController extends PageCubit<PrivacyPageState> {
   PrivacyController() : super(const PrivacyPageState()) {
     _readPrivacy();
   }

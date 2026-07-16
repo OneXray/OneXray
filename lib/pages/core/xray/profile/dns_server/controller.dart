@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
@@ -19,14 +19,14 @@ class DnsServerPageState {
       DnsServerPageState(serverState: serverState, version: version + 1);
 }
 
-class DnsServerController extends Cubit<DnsServerPageState> {
+class DnsServerController extends PageCubit<DnsServerPageState> {
   final DnsServerParams params;
   DnsServerController(this.params) : super(DnsServerPageState.initial()) {
     _initParams();
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     addressController.dispose();
     clientIpController.dispose();
     portController.dispose();
@@ -43,7 +43,6 @@ class DnsServerController extends Cubit<DnsServerPageState> {
     for (final controller in unexpectedIPsControllers) {
       controller.dispose();
     }
-    return super.close();
   }
 
   void _initParams() {

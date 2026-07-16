@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/core/tools/empty.dart';
@@ -40,7 +40,7 @@ class GeoDatSelectPageState {
   }
 }
 
-class GeoDatSelectController extends Cubit<GeoDatSelectPageState> {
+class GeoDatSelectController extends PageCubit<GeoDatSelectPageState> {
   final GeoDatSelectParams params;
   GeoDatSelectController(this.params)
     : super(GeoDatSelectPageState.initial(params)) {
@@ -51,9 +51,8 @@ class GeoDatSelectController extends Cubit<GeoDatSelectPageState> {
   final searchController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     searchController.dispose();
-    return super.close();
   }
 
   Future<void> _readGeoList() async {
@@ -61,7 +60,7 @@ class GeoDatSelectController extends Cubit<GeoDatSelectPageState> {
       VpnConstants.datDir,
       state.geoDatName,
     );
-    if (isClosed) {
+    if (!isPageActive) {
       return;
     }
     if (EmptyTool.checkList(geoList.codes)) {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -55,7 +55,7 @@ class OutboundUIPageState {
   OutboundUIPageState bumped() => copyWith(version: version + 1);
 }
 
-class OutboundUIController extends Cubit<OutboundUIPageState> {
+class OutboundUIController extends PageCubit<OutboundUIPageState> {
   final OutboundUIParams params;
   OutboundUIController(this.params) : super(OutboundUIPageState.initial()) {
     _initParams();
@@ -64,7 +64,7 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
   CoreConfigData? _outboundData;
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     nameController.dispose();
     addressController.dispose();
     portController.dispose();
@@ -111,8 +111,6 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
     for (final controller in rawHostControllers) {
       controller.dispose();
     }
-
-    return super.close();
   }
 
   void _initParams() {
@@ -126,6 +124,9 @@ class OutboundUIController extends Cubit<OutboundUIPageState> {
   Future<void> _queryOutbound() async {
     final db = AppDatabase();
     final outbound = await db.coreConfigDao.searchRow(params.id);
+    if (!isPageActive) {
+      return;
+    }
     if (outbound != null) {
       _outboundData = outbound;
       final outboundState = OutboundState();

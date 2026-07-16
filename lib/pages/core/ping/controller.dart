@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
@@ -16,7 +16,7 @@ class PingPageState {
   }
 }
 
-class PingController extends Cubit<PingPageState> {
+class PingController extends PageCubit<PingPageState> {
   PingController() : super(PingPageState()) {
     _readPingState();
   }

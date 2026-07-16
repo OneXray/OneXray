@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/xray/profile/routing_rule_dns_query/params.dart';
 import 'package:onexray/service/xray/profile/routing_rule_state.dart';
@@ -26,7 +26,7 @@ class RoutingRuleDnsQueryPageState {
 }
 
 class RoutingRuleDnsQueryController
-    extends Cubit<RoutingRuleDnsQueryPageState> {
+    extends PageCubit<RoutingRuleDnsQueryPageState> {
   final RoutingRuleDnsQueryParams params;
   RoutingRuleDnsQueryController(this.params)
     : super(RoutingRuleDnsQueryPageState.initial()) {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/pages/core/geo_data/show/params.dart';
@@ -29,7 +29,7 @@ class GeoDatShowPageState {
   }
 }
 
-class GeoDatShowController extends Cubit<GeoDatShowPageState> {
+class GeoDatShowController extends PageCubit<GeoDatShowPageState> {
   final GeoDatShowParams params;
   GeoDatShowController(this.params)
     : super(GeoDatShowPageState.initial(params)) {
@@ -40,9 +40,8 @@ class GeoDatShowController extends Cubit<GeoDatShowPageState> {
   final searchController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     searchController.dispose();
-    return super.close();
   }
 
   Future<void> _readGeoList() async {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -20,7 +20,7 @@ class SubscriptionEditPageState {
   }
 }
 
-class SubscriptionEditController extends Cubit<SubscriptionEditPageState> {
+class SubscriptionEditController extends PageCubit<SubscriptionEditPageState> {
   final SubscriptionEditParams params;
   SubscriptionEditController(this.params)
     : super(SubscriptionEditPageState.initial()) {
@@ -30,13 +30,15 @@ class SubscriptionEditController extends Cubit<SubscriptionEditPageState> {
   final nameController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     nameController.dispose();
-    return super.close();
   }
 
   Future<void> _init() async {
     final sub = await AppDatabase().subscriptionDao.searchRow(params.id);
+    if (!isPageActive) {
+      return;
+    }
     if (sub != null) {
       nameController.text = sub.name;
       emit(state.copyWith(url: sub.url));

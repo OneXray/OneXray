@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -23,7 +24,7 @@ import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 
-class HomeController extends Cubit<HomePageState> {
+class HomeController extends PageCubit<HomePageState> {
   final BuildContext context;
 
   HomeController(this.context)
@@ -55,7 +56,7 @@ class HomeController extends Cubit<HomePageState> {
     unawaited(_initServices());
     try {
       final id = await PreferencesKey().readLastConfigId();
-      if (isClosed) {
+      if (!isPageActive) {
         return;
       }
       emit(state.copyWith(configId: id));
@@ -68,7 +69,7 @@ class HomeController extends Cubit<HomePageState> {
 
   Future<void> _initServices() async {
     try {
-      if (isClosed || !context.mounted) {
+      if (!isPageActive || !context.mounted) {
         return;
       }
       await context.read<AppEventBus>().asyncInitService(context);
@@ -80,7 +81,7 @@ class HomeController extends Cubit<HomePageState> {
       );
     }
 
-    if (isClosed) {
+    if (!isPageActive) {
       return;
     }
     try {
@@ -120,7 +121,7 @@ class HomeController extends Cubit<HomePageState> {
   Future<void> _checkAppUpdate() async {
     try {
       await Future.delayed(const Duration(seconds: 3));
-      if (isClosed || !context.mounted) {
+      if (!isPageActive || !context.mounted) {
         return;
       }
       if (!await PreferencesKey().readPrivacyAccepted()) {
@@ -132,7 +133,7 @@ class HomeController extends Cubit<HomePageState> {
       }
       await service.recordAutomaticCheck();
       final result = await service.checkForUpdate();
-      if (isClosed || !context.mounted) {
+      if (!isPageActive || !context.mounted) {
         return;
       }
       switch (result.status) {
@@ -144,7 +145,7 @@ class HomeController extends Cubit<HomePageState> {
           final shouldShow = await service.shouldShowAutomaticReminder(
             updateInfo,
           );
-          if (!isClosed) {
+          if (isPageActive) {
             AppEventBus.instance.updateAppUpdateInfo(
               shouldShow ? updateInfo : null,
             );
@@ -175,7 +176,7 @@ class HomeController extends Cubit<HomePageState> {
     final eventBus = AppEventBus.instance;
     var xrayProfileId = eventBus.state.xrayProfileId;
     xrayProfileId = await PreferencesKey().readXrayProfileId();
-    if (isClosed) {
+    if (!isPageActive) {
       return;
     }
     await _readXrayProfile(xrayProfileId);
@@ -187,7 +188,7 @@ class HomeController extends Cubit<HomePageState> {
   }
 
   Future<void> _readXrayProfile(int id) async {
-    if (isClosed) {
+    if (!isPageActive) {
       return;
     }
     switch (id) {
@@ -209,7 +210,7 @@ class HomeController extends Cubit<HomePageState> {
         break;
       default:
         final xrayProfileData = await AppDatabase().coreConfigDao.searchRow(id);
-        if (isClosed) {
+        if (!isPageActive) {
           return;
         }
         if (xrayProfileData != null) {
@@ -244,7 +245,7 @@ class HomeController extends Cubit<HomePageState> {
 
   Future<void> _updateConfigName(int value) async {
     final configName = await _readConfigName(value);
-    if (!isClosed && state.configId == value) {
+    if (isPageActive && state.configId == value) {
       emit(state.copyWith(configName: configName));
     }
   }
@@ -263,7 +264,7 @@ class HomeController extends Cubit<HomePageState> {
   }
 
   Future<void> _updateRuntimeConfigName(int id) async {
-    if (isClosed) {
+    if (!isPageActive) {
       return;
     }
     emit(state.copyWith(runtimeConfigId: id, runtimeConfigName: ''));
@@ -272,7 +273,7 @@ class HomeController extends Cubit<HomePageState> {
     }
 
     final configName = await _readConfigName(id);
-    if (!isClosed && state.runtimeConfigId == id) {
+    if (isPageActive && state.runtimeConfigId == id) {
       emit(state.copyWith(runtimeConfigName: configName));
     }
   }
@@ -314,7 +315,7 @@ class HomeController extends Cubit<HomePageState> {
       final result = await VpnService().startVpn(state.configId);
       await _handleVpnCommandResult(result);
     } finally {
-      if (!isClosed) {
+      if (isPageActive) {
         emit(state.copyWith(vpnCommandLoading: false));
       }
     }
@@ -331,7 +332,7 @@ class HomeController extends Cubit<HomePageState> {
       final result = await VpnService().switchRoutingMode(mode);
       await _handleVpnCommandResult(result);
     } finally {
-      if (!isClosed) {
+      if (isPageActive) {
         emit(
           state.copyWith(
             vpnCommandLoading: false,
@@ -372,11 +373,10 @@ class HomeController extends Cubit<HomePageState> {
   }
 
   @override
-  Future<void> close() async {
+  Future<void> disposePageResources() async {
     await _toastSubscription.cancel();
     await _xrayProfileSubscription?.cancel();
     await _runtimeConfigSubscription?.cancel();
     await _systemExtension.close();
-    return super.close();
   }
 }

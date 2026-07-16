@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
@@ -26,7 +26,7 @@ class HomeNodeViewState {
   }
 }
 
-class HomeNodeController extends Cubit<HomeNodeViewState> {
+class HomeNodeController extends PageCubit<HomeNodeViewState> {
   HomeNodeController({required this.queryType})
     : super(HomeNodeViewState.initial()) {
     _asyncInit();
@@ -40,6 +40,9 @@ class HomeNodeController extends Cubit<HomeNodeViewState> {
   Future<void> _asyncInit() async {
     final db = AppDatabase();
     _configsSubscription = _configRowsStream(db).listen((data) {
+      if (!isPageActive) {
+        return;
+      }
       _allConfigs = data;
       _emitFilteredConfigs();
     });
@@ -82,6 +85,9 @@ class HomeNodeController extends Cubit<HomeNodeViewState> {
       HomeNodeQueryType.homeNodes => await db.coreConfigDao.allHomeNodeRows,
       HomeNodeQueryType.outboundOnly => await db.coreConfigDao.allOutboundRows,
     };
+    if (!isPageActive) {
+      return;
+    }
     _emitFilteredConfigs();
   }
 
@@ -101,9 +107,8 @@ class HomeNodeController extends Cubit<HomeNodeViewState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
+    await _configsSubscription?.cancel();
     searchController.dispose();
-    _configsSubscription?.cancel();
-    return super.close();
   }
 }

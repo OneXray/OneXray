@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -30,7 +30,7 @@ class CorePageState {
   }
 }
 
-class CoreRootController extends Cubit<CorePageState> {
+class CoreRootController extends PageCubit<CorePageState> {
   CoreRootController() : super(CorePageState.initial());
 
   Future<void> init() async {
@@ -42,7 +42,7 @@ class CoreRootController extends Cubit<CorePageState> {
     } catch (e) {
       ygLogger("CoreRootController initLogFiles error: $e");
     }
-    if (!isClosed) {
+    if (isPageActive) {
       emit(state.copyWith(hideLogFiles: hideLogFiles));
     }
   }

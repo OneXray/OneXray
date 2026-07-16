@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -14,7 +14,7 @@ class LanguagePageState {
   }
 }
 
-class LanguageController extends Cubit<LanguagePageState> {
+class LanguageController extends PageCubit<LanguagePageState> {
   LanguageController() : super(const LanguagePageState()) {
     _readData();
   }

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
@@ -21,7 +21,7 @@ class ConfigFileViewerPageState {
   }
 }
 
-class ConfigFileViewerController extends Cubit<ConfigFileViewerPageState> {
+class ConfigFileViewerController extends PageCubit<ConfigFileViewerPageState> {
   final ConfigFileViewerParams params;
 
   ConfigFileViewerController(this.params)

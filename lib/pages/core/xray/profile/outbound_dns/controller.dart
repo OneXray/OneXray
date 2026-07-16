@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/extensions.dart';
@@ -28,14 +28,14 @@ class OutboundDnsPageState {
   );
 }
 
-class OutboundDnsController extends Cubit<OutboundDnsPageState> {
+class OutboundDnsController extends PageCubit<OutboundDnsPageState> {
   final OutboundDnsParams params;
   OutboundDnsController(this.params) : super(OutboundDnsPageState.initial()) {
     _initParams();
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     addressController.dispose();
     portController.dispose();
     for (final controller in ruleQTypeControllers) {
@@ -47,7 +47,6 @@ class OutboundDnsController extends Cubit<OutboundDnsPageState> {
     for (final controller in ruleRCodeControllers) {
       controller.dispose();
     }
-    return super.close();
   }
 
   void _initParams() {

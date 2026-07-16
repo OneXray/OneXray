@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -12,7 +12,7 @@ class ToolboxPageState {
   }
 }
 
-class ToolboxController extends Cubit<ToolboxPageState> {
+class ToolboxController extends PageCubit<ToolboxPageState> {
   ToolboxController() : super(const ToolboxPageState()) {
     _readData();
   }

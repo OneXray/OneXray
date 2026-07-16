@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -9,7 +9,7 @@ import 'package:onexray/pages/subscriptions/nodes/params.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
-class SubscriptionListController extends Cubit<void> {
+class SubscriptionListController extends PageCubit<void> {
   SubscriptionListController()
     : rowsStream = AppDatabase().coreConfigDao.allOutboundRowsStream().map(
         (rows) => rows

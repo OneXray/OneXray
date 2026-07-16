@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -32,7 +32,7 @@ class GeoDatAddPageState {
   }
 }
 
-class GeoDatAddController extends Cubit<GeoDatAddPageState> {
+class GeoDatAddController extends PageCubit<GeoDatAddPageState> {
   GeoDatAddController() : super(GeoDatAddPageState.initial()) {
     _readAutoUpdateState();
   }
@@ -41,10 +41,9 @@ class GeoDatAddController extends Cubit<GeoDatAddPageState> {
   final urlController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     nameController.dispose();
     urlController.dispose();
-    return super.close();
   }
 
   Future<void> updateType(GeoDataType value) async {
@@ -86,7 +85,7 @@ class GeoDatAddController extends Cubit<GeoDatAddPageState> {
   Future<void> _readAutoUpdateState() async {
     final autoUpdateState = AutoUpdateState();
     await autoUpdateState.readFromPreferences();
-    if (!isClosed) {
+    if (isPageActive) {
       emit(state.copyWith(autoUpdateState: autoUpdateState));
     }
   }

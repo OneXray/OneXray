@@ -1,6 +1,6 @@
 import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 
 class InboundPingPageState {
   final InboundPingState httpState;
@@ -15,7 +15,7 @@ class InboundPingPageState {
       InboundPingPageState(httpState: httpState, version: version + 1);
 }
 
-class InboundPingController extends Cubit<InboundPingPageState> {
+class InboundPingController extends PageCubit<InboundPingPageState> {
   final InboundPingParams params;
   InboundPingController(this.params) : super(InboundPingPageState.initial()) {
     _initParams();

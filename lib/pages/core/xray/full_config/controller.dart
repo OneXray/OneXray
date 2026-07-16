@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -62,7 +62,7 @@ class XrayFullConfigPageState {
   }
 }
 
-class XrayFullConfigController extends Cubit<XrayFullConfigPageState> {
+class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   final XrayFullConfigParams params;
 
   XrayFullConfigController(this.params)
@@ -95,18 +95,17 @@ class XrayFullConfigController extends Cubit<XrayFullConfigPageState> {
   final dnsServeExpiredTTLController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     nameController.dispose();
     dnsClientIpController.dispose();
     dnsServeExpiredTTLController.dispose();
-    return super.close();
   }
 
   Future<void> _queryFullConfig() async {
     if (params.id != DBConstants.defaultId) {
       final db = AppDatabase();
       final config = await db.coreConfigDao.searchRow(params.id);
-      if (isClosed) {
+      if (!isPageActive) {
         return;
       }
       if (config != null) {
@@ -670,7 +669,7 @@ class XrayFullConfigController extends Cubit<XrayFullConfigPageState> {
   }
 
   void _notifyChanged() {
-    if (!isClosed) {
+    if (isPageActive) {
       emit(state.bumped());
     }
   }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:onexray/pages/main/navigation.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -62,7 +62,7 @@ class GeoDataListPageState {
   }
 }
 
-class GeoDataListController extends Cubit<GeoDataListPageState> {
+class GeoDataListController extends PageCubit<GeoDataListPageState> {
   final GeoDataListParams params;
   GeoDataListController(this.params)
     : super(GeoDataListPageState.initial(params)) {
@@ -75,14 +75,16 @@ class GeoDataListController extends Cubit<GeoDataListPageState> {
   var _allGeoDataList = <GeoDataData>[];
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
+    await _geoDataSubscription?.cancel();
     searchController.dispose();
-    _geoDataSubscription?.cancel();
-    return super.close();
   }
 
   Future<void> _asyncInit() async {
     await _readSystemGeoData();
+    if (!isPageActive) {
+      return;
+    }
     _queryGeoDataList();
   }
 
@@ -118,6 +120,9 @@ class GeoDataListController extends Cubit<GeoDataListPageState> {
     }
     _geoDataSubscription?.cancel();
     _geoDataSubscription = stream.listen((data) {
+      if (!isPageActive) {
+        return;
+      }
       _allGeoDataList = data;
       _emitFilteredGeoDataList();
     });

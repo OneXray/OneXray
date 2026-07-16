@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -67,7 +67,7 @@ class XrayProfileUIPageState {
   }
 }
 
-class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
+class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
   final XrayProfileUIParams params;
 
   XrayProfileUIController(this.params)
@@ -89,7 +89,7 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
   final fakeDnsIpv6PoolSizeController = TextEditingController();
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     nameController.dispose();
     dnsClientIpController.dispose();
     dnsServeExpiredTTLController.dispose();
@@ -97,14 +97,13 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
     fakeDnsIpv4PoolSizeController.dispose();
     fakeDnsIpv6IpPoolController.dispose();
     fakeDnsIpv6PoolSizeController.dispose();
-    return super.close();
   }
 
   Future<void> _queryXrayProfile() async {
     if (params.id != DBConstants.defaultId) {
       final db = AppDatabase();
       final xrayProfile = await db.coreConfigDao.searchRow(params.id);
-      if (isClosed) {
+      if (!isPageActive) {
         return;
       }
       if (xrayProfile != null) {
@@ -569,7 +568,7 @@ class XrayProfileUIController extends Cubit<XrayProfileUIPageState> {
   }
 
   void _notifyChanged() {
-    if (!isClosed) {
+    if (isPageActive) {
       emit(state.bumped());
     }
   }

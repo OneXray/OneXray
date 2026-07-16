@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -58,7 +58,7 @@ class NodeInfoViewState {
   final String city;
 }
 
-class NodeInfoController extends Cubit<NodeInfoPageState> {
+class NodeInfoController extends PageCubit<NodeInfoPageState> {
   NodeInfoController(this._selectedConfigId)
     : super(NodeInfoPageState(eventState: AppEventBus.instance.state)) {
     _subscription = AppEventBus.instance.stream.listen(_updateEventState);
@@ -92,7 +92,7 @@ class NodeInfoController extends Cubit<NodeInfoPageState> {
       return;
     }
     final config = await AppDatabase().coreConfigDao.searchRow(expectedId);
-    if (!isClosed && _activeConfigId(state.eventState) == expectedId) {
+    if (isPageActive && _activeConfigId(state.eventState) == expectedId) {
       emit(
         NodeInfoPageState(eventState: state.eventState, activeConfig: config),
       );
@@ -190,8 +190,7 @@ class NodeInfoController extends Cubit<NodeInfoPageState> {
   }
 
   @override
-  Future<void> close() async {
+  Future<void> disposePageResources() async {
     await _subscription?.cancel();
-    return super.close();
   }
 }

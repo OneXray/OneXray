@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_http/params.dart';
 import 'package:onexray/service/localizations/service.dart';
@@ -15,7 +15,7 @@ class InboundHttpPageState {
       InboundHttpPageState(httpState: InboundHttpState());
 }
 
-class InboundHttpController extends Cubit<InboundHttpPageState> {
+class InboundHttpController extends PageCubit<InboundHttpPageState> {
   final InboundHttpParams params;
 
   InboundHttpController(this.params) : super(InboundHttpPageState.initial()) {
@@ -89,10 +89,9 @@ class InboundHttpController extends Cubit<InboundHttpPageState> {
   }
 
   @override
-  Future<void> close() {
+  Future<void> disposePageResources() async {
     portController.dispose();
     userController.dispose();
     passController.dispose();
-    return super.close();
   }
 }
