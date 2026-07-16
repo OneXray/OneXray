@@ -63,10 +63,8 @@ final class VpnConnectivityService {
     try {
       request = await StartVpnRequestReader.readFromStartFile();
     } catch (error, stackTrace) {
-      ygReportError(
-        error,
-        stackTrace,
-        reason: 'read connectivity runtime snapshot failed',
+      ygLogger(
+        'read connectivity runtime snapshot failed: $error\n$stackTrace',
       );
       eventBus.updateLocationPingFailed();
       eventBus.updateGeoLocationFailed();
@@ -137,11 +135,7 @@ final class VpnConnectivityService {
       final request = await StartVpnRequestReader.readFromStartFile();
       XrayMetricsService().start(request.metricsPort);
     } catch (error, stackTrace) {
-      ygReportError(
-        error,
-        stackTrace,
-        reason: 'read metrics runtime snapshot failed',
-      );
+      ygLogger('read metrics runtime snapshot failed: $error\n$stackTrace');
       XrayMetricsService().stop();
     }
   }

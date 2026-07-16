@@ -56,14 +56,6 @@ class PrivacyController extends PageCubit<PrivacyPageState> {
       }
     } catch (e, stackTrace) {
       ygLogger("privacy accept error: $e\n$stackTrace");
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: e,
-          stack: stackTrace,
-          library: "OneXray launch",
-          context: ErrorDescription("while accepting privacy policy"),
-        ),
-      );
       if (accepted && context.mounted) {
         context.go(RouterPath.home);
       }

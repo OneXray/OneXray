@@ -175,7 +175,7 @@ final class ShareService {
           }
         }
       } catch (error, stackTrace) {
-        ygReportError(error, stackTrace, reason: 'import share text failed');
+        ygLogger('import share text failed: $error\n$stackTrace');
       } finally {
         eventBus.updateDownloading(false);
       }

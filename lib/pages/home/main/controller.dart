@@ -62,7 +62,7 @@ class HomeController extends PageCubit<HomePageState> {
       emit(state.copyWith(configId: id));
       await _updateConfigName(id);
     } catch (e, stackTrace) {
-      ygReportError(e, stackTrace, reason: 'Home initialization failed');
+      ygLogger('Home initialization failed: $e\n$stackTrace');
     }
     unawaited(_checkAppUpdate());
   }
@@ -74,11 +74,7 @@ class HomeController extends PageCubit<HomePageState> {
       }
       await context.read<AppEventBus>().asyncInitService(context);
     } catch (e, stackTrace) {
-      ygReportError(
-        e,
-        stackTrace,
-        reason: 'Home service initialization failed',
-      );
+      ygLogger('Home service initialization failed: $e\n$stackTrace');
     }
 
     if (!isPageActive) {
@@ -87,11 +83,7 @@ class HomeController extends PageCubit<HomePageState> {
     try {
       BackgroundTaskService().init();
     } catch (e, stackTrace) {
-      ygReportError(
-        e,
-        stackTrace,
-        reason: 'Background task initialization failed',
-      );
+      ygLogger('Background task initialization failed: $e\n$stackTrace');
     }
     unawaited(_refreshVpnStatus());
   }
@@ -100,7 +92,7 @@ class HomeController extends PageCubit<HomePageState> {
     try {
       await VpnService().refreshVpnStatus();
     } catch (e, stackTrace) {
-      ygReportError(e, stackTrace, reason: 'VPN status refresh failed');
+      ygLogger('VPN status refresh failed: $e\n$stackTrace');
     }
   }
 
@@ -108,7 +100,7 @@ class HomeController extends PageCubit<HomePageState> {
     try {
       await SystemGeoDatService().checkAssets();
     } catch (e, stackTrace) {
-      ygReportError(e, stackTrace, reason: 'System GeoData check failed');
+      ygLogger('System GeoData check failed: $e\n$stackTrace');
     }
   }
 
@@ -156,7 +148,7 @@ class HomeController extends PageCubit<HomePageState> {
           return;
       }
     } catch (e, stackTrace) {
-      ygReportError(e, stackTrace, reason: 'Automatic update check failed');
+      ygLogger('Automatic update check failed: $e\n$stackTrace');
     }
   }
 

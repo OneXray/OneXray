@@ -452,6 +452,6 @@ class AppHostApi {
     Object error,
     StackTrace stackTrace,
   ) {
-    ygReportError(error, stackTrace, reason: 'AppHostApi.$operation failed');
+    ygLogger('AppHostApi.$operation failed: $error\n$stackTrace');
   }
 }

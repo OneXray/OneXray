@@ -60,10 +60,8 @@ final class XrayRuntimeConfigService {
     } on XrayRuntimeConfigException {
       rethrow;
     } catch (error, stackTrace) {
-      ygReportError(
-        error,
-        stackTrace,
-        reason: 'Xray runtime configuration preparation failed',
+      ygLogger(
+        'Xray runtime configuration preparation failed: $error\n$stackTrace',
       );
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnStartRequestFailed,

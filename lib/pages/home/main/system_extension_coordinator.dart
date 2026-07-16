@@ -85,11 +85,7 @@ final class HomeSystemExtensionCoordinator {
       ygLogger('VPN is waiting for approval, showing alert dialog');
       await _showApprovalDialog();
     } catch (error, stackTrace) {
-      ygReportError(
-        error,
-        stackTrace,
-        reason: 'System Extension refresh handling failed',
-      );
+      ygLogger('System Extension refresh handling failed: $error\n$stackTrace');
     }
   }
 

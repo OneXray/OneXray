@@ -28,14 +28,6 @@ class SplashController extends PageCubit<SplashPageState> {
       }
     } catch (e, stackTrace) {
       ygLogger("initRouter error: $e\n$stackTrace");
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: e,
-          stack: stackTrace,
-          library: "OneXray launch",
-          context: ErrorDescription("while initializing the launch router"),
-        ),
-      );
       if (isPageActive) {
         emit(state.navigate(RouterPath.privacy));
       }

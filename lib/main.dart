@@ -1,44 +1,34 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
-import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/router.dart';
 import 'package:window_manager/window_manager.dart';
 
-void main() {
-  runZonedGuarded(
-    () async {
-      WidgetsFlutterBinding.ensureInitialized();
+const _desktopWindowSize = Size(1200, 800);
+const _minimumDesktopWindowSize = Size(480, 600);
 
-      await _initBridge();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-      if (AppPlatform.isDesktop) {
-        await windowManager.ensureInitialized();
+  await _initBridge();
 
-        const windowSize = Size(1200, 800);
-        const minimumWindowSize = Size(AdaptiveMainShell.railBreakpoint, 800);
-        WindowOptions windowOptions = WindowOptions(
-          size: windowSize,
-          minimumSize: minimumWindowSize,
-          center: true,
-        );
-        windowManager.waitUntilReadyToShow(windowOptions, () async {
-          await windowManager.show();
-          await windowManager.focus();
-        });
-      }
+  if (AppPlatform.isDesktop) {
+    await windowManager.ensureInitialized();
 
-      runApp(GoRouteApp());
-    },
-    (error, stackTrace) {
-      ygReportError(error, stackTrace, reason: 'Uncaught application error');
-    },
-  );
+    WindowOptions windowOptions = WindowOptions(
+      size: _desktopWindowSize,
+      minimumSize: _minimumDesktopWindowSize,
+      center: true,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
+
+  runApp(GoRouteApp());
 }
 
 Future<void> _initBridge() async {

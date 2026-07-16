@@ -9,8 +9,3 @@ void ygLogger(dynamic message) {
     log(text);
   }
 }
-
-void ygReportError(Object error, StackTrace stackTrace, {String? reason}) {
-  final message = reason == null ? '$error' : '$reason: $error';
-  ygLogger('$message\n$stackTrace');
-}

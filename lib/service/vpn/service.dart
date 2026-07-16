@@ -149,7 +149,7 @@ final class VpnService {
       try {
         await _applyVpnStatus(status, generation);
       } catch (error, stackTrace) {
-        ygReportError(error, stackTrace, reason: 'apply VPN status failed');
+        ygLogger('apply VPN status failed: $error\n$stackTrace');
       }
     });
     _statusTail = update;
@@ -207,11 +207,7 @@ final class VpnService {
     try {
       await _connectivity.start();
     } catch (error, stackTrace) {
-      ygReportError(
-        error,
-        stackTrace,
-        reason: 'start VPN connectivity services failed',
-      );
+      ygLogger('start VPN connectivity services failed: $error\n$stackTrace');
     }
   }
 
@@ -401,7 +397,7 @@ final class VpnService {
       }
       return _commandFailed(e.message);
     } catch (error, stackTrace) {
-      ygReportError(error, stackTrace, reason: 'start VPN failed');
+      ygLogger('start VPN failed: $error\n$stackTrace');
       final message = appLocalizationsNoContext().vpnStartFailed;
       if (startAttempted) {
         await _handleStartedOperationFailure(message, coreRunMode, generation);
@@ -704,7 +700,7 @@ final class VpnService {
       await _clearStartSnapshot();
       return true;
     } catch (error, stackTrace) {
-      ygReportError(error, stackTrace, reason: 'abort VPN start failed');
+      ygLogger('abort VPN start failed: $error\n$stackTrace');
       return false;
     }
   }
@@ -739,11 +735,7 @@ final class VpnService {
     try {
       await FileTool.deleteFileIfExists(VpnConstants.startPath);
     } catch (error, stackTrace) {
-      ygReportError(
-        error,
-        stackTrace,
-        reason: 'clear VPN runtime snapshot failed',
-      );
+      ygLogger('clear VPN runtime snapshot failed: $error\n$stackTrace');
     }
   }
 
