@@ -53,7 +53,7 @@ jobs:
 
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Verify stable Windows release asset
+      - name: Verify stable Windows release assets
         id: verify
         env:
           GH_TOKEN: ${{ github.token }}
@@ -75,10 +75,14 @@ jobs:
             exit 0
           fi
 
-          if [ -z "$(jq -r '.assets[] | select(.name == "OneXray-windows-amd64.exe") | .url' <<<"$release_json")" ]; then
-            echo "Release $RELEASE_TAG is missing required asset: OneXray-windows-amd64.exe" >&2
-            exit 1
-          fi
+          for asset in \
+            OneXray-windows-amd64.exe \
+            OneXray-windows-arm64.exe; do
+            if [ -z "$(jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .url' <<<"$release_json")" ]; then
+              echo "Release $RELEASE_TAG is missing required asset: $asset" >&2
+              exit 1
+            fi
+          done
 
           echo "should_update=true" >> "$GITHUB_OUTPUT"
 
@@ -112,6 +116,6 @@ jobs:
         with:
           identifier: YuanDevLLC.OneXray
           release-tag: ${{ steps.release.outputs.tag }}
-          installers-regex: '^OneXray-windows-amd64\.exe$'
+          installers-regex: '^OneXray-windows-(amd64|arm64)\.exe$'
           max-versions-to-keep: 3
           token: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}

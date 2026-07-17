@@ -1,0 +1,198 @@
+#
+# Publishes Windows x64 and arm64 packages produced by a release-tag Build run
+# to Microsoft Partner Center as one multi-architecture MSIX bundle.
+#
+# Trigger:
+#   - successful completion of the Build workflow: release-tag runs publish;
+#     manual Build runs are detected and skipped
+#   - workflow_dispatch: retries a specific release-tag Build run id
+#
+# Required repository secrets:
+#   AZURE_AD_TENANT_ID                 Microsoft Entra tenant id
+#   AZURE_AD_APPLICATION_CLIENT_ID     Entra app registration client id
+#   AZURE_AD_APPLICATION_SECRET        Entra app registration client secret
+#   SELLER_ID                          Partner Center seller id
+#
+# Required repository variable:
+#   MICROSOFT_STORE_PRODUCT_ID         Partner Center product id for OneXray
+#
+
+name: Publish Microsoft Store
+
+on:
+  workflow_run:
+    workflows:
+      - Build
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Release-tag Build workflow run id
+        required: true
+        type: string
+
+concurrency:
+  group: publish-microsoft-store-${{ github.event.workflow_run.id || inputs.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  inspect:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    outputs:
+      run_id: ${{ steps.build.outputs.run_id }}
+      should_publish: ${{ steps.build.outputs.should_publish }}
+    steps:
+      - name: Inspect Build run
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          TRIGGER_EVENT: ${{ github.event_name }}
+        run: |
+          echo "run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "should_publish=false" >> "$GITHUB_OUTPUT"
+
+          run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID")"
+          if [ "$(jq -r '.name' <<<"$run_json")" != "Build" ]; then
+            echo "Workflow run $BUILD_RUN_ID is not a Build run." >&2
+            exit 1
+          fi
+          if [ "$(jq -r '.conclusion' <<<"$run_json")" != "success" ]; then
+            echo "Build run $BUILD_RUN_ID did not complete successfully." >&2
+            exit 1
+          fi
+
+          artifact_names="$(gh api --paginate \
+            "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID/artifacts?per_page=100" \
+            --jq '.artifacts[].name')"
+
+          if ! grep -Fxq "release-metadata" <<<"$artifact_names"; then
+            if [ "$TRIGGER_EVENT" = "workflow_run" ]; then
+              echo "Build run $BUILD_RUN_ID is not a release-tag build; skipping Store submission."
+              exit 0
+            fi
+            echo "Build run $BUILD_RUN_ID has no release metadata." >&2
+            exit 1
+          fi
+
+          for artifact in windows-store-x64 windows-store-arm64; do
+            if ! grep -Fxq "$artifact" <<<"$artifact_names"; then
+              echo "Build run $BUILD_RUN_ID is missing artifact: $artifact" >&2
+              exit 1
+            fi
+          done
+
+          gh run download "$BUILD_RUN_ID" \
+            --repo "${{ github.repository }}" \
+            --name release-metadata \
+            --dir release-metadata
+          metadata_tag_file="$(find release-metadata -name tag.txt -type f -print -quit)"
+          if [ -z "$metadata_tag_file" ]; then
+            echo "Release metadata does not contain tag.txt." >&2
+            exit 1
+          fi
+          metadata_tag="$(cat "$metadata_tag_file")"
+          case "$metadata_tag" in
+            v*) ;;
+            *)
+              echo "Release metadata tag must start with v: $metadata_tag" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: inspect
+    if: needs.inspect.outputs.should_publish == 'true'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - name: Download Microsoft Store packages
+        uses: actions/download-artifact@v7
+        with:
+          pattern: windows-store-*
+          path: store-packages/input
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.inspect.outputs.run_id }}
+
+      - name: Create multi-architecture MSIX bundle
+        id: bundle
+        shell: pwsh
+        run: |
+          $inputDirectory = Join-Path $PWD "store-packages/input"
+          $packages = @(Get-ChildItem $inputDirectory -Filter "*.msix" -File)
+          if ($packages.Count -ne 2) {
+            throw "Expected x64 and arm64 MSIX packages, found $($packages.Count)."
+          }
+
+          $windowsSdkBin = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $makeAppx = Get-ChildItem $windowsSdkBin -Filter "MakeAppx.exe" -Recurse -File |
+            Where-Object { $_.Directory.Name -eq "x64" } |
+            Sort-Object FullName |
+            Select-Object -Last 1
+          if ($null -eq $makeAppx) {
+            throw "MakeAppx.exe was not found in the Windows SDK."
+          }
+
+          $bundlePath = Join-Path $PWD "store-packages/OneXray.msixbundle"
+          & $makeAppx.FullName bundle /d $inputDirectory /p $bundlePath /o
+          if ($LASTEXITCODE -ne 0) {
+            throw "MakeAppx failed with exit code $LASTEXITCODE."
+          }
+          "bundle_path=$bundlePath" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Microsoft Store bundle artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-store-bundle
+          path: ${{ steps.bundle.outputs.bundle_path }}
+          if-no-files-found: error
+
+      - name: Setup Microsoft Store CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.3
+
+      - name: Configure Partner Center credentials
+        shell: pwsh
+        env:
+          AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          AZURE_AD_APPLICATION_CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          AZURE_AD_APPLICATION_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+          SELLER_ID: ${{ secrets.SELLER_ID }}
+          MICROSOFT_STORE_PRODUCT_ID: ${{ vars.MICROSOFT_STORE_PRODUCT_ID }}
+        run: |
+          $required = @(
+            @{ Name = "AZURE_AD_TENANT_ID"; Value = $env:AZURE_AD_TENANT_ID },
+            @{ Name = "AZURE_AD_APPLICATION_CLIENT_ID"; Value = $env:AZURE_AD_APPLICATION_CLIENT_ID },
+            @{ Name = "AZURE_AD_APPLICATION_SECRET"; Value = $env:AZURE_AD_APPLICATION_SECRET },
+            @{ Name = "SELLER_ID"; Value = $env:SELLER_ID },
+            @{ Name = "MICROSOFT_STORE_PRODUCT_ID"; Value = $env:MICROSOFT_STORE_PRODUCT_ID }
+          )
+          $missing = @($required |
+            Where-Object { [string]::IsNullOrWhiteSpace($_.Value) } |
+            ForEach-Object { $_.Name })
+          if ($missing.Count -gt 0) {
+            throw "Missing Partner Center configuration: $($missing -join ', ')."
+          }
+
+          msstore reconfigure `
+            --tenantId $env:AZURE_AD_TENANT_ID `
+            --sellerId $env:SELLER_ID `
+            --clientId $env:AZURE_AD_APPLICATION_CLIENT_ID `
+            --clientSecret $env:AZURE_AD_APPLICATION_SECRET
+
+      - name: Submit to Microsoft Store
+        shell: pwsh
+        env:
+          MICROSOFT_STORE_PRODUCT_ID: ${{ vars.MICROSOFT_STORE_PRODUCT_ID }}
+        run: |
+          msstore publish "${{ steps.bundle.outputs.bundle_path }}" `
+            --appId $env:MICROSOFT_STORE_PRODUCT_ID
