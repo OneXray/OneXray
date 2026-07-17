@@ -420,15 +420,30 @@ jobs:
           if-no-files-found: error
 
   # =================================================================
-  # Windows x64 — fastforge .zip + .exe
-  #   Pinned to windows-2022 for Visual Studio 2022 (any edition —
-  #   the runner ships Enterprise, VS 2022 Community is equivalent
-  #   for C++ desktop workloads).
+  # Windows x64 and arm64 — fastforge .zip + .exe, plus Store .msix
+  #   x64 stays on Windows Server 2022; arm64 uses GitHub's native
+  #   Windows 11 arm64 runner so Flutter, libXray, Xray-core, and Wintun
+  #   all match the target architecture.
   # =================================================================
   windows:
     if: github.event_name == 'push' || inputs.target == 'all'
-    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            goarch: amd64
+            package_suffix: windows-amd64
+            runner: windows-2022
+          - arch: arm64
+            goarch: arm64
+            package_suffix: windows-arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
+    env:
+      GOARCH: ${{ matrix.goarch }}
+      ONEXRAY_WINDOWS_ARCH: ${{ matrix.arch }}
     defaults:
       run:
         shell: bash
@@ -480,10 +495,17 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: windows-x64
+          name: windows-${{ matrix.arch }}
           path: |
-            output/OneXray-*.zip
-            output/OneXray-*.exe
+            output/OneXray-${{ matrix.package_suffix }}.zip
+            output/OneXray-${{ matrix.package_suffix }}.exe
+          if-no-files-found: error
+
+      - name: Upload Microsoft Store artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-store-${{ matrix.arch }}
+          path: output/OneXray-${{ matrix.package_suffix }}.msix
           if-no-files-found: error
 
   # =================================================================
