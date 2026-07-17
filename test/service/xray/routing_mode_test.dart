@@ -60,18 +60,54 @@ void main() {
     expect(_dialerProxy(chainProxy), RoutingOutboundTag.fragment.name);
   });
 
-  test('Global mode removes an unsupported proxy dependency', () {
+  test('Global mode keeps custom proxy dependencies in order', () {
     final xray = _runtimeConfig();
     final proxy = _outbound(xray, RoutingOutboundTag.proxy.name);
-    _setDialerProxy(proxy, RoutingOutboundTag.direct.name);
+    final custom1 = _newOutbound('custom1', protocol: 'vless');
+    final custom2 = _newOutbound('custom2', protocol: 'socks');
+    _setDialerProxy(proxy, custom1.tag!);
+    _setDialerProxy(custom1, custom2.tag!);
+    xray.outbounds!.addAll(<XrayOutbound>[custom2, custom1]);
 
     expect(
       XrayRoutingModeFix.applyToXrayJson(xray, CoreRoutingMode.global),
       true,
     );
 
-    expect(_outboundTags(xray), <String?>[RoutingOutboundTag.proxy.name]);
-    expect(_dialerProxy(proxy), isNull);
+    expect(_outboundTags(xray), <String?>[
+      RoutingOutboundTag.proxy.name,
+      custom1.tag,
+      custom2.tag,
+    ]);
+    expect(_dialerProxy(proxy), custom1.tag);
+    expect(_dialerProxy(custom1), custom2.tag);
+  });
+
+  test('Global mode rejects a missing proxy dependency', () {
+    final xray = _runtimeConfig();
+    final proxy = _outbound(xray, RoutingOutboundTag.proxy.name);
+    _setDialerProxy(proxy, 'missing');
+
+    expect(
+      XrayRoutingModeFix.applyToXrayJson(xray, CoreRoutingMode.global),
+      false,
+    );
+    expect(xray.dns, isNotNull);
+    expect(xray.routing, isNotNull);
+  });
+
+  test('Global mode rejects a proxy dependency cycle', () {
+    final xray = _runtimeConfig();
+    final proxy = _outbound(xray, RoutingOutboundTag.proxy.name);
+    final custom = _newOutbound('custom', protocol: 'vless');
+    _setDialerProxy(proxy, custom.tag!);
+    _setDialerProxy(custom, proxy.tag!);
+    xray.outbounds!.add(custom);
+
+    expect(
+      XrayRoutingModeFix.applyToXrayJson(xray, CoreRoutingMode.global),
+      false,
+    );
   });
 
   test('Direct mode removes DNS and routing and keeps only direct', () {
@@ -93,19 +129,27 @@ void main() {
   test('Global Raw JSON keeps unknown fields on retained outbounds', () {
     final xray = _runtimeConfig();
     final proxy = _outbound(xray, RoutingOutboundTag.proxy.name);
-    final chainProxy = _newOutbound(
-      RoutingOutboundTag.chainProxy.name,
-      protocol: 'vless',
-    );
+    final custom = _newOutbound('custom', protocol: 'vless');
     final fragment = _newOutbound(
       RoutingOutboundTag.fragment.name,
       protocol: 'freedom',
     );
-    _setDialerProxy(proxy, RoutingOutboundTag.chainProxy.name);
-    _setDialerProxy(chainProxy, RoutingOutboundTag.fragment.name);
-    xray.outbounds!.addAll(<XrayOutbound>[chainProxy, fragment]);
+    _setDialerProxy(proxy, custom.tag!);
+    _setDialerProxy(custom, RoutingOutboundTag.fragment.name);
+    xray.outbounds!.addAll(<XrayOutbound>[custom, fragment]);
 
-    final raw = xray.toJson()..['customRoot'] = <String, dynamic>{'keep': true};
+    final raw = xray.toJson()
+      ..['customRoot'] = <String, dynamic>{'keep': true}
+      ..['dns'] = <String, dynamic>{
+        'servers': <dynamic>['8.8.8.8'],
+      }
+      ..['inbounds'] = <dynamic>[
+        <String, dynamic>{
+          'tag': 'customIn',
+          'protocol': 'dokodemo-door',
+          'port': 1080,
+        },
+      ];
     final rawOutbounds = raw['outbounds']! as List<dynamic>;
     final rawProxy = _rawOutbound(rawOutbounds, RoutingOutboundTag.proxy.name)
       ..['customOutboundField'] = 'keep';
@@ -113,7 +157,7 @@ void main() {
       _rawOutbound(rawOutbounds, RoutingOutboundTag.direct.name),
       fragment.toJson(),
       rawProxy,
-      chainProxy.toJson(),
+      custom.toJson(),
       _rawOutbound(rawOutbounds, RoutingOutboundTag.block.name),
     ];
 
@@ -127,7 +171,7 @@ void main() {
       fixedOutbounds.whereType<Map>().map((outbound) => outbound['tag']),
       <String>[
         RoutingOutboundTag.proxy.name,
-        RoutingOutboundTag.chainProxy.name,
+        custom.tag!,
         RoutingOutboundTag.fragment.name,
       ],
     );
@@ -138,6 +182,7 @@ void main() {
       )['customOutboundField'],
       'keep',
     );
+    expect(((raw['inbounds']! as List<dynamic>).single as Map)['port'], 1080);
   });
 
   test('Global mode reports a missing proxy outbound', () {
