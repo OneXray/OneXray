@@ -350,6 +350,11 @@ final class VpnService {
         eventBus.updateVpnActionState(VpnActionState.preparing);
       }
 
+      if (routingMode == CoreRoutingMode.direct &&
+          configId != DBConstants.defaultId) {
+        await _updateLastConfigId(configId);
+      }
+
       final result = await _realStartXray(
         outbound,
         onStartInvoked: () => startAttempted = true,
@@ -514,11 +519,16 @@ final class VpnService {
     return _startVpn(restartConfigId, generation);
   }
 
-  Future<NativeVpnCommandResult> switchRoutingMode(CoreRoutingMode mode) =>
-      _commands.run((generation) => _switchRoutingMode(mode, generation));
+  Future<NativeVpnCommandResult> switchRoutingMode(
+    CoreRoutingMode mode, {
+    required int selectedConfigId,
+  }) => _commands.run(
+    (generation) => _switchRoutingMode(mode, selectedConfigId, generation),
+  );
 
   Future<NativeVpnCommandResult> _switchRoutingMode(
     CoreRoutingMode mode,
+    int selectedConfigId,
     int generation,
   ) async {
     final preferences = PreferencesKey();
@@ -529,9 +539,11 @@ final class VpnService {
 
     final eventBus = AppEventBus.instance;
     final runningId = eventBus.state.runningId;
-    final restartConfigId = runningId == DBConstants.defaultId
-        ? _lastConfigId
-        : runningId;
+    final restartConfigId = runningId != DBConstants.defaultId
+        ? runningId
+        : selectedConfigId != DBConstants.defaultId
+        ? selectedConfigId
+        : _lastConfigId;
     final wasRunning = _isCoreActive;
     if (wasRunning) {
       final stopResult = await _stopCurrentVpn(generation);
@@ -883,5 +895,6 @@ final class VpnService {
   bool get _isCoreActive =>
       _vpnRunning ||
       _lastVpnStatus == VpnStatus.connected ||
-      _lastVpnStatus == VpnStatus.connecting;
+      _lastVpnStatus == VpnStatus.connecting ||
+      AppEventBus.instance.state.runningId != DBConstants.defaultId;
 }

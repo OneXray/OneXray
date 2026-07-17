@@ -321,7 +321,10 @@ class HomeController extends PageCubit<HomePageState> {
     emit(state.copyWith(vpnCommandLoading: true, pendingRoutingMode: mode));
     try {
       await _ensureSystemGeoDatAssets();
-      final result = await VpnService().switchRoutingMode(mode);
+      final result = await VpnService().switchRoutingMode(
+        mode,
+        selectedConfigId: state.configId,
+      );
       await _handleVpnCommandResult(result);
     } finally {
       if (isPageActive) {
