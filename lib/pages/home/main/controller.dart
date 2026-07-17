@@ -85,7 +85,6 @@ class HomeController extends PageCubit<HomePageState> {
     } catch (e, stackTrace) {
       ygLogger('Background task initialization failed: $e\n$stackTrace');
     }
-    unawaited(_refreshVpnStatus());
   }
 
   Future<void> _refreshVpnStatus() async {

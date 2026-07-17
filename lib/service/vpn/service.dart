@@ -53,10 +53,21 @@ final class VpnService {
   late final _connectivity = VpnConnectivityService(() => _vpnRunning);
   late final _runtimeConfig = XrayRuntimeConfigService();
   Future<void> _statusTail = Future<void>.value();
+  Future<void>? _initFuture;
 
   bool get vpnRunning => _vpnRunning;
 
-  Future<void> asyncInit() async {
+  Future<void> asyncInit() {
+    final initFuture = _initFuture;
+    if (initFuture != null) {
+      return initFuture;
+    }
+    final nextInitFuture = _asyncInit();
+    _initFuture = nextInitFuture;
+    return nextInitFuture;
+  }
+
+  Future<void> _asyncInit() async {
     final eventBus = AppEventBus.instance;
     final preferences = PreferencesKey();
     final cleanupResult = await AppHostApi().cleanupStaleDesktopCore();
@@ -82,9 +93,11 @@ final class VpnService {
     if (_staleDesktopCoreCleanupRequired) {
       _showStaleDesktopCoreCleanupFailure();
     }
+    await _commands.run(_refreshVpnStatus);
   }
 
   void dispose() {
+    _initFuture = null;
     _commands.invalidate();
     _connectivity.stop();
     final vpnStatusSubscription = _vpnStatusSubscription;
@@ -93,6 +106,11 @@ final class VpnService {
   }
 
   StreamSubscription<VpnStatus>? _vpnStatusSubscription;
+
+  Future<T> _runCommand<T>(Future<T> Function(int generation) command) async {
+    await asyncInit();
+    return _commands.run(command);
+  }
 
   void _listenVpnStatus() {
     if (_vpnStatusSubscription != null) {
@@ -104,7 +122,7 @@ final class VpnService {
     );
   }
 
-  Future<void> refreshVpnStatus() => _commands.run(_refreshVpnStatus);
+  Future<void> refreshVpnStatus() => _runCommand(_refreshVpnStatus);
 
   Future<void> _refreshVpnStatus(int generation) async {
     if (!await _ensureStaleDesktopCoreCleaned(generation)) {
@@ -220,7 +238,7 @@ final class VpnService {
   }
 
   Future<NativeVpnCommandResult> startDefaultVpn() =>
-      _commands.run(_startDefaultVpn);
+      _runCommand(_startDefaultVpn);
 
   Future<NativeVpnCommandResult> _startDefaultVpn(int generation) async {
     if (_isCoreActive) {
@@ -259,10 +277,10 @@ final class VpnService {
   }
 
   Future<NativeVpnCommandResult> stopDefaultVpn() =>
-      _commands.run(_stopCurrentVpn);
+      _runCommand(_stopCurrentVpn);
 
   Future<NativeVpnCommandResult> startVpn(int configId) =>
-      _commands.run((generation) => _startVpn(configId, generation));
+      _runCommand((generation) => _startVpn(configId, generation));
 
   Future<NativeVpnCommandResult> _startVpn(int configId, int generation) async {
     final eventBus = AppEventBus.instance;
@@ -482,7 +500,7 @@ final class VpnService {
   }
 
   Future<NativeVpnCommandResult> switchRunMode(CoreRunMode mode) =>
-      _commands.run((generation) => _switchRunMode(mode, generation));
+      _runCommand((generation) => _switchRunMode(mode, generation));
 
   Future<NativeVpnCommandResult> _switchRunMode(
     CoreRunMode mode,
@@ -522,7 +540,7 @@ final class VpnService {
   Future<NativeVpnCommandResult> switchRoutingMode(
     CoreRoutingMode mode, {
     required int selectedConfigId,
-  }) => _commands.run(
+  }) => _runCommand(
     (generation) => _switchRoutingMode(mode, selectedConfigId, generation),
   );
 
