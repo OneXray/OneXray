@@ -100,9 +100,7 @@ class $AssetsMdGen {
   List<String> get values => [privacy];
 }
 
-class Assets {
-  const Assets._();
-
+abstract final class Assets {
   static const $AssetsAppIconGen appIcon = $AssetsAppIconGen();
   static const $AssetsDatGen dat = $AssetsDatGen();
   static const $AssetsIconGen icon = $AssetsIconGen();
