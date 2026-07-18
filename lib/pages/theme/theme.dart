@@ -148,7 +148,6 @@ abstract final class AppTheme {
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
-        toolbarHeight: 66,
         titleSpacing: 20,
         actionsPadding: const EdgeInsetsDirectional.only(end: 12),
         titleTextStyle: AppTypography.pageTitle.copyWith(

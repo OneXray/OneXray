@@ -21,7 +21,7 @@ void main() {
       expect(material.colorScheme.outline, palette.border);
       expect(material.appBarTheme.backgroundColor, palette.header);
       expect(material.appBarTheme.foregroundColor, palette.foreground);
-      expect(material.appBarTheme.toolbarHeight, 66);
+      expect(material.appBarTheme.toolbarHeight, isNull);
       expect(material.appBarTheme.titleSpacing, 20);
       expect(
         material.appBarTheme.actionsPadding,
@@ -38,6 +38,7 @@ void main() {
         Brightness.dark,
       );
       expect(material.navigationRailTheme.backgroundColor, palette.sidebar);
+      expect(material.navigationBarTheme.height, isNull);
 
       expect(shad.background, palette.background);
       expect(shad.foreground, palette.foreground);
