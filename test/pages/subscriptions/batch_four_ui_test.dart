@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/subscriptions/list/view.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -23,6 +25,8 @@ void main() {
   Widget app(Widget child) {
     return MaterialApp(
       theme: AppTheme.light,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, appChild) => ShadTheme(
         data: ShadThemeData(
           colorScheme: const ShadBlueColorScheme.light(),
@@ -138,6 +142,7 @@ void main() {
 
     expect(find.text('Premium Network'), findsOneWidget);
     expect(find.text('7'), findsOneWidget);
+    expect(find.byType(DateView), findsOneWidget);
     await tester.tap(find.text('Premium Network'));
     expect(opened, isTrue);
     expect(tester.takeException(), isNull);

@@ -4,6 +4,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/data_list.dart';
+import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -107,14 +108,21 @@ class _SubscriptionListCard extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            data.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.rowTitle.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: ColorManager.primaryText(context),
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                data.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.rowTitle.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: ColorManager.primaryText(context),
+                                ),
+                              ),
+                              DateView(date: data.timestamp),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 9),
