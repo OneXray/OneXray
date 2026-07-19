@@ -72,22 +72,26 @@ env:
 
 jobs:
   # =================================================================
-  # Release metadata — lets the separate Publish workflow recover the
-  # tag name from this build run before creating a pre-release.
+  # Build metadata — records the source and dependency revisions for every
+  # build. Tag builds additionally include tag.txt for release validation.
   # =================================================================
   release_metadata:
-    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     steps:
-      - name: Write release metadata
+      - name: Write build metadata
         run: |
           mkdir -p release-metadata
-          echo "${GITHUB_REF_NAME}" > release-metadata/tag.txt
+          echo "${GITHUB_EVENT_NAME}" > release-metadata/event.txt
+          echo "${GITHUB_REF}" > release-metadata/ref.txt
+          echo "${GITHUB_REF_NAME}" > release-metadata/ref-name.txt
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
           echo "${LIBXRAY_REF}" > release-metadata/libxray-sha.txt
           echo "${XRAY_CORE_REF}" > release-metadata/xray-core-sha.txt
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "${GITHUB_REF_NAME}" > release-metadata/tag.txt
+          fi
 
-      - name: Upload release metadata
+      - name: Upload build metadata
         uses: actions/upload-artifact@v7
         with:
           name: release-metadata

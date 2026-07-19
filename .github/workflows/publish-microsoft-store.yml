@@ -1,11 +1,13 @@
 #
-# Publishes Windows x64 and arm64 packages produced by a release-tag Build run
-# to Microsoft Partner Center as one multi-architecture MSIX bundle.
+# Creates a multi-architecture MSIX bundle from Windows x64 and arm64 packages
+# produced by any successful Build run. Release-tag builds are also submitted
+# to Microsoft Partner Center.
 #
 # Trigger:
 #   - successful completion of the Build workflow: release-tag runs publish;
 #     manual Build runs are detected and skipped
-#   - workflow_dispatch: retries a specific release-tag Build run id
+#   - workflow_dispatch: bundles any successful Build run; release-tag runs are
+#     also submitted to Microsoft Partner Center
 #
 # Required repository secrets:
 #   AZURE_AD_TENANT_ID                 Microsoft Entra tenant id
@@ -28,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: Release-tag Build workflow run id
+        description: Successful Build workflow run id containing Windows Store artifacts
         required: true
         type: string
 
@@ -46,6 +48,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       run_id: ${{ steps.build.outputs.run_id }}
+      should_bundle: ${{ steps.build.outputs.should_bundle }}
       should_publish: ${{ steps.build.outputs.should_publish }}
     steps:
       - name: Inspect Build run
@@ -56,6 +59,7 @@ jobs:
           TRIGGER_EVENT: ${{ github.event_name }}
         run: |
           echo "run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "should_bundle=false" >> "$GITHUB_OUTPUT"
           echo "should_publish=false" >> "$GITHUB_OUTPUT"
 
           run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID")"
@@ -67,18 +71,36 @@ jobs:
             echo "Build run $BUILD_RUN_ID did not complete successfully." >&2
             exit 1
           fi
+          build_event="$(jq -r '.event' <<<"$run_json")"
 
           artifact_names="$(gh api --paginate \
             "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID/artifacts?per_page=100" \
             --jq '.artifacts[].name')"
 
-          if ! grep -Fxq "release-metadata" <<<"$artifact_names"; then
-            if [ "$TRIGGER_EVENT" = "workflow_run" ]; then
-              echo "Build run $BUILD_RUN_ID is not a release-tag build; skipping Store submission."
+          metadata_tag=""
+          if grep -Fxq "release-metadata" <<<"$artifact_names"; then
+            gh run download "$BUILD_RUN_ID" \
+              --repo "${{ github.repository }}" \
+              --name release-metadata \
+              --dir release-metadata
+            metadata_tag_file="$(find release-metadata -name tag.txt -type f -print -quit)"
+            if [ -n "$metadata_tag_file" ]; then
+              metadata_tag="$(cat "$metadata_tag_file")"
+              case "$metadata_tag" in
+                v*) ;;
+                *)
+                  echo "Release metadata tag must start with v: $metadata_tag" >&2
+                  exit 1
+                  ;;
+              esac
+            fi
+          fi
+
+          if [ "$TRIGGER_EVENT" = "workflow_run" ]; then
+            if [ "$build_event" != "push" ] || [ -z "$metadata_tag" ]; then
+              echo "Build run $BUILD_RUN_ID is not a release-tag push; skipping Store bundle and submission."
               exit 0
             fi
-            echo "Build run $BUILD_RUN_ID has no release metadata." >&2
-            exit 1
           fi
 
           for artifact in windows-store-x64 windows-store-arm64; do
@@ -88,29 +110,14 @@ jobs:
             fi
           done
 
-          gh run download "$BUILD_RUN_ID" \
-            --repo "${{ github.repository }}" \
-            --name release-metadata \
-            --dir release-metadata
-          metadata_tag_file="$(find release-metadata -name tag.txt -type f -print -quit)"
-          if [ -z "$metadata_tag_file" ]; then
-            echo "Release metadata does not contain tag.txt." >&2
-            exit 1
+          echo "should_bundle=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$metadata_tag" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
           fi
-          metadata_tag="$(cat "$metadata_tag_file")"
-          case "$metadata_tag" in
-            v*) ;;
-            *)
-              echo "Release metadata tag must start with v: $metadata_tag" >&2
-              exit 1
-              ;;
-          esac
-
-          echo "should_publish=true" >> "$GITHUB_OUTPUT"
 
   publish:
     needs: inspect
-    if: needs.inspect.outputs.should_publish == 'true'
+    if: needs.inspect.outputs.should_bundle == 'true'
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
@@ -158,9 +165,11 @@ jobs:
           if-no-files-found: error
 
       - name: Setup Microsoft Store CLI
+        if: needs.inspect.outputs.should_publish == 'true'
         uses: microsoft/microsoft-store-apppublisher@v1.3
 
       - name: Configure Partner Center credentials
+        if: needs.inspect.outputs.should_publish == 'true'
         shell: pwsh
         env:
           AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
@@ -190,6 +199,7 @@ jobs:
             --clientSecret $env:AZURE_AD_APPLICATION_SECRET
 
       - name: Submit to Microsoft Store
+        if: needs.inspect.outputs.should_publish == 'true'
         shell: pwsh
         env:
           MICROSOFT_STORE_PRODUCT_ID: ${{ vars.MICROSOFT_STORE_PRODUCT_ID }}
