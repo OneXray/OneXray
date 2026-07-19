@@ -584,10 +584,10 @@ jobs:
 
       - name: Verify Debian package
         run: |
-          deb_file="$(find output -maxdepth 1 -type f -name 'OneXray-*.deb' -print -quit)"
+          deb_file="$(find "$GITHUB_WORKSPACE/output" -maxdepth 1 -type f -name 'OneXray-*.deb' -print -quit)"
           test -n "$deb_file"
           test "$(dpkg-deb --field "$deb_file" Package)" = "onexray"
-          dpkg-deb --contents "$deb_file" | grep -q '/opt/onexray/bin/OneXrayCore$'
+          dpkg-deb --contents "$deb_file" | grep -q '/opt/OneXray/bin/OneXrayCore$'
           dpkg-deb --info "$deb_file"
           lintian "$deb_file"
 
