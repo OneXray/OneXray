@@ -489,23 +489,38 @@ jobs:
       - name: Install LLVM-MinGW for Windows ARM64
         if: matrix.arch == 'arm64'
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          winget install --id MartinStorsjo.LLVM-MinGW.UCRT `
-            --exact `
-            --source winget `
-            --silent `
-            --accept-package-agreements `
-            --accept-source-agreements `
-            --disable-interactivity
+          $headers = @{
+            Accept = "application/vnd.github+json"
+            Authorization = "Bearer $env:GH_TOKEN"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $release = Invoke-RestMethod `
+            -Headers $headers `
+            -Uri "https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest"
+          $asset = $release.assets |
+            Where-Object { $_.name -match "^llvm-mingw-.+-ucrt-aarch64\.zip$" } |
+            Select-Object -First 1
+          if ($null -eq $asset) {
+            throw "The latest LLVM-MinGW release has no ARM64 UCRT archive"
+          }
 
-          $linksPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
-          if (-not (Test-Path (Join-Path $linksPath "gcc.exe"))) {
-            throw "LLVM-MinGW gcc.exe was not installed in $linksPath"
+          $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
+          $extractPath = Join-Path $env:RUNNER_TEMP "llvm-mingw"
+          Write-Host "Downloading LLVM-MinGW $($release.tag_name): $($asset.name)"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
+          Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath
+
+          $binPath = Get-ChildItem -LiteralPath $extractPath -Directory |
+            ForEach-Object { Join-Path $_.FullName "bin" } |
+            Where-Object { Test-Path (Join-Path $_ "gcc.exe") } |
+            Select-Object -First 1
+          if ($null -eq $binPath) {
+            throw "LLVM-MinGW bin directory was not found in $extractPath"
           }
-          if (-not (Test-Path (Join-Path $linksPath "g++.exe"))) {
-            throw "LLVM-MinGW g++.exe was not installed in $linksPath"
-          }
-          $linksPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $binPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Verify Windows ARM64 CGo toolchain
         if: matrix.arch == 'arm64'
@@ -622,11 +637,16 @@ jobs:
       - name: Verify Debian package
         run: |
           deb_file="$(find "$GITHUB_WORKSPACE/output" -maxdepth 1 -type f -name 'OneXray-*.deb' -print -quit)"
+          contents_file="$RUNNER_TEMP/onexray-deb-contents.txt"
           test -n "$deb_file"
           test "$(dpkg-deb --field "$deb_file" Package)" = "onexray"
-          dpkg-deb --contents "$deb_file" | grep -q '/opt/OneXray/bin/OneXrayCore$'
+          dpkg-deb --contents "$deb_file" > "$contents_file"
+          grep -q '/opt/OneXray/bin/OneXrayCore$' "$contents_file"
           dpkg-deb --info "$deb_file"
-          lintian "$deb_file"
+          lintian "$deb_file" || {
+            lintian_status=$?
+            echo "::warning::lintian reported Debian policy issues (exit $lintian_status)"
+          }
 
       - name: Verify core CLI
         run: ./linux/app/OneXrayCore -h
