@@ -129,18 +129,18 @@ class WindowsBuilder(Builder):
         run_command(cmd)
 
     def msix_version(self) -> str:
-        version_parts = self.read_version().split("+", maxsplit=1)
-        marketing_parts = version_parts[0].split(".")
-        build_number = version_parts[1] if len(version_parts) == 2 else "0"
-        components = [*marketing_parts, build_number]
-        if len(components) != 4:
-            raise ValueError("MSIX version must contain major, minor, patch, and build")
+        marketing_parts = self.read_version().split("+", maxsplit=1)[0].split(".")
+        if len(marketing_parts) != 3:
+            raise ValueError("MSIX version must contain major, minor, and patch")
+        components = [*marketing_parts, "0"]
         try:
             values = [int(component) for component in components]
         except ValueError as error:
             raise ValueError("MSIX version components must be numeric") from error
         if any(value < 0 or value > 65535 for value in values):
             raise ValueError("MSIX version components must be between 0 and 65535")
+        if values[0] == 0:
+            raise ValueError("MSIX major version must be greater than 0")
         return ".".join(str(value) for value in values)
 
     def after_build(self):

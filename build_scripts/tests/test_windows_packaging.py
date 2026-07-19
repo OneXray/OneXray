@@ -102,7 +102,7 @@ class WindowsPackagingTest(unittest.TestCase):
         with open(self.exe_config_path, mode="rb") as f:
             self.assertEqual(f.read(), self.exe_config_content)
 
-    def test_msix_uses_four_part_version_without_rebuilding_windows(self):
+    def test_msix_uses_store_version_with_zero_revision(self):
         with (
             patch("app.windows.dart_command", return_value="dart"),
             patch("app.windows.run_command") as run_command,
@@ -120,7 +120,7 @@ class WindowsPackagingTest(unittest.TestCase):
                 "--architecture",
                 "x64",
                 "--version",
-                "26.7.3.412",
+                "26.7.3.0",
                 "--output-path",
                 self.builder.output_dir,
                 "--output-name",
