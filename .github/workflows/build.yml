@@ -486,6 +486,43 @@ jobs:
           dart pub global activate fastforge
           echo "$LOCALAPPDATA/Pub/Cache/bin" >> "$GITHUB_PATH"
 
+      - name: Install LLVM-MinGW for Windows ARM64
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          winget install --id MartinStorsjo.LLVM-MinGW.UCRT `
+            --exact `
+            --source winget `
+            --silent `
+            --accept-package-agreements `
+            --accept-source-agreements `
+            --disable-interactivity
+
+          $linksPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
+          if (-not (Test-Path (Join-Path $linksPath "gcc.exe"))) {
+            throw "LLVM-MinGW gcc.exe was not installed in $linksPath"
+          }
+          if (-not (Test-Path (Join-Path $linksPath "g++.exe"))) {
+            throw "LLVM-MinGW g++.exe was not installed in $linksPath"
+          }
+          $linksPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify Windows ARM64 CGo toolchain
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          where.exe gcc.exe
+          where.exe g++.exe
+
+          $gccTarget = (& gcc.exe -dumpmachine).Trim()
+          $gxxTarget = (& g++.exe -dumpmachine).Trim()
+          if ($gccTarget -ne "aarch64-w64-mingw32") {
+            throw "Unexpected gcc target: $gccTarget"
+          }
+          if ($gxxTarget -ne "aarch64-w64-mingw32") {
+            throw "Unexpected g++ target: $gxxTarget"
+          }
+
       - name: Build
         run: python build_scripts/main.py OneXray windows
 
