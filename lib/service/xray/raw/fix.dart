@@ -135,20 +135,30 @@ class XrayRawFix {
     }
   }
 
-  static void fixInboundsTun(Map<String, dynamic> jsonMap) {
-    XrayRuntimeInbounds.removeManagedRawInbounds(jsonMap);
+  static void keepOnlyPingInbound(
+    Map<String, dynamic> jsonMap, {
+    XrayPorts? ports,
+  }) {
+    jsonMap["inbounds"] = [_pingInbound(ports).toJson()];
+    _fixPingRoutingRule(jsonMap);
   }
 
   static void fixInboundsPort(Map<String, dynamic> jsonMap, XrayPorts ports) {
     final inbounds = _ensureList(jsonMap, "inbounds");
     inbounds.removeWhere(_isPingInbound);
 
-    final pingInbound = InboundPingState()
-      ..port = ports.pingPort
-      ..auth = ports.pingAuth;
-    inbounds.add(pingInbound.xrayJson.toJson());
+    inbounds.add(_pingInbound(ports).toJson());
 
     _fixPingRoutingRule(jsonMap);
+  }
+
+  static XrayInbound _pingInbound(XrayPorts? ports) {
+    final pingInbound = InboundPingState();
+    if (ports != null) {
+      pingInbound.port = ports.pingPort;
+      pingInbound.auth = ports.pingAuth;
+    }
+    return pingInbound.xrayJson;
   }
 
   static bool _isPingInbound(dynamic inbound) {

@@ -25,11 +25,6 @@ abstract final class XrayRuntimeInbounds {
     _fixRawRoutingInboundTags(jsonMap, mode);
   }
 
-  static void removeManagedRawInbounds(Map<String, dynamic> jsonMap) {
-    jsonMap.remove("inbounds");
-    _removeManagedRawRoutingRules(jsonMap);
-  }
-
   static void _fixXrayRoutingInboundTags(XrayJson xrayJson, CoreRunMode mode) {
     final rules = xrayJson.routing?.rules;
     if (rules == null) {
@@ -102,36 +97,5 @@ abstract final class XrayRuntimeInbounds {
         }
         return [tag];
     }
-  }
-
-  static void _removeManagedRawRoutingRules(Map<String, dynamic> jsonMap) {
-    final routing = jsonMap["routing"];
-    if (routing is! Map) {
-      return;
-    }
-    final rules = routing["rules"];
-    if (rules is! List) {
-      return;
-    }
-    rules.removeWhere((rule) {
-      if (rule is! Map) {
-        return false;
-      }
-      final inboundTag = rule["inboundTag"];
-      return _containsManagedInboundTag(inboundTag);
-    });
-  }
-
-  static bool _containsManagedInboundTag(dynamic inboundTag) {
-    final managed = {
-      RoutingInboundTag.tunIn.name,
-      RoutingInboundTag.socksIn.name,
-      RoutingInboundTag.httpIn.name,
-      RoutingInboundTag.pingIn.name,
-    };
-    if (inboundTag is List) {
-      return inboundTag.any(managed.contains);
-    }
-    return managed.contains(inboundTag);
   }
 }

@@ -19,11 +19,9 @@ class XrayRawPing {
       return fallbackDelay;
     }
     final jsonMap = JsonTool.decoder.convert(rawText);
-    //remove metrics
     XrayRawFix.fixMetrics(jsonMap);
-    XrayRawFix.fixInboundsTun(jsonMap);
     XrayRawFix.fixEnv(jsonMap);
-    XrayRawFix.fixInboundsPort(jsonMap, ports);
+    XrayRawFix.keepOnlyPingInbound(jsonMap, ports: ports);
     XrayRawFix.fixLog(jsonMap);
     final text = JsonTool.encoder.convert(jsonMap);
 

@@ -7,42 +7,68 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
 import 'package:onexray/service/xray/raw/writer.dart';
-import 'package:tuple/tuple.dart';
+
+class XrayRawValidationResult {
+  final bool isValid;
+  final String error;
+  final String? normalizedText;
+
+  const XrayRawValidationResult._(
+    this.isValid,
+    this.error,
+    this.normalizedText,
+  );
+
+  const XrayRawValidationResult.valid(String normalizedText)
+    : this._(true, "", normalizedText);
+
+  const XrayRawValidationResult.invalid(String error)
+    : this._(false, error, null);
+}
 
 class XrayRawValidator {
-  static Future<Tuple2<bool, String>> validate(String rawText) async {
-    Map<String, dynamic> jsonMap = {};
+  static Future<XrayRawValidationResult> validate(String rawText) async {
+    late final Map<String, dynamic> jsonMap;
+    late final XrayJson xrayJson;
     try {
-      jsonMap = JsonTool.decoder.convert(rawText);
+      final decoded = JsonTool.decoder.convert(rawText);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException("Xray config root must be an object");
+      }
+      jsonMap = decoded;
+      xrayJson = XrayJson.fromJson(jsonMap);
     } catch (_) {
-      return Tuple2(false, appLocalizationsNoContext().validationJsonInvalid);
+      return XrayRawValidationResult.invalid(
+        appLocalizationsNoContext().validationJsonInvalid,
+      );
     }
-    final xrayJson = XrayJson.fromJson(jsonMap);
     if (!EmptyTool.checkString(xrayJson.name)) {
-      return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
+      return XrayRawValidationResult.invalid(
+        appLocalizationsNoContext().validationNameRequired,
+      );
     }
 
+    XrayRawFix.keepOnlyPingInbound(jsonMap);
+    final normalizedText = JsonTool.encoder.convert(jsonMap);
     final res = await _test(jsonMap);
     if (res.isNotEmpty) {
-      return Tuple2(false, res);
+      return XrayRawValidationResult.invalid(res);
     }
 
-    return Tuple2(true, "");
+    return XrayRawValidationResult.valid(normalizedText);
   }
 
   static Future<String> _test(Map<String, dynamic> jsonMap) async {
-    // remove app-managed runtime inbounds
-    XrayRawFix.fixInboundsTun(jsonMap);
     XrayRawFix.fixEnv(jsonMap);
-    // remove metrics
     XrayRawFix.fixMetrics(jsonMap);
 
     final rawText = JsonTool.encoder.convert(jsonMap);
     final configPath = await XrayRawWriter.writeConfig(rawText);
-    await FileTool.checkDir(VpnConstants.runDir);
-    final res = await AppHostApi().testXray(configPath);
-    await FileTool.deleteFileIfExists(configPath);
-
-    return res;
+    try {
+      await FileTool.checkDir(VpnConstants.runDir);
+      return await AppHostApi().testXray(configPath);
+    } finally {
+      await FileTool.deleteFileIfExists(configPath);
+    }
   }
 }

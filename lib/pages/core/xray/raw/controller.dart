@@ -155,13 +155,13 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
   Future<void> realPing(BuildContext context) async {
     final rawText = controller.text.trim();
     final check = await XrayRawValidator.validate(rawText);
-    if (check.item1) {
+    if (check.isValid) {
       final eventBus = AppEventBus.instance;
       eventBus.updatePinging(true);
       final pingState = PingState();
       await pingState.readFromPreferences();
       final res = await XrayRawPing.ping(
-        rawText,
+        check.normalizedText!,
         pingState,
         fallbackDelay: PingDelayConstants.error,
       );
@@ -171,7 +171,7 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
       }
     } else {
       if (context.mounted) {
-        ContextAlert.showToast(context, check.item2);
+        ContextAlert.showToast(context, check.error);
       }
     }
   }
@@ -179,14 +179,14 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
   Future<void> save(BuildContext context) async {
     final rawText = controller.text.trim();
     final check = await XrayRawValidator.validate(rawText);
-    if (check.item1) {
-      await _updateDb(rawText);
+    if (check.isValid) {
+      await _updateDb(check.normalizedText!);
       if (context.mounted) {
         context.pop();
       }
     } else {
       if (context.mounted) {
-        ContextAlert.showToast(context, check.item2);
+        ContextAlert.showToast(context, check.error);
       }
     }
   }
