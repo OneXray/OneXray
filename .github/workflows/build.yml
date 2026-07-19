@@ -531,10 +531,11 @@ jobs:
 
           $gccTarget = (& gcc.exe -dumpmachine).Trim()
           $gxxTarget = (& g++.exe -dumpmachine).Trim()
-          if ($gccTarget -ne "aarch64-w64-mingw32") {
+          $expectedTarget = '^aarch64-w64-(windows-gnu|mingw32)$'
+          if ($gccTarget -notmatch $expectedTarget) {
             throw "Unexpected gcc target: $gccTarget"
           }
-          if ($gxxTarget -ne "aarch64-w64-mingw32") {
+          if ($gxxTarget -notmatch $expectedTarget) {
             throw "Unexpected g++ target: $gxxTarget"
           }
 
