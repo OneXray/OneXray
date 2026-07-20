@@ -104,7 +104,7 @@ msix_config:
   publisher: CN=3666BCB5-5482-46DD-9C19-D8A7290A39FD
   logo_path: assets/logo.png
   capabilities: allowElevation
-  languages: en-us, zh-cn, zh-tw, ru-ru, fa-ir
+  languages: en-us
   os_min_version: 10.0.17763.0
   build_windows: false
   store: true
