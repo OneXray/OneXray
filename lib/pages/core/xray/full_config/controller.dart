@@ -21,6 +21,7 @@ import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/ping/service.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/full_config/state.dart';
 import 'package:onexray/service/xray/full_config/state_db.dart';
 import 'package:onexray/service/xray/full_config/state_reader.dart';
@@ -72,6 +73,7 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
 
   CoreConfigData? _configData;
   var _fullConfigState = XrayFullConfigState();
+  var _defaultDnsServerAddress = TunSettingsState().tunDnsIPv4;
 
   XrayFullConfigState get fullConfigState => _fullConfigState;
 
@@ -102,6 +104,13 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   }
 
   Future<void> _queryFullConfig() async {
+    final tunSettings = TunSettingsState();
+    await tunSettings.readFromPreferences();
+    if (!isPageActive) {
+      return;
+    }
+    _defaultDnsServerAddress = tunSettings.tunDnsIPv4;
+
     if (params.id != DBConstants.defaultId) {
       final db = AppDatabase();
       final config = await db.coreConfigDao.searchRow(params.id);
@@ -115,9 +124,13 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
         _updateState(state);
       }
     } else {
+      _fullConfigState.dns.servers = [_newDnsServer()];
       _initInputs(_fullConfigState);
     }
   }
+
+  DnsServerState _newDnsServer() =>
+      DnsServerState()..address = _defaultDnsServerAddress;
 
   void _updateState(XrayFullConfigState state) {
     _fullConfigState = state;
@@ -601,7 +614,7 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   }
 
   void appendDnsServer() {
-    _fullConfigState.dns.servers.add(DnsServerState());
+    _fullConfigState.dns.servers.add(_newDnsServer());
     _notifyChanged();
   }
 

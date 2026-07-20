@@ -135,6 +135,7 @@ class OutboundDnsPage extends StatelessWidget {
           ReorderableListView(
             buildDefaultDragHandles: false,
             shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             onReorderItem: controller.sortRule,
             children: views,
           ),

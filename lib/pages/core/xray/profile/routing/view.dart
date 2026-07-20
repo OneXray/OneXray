@@ -106,6 +106,7 @@ class RoutingView extends StatelessWidget {
           ReorderableListView(
             buildDefaultDragHandles: false,
             shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             onReorderItem: onSortCustomRule,
             children: ruleViews,
           ),

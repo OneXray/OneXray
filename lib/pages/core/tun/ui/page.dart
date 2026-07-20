@@ -278,6 +278,7 @@ class TunSettingsContent extends StatelessWidget {
         ReorderableListView(
           buildDefaultDragHandles: false,
           shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           onReorderItem: controller.sortOnDemandRule,
           children: ruleViews,
         ),

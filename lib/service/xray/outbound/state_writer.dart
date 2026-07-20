@@ -35,9 +35,6 @@ extension OutboundStateWriter on OutboundState {
     }
 
     outbound.tag = tag;
-    if (targetStrategy != XrayDomainStrategy.asIs) {
-      outbound.targetStrategy = targetStrategy.name;
-    }
 
     outbound.streamSettings = _streamSettings;
     outbound.mux = _mux;
@@ -312,9 +309,6 @@ extension OutboundStateWriter on OutboundState {
     if (tcpFastOpen) {
       sockopt.tcpFastOpen = tcpFastOpen;
     }
-    if (sockoptDomainStrategy != XrayDomainStrategy.asIs) {
-      sockopt.domainStrategy = sockoptDomainStrategy.name;
-    }
     if (v6only) {
       sockopt.v6only = v6only;
     }
@@ -326,9 +320,6 @@ extension OutboundStateWriter on OutboundState {
     }
     if (tcpMptcp) {
       sockopt.tcpMptcp = tcpMptcp;
-    }
-    if (addressPortStrategy != AddressPortStrategy.none) {
-      sockopt.addressPortStrategy = addressPortStrategy.name;
     }
     if (happyEyeballsEnabled) {
       final happyEyeballs = XrayHappyEyeballsStandard.standard;

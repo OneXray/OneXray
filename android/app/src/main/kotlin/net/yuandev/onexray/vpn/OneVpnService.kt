@@ -90,8 +90,7 @@ class OneVpnService : VpnService() {
         var vpn: OneVpnService? = null
         override fun protectFd(p0: Long): Boolean {
             val socket = p0.toInt()
-            vpn?.protect(socket)
-            return true
+            return vpn?.protect(socket) == true
         }
     }
 
@@ -192,6 +191,12 @@ class OneVpnService : VpnService() {
             stopXray()
         } catch (e: Exception) {
             XLog.d("OneVpnService: stopTun stopXray exception")
+            XLog.d(e)
+        }
+        try {
+            LibXray.resetDNS()
+        } catch (e: Exception) {
+            XLog.d("OneVpnService: stopTun resetDNS exception")
             XLog.d(e)
         }
         try {
@@ -317,7 +322,14 @@ class OneVpnService : VpnService() {
             "missing Xray run request"
         }
         controller.vpn = this
+        configureDNS(tun)
         runXray(coreInvokeText, establishedTunnel, generation)
+    }
+
+    private fun configureDNS(tun: TunJson) {
+        val dns = tun.tunDnsIPv4?.trim()
+        require(!dns.isNullOrEmpty()) { "missing IPv4 TUN DNS" }
+        LibXray.setDNS(controller, "$dns:53")
     }
 
     private fun setIPAndDns(tun: TunJson, builder: Builder) {

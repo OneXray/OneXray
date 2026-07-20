@@ -77,7 +77,7 @@ final class XrayRuntimeConfigService {
 
     final tunSettings = TunSettingsState();
     await tunSettings.readFromPreferences();
-    final profile = await XrayProfileStateReader.loadFromDb();
+    final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
     _validateProxyPorts(mode, profile);
 
     final ports = await XrayPorts.getPorts(

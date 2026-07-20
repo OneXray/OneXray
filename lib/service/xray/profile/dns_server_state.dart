@@ -5,7 +5,7 @@ import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/core/model/xray_standard.dart';
 
 class DnsServerState {
-  var address = "1.1.1.1";
+  var address = "8.8.8.8";
   var clientIp = "";
   var port = "";
   var skipFallback = false;

@@ -9,7 +9,7 @@ import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/service/xray/profile/state.dart';
 
 extension XrayProfileSimpleWriter on XrayProfileSimple {
-  XrayProfileState get xrayProfileState {
+  XrayProfileState xrayProfileState(String tunDnsIPv4) {
     final state = XrayProfileState();
     state.name = XrayProfileSimple.simpleName;
 
@@ -22,7 +22,7 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
     final ip = _ip;
 
     state.routing = _routingState(domain, ip);
-    state.dns = _dnsState(domain);
+    state.dns = _dnsState(domain, tunDnsIPv4);
     if (fakeDns) {
       state.inbounds.tun.sniffing.destOverride.add(
         InboundSniffingDestOverride.fakednsOthers,
@@ -85,11 +85,11 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
     return rule;
   }
 
-  DnsState _dnsState(List<String> domain) {
+  DnsState _dnsState(List<String> domain, String tunDnsIPv4) {
     final state = DnsState();
 
     final server = DnsServerState();
-    server.address = dns.address;
+    server.address = "tcp://$tunDnsIPv4";
     server.tag = DNSServerTag.defaultDns;
 
     final servers = <DnsServerState>[];
@@ -118,7 +118,7 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
     final server = DnsServerState();
     switch (routing.directSet) {
       case SimpleCountry.other:
-        server.address = "tcp://1.1.1.1";
+        server.address = "tcp://8.8.8.8";
         server.domains = domain;
         break;
       case SimpleCountry.cn:

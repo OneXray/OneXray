@@ -697,7 +697,7 @@ class SettingsPageActionBar extends StatelessWidget {
   }
 }
 
-class SettingsSectionNavigation<T extends Object> extends StatefulWidget {
+class SettingsSectionNavigation<T extends Object> extends StatelessWidget {
   final bool compact;
   final T selected;
   final List<SettingsSectionNavigationItem<T>> items;
@@ -712,91 +712,13 @@ class SettingsSectionNavigation<T extends Object> extends StatefulWidget {
   });
 
   @override
-  State<SettingsSectionNavigation<T>> createState() =>
-      _SettingsSectionNavigationState<T>();
-}
-
-class _SettingsSectionNavigationState<T extends Object>
-    extends State<SettingsSectionNavigation<T>> {
-  static const _compactItemExtent = 109.0;
-
-  final _scrollController = ScrollController();
-  var _canScrollBackward = false;
-  var _canScrollForward = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_updateScrollState);
-    _scheduleScrollStateUpdate();
-  }
-
-  @override
-  void didUpdateWidget(SettingsSectionNavigation<T> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.compact != widget.compact ||
-        oldWidget.items.length != widget.items.length) {
-      _scheduleScrollStateUpdate();
-    }
-  }
-
-  @override
-  void dispose() {
-    _scrollController
-      ..removeListener(_updateScrollState)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _scheduleScrollStateUpdate() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _updateScrollState();
-      }
-    });
-  }
-
-  void _updateScrollState() {
-    if (!_scrollController.hasClients) {
-      return;
-    }
-    final position = _scrollController.position;
-    final canScrollBackward = position.pixels > position.minScrollExtent + 1;
-    final canScrollForward = position.pixels < position.maxScrollExtent - 1;
-    if (canScrollBackward == _canScrollBackward &&
-        canScrollForward == _canScrollForward) {
-      return;
-    }
-    setState(() {
-      _canScrollBackward = canScrollBackward;
-      _canScrollForward = canScrollForward;
-    });
-  }
-
-  Future<void> _scrollBy(double delta) async {
-    if (!_scrollController.hasClients) {
-      return;
-    }
-    final position = _scrollController.position;
-    final target = (position.pixels + delta).clamp(
-      position.minScrollExtent,
-      position.maxScrollExtent,
-    );
-    await _scrollController.animateTo(
-      target,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return widget.compact ? _compactNavigation(context) : _rail(context);
+    return compact ? _compactNavigation(context) : _rail(context);
   }
 
   Widget _rail(BuildContext context) {
     final groups = <String>[];
-    for (final item in widget.items) {
+    for (final item in items) {
       if (!groups.contains(item.group)) {
         groups.add(item.group);
       }
@@ -808,9 +730,7 @@ class _SettingsSectionNavigationState<T extends Object>
         children: [
           for (final group in groups) ...[
             _groupLabel(context, group),
-            for (final item in widget.items.where(
-              (item) => item.group == group,
-            ))
+            for (final item in items.where((item) => item.group == group))
               _navigationItem(context, item),
           ],
         ],
@@ -821,62 +741,104 @@ class _SettingsSectionNavigationState<T extends Object>
   Widget _compactNavigation(BuildContext context) {
     return Container(
       height: 58,
-      padding: const EdgeInsetsDirectional.symmetric(
-        horizontal: 10,
-        vertical: 8,
-      ),
       color: ColorManager.tagBackground(context).withValues(alpha: 0.35),
-      child: Row(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsetsDirectional.symmetric(
+          horizontal: 10,
+          vertical: 8,
+        ),
+        child: Row(
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              if (index > 0) const SizedBox(width: 5),
+              _navigationItem(context, items[index], compact: true),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _compactTitle(
+    BuildContext context,
+    SettingsSectionNavigationItem<T> item,
+    Color foreground,
+  ) {
+    return Text(
+      item.title,
+      maxLines: 1,
+      softWrap: false,
+      style: AppTypography.navigationLabel.copyWith(color: foreground),
+    );
+  }
+
+  Widget _railTitle(
+    BuildContext context,
+    SettingsSectionNavigationItem<T> item,
+    Color foreground,
+  ) {
+    return Flexible(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _scrollButton(
-            context,
-            icon: LucideIcons.chevronLeft,
-            enabled: _canScrollBackward,
-            onPressed: () => _scrollBy(-_compactItemExtent * 2),
+          Text(
+            item.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.navigationLabel.copyWith(color: foreground),
           ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: ListView.separated(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: widget.items.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 5),
-              itemBuilder: (context, index) => SizedBox(
-                width: 104,
-                child: _navigationItem(
-                  context,
-                  widget.items[index],
-                  compact: true,
-                ),
+          if (item.description.isNotEmpty)
+            Text(
+              item.description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.badge.copyWith(
+                color: ColorManager.secondaryText(context),
               ),
             ),
-          ),
-          const SizedBox(width: 5),
-          _scrollButton(
-            context,
-            icon: LucideIcons.chevronRight,
-            enabled: _canScrollForward,
-            onPressed: () => _scrollBy(_compactItemExtent * 2),
-          ),
         ],
       ),
     );
   }
 
-  Widget _scrollButton(
-    BuildContext context, {
-    required IconData icon,
-    required bool enabled,
-    required VoidCallback onPressed,
+  Widget _navigationItem(
+    BuildContext context,
+    SettingsSectionNavigationItem<T> item, {
+    bool compact = false,
   }) {
-    return SizedBox.square(
-      dimension: 34,
-      child: IconButton.outlined(
-        padding: EdgeInsets.zero,
-        iconSize: 15,
-        onPressed: enabled ? onPressed : null,
-        icon: Icon(icon),
+    final isSelected = selected == item.value;
+    final foreground = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : ColorManager.secondaryText(context);
+    return Material(
+      color: isSelected
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.09)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => onSelected(item.value),
+        child: SizedBox(
+          height: compact ? 40 : 48,
+          child: Padding(
+            padding: EdgeInsetsDirectional.symmetric(
+              horizontal: compact ? 12 : 10,
+            ),
+            child: Row(
+              mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+              children: [
+                Icon(item.icon, size: 17, color: foreground),
+                const SizedBox(width: 8),
+                compact
+                    ? _compactTitle(context, item, foreground)
+                    : _railTitle(context, item, foreground),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -888,69 +850,6 @@ class _SettingsSectionNavigationState<T extends Object>
         label.toUpperCase(),
         style: AppTypography.badge.copyWith(
           color: ColorManager.secondaryText(context),
-        ),
-      ),
-    );
-  }
-
-  Widget _navigationItem(
-    BuildContext context,
-    SettingsSectionNavigationItem<T> item, {
-    bool compact = false,
-  }) {
-    final selected = widget.selected == item.value;
-    final foreground = selected
-        ? Theme.of(context).colorScheme.primary
-        : ColorManager.secondaryText(context);
-    return Material(
-      color: selected
-          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.09)
-          : Colors.transparent,
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: () => widget.onSelected(item.value),
-        child: SizedBox(
-          height: compact ? 40 : 48,
-          child: Padding(
-            padding: EdgeInsetsDirectional.symmetric(
-              horizontal: compact ? 7 : 10,
-            ),
-            child: Row(
-              mainAxisAlignment: compact
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.start,
-              children: [
-                Icon(item.icon, size: 17, color: foreground),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.navigationLabel.copyWith(
-                          color: foreground,
-                        ),
-                      ),
-                      if (!compact && item.description.isNotEmpty)
-                        Text(
-                          item.description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.badge.copyWith(
-                            color: ColorManager.secondaryText(context),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

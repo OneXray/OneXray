@@ -119,7 +119,7 @@ extension XrayInboundTunStandard on XrayInboundTun {
 
 extension XrayOutboundStandard on XrayOutbound {
   static XrayOutbound get standard =>
-      XrayOutbound(null, null, null, null, null, null, null, null);
+      XrayOutbound(null, null, null, null, null, null, null);
 }
 
 extension XrayOutboundShadowsocksStandard on XrayOutboundShadowsocks {
@@ -264,7 +264,7 @@ extension XrayHysteriaSettingsStandard on XrayHysteriaSettings {
 
 extension XraySockoptStandard on XraySockopt {
   static XraySockopt get standard =>
-      XraySockopt(null, null, null, null, null, null, null, null);
+      XraySockopt(null, null, null, null, null, null);
 }
 
 extension XrayHappyEyeballsStandard on XrayHappyEyeballs {

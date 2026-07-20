@@ -5,14 +5,12 @@ part 'simple_state_model.g.dart';
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayProfileSimpleModel {
   SimpleRoutingModel? routing;
-  int? dnsId;
   bool? enableLog;
   bool? fakeDns;
   int? finalOutboundId;
 
   XrayProfileSimpleModel(
     this.routing,
-    this.dnsId,
     this.enableLog,
     this.fakeDns,
     this.finalOutboundId,
@@ -27,7 +25,6 @@ class XrayProfileSimpleModel {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class SimpleRoutingModel {
   String? domainStrategy;
-  String? queryStrategy;
   String? directSet;
   bool? appleDirect;
   bool? localDirect;
@@ -37,7 +34,6 @@ class SimpleRoutingModel {
 
   SimpleRoutingModel(
     this.domainStrategy,
-    this.queryStrategy,
     this.directSet,
     this.appleDirect,
     this.localDirect,

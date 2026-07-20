@@ -7,8 +7,6 @@ import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/widget/tag_view.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/profile/simple_state.dart';
-import 'package:onexray/service/xray/profile/simple_state_writer.dart';
 
 class XrayProfileSimplePage extends StatelessWidget {
   const XrayProfileSimplePage({super.key});
@@ -48,7 +46,7 @@ class XrayProfileSimplePage extends StatelessWidget {
                         second: [
                           _routingSection(context, controller, state),
                           _fakeDnsSection(context, controller, state),
-                          _dnsSection(context, controller, state),
+                          _dnsSection(context, state),
                         ],
                       ),
                     ],
@@ -110,7 +108,7 @@ class XrayProfileSimplePage extends StatelessWidget {
   }
 
   Widget _proxySection(BuildContext context, XrayProfileSimplePageState state) {
-    final inbounds = state.xrayProfile.xrayProfileState.inbounds;
+    final inbounds = state.inbounds;
     return SettingSection(
       title: AppLocalizations.of(context)!.xrayProfileSimplePageProxy,
       children: [
@@ -224,30 +222,18 @@ class XrayProfileSimplePage extends StatelessWidget {
     );
   }
 
-  Widget _dnsSection(
-    BuildContext context,
-    XrayProfileSimpleController controller,
-    XrayProfileSimplePageState state,
-  ) {
-    return RadioGroup<int>(
-      groupValue: state.xrayProfile.dns.id,
-      onChanged: controller.updateDnsId,
-      child: SettingSection(
-        title: AppLocalizations.of(context)!.xrayProfileSimplePageDns,
-        children: SimpleDns.values
-            .map((dns) => _simpleDns(controller, dns))
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _simpleDns(XrayProfileSimpleController controller, SimpleDns dns) {
-    return SettingRow(
-      leading: const Icon(LucideIcons.database),
-      title: dns.address,
-      subtitleWidget: Row(children: [TagView(tag: dns.outbound.name)]),
-      onTap: () => controller.updateDnsId(dns.id),
-      trailing: Radio<int>(value: dns.id),
+  Widget _dnsSection(BuildContext context, XrayProfileSimplePageState state) {
+    return SettingSection(
+      title: AppLocalizations.of(context)!.xrayProfileSimplePageDns,
+      children: [
+        SettingRow(
+          leading: const Icon(LucideIcons.database),
+          title: "tcp://${state.tunDnsIPv4}",
+          subtitleWidget: Row(
+            children: [TagView(tag: RoutingOutboundTag.proxy.name)],
+          ),
+        ),
+      ],
     );
   }
 }

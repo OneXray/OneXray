@@ -327,11 +327,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
 
   final tagController = TextEditingController();
 
-  void updateTargetStrategy(XrayDomainStrategy value) {
-    state.outboundState.targetStrategy = value;
-    emit(state.bumped());
-  }
-
   void updateNetwork(StreamSettingsNetwork value) {
     state.outboundState.network = value;
     emit(state.bumped());
@@ -481,11 +476,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
     emit(state.bumped());
   }
 
-  void updateSockoptDomainStrategy(XrayDomainStrategy value) {
-    state.outboundState.sockoptDomainStrategy = value;
-    emit(state.bumped());
-  }
-
   void updateV6only(bool value) {
     state.outboundState.v6only = value;
     emit(state.bumped());
@@ -510,11 +500,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
 
   void updateTcpMptcp(bool value) {
     state.outboundState.tcpMptcp = value;
-    emit(state.bumped());
-  }
-
-  void updateAddressPortStrategy(AddressPortStrategy value) {
-    state.outboundState.addressPortStrategy = value;
     emit(state.bumped());
   }
 

@@ -36,15 +36,6 @@ extension OutboundStateReader on OutboundState {
         if (EmptyTool.checkString(outbound.tag)) {
           tag = outbound.tag!;
         }
-        if (EmptyTool.checkString(outbound.targetStrategy)) {
-          final targetStrategy = XrayDomainStrategy.fromString(
-            outbound.targetStrategy!,
-          );
-          if (targetStrategy == null) {
-            return false;
-          }
-          this.targetStrategy = targetStrategy;
-        }
 
         if (!_parseMux(outbound)) {
           return false;
@@ -620,15 +611,6 @@ extension OutboundStateReader on OutboundState {
     if (sockopt.tcpFastOpen != null) {
       tcpFastOpen = sockopt.tcpFastOpen!;
     }
-    if (EmptyTool.checkString(sockopt.domainStrategy)) {
-      final domainStrategy = XrayDomainStrategy.fromString(
-        sockopt.domainStrategy!,
-      );
-      if (domainStrategy == null) {
-        return false;
-      }
-      sockoptDomainStrategy = domainStrategy;
-    }
     if (sockopt.v6only != null) {
       v6only = sockopt.v6only!;
     }
@@ -640,15 +622,6 @@ extension OutboundStateReader on OutboundState {
     }
     if (sockopt.tcpMptcp != null) {
       tcpMptcp = sockopt.tcpMptcp!;
-    }
-    if (EmptyTool.checkString(sockopt.addressPortStrategy)) {
-      final addressPortStrategy = AddressPortStrategy.fromString(
-        sockopt.addressPortStrategy!,
-      );
-      if (addressPortStrategy == null) {
-        return false;
-      }
-      this.addressPortStrategy = addressPortStrategy;
     }
     if (sockopt.happyEyeballs != null) {
       final happyEyeballs = sockopt.happyEyeballs!;

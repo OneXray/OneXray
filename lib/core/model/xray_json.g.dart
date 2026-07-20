@@ -393,7 +393,6 @@ XrayOutbound _$XrayOutboundFromJson(Map<String, dynamic> json) => XrayOutbound(
   json['mux'] == null
       ? null
       : XrayMux.fromJson(json['mux'] as Map<String, dynamic>),
-  json['targetStrategy'] as String?,
 );
 
 Map<String, dynamic> _$XrayOutboundToJson(XrayOutbound instance) =>
@@ -405,7 +404,6 @@ Map<String, dynamic> _$XrayOutboundToJson(XrayOutbound instance) =>
       'tag': ?instance.tag,
       'streamSettings': ?instance.streamSettings?.toJson(),
       'mux': ?instance.mux?.toJson(),
-      'targetStrategy': ?instance.targetStrategy,
     };
 
 XrayOutboundShadowsocks _$XrayOutboundShadowsocksFromJson(
@@ -877,11 +875,9 @@ Map<String, dynamic> _$XrayHysteriaSettingsUdphopToJson(
 XraySockopt _$XraySockoptFromJson(Map<String, dynamic> json) => XraySockopt(
   json['dialerProxy'] as String?,
   json['tcpFastOpen'] as bool?,
-  json['domainStrategy'] as String?,
   json['v6only'] as bool?,
   json['interface'] as String?,
   json['tcpMptcp'] as bool?,
-  json['addressPortStrategy'] as String?,
   json['happyEyeballs'] == null
       ? null
       : XrayHappyEyeballs.fromJson(
@@ -893,11 +889,9 @@ Map<String, dynamic> _$XraySockoptToJson(XraySockopt instance) =>
     <String, dynamic>{
       'dialerProxy': ?instance.dialerProxy,
       'tcpFastOpen': ?instance.tcpFastOpen,
-      'domainStrategy': ?instance.domainStrategy,
       'v6only': ?instance.v6only,
       'interface': ?instance.interface,
       'tcpMptcp': ?instance.tcpMptcp,
-      'addressPortStrategy': ?instance.addressPortStrategy,
       'happyEyeballs': ?instance.happyEyeballs?.toJson(),
     };
 

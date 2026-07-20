@@ -411,7 +411,6 @@ class XrayOutbound {
   String? tag;
   XrayStreamSettings? streamSettings;
   XrayMux? mux;
-  String? targetStrategy;
 
   XrayOutbound(
     this.name,
@@ -421,7 +420,6 @@ class XrayOutbound {
     this.tag,
     this.streamSettings,
     this.mux,
-    this.targetStrategy,
   );
 
   factory XrayOutbound.fromJson(Map<String, dynamic> json) =>
@@ -867,21 +865,17 @@ class XrayHysteriaSettingsUdphop {
 class XraySockopt {
   String? dialerProxy;
   bool? tcpFastOpen;
-  String? domainStrategy;
   bool? v6only;
   String? interface;
   bool? tcpMptcp;
-  String? addressPortStrategy;
   XrayHappyEyeballs? happyEyeballs;
 
   XraySockopt(
     this.dialerProxy,
     this.tcpFastOpen,
-    this.domainStrategy,
     this.v6only,
     this.interface,
     this.tcpMptcp,
-    this.addressPortStrategy,
     this.happyEyeballs,
   );
 

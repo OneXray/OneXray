@@ -7,12 +7,19 @@ import 'package:onexray/pages/core/xray/full_config/page.dart';
 import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   late AppEventBus eventBus;
 
   setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
     eventBus = AppEventBus();
   });
 
@@ -74,19 +81,55 @@ void main() {
       SettingsSectionNavigation<XrayFullConfigSection>,
     );
     expect(navigation, findsOneWidget);
-
-    final nextButton = find.descendant(
-      of: navigation,
-      matching: find.byIcon(LucideIcons.chevronRight),
+    expect(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(LucideIcons.chevronLeft),
+      ),
+      findsNothing,
     );
-    expect(nextButton, findsOneWidget);
-    await tester.tap(nextButton);
-    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(LucideIcons.chevronRight),
+      ),
+      findsNothing,
+    );
 
-    await tester.tap(find.text('DNS').first);
+    final scroller = find.descendant(
+      of: navigation,
+      matching: find.byType(SingleChildScrollView),
+    );
+    expect(scroller, findsOneWidget);
+
+    final outboundsTitle = tester.widget<Text>(
+      find.descendant(of: navigation, matching: find.text('Outbounds')),
+    );
+    expect(outboundsTitle.overflow, isNull);
+
+    await tester.drag(scroller, const Offset(-120, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('DNS')).hitTestable(),
+    );
     await tester.pump();
 
     expect(find.text('Hosts'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('new full config uses the TUN DNS server by default', (
+    tester,
+  ) async {
+    final tunSettings = TunSettingsState()..tunDnsIPv4 = '9.9.9.9';
+    await tunSettings.saveToPreferences();
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('DNS').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('9.9.9.9'), findsOneWidget);
   });
 }

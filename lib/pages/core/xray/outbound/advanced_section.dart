@@ -10,13 +10,11 @@ mixin OutboundAdvancedSection {
       title: AppLocalizations.of(context)!.outboundUIPageSockopt,
       children: [
         _tcpFastOpen(context, controller, state),
-        _sockoptDomainStrategy(context, controller, state),
         _v6only(context, controller, state),
         _dialerProxy(context, controller, state),
         if (AppPlatform.isLinux || AppPlatform.isWindows)
           _interface(context, controller, state),
         _tcpMptcp(context, controller, state),
-        _addressPortStrategy(context, controller, state),
         _happyEyeballsEnabled(context, controller, state),
         if (state.outboundState.happyEyeballsEnabled) ...[
           _happyEyeballsPrioritizeIPv6(context, controller, state),
@@ -37,19 +35,6 @@ mixin OutboundAdvancedSection {
       title: AppLocalizations.of(context)!.outboundUIPageTcpFastOpen,
       value: state.outboundState.tcpFastOpen,
       onChanged: (value) => controller.updateTcpFastOpen(value),
-    );
-  }
-
-  Widget _sockoptDomainStrategy(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageDomainStrategy,
-      value: state.outboundState.sockoptDomainStrategy.name,
-      selections: XrayDomainStrategy.values,
-      onSelected: (value) => controller.updateSockoptDomainStrategy(value),
     );
   }
 
@@ -99,19 +84,6 @@ mixin OutboundAdvancedSection {
       title: AppLocalizations.of(context)!.outboundUIPageTcpMptcp,
       value: state.outboundState.tcpMptcp,
       onChanged: (value) => controller.updateTcpMptcp(value),
-    );
-  }
-
-  Widget _addressPortStrategy(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageAddressPortStrategy,
-      value: state.outboundState.addressPortStrategy.name,
-      selections: AddressPortStrategy.values,
-      onSelected: (value) => controller.updateAddressPortStrategy(value),
     );
   }
 

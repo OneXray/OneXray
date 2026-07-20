@@ -32,7 +32,6 @@ class OutboundState {
   var httpHeaders = <String, String>{};
 
   var tag = RoutingOutboundTag.proxy.name;
-  var targetStrategy = XrayDomainStrategy.asIs;
 
   var network = StreamSettingsNetwork.raw;
 
@@ -79,12 +78,10 @@ class OutboundState {
 
   // sockopt
   var tcpFastOpen = false;
-  var sockoptDomainStrategy = XrayDomainStrategy.asIs;
   var v6only = false;
   var dialerProxy = "";
   var interface = "";
   var tcpMptcp = false;
-  var addressPortStrategy = AddressPortStrategy.none;
   var happyEyeballsEnabled = false;
   var happyEyeballsPrioritizeIPv6 = false;
   var happyEyeballsTryDelayMs = "0";

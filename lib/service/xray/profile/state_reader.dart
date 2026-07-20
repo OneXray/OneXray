@@ -5,6 +5,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
+import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/service/xray/profile/simple_state_writer.dart';
 import 'package:onexray/service/xray/profile/state.dart';
@@ -37,7 +38,9 @@ extension XrayProfileStateReader on XrayProfileState {
     metrics.readFromXrayJson(xrayJson);
   }
 
-  static Future<XrayProfileState> loadFromDb() async {
+  static Future<XrayProfileState> loadFromDb(
+    TunSettingsState tunSettings,
+  ) async {
     var state = XrayProfileState();
 
     final id = await PreferencesKey().readXrayProfileId();
@@ -45,7 +48,7 @@ extension XrayProfileStateReader on XrayProfileState {
       case XrayProfileSimple.simpleId:
         final xrayProfileSimple = XrayProfileSimple();
         await xrayProfileSimple.readFromPreferences();
-        state = xrayProfileSimple.xrayProfileState;
+        state = xrayProfileSimple.xrayProfileState(tunSettings.tunDnsIPv4);
         break;
       default:
         final db = AppDatabase();
@@ -56,7 +59,7 @@ extension XrayProfileStateReader on XrayProfileState {
           await PreferencesKey().saveXrayProfileId(XrayProfileSimple.simpleId);
           final xrayProfileSimple = XrayProfileSimple();
           await xrayProfileSimple.readFromPreferences();
-          state = xrayProfileSimple.xrayProfileState;
+          state = xrayProfileSimple.xrayProfileState(tunSettings.tunDnsIPv4);
         }
         break;
     }

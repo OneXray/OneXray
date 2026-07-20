@@ -82,7 +82,6 @@ class OutboundUIPage extends StatelessWidget
               _protocol(context, controller, state),
               ..._settingsFields(context, controller, state),
               _tag(context, controller, state),
-              _targetStrategy(context, controller, state),
             ],
           ),
           SettingSection(
@@ -414,19 +413,6 @@ class OutboundUIPage extends StatelessWidget
     return SettingRow(
       title: AppLocalizations.of(context)!.outboundUIPageTag,
       value: state.outboundState.tag,
-    );
-  }
-
-  Widget _targetStrategy(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageTargetStrategy,
-      value: state.outboundState.targetStrategy.name,
-      selections: XrayDomainStrategy.values,
-      onSelected: (value) => controller.updateTargetStrategy(value),
     );
   }
 

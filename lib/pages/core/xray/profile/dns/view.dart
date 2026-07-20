@@ -93,6 +93,7 @@ class DnsView extends StatelessWidget {
           ReorderableListView(
             buildDefaultDragHandles: false,
             shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             onReorderItem: onSortServer,
             children: serverViews,
           ),
