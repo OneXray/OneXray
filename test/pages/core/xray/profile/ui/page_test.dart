@@ -57,6 +57,49 @@ void main() {
     expect(find.text('Edit Outbounds'), findsNothing);
   });
 
+  testWidgets('desktop profile detail stays aligned to the workspace top', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => ShadTheme(
+          data: ShadThemeData(
+            colorScheme: const ShadBlueColorScheme.light(),
+            radius: const BorderRadius.all(Radius.circular(8)),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: XrayProfileUIPage(
+          params: XrayProfileUIParams(DBConstants.defaultId),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final navigation = find.byType(
+      SettingsSectionNavigation<XrayProfileUISection>,
+    );
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Log')),
+    );
+    await tester.pumpAndSettle();
+
+    final detailScroll = find.descendant(
+      of: find.byType(SettingsPageScroll),
+      matching: find.byType(SingleChildScrollView),
+    );
+    expect(detailScroll, findsOneWidget);
+    expect(
+      tester.getTopLeft(detailScroll).dy,
+      closeTo(tester.getTopLeft(navigation).dy, 0.1),
+    );
+  });
+
   testWidgets('new profile uses the TUN DNS server by default', (tester) async {
     final tunSettings = TunSettingsState()..tunDnsIPv4 = '9.9.9.9';
     await tunSettings.saveToPreferences();

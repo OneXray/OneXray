@@ -42,6 +42,7 @@ class XrayFullConfigPage extends StatelessWidget {
                       final wide = constraints.maxWidth >= 760;
                       if (wide) {
                         return Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             SizedBox(
                               width: 224,

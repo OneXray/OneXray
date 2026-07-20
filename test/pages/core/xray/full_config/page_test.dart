@@ -68,6 +68,34 @@ void main() {
     expect(find.text('Servers'), findsOneWidget);
   });
 
+  testWidgets('desktop full config detail stays aligned to workspace top', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final navigation = find.byType(
+      SettingsSectionNavigation<XrayFullConfigSection>,
+    );
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('Routing')),
+    );
+    await tester.pumpAndSettle();
+
+    final detailScroll = find.descendant(
+      of: find.byType(SettingsPageScroll),
+      matching: find.byType(SingleChildScrollView),
+    );
+    expect(detailScroll, findsOneWidget);
+    expect(
+      tester.getTopLeft(detailScroll).dy,
+      closeTo(tester.getTopLeft(navigation).dy, 0.1),
+    );
+  });
+
   testWidgets('full config uses the scrollable compact section navigation', (
     tester,
   ) async {
