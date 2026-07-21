@@ -2,7 +2,7 @@
 
 OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux.
 
-The app manages nodes, subscriptions, Xray Profiles, Full Configs, Raw Json configs, GeoData, and TUN / Proxy runtime modes. Before startup, it composes and writes the final runtime Xray JSON.
+The app manages nodes, subscriptions, Xray Profiles, Full Configs, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use TUN mode; Proxy mode is an in-memory Debug-only tool.
 
 # Repository Layout
 
@@ -33,11 +33,11 @@ The app manages nodes, subscriptions, Xray Profiles, Full Configs, Raw Json conf
 
 # Runtime Flow
 
-After a node is selected on Home, `VpnService` reads the selected node, selected Xray Profile, current TUN / Proxy mode, and TUN Settings.
+After a node is selected on Home, `VpnService` reads the selected node, selected Xray Profile, and TUN Settings. Production builds always resolve the runtime mode to TUN. Debug builds may select Proxy mode for development, and that selection is not persisted.
 
-When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Full Config, the Full Config overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but runtime inbounds are generated from the selected Xray Profile and current runtime mode.
+When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Full Config, the Full Config overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body. TUN mode applies App-managed runtime inbounds. The Debug-only Proxy mode only removes TUN-protocol inbounds and leaves all other inbound and routing fields unchanged.
 
-After the final runtime Xray JSON is written, TUN mode enters the platform VPN / TUN startup path. Proxy mode starts local Xray core and exposes SOCKS / HTTP proxy ports.
+After the final runtime Xray JSON is written, TUN mode enters the platform VPN / TUN startup path. In Debug builds only, Proxy mode starts local Xray core without the platform VPN; only the internal `pingIn` inbound is App-managed.
 
 # Native Bridge
 
@@ -47,7 +47,7 @@ Shared Apple Swift models, logging, and utilities live in `swift/All`. The App b
 
 The Android native bridge and VPN service live under `android/app/src/main/kotlin/net/yuandev/onexray`.
 
-Windows and Linux desktop builds use Dart FFI, platform runners, and the packaged `OneXrayCore` binary to start core. Windows TUN mode requires elevated core startup; Proxy mode must not require administrator privileges.
+Windows and Linux desktop builds use Dart FFI, platform runners, and the packaged `OneXrayCore` binary to start core. Windows TUN mode requires elevated core startup. The Debug-only Proxy path does not require administrator privileges.
 
 # Generated Files
 

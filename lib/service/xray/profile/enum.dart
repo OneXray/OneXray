@@ -3,7 +3,6 @@ import 'package:onexray/service/tun_settings/state.dart';
 
 enum XrayInboundProtocol {
   tun("tun"),
-  socks("socks"),
   http("http");
 
   const XrayInboundProtocol(this.name);
@@ -73,8 +72,6 @@ enum RoutingOutboundTag {
 
 enum RoutingInboundTag {
   tunIn("tunIn"),
-  socksIn("socksIn"),
-  httpIn("httpIn"),
   pingIn("pingIn");
 
   const RoutingInboundTag(this.name);
@@ -92,11 +89,7 @@ enum RoutingInboundTag {
   }
 
   static List<String> get userVisibleNames {
-    return [
-      RoutingInboundTag.tunIn.name,
-      RoutingInboundTag.socksIn.name,
-      RoutingInboundTag.httpIn.name,
-    ];
+    return [RoutingInboundTag.tunIn.name];
   }
 }
 

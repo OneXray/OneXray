@@ -99,7 +99,7 @@ class HomeConnectionViewPageState {
   final String locationText;
   final String downloadText;
   final String uploadText;
-  final String runModeText;
+  final String? runModeText;
   final IconData statusIcon;
 
   const HomeConnectionViewPageState({
@@ -203,7 +203,9 @@ final class HomeConnectionViewStateBuilder {
               eventState.trafficMetrics.uploadSpeed,
             )
           : '--',
-      runModeText: eventState.coreRunMode.title,
+      runModeText: CoreRunModePolicy.proxyEnabled
+          ? eventState.coreRunMode.title
+          : null,
       statusIcon: actionIcon,
     );
   }

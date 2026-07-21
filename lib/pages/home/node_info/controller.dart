@@ -47,7 +47,7 @@ class NodeInfoViewState {
   final bool connected;
   final bool direct;
   final bool refreshing;
-  final String runMode;
+  final String? runMode;
   final String duration;
   final String delay;
   final String traffic;
@@ -131,7 +131,9 @@ class NodeInfoController extends PageCubit<NodeInfoPageState> {
       connected: connected,
       direct: direct,
       refreshing: refreshing,
-      runMode: eventState.coreRunMode.title,
+      runMode: CoreRunModePolicy.proxyEnabled
+          ? eventState.coreRunMode.title
+          : null,
       duration: location.duration ?? localizations.nodeInfoPageFetching,
       delay: _delayValue(localizations, eventState),
       traffic: XrayMetricsFormatter.formatTraffic(eventState.trafficMetrics),

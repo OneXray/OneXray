@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/xray/metrics/model.dart';
 import 'package:onexray/service/xray/metrics/state.dart';
@@ -68,9 +69,9 @@ class XrayMetricsService {
       }
       final counter = payload == null
           ? null
-          : XrayMetricsVars.fromJson(
-              payload,
-            ).totalForMode(AppEventBus.instance.state.coreRunMode);
+          : XrayMetricsVars.fromJson(payload).totalForMode(
+              CoreRunModePolicy.resolve(AppEventBus.instance.state.coreRunMode),
+            );
       final uploadTotal = counter?.uplink;
       final downloadTotal = counter?.downlink;
       if (uploadTotal == null || downloadTotal == null) {

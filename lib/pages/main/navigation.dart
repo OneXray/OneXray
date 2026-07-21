@@ -53,8 +53,6 @@ enum AppSecondaryDestination {
   routingRuleDnsOut("routing-rule-dns-out"),
   routingRuleDnsDot("routing-rule-dns-dot"),
   inboundTun("inbound-tun"),
-  inboundSocks("inbound-socks"),
-  inboundHttp("inbound-http"),
   inboundSniffing("inbound-sniffing"),
   inboundPing("inbound-ping"),
   outboundFreedom("outbound-freedom"),

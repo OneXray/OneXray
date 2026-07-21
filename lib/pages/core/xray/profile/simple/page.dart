@@ -41,7 +41,6 @@ class XrayProfileSimplePage extends StatelessWidget {
                         first: [
                           _logSection(context, controller, state),
                           _finalOutboundSection(context, controller, state),
-                          _proxySection(context, state),
                         ],
                         second: [
                           _routingSection(context, controller, state),
@@ -105,42 +104,6 @@ class XrayProfileSimplePage extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Widget _proxySection(BuildContext context, XrayProfileSimplePageState state) {
-    final inbounds = state.inbounds;
-    return SettingSection(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageProxy,
-      children: [
-        SettingRow(
-          leading: const Icon(LucideIcons.network),
-          title: inbounds.socks.tag.name,
-          value: _proxyListenPort(
-            context,
-            inbounds.socks.listen,
-            inbounds.socks.port,
-          ),
-          enabled: false,
-        ),
-        SettingRow(
-          leading: const Icon(LucideIcons.globe2),
-          title: inbounds.http.tag.name,
-          value: _proxyListenPort(
-            context,
-            inbounds.http.listen,
-            inbounds.http.port,
-          ),
-          enabled: false,
-        ),
-      ],
-    );
-  }
-
-  String _proxyListenPort(BuildContext context, String listen, String port) {
-    final listenText = listen.isEmpty
-        ? AppLocalizations.of(context)!.inboundProxyPageAllInterfaces
-        : listen;
-    return "$listenText:$port";
   }
 
   Widget _routingSection(

@@ -1,5 +1,3 @@
-import 'package:collection/collection.dart';
-
 enum CoreRunMode {
   tun("tun"),
   proxy("proxy");
@@ -10,9 +8,4 @@ enum CoreRunMode {
 
   @override
   String toString() => name;
-
-  static CoreRunMode fromString(String? name) {
-    return values.firstWhereOrNull((value) => value.name == name) ??
-        CoreRunMode.tun;
-  }
 }

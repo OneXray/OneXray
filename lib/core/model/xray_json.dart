@@ -328,20 +328,6 @@ class XrayInboundAccount {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class XrayInboundSocksSettings {
-  String? auth;
-  bool? udp;
-  List<XrayInboundAccount>? users;
-
-  XrayInboundSocksSettings(this.auth, this.udp, this.users);
-
-  factory XrayInboundSocksSettings.fromJson(Map<String, dynamic> json) =>
-      _$XrayInboundSocksSettingsFromJson(json);
-
-  Map<String, dynamic> toJson() => _$XrayInboundSocksSettingsToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayInboundHttpSettings {
   bool? allowTransparent;
   List<XrayInboundAccount>? users;

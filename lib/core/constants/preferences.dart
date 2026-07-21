@@ -1,6 +1,5 @@
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/model/core_routing_mode.dart';
-import 'package:onexray/core/model/core_run_mode.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -158,17 +157,6 @@ class PreferencesKey {
         ? _defaultXrayProfileId
         : value;
     await _prefs.setInt(_xrayProfileId, nextValue);
-  }
-
-  static const _coreRunMode = "coreRunMode";
-
-  Future<CoreRunMode> readCoreRunMode() async {
-    final value = await _prefs.getString(_coreRunMode);
-    return CoreRunMode.fromString(value);
-  }
-
-  Future<void> saveCoreRunMode(CoreRunMode value) async {
-    await _prefs.setString(_coreRunMode, value.name);
   }
 
   static const _coreRoutingMode = "coreRoutingMode";

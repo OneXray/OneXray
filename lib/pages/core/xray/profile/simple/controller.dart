@@ -4,23 +4,19 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
-import 'package:onexray/service/xray/profile/simple_state_writer.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 
 class XrayProfileSimplePageState {
   final XrayProfileSimple xrayProfile;
-  final InboundsState inbounds;
   final String finalOutboundName;
   final String tunDnsIPv4;
   final int version;
 
   const XrayProfileSimplePageState({
     required this.xrayProfile,
-    required this.inbounds,
     this.finalOutboundName = "",
     this.tunDnsIPv4 = "8.8.8.8",
     this.version = 0,
@@ -31,14 +27,12 @@ class XrayProfileSimplePageState {
     final tunDnsIPv4 = TunSettingsState().tunDnsIPv4;
     return XrayProfileSimplePageState(
       xrayProfile: xrayProfile,
-      inbounds: xrayProfile.xrayProfileState(tunDnsIPv4).inbounds,
       tunDnsIPv4: tunDnsIPv4,
     );
   }
 
   XrayProfileSimplePageState bumped() => XrayProfileSimplePageState(
     xrayProfile: xrayProfile,
-    inbounds: inbounds,
     finalOutboundName: finalOutboundName,
     tunDnsIPv4: tunDnsIPv4,
     version: version + 1,
@@ -46,14 +40,12 @@ class XrayProfileSimplePageState {
 
   XrayProfileSimplePageState copyWith({
     XrayProfileSimple? xrayProfile,
-    InboundsState? inbounds,
     String? finalOutboundName,
     String? tunDnsIPv4,
     int? version,
   }) {
     return XrayProfileSimplePageState(
       xrayProfile: xrayProfile ?? this.xrayProfile,
-      inbounds: inbounds ?? this.inbounds,
       finalOutboundName: finalOutboundName ?? this.finalOutboundName,
       tunDnsIPv4: tunDnsIPv4 ?? this.tunDnsIPv4,
       version: version ?? this.version,
@@ -86,7 +78,6 @@ class XrayProfileSimpleController
     emit(
       XrayProfileSimplePageState(
         xrayProfile: xrayProfile,
-        inbounds: xrayProfile.xrayProfileState(tunSettings.tunDnsIPv4).inbounds,
         finalOutboundName: finalOutboundName,
         tunDnsIPv4: tunSettings.tunDnsIPv4,
         version: 1,

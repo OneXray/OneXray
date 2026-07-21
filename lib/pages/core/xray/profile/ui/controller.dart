@@ -7,9 +7,7 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_http/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_socks/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_tun/params.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_dns/params.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_fragment/params.dart';
@@ -188,30 +186,6 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
       AppSecondaryDestination.inboundPing,
       extra: params,
     );
-  }
-
-  Future<void> editSocks(BuildContext context) async {
-    final params = InboundSocksParams(_xrayProfileState.inbounds.socks);
-    final socks = await context.pushScoped<InboundSocksState>(
-      AppSecondaryDestination.inboundSocks,
-      extra: params,
-    );
-    if (socks != null) {
-      _xrayProfileState.inbounds.socks = socks;
-      _notifyChanged();
-    }
-  }
-
-  Future<void> editHttp(BuildContext context) async {
-    final params = InboundHttpParams(_xrayProfileState.inbounds.http);
-    final http = await context.pushScoped<InboundHttpState>(
-      AppSecondaryDestination.inboundHttp,
-      extra: params,
-    );
-    if (http != null) {
-      _xrayProfileState.inbounds.http = http;
-      _notifyChanged();
-    }
   }
 
   Future<void> editFreedom(BuildContext context) async {
@@ -543,14 +517,6 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
 
   String? _validateLocalFields(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final socksPort = int.tryParse(_xrayProfileState.inbounds.socks.port);
-    final httpPort = int.tryParse(_xrayProfileState.inbounds.http.port);
-    if (!_validPort(socksPort) || !_validPort(httpPort)) {
-      return l10n.validationPortInvalid;
-    }
-    if (socksPort == httpPort) {
-      return l10n.validationPortDuplicate;
-    }
     final ipv4Error = _xrayProfileState.fakeDns.validateIPv4();
     if (ipv4Error != null) {
       return "${l10n.fakeDnsPageIPv4}: ${_fakeDnsErrorMessage(l10n, ipv4Error)}";
@@ -561,8 +527,6 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
     }
     return null;
   }
-
-  bool _validPort(int? port) => port != null && port > 0 && port <= 65535;
 
   String _fakeDnsErrorMessage(
     AppLocalizations l10n,

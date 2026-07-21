@@ -47,7 +47,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('TUN Mode'), findsOneWidget);
-    expect(find.text('Proxy Mode'), findsOneWidget);
+    expect(find.text('Internal'), findsOneWidget);
+    expect(find.text('Proxy Mode'), findsNothing);
 
     await tester.tap(find.text('Outbounds').first);
     await tester.pump();

@@ -9,8 +9,17 @@ abstract final class XrayRuntimeInbounds {
     InboundsState inbounds,
     CoreRunMode mode,
   ) {
-    xrayJson.inbounds = inbounds.runtimeXrayJson(mode);
-    _fixXrayRoutingInboundTags(xrayJson, mode);
+    switch (mode) {
+      case CoreRunMode.tun:
+        xrayJson.inbounds = <XrayInbound>[
+          inbounds.tun.xrayJson,
+          inbounds.ping.xrayJson,
+        ];
+      case CoreRunMode.proxy:
+        xrayJson.inbounds?.removeWhere(
+          (inbound) => inbound.protocol == XrayInboundProtocol.tun.name,
+        );
+    }
   }
 
   static void applyToRawJson(
@@ -18,84 +27,21 @@ abstract final class XrayRuntimeInbounds {
     InboundsState inbounds,
     CoreRunMode mode,
   ) {
-    jsonMap["inbounds"] = inbounds
-        .runtimeXrayJson(mode)
-        .map((inbound) => inbound.toJson())
-        .toList();
-    _fixRawRoutingInboundTags(jsonMap, mode);
-  }
-
-  static void _fixXrayRoutingInboundTags(XrayJson xrayJson, CoreRunMode mode) {
-    final rules = xrayJson.routing?.rules;
-    if (rules == null) {
-      return;
-    }
-    for (final rule in rules) {
-      rule.inboundTag = _mapInboundTag(rule.inboundTag, mode);
-    }
-  }
-
-  static void _fixRawRoutingInboundTags(
-    Map<String, dynamic> jsonMap,
-    CoreRunMode mode,
-  ) {
-    final routing = jsonMap["routing"];
-    if (routing is! Map) {
-      return;
-    }
-    final rules = routing["rules"];
-    if (rules is! List) {
-      return;
-    }
-    for (final rule in rules) {
-      if (rule is! Map) {
-        continue;
-      }
-      final inboundTag = rule["inboundTag"];
-      final mapped = _mapInboundTag(inboundTag, mode);
-      if (mapped == null) {
-        rule.remove("inboundTag");
-      } else {
-        rule["inboundTag"] = mapped;
-      }
-    }
-  }
-
-  static dynamic _mapInboundTag(dynamic inboundTag, CoreRunMode mode) {
-    if (inboundTag is List) {
-      final tags = <String>{};
-      for (final tag in inboundTag) {
-        if (tag is String) {
-          tags.addAll(_mapSingleTag(tag, mode));
-        }
-      }
-      return tags.isEmpty ? null : tags.toList();
-    }
-    if (inboundTag is String) {
-      final tags = _mapSingleTag(inboundTag, mode);
-      if (tags.isEmpty) {
-        return null;
-      }
-      return tags.length == 1 ? tags.first : tags.toList();
-    }
-    return inboundTag;
-  }
-
-  static List<String> _mapSingleTag(String tag, CoreRunMode mode) {
-    final tunTag = RoutingInboundTag.tunIn.name;
-    final socksTag = RoutingInboundTag.socksIn.name;
-    final httpTag = RoutingInboundTag.httpIn.name;
     switch (mode) {
       case CoreRunMode.tun:
-        if (tag == socksTag || tag == httpTag) {
-          return [tunTag];
-        }
-        return [tag];
+        jsonMap["inbounds"] = <XrayInbound>[
+          inbounds.tun.xrayJson,
+          inbounds.ping.xrayJson,
+        ].map((inbound) => inbound.toJson()).toList();
       case CoreRunMode.proxy:
-        if (tag == tunTag) {
-          return [socksTag, httpTag];
+        final rawInbounds = jsonMap["inbounds"];
+        if (rawInbounds is List) {
+          rawInbounds.removeWhere(
+            (inbound) =>
+                inbound is Map &&
+                inbound["protocol"] == XrayInboundProtocol.tun.name,
+          );
         }
-        return [tag];
     }
   }
 }

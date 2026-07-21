@@ -56,6 +56,8 @@ final class VpnService {
   Future<void>? _initFuture;
 
   bool get vpnRunning => _vpnRunning;
+  CoreRunMode get _selectedRunMode =>
+      CoreRunModePolicy.resolve(AppEventBus.instance.state.coreRunMode);
 
   Future<void> asyncInit() {
     final initFuture = _initFuture;
@@ -84,8 +86,8 @@ final class VpnService {
     eventBus.updateRunningId(savedRunningId);
 
     _lastConfigId = await preferences.readLastConfigId();
-    _runningMode = await preferences.readCoreRunMode();
-    _pendingRunMode = _runningMode;
+    _runningMode = CoreRunMode.tun;
+    _pendingRunMode = _selectedRunMode;
     _runningRoutingMode = await preferences.readCoreRoutingMode();
     _pendingRoutingMode = _runningRoutingMode;
 
@@ -128,7 +130,7 @@ final class VpnService {
     if (!await _ensureStaleDesktopCoreCleaned(generation)) {
       return;
     }
-    final mode = await PreferencesKey().readCoreRunMode();
+    final mode = _isCoreActive ? _runningMode : _selectedRunMode;
     if (!_commands.isCurrent(generation)) {
       return;
     }
@@ -284,7 +286,7 @@ final class VpnService {
 
   Future<NativeVpnCommandResult> _startVpn(int configId, int generation) async {
     final eventBus = AppEventBus.instance;
-    final coreRunMode = await PreferencesKey().readCoreRunMode();
+    final coreRunMode = _selectedRunMode;
     final routingMode = await PreferencesKey().readCoreRoutingMode();
     if (!_commands.isCurrent(generation)) {
       return _commandFailed(appLocalizationsNoContext().vpnCommandFailed);
@@ -375,6 +377,7 @@ final class VpnService {
 
       final result = await _realStartXray(
         outbound,
+        coreRunMode,
         onStartInvoked: () => startAttempted = true,
       );
       if (result.state == NativeVpnCommandState.waitingForPlatformPermission) {
@@ -506,8 +509,8 @@ final class VpnService {
     CoreRunMode mode,
     int generation,
   ) async {
-    final preferences = PreferencesKey();
-    final currentMode = await preferences.readCoreRunMode();
+    mode = CoreRunModePolicy.resolve(mode);
+    final currentMode = _selectedRunMode;
     if (currentMode == mode) {
       return _commandSuccess();
     }
@@ -525,7 +528,6 @@ final class VpnService {
       }
     }
 
-    await preferences.saveCoreRunMode(mode);
     _pendingRunMode = mode;
     _runningMode = mode;
     eventBus.updateCoreRunMode(mode);
@@ -832,7 +834,8 @@ final class VpnService {
   }
 
   Future<NativeVpnCommandResult> _realStartXray(
-    CoreConfigData? config, {
+    CoreConfigData? config,
+    CoreRunMode mode, {
     required void Function() onStartInvoked,
   }) async {
     if (config != null) {
@@ -840,7 +843,7 @@ final class VpnService {
     }
     await PreferencesKey().saveVpnStartTimestamp();
 
-    final runtime = await _runtimeConfig.prepare(config);
+    final runtime = await _runtimeConfig.prepare(config, mode: mode);
     _pendingRunMode = runtime.mode;
     _pendingRoutingMode = runtime.routingMode;
     switch (runtime.mode) {

@@ -99,15 +99,16 @@ class CoreContent extends StatelessWidget {
     return SettingSection(
       title: localizations.settingsPageSectionNetwork,
       children: [
-        SelectSettingRow<CoreRunMode>(
-          title: localizations.coreRunModeTitle,
-          subtitle: localizations.corePageRunModeDescription,
-          leading: const Icon(LucideIcons.gauge),
-          value: eventState.coreRunMode.title,
-          selections: CoreRunMode.values,
-          titleBuilder: (mode) => mode.title,
-          onSelected: controller.updateRunMode,
-        ),
+        if (CoreRunModePolicy.proxyEnabled)
+          SelectSettingRow<CoreRunMode>(
+            title: localizations.coreRunModeTitle,
+            subtitle: localizations.corePageRunModeDescription,
+            leading: const Icon(LucideIcons.gauge),
+            value: eventState.coreRunMode.title,
+            selections: CoreRunMode.values,
+            titleBuilder: (mode) => mode.title,
+            onSelected: controller.updateRunMode,
+          ),
         NavigationSettingRow(
           title: localizations.tunSettingsPageTitle,
           subtitle: localizations.corePageTunSettingsDescription,

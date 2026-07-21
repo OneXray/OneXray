@@ -54,9 +54,12 @@ class XrayRuntimeConfig {
 }
 
 final class XrayRuntimeConfigService {
-  Future<XrayRuntimeConfig> prepare(CoreConfigData? config) async {
+  Future<XrayRuntimeConfig> prepare(
+    CoreConfigData? config, {
+    required CoreRunMode mode,
+  }) async {
     try {
-      return await _prepare(config);
+      return await _prepare(config, CoreRunModePolicy.resolve(mode));
     } on XrayRuntimeConfigException {
       rethrow;
     } catch (error, stackTrace) {
@@ -69,8 +72,10 @@ final class XrayRuntimeConfigService {
     }
   }
 
-  Future<XrayRuntimeConfig> _prepare(CoreConfigData? config) async {
-    final mode = await PreferencesKey().readCoreRunMode();
+  Future<XrayRuntimeConfig> _prepare(
+    CoreConfigData? config,
+    CoreRunMode mode,
+  ) async {
     final routingMode = await PreferencesKey().readCoreRoutingMode();
     final runDir = VpnConstants.runDir;
     await FileTool.checkDir(runDir);
@@ -78,11 +83,8 @@ final class XrayRuntimeConfigService {
     final tunSettings = TunSettingsState();
     await tunSettings.readFromPreferences();
     final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
-    _validateProxyPorts(mode, profile);
 
-    final ports = await XrayPorts.getPorts(
-      excludedPorts: _localProxyPorts(mode, profile),
-    );
+    final ports = await XrayPorts.getPorts();
     if (ports == null) {
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnLocalPortFailed,
@@ -161,36 +163,6 @@ final class XrayRuntimeConfigService {
         appLocalizationsNoContext().vpnSelectOneConfig,
       ),
     };
-  }
-
-  void _validateProxyPorts(CoreRunMode mode, XrayProfileState profile) {
-    if (mode != CoreRunMode.proxy) {
-      return;
-    }
-    final socksPort = int.tryParse(profile.inbounds.socks.port);
-    final httpPort = int.tryParse(profile.inbounds.http.port);
-    if (!_isValidPort(socksPort) || !_isValidPort(httpPort)) {
-      throw XrayRuntimeConfigException(
-        appLocalizationsNoContext().validationPortInvalid,
-      );
-    }
-    if (socksPort == httpPort) {
-      throw XrayRuntimeConfigException(
-        appLocalizationsNoContext().validationPortDuplicate,
-      );
-    }
-  }
-
-  bool _isValidPort(int? port) => port != null && port > 0 && port <= 65535;
-
-  Set<int> _localProxyPorts(CoreRunMode mode, XrayProfileState profile) {
-    if (mode != CoreRunMode.proxy) {
-      return const {};
-    }
-    return {
-      int.tryParse(profile.inbounds.socks.port),
-      int.tryParse(profile.inbounds.http.port),
-    }.whereType<int>().where(_isValidPort).toSet();
   }
 
   Future<String> _writeOutbound(

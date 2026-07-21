@@ -301,24 +301,6 @@ XrayInboundAccount _$XrayInboundAccountFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$XrayInboundAccountToJson(XrayInboundAccount instance) =>
     <String, dynamic>{'user': ?instance.user, 'pass': ?instance.pass};
 
-XrayInboundSocksSettings _$XrayInboundSocksSettingsFromJson(
-  Map<String, dynamic> json,
-) => XrayInboundSocksSettings(
-  json['auth'] as String?,
-  json['udp'] as bool?,
-  (json['users'] as List<dynamic>?)
-      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
-      .toList(),
-);
-
-Map<String, dynamic> _$XrayInboundSocksSettingsToJson(
-  XrayInboundSocksSettings instance,
-) => <String, dynamic>{
-  'auth': ?instance.auth,
-  'udp': ?instance.udp,
-  'users': ?instance.users?.map((e) => e.toJson()).toList(),
-};
-
 XrayInboundHttpSettings _$XrayInboundHttpSettingsFromJson(
   Map<String, dynamic> json,
 ) => XrayInboundHttpSettings(
