@@ -451,16 +451,6 @@ class HomeConnectionSummary extends StatelessWidget {
                 ),
               ),
             ),
-            if (connection.runModeText case final runModeText?) ...[
-              const SizedBox(width: 7),
-              ShadBadge.secondary(
-                padding: const EdgeInsetsDirectional.symmetric(
-                  horizontal: 6,
-                  vertical: 2,
-                ),
-                child: Text(runModeText, style: AppTypography.badge),
-              ),
-            ],
           ],
         ),
         const SizedBox(height: 4),

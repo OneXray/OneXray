@@ -5,7 +5,6 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/core_routing_mode/state.dart';
-import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/xray/metrics/formatter.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
@@ -99,7 +98,6 @@ class HomeConnectionViewPageState {
   final String locationText;
   final String downloadText;
   final String uploadText;
-  final String? runModeText;
   final IconData statusIcon;
 
   const HomeConnectionViewPageState({
@@ -114,7 +112,6 @@ class HomeConnectionViewPageState {
     required this.locationText,
     required this.downloadText,
     required this.uploadText,
-    required this.runModeText,
     required this.statusIcon,
   });
 }
@@ -203,9 +200,6 @@ final class HomeConnectionViewStateBuilder {
               eventState.trafficMetrics.uploadSpeed,
             )
           : '--',
-      runModeText: CoreRunModePolicy.proxyEnabled
-          ? eventState.coreRunMode.title
-          : null,
       statusIcon: actionIcon,
     );
   }

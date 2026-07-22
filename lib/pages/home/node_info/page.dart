@@ -150,12 +150,6 @@ class NodeInfoContent extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (state.runMode case final runMode?) ...[
-                      const SizedBox(width: 8),
-                      ShadBadge.secondary(
-                        child: Text(runMode, style: AppTypography.badge),
-                      ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 6),

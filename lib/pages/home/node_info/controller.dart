@@ -6,7 +6,6 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/core_routing_mode/state.dart';
-import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/db/config_reader.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
@@ -29,7 +28,6 @@ class NodeInfoViewState {
     required this.connected,
     required this.direct,
     required this.refreshing,
-    required this.runMode,
     required this.duration,
     required this.delay,
     required this.traffic,
@@ -47,7 +45,6 @@ class NodeInfoViewState {
   final bool connected;
   final bool direct;
   final bool refreshing;
-  final String? runMode;
   final String duration;
   final String delay;
   final String traffic;
@@ -131,9 +128,6 @@ class NodeInfoController extends PageCubit<NodeInfoPageState> {
       connected: connected,
       direct: direct,
       refreshing: refreshing,
-      runMode: CoreRunModePolicy.proxyEnabled
-          ? eventState.coreRunMode.title
-          : null,
       duration: location.duration ?? localizations.nodeInfoPageFetching,
       delay: _delayValue(localizations, eventState),
       traffic: XrayMetricsFormatter.formatTraffic(eventState.trafficMetrics),
