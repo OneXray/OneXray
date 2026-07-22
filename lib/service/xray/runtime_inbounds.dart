@@ -1,6 +1,5 @@
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
-import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 
 abstract final class XrayRuntimeInbounds {
@@ -16,9 +15,7 @@ abstract final class XrayRuntimeInbounds {
           inbounds.ping.xrayJson,
         ];
       case CoreRunMode.proxy:
-        xrayJson.inbounds?.removeWhere(
-          (inbound) => inbound.protocol == XrayInboundProtocol.tun.name,
-        );
+        xrayJson.inbounds = <XrayInbound>[inbounds.ping.xrayJson];
     }
   }
 
@@ -34,14 +31,9 @@ abstract final class XrayRuntimeInbounds {
           inbounds.ping.xrayJson,
         ].map((inbound) => inbound.toJson()).toList();
       case CoreRunMode.proxy:
-        final rawInbounds = jsonMap["inbounds"];
-        if (rawInbounds is List) {
-          rawInbounds.removeWhere(
-            (inbound) =>
-                inbound is Map &&
-                inbound["protocol"] == XrayInboundProtocol.tun.name,
-          );
-        }
+        jsonMap["inbounds"] = <XrayInbound>[
+          inbounds.ping.xrayJson,
+        ].map((inbound) => inbound.toJson()).toList();
     }
   }
 }
