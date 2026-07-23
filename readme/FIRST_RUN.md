@@ -22,14 +22,6 @@ Then run in the repository root:
 flutter pub get
 ```
 
-Then prepare the local config files needed for debugging:
-
-```shell
-cp .env.example .env
-```
-
-The `.env.example` defaults are enough for local development.
-
 ## 2. Prepare libXray and Xray-core artifacts
 
 Local OneXray debugging depends on artifacts built from the sibling `libXray` and `Xray-core` repositories. The main outputs are:
@@ -163,10 +155,9 @@ The repository provides the remaining non-secret defaults required for local deb
 
 For local development and breakpoint debugging, the minimum setup is:
 
-1. Copy `.env.example` to `.env`.
+1. Install the latest stable Flutter SDK and run `flutter pub get`.
 2. Build `libXray` and copy its artifacts into the corresponding OneXray directories.
-3. Install the latest stable Flutter SDK and run `flutter pub get`.
-4. Install platform-specific dependencies when needed, such as `pod install` on Apple platforms and `libayatana-appindicator3-dev` on Linux.
-5. Start the app with `flutter run -d <device>`.
+3. Install platform-specific dependencies when needed, such as `pod install` on Apple platforms and `libayatana-appindicator3-dev` on Linux.
+4. Start the app with `flutter run -d <device>`.
 
 Files such as `playservice.json`, `android/keystore/`, and the platform `AuthKey.p8` files are part of the release workflow, not the debug environment bootstrap.

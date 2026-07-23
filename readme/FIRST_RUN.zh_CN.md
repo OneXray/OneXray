@@ -22,14 +22,6 @@ setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
 flutter pub get
 ```
 
-然后补齐本地调试所需的配置文件：
-
-```shell
-cp .env.example .env
-```
-
-`.env.example` 中的默认值已经足够用于本地开发。
-
 ## 2. 准备 libXray 和 Xray-core 产物
 
 OneXray 本地 debug 依赖同级目录下的 `libXray` 和 `Xray-core` 仓库产物。主要产物如下：
@@ -163,10 +155,9 @@ flutter run -d ios
 
 如果目标是本地开发和断点调试，最小步骤如下：
 
-1. 将 `.env.example` 复制为 `.env`。
+1. 安装最新 stable Flutter SDK，并执行 `flutter pub get`。
 2. 构建 `libXray` 并把产物复制到 OneXray 对应目录。
-3. 安装最新 stable Flutter SDK，并执行 `flutter pub get`。
-4. 按平台安装额外依赖，例如 Apple 平台的 `pod install` 和 Linux 平台的 `libayatana-appindicator3-dev`。
-5. 用 `flutter run -d <device>` 启动。
+3. 按平台安装额外依赖，例如 Apple 平台的 `pod install` 和 Linux 平台的 `libayatana-appindicator3-dev`。
+4. 用 `flutter run -d <device>` 启动。
 
 `playservice.json`、`android/keystore/`、各平台 `AuthKey.p8` 这类发布文件，不属于 debug 环境初始化范围。

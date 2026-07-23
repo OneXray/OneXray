@@ -22,14 +22,6 @@ setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
 flutter pub get
 ```
 
-После этого подготовьте локальные конфигурационные файлы для debug:
-
-```shell
-cp .env.example .env
-```
-
-Значений по умолчанию из `.env.example` достаточно для локальной разработки.
-
 ## 2. Подготовка артефактов libXray и Xray-core
 
 Локальная отладка OneXray зависит от артефактов, собранных из соседних репозиториев `libXray` и `Xray-core`. Основные выходные файлы:
@@ -163,10 +155,9 @@ flutter run -d ios
 
 Для локальной разработки и breakpoint debugging минимальные шаги такие:
 
-1. Скопировать `.env.example` в `.env`.
+1. Установить последний stable Flutter SDK и выполнить `flutter pub get`.
 2. Собрать `libXray` и скопировать его артефакты в соответствующие каталоги OneXray.
-3. Установить последний stable Flutter SDK и выполнить `flutter pub get`.
-4. Установить platform-specific dependencies, например `pod install` на Apple platforms и `libayatana-appindicator3-dev` на Linux.
-5. Запустить приложение через `flutter run -d <device>`.
+3. Установить platform-specific dependencies, например `pod install` на Apple platforms и `libayatana-appindicator3-dev` на Linux.
+4. Запустить приложение через `flutter run -d <device>`.
 
 Файлы вроде `playservice.json`, `android/keystore/` и платформенных `AuthKey.p8` относятся к release workflow, а не к bootstrap debug-окружения.
