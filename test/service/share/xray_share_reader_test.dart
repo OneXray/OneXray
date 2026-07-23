@@ -6,7 +6,7 @@ import 'package:onexray/service/share/xray_share_reader.dart';
 
 void main() {
   test(
-    'filters unsupported and incomplete outbounds without core validation',
+    'converts supported outbounds without app-side Xray validation',
     () async {
       final json =
           jsonDecode('''
@@ -23,7 +23,7 @@ void main() {
       }
     },
     {
-      "name": "Missing address",
+      "name": "Incomplete",
       "protocol": "vless",
       "settings": {
         "port": 443,
@@ -44,8 +44,11 @@ void main() {
 
       final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
 
-      expect(rows, hasLength(1));
-      expect(rows.single.name.value, 'Valid');
+      expect(rows, hasLength(2));
+      expect(
+        rows.map((row) => row.name.value),
+        containsAll(<String>['Valid', 'Incomplete']),
+      );
     },
   );
 }

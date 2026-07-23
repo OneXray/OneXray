@@ -27,7 +27,7 @@ class XrayRawValidationResult {
 }
 
 class XrayRawValidator {
-  static Future<XrayRawValidationResult> validate(String rawText) async {
+  static XrayRawValidationResult normalize(String rawText) {
     late final Map<String, dynamic> jsonMap;
     late final XrayJson xrayJson;
     try {
@@ -50,12 +50,24 @@ class XrayRawValidator {
 
     XrayRawFix.keepOnlyPingInbound(jsonMap);
     final normalizedText = JsonTool.encoder.convert(jsonMap);
+    return XrayRawValidationResult.valid(normalizedText);
+  }
+
+  static Future<XrayRawValidationResult> validate(String rawText) async {
+    final normalized = normalize(rawText);
+    if (!normalized.isValid) {
+      return normalized;
+    }
+
+    final jsonMap =
+        JsonTool.decoder.convert(normalized.normalizedText!)
+            as Map<String, dynamic>;
     final res = await _test(jsonMap);
     if (res.isNotEmpty) {
       return XrayRawValidationResult.invalid(res);
     }
 
-    return XrayRawValidationResult.valid(normalizedText);
+    return normalized;
   }
 
   static Future<String> _test(Map<String, dynamic> jsonMap) async {

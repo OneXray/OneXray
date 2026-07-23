@@ -4,7 +4,7 @@ import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/outbound/state_validator.dart';
+import 'package:onexray/service/xray/outbound/state_normalizer.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/core/model/xray_standard.dart';

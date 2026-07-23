@@ -305,7 +305,7 @@ final class XrayRuntimeConfigService {
         appLocalizationsNoContext().vpnOutboundInvalid,
       );
     }
-    final validation = await full.validate();
+    final validation = full.validateFields();
     if (!validation.item1) {
       throw XrayRuntimeConfigException(validation.item2);
     }

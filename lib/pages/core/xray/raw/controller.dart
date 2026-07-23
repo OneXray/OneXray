@@ -154,7 +154,7 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
 
   Future<void> realPing(BuildContext context) async {
     final rawText = controller.text.trim();
-    final check = await XrayRawValidator.validate(rawText);
+    final check = XrayRawValidator.normalize(rawText);
     if (check.isValid) {
       final eventBus = AppEventBus.instance;
       eventBus.updatePinging(true);

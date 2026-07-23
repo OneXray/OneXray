@@ -10,7 +10,7 @@ import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:tuple/tuple.dart';
 
 extension XrayFullConfigStateValidator on XrayFullConfigState {
-  Future<Tuple2<bool, String>> validate() async {
+  Tuple2<bool, String> validateFields() {
     if (!EmptyTool.checkString(name)) {
       return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
     }
@@ -21,6 +21,14 @@ extension XrayFullConfigStateValidator on XrayFullConfigState {
     }
     if (!_tagsAreUnique()) {
       return Tuple2(false, appLocalizationsNoContext().validationTagUnique);
+    }
+    return const Tuple2(true, "");
+  }
+
+  Future<Tuple2<bool, String>> validate() async {
+    final fields = validateFields();
+    if (!fields.item1) {
+      return fields;
     }
     final xrayJson = this.xrayJson;
     final pingInbound = InboundPingState()

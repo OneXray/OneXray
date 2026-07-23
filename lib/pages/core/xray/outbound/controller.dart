@@ -16,6 +16,7 @@ import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
+import 'package:onexray/service/xray/outbound/state_normalizer.dart';
 import 'package:onexray/service/xray/outbound/state_ping.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
@@ -520,20 +521,17 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   Future<void> realPing(BuildContext context) async {
     _mergeInputToState(state.outboundState);
     emit(state.bumped());
-    final checked = await _validate(context);
-    if (checked) {
-      final eventBus = AppEventBus.instance;
-      eventBus.updatePinging(true);
-      final pingState = PingState();
-      await pingState.readFromPreferences();
-      final res = await state.outboundState.ping(
-        pingState,
-        fallbackDelay: PingDelayConstants.error,
-      );
-      eventBus.updatePinging(false);
-      if (context.mounted) {
-        await ContextAlert.showPingResultDialog(context, res);
-      }
+    final eventBus = AppEventBus.instance;
+    eventBus.updatePinging(true);
+    final pingState = PingState();
+    await pingState.readFromPreferences();
+    final res = await state.outboundState.ping(
+      pingState,
+      fallbackDelay: PingDelayConstants.error,
+    );
+    eventBus.updatePinging(false);
+    if (context.mounted) {
+      await ContextAlert.showPingResultDialog(context, res);
     }
   }
 

@@ -6,11 +6,10 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
+import 'package:onexray/service/xray/outbound/state_normalizer.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/outbound/state_validator.dart';
 
 class XrayShareReader {
   Future<List<CoreConfigCompanion>> parseShareFile(String filePath) async {
@@ -51,40 +50,11 @@ class XrayShareReader {
           continue;
         }
         state.removeWhitespace();
-        if (_isImportable(state)) {
-          res.add(state.outboundCompanion);
-        } else {
-          ygLogger("Invalid imported outbound: ${state.name}");
-        }
+        res.add(state.outboundCompanion);
       } catch (error, stackTrace) {
         ygLogger("Failed to read imported outbound: $error\n$stackTrace");
       }
     }
     return res;
-  }
-
-  bool _isImportable(OutboundState state) {
-    final port = int.tryParse(state.port);
-    final endpointValid =
-        state.name.isNotEmpty &&
-        state.address.isNotEmpty &&
-        port != null &&
-        port > 0 &&
-        port <= 65535;
-    if (!endpointValid) {
-      return false;
-    }
-    return switch (state.protocol) {
-      XrayOutboundProtocol.vless => state.vlessId.isNotEmpty,
-      XrayOutboundProtocol.vmess => state.vmessId.isNotEmpty,
-      XrayOutboundProtocol.shadowsocks =>
-        state.shadowsocksMethod != ShadowsocksMethod.none &&
-            state.shadowsocksPassword.isNotEmpty,
-      XrayOutboundProtocol.trojan => state.trojanPassword.isNotEmpty,
-      XrayOutboundProtocol.socks ||
-      XrayOutboundProtocol.http ||
-      XrayOutboundProtocol.hysteria => true,
-      _ => false,
-    };
   }
 }
