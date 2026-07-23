@@ -87,12 +87,25 @@ class PingService {
   }
 
   void schedulePingSubscription(int subId) {
-    if (subId <= DBConstants.defaultId) {
+    schedulePingSubscriptions([subId]);
+  }
+
+  void schedulePingSubscriptions(Iterable<int> subIds) {
+    final targetSubIds = subIds
+        .where((id) => id > DBConstants.defaultId)
+        .toSet()
+        .toList(growable: false);
+    if (targetSubIds.isEmpty) {
       return;
     }
     _enqueueAutoPing(() async {
       final db = AppDatabase();
-      final rows = await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId);
+      final rows = <CoreConfigData>[];
+      for (final subId in targetSubIds) {
+        rows.addAll(
+          await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId),
+        );
+      }
       if (rows.isEmpty) {
         return;
       }

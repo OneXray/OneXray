@@ -44,7 +44,10 @@ class NetClient {
     ),
   );
   final _downloadClient = Dio(
-    BaseOptions(connectTimeout: Duration(seconds: 10)),
+    BaseOptions(
+      connectTimeout: Duration(seconds: 10),
+      receiveTimeout: Duration(seconds: 60),
+    ),
   );
 
   String _proxyPort = "${NetConstants.defaultPingPort}";

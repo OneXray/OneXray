@@ -313,6 +313,14 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return into(coreConfig).insert(entry);
   }
 
+  Future<int> insertRows(List<CoreConfigCompanion> entries) async {
+    if (entries.isEmpty) {
+      return 0;
+    }
+    await coreConfig.insertAll(entries);
+    return entries.length;
+  }
+
   Future<int> copyRow(int coreConfigId) async {
     final entry = await searchRow(coreConfigId);
     if (entry == null) {

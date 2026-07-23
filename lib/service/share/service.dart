@@ -13,16 +13,10 @@ import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
+import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:zxing2/qrcode.dart';
-
-final class SubscriptionImportEntry {
-  const SubscriptionImportEntry({required this.url, required this.name});
-
-  final String url;
-  final String name;
-}
 
 final class ShareService {
   static final ShareService _singleton = ShareService._internal();
@@ -188,20 +182,11 @@ final class ShareService {
       try {
         final url = text.trim();
         if (url.startsWith("https://")) {
-          final subscriptionService = SubscriptionService();
           final entries = parseSubscriptionImportEntries(url);
-          for (final entry in entries) {
-            try {
-              final imported = await subscriptionService.addSubscription(
-                entry.url,
-                entry.name,
-                false,
-              );
-              success = imported || success;
-            } catch (error, stackTrace) {
-              ygLogger('import subscription failed: $error\n$stackTrace');
-            }
-          }
+          final imported = await SubscriptionService().importSubscriptions(
+            entries,
+          );
+          success = imported > 0;
         } else {
           final rows = await XrayShareReader().parseShareText(url);
           if (rows.isNotEmpty) {

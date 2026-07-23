@@ -4,12 +4,16 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/auto_update/state.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
-import 'package:onexray/service/auto_update/state.dart';
+import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/validator.dart';
+
+typedef _SubscriptionInsertResult = ({int subId, int count});
 
 class SubscriptionService {
   static final SubscriptionService _singleton = SubscriptionService._internal();
@@ -32,6 +36,33 @@ class SubscriptionService {
     return count > 0;
   }
 
+  Future<int> importSubscriptions(List<SubscriptionImportEntry> entries) async {
+    var imported = 0;
+    final importedSubIds = <int>[];
+    for (final entry in entries) {
+      final name = entry.name.isEmpty ? "anonymous" : entry.name;
+      try {
+        final checked = await SubscriptionValidator.validate(name, entry.url);
+        if (!checked.item1) {
+          continue;
+        }
+        final result = await _insertSubscription(name, entry.url);
+        if (result.count > 0) {
+          imported += 1;
+          importedSubIds.add(result.subId);
+        }
+      } catch (error, stackTrace) {
+        ygLogger('import subscription failed: $error\n$stackTrace');
+      }
+    }
+    // A bulk import can contain thousands of nodes. Avoid monopolizing the
+    // serialized desktop libXray worker with an automatic ping queue.
+    if (entries.length == 1 && importedSubIds.isNotEmpty) {
+      PingService().schedulePingSubscriptions(importedSubIds);
+    }
+    return imported;
+  }
+
   Future<int> insertSubscription(
     String name,
     String url,
@@ -41,49 +72,55 @@ class SubscriptionService {
     if (showLoading) {
       eventBus.updateDownloading(true);
     }
-    var count = 0;
-    var subId = DBConstants.defaultId;
+    var result = (subId: DBConstants.defaultId, count: 0);
     try {
-      final text = await NetClient().getText(url);
-      final rows = await _readConfigs(text);
-      if (rows.isNotEmpty) {
-        final db = AppDatabase();
-        final result = await db.transaction(() async {
-          final row = SubscriptionCompanion.insert(
-            name: name,
-            url: url,
-            timestamp: DateTime.now(),
-            count: rows.length,
-            expanded: true,
-          );
-          final nextSubId = await db.subscriptionDao.insertRow(row);
-          if (nextSubId <= DBConstants.defaultId) {
-            throw StateError('insert subscription failed');
-          }
-          final writeResult = await ConfigWriter.writeRowsInTransaction(
-            db,
-            rows,
-            nextSubId,
-          );
-          if (writeResult.count != rows.length) {
-            throw StateError('insert subscription configs failed');
-          }
-          return (subId: nextSubId, count: writeResult.count);
-        });
-        subId = result.subId;
-        count = result.count;
-      }
+      result = await _insertSubscription(name, url);
     } finally {
       if (showLoading) {
         eventBus.updateDownloading(false);
       }
     }
 
-    if (count > 0) {
-      PingService().schedulePingSubscription(subId);
+    if (result.count > 0) {
+      PingService().schedulePingSubscription(result.subId);
     }
 
-    return count;
+    return result.count;
+  }
+
+  Future<_SubscriptionInsertResult> _insertSubscription(
+    String name,
+    String url,
+  ) async {
+    final text = await NetClient().getText(url);
+    final rows = await _readConfigs(text);
+    if (rows.isEmpty) {
+      return (subId: DBConstants.defaultId, count: 0);
+    }
+
+    final db = AppDatabase();
+    return db.transaction(() async {
+      final row = SubscriptionCompanion.insert(
+        name: name,
+        url: url,
+        timestamp: DateTime.now(),
+        count: rows.length,
+        expanded: true,
+      );
+      final nextSubId = await db.subscriptionDao.insertRow(row);
+      if (nextSubId <= DBConstants.defaultId) {
+        throw StateError('insert subscription failed');
+      }
+      final count = await ConfigWriter.writeRowsBatchInTransaction(
+        db,
+        rows,
+        nextSubId,
+      );
+      if (count != rows.length) {
+        throw StateError('insert subscription configs failed');
+      }
+      return (subId: nextSubId, count: count);
+    });
   }
 
   Future<void> updateSubscription(int id, String name) async {
@@ -110,22 +147,22 @@ class SubscriptionService {
         final db = AppDatabase();
         count = await db.transaction(() async {
           await db.subscriptionDao.deleteConfigs(subscription.id);
-          final writeResult = await ConfigWriter.writeRowsInTransaction(
+          final writeCount = await ConfigWriter.writeRowsBatchInTransaction(
             db,
             rows,
             subscription.id,
           );
-          if (writeResult.count != rows.length) {
+          if (writeCount != rows.length) {
             throw StateError('replace subscription configs failed');
           }
           final newRow = subscription.copyWith(
             timestamp: DateTime.now(),
-            count: writeResult.count,
+            count: writeCount,
           );
           if (!await db.subscriptionDao.updateRow(newRow)) {
             throw StateError('update subscription failed');
           }
-          return writeResult.count;
+          return writeCount;
         });
       }
     } finally {

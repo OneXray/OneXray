@@ -38,4 +38,15 @@ class ConfigWriter {
     }
     return ConfigWriteResult(count: count, ids: ids);
   }
+
+  static Future<int> writeRowsBatchInTransaction(
+    AppDatabase db,
+    List<CoreConfigCompanion> rows,
+    int subId,
+  ) async {
+    final entries = rows
+        .map((row) => row.copyWith(subId: Value<int>(subId)))
+        .toList(growable: false);
+    return db.coreConfigDao.insertRows(entries);
+  }
 }
