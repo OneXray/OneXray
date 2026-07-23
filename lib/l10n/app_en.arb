@@ -156,7 +156,6 @@
   "xrayProfileSimplePageEnableIPRule": "Enable IP Rule",
   "xrayProfileSimplePageLocalDns": "Local DNS",
   "xrayProfileSimplePageFakeDns": "FakeDNS",
-  "xrayProfileSimplePageFinalOutbound": "Final Outbound",
   "xrayProfileSimplePageDns": "DNS",
   "xrayProfileUIPageTitle": "Xray Profile",
   "xrayProfileUIPageName": "name",

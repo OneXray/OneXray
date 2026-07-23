@@ -11,14 +11,31 @@ class DateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat("yyyy-MM-dd HH:mm:ss").format(date);
+    final localeName = Localizations.localeOf(context).toString();
+    final dateStr = DateFormat.yMd(localeName).add_Hms().format(date);
+    final style = AppTypography.supporting.copyWith(
+      color: ColorManager.secondaryText(context),
+    );
     return Padding(
-      padding: EdgeInsetsDirectional.only(top: 4),
-      child: Text(
-        "${AppLocalizations.of(context)!.dateViewLastUpdateTime} $dateStr",
-        style: AppTypography.supporting.copyWith(
-          color: ColorManager.secondaryText(context),
-        ),
+      padding: const EdgeInsetsDirectional.only(top: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.of(context)!.dateViewLastUpdateTime,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+          Text(
+            dateStr,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ],
       ),
     );
   }

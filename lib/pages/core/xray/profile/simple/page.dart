@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/xray/profile/outbounds/final_outbound_section.dart';
 import 'package:onexray/pages/core/xray/profile/simple/controller.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -80,29 +81,11 @@ class XrayProfileSimplePage extends StatelessWidget {
     XrayProfileSimpleController controller,
     XrayProfileSimplePageState state,
   ) {
-    final finalOutboundName = state.finalOutboundName.isEmpty
-        ? AppLocalizations.of(context)!.finalOutboundPageDisabled
-        : state.finalOutboundName;
-    return SettingSection(
-      title: AppLocalizations.of(context)!.xrayProfileSimplePageFinalOutbound,
-      children: [
-        SettingRow(
-          leading: const Icon(LucideIcons.waypoints),
-          title: AppLocalizations.of(
-            context,
-          )!.xrayProfileSimplePageFinalOutbound,
-          value: finalOutboundName,
-          onTap: () => controller.editFinalOutbound(context),
-          showChevron: state.xrayProfile.finalOutboundId == null,
-          trailing: state.xrayProfile.finalOutboundId == null
-              ? null
-              : IconButton(
-                  tooltip: AppLocalizations.of(context)!.buttonCancel,
-                  onPressed: controller.clearFinalOutbound,
-                  icon: const Icon(LucideIcons.x, size: 17),
-                ),
-        ),
-      ],
+    final selected = state.xrayProfile.finalOutboundId != null;
+    return FinalOutboundSection(
+      name: selected ? state.finalOutboundName : null,
+      onSelect: () => controller.editFinalOutbound(context),
+      onDelete: selected ? controller.clearFinalOutbound : null,
     );
   }
 
@@ -145,7 +128,6 @@ class XrayProfileSimplePage extends StatelessWidget {
         SwitchSettingRow(
           leading: const Icon(LucideIcons.ban),
           title: AppLocalizations.of(context)!.xrayProfileSimplePageBlockAds,
-          subtitle: "geosite:CATEGORY-ADS-ALL",
           value: state.xrayProfile.routing.blockAds,
           onChanged: controller.updateBlockAds,
         ),

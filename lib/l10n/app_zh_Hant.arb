@@ -156,7 +156,6 @@
   "xrayProfileSimplePageEnableIPRule": "開啓 IP 規則",
   "xrayProfileSimplePageLocalDns": "本地 DNS",
   "xrayProfileSimplePageFakeDns": "FakeDNS",
-  "xrayProfileSimplePageFinalOutbound": "最終出口",
   "xrayProfileSimplePageDns": "DNS",
   "xrayProfileUIPageTitle": "Xray 配置",
   "xrayProfileUIPageName": "名稱",

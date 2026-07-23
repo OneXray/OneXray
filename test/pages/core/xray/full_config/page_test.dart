@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/full_config/controller.dart';
+import 'package:onexray/pages/core/xray/full_config/outbounds/view.dart';
 import 'package:onexray/pages/core/xray/full_config/page.dart';
 import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -159,5 +162,59 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('9.9.9.9'), findsOneWidget);
+  });
+
+  testWidgets('compact outbound rows preserve space for node names', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final primaryProxy = OutboundState()..name = 'Singapore-Premium-Reality';
+    final customOutbound = OutboundState()
+      ..name = 'Seattle-Standard-XHTTP'
+      ..tag = 'custom1';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => ShadTheme(
+          data: ShadThemeData(
+            colorScheme: const ShadBlueColorScheme.light(),
+            radius: const BorderRadius.all(Radius.circular(8)),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: Scaffold(
+          body: XrayFullConfigOutboundsView(
+            primaryProxy: primaryProxy,
+            customOutbounds: [customOutbound],
+            onEditPrimaryProxy: () {},
+            onImportPrimaryProxy: () {},
+            onAddCustomOutbound: () {},
+            onImportCustomOutbound: () {},
+            onEditCustomOutbound: (_) {},
+            onDeleteCustomOutbound: (_) {},
+            onEditFreedom: () {},
+            onEditFragment: () {},
+            onEditBlackHole: () {},
+            onEditDns: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final name in [
+      'Singapore-Premium-Reality',
+      'Seattle-Standard-XHTTP',
+    ]) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(name));
+      expect(paragraph.didExceedMaxLines, isFalse, reason: name);
+    }
+    expect(find.text('vless · raw · custom1'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.pencil), findsNothing);
+    expect(find.byIcon(LucideIcons.trash2), findsOneWidget);
   });
 }

@@ -156,7 +156,6 @@
   "xrayProfileSimplePageEnableIPRule": "IP правила",
   "xrayProfileSimplePageLocalDns": "Лок DNS",
   "xrayProfileSimplePageFakeDns": "FakeDNS",
-  "xrayProfileSimplePageFinalOutbound": "Final Outbound",
   "xrayProfileSimplePageDns": "DNS",
   "xrayProfileUIPageName": "Имя",
   "xrayProfileUIPageGroupRuntime": "Среда выполнения",

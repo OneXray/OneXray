@@ -52,11 +52,18 @@ class XrayFullConfigOutboundsView extends StatelessWidget {
               child: Text(l10n.buttonImport),
             ),
             children: [
-              NavigationSettingRow(
-                leading: const Icon(LucideIcons.server),
-                title: primaryProxy?.name ?? l10n.xrayFullConfigProxyMissing,
-                value: "proxy",
-                onTap: onEditPrimaryProxy,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 520;
+                  return NavigationSettingRow(
+                    leading: const Icon(LucideIcons.server),
+                    title:
+                        primaryProxy?.name ?? l10n.xrayFullConfigProxyMissing,
+                    value: compact ? null : "proxy",
+                    subtitle: compact ? "proxy" : null,
+                    onTap: onEditPrimaryProxy,
+                  );
+                },
               ),
             ],
           ),
@@ -120,26 +127,33 @@ class XrayFullConfigOutboundsView extends StatelessWidget {
   }
 
   Widget _customOutboundRow(BuildContext context, OutboundState outbound) {
-    return SettingRow(
-      leading: const Icon(LucideIcons.globe2),
-      title: outbound.name,
-      subtitle: "${outbound.protocol.name} · ${outbound.network.name}",
-      value: outbound.tag,
-      onTap: () => onEditCustomOutbound(outbound),
-      trailing: ActionCluster(
-        children: [
-          IconButton(
-            tooltip: AppLocalizations.of(context)!.menuEdit,
-            onPressed: () => onEditCustomOutbound(outbound),
-            icon: const Icon(LucideIcons.pencil, size: 17),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 520;
+        final details = "${outbound.protocol.name} · ${outbound.network.name}";
+        return SettingRow(
+          leading: const Icon(LucideIcons.globe2),
+          title: outbound.name,
+          subtitle: compact ? "$details · ${outbound.tag}" : details,
+          value: compact ? null : outbound.tag,
+          onTap: () => onEditCustomOutbound(outbound),
+          trailing: ActionCluster(
+            children: [
+              if (!compact)
+                IconButton(
+                  tooltip: AppLocalizations.of(context)!.menuEdit,
+                  onPressed: () => onEditCustomOutbound(outbound),
+                  icon: const Icon(LucideIcons.pencil, size: 17),
+                ),
+              IconButton(
+                tooltip: AppLocalizations.of(context)!.menuDelete,
+                onPressed: () => onDeleteCustomOutbound(outbound),
+                icon: const Icon(LucideIcons.trash2, size: 17),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: AppLocalizations.of(context)!.menuDelete,
-            onPressed: () => onDeleteCustomOutbound(outbound),
-            icon: const Icon(LucideIcons.trash2, size: 17),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

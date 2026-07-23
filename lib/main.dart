@@ -6,7 +6,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/main/router.dart';
 import 'package:window_manager/window_manager.dart';
 
-const _desktopWindowSize = Size(1200, 800);
+const _desktopWindowSize = Size(1160, 720);
 const _minimumDesktopWindowSize = Size(480, 600);
 
 Future<void> main() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/xray/profile/outbounds/final_outbound_section.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/xray/profile/outbounds_state.dart';
@@ -34,31 +35,19 @@ class OutboundsView extends StatelessWidget {
           SettingsPageIntro(title: l10n.outboundsPageTitle),
           SettingsOverviewGrid(
             breakpoint: 860,
-            children: [_finalOutboundSection(context), _systemSection(context)],
+            children: [
+              FinalOutboundSection(
+                name: state.finalOutbound?.name,
+                onSelect: onImportFinalOutbound,
+                onDelete: state.finalOutbound == null
+                    ? null
+                    : onDeleteFinalOutbound,
+              ),
+              _systemSection(context),
+            ],
           ),
         ],
       ),
-    );
-  }
-
-  Widget _finalOutboundSection(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final finalOutbound = state.finalOutbound;
-    return SettingSection(
-      title: l10n.finalOutboundPageTitle,
-      children: [
-        NavigationSettingRow(
-          leading: const Icon(LucideIcons.waypoints),
-          title: finalOutbound?.name ?? l10n.finalOutboundPageDisabled,
-          onTap: onImportFinalOutbound,
-        ),
-        if (finalOutbound != null)
-          SettingRow(
-            leading: const Icon(LucideIcons.trash2),
-            title: l10n.finalOutboundPageDelete,
-            onTap: onDeleteFinalOutbound,
-          ),
-      ],
     );
   }
 

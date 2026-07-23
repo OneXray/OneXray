@@ -156,7 +156,6 @@
     "xrayProfileSimplePageEnableIPRule": "فعال‌سازی قانون IP",
     "xrayProfileSimplePageLocalDns": "DNS محلی",
     "xrayProfileSimplePageFakeDns": "FakeDNS",
-    "xrayProfileSimplePageFinalOutbound": "Final Outbound",
     "xrayProfileSimplePageDns": "DNS",
     "xrayProfileUIPageTitle": "پروفایل Xray",
     "xrayProfileUIPageName": "نام",
