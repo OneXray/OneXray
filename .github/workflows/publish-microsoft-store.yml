@@ -1,13 +1,13 @@
 #
 # Creates a multi-architecture MSIX bundle from Windows x64 and arm64 packages
-# produced by any successful Build run. Release-tag builds are also submitted
-# to Microsoft Partner Center.
+# produced by a successful Build run. Packages are submitted to Microsoft
+# Partner Center only after the corresponding GitHub release becomes stable.
 #
 # Trigger:
-#   - successful completion of the Build workflow: release-tag runs publish;
-#     manual Build runs are detected and skipped
-#   - workflow_dispatch: bundles any successful Build run; release-tag runs are
-#     also submitted to Microsoft Partner Center
+#   - release released: finds the successful Build run for the stable release
+#     tag, creates the bundle, and submits it to Microsoft Partner Center
+#   - workflow_dispatch: bundles any successful Build run; submission occurs
+#     only when its metadata points to an existing stable release
 #
 # Required repository secrets:
 #   AZURE_AD_TENANT_ID                 Microsoft Entra tenant id
@@ -22,11 +22,9 @@
 name: Publish Microsoft Store
 
 on:
-  workflow_run:
-    workflows:
-      - Build
+  release:
     types:
-      - completed
+      - released
   workflow_dispatch:
     inputs:
       run_id:
@@ -35,7 +33,7 @@ on:
         type: string
 
 concurrency:
-  group: publish-microsoft-store-${{ github.event.workflow_run.id || inputs.run_id }}
+  group: publish-microsoft-store-${{ github.event.release.tag_name || inputs.run_id }}
   cancel-in-progress: false
 
 permissions:
@@ -44,7 +42,6 @@ permissions:
 
 jobs:
   inspect:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     outputs:
       run_id: ${{ steps.build.outputs.run_id }}
@@ -55,31 +52,76 @@ jobs:
         id: build
         env:
           GH_TOKEN: ${{ github.token }}
-          BUILD_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
           TRIGGER_EVENT: ${{ github.event_name }}
         run: |
-          echo "run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
           echo "should_bundle=false" >> "$GITHUB_OUTPUT"
           echo "should_publish=false" >> "$GITHUB_OUTPUT"
 
-          run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID")"
+          release_tag="$EVENT_TAG"
+          build_run_id="$INPUT_RUN_ID"
+
+          if [ "$TRIGGER_EVENT" = "release" ]; then
+            case "$release_tag" in
+              v*) ;;
+              *)
+                echo "Release tag must start with v: $release_tag" >&2
+                exit 1
+                ;;
+            esac
+
+            release_json="$(gh release view "$release_tag" \
+              --repo "${{ github.repository }}" \
+              --json isDraft,isPrerelease)"
+            if [ "$(jq -r '.isDraft' <<<"$release_json")" != "false" ]; then
+              echo "Release $release_tag is still a draft." >&2
+              exit 1
+            fi
+            if [ "$(jq -r '.isPrerelease' <<<"$release_json")" != "false" ]; then
+              echo "Release $release_tag is a pre-release; skipping Microsoft Store publication."
+              exit 0
+            fi
+
+            build_run_id="$(gh run list \
+              --repo "${{ github.repository }}" \
+              --workflow Build \
+              --event push \
+              --branch "$release_tag" \
+              --status success \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty')"
+            if [ -z "$build_run_id" ]; then
+              echo "No successful Build run found for release tag $release_tag." >&2
+              exit 1
+            fi
+          fi
+
+          echo "run_id=$build_run_id" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$build_run_id" ]; then
+            echo "A Build workflow run id is required." >&2
+            exit 1
+          fi
+
+          run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$build_run_id")"
           if [ "$(jq -r '.name' <<<"$run_json")" != "Build" ]; then
-            echo "Workflow run $BUILD_RUN_ID is not a Build run." >&2
+            echo "Workflow run $build_run_id is not a Build run." >&2
             exit 1
           fi
           if [ "$(jq -r '.conclusion' <<<"$run_json")" != "success" ]; then
-            echo "Build run $BUILD_RUN_ID did not complete successfully." >&2
+            echo "Build run $build_run_id did not complete successfully." >&2
             exit 1
           fi
-          build_event="$(jq -r '.event' <<<"$run_json")"
 
           artifact_names="$(gh api --paginate \
-            "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID/artifacts?per_page=100" \
+            "repos/${{ github.repository }}/actions/runs/$build_run_id/artifacts?per_page=100" \
             --jq '.artifacts[].name')"
 
           metadata_tag=""
           if grep -Fxq "release-metadata" <<<"$artifact_names"; then
-            gh run download "$BUILD_RUN_ID" \
+            gh run download "$build_run_id" \
               --repo "${{ github.repository }}" \
               --name release-metadata \
               --dir release-metadata
@@ -96,23 +138,36 @@ jobs:
             fi
           fi
 
-          if [ "$TRIGGER_EVENT" = "workflow_run" ]; then
-            if [ "$build_event" != "push" ] || [ -z "$metadata_tag" ]; then
-              echo "Build run $BUILD_RUN_ID is not a release-tag push; skipping Store bundle and submission."
-              exit 0
+          if [ "$TRIGGER_EVENT" = "release" ]; then
+            if [ "$metadata_tag" != "$release_tag" ]; then
+              echo "Build metadata tag does not match the stable release tag." >&2
+              echo "metadata: $metadata_tag" >&2
+              echo "release:  $release_tag" >&2
+              exit 1
             fi
           fi
 
           for artifact in windows-store-x64 windows-store-arm64; do
             if ! grep -Fxq "$artifact" <<<"$artifact_names"; then
-              echo "Build run $BUILD_RUN_ID is missing artifact: $artifact" >&2
+              echo "Build run $build_run_id is missing artifact: $artifact" >&2
               exit 1
             fi
           done
 
           echo "should_bundle=true" >> "$GITHUB_OUTPUT"
           if [ -n "$metadata_tag" ]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            if release_json="$(gh release view "$metadata_tag" \
+              --repo "${{ github.repository }}" \
+              --json isDraft,isPrerelease 2>/dev/null)"; then
+              if [ "$(jq -r '.isDraft' <<<"$release_json")" = "false" ] &&
+                 [ "$(jq -r '.isPrerelease' <<<"$release_json")" = "false" ]; then
+                echo "should_publish=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "Release $metadata_tag is not stable; the bundle will not be submitted."
+              fi
+            else
+              echo "Release $metadata_tag does not exist; the bundle will not be submitted."
+            fi
           fi
 
   publish:
