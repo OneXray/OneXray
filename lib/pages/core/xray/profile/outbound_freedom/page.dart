@@ -30,7 +30,7 @@ class OutboundFreedomPage extends StatelessWidget {
               child: Column(
                 children: [
                   SettingSection(
-                    title: localizations.outboundFreedomPageTitle,
+                    title: "",
                     children: [
                       SettingRow(
                         leading: const Icon(LucideIcons.waypoints),

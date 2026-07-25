@@ -24,7 +24,7 @@ class InboundPingPage extends StatelessWidget {
             body: SettingsPageScroll(
               desktopMaxWidth: 760,
               child: SettingSection(
-                title: localizations.inboundPingPageTitle,
+                title: "",
                 children: [
                   SettingRow(
                     leading: const Icon(LucideIcons.ear),

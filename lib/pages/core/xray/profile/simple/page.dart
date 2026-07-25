@@ -26,16 +26,6 @@ class XrayProfileSimplePage extends StatelessWidget {
                 body: SettingsPageScroll(
                   child: Column(
                     children: [
-                      SettingsPageIntro(
-                        title: AppLocalizations.of(
-                          context,
-                        )!.xrayProfileSimplePageTitle,
-                        trailing: SettingsBadge(
-                          label: AppLocalizations.of(
-                            context,
-                          )!.xrayProfileListPageSimple,
-                        ),
-                      ),
                       SettingsResponsiveColumns(
                         firstFlex: 4,
                         secondFlex: 6,

@@ -64,11 +64,37 @@ Map<String, dynamic> _$ConvertXrayJsonToShareLinksResponseToJson(
   ConvertXrayJsonToShareLinksResponse instance,
 ) => <String, dynamic>{'links': ?instance.links};
 
-PingResponse _$PingResponseFromJson(Map<String, dynamic> json) =>
-    PingResponse((json['delay'] as num?)?.toInt());
+PingBatchResponse _$PingBatchResponseFromJson(Map<String, dynamic> json) =>
+    PingBatchResponse(
+      (json['results'] as List<dynamic>?)
+          ?.map(
+            (e) => PingBatchItemResponse.fromJson(e as Map<String, dynamic>),
+          )
+          .toList(),
+    );
 
-Map<String, dynamic> _$PingResponseToJson(PingResponse instance) =>
-    <String, dynamic>{'delay': ?instance.delay};
+Map<String, dynamic> _$PingBatchResponseToJson(PingBatchResponse instance) =>
+    <String, dynamic>{
+      'results': ?instance.results?.map((e) => e.toJson()).toList(),
+    };
+
+PingBatchItemResponse _$PingBatchItemResponseFromJson(
+  Map<String, dynamic> json,
+) => PingBatchItemResponse(
+  json['id'] as String?,
+  json['success'] as bool?,
+  (json['delay'] as num?)?.toInt(),
+  json['error'] as String?,
+);
+
+Map<String, dynamic> _$PingBatchItemResponseToJson(
+  PingBatchItemResponse instance,
+) => <String, dynamic>{
+  'id': ?instance.id,
+  'success': ?instance.success,
+  'delay': ?instance.delay,
+  'error': ?instance.error,
+};
 
 XrayVersionResponse _$XrayVersionResponseFromJson(Map<String, dynamic> json) =>
     XrayVersionResponse(json['version'] as String?);
@@ -100,20 +126,37 @@ Map<String, dynamic> _$CountGeoDataRequestToJson(
   'datDir': ?instance.datDir,
 };
 
-PingRequest _$PingRequestFromJson(Map<String, dynamic> json) => PingRequest(
-  json['configPath'] as String?,
-  (json['timeout'] as num?)?.toInt(),
-  json['url'] as String?,
-  json['proxy'] as String?,
-);
+PingBatchRequest _$PingBatchRequestFromJson(Map<String, dynamic> json) =>
+    PingBatchRequest(
+      (json['configs'] as List<dynamic>?)
+          ?.map((e) => PingBatchItemRequest.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      (json['timeout'] as num?)?.toInt(),
+      json['url'] as String?,
+    );
 
-Map<String, dynamic> _$PingRequestToJson(PingRequest instance) =>
+Map<String, dynamic> _$PingBatchRequestToJson(PingBatchRequest instance) =>
     <String, dynamic>{
-      'configPath': ?instance.configPath,
+      'configs': ?instance.configs?.map((e) => e.toJson()).toList(),
       'timeout': ?instance.timeout,
       'url': ?instance.url,
-      'proxy': ?instance.proxy,
     };
+
+PingBatchItemRequest _$PingBatchItemRequestFromJson(
+  Map<String, dynamic> json,
+) => PingBatchItemRequest(
+  json['id'] as String?,
+  json['configPath'] as String?,
+  outboundTag: json['outboundTag'] as String?,
+);
+
+Map<String, dynamic> _$PingBatchItemRequestToJson(
+  PingBatchItemRequest instance,
+) => <String, dynamic>{
+  'id': ?instance.id,
+  'configPath': ?instance.configPath,
+  'outboundTag': ?instance.outboundTag,
+};
 
 RunXrayRequest _$RunXrayRequestFromJson(Map<String, dynamic> json) =>
     RunXrayRequest(json['configPath'] as String?);
@@ -141,7 +184,7 @@ const _$LibXrayMethodEnumMap = {
   LibXrayMethod.convertShareLinksToXrayJson: 'convertShareLinksToXrayJson',
   LibXrayMethod.convertXrayJsonToShareLinks: 'convertXrayJsonToShareLinks',
   LibXrayMethod.countGeoData: 'countGeoData',
-  LibXrayMethod.ping: 'ping',
+  LibXrayMethod.pingBatch: 'pingBatch',
   LibXrayMethod.testXray: 'testXray',
   LibXrayMethod.runXray: 'runXray',
   LibXrayMethod.runXrayFromJson: 'runXrayFromJson',

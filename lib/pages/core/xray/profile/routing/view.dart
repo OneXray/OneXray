@@ -32,11 +32,9 @@ class RoutingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     return SettingsPageScroll(
       child: Column(
         children: [
-          SettingsPageIntro(title: l10n.routingPageTitle),
           SettingsResponsiveColumns(
             firstFlex: 4,
             secondFlex: 6,

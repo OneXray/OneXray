@@ -51,7 +51,7 @@ class OutboundDnsPage extends StatelessWidget {
     OutboundDnsPageState state,
   ) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.outboundDnsPageTitle,
+      title: "",
       children: [
         SettingRow(
           leading: const Icon(LucideIcons.waypoints),

@@ -1,12 +1,6 @@
 import 'package:onexray/core/db/database/constants.dart';
-import 'package:onexray/core/network/ping_auth.dart';
-import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/tools/file.dart';
-import 'package:onexray/core/tools/json.dart';
+import 'package:onexray/service/ping/batch.dart';
 import 'package:onexray/service/ping/state.dart';
-import 'package:onexray/service/xray/raw/fix.dart';
-import 'package:onexray/service/xray/raw/writer.dart';
-import 'package:onexray/service/xray/profile/inbounds_state.dart';
 
 class XrayRawPing {
   static Future<int> ping(
@@ -14,27 +8,12 @@ class XrayRawPing {
     PingState pingState, {
     int fallbackDelay = PingDelayConstants.unknown,
   }) async {
-    final ports = await XrayPorts.getPorts();
-    if (ports == null) {
+    final results = await PingBatchRunner.run([
+      PingBatchSource("raw", rawText),
+    ], pingState);
+    if (results.isEmpty) {
       return fallbackDelay;
     }
-    final jsonMap = JsonTool.decoder.convert(rawText);
-    XrayRawFix.fixMetrics(jsonMap);
-    XrayRawFix.fixEnv(jsonMap);
-    XrayRawFix.keepOnlyPingInbound(jsonMap, ports: ports);
-    XrayRawFix.fixLog(jsonMap);
-    final text = JsonTool.encoder.convert(jsonMap);
-
-    final configPath = await XrayRawWriter.writeConfig(text);
-
-    final res = await AppHostApi().ping(
-      configPath,
-      pingState.timeout.toInt(),
-      pingState.realUrl,
-      ports.pingAuth.proxyUrl(ports.pingPort),
-    );
-    await FileTool.deleteFileIfExists(configPath);
-
-    return res;
+    return results.first.delay;
   }
 }

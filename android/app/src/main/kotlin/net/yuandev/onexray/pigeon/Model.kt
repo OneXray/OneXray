@@ -66,8 +66,8 @@ enum class LibXrayMethod {
     @SerialName("countGeoData")
     COUNT_GEO_DATA,
 
-    @SerialName("ping")
-    PING,
+    @SerialName("pingBatch")
+    PING_BATCH,
 
     @SerialName("testXray")
     TEST_XRAY,

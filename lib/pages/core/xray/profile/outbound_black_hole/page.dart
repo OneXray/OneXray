@@ -17,7 +17,7 @@ class OutboundBlackHolePage extends StatelessWidget {
       body: SettingsPageScroll(
         desktopMaxWidth: 760,
         child: SettingSection(
-          title: localizations.outboundBlackHolePageTitle,
+          title: "",
           children: [
             SettingRow(
               leading: const Icon(LucideIcons.waypoints),

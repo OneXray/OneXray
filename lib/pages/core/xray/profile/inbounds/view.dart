@@ -20,7 +20,6 @@ class InboundsView extends StatelessWidget {
     return SettingsPageScroll(
       child: Column(
         children: [
-          SettingsPageIntro(title: l10n.inboundsPageTitle),
           SettingsOverviewGrid(
             columns: 2,
             breakpoint: 900,

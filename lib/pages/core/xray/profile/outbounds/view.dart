@@ -28,11 +28,9 @@ class OutboundsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     return SettingsPageScroll(
       child: Column(
         children: [
-          SettingsPageIntro(title: l10n.outboundsPageTitle),
           SettingsOverviewGrid(
             breakpoint: 860,
             children: [

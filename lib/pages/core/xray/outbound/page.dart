@@ -72,11 +72,8 @@ class OutboundUIPage extends StatelessWidget
       desktopMaxWidth: 1080,
       child: Column(
         children: [
-          SettingsPageIntro(
-            title: AppLocalizations.of(context)!.outboundPageTitle,
-          ),
           SettingSection(
-            title: AppLocalizations.of(context)!.outboundPageTitle,
+            title: "",
             children: [
               _name(context, controller),
               _protocol(context, controller, state),

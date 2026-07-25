@@ -113,7 +113,7 @@ enum LibXrayMethod: String, Codable {
     case convertShareLinksToXrayJson
     case convertXrayJsonToShareLinks
     case countGeoData
-    case ping
+    case pingBatch
     case testXray
     case runXray
     case runXrayFromJson

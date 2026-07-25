@@ -1,5 +1,4 @@
 import 'package:onexray/core/tools/platform.dart';
-import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows_ffi_api.dart';
 import 'package:onexray/core/model/xray_json.dart';
@@ -192,34 +191,23 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<int> ping(
-    String configPath,
-    int timeout,
-    String url,
-    String proxy,
-  ) async {
+  Future<PingBatchResponse?> pingBatch(PingBatchRequest request) async {
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
-          method: LibXrayMethod.ping,
-          payload: PingRequest(configPath, timeout, url, proxy).toJson(),
+          method: LibXrayMethod.pingBatch,
+          payload: request.toJson(),
         ),
       );
       final resp = LibXrayInvokeResponseParser.parse(res);
-      ygLogger(
-        "ping result success:${resp.success} data:${resp.data} error:${resp.error}",
-      );
-      if (resp.data != null) {
-        final data = PingResponse.fromJson(resp.data!);
-        if (data.delay != null) {
-          ygLogger("ping delay: ${data.delay}");
-          return data.delay!;
-        }
+      ygLogger("pingBatch result success:${resp.success} error:${resp.error}");
+      if (resp.success && resp.data != null) {
+        return PingBatchResponse.fromJson(resp.data!);
       }
     } catch (error, stackTrace) {
-      _reportUnexpected('ping', error, stackTrace);
+      _reportUnexpected('pingBatch', error, stackTrace);
     }
-    return PingDelayConstants.error;
+    return null;
   }
 
   Future<String> testXray(String configPath) async {

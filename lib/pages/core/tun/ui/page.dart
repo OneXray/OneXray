@@ -50,9 +50,6 @@ class TunSettingsContent extends StatelessWidget {
     return SettingsPageScroll(
       child: Column(
         children: [
-          SettingsPageIntro(
-            title: AppLocalizations.of(context)!.tunSettingsPageTitle,
-          ),
           SettingsResponsiveColumns(
             firstFlex: 5,
             secondFlex: 5,

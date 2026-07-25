@@ -1,9 +1,9 @@
 import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/tools/json.dart';
+import 'package:onexray/service/ping/batch.dart';
 import 'package:onexray/service/ping/state.dart';
-import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
-import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/core/model/xray_standard.dart';
 
 extension OutboundStatePing on OutboundState {
@@ -11,18 +11,13 @@ extension OutboundStatePing on OutboundState {
     PingState pingState, {
     int fallbackDelay = PingDelayConstants.unknown,
   }) async {
-    final ports = await XrayPorts.getPorts();
-    if (ports == null) {
+    final xrayJson = XrayJsonStandard.standard..outbounds = [this.xrayJson];
+    final results = await PingBatchRunner.run([
+      PingBatchSource("outbound", JsonTool.encoder.convert(xrayJson.toJson())),
+    ], pingState);
+    if (results.isEmpty) {
       return fallbackDelay;
     }
-    final pingInbound = InboundPingState();
-    pingInbound.port = ports.pingPort;
-    pingInbound.auth = ports.pingAuth;
-
-    final xrayJson = XrayJsonStandard.standard;
-    xrayJson.outbounds = [this.xrayJson];
-    xrayJson.inbounds = [pingInbound.xrayJson];
-    final res = await xrayJson.ping(pingState, ports.pingPort, ports.pingAuth);
-    return res;
+    return results.first.delay;
   }
 }

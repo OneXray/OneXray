@@ -26,9 +26,8 @@ class XrayLogView extends StatelessWidget {
       desktopMaxWidth: 760,
       child: Column(
         children: [
-          SettingsPageIntro(title: l10n.xrayLogPageTitle),
           SettingSection(
-            title: l10n.xrayLogPageTitle,
+            title: "",
             children: [
               SelectSettingRow(
                 leading: const Icon(LucideIcons.listFilter),

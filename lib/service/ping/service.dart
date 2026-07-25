@@ -1,22 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:async/async.dart';
-import 'package:collection/collection.dart';
+import 'package:onexray/core/model/xray_standard.dart';
+import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/localizations/service.dart';
+import 'package:onexray/service/ping/batch.dart';
 import 'package:onexray/service/ping/state.dart';
-import 'package:onexray/service/xray/full_config/state_ping.dart';
+import 'package:onexray/service/xray/full_config/state.dart';
+import 'package:onexray/service/xray/full_config/state_reader.dart';
+import 'package:onexray/service/xray/full_config/state_writer.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_ping.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/raw/ping.dart';
+import 'package:onexray/service/xray/outbound/state_writer.dart';
 
 class PingService {
   static final PingService _singleton = PingService._internal();
@@ -42,24 +43,6 @@ class PingService {
       final rows = await db.coreConfigDao.allHomeNodeRowsWithDataBySubId(subId);
       await _pingConfigs(db, rows);
     });
-  }
-
-  Future<int> _pingOutbound(CoreConfigData row, PingState pingState) async {
-    if (EmptyTool.checkString(row.data)) {
-      final outbound = OutboundState();
-      outbound.readFromDbData(row);
-      return outbound.ping(pingState);
-    }
-    return PingDelayConstants.unknown;
-  }
-
-  Future<int> _pingRawConfig(CoreConfigData row, PingState pingState) async {
-    if (EmptyTool.checkString(row.data)) {
-      final bytes = base64Decode(row.data!);
-      final text = utf8.decode(bytes);
-      return XrayRawPing.ping(text, pingState);
-    }
-    return PingDelayConstants.unknown;
   }
 
   void schedulePingConfigIds(List<int> ids) {
@@ -163,46 +146,58 @@ class PingService {
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
     final pingState = PingState();
     await pingState.readFromPreferences();
-    var concurrency = pingState.concurrency.toInt();
-    if (AppPlatform.isLinux || AppPlatform.isWindows) {
-      concurrency = 1;
+    final pingRows = <CoreConfigData>[];
+    final sources = <PingBatchSource>[];
+    for (final row in rows) {
+      final source = _makePingSource(row);
+      if (source != null) {
+        pingRows.add(row);
+        sources.add(source);
+      }
     }
-    final slices = rows.slices(concurrency);
-    for (final slice in slices) {
-      final tempRows = <CoreConfigData>[];
-      final group = FutureGroup<int>();
-      for (final row in slice) {
-        tempRows.add(row);
-        _addTaskToGroup(group, row, pingState);
-      }
-      group.close();
-      final res = await group.future;
-      for (int i = 0; i < tempRows.length; i++) {
-        await _updateRow(db, tempRows[i], res[i]);
-      }
+    if (sources.isEmpty) {
+      return;
+    }
+
+    final results = await PingBatchRunner.run(sources, pingState);
+    for (var index = 0; index < pingRows.length; index++) {
+      await _updateRow(db, pingRows[index], results[index].delay);
     }
   }
 
-  void _addTaskToGroup(
-    FutureGroup group,
-    CoreConfigData row,
-    PingState pingState,
-  ) {
-    final type = CoreConfigType.fromString(row.type);
-    if (type != null) {
+  PingBatchSource? _makePingSource(CoreConfigData row) {
+    if (!EmptyTool.checkString(row.data)) {
+      return null;
+    }
+    try {
+      final type = CoreConfigType.fromString(row.type);
       switch (type) {
         case CoreConfigType.outbound:
-          group.add(_pingOutbound(row, pingState));
-          break;
+          final outbound = OutboundState();
+          if (!outbound.readFromDbData(row)) {
+            return null;
+          }
+          final xrayJson = XrayJsonStandard.standard
+            ..outbounds = [outbound.xrayJson];
+          return PingBatchSource(
+            "${row.id}",
+            JsonTool.encoder.convert(xrayJson.toJson()),
+          );
         case CoreConfigType.raw:
-          group.add(_pingRawConfig(row, pingState));
-          break;
+          final bytes = base64Decode(row.data!);
+          return PingBatchSource("${row.id}", utf8.decode(bytes));
         case CoreConfigType.full:
-          group.add(row.pingFullConfig(pingState));
-          break;
+          final state = XrayFullConfigState()..readFromDbData(row);
+          return PingBatchSource(
+            "${row.id}",
+            JsonTool.encoder.convert(state.xrayJson.toJson()),
+          );
         default:
-          break;
+          return null;
       }
+    } catch (error, stackTrace) {
+      ygLogger("Prepare ping source failed: ${row.id}, $error\n$stackTrace");
+      return null;
     }
   }
 

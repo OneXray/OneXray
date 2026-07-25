@@ -55,7 +55,7 @@ class InboundSniffingPage extends StatelessWidget {
   ) {
     final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: localizations.inboundSniffingPageTitle,
+      title: "",
       children: [
         SwitchSettingRow(
           leading: const Icon(LucideIcons.scanSearch),

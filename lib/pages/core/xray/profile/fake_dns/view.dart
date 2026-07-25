@@ -23,7 +23,6 @@ class FakeDnsView extends StatelessWidget {
     return SettingsPageScroll(
       child: Column(
         children: [
-          SettingsPageIntro(title: l10n.fakeDnsPageTitle),
           SettingsOverviewGrid(
             children: [
               _poolSection(

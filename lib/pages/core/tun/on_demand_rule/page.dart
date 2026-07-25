@@ -40,9 +40,6 @@ class OnDemandRulePage extends StatelessWidget {
       desktopMaxWidth: 760,
       child: Column(
         children: [
-          SettingsPageIntro(
-            title: AppLocalizations.of(context)!.onDemandRulePageTitle,
-          ),
           _modeSection(context, state, controller),
           if (state.ruleState.interfaceType == OnDemandRuleInterfaceType.wifi)
             _ssidSection(context, state, controller),

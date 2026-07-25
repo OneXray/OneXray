@@ -31,7 +31,7 @@ class OutboundFragmentPage extends StatelessWidget {
                 secondFlex: 6,
                 first: [
                   SettingSection(
-                    title: localizations.outboundFragmentPageTitle,
+                    title: "",
                     children: [
                       SettingRow(
                         leading: const Icon(LucideIcons.waypoints),

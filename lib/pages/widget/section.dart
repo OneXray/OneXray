@@ -36,12 +36,15 @@ class SectionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasTitle = title.isNotEmpty;
+    final hasDescription = description != null && description!.isNotEmpty;
+    final hasHeader = hasTitle || hasDescription || action != null;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 11, 16, 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (title.isNotEmpty)
+          if (hasHeader)
             Padding(
               padding: const EdgeInsetsDirectional.only(bottom: 8),
               child: Row(
@@ -51,14 +54,15 @@ class SectionView extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: AppTypography.sectionTitle.copyWith(
-                            color: ColorManager.primaryText(context),
+                        if (hasTitle)
+                          Text(
+                            title,
+                            style: AppTypography.sectionTitle.copyWith(
+                              color: ColorManager.primaryText(context),
+                            ),
                           ),
-                        ),
-                        if (description != null && description!.isNotEmpty) ...[
-                          const SizedBox(height: 3),
+                        if (hasDescription) ...[
+                          if (hasTitle) const SizedBox(height: 3),
                           Text(
                             description!,
                             style: AppTypography.supporting.copyWith(

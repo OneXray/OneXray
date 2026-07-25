@@ -45,7 +45,7 @@ class InboundTunPage extends StatelessWidget {
   Widget _identitySection(BuildContext context, InboundTunPageState state) {
     final localizations = AppLocalizations.of(context)!;
     return SettingSection(
-      title: localizations.inboundTunPageTitle,
+      title: "",
       children: [
         SettingRow(
           leading: const Icon(LucideIcons.ear),

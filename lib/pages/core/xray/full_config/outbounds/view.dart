@@ -42,7 +42,6 @@ class XrayFullConfigOutboundsView extends StatelessWidget {
     return SettingsPageScroll(
       child: Column(
         children: [
-          SettingsPageIntro(title: l10n.outboundsPageTitle),
           SettingSection(
             title: l10n.xrayFullConfigPrimaryProxy,
             action: ShadButton.outline(

@@ -46,7 +46,7 @@ class PingPage extends StatelessWidget {
     PingController controller,
   ) {
     return SettingSection(
-      title: AppLocalizations.of(context)!.pingPageTitle,
+      title: "",
       description: AppLocalizations.of(context)!.pingPageDescription,
       children: [
         _timeout(context, state, controller),

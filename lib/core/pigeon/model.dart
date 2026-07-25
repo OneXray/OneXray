@@ -68,15 +68,30 @@ class ConvertXrayJsonToShareLinksResponse {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class PingResponse {
+class PingBatchResponse {
+  List<PingBatchItemResponse>? results;
+
+  PingBatchResponse(this.results);
+
+  factory PingBatchResponse.fromJson(Map<String, dynamic> json) =>
+      _$PingBatchResponseFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PingBatchResponseToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class PingBatchItemResponse {
+  String? id;
+  bool? success;
   int? delay;
+  String? error;
 
-  PingResponse(this.delay);
+  PingBatchItemResponse(this.id, this.success, this.delay, this.error);
 
-  factory PingResponse.fromJson(Map<String, dynamic> json) =>
-      _$PingResponseFromJson(json);
+  factory PingBatchItemResponse.fromJson(Map<String, dynamic> json) =>
+      _$PingBatchItemResponseFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PingResponseToJson(this);
+  Map<String, dynamic> toJson() => _$PingBatchItemResponseToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -118,18 +133,31 @@ class CountGeoDataRequest {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class PingRequest {
-  String? configPath;
+class PingBatchRequest {
+  List<PingBatchItemRequest>? configs;
   int? timeout;
   String? url;
-  String? proxy;
 
-  PingRequest(this.configPath, this.timeout, this.url, this.proxy);
+  PingBatchRequest(this.configs, this.timeout, this.url);
 
-  factory PingRequest.fromJson(Map<String, dynamic> json) =>
-      _$PingRequestFromJson(json);
+  factory PingBatchRequest.fromJson(Map<String, dynamic> json) =>
+      _$PingBatchRequestFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PingRequestToJson(this);
+  Map<String, dynamic> toJson() => _$PingBatchRequestToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class PingBatchItemRequest {
+  String? id;
+  String? configPath;
+  String? outboundTag;
+
+  PingBatchItemRequest(this.id, this.configPath, {this.outboundTag});
+
+  factory PingBatchItemRequest.fromJson(Map<String, dynamic> json) =>
+      _$PingBatchItemRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PingBatchItemRequestToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -153,8 +181,8 @@ enum LibXrayMethod {
   convertXrayJsonToShareLinks,
   @JsonValue("countGeoData")
   countGeoData,
-  @JsonValue("ping")
-  ping,
+  @JsonValue("pingBatch")
+  pingBatch,
   @JsonValue("testXray")
   testXray,
   @JsonValue("runXray")

@@ -1,12 +1,10 @@
 import 'dart:io';
 
 import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/constants.dart';
 
@@ -18,25 +16,6 @@ extension XrayJsonWriter on XrayJson {
 
     final res = await AppHostApi().testXray(configPath);
     ygLogger(configPath);
-    await FileTool.deleteFileIfExists(configPath);
-
-    return res;
-  }
-
-  Future<int> ping(
-    PingState pingState,
-    String port,
-    XrayInboundAccount auth,
-  ) async {
-    final configPath = await FileTool.makeCacheFile(ConfigFileType.json);
-    await _writeToPath(configPath);
-
-    final res = await AppHostApi().ping(
-      configPath,
-      pingState.timeout.toInt(),
-      pingState.realUrl,
-      auth.proxyUrl(port),
-    );
     await FileTool.deleteFileIfExists(configPath);
 
     return res;
