@@ -13,7 +13,7 @@ extension XrayFullConfigStatePing on XrayFullConfigState {
     int fallbackDelay = PingDelayConstants.unknown,
   }) async {
     final results = await PingBatchRunner.run([
-      PingBatchSource("full", JsonTool.encoder.convert(xrayJson.toJson())),
+      PingBatchSource(JsonTool.encoder.convert(xrayJson.toJson())),
     ], pingState);
     if (results.isEmpty) {
       return fallbackDelay;

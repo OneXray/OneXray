@@ -179,17 +179,13 @@ class PingService {
           }
           final xrayJson = XrayJsonStandard.standard
             ..outbounds = [outbound.xrayJson];
-          return PingBatchSource(
-            "${row.id}",
-            JsonTool.encoder.convert(xrayJson.toJson()),
-          );
+          return PingBatchSource(JsonTool.encoder.convert(xrayJson.toJson()));
         case CoreConfigType.raw:
           final bytes = base64Decode(row.data!);
-          return PingBatchSource("${row.id}", utf8.decode(bytes));
+          return PingBatchSource(utf8.decode(bytes));
         case CoreConfigType.full:
           final state = XrayFullConfigState()..readFromDbData(row);
           return PingBatchSource(
-            "${row.id}",
             JsonTool.encoder.convert(state.xrayJson.toJson()),
           );
         default:

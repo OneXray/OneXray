@@ -81,7 +81,6 @@ Map<String, dynamic> _$PingBatchResponseToJson(PingBatchResponse instance) =>
 PingBatchItemResponse _$PingBatchItemResponseFromJson(
   Map<String, dynamic> json,
 ) => PingBatchItemResponse(
-  json['id'] as String?,
   json['success'] as bool?,
   (json['delay'] as num?)?.toInt(),
   json['error'] as String?,
@@ -90,7 +89,6 @@ PingBatchItemResponse _$PingBatchItemResponseFromJson(
 Map<String, dynamic> _$PingBatchItemResponseToJson(
   PingBatchItemResponse instance,
 ) => <String, dynamic>{
-  'id': ?instance.id,
   'success': ?instance.success,
   'delay': ?instance.delay,
   'error': ?instance.error,
@@ -145,7 +143,6 @@ Map<String, dynamic> _$PingBatchRequestToJson(PingBatchRequest instance) =>
 PingBatchItemRequest _$PingBatchItemRequestFromJson(
   Map<String, dynamic> json,
 ) => PingBatchItemRequest(
-  json['id'] as String?,
   json['configPath'] as String?,
   outboundTag: json['outboundTag'] as String?,
 );
@@ -153,7 +150,6 @@ PingBatchItemRequest _$PingBatchItemRequestFromJson(
 Map<String, dynamic> _$PingBatchItemRequestToJson(
   PingBatchItemRequest instance,
 ) => <String, dynamic>{
-  'id': ?instance.id,
   'configPath': ?instance.configPath,
   'outboundTag': ?instance.outboundTag,
 };

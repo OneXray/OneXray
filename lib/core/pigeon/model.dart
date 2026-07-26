@@ -81,12 +81,11 @@ class PingBatchResponse {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class PingBatchItemResponse {
-  String? id;
   bool? success;
   int? delay;
   String? error;
 
-  PingBatchItemResponse(this.id, this.success, this.delay, this.error);
+  PingBatchItemResponse(this.success, this.delay, this.error);
 
   factory PingBatchItemResponse.fromJson(Map<String, dynamic> json) =>
       _$PingBatchItemResponseFromJson(json);
@@ -148,11 +147,10 @@ class PingBatchRequest {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class PingBatchItemRequest {
-  String? id;
   String? configPath;
   String? outboundTag;
 
-  PingBatchItemRequest(this.id, this.configPath, {this.outboundTag});
+  PingBatchItemRequest(this.configPath, {this.outboundTag});
 
   factory PingBatchItemRequest.fromJson(Map<String, dynamic> json) =>
       _$PingBatchItemRequestFromJson(json);

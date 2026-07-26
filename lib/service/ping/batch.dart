@@ -7,23 +7,21 @@ import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/raw/writer.dart';
 
 class PingBatchSource {
-  final String id;
   final String configText;
   final String? outboundTag;
 
-  const PingBatchSource(this.id, this.configText, {this.outboundTag});
+  const PingBatchSource(this.configText, {this.outboundTag});
 }
 
 class PingBatchResult {
-  final String id;
   final bool success;
   final int delay;
   final String error;
 
-  const PingBatchResult(this.id, this.success, this.delay, this.error);
+  const PingBatchResult(this.success, this.delay, this.error);
 
-  factory PingBatchResult.failed(String id, [String error = ""]) =>
-      PingBatchResult(id, false, PingDelayConstants.error, error);
+  factory PingBatchResult.failed([String error = ""]) =>
+      PingBatchResult(false, PingDelayConstants.error, error);
 }
 
 class PingBatchRunner {
@@ -38,7 +36,7 @@ class PingBatchRunner {
     }
 
     final results = sources
-        .map((source) => PingBatchResult.failed(source.id))
+        .map((_) => PingBatchResult.failed())
         .toList(growable: false);
     final prepared = <_PreparedPingSource>[];
 
@@ -50,9 +48,10 @@ class PingBatchRunner {
           prepared.add(_PreparedPingSource(index, source, configPath));
         } catch (error, stackTrace) {
           ygLogger(
-            "Prepare ping config failed: ${source.id}, $error\n$stackTrace",
+            "Prepare ping config failed at index $index: "
+            "$error\n$stackTrace",
           );
-          results[index] = PingBatchResult.failed(source.id, "$error");
+          results[index] = PingBatchResult.failed("$error");
         }
       }
 
@@ -70,7 +69,6 @@ class PingBatchRunner {
           batch
               .map(
                 (item) => PingBatchItemRequest(
-                  item.source.id,
                   item.configPath,
                   outboundTag: item.source.outboundTag,
                 ),
@@ -88,12 +86,10 @@ class PingBatchRunner {
         for (var index = 0; index < batch.length; index++) {
           final preparedItem = batch[index];
           final responseItem = responseResults[index];
-          if (responseItem.id != preparedItem.source.id ||
-              responseItem.delay == null) {
+          if (responseItem.delay == null) {
             continue;
           }
           results[preparedItem.sourceIndex] = PingBatchResult(
-            preparedItem.source.id,
             responseItem.success ?? false,
             responseItem.delay!,
             responseItem.error ?? "",

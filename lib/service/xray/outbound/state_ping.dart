@@ -13,7 +13,7 @@ extension OutboundStatePing on OutboundState {
   }) async {
     final xrayJson = XrayJsonStandard.standard..outbounds = [this.xrayJson];
     final results = await PingBatchRunner.run([
-      PingBatchSource("outbound", JsonTool.encoder.convert(xrayJson.toJson())),
+      PingBatchSource(JsonTool.encoder.convert(xrayJson.toJson())),
     ], pingState);
     if (results.isEmpty) {
       return fallbackDelay;
