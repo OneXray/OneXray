@@ -8,14 +8,12 @@ part of 'ping_json.dart';
 
 PingJson _$PingJsonFromJson(Map<String, dynamic> json) => PingJson(
   (json['timeout'] as num?)?.toDouble(),
-  (json['concurrency'] as num?)?.toDouble(),
   json['url'] as String?,
   json['autoPingNewConfigs'] as bool?,
 );
 
 Map<String, dynamic> _$PingJsonToJson(PingJson instance) => <String, dynamic>{
   'timeout': ?instance.timeout,
-  'concurrency': ?instance.concurrency,
   'url': ?instance.url,
   'autoPingNewConfigs': ?instance.autoPingNewConfigs,
 };

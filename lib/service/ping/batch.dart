@@ -27,7 +27,7 @@ class PingBatchResult {
 }
 
 class PingBatchRunner {
-  static const _maxConfigsPerRequest = 5;
+  static const _batchSize = 5;
 
   static Future<List<PingBatchResult>> run(
     List<PingBatchSource> sources,
@@ -60,14 +60,8 @@ class PingBatchRunner {
         return results;
       }
 
-      final configuredBatchSize = pingState.concurrency.toInt();
-      final batchSize = configuredBatchSize < 1
-          ? 1
-          : configuredBatchSize > _maxConfigsPerRequest
-          ? _maxConfigsPerRequest
-          : configuredBatchSize;
-      for (var offset = 0; offset < prepared.length; offset += batchSize) {
-        final candidateEnd = offset + batchSize;
+      for (var offset = 0; offset < prepared.length; offset += _batchSize) {
+        final candidateEnd = offset + _batchSize;
         final end = candidateEnd < prepared.length
             ? candidateEnd
             : prepared.length;

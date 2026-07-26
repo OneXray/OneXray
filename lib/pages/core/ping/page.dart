@@ -50,7 +50,6 @@ class PingPage extends StatelessWidget {
       description: AppLocalizations.of(context)!.pingPageDescription,
       children: [
         _timeout(context, state, controller),
-        _concurrency(context, state, controller),
         _url(context, state, controller),
         _realUrl(context, state),
         _autoPingNewConfigs(context, state, controller),
@@ -89,24 +88,6 @@ class PingPage extends StatelessWidget {
       label: "${state.pingState.timeout.round()}s",
       value: state.pingState.timeout,
       onChanged: (value) => controller.updateTimeout(value),
-    );
-  }
-
-  Widget _concurrency(
-    BuildContext context,
-    PingPageState state,
-    PingController controller,
-  ) {
-    return SliderSettingRow(
-      title: AppLocalizations.of(context)!.pingPageConcurrency,
-      subtitle: AppLocalizations.of(context)!.pingPageConcurrencyDescription,
-      leading: const Icon(LucideIcons.slidersHorizontal),
-      min: PingConcurrency.min,
-      max: PingConcurrency.max,
-      divisions: PingConcurrency.divisions,
-      label: state.pingState.concurrency.round().toString(),
-      value: state.pingState.concurrency,
-      onChanged: (value) => controller.updateConcurrency(value),
     );
   }
 

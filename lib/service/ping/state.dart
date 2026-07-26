@@ -30,16 +30,8 @@ class PingTimeout {
   static const defaultValue = 5.0;
 }
 
-class PingConcurrency {
-  static const min = 1.0;
-  static const max = 5.0;
-  static const divisions = 4;
-  static const defaultValue = 3.0;
-}
-
 class PingState {
   var timeout = PingTimeout.defaultValue;
-  var concurrency = PingConcurrency.defaultValue;
   var url = PingUrl.cloudflare;
   var autoPingNewConfigs = false;
 
@@ -60,15 +52,6 @@ class PingState {
       }
       this.timeout = timeout;
     }
-    if (pingJson.concurrency != null) {
-      var concurrency = pingJson.concurrency!;
-      if (concurrency < PingConcurrency.min) {
-        concurrency = PingConcurrency.min;
-      } else if (concurrency > PingConcurrency.max) {
-        concurrency = PingConcurrency.max;
-      }
-      this.concurrency = concurrency;
-    }
     if (EmptyTool.checkString(pingJson.url)) {
       final url = PingUrl.fromString(pingJson.url!);
       if (url != null) {
@@ -81,12 +64,7 @@ class PingState {
   }
 
   Future<void> saveToPreferences() async {
-    final pingJson = PingJson(
-      timeout,
-      concurrency,
-      url.name,
-      autoPingNewConfigs,
-    );
+    final pingJson = PingJson(timeout, url.name, autoPingNewConfigs);
     await PreferencesKey().savePingState(pingJson.toJson());
   }
 }

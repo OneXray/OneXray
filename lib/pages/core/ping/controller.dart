@@ -32,11 +32,6 @@ class PingController extends PageCubit<PingPageState> {
     emit(state._copy());
   }
 
-  void updateConcurrency(double value) {
-    state.pingState.concurrency = value;
-    emit(state._copy());
-  }
-
   void updateUrl(String value) {
     final url = PingUrl.fromString(value);
     if (url != null) {
