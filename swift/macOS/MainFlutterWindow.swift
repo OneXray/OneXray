@@ -4,18 +4,20 @@ import window_manager
 
 class MainFlutterWindow: NSWindow {
     override func awakeFromNib() {
-        let flutterViewController = FlutterViewController()
-        let windowFrame = self.frame
-        self.contentViewController = flutterViewController
-        self.setFrame(windowFrame, display: true)
+        MainActor.assumeIsolated {
+            let flutterViewController = FlutterViewController()
+            let windowFrame = frame
+            contentViewController = flutterViewController
+            setFrame(windowFrame, display: true)
 
-        let engine = flutterViewController.engine
-        let flutterApi = AppFlutterApi(binaryMessenger: engine.binaryMessenger)
-        BridgeHostApiSetup.setUp(binaryMessenger: engine.binaryMessenger, api: AppHostApi(flutterApi: flutterApi))
+            let binaryMessenger = flutterViewController.engine.binaryMessenger
+            let flutterApi = AppFlutterApi(binaryMessenger: binaryMessenger)
+            BridgeHostApiSetup.setUp(binaryMessenger: binaryMessenger, api: AppHostApi(flutterApi: flutterApi))
 
-        RegisterGeneratedPlugins(registry: flutterViewController)
+            RegisterGeneratedPlugins(registry: flutterViewController)
 
-        super.awakeFromNib()
+            super.awakeFromNib()
+        }
     }
 
     override public func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {

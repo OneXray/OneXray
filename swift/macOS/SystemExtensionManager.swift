@@ -48,13 +48,13 @@ enum SystemExtensionManager {
 
 // MARK: - Private
 
-private typealias RequestFactory = (DispatchQueue) -> OSSystemExtensionRequest
+private typealias RequestFactory = @Sendable (DispatchQueue) -> OSSystemExtensionRequest
 
 private enum SystemExtensionRequestError: Error {
     case timeout
 }
 
-private struct ExtensionIdentity {
+private struct ExtensionIdentity: Sendable {
     let bundleIdentifier: String
     let bundleVersion: String
     let bundleShortVersion: String
@@ -88,7 +88,23 @@ private struct ExtensionIdentity {
     }
 }
 
-private extension OSSystemExtensionProperties {
+private struct ExtensionPropertiesSnapshot: Sendable {
+    let bundleIdentifier: String
+    let bundleVersion: String
+    let bundleShortVersion: String
+    let isAwaitingUserApproval: Bool
+    let isUninstalling: Bool
+
+    init(_ properties: OSSystemExtensionProperties) {
+        bundleIdentifier = properties.bundleIdentifier
+        bundleVersion = properties.bundleVersion
+        bundleShortVersion = properties.bundleShortVersion
+        isAwaitingUserApproval = properties.isAwaitingUserApproval
+        isUninstalling = properties.isUninstalling
+    }
+}
+
+private extension ExtensionPropertiesSnapshot {
     func matches(_ identity: ExtensionIdentity) -> Bool {
         bundleIdentifier == identity.bundleIdentifier
             && bundleVersion == identity.bundleVersion
@@ -103,7 +119,7 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
     private enum Waiter {
         case none
         case result(UUID, CheckedContinuation<OSSystemExtensionRequest.Result?, Error>)
-        case properties(UUID, CheckedContinuation<[OSSystemExtensionProperties], Error>)
+        case properties(UUID, CheckedContinuation<[ExtensionPropertiesSnapshot], Error>)
 
         var token: UUID? {
             switch self {
@@ -137,7 +153,7 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
     func runProperties(
         timeout: DispatchTimeInterval,
         _ make: @escaping RequestFactory
-    ) async throws -> [OSSystemExtensionProperties] {
+    ) async throws -> [ExtensionPropertiesSnapshot] {
         try await withCheckedThrowingContinuation { continuation in
             submit(.properties(UUID(), continuation), timeout: timeout, make: make)
         }
@@ -232,7 +248,7 @@ private final class ExtensionRequestDriver: NSObject, OSSystemExtensionRequestDe
     {
         if case let .properties(_, continuation) = waiter {
             waiter = .none
-            continuation.resume(returning: properties)
+            continuation.resume(returning: properties.map(ExtensionPropertiesSnapshot.init))
         }
     }
 }

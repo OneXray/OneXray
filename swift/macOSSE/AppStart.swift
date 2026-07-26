@@ -1,3 +1,1 @@
-func initApp() {
-    Constants.useSystemExtension = true
-}
+func initApp() {}

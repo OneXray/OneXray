@@ -8,8 +8,6 @@
 import Foundation
 import NetworkExtension
 
-Constants.useSystemExtension = true
-
 autoreleasepool {
     NEProvider.startSystemExtensionMode()
 }

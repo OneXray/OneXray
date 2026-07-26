@@ -50,11 +50,22 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     private var startContinuation: CheckedContinuation<Void, Error>?
     private var pendingStartSignal = false
 
-    override func startTunnel(options: [String: NSObject]? = nil) async throws {
-        if Constants.useSystemExtension {
-            try await startTunnelSE(options: options)
-        } else {
-            try await startTunnelLegacy()
+    override func startTunnel(
+        options: [String: NSObject]? = nil,
+        completionHandler: @escaping @Sendable (Error?) -> Void
+    ) {
+        let startedByApp = options != nil
+        Task {
+            do {
+                if Constants.useSystemExtension {
+                    try await startTunnelSE(startedByApp: startedByApp)
+                } else {
+                    try await startTunnelLegacy()
+                }
+                completionHandler(nil)
+            } catch {
+                completionHandler(error)
+            }
         }
     }
 
@@ -71,7 +82,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         YGLog("startTunnel finished")
     }
 
-    private func startTunnelSE(options: [String: NSObject]?) async throws {
+    private func startTunnelSE(startedByApp: Bool) async throws {
         guard let providerConfig = (self.protocolConfiguration as? NETunnelProviderProtocol)?.providerConfiguration else {
             YGLog("startTunnel no providerConfiguration")
             throw TunnelError.noStartModel
@@ -109,7 +120,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
 
         // App-driven path waits for the dat sync + start_xray signal.
         // On-demand path skips the wait and uses whatever is already in dat/.
-        if options != nil {
+        if startedByApp {
             YGLog("startTunnel awaiting start_xray signal")
             try await waitStartSignal(timeout: 30)
         } else {

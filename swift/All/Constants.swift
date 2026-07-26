@@ -6,7 +6,11 @@ public let TunMtu: NSNumber = 1500
 public let StartModelFile = "run/start.json"
 
 public enum Constants {
-    public static var useSystemExtension = false
+    #if SYSTEM_EXTENSION
+    public static let useSystemExtension = true
+    #else
+    public static let useSystemExtension = false
+    #endif
 }
 
 private let teamAppGroupId = "2CKAULFA9J.net.yuandev.onexray"

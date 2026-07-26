@@ -13,7 +13,8 @@ enum AppHostApiError: Error {
     case cgoFailed
 }
 
-class AppHostApi: BridgeHostApi {
+@MainActor
+final class AppHostApi: @preconcurrency BridgeHostApi {
     private let flutterApi: AppFlutterApi
     init(flutterApi: AppFlutterApi) {
         self.flutterApi = flutterApi
@@ -32,8 +33,8 @@ class AppHostApi: BridgeHostApi {
         Task {
             let installed = await VPNManager.shared.refreshVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
-            await flutterApi.refreshVpn(result: installed)
-            await flutterApi.vpnStatusChanged()
+            flutterApi.refreshVpn(result: installed)
+            flutterApi.vpnStatusChanged()
             completion(.success(commandSuccess(permission: permission)))
         }
     }
@@ -42,7 +43,7 @@ class AppHostApi: BridgeHostApi {
         Task {
             let installed = await VPNManager.shared.startVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
-            await flutterApi.refreshVpn(result: installed)
+            flutterApi.refreshVpn(result: installed)
             completion(.success(commandResult(installed, permission: permission)))
         }
     }
@@ -51,28 +52,31 @@ class AppHostApi: BridgeHostApi {
         Task {
             let installed = await VPNManager.shared.stopVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
-            await flutterApi.refreshVpn(result: installed)
+            flutterApi.refreshVpn(result: installed)
             completion(.success(commandResult(installed, permission: permission)))
         }
     }
     
     func invoke(requestJson: String, completion: @escaping (Result<String, any Error>) -> Void) {
         Task {
-            let res = requestJson.withCString { p in
-                let p0 = UnsafeMutablePointer(mutating: p)
-                return CGoInvoke(p0)
-            }
-            callResponse(res, completion: completion)
+            let result = await Task.detached(priority: .userInitiated) {
+                Self.invoke(requestJson)
+            }.value
+            completion(result)
         }
     }
 
-    private func callResponse(_ res: UnsafeMutablePointer<CChar>?, completion: @escaping (Result<String, any Error>) -> Void) {
+    private nonisolated static func invoke(_ requestJson: String) -> Result<String, any Error> {
+        let res = requestJson.withCString { p in
+            let p0 = UnsafeMutablePointer(mutating: p)
+            return CGoInvoke(p0)
+        }
         if let res = res {
             let text = String(cString: res)
             CGoFree(res)
-            completion(.success(text))
+            return .success(text)
         } else {
-            completion(.failure(AppHostApiError.cgoFailed))
+            return .failure(AppHostApiError.cgoFailed)
         }
     }
     
