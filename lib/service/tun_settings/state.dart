@@ -18,6 +18,7 @@ class TunSettingsState {
 
   var autoOutboundsInterface = autoOutboundsInterfaceAuto;
 
+  var excludeLocalNetworks = true;
   var onDemandEnabled = false;
   var disconnectOnSleep = false;
   var onDemandRules = <OnDemandRuleState>[];
@@ -54,6 +55,9 @@ class TunSettingsState {
       autoOutboundsInterface = tunJson.autoOutboundsInterface!;
     }
 
+    if (tunJson.excludeLocalNetworks != null) {
+      excludeLocalNetworks = tunJson.excludeLocalNetworks!;
+    }
     if (tunJson.onDemandEnabled != null) {
       onDemandEnabled = tunJson.onDemandEnabled!;
     }
@@ -95,6 +99,7 @@ class TunSettingsState {
 
     tunJson.autoOutboundsInterface = autoOutboundsInterface;
 
+    tunJson.excludeLocalNetworks = excludeLocalNetworks;
     tunJson.onDemandEnabled = onDemandEnabled;
     tunJson.disconnectOnSleep = disconnectOnSleep;
     tunJson.onDemandRules = onDemandRules.map((e) => e.tunJson).toList();

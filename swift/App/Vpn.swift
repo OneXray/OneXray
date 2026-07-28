@@ -65,6 +65,7 @@ class VPNManager {
         conf.serverAddress = serverAddress
 
         conf.username = serverAddress
+        conf.enforceRoutes = true
         conf.excludeLocalNetworks = true
 
         vpn.protocolConfiguration = conf
@@ -289,23 +290,27 @@ class VPNManager {
 
     private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async {
         vpn.isEnabled = true
-        if let request, let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
-            do {
-                var providerConfig = conf.providerConfiguration ?? [:]
-                let encodedRequest: Data
-                if Constants.useSystemExtension {
-                    let rewritten = rewriteRequestForExtension(request)
-                    encodedRequest = try JsonTool.encode(rewritten)
-                    if let xrayJson = readAndRewriteXrayJson() {
-                        providerConfig["xrayJson"] = xrayJson
+        if let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
+            conf.enforceRoutes = true
+            conf.excludeLocalNetworks = tun.excludeLocalNetworks ?? true
+            if let request {
+                do {
+                    var providerConfig = conf.providerConfiguration ?? [:]
+                    let encodedRequest: Data
+                    if Constants.useSystemExtension {
+                        let rewritten = rewriteRequestForExtension(request)
+                        encodedRequest = try JsonTool.encode(rewritten)
+                        if let xrayJson = readAndRewriteXrayJson() {
+                            providerConfig["xrayJson"] = xrayJson
+                        }
+                    } else {
+                        encodedRequest = try JsonTool.encode(request)
                     }
-                } else {
-                    encodedRequest = try JsonTool.encode(request)
+                    providerConfig["request"] = encodedRequest
+                    conf.providerConfiguration = providerConfig
+                } catch {
+                    YGLog(error.localizedDescription)
                 }
-                providerConfig["request"] = encodedRequest
-                conf.providerConfiguration = providerConfig
-            } catch {
-                YGLog(error.localizedDescription)
             }
         }
         if let onDemandEnabled = tun.onDemandEnabled, onDemandEnabled {

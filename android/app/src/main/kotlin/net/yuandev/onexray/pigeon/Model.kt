@@ -29,6 +29,7 @@ data class TunJson(
     val metricsEnabled: Boolean?,
     val tunName: String?,
     val autoOutboundsInterface: String?,
+    val excludeLocalNetworks: Boolean?,
     val onDemandEnabled: Boolean?,
     val disconnectOnSleep: Boolean?,
     val onDemandRules: List<OnDemandRule>?,

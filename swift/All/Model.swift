@@ -67,6 +67,7 @@ struct TunJson: Codable {
     var metricsEnabled: Bool?
     var tunName: String?
     var autoOutboundsInterface: String?
+    var excludeLocalNetworks: Bool?
     var onDemandEnabled: Bool?
     var disconnectOnSleep: Bool?
     var onDemandRules: [OnDemandRule]?

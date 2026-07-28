@@ -17,6 +17,7 @@ void main() {
       'auto',
       true,
       true,
+      true,
       [
         OnDemandRule('connect', 'wifi', ['test']),
       ],
@@ -41,6 +42,7 @@ void main() {
       'metricsEnabled',
       'tunName',
       'autoOutboundsInterface',
+      'excludeLocalNetworks',
       'onDemandEnabled',
       'disconnectOnSleep',
       'onDemandRules',
