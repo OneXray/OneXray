@@ -1,4 +1,5 @@
 import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
 enum LaunchDestination { privacy, firstRun, home }
@@ -8,6 +9,9 @@ class LaunchBootstrapService {
     await _initTheme();
     final privacyAccepted = await PreferencesKey().readPrivacyAccepted();
     if (!privacyAccepted) {
+      final appStartup = AppStartupService();
+      appStartup.suppressConnectOnAppLaunch();
+      await appStartup.showMainWindow();
       return LaunchDestination.privacy;
     }
     return resolveAcceptedDestination();
@@ -17,6 +21,9 @@ class LaunchBootstrapService {
     await _initState();
     final firstRun = await PreferencesKey().readFirstRun();
     if (firstRun) {
+      final appStartup = AppStartupService();
+      appStartup.suppressConnectOnAppLaunch();
+      await appStartup.showMainWindow();
       return LaunchDestination.firstRun;
     }
     return LaunchDestination.home;

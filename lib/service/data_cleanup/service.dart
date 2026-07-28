@@ -6,6 +6,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/gen/assets.gen.dart';
+import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 import 'package:onexray/service/vpn/service.dart';
@@ -63,6 +64,9 @@ final class AppDataCleanupService {
     try {
       if (!await _stopVpnIfNeeded()) {
         return false;
+      }
+      if (clearUserDataPreferences) {
+        await AppStartupService().unregisterForDataCleanup();
       }
       await _clearPreferences(
         targetXrayProfileId: targetXrayProfileId,

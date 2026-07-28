@@ -36,16 +36,17 @@ class SettingsContent extends StatelessWidget {
           return SettingsOverviewView(
             state: state,
             showAppIcon: AppPlatform.isIOS,
-            showToolbox: AppPlatform.isMacOS,
             showReview: AppPlatform.isMobile || AppPlatform.isMacOS,
+            showDesktopSettings: AppPlatform.isDesktop,
             onAutoUpdate: () => controller.gotoAutoUpdate(context),
             onCheckUpdate: () => controller.checkUpdate(context),
             onClearData: () => controller.clearData(context),
             onBackup: () => controller.gotoBackup(context),
             onAppIcon: () => controller.gotoAppIcon(context),
-            onToolbox: () => controller.gotoToolbox(context),
             onTheme: () => controller.gotoTheme(context),
             onLanguage: () => controller.gotoLanguage(context),
+            onConnectOnAppLaunchChanged: controller.updateConnectOnAppLaunch,
+            onDesktopSettings: () => controller.gotoDesktopSettings(context),
             onDocumentation: () => controller.openDoc(context),
             onReview: () => controller.gotoReview(context),
             onTelegram: () => controller.openTelegram(context),
@@ -63,16 +64,17 @@ class SettingsContent extends StatelessWidget {
 class SettingsOverviewView extends StatelessWidget {
   final SettingsPageState state;
   final bool showAppIcon;
-  final bool showToolbox;
   final bool showReview;
+  final bool showDesktopSettings;
   final VoidCallback onAutoUpdate;
   final VoidCallback onCheckUpdate;
   final VoidCallback onClearData;
   final VoidCallback onBackup;
   final VoidCallback onAppIcon;
-  final VoidCallback onToolbox;
   final VoidCallback onTheme;
   final VoidCallback onLanguage;
+  final ValueChanged<bool> onConnectOnAppLaunchChanged;
+  final VoidCallback onDesktopSettings;
   final VoidCallback onDocumentation;
   final VoidCallback onReview;
   final VoidCallback onTelegram;
@@ -85,16 +87,17 @@ class SettingsOverviewView extends StatelessWidget {
     super.key,
     required this.state,
     required this.showAppIcon,
-    required this.showToolbox,
     required this.showReview,
+    required this.showDesktopSettings,
     required this.onAutoUpdate,
     required this.onCheckUpdate,
     required this.onClearData,
     required this.onBackup,
     required this.onAppIcon,
-    required this.onToolbox,
     required this.onTheme,
     required this.onLanguage,
+    required this.onConnectOnAppLaunchChanged,
+    required this.onDesktopSettings,
     required this.onDocumentation,
     required this.onReview,
     required this.onTelegram,
@@ -199,6 +202,22 @@ class SettingsOverviewView extends StatelessWidget {
     return SettingSection(
       title: l10n.settingsPageSectionApp,
       children: [
+        SwitchSettingRow(
+          title: l10n.settingsPageConnectOnLaunch,
+          subtitle: l10n.settingsPageConnectOnLaunchDescription,
+          leading: const Icon(LucideIcons.power),
+          value: state.connectOnAppLaunch,
+          onChanged: state.loadingConnectOnAppLaunch
+              ? null
+              : onConnectOnAppLaunchChanged,
+        ),
+        if (showDesktopSettings)
+          NavigationSettingRow(
+            title: l10n.settingsPageDesktop,
+            subtitle: l10n.settingsPageDesktopDescription,
+            leading: const Icon(LucideIcons.monitorCog),
+            onTap: onDesktopSettings,
+          ),
         NavigationSettingRow(
           title: l10n.backupPageTitle,
           subtitle: l10n.settingsPageBackupDescription,
@@ -211,13 +230,6 @@ class SettingsOverviewView extends StatelessWidget {
             subtitle: l10n.settingsPageAppIconDescription,
             leading: const Icon(LucideIcons.sparkles),
             onTap: onAppIcon,
-          ),
-        if (showToolbox)
-          NavigationSettingRow(
-            title: l10n.toolboxPageTitle,
-            subtitle: l10n.settingsPageToolboxDescription,
-            leading: const Icon(LucideIcons.monitorCog),
-            onTap: onToolbox,
           ),
         NavigationSettingRow(
           title: l10n.themePageTitle,

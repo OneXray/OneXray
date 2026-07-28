@@ -4,11 +4,6 @@ import FlutterMacOS
 @main
 @MainActor
 class AppDelegate: FlutterAppDelegate {
-    override func applicationWillFinishLaunching(_ notification: Notification) {
-        initApp()
-        super.applicationWillFinishLaunching(notification)
-    }
-
     override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
     }

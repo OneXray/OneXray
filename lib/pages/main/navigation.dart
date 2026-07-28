@@ -70,9 +70,9 @@ enum AppSecondaryDestination {
   logFile("log-file"),
   configFileViewer("config-file-viewer"),
   autoUpdate("auto-update"),
+  desktopSettings("desktop-settings"),
   backup("backup"),
   appIcon("app-icon"),
-  toolbox("toolbox"),
   theme("theme"),
   language("language"),
   support("support");

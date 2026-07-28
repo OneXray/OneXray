@@ -15,12 +15,6 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
-		EB9A10022FE6000000000002 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10012FE6000000000001 /* IconBlue.icon */; };
-		EB9A10082FE6000000000008 /* IconBlack.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10072FE6000000000007 /* IconBlack.icon */; };
-		EB9A100A2FE60000000000A /* IconGreen.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10092FE6000000000009 /* IconGreen.icon */; };
-		EB9A100C2FE60000000000C /* IconOrange.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100B2FE60000000000B /* IconOrange.icon */; };
-		EB9A100E2FE60000000000E /* IconPurple.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100D2FE60000000000D /* IconPurple.icon */; };
-		EB9A10102FE600000000010 /* IconRed.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100F2FE60000000000F /* IconRed.icon */; };
 		EB68C6FB2F94D127007C293A /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6F92F94D127007C293A /* PacketTunnelProvider.swift */; };
 		EB68C7042F94D150007C293A /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6FD2F94D150007C293A /* Constants.swift */; };
 		EB68C7052F94D150007C293A /* Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7012F94D150007C293A /* Tools.swift */; };
@@ -40,6 +34,12 @@
 		EB8B840F2C0751410096E1FF /* tunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EB8B84042C0751410096E1FF /* tunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EB8B84372C0755150096E1FF /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = EB8B84362C07550A0096E1FF /* libresolv.tbd */; };
 		EB8B84382C07551D0096E1FF /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = EB8B84362C07550A0096E1FF /* libresolv.tbd */; };
+		EB9A10022FE6000000000002 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10012FE6000000000001 /* IconBlue.icon */; };
+		EB9A10082FE6000000000008 /* IconBlack.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10072FE6000000000007 /* IconBlack.icon */; };
+		EB9A100A2FE60000000000A /* IconGreen.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10092FE6000000000009 /* IconGreen.icon */; };
+		EB9A100C2FE60000000000C /* IconOrange.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100B2FE60000000000B /* IconOrange.icon */; };
+		EB9A100E2FE60000000000E /* IconPurple.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100D2FE60000000000D /* IconPurple.icon */; };
+		EB9A10102FE600000000010 /* IconRed.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A100F2FE60000000000F /* IconRed.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,12 +92,6 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		EB9A10012FE6000000000001 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
-		EB9A10072FE6000000000007 /* IconBlack.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlack.icon; path = ../swift/App/AppIcon/IconBlack.icon; sourceTree = SOURCE_ROOT; };
-		EB9A10092FE6000000000009 /* IconGreen.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconGreen.icon; path = ../swift/App/AppIcon/IconGreen.icon; sourceTree = SOURCE_ROOT; };
-		EB9A100B2FE60000000000B /* IconOrange.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconOrange.icon; path = ../swift/App/AppIcon/IconOrange.icon; sourceTree = SOURCE_ROOT; };
-		EB9A100D2FE60000000000D /* IconPurple.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconPurple.icon; path = ../swift/App/AppIcon/IconPurple.icon; sourceTree = SOURCE_ROOT; };
-		EB9A100F2FE60000000000F /* IconRed.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconRed.icon; path = ../swift/App/AppIcon/IconRed.icon; sourceTree = SOURCE_ROOT; };
 		EB210DFE2DE8692A00D76E7A /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Main.strings; sourceTree = "<group>"; };
 		EB210DFF2DE8692A00D76E7A /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 		EB390D812EC84AF400B741BA /* fa */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fa; path = fa.lproj/Main.strings; sourceTree = "<group>"; };
@@ -124,6 +118,12 @@
 		EB9154232D8EBE8800BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
 		EB957AFE2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Main.strings"; sourceTree = "<group>"; };
 		EB957AFF2FE43D6400DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/LaunchScreen.strings"; sourceTree = "<group>"; };
+		EB9A10012FE6000000000001 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
+		EB9A10072FE6000000000007 /* IconBlack.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlack.icon; path = ../swift/App/AppIcon/IconBlack.icon; sourceTree = SOURCE_ROOT; };
+		EB9A10092FE6000000000009 /* IconGreen.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconGreen.icon; path = ../swift/App/AppIcon/IconGreen.icon; sourceTree = SOURCE_ROOT; };
+		EB9A100B2FE60000000000B /* IconOrange.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconOrange.icon; path = ../swift/App/AppIcon/IconOrange.icon; sourceTree = SOURCE_ROOT; };
+		EB9A100D2FE60000000000D /* IconPurple.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconPurple.icon; path = ../swift/App/AppIcon/IconPurple.icon; sourceTree = SOURCE_ROOT; };
+		EB9A100F2FE60000000000F /* IconRed.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconRed.icon; path = ../swift/App/AppIcon/IconRed.icon; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -814,7 +814,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = tunnel/tunnel.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = "";
@@ -837,7 +837,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = OneXrayTuniOS;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = OneXrayiOSTun;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/../swift/all/BridgeHeader.h";

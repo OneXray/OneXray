@@ -230,6 +230,26 @@ class PreferencesKey {
     await _prefs.setBool(_hideDockIcon, value);
   }
 
+  static const _desktopStartHidden = "desktopStartHidden";
+
+  Future<bool> readDesktopStartHidden() async {
+    return await _prefs.getBool(_desktopStartHidden) ?? false;
+  }
+
+  Future<void> saveDesktopStartHidden(bool value) async {
+    await _prefs.setBool(_desktopStartHidden, value);
+  }
+
+  static const _connectOnAppLaunch = "connectOnAppLaunch";
+
+  Future<bool> readConnectOnAppLaunch() async {
+    return await _prefs.getBool(_connectOnAppLaunch) ?? false;
+  }
+
+  Future<void> saveConnectOnAppLaunch(bool value) async {
+    await _prefs.setBool(_connectOnAppLaunch, value);
+  }
+
   static const _autoUpdate = "autoUpdate";
 
   Future<Map<String, dynamic>?> readAutoUpdate() async {
@@ -276,6 +296,8 @@ class PreferencesKey {
       _prefs.remove(_pingState),
       _prefs.remove(_autoUpdate),
       _prefs.remove(_xrayProfileId),
+      _prefs.remove(_desktopStartHidden),
+      _prefs.remove(_connectOnAppLaunch),
     ]);
   }
 }

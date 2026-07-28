@@ -15,8 +15,8 @@
 | Платформа | Требования | Загрузка |
 | --- | --- | --- |
 | iOS | iOS 15.0 и выше, arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773), [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS (Mac App Store) | macOS 12.0 и выше, Apple silicon или Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
-| macOS (вне App Store) | macOS 12.0 и выше, Apple silicon или Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| macOS (Mac App Store) | macOS 13.0 и выше, Apple silicon или Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
+| macOS (вне App Store) | macOS 13.0 и выше, Apple silicon или Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 и выше, arm64-v8a или x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
 | Windows x86_64 | Windows 10 или Windows 11 | winget: `winget install --id YuanDevLLC.OneXray -e`, [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
 | Windows ARM64 | Windows 11 | winget: `winget install --id YuanDevLLC.OneXray -e`, [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |

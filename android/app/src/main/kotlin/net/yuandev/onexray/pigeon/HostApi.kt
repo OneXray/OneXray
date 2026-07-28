@@ -212,6 +212,35 @@ class AppHostApi(
         callback(Result.success(false))
     }
 
+    override fun queryLaunchAtLogin(callback: (Result<NativeLaunchAtLoginResult>) -> Unit) {
+        callback(
+            Result.success(
+                NativeLaunchAtLoginResult(
+                    NativeLaunchAtLoginState.UNAVAILABLE,
+                    null,
+                )
+            )
+        )
+    }
+
+    override fun setLaunchAtLogin(
+        enabled: Boolean,
+        callback: (Result<NativeLaunchAtLoginResult>) -> Unit,
+    ) {
+        callback(
+            Result.success(
+                NativeLaunchAtLoginResult(
+                    NativeLaunchAtLoginState.UNAVAILABLE,
+                    null,
+                )
+            )
+        )
+    }
+
+    override fun openLaunchAtLoginSettings(callback: (Result<Boolean>) -> Unit) {
+        callback(Result.success(false))
+    }
+
     //ios
     override fun setAppIcon(appIcon: String, callback: (Result<Boolean>) -> Unit) {
         callback(Result.success(true))

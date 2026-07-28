@@ -24,7 +24,6 @@
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
-		EB9A10042FE6000000000004 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10032FE6000000000003 /* IconBlue.icon */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		EB68C72D2F95200E007C293A /* Messages.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7212F95200E007C293A /* Messages.g.swift */; };
 		EB68C72E2F95200E007C293A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7272F95200E007C293A /* AppDelegate.swift */; };
@@ -33,7 +32,8 @@
 		EB68C7312F95200E007C293A /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7292F95200E007C293A /* SystemExtensionManager.swift */; };
 		EB68C7322F95200E007C293A /* Vpn.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7232F95200E007C293A /* Vpn.swift */; };
 		EB68C7332F95200E007C293A /* HostApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7202F95200E007C293A /* HostApi.swift */; };
-		EB74717B2F9648F50001CF81 /* AppStart.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7471792F9648F50001CF81 /* AppStart.swift */; };
+		EB9A10042FE6000000000004 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10032FE6000000000003 /* IconBlue.icon */; };
+		EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD100012FE7000000000001 /* LaunchAtLogin.swift */; };
 		EBE36B3B2F9683C900686880 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B392F9683C900686880 /* PacketTunnelProvider.swift */; };
 		EBE36B442F9683E000686880 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B3F2F9683E000686880 /* Logger.swift */; };
 		EBE36B452F9683E000686880 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B3D2F9683E000686880 /* Constants.swift */; };
@@ -99,7 +99,6 @@
 		33CC10F22044A3C60003C045 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Runner/Assets.xcassets; sourceTree = "<group>"; };
 		33CC10F52044A3C60003C045 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		33CC10F72044A3C60003C045 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Runner/Info.plist; sourceTree = "<group>"; };
-		EB9A10032FE6000000000003 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
 		33CEB47222A05771004F2AC0 /* Flutter-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Debug.xcconfig"; sourceTree = "<group>"; };
 		33CEB47422A05771004F2AC0 /* Flutter-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Release.xcconfig"; sourceTree = "<group>"; };
 		33CEB47722A0578A004F2AC0 /* Flutter-Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Flutter-Generated.xcconfig"; path = "ephemeral/Flutter-Generated.xcconfig"; sourceTree = "<group>"; };
@@ -118,9 +117,10 @@
 		EB68C7272F95200E007C293A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		EB68C7282F95200E007C293A /* MainFlutterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFlutterWindow.swift; sourceTree = "<group>"; };
 		EB68C7292F95200E007C293A /* SystemExtensionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemExtensionManager.swift; sourceTree = "<group>"; };
-		EB7471792F9648F50001CF81 /* AppStart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStart.swift; sourceTree = "<group>"; };
 		EB9154212D8EBE7600BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/MainMenu.strings"; sourceTree = "<group>"; };
 		EB957B002FE43D8A00DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/MainMenu.strings"; sourceTree = "<group>"; };
+		EB9A10032FE6000000000003 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
+		EBD100012FE7000000000001 /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
 		EBE36B392F9683C900686880 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
 		EBE36B3C2F9683E000686880 /* BridgeHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeHeader.h; sourceTree = "<group>"; };
 		EBE36B3D2F9683E000686880 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -219,7 +219,6 @@
 		33FAB671232836740065AC1E /* Runner */ = {
 			isa = PBXGroup;
 			children = (
-				EB74717A2F9648F50001CF81 /* macOSStore */,
 				EB68C7242F95200E007C293A /* App */,
 				EB68C72A2F95200E007C293A /* macOS */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
@@ -263,20 +262,12 @@
 			isa = PBXGroup;
 			children = (
 				EB68C7272F95200E007C293A /* AppDelegate.swift */,
+				EBD100012FE7000000000001 /* LaunchAtLogin.swift */,
 				EB68C7282F95200E007C293A /* MainFlutterWindow.swift */,
 				EB68C7292F95200E007C293A /* SystemExtensionManager.swift */,
 			);
 			name = macOS;
 			path = ../swift/macOS;
-			sourceTree = SOURCE_ROOT;
-		};
-		EB74717A2F9648F50001CF81 /* macOSStore */ = {
-			isa = PBXGroup;
-			children = (
-				EB7471792F9648F50001CF81 /* AppStart.swift */,
-			);
-			name = macOSStore;
-			path = ../swift/macOSStore;
 			sourceTree = SOURCE_ROOT;
 		};
 		EBE36B3A2F9683C900686880 /* Tunnel */ = {
@@ -481,7 +472,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				EB68C72D2F95200E007C293A /* Messages.g.swift in Sources */,
-				EB74717B2F9648F50001CF81 /* AppStart.swift in Sources */,
 				EBE36B4A2F9683E000686880 /* Logger.swift in Sources */,
 				EBE36B4B2F9683E000686880 /* Constants.swift in Sources */,
 				EBE36B4C2F9683E000686880 /* Model.swift in Sources */,
@@ -492,6 +482,7 @@
 				EB68C7312F95200E007C293A /* SystemExtensionManager.swift in Sources */,
 				EB68C7322F95200E007C293A /* Vpn.swift in Sources */,
 				EB68C7332F95200E007C293A /* HostApi.swift in Sources */,
+				EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -583,7 +574,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -612,7 +603,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
@@ -678,7 +669,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -732,7 +723,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -762,7 +753,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
@@ -792,7 +783,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray;
 				PROVISIONING_PROFILE_SPECIFIER = OneXraymacOS;
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraymacOS;
@@ -848,7 +839,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 26.7.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -879,7 +870,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_ENTITLEMENTS = tunnel/tunnel.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Distribution";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "3rd Party Mac Developer Application";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_TEAM = 2CKAULFA9J;
@@ -898,15 +889,15 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 26.7.3;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";
 				OTHER_MODULE_VERIFIER_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.tun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = OneXrayTunmacOS;
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXrayTunmacOS;
+				PROVISIONING_PROFILE_SPECIFIER = OneXraymacOSTun;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraymacOSTun;
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -945,7 +936,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 26.7.3;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";

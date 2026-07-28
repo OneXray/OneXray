@@ -24,7 +24,6 @@
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
-		EB9A10062FE6000000000006 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10052FE6000000000005 /* IconBlue.icon */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		EB68C6F22F94D08D007C293A /* SystemExtensionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6EC2F94D08D007C293A /* SystemExtensionManager.swift */; };
 		EB68C6F32F94D08D007C293A /* Vpn.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6E82F94D08D007C293A /* Vpn.swift */; };
@@ -33,11 +32,12 @@
 		EB68C6F62F94D08D007C293A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6EA2F94D08D007C293A /* AppDelegate.swift */; };
 		EB68C6F72F94D08D007C293A /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6EB2F94D08D007C293A /* MainFlutterWindow.swift */; };
 		EB68C6F82F94D08D007C293A /* HostApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6E42F94D08D007C293A /* HostApi.swift */; };
-		EB68C71C2F9514BF007C293A /* AppStart.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C71B2F9514B8007C293A /* AppStart.swift */; };
 		EB7E983A2F93C204002151DD /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EBEAD85A2B95749600A8D27B /* NetworkExtension.framework */; };
 		EB7E98442F93C204002151DD /* net.yuandev.onexray.se.tun.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = EB7E98392F93C204002151DD /* net.yuandev.onexray.se.tun.systemextension */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EB7E984F2F93C268002151DD /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7E984C2F93C268002151DD /* main.swift */; };
+		EB9A10062FE6000000000006 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10052FE6000000000005 /* IconBlue.icon */; };
 		EBB9CF7E2F93C6CE00466352 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = EBEAD8882B9578E000A8D27B /* libresolv.tbd */; };
+		EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD100012FE7000000000001 /* LaunchAtLogin.swift */; };
 		EBE36B562F9684A700686880 /* LibXray.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EBE36B502F9684A700686880 /* LibXray.xcframework */; };
 		EBE36B572F9684A700686880 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B522F9684A700686880 /* Model.swift */; };
 		EBE36B582F9684A700686880 /* Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B532F9684A700686880 /* Tools.swift */; };
@@ -100,7 +100,6 @@
 		33CC10F22044A3C60003C045 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Runner/Assets.xcassets; sourceTree = "<group>"; };
 		33CC10F52044A3C60003C045 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		33CC10F72044A3C60003C045 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Runner/Info.plist; sourceTree = "<group>"; };
-		EB9A10052FE6000000000005 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
 		33CEB47222A05771004F2AC0 /* Flutter-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Debug.xcconfig"; sourceTree = "<group>"; };
 		33CEB47422A05771004F2AC0 /* Flutter-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Release.xcconfig"; sourceTree = "<group>"; };
 		33CEB47722A0578A004F2AC0 /* Flutter-Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Flutter-Generated.xcconfig"; path = "ephemeral/Flutter-Generated.xcconfig"; sourceTree = "<group>"; };
@@ -119,13 +118,14 @@
 		EB68C6EA2F94D08D007C293A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		EB68C6EB2F94D08D007C293A /* MainFlutterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFlutterWindow.swift; sourceTree = "<group>"; };
 		EB68C6EC2F94D08D007C293A /* SystemExtensionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemExtensionManager.swift; sourceTree = "<group>"; };
-		EB68C71B2F9514B8007C293A /* AppStart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStart.swift; sourceTree = "<group>"; };
 		EB7E98392F93C204002151DD /* net.yuandev.onexray.se.tun.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = net.yuandev.onexray.se.tun.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB7E984B2F93C268002151DD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		EB7E984C2F93C268002151DD /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		EB7E984D2F93C268002151DD /* tunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = tunnel.entitlements; sourceTree = "<group>"; };
 		EB9154212D8EBE7600BFED8B /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/MainMenu.strings"; sourceTree = "<group>"; };
 		EB957B012FE43DA200DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/MainMenu.strings"; sourceTree = "<group>"; };
+		EB9A10052FE6000000000005 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
+		EBD100012FE7000000000001 /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
 		EBE36B4E2F9684A700686880 /* BridgeHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeHeader.h; sourceTree = "<group>"; };
 		EBE36B4F2F9684A700686880 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		EBE36B502F9684A700686880 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
@@ -223,7 +223,6 @@
 			children = (
 				EB68C6E92F94D08D007C293A /* App */,
 				EB68C6ED2F94D08D007C293A /* macOS */,
-				EB68C6EF2F94D08D007C293A /* macOSSE */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -265,20 +264,12 @@
 			isa = PBXGroup;
 			children = (
 				EB68C6EA2F94D08D007C293A /* AppDelegate.swift */,
+				EBD100012FE7000000000001 /* LaunchAtLogin.swift */,
 				EB68C6EB2F94D08D007C293A /* MainFlutterWindow.swift */,
 				EB68C6EC2F94D08D007C293A /* SystemExtensionManager.swift */,
 			);
 			name = macOS;
 			path = ../swift/macOS;
-			sourceTree = SOURCE_ROOT;
-		};
-		EB68C6EF2F94D08D007C293A /* macOSSE */ = {
-			isa = PBXGroup;
-			children = (
-				EB68C71B2F9514B8007C293A /* AppStart.swift */,
-			);
-			name = macOSSE;
-			path = ../swift/macOSSE;
 			sourceTree = SOURCE_ROOT;
 		};
 		EB7E984E2F93C268002151DD /* tunnel */ = {
@@ -488,7 +479,6 @@
 				EBE36B582F9684A700686880 /* Tools.swift in Sources */,
 				EBE36B592F9684A700686880 /* Constants.swift in Sources */,
 				EBE36B5A2F9684A700686880 /* Logger.swift in Sources */,
-				EB68C71C2F9514BF007C293A /* AppStart.swift in Sources */,
 				EB68C6F22F94D08D007C293A /* SystemExtensionManager.swift in Sources */,
 				EB68C6F32F94D08D007C293A /* Vpn.swift in Sources */,
 				EB68C6F42F94D08D007C293A /* FlutterApi.swift in Sources */,
@@ -496,6 +486,7 @@
 				EB68C6F62F94D08D007C293A /* AppDelegate.swift in Sources */,
 				EB68C6F72F94D08D007C293A /* MainFlutterWindow.swift in Sources */,
 				EB68C6F82F94D08D007C293A /* HostApi.swift in Sources */,
+				EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -588,7 +579,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -620,7 +611,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.se;
 				PROVISIONING_PROFILE_SPECIFIER = OneXraySEmacOS;
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySEmacOS;
@@ -687,7 +678,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -741,13 +732,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "SYSTEM_EXTENSION $(inherited)";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "SYSTEM_EXTENSION $(inherited)";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
@@ -774,7 +765,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.se;
 				PROVISIONING_PROFILE_SPECIFIER = OneXraySEmacOS;
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySEmacOS;
@@ -806,7 +797,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.se;
 				PROVISIONING_PROFILE_SPECIFIER = OneXraySEmacOS;
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySEmacOS;
@@ -877,7 +868,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 26.7.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -885,8 +876,8 @@
 				OTHER_MODULE_VERIFIER_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.se.tun;
 				PRODUCT_NAME = "$(inherited)";
-				PROVISIONING_PROFILE_SPECIFIER = OneXraySETunmacOS;
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySETunmacOS;
+				PROVISIONING_PROFILE_SPECIFIER = OneXraySEmacOSTun;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySEmacOSTun;
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -945,15 +936,15 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 26.7.3;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";
 				OTHER_MODULE_VERIFIER_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.se.tun;
 				PRODUCT_NAME = "$(inherited)";
-				PROVISIONING_PROFILE_SPECIFIER = OneXraySETunmacOS;
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySETunmacOS;
+				PROVISIONING_PROFILE_SPECIFIER = OneXraySEmacOSTun;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySEmacOSTun;
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1010,15 +1001,15 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 26.7.3;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";
 				OTHER_MODULE_VERIFIER_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = net.yuandev.onexray.se.tun;
 				PRODUCT_NAME = "$(inherited)";
-				PROVISIONING_PROFILE_SPECIFIER = OneXraySETunmacOS;
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySETunmacOS;
+				PROVISIONING_PROFILE_SPECIFIER = OneXraySEmacOSTun;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = OneXraySEmacOSTun;
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

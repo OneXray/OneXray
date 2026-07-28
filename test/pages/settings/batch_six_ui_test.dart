@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/first_run/controller.dart';
 import 'package:onexray/pages/launch/first_run/page.dart';
 import 'package:onexray/pages/launch/privacy/page.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
+import 'package:onexray/pages/settings/desktop/controller.dart';
+import 'package:onexray/pages/settings/desktop/page.dart';
 import 'package:onexray/pages/settings/main/controller.dart';
 import 'package:onexray/pages/settings/main/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
@@ -30,24 +33,27 @@ void main() {
     );
   }
 
-  SettingsOverviewView settingsView() {
+  SettingsOverviewView settingsView({bool showDesktopSettings = false}) {
     void noop() {}
     return SettingsOverviewView(
       state: const SettingsPageState(
         appVersion: '26.7.3+412',
         xrayVersion: '26.7.11',
+        connectOnAppLaunch: true,
+        loadingConnectOnAppLaunch: false,
       ),
       showAppIcon: true,
-      showToolbox: true,
       showReview: true,
+      showDesktopSettings: showDesktopSettings,
       onAutoUpdate: noop,
       onCheckUpdate: noop,
       onClearData: noop,
       onBackup: noop,
       onAppIcon: noop,
-      onToolbox: noop,
       onTheme: noop,
       onLanguage: noop,
+      onConnectOnAppLaunchChanged: (_) {},
+      onDesktopSettings: noop,
       onDocumentation: noop,
       onReview: noop,
       onTelegram: noop,
@@ -75,6 +81,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings exposes connect on app launch on mobile', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(app(settingsView()));
+    await tester.pump();
+
+    expect(find.text('Connect on App Launch'), findsOneWidget);
+    expect(find.byType(ShadSwitch), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('settings uses two columns on desktop', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -91,6 +111,85 @@ void main() {
     expect(support.dx, closeTo(version.dx, 1));
     expect(appSettings.dy, greaterThan(data.dy));
     expect(support.dy, greaterThan(version.dy));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop settings merge startup and macOS options', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    void noop() {}
+    await tester.pumpWidget(
+      app(
+        DesktopSettingsView(
+          state: const DesktopSettingsPageState(
+            launchAtLogin: LaunchAtLoginStatus.enabled(),
+            startHidden: true,
+            hideDockIcon: true,
+            loading: false,
+          ),
+          showMacOSOptions: true,
+          onLaunchAtLoginChanged: (_) {},
+          onStartHiddenChanged: (_) {},
+          onHideDockIconChanged: (_) {},
+          onOpenSystemSettings: noop,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Launch at Login'), findsOneWidget);
+    expect(find.text('Start Hidden'), findsOneWidget);
+    expect(find.text('Connect on App Launch'), findsNothing);
+    expect(find.text('Hide icon in Dock'), findsOneWidget);
+    expect(find.byType(ShadSwitch), findsNWidgets(3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop window behavior does not depend on login registration', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      app(
+        DesktopSettingsView(
+          state: const DesktopSettingsPageState(
+            launchAtLogin: LaunchAtLoginStatus.unavailable(),
+            loading: false,
+          ),
+          showMacOSOptions: false,
+          onLaunchAtLoginChanged: (_) {},
+          onStartHiddenChanged: (_) {},
+          onHideDockIconChanged: (_) {},
+          onOpenSystemSettings: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final switches = tester.widgetList<ShadSwitch>(find.byType(ShadSwitch));
+    expect(switches.map((item) => item.enabled), [false, true]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings shows one desktop settings navigation row', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(app(settingsView(showDesktopSettings: true)));
+    await tester.pump();
+
+    expect(find.text('Desktop'), findsOneWidget);
+    expect(find.text('Toolbox'), findsNothing);
+    expect(find.text('Start Hidden'), findsNothing);
+    expect(find.text('Connect on App Launch'), findsOneWidget);
+    expect(find.byType(ShadSwitch), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

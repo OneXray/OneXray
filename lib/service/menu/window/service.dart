@@ -24,6 +24,21 @@ final class WindowService with WindowListener {
     await windowManager.setSkipTaskbar(hideDockIcon);
   }
 
+  Future<void> showAndFocus() async {
+    if (!AppPlatform.isDesktop) {
+      return;
+    }
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
+  Future<void> hide() async {
+    if (!AppPlatform.isDesktop) {
+      return;
+    }
+    await windowManager.hide();
+  }
+
   void dispose() {
     if (!AppPlatform.isDesktop || !_initialized) {
       return;

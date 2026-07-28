@@ -16,7 +16,7 @@ platform :ios do
 
     [
       ['net.yuandev.onexray', 'OneXrayiOS'],
-      ['net.yuandev.onexray.tun', 'OneXrayTuniOS']
+      ['net.yuandev.onexray.tun', 'OneXrayiOSTun']
     ].each do |app_identifier, provisioning_name|
       get_provisioning_profile(
         api_key: api_key,
@@ -40,7 +40,7 @@ platform :ios do
           method: 'app-store-connect',
           provisioningProfiles: {
             'net.yuandev.onexray' => 'OneXrayiOS',
-            'net.yuandev.onexray.tun' => 'OneXrayTuniOS'
+            'net.yuandev.onexray.tun' => 'OneXrayiOSTun'
           }
         })
     upload_to_testflight(

@@ -24,7 +24,7 @@ platform :mac do
 
     [
       ['net.yuandev.onexray.se', 'OneXraySEmacOS'],
-      ['net.yuandev.onexray.se.tun', 'OneXraySETunmacOS']
+      ['net.yuandev.onexray.se.tun', 'OneXraySEmacOSTun']
     ].each do |app_identifier, provisioning_name|
       get_provisioning_profile(
         api_key: api_key,
@@ -52,7 +52,7 @@ platform :mac do
         teamID: team_id,
         provisioningProfiles: {
           'net.yuandev.onexray.se' => 'OneXraySEmacOS',
-          'net.yuandev.onexray.se.tun' => 'OneXraySETunmacOS'
+          'net.yuandev.onexray.se.tun' => 'OneXraySEmacOSTun'
         }
       }
     )

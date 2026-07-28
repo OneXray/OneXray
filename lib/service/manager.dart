@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/background_task/service.dart';
+import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/menu/short_cut/service.dart';
 import 'package:onexray/service/menu/tray/service.dart';
 import 'package:onexray/service/menu/window/service.dart';
@@ -47,6 +48,10 @@ abstract final class ServiceManager {
     }
     await _runInit("WindowService", () => WindowService().asyncInit());
     await _runInit("ToastService", () => ToastService().init());
+    await _runInit(
+      "AppStartupService",
+      () => AppStartupService().handleServicesReady(),
+    );
     _initialized = true;
   }
 

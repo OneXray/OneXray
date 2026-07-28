@@ -102,6 +102,43 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         completion(.success(Constants.useSystemExtension))
     }
 
+    func queryLaunchAtLogin(
+        completion: @escaping (Result<NativeLaunchAtLoginResult, any Error>) -> Void
+    ) {
+#if os(macOS)
+        completion(.success(LaunchAtLoginService.query()))
+#else
+        completion(.success(NativeLaunchAtLoginResult(
+            state: .unavailable,
+            message: nil
+        )))
+#endif
+    }
+
+    func setLaunchAtLogin(
+        enabled: Bool,
+        completion: @escaping (Result<NativeLaunchAtLoginResult, any Error>) -> Void
+    ) {
+#if os(macOS)
+        completion(.success(LaunchAtLoginService.setEnabled(enabled)))
+#else
+        completion(.success(NativeLaunchAtLoginResult(
+            state: .unavailable,
+            message: nil
+        )))
+#endif
+    }
+
+    func openLaunchAtLoginSettings(
+        completion: @escaping (Result<Bool, any Error>) -> Void
+    ) {
+#if os(macOS)
+        completion(.success(LaunchAtLoginService.openSettings()))
+#else
+        completion(.success(false))
+#endif
+    }
+
     /// iOS
     func setAppIcon(appIcon: String, completion: @escaping (Result<Bool, any Error>) -> Void) {
 #if os(iOS)
