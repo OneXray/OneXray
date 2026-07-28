@@ -89,23 +89,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_gen_runner: ^5.15.0
   ffigen: ^20.1.1
-  msix: ^3.18.0
 
 # re_editor only uses APIs that remain compatible with isolate_manager 6.x.
 dependency_overrides:
   isolate_manager: ^6.3.2
-
-msix_config:
-  display_name: OneXray
-  publisher_display_name: Yuan Dev LLC
-  identity_name: YuanDevLLC.OneXray
-  publisher: CN=3666BCB5-5482-46DD-9C19-D8A7290A39FD
-  logo_path: assets/logo.png
-  capabilities: allowElevation
-  languages: en-us
-  os_min_version: 10.0.17763.0
-  build_windows: false
-  store: true
 
 flutter_gen:
   output: lib/gen/

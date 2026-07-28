@@ -424,7 +424,7 @@ jobs:
           if-no-files-found: error
 
   # =================================================================
-  # Windows x64 and arm64 — fastforge .zip + .exe, plus Store .msix
+  # Windows x64 and arm64 — fastforge .zip + .exe
   #   x64 stays on Windows Server 2022; arm64 uses GitHub's native
   #   Windows 11 arm64 runner so Flutter, libXray, Xray-core, and Wintun
   #   all match the target architecture.
@@ -556,13 +556,6 @@ jobs:
           path: |
             output/OneXray-${{ matrix.package_suffix }}.zip
             output/OneXray-${{ matrix.package_suffix }}.exe
-          if-no-files-found: error
-
-      - name: Upload Microsoft Store artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: windows-store-${{ matrix.arch }}
-          path: output/OneXray-${{ matrix.package_suffix }}.msix
           if-no-files-found: error
 
   # =================================================================

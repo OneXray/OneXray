@@ -88,9 +88,7 @@ jobs:
           fi
 
           find artifacts -type f \
-            ! -path '*/release-metadata/*' \
-            ! -path '*/windows-store/*' \
-            ! -path '*/windows-store-*/*' | while IFS= read -r file; do
+            ! -path '*/release-metadata/*' | while IFS= read -r file; do
             asset="$(basename "$file")"
             echo "Deleting existing asset if present: $asset"
             gh release delete-asset "$RELEASE_TAG" "$asset" \
