@@ -8,6 +8,8 @@ import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/core/model/xray_standard.dart';
+import 'package:onexray/service/core_run_mode/state.dart';
+import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
 class InboundTunState {
@@ -218,18 +220,108 @@ class InboundPingState {
 
 class InboundsState {
   var tun = InboundTunState();
+  var additional = <AdditionalInboundState>[];
   final ping = InboundPingState();
 
   void removeWhitespace() {
     tun.removeWhitespace();
+    for (final inbound in additional) {
+      inbound.removeWhitespace();
+    }
   }
 
   void readFromXrayJson(XrayJson xrayJson) {
     tun.readFromXrayJson(xrayJson);
+    additional = <AdditionalInboundState>[];
+    for (final inbound in xrayJson.inbounds ?? const <XrayInbound>[]) {
+      if (inbound.tag == RoutingInboundTag.tunIn.name ||
+          inbound.tag == RoutingInboundTag.pingIn.name) {
+        continue;
+      }
+      final state = AdditionalInboundState.fromXrayInbound(inbound);
+      if (state != null) {
+        additional.add(state);
+      }
+    }
   }
 
   List<XrayInbound> get xrayJson {
-    return <XrayInbound>[tun.xrayJson, ping.xrayJson];
+    return <XrayInbound>[
+      tun.xrayJson,
+      ...additional.map((inbound) => inbound.xrayJson),
+      ping.xrayJson,
+    ];
+  }
+
+  List<XrayInbound> runtimeXrayJson(CoreRunMode mode) {
+    return switch (mode) {
+      CoreRunMode.tun => <XrayInbound>[
+        tun.xrayJson,
+        ...additional.map((inbound) => inbound.xrayJson),
+        ping.xrayJson,
+      ],
+      CoreRunMode.proxy => <XrayInbound>[ping.xrayJson],
+    };
+  }
+
+  Set<String> get additionalTags =>
+      additional.map((inbound) => inbound.tag).toSet();
+
+  Set<int> get additionalPorts => additional
+      .map((inbound) => int.tryParse(inbound.port))
+      .whereType<int>()
+      .toSet();
+
+  AdditionalInboundState createAdditional(AdditionalInboundType type) {
+    final state = switch (type) {
+      AdditionalInboundType.socks => InboundSocksState(),
+      AdditionalInboundType.http => InboundHttpState(),
+      AdditionalInboundType.dokodemoDoor => InboundDokodemoDoorState(),
+    };
+    state.tag = _nextTag(state.tag.replaceFirst(RegExp(r'\d+$'), ''));
+    state.port = _nextPort(int.parse(state.port)).toString();
+    return state;
+  }
+
+  String _nextTag(String prefix) {
+    final tags = additionalTags;
+    var index = 1;
+    while (tags.contains('$prefix$index')) {
+      index++;
+    }
+    return '$prefix$index';
+  }
+
+  int _nextPort(int start) {
+    final ports = additionalPorts;
+    var port = start;
+    while (ports.contains(port) && port < 65535) {
+      port++;
+    }
+    return port;
+  }
+
+  String? validate(Set<String> dnsInboundTags) {
+    final unavailableTags = <String>{
+      ...RoutingInboundTag.names,
+      ...dnsInboundTags,
+    };
+    final unavailablePorts = <int>{};
+    for (final inbound in additional) {
+      final error = inbound.validate(
+        unavailableTags: unavailableTags,
+        unavailablePorts: unavailablePorts,
+      );
+      if (error != null) {
+        return error;
+      }
+      unavailableTags.add(inbound.tag);
+      final port = int.tryParse(inbound.port);
+      if (port != null) {
+        unavailablePorts.add(port);
+      }
+    }
+    return null;
   }
 }
 
@@ -240,13 +332,18 @@ class XrayPorts {
 
   XrayPorts(this.pingPort, this.metricsPort, this.pingAuth);
 
-  static Future<XrayPorts?> getPorts() async {
+  static Future<XrayPorts?> getPorts({
+    Set<int> excludedPorts = const <int>{},
+  }) async {
     for (var i = 0; i < 5; i++) {
       final ports = await AppHostApi().getFreePorts(2);
-      if (ports.length == 2) {
+      final availablePorts = ports
+          .where((port) => !excludedPorts.contains(port))
+          .toList();
+      if (availablePorts.length == 2) {
         return XrayPorts(
-          "${ports[0]}",
-          "${ports[1]}",
+          "${availablePorts[0]}",
+          "${availablePorts[1]}",
           XrayInboundAccountFactory.random(),
         );
       }

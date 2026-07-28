@@ -7,6 +7,7 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
+import 'package:onexray/pages/core/xray/profile/inbound_additional/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_tun/params.dart';
 import 'package:onexray/pages/core/xray/profile/outbound_dns/params.dart';
@@ -27,6 +28,7 @@ import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/profile/dns_server_state.dart';
 import 'package:onexray/service/xray/profile/dns_state.dart';
+import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/fake_dns_state.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
@@ -186,6 +188,80 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
       AppSecondaryDestination.inboundPing,
       extra: params,
     );
+  }
+
+  Future<void> addAdditionalInbound(
+    BuildContext context,
+    AdditionalInboundType type,
+  ) async {
+    final inbound = _xrayProfileState.inbounds.createAdditional(type);
+    final edited = await _editAdditionalInbound(context, inbound);
+    if (edited != null) {
+      _xrayProfileState.inbounds.additional.add(edited);
+      _notifyChanged();
+    }
+  }
+
+  Future<void> editAdditionalInbound(BuildContext context, int index) async {
+    final current = _xrayProfileState.inbounds.additional[index];
+    final edited = await _editAdditionalInbound(
+      context,
+      current,
+      editingIndex: index,
+    );
+    if (edited == null) {
+      return;
+    }
+    if (edited.tag != current.tag) {
+      _xrayProfileState.routing.renameInboundTag(current.tag, edited.tag);
+    }
+    _xrayProfileState.inbounds.additional[index] = edited;
+    _notifyChanged();
+  }
+
+  Future<AdditionalInboundState?> _editAdditionalInbound(
+    BuildContext context,
+    AdditionalInboundState inbound, {
+    int? editingIndex,
+  }) {
+    final additional = _xrayProfileState.inbounds.additional;
+    final unavailableTags = <String>{
+      ...RoutingInboundTag.names,
+      ..._xrayProfileState.dns.inboundTags,
+    };
+    final unavailablePorts = <int>{};
+    for (var index = 0; index < additional.length; index++) {
+      if (index == editingIndex) {
+        continue;
+      }
+      unavailableTags.add(additional[index].tag);
+      final port = int.tryParse(additional[index].port);
+      if (port != null) {
+        unavailablePorts.add(port);
+      }
+    }
+    final params = AdditionalInboundParams(
+      inbound,
+      unavailableTags: unavailableTags,
+      unavailablePorts: unavailablePorts,
+    );
+    return context.pushScoped<AdditionalInboundState>(
+      AppSecondaryDestination.inboundAdditional,
+      extra: params,
+    );
+  }
+
+  void deleteAdditionalInbound(BuildContext context, int index) {
+    final inbound = _xrayProfileState.inbounds.additional[index];
+    if (_xrayProfileState.routing.referencesInboundTag(inbound.tag)) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.validationInboundInUse,
+      );
+      return;
+    }
+    _xrayProfileState.inbounds.additional.removeAt(index);
+    _notifyChanged();
   }
 
   Future<void> editFreedom(BuildContext context) async {
@@ -372,6 +448,7 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
   List<String> _routingInboundTags(DnsState dns) {
     return <String>{
       ...RoutingInboundTag.userVisibleNames,
+      ..._xrayProfileState.inbounds.additionalTags,
       ...dns.inboundTags,
     }.toList();
   }

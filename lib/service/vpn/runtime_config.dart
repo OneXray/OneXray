@@ -84,7 +84,9 @@ final class XrayRuntimeConfigService {
     await tunSettings.readFromPreferences();
     final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
 
-    final ports = await XrayPorts.getPorts();
+    final ports = await XrayPorts.getPorts(
+      excludedPorts: profile.inbounds.additionalPorts,
+    );
     if (ports == null) {
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnLocalPortFailed,

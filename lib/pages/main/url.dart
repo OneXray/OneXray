@@ -33,6 +33,8 @@ import 'package:onexray/pages/core/xray/profile/dns_hosts/page.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/page.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
+import 'package:onexray/pages/core/xray/profile/inbound_additional/page.dart';
+import 'package:onexray/pages/core/xray/profile/inbound_additional/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/page.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_sniffing/page.dart';
@@ -353,6 +355,14 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       state,
       AppSecondaryDestination.inboundPing,
       (params) => InboundPingPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.inboundAdditional,
+    (_, state) => _withExtra<AdditionalInboundParams>(
+      state,
+      AppSecondaryDestination.inboundAdditional,
+      (params) => AdditionalInboundPage(params: params),
     ),
   ),
   _route(

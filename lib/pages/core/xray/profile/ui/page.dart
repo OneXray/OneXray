@@ -192,8 +192,15 @@ class XrayProfileUIPage extends StatelessWidget {
     final profile = controller.profileState;
     return switch (state.section) {
       XrayProfileUISection.inbounds => InboundsView(
+        state: profile.inbounds,
         onEditTun: () => controller.editTun(context),
         onEditPing: () => controller.editPing(context),
+        onAddAdditional: (type) =>
+            controller.addAdditionalInbound(context, type),
+        onEditAdditional: (index) =>
+            controller.editAdditionalInbound(context, index),
+        onDeleteAdditional: (index) =>
+            controller.deleteAdditionalInbound(context, index),
       ),
       XrayProfileUISection.outbounds => OutboundsView(
         state: profile.outbounds,

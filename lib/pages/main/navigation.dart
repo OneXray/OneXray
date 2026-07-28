@@ -55,6 +55,7 @@ enum AppSecondaryDestination {
   inboundTun("inbound-tun"),
   inboundSniffing("inbound-sniffing"),
   inboundPing("inbound-ping"),
+  inboundAdditional("inbound-additional"),
   outboundFreedom("outbound-freedom"),
   outboundFragment("outbound-fragment"),
   outboundBlackHole("outbound-black-hole"),

@@ -35,6 +35,7 @@ import 'package:onexray/service/xray/profile/dns_state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/outbounds_state.dart';
 import 'package:onexray/service/xray/profile/routing_rule_state.dart';
+import 'package:onexray/service/xray/profile/state_reader.dart';
 
 enum XrayFullConfigSection { outbounds, routing, dns }
 
@@ -74,6 +75,7 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   CoreConfigData? _configData;
   var _fullConfigState = XrayFullConfigState();
   var _defaultDnsServerAddress = TunSettingsState().tunDnsIPv4;
+  var _profileInboundTags = <String>{};
 
   XrayFullConfigState get fullConfigState => _fullConfigState;
 
@@ -110,6 +112,11 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
       return;
     }
     _defaultDnsServerAddress = tunSettings.tunDnsIPv4;
+    final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
+    if (!isPageActive) {
+      return;
+    }
+    _profileInboundTags = profile.inbounds.additionalTags;
 
     if (params.id != DBConstants.defaultId) {
       final db = AppDatabase();
@@ -567,6 +574,7 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   List<String> _routingInboundTags(DnsState dns) {
     return <String>{
       ...RoutingInboundTag.userVisibleNames,
+      ..._profileInboundTags,
       ...dns.inboundTags,
     }.toList();
   }

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
+import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/runtime_inbounds.dart';
 
@@ -12,6 +13,27 @@ void main() {
     XrayRuntimeInbounds.applyToXrayJson(xray, InboundsState(), CoreRunMode.tun);
 
     expect(xray.inbounds!.map((item) => item.tag), ['tunIn', 'pingIn']);
+    expect(xray.routing!.rules!.single.inboundTag, ['tunIn']);
+  });
+
+  test('TUN mode merges additional Profile inbounds', () {
+    final inbounds = InboundsState()
+      ..additional = <AdditionalInboundState>[
+        InboundSocksState(tag: 'localSocks'),
+        InboundHttpState(tag: 'localHttp'),
+        InboundDokodemoDoorState(tag: 'jellyfinForward', targetPort: '8888'),
+      ];
+    final xray = _configWithInboundTags(['tunIn']);
+
+    XrayRuntimeInbounds.applyToXrayJson(xray, inbounds, CoreRunMode.tun);
+
+    expect(xray.inbounds!.map((item) => item.tag), [
+      'tunIn',
+      'localSocks',
+      'localHttp',
+      'jellyfinForward',
+      'pingIn',
+    ]);
     expect(xray.routing!.rules!.single.inboundTag, ['tunIn']);
   });
 
@@ -76,6 +98,39 @@ void main() {
       expect(json['customRoot'], <String, dynamic>{'keep': true});
     },
   );
+
+  test('Raw TUN mode merges Profile inbounds without changing routing', () {
+    final inbounds = InboundsState()
+      ..additional = <AdditionalInboundState>[
+        InboundDokodemoDoorState(tag: 'jellyfinForward', targetPort: '8888'),
+      ];
+    final json = <String, dynamic>{
+      'inbounds': <dynamic>[
+        <String, dynamic>{'tag': 'rawInbound', 'protocol': 'socks'},
+      ],
+      'routing': <String, dynamic>{
+        'rules': <dynamic>[
+          <String, dynamic>{
+            'domain': <String>['geosite:private'],
+            'outboundTag': 'direct',
+          },
+        ],
+      },
+    };
+
+    XrayRuntimeInbounds.applyToRawJson(json, inbounds, CoreRunMode.tun);
+
+    final writtenInbounds = json['inbounds']! as List<dynamic>;
+    expect(writtenInbounds.map((item) => (item as Map)['tag']), [
+      'tunIn',
+      'jellyfinForward',
+      'pingIn',
+    ]);
+    final routing = json['routing']! as Map<String, dynamic>;
+    final rules = routing['rules']! as List<dynamic>;
+    expect(rules, hasLength(1));
+    expect((rules.single as Map)['outboundTag'], 'direct');
+  });
 }
 
 XrayJson _configWithInboundTags(List<String> tags) {

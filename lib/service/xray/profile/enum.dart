@@ -3,7 +3,9 @@ import 'package:onexray/service/tun_settings/state.dart';
 
 enum XrayInboundProtocol {
   tun("tun"),
-  http("http");
+  socks("socks"),
+  http("http"),
+  dokodemoDoor("dokodemo-door");
 
   const XrayInboundProtocol(this.name);
 

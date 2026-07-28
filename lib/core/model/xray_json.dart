@@ -328,6 +328,20 @@ class XrayInboundAccount {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayInboundSocksSettings {
+  String? auth;
+  bool? udp;
+  List<XrayInboundAccount>? users;
+
+  XrayInboundSocksSettings(this.auth, this.udp, this.users);
+
+  factory XrayInboundSocksSettings.fromJson(Map<String, dynamic> json) =>
+      _$XrayInboundSocksSettingsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayInboundSocksSettingsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayInboundHttpSettings {
   bool? allowTransparent;
   List<XrayInboundAccount>? users;
@@ -338,6 +352,21 @@ class XrayInboundHttpSettings {
       _$XrayInboundHttpSettingsFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayInboundHttpSettingsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayInboundDokodemoDoorSettings {
+  String? address;
+  int? port;
+  String? network;
+
+  XrayInboundDokodemoDoorSettings(this.address, this.port, this.network);
+
+  factory XrayInboundDokodemoDoorSettings.fromJson(Map<String, dynamic> json) =>
+      _$XrayInboundDokodemoDoorSettingsFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$XrayInboundDokodemoDoorSettingsToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

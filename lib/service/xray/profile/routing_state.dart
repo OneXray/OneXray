@@ -19,6 +19,21 @@ class RoutingState {
     }
   }
 
+  bool referencesInboundTag(String tag) {
+    return customRules.any((rule) => rule.inboundTag.contains(tag));
+  }
+
+  void renameInboundTag(String oldTag, String newTag) {
+    if (oldTag == newTag) {
+      return;
+    }
+    for (final rule in customRules) {
+      if (rule.inboundTag.remove(oldTag)) {
+        rule.inboundTag.add(newTag);
+      }
+    }
+  }
+
   void readFromXrayJson(XrayJson xrayJson) {
     if (xrayJson.routing == null) {
       return;

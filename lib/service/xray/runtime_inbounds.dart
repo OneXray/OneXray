@@ -8,15 +8,7 @@ abstract final class XrayRuntimeInbounds {
     InboundsState inbounds,
     CoreRunMode mode,
   ) {
-    switch (mode) {
-      case CoreRunMode.tun:
-        xrayJson.inbounds = <XrayInbound>[
-          inbounds.tun.xrayJson,
-          inbounds.ping.xrayJson,
-        ];
-      case CoreRunMode.proxy:
-        xrayJson.inbounds = <XrayInbound>[inbounds.ping.xrayJson];
-    }
+    xrayJson.inbounds = inbounds.runtimeXrayJson(mode);
   }
 
   static void applyToRawJson(
@@ -24,16 +16,9 @@ abstract final class XrayRuntimeInbounds {
     InboundsState inbounds,
     CoreRunMode mode,
   ) {
-    switch (mode) {
-      case CoreRunMode.tun:
-        jsonMap["inbounds"] = <XrayInbound>[
-          inbounds.tun.xrayJson,
-          inbounds.ping.xrayJson,
-        ].map((inbound) => inbound.toJson()).toList();
-      case CoreRunMode.proxy:
-        jsonMap["inbounds"] = <XrayInbound>[
-          inbounds.ping.xrayJson,
-        ].map((inbound) => inbound.toJson()).toList();
-    }
+    jsonMap["inbounds"] = inbounds
+        .runtimeXrayJson(mode)
+        .map((inbound) => inbound.toJson())
+        .toList();
   }
 }

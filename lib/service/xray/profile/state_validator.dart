@@ -11,6 +11,10 @@ extension XrayProfileStateValidator on XrayProfileState {
     if (!EmptyTool.checkString(name)) {
       return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
     }
+    final inboundsError = inbounds.validate(dns.inboundTags.toSet());
+    if (inboundsError != null) {
+      return Tuple2(false, inboundsError);
+    }
     final xrayJson = this.xrayJson;
     removeTunInbound(xrayJson);
     removeMetricsConfig(xrayJson);
