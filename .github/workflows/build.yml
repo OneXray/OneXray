@@ -67,7 +67,7 @@ env:
   NDK_VERSION: r29
   LIBXRAY_REF: main
   XRAY_CORE_REPOSITORY: XTLS/Xray-core
-  XRAY_CORE_REF: v26.7.11
+  XRAY_CORE_REF: v26.7.28
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
