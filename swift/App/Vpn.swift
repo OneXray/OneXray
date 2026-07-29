@@ -65,7 +65,8 @@ class VPNManager {
         conf.serverAddress = serverAddress
 
         conf.username = serverAddress
-        conf.enforceRoutes = true
+        conf.includeAllNetworks = true
+        conf.enforceRoutes = false
         conf.excludeLocalNetworks = true
 
         vpn.protocolConfiguration = conf
@@ -291,7 +292,10 @@ class VPNManager {
     private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async {
         vpn.isEnabled = true
         if let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
-            conf.enforceRoutes = true
+            // The packet tunnel installs default routes, so use full-tunnel
+            // semantics instead of enforcing split-tunnel route precedence.
+            conf.includeAllNetworks = true
+            conf.enforceRoutes = false
             conf.excludeLocalNetworks = tun.excludeLocalNetworks ?? true
             if let request {
                 do {
