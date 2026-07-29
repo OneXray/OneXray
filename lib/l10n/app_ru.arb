@@ -642,6 +642,8 @@
   "appIconPageTitle": "Иконка приложения",
   "appIconPageSelect": "Выберите иконку:",
   "appIconPageDescription": "Выбранный значок будет применён на главном экране iOS.",
+  "dockIconPageTitle": "Значок Dock",
+  "dockIconPageDescription": "Выбранный значок применяется в Dock macOS.",
   "appIconPageBlue": "Синий",
   "appIconPageBlack": "Чёрный",
   "appIconPageGreen": "Зелёный",

@@ -33,7 +33,10 @@ void main() {
     );
   }
 
-  SettingsOverviewView settingsView({bool showDesktopSettings = false}) {
+  SettingsOverviewView settingsView({
+    bool showDesktopSettings = false,
+    bool useDockIconLabel = false,
+  }) {
     void noop() {}
     return SettingsOverviewView(
       state: const SettingsPageState(
@@ -43,6 +46,7 @@ void main() {
         loadingConnectOnAppLaunch: false,
       ),
       showAppIcon: true,
+      useDockIconLabel: useDockIconLabel,
       showReview: true,
       showDesktopSettings: showDesktopSettings,
       onAutoUpdate: noop,
@@ -92,6 +96,23 @@ void main() {
 
     expect(find.text('Connect on App Launch'), findsOneWidget);
     expect(find.byType(ShadSwitch), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings labels the macOS app icon as a Dock icon', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(app(settingsView(useDockIconLabel: true)));
+    await tester.pump();
+
+    expect(find.text('Dock Icon'), findsOneWidget);
+    expect(
+      find.text('The selected icon is applied to the macOS Dock.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

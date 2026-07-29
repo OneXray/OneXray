@@ -107,6 +107,7 @@ flutter:
     - assets/icon/
     - assets/md/
     - assets/app_icon/
+    - assets/macos_icon/
 
 ffigen:
   llvm-path:

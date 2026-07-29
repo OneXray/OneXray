@@ -642,6 +642,8 @@
   "appIconPageTitle": "应用图标",
   "appIconPageSelect": "选择一个图标:",
   "appIconPageDescription": "所选图标将应用于 iOS 主屏幕。",
+  "dockIconPageTitle": "程序坞图标",
+  "dockIconPageDescription": "所选图标将应用于 macOS 程序坞。",
   "appIconPageBlue": "蓝色",
   "appIconPageBlack": "黑色",
   "appIconPageGreen": "绿色",

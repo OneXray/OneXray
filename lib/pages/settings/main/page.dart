@@ -35,7 +35,8 @@ class SettingsContent extends StatelessWidget {
           final controller = context.read<SettingsController>();
           return SettingsOverviewView(
             state: state,
-            showAppIcon: AppPlatform.isIOS,
+            showAppIcon: AppPlatform.isIOS || AppPlatform.isMacOS,
+            useDockIconLabel: AppPlatform.isMacOS,
             showReview: AppPlatform.isMobile || AppPlatform.isMacOS,
             showDesktopSettings: AppPlatform.isDesktop,
             onAutoUpdate: () => controller.gotoAutoUpdate(context),
@@ -64,6 +65,7 @@ class SettingsContent extends StatelessWidget {
 class SettingsOverviewView extends StatelessWidget {
   final SettingsPageState state;
   final bool showAppIcon;
+  final bool useDockIconLabel;
   final bool showReview;
   final bool showDesktopSettings;
   final VoidCallback onAutoUpdate;
@@ -87,6 +89,7 @@ class SettingsOverviewView extends StatelessWidget {
     super.key,
     required this.state,
     required this.showAppIcon,
+    required this.useDockIconLabel,
     required this.showReview,
     required this.showDesktopSettings,
     required this.onAutoUpdate,
@@ -226,8 +229,12 @@ class SettingsOverviewView extends StatelessWidget {
         ),
         if (showAppIcon)
           NavigationSettingRow(
-            title: l10n.appIconPageTitle,
-            subtitle: l10n.settingsPageAppIconDescription,
+            title: useDockIconLabel
+                ? l10n.dockIconPageTitle
+                : l10n.appIconPageTitle,
+            subtitle: useDockIconLabel
+                ? l10n.dockIconPageDescription
+                : l10n.settingsPageAppIconDescription,
             leading: const Icon(LucideIcons.sparkles),
             onTap: onAppIcon,
           ),

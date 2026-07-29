@@ -656,6 +656,8 @@
   "appIconPageTitle": "App Icon",
   "appIconPageSelect": "Select an icon:",
   "appIconPageDescription": "The selected icon is applied to the iOS Home Screen.",
+  "dockIconPageTitle": "Dock Icon",
+  "dockIconPageDescription": "The selected icon is applied to the macOS Dock.",
   "appIconPageBlue": "Blue",
   "appIconPageBlack": "Black",
   "appIconPageGreen": "Green",

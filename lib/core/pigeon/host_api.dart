@@ -391,9 +391,9 @@ class AppHostApi {
     }
   }
 
-  // iOS
+  // Apple app icon
   Future<bool> setAppIcon(String appIcon) async {
-    if (AppPlatform.isIOS) {
+    if (AppPlatform.isIOS || AppPlatform.isMacOS) {
       try {
         return await _api.setAppIcon(appIcon);
       } catch (error, stackTrace) {
@@ -404,7 +404,7 @@ class AppHostApi {
   }
 
   Future<String> getCurrentAppIcon() async {
-    if (AppPlatform.isIOS) {
+    if (AppPlatform.isIOS || AppPlatform.isMacOS) {
       try {
         return await _api.getCurrentAppIcon();
       } catch (error, stackTrace) {

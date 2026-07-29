@@ -642,6 +642,8 @@
     "appIconPageTitle": "آیکون برنامه",
     "appIconPageSelect": "یک آیکون انتخاب کنید:",
     "appIconPageDescription": "آیکون انتخاب‌شده در صفحه اصلی iOS اعمال می‌شود.",
+    "dockIconPageTitle": "نماد Dock",
+    "dockIconPageDescription": "نماد انتخاب‌شده در Dock سیستم‌عامل macOS اعمال می‌شود.",
     "appIconPageBlue": "آبی",
     "appIconPageBlack": "سیاه",
     "appIconPageGreen": "سبز",

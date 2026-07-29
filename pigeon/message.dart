@@ -54,7 +54,7 @@ abstract class BridgeHostApi {
   @async
   bool openLaunchAtLoginSettings();
 
-  //iOS======================
+  //Apple app icon======================
   @async
   bool setAppIcon(String appIcon);
 

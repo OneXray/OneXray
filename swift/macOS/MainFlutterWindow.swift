@@ -17,6 +17,7 @@ class MainFlutterWindow: NSWindow {
             RegisterGeneratedPlugins(registry: flutterViewController)
 
             super.awakeFromNib()
+            DockIconService.restoreIcon()
         }
     }
 

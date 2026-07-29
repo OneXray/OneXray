@@ -48,6 +48,23 @@ enum AppIcon {
         return Assets.appIcon.red;
     }
   }
+
+  AssetGenImage get dockAssetImage {
+    switch (this) {
+      case AppIcon.primary:
+        return Assets.macosIcon.blue;
+      case AppIcon.black:
+        return Assets.macosIcon.black;
+      case AppIcon.green:
+        return Assets.macosIcon.green;
+      case AppIcon.orange:
+        return Assets.macosIcon.orange;
+      case AppIcon.purple:
+        return Assets.macosIcon.purple;
+      case AppIcon.red:
+        return Assets.macosIcon.red;
+    }
+  }
 }
 
 class AppIconPageState {

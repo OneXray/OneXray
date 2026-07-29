@@ -139,7 +139,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
 #endif
     }
 
-    /// iOS
+    /// Apple app icon
     func setAppIcon(appIcon: String, completion: @escaping (Result<Bool, any Error>) -> Void) {
 #if os(iOS)
         var iconName: String? = appIcon
@@ -158,20 +158,21 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
                 completion(.success(true))
             }
         }
-        
-#else
-        completion(.success(true))
+#elseif os(macOS)
+        completion(.success(DockIconService.setIcon(appIcon)))
 #endif
     }
 
     func getCurrentAppIcon(completion: @escaping (Result<String, any Error>) -> Void) {
-        var appIcon = ""
 #if os(iOS)
+        var appIcon = ""
         if let iconName = UIApplication.shared.alternateIconName {
             appIcon = iconName
         }
-#endif
         completion(.success(appIcon))
+#elseif os(macOS)
+        completion(.success(DockIconService.currentIconName))
+#endif
     }
 
     private func commandResult(

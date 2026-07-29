@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/app_icon/controller.dart';
@@ -17,12 +18,19 @@ class AppIconPage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<AppIconController>();
           final l10n = AppLocalizations.of(context)!;
+          final useDockIconLabel = AppPlatform.isMacOS;
           return SettingsPageScaffold(
-            title: l10n.appIconPageTitle,
+            title: useDockIconLabel
+                ? l10n.dockIconPageTitle
+                : l10n.appIconPageTitle,
             onSave: () => controller.save(context),
             saveLabel: l10n.buttonSave,
             body: AppIconChoiceView(
               selected: state.appIcon,
+              useDockIconAssets: useDockIconLabel,
+              description: useDockIconLabel
+                  ? l10n.dockIconPageDescription
+                  : l10n.appIconPageDescription,
               onSelected: controller.updateIcon,
             ),
           );
@@ -34,11 +42,15 @@ class AppIconPage extends StatelessWidget {
 
 class AppIconChoiceView extends StatelessWidget {
   final AppIcon selected;
+  final bool useDockIconAssets;
+  final String description;
   final ValueChanged<AppIcon> onSelected;
 
   const AppIconChoiceView({
     super.key,
     required this.selected,
+    required this.useDockIconAssets,
+    required this.description,
     required this.onSelected,
   });
 
@@ -51,8 +63,8 @@ class AppIconChoiceView extends StatelessWidget {
         children: [
           SettingsPageIntro(
             title: l10n.appIconPageSelect,
-            description: l10n.appIconPageDescription,
-            trailing: _iconImage(selected.assetImage, 76),
+            description: description,
+            trailing: _iconImage(_imageFor(selected), 76),
           ),
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 8),
@@ -73,7 +85,7 @@ class AppIconChoiceView extends StatelessWidget {
                     final icon = AppIcon.values[index];
                     return _AppIconOption(
                       label: _label(l10n, icon),
-                      image: icon.assetImage,
+                      image: _imageFor(icon),
                       selected: selected == icon,
                       onTap: () => onSelected(icon),
                     );
@@ -85,6 +97,10 @@ class AppIconChoiceView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  AssetGenImage _imageFor(AppIcon icon) {
+    return useDockIconAssets ? icon.dockAssetImage : icon.assetImage;
   }
 
   String _label(AppLocalizations l10n, AppIcon icon) {

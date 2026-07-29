@@ -34,6 +34,7 @@
 		EB68C7332F95200E007C293A /* HostApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7202F95200E007C293A /* HostApi.swift */; };
 		EB9A10042FE6000000000004 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10032FE6000000000003 /* IconBlue.icon */; };
 		EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD100012FE7000000000001 /* LaunchAtLogin.swift */; };
+		EBD200022FE8000000000002 /* DockIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD200012FE8000000000001 /* DockIcon.swift */; };
 		EBE36B3B2F9683C900686880 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B392F9683C900686880 /* PacketTunnelProvider.swift */; };
 		EBE36B442F9683E000686880 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B3F2F9683E000686880 /* Logger.swift */; };
 		EBE36B452F9683E000686880 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B3D2F9683E000686880 /* Constants.swift */; };
@@ -121,6 +122,7 @@
 		EB957B002FE43D8A00DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/MainMenu.strings"; sourceTree = "<group>"; };
 		EB9A10032FE6000000000003 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
 		EBD100012FE7000000000001 /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
+		EBD200012FE8000000000001 /* DockIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockIcon.swift; sourceTree = "<group>"; };
 		EBE36B392F9683C900686880 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
 		EBE36B3C2F9683E000686880 /* BridgeHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeHeader.h; sourceTree = "<group>"; };
 		EBE36B3D2F9683E000686880 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -262,6 +264,7 @@
 			isa = PBXGroup;
 			children = (
 				EB68C7272F95200E007C293A /* AppDelegate.swift */,
+				EBD200012FE8000000000001 /* DockIcon.swift */,
 				EBD100012FE7000000000001 /* LaunchAtLogin.swift */,
 				EB68C7282F95200E007C293A /* MainFlutterWindow.swift */,
 				EB68C7292F95200E007C293A /* SystemExtensionManager.swift */,
@@ -482,6 +485,7 @@
 				EB68C7312F95200E007C293A /* SystemExtensionManager.swift in Sources */,
 				EB68C7322F95200E007C293A /* Vpn.swift in Sources */,
 				EB68C7332F95200E007C293A /* HostApi.swift in Sources */,
+				EBD200022FE8000000000002 /* DockIcon.swift in Sources */,
 				EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);

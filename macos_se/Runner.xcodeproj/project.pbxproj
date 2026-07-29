@@ -38,6 +38,7 @@
 		EB9A10062FE6000000000006 /* IconBlue.icon in Resources */ = {isa = PBXBuildFile; fileRef = EB9A10052FE6000000000005 /* IconBlue.icon */; };
 		EBB9CF7E2F93C6CE00466352 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = EBEAD8882B9578E000A8D27B /* libresolv.tbd */; };
 		EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD100012FE7000000000001 /* LaunchAtLogin.swift */; };
+		EBD200022FE8000000000002 /* DockIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD200012FE8000000000001 /* DockIcon.swift */; };
 		EBE36B562F9684A700686880 /* LibXray.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EBE36B502F9684A700686880 /* LibXray.xcframework */; };
 		EBE36B572F9684A700686880 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B522F9684A700686880 /* Model.swift */; };
 		EBE36B582F9684A700686880 /* Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B532F9684A700686880 /* Tools.swift */; };
@@ -126,6 +127,7 @@
 		EB957B012FE43DA200DCB90D /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/MainMenu.strings"; sourceTree = "<group>"; };
 		EB9A10052FE6000000000005 /* IconBlue.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = IconBlue.icon; path = ../swift/App/AppIcon/IconBlue.icon; sourceTree = SOURCE_ROOT; };
 		EBD100012FE7000000000001 /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
+		EBD200012FE8000000000001 /* DockIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockIcon.swift; sourceTree = "<group>"; };
 		EBE36B4E2F9684A700686880 /* BridgeHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeHeader.h; sourceTree = "<group>"; };
 		EBE36B4F2F9684A700686880 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		EBE36B502F9684A700686880 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
@@ -264,6 +266,7 @@
 			isa = PBXGroup;
 			children = (
 				EB68C6EA2F94D08D007C293A /* AppDelegate.swift */,
+				EBD200012FE8000000000001 /* DockIcon.swift */,
 				EBD100012FE7000000000001 /* LaunchAtLogin.swift */,
 				EB68C6EB2F94D08D007C293A /* MainFlutterWindow.swift */,
 				EB68C6EC2F94D08D007C293A /* SystemExtensionManager.swift */,
@@ -486,6 +489,7 @@
 				EB68C6F62F94D08D007C293A /* AppDelegate.swift in Sources */,
 				EB68C6F72F94D08D007C293A /* MainFlutterWindow.swift in Sources */,
 				EB68C6F82F94D08D007C293A /* HostApi.swift in Sources */,
+				EBD200022FE8000000000002 /* DockIcon.swift in Sources */,
 				EBD100022FE7000000000002 /* LaunchAtLogin.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);

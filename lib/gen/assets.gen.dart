@@ -90,6 +90,33 @@ class $AssetsIconGen {
   ];
 }
 
+class $AssetsMacosIconGen {
+  const $AssetsMacosIconGen();
+
+  /// File path: assets/macos_icon/black.png
+  AssetGenImage get black => const AssetGenImage('assets/macos_icon/black.png');
+
+  /// File path: assets/macos_icon/blue.png
+  AssetGenImage get blue => const AssetGenImage('assets/macos_icon/blue.png');
+
+  /// File path: assets/macos_icon/green.png
+  AssetGenImage get green => const AssetGenImage('assets/macos_icon/green.png');
+
+  /// File path: assets/macos_icon/orange.png
+  AssetGenImage get orange =>
+      const AssetGenImage('assets/macos_icon/orange.png');
+
+  /// File path: assets/macos_icon/purple.png
+  AssetGenImage get purple =>
+      const AssetGenImage('assets/macos_icon/purple.png');
+
+  /// File path: assets/macos_icon/red.png
+  AssetGenImage get red => const AssetGenImage('assets/macos_icon/red.png');
+
+  /// List of all assets
+  List<AssetGenImage> get values => [black, blue, green, orange, purple, red];
+}
+
 class $AssetsMdGen {
   const $AssetsMdGen();
 
@@ -105,6 +132,7 @@ abstract final class Assets {
   static const $AssetsDatGen dat = $AssetsDatGen();
   static const $AssetsIconGen icon = $AssetsIconGen();
   static const AssetGenImage logo = AssetGenImage('assets/logo.png');
+  static const $AssetsMacosIconGen macosIcon = $AssetsMacosIconGen();
   static const $AssetsMdGen md = $AssetsMdGen();
 
   /// List of all assets
