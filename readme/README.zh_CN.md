@@ -1,14 +1,50 @@
-# OneXray
+<p align="center">
+  <img src="../assets/logo.png" width="112" alt="OneXray 图标">
+</p>
 
-[English](../README.md) | [Русский](./README.ru.md)
+<h1 align="center">OneXray</h1>
 
-## 应用介绍
+<p align="center">
+  面向自有节点、订阅与配置的私密跨平台 Xray-core 客户端。
+</p>
 
-关注我们的 Telegram 频道：[OneXray](https://t.me/OneXrayApp)
+<p align="center">
+  <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="最新版本"></a>
+  <a href="../LICENSE"><img src="https://img.shields.io/github/license/OneXray/OneXray" alt="许可证"></a>
+  <img src="https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-0A84FF" alt="支持平台">
+</p>
 
-[文档站](https://onexray.com)
+<p align="center">
+  <a href="https://onexray.com">文档站</a> ·
+  <a href="./FIRST_RUN.zh_CN.md">开发环境</a> ·
+  <a href="https://t.me/OneXrayApp">Telegram</a> ·
+  <a href="https://github.com/OneXray/OneXray/releases/latest">版本发布</a>
+</p>
 
-[First Run 指南](./FIRST_RUN.zh_CN.md)
+<p align="center">
+  <a href="../README.md">English</a> · 简体中文 · <a href="./README.ru.md">Русский</a>
+</p>
+
+OneXray 支持导入您自己的兼容服务器配置或 HTTPS 订阅，并通过结构化 Xray 配置与路由工具管理节点和流量。
+
+OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服务。App 无需账户，不包含广告、Analytics、Tracking、Telemetry 或崩溃上报服务。
+
+## 界面预览
+
+<p align="center">
+  <img src="./images/home-ios.png" width="22%" alt="OneXray iOS 首页">
+  &nbsp;&nbsp;
+  <img src="./images/home-macos.png" width="70%" alt="OneXray macOS 首页">
+</p>
+
+## 核心能力
+
+- **跨平台 TUN**：支持 iOS、macOS、Android、Windows 和 Linux。
+- **灵活配置**：提供简易配置、可复用 Xray 配置、Full Config 和 Raw JSON。
+- **路由控制**：可在 Home 切换规则、全局和直连模式。
+- **导入与管理**：通过二维码、图片、文件或剪贴板导入受支持的分享链接与 HTTPS 订阅。
+- **本地工具**：节点 Ping、Xray 日志、GeoData 与规则集管理、备份和恢复。
+- **平台集成**：Android Per-App VPN、Apple On Demand、桌面托盘控制和出站网卡选择。
 
 ## 下载
 
@@ -23,11 +59,11 @@
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
-## 使用注意
+## 安装说明
 
 ### macOS
 
-Mac App Store 版本是单独的商店包。商店外分发的 Homebrew 和 Universal ZIP 使用同一个 Developer ID `macos_se` 包，安装的 App 为 `OneXraySE.app`。
+Mac App Store 版本是单独的商店包。Homebrew 与 Universal ZIP 使用同一个 Developer ID `macos_se` 包，安装的 App 为 `OneXraySE.app`。
 
 ```shell
 brew install --cask onexrayse
@@ -36,7 +72,7 @@ brew uninstall --cask onexrayse
 
 ### Windows
 
-您可以使用 winget 安装和卸载 OneXray。Winget 会根据当前设备架构自动选择 x86_64 或 ARM64 安装包。
+Winget 会根据当前设备架构自动选择 x86_64 或 ARM64 安装包。
 
 ```shell
 winget install --id YuanDevLLC.OneXray -e
@@ -45,55 +81,40 @@ winget uninstall --id YuanDevLLC.OneXray -e
 
 ### Android
 
-Android 版本和 Universal APK 仅支持 `arm64-v8a` 与 `x86_64` 设备，不支持 32 位 ARM 设备。
+Android 版本支持 `arm64-v8a` 与 `x86_64`，不支持 32 位 ARM 设备。
 
 ### iOS
 
-若您没有 Apple ID ，或您的 Apple ID 无法下载 OneXray ，您可以下载 **OneXray-ios.ipa** ，然后使用 [AltStore](https://altstore.io/) 或
-其他第三方工具进行安装。
+若您的 Apple ID 无法使用 App Store，可下载 `OneXray-ios.ipa`，并通过 [AltStore](https://altstore.io/) 或其他兼容的侧载工具安装。
 
 ### Linux
 
-若您使用 zip 包，您需要进行如下设置才可正常使用 OneXray。
-
-执行指令前请确认目录。
-
-```shell
-sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
-sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
-```
-
-若您使用 deb 包，您可使用如下指令进行安装和卸载。
+使用 DEB 包：
 
 ```shell
 sudo apt install ./OneXray-linux-x86_64.deb
 sudo apt remove onexray
 ```
 
-若您的桌面环境为 gnome，请安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) 扩展。
+使用 ZIP 包时，请在包含 `OneXray` 的目录中执行：
 
-若您的机器 CPU 架构为 Arm64，当您将语言切换为 CJK（中文，日文，韩文）时，OneXray 会将界面语言修正为英文。
+```shell
+sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+```
 
-### 内核升级
+GNOME 用户需要安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) 扩展。Linux arm64 当前会将 CJK 界面语言回退为英文。
 
-在 Linux 和 Windows 平台，您可自行升级或替换 Xray-core。请通过 libXray 编译动态库，并单独从 Xray-core 编译 `OneXrayCore` CLI。
+## 参与贡献
 
-#### Linux
+欢迎通过以下方式参与：
 
-将 `OneXray/lib/libXray.so` 替换为 libXray 的编译产物 `linux_so/libXray.so` 。
+1. 为本仓库点亮 Star。
+2. 完善 [OneXray 文档](https://github.com/OneXray/onexray.com)。
+3. 通过 [OneXray/Routing](https://github.com/OneXray/Routing) 分享路由模板。
 
-将 `OneXray/bin/OneXrayCore` 替换为 Xray-core CLI 的编译产物。
+本地构建 App 前，请先阅读[开发环境配置](./FIRST_RUN.zh_CN.md)。
 
-#### Windows
+## 许可证
 
-将 `OneXray/libXray.dll` 替换为 libXray 的编译产物 `windows_dll/libXray.dll` 。
-
-将 `OneXray/bin/OneXrayCore.exe` 替换为 Xray-core CLI 的编译产物。
-
-## 贡献
-
-若本项目对您有所帮助，您可考虑通过以下方式对本项目进行贡献。
-
-1. 给本项目一个 star 。
-2. 翻译 App 的文档 [onexray.com](https://github.com/OneXray/onexray.com) 。
-3. 分享您的路由设置 [Routing](https://github.com/OneXray/Routing) 。
+OneXray 使用 [GNU General Public License v3.0](../LICENSE)。

@@ -1,14 +1,50 @@
-# OneXray
+<p align="center">
+  <img src="./assets/logo.png" width="112" alt="OneXray logo">
+</p>
 
-[简体中文](./readme/README.zh_CN.md) | [Русский](./readme/README.ru.md)
+<h1 align="center">OneXray</h1>
 
-## App Introduction
+<p align="center">
+  A private, cross-platform Xray-core client for your own nodes, subscriptions, and configurations.
+</p>
 
-Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
+<p align="center">
+  <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="Latest release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/OneXray/OneXray" alt="License"></a>
+  <img src="https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-0A84FF" alt="Supported platforms">
+</p>
 
-[Documentation](https://onexray.com)
+<p align="center">
+  <a href="https://onexray.com">Documentation</a> ·
+  <a href="./readme/FIRST_RUN.md">Development Setup</a> ·
+  <a href="https://t.me/OneXrayApp">Telegram</a> ·
+  <a href="https://github.com/OneXray/OneXray/releases/latest">Releases</a>
+</p>
 
-[First Run](./readme/FIRST_RUN.md)
+<p align="center">
+  English · <a href="./readme/README.zh_CN.md">简体中文</a> · <a href="./readme/README.ru.md">Русский</a>
+</p>
+
+OneXray lets you bring your own compatible server configuration or HTTPS subscription, organize nodes, and control traffic with structured Xray Profiles and routing tools.
+
+OneXray is a client-only app. It does not provide VPN or proxy servers, subscriptions, or network access. It requires no account and contains no advertising, analytics, tracking, telemetry, or crash-reporting services.
+
+## Preview
+
+<p align="center">
+  <img src="./readme/images/home-ios.png" width="22%" alt="OneXray Home on iOS">
+  &nbsp;&nbsp;
+  <img src="./readme/images/home-macos.png" width="70%" alt="OneXray Home on macOS">
+</p>
+
+## Highlights
+
+- **Cross-platform TUN** — iOS, macOS, Android, Windows, and Linux.
+- **Flexible configuration** — Simple Profile, reusable Xray Profiles, Full Config, and Raw JSON.
+- **Routing control** — switch between Rule, Global, and Direct behavior from Home.
+- **Import and organize** — supported share links and HTTPS subscriptions from QR codes, images, files, or the clipboard.
+- **Local tools** — node ping, Xray logs, GeoData and rule-set management, backup, and restore.
+- **Platform integration** — Android Per-App VPN, Apple On Demand, desktop tray controls, and outbound-interface selection.
 
 ## Download
 
@@ -23,11 +59,11 @@ Follow us on Telegram: [OneXray](https://t.me/OneXrayApp)
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
-## Notes
+## Installation Notes
 
 ### macOS
 
-The Mac App Store build is a separate store package. The outside-App-Store distribution uses the same Developer ID `macos_se` package for Homebrew and Universal ZIP, and installs `OneXraySE.app`.
+The Mac App Store build is a separate store package. Homebrew and the Universal ZIP use the same Developer ID `macos_se` package and install `OneXraySE.app`.
 
 ```shell
 brew install --cask onexrayse
@@ -36,8 +72,7 @@ brew uninstall --cask onexrayse
 
 ### Windows
 
-You can install and uninstall OneXray with winget. Winget automatically selects
-the x86_64 or ARM64 installer for the current device.
+Winget automatically selects the x86_64 or ARM64 installer for the current device.
 
 ```shell
 winget install --id YuanDevLLC.OneXray -e
@@ -46,54 +81,40 @@ winget uninstall --id YuanDevLLC.OneXray -e
 
 ### Android
 
-The Android build and Universal APK support `arm64-v8a` and `x86_64` devices. 32-bit ARM devices are not supported.
+Android builds support `arm64-v8a` and `x86_64`. 32-bit ARM devices are not supported.
 
 ### iOS
 
-If you don't have an Apple ID, or your Apple ID cannot download OneXray, you can download **OneXray-ios.ipa** and then use [AltStore](https://altstore.io/) or other third-party tools to install it.
+If the App Store is unavailable for your Apple ID, download `OneXray-ios.ipa` and install it with [AltStore](https://altstore.io/) or another compatible sideloading tool.
 
 ### Linux
 
-If you use the zip package, you need to run the following setup commands to use OneXray normally.
-
-Please confirm the directory before executing the command.
-
-```shell
-sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
-sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
-```
-
-If you use the deb package, you can use the following commands to install and uninstall.
+For a DEB package:
 
 ```shell
 sudo apt install ./OneXray-linux-x86_64.deb
 sudo apt remove onexray
 ```
 
-If your desktop environment is gnome, please install the [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) extension.
+For a ZIP package, run these commands from the directory containing `OneXray`:
 
-If your machine's CPU architecture is Arm64, switching the language to a CJK language (Chinese, Japanese, or Korean) will cause OneXray to reset the interface language to English.
+```shell
+sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+```
 
-### Kernel Upgrade
+GNOME users should install the [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) extension. Linux arm64 currently falls back to English for CJK locales.
 
-On Linux and Windows platforms, you can upgrade or replace Xray-core yourself. Build libXray for the dynamic library, and build the Xray-core CLI separately for `OneXrayCore`.
+## Contributing
 
-#### Linux
+Contributions are welcome:
 
-Replace `OneXray/lib/libXray.so` with the compiled product of libXray `linux_so/libXray.so`.
+1. Star this repository.
+2. Improve the [documentation](https://github.com/OneXray/onexray.com).
+3. Share routing templates through [OneXray/Routing](https://github.com/OneXray/Routing).
 
-Replace `OneXray/bin/OneXrayCore` with the compiled Xray-core CLI.
+See [Development Setup](./readme/FIRST_RUN.md) before building the app locally.
 
-#### Windows
+## License
 
-Replace `OneXray/libXray.dll` with the compiled product of libXray `windows_dll/libXray.dll`.
-
-Replace `OneXray/bin/OneXrayCore.exe` with the compiled Xray-core CLI.
-
-## Contribution
-
-If this project is helpful to you, you can consider contributing to this project in the following ways.
-
-1. Give this project a star.
-2. Translate the app's documentation [onexray.com](https://github.com/OneXray/onexray.com) .
-3. Share your routing templates [Routing](https://github.com/OneXray/Routing).
+OneXray is licensed under the [GNU General Public License v3.0](./LICENSE).
