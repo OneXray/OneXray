@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_additional/controller.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_additional/params.dart';
+import 'package:onexray/pages/core/xray/profile/inbound_additional/view_data.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
-import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AdditionalInboundPage extends StatelessWidget {
@@ -19,10 +19,13 @@ class AdditionalInboundPage extends StatelessWidget {
       create: (_) => AdditionalInboundController(params),
       child:
           BlocBuilder<AdditionalInboundController, AdditionalInboundPageState>(
-            builder: (context, state) {
+            builder: (context, _) {
               final controller = context.read<AdditionalInboundController>();
+              final data = controller.buildViewData(
+                AppLocalizations.of(context)!,
+              );
               return SettingsPageScaffold(
-                title: _pageTitle(context, state.inbound.type),
+                title: data.pageTitle,
                 onSave: () => controller.save(context),
                 body: SettingsPageScroll(
                   desktopMaxWidth: 900,
@@ -30,21 +33,17 @@ class AdditionalInboundPage extends StatelessWidget {
                     firstFlex: 5,
                     secondFlex: 5,
                     first: [
-                      _listenerSection(context, controller, state.inbound),
+                      _listenerSection(context, controller, data.listener),
                     ],
                     second: [
-                      if (state.inbound is AuthenticatedAdditionalInboundState)
+                      if (data.showsAuthentication)
                         _authenticationSection(
                           context,
                           controller,
-                          state.inbound as AuthenticatedAdditionalInboundState,
+                          showsUdp: data.showsUdp,
                         ),
-                      if (state.inbound is InboundDokodemoDoorState)
-                        _targetSection(
-                          context,
-                          controller,
-                          state.inbound as InboundDokodemoDoorState,
-                        ),
+                      if (data.target case final target?)
+                        _targetSection(context, controller, target),
                     ],
                   ),
                 ),
@@ -57,36 +56,33 @@ class AdditionalInboundPage extends StatelessWidget {
   Widget _listenerSection(
     BuildContext context,
     AdditionalInboundController controller,
-    AdditionalInboundState inbound,
+    AdditionalInboundListenerViewData data,
   ) {
     final l10n = AppLocalizations.of(context)!;
     return SettingSection(
       title: l10n.inboundAdditionalPageSectionListener,
       children: [
-        if (inbound is AuthenticatedAdditionalInboundState)
-          SelectSettingRow<String>(
+        if (data.editable)
+          SelectSettingRow<AdditionalInboundOptionViewData>(
             leading: const Icon(LucideIcons.ear),
             title: l10n.inboundTunPageListen,
-            subtitle:
-                inbound.listen == AdditionalInboundState.allInterfacesListen
-                ? l10n.inboundAdditionalPageAllInterfacesWarning
-                : null,
-            value: inbound.listen,
-            displayValue: _listenTitle(context, inbound.listen),
-            selections: AdditionalInboundState.listenValues,
-            titleBuilder: (value) => _listenTitle(context, value),
-            onSelected: controller.updateListen,
+            subtitle: data.warning,
+            value: data.value,
+            displayValue: data.displayValue,
+            selections: data.options,
+            titleBuilder: (option) => option.title,
+            onSelected: (option) => controller.updateListen(option.value),
           )
         else
           SettingRow(
             leading: const Icon(LucideIcons.ear),
             title: l10n.inboundTunPageListen,
-            value: AdditionalInboundState.localListen,
+            value: data.displayValue,
           ),
         SettingRow(
           leading: const Icon(LucideIcons.waypoints),
           title: l10n.inboundTunPageProtocol,
-          value: _protocolName(inbound.type),
+          value: data.protocolName,
         ),
         TextFieldSettingRow(
           leading: const Icon(LucideIcons.network),
@@ -107,9 +103,9 @@ class AdditionalInboundPage extends StatelessWidget {
 
   Widget _authenticationSection(
     BuildContext context,
-    AdditionalInboundController controller,
-    AuthenticatedAdditionalInboundState inbound,
-  ) {
+    AdditionalInboundController controller, {
+    required bool showsUdp,
+  }) {
     final l10n = AppLocalizations.of(context)!;
     return SettingSection(
       title: l10n.inboundAdditionalPageSectionAuthentication,
@@ -126,7 +122,7 @@ class AdditionalInboundPage extends StatelessWidget {
           label: l10n.outboundUIPagePassword,
           hintText: l10n.outboundUIPagePassword,
         ),
-        if (inbound is InboundSocksState)
+        if (showsUdp)
           SettingRow(
             leading: const Icon(LucideIcons.radio),
             title: 'UDP',
@@ -139,7 +135,7 @@ class AdditionalInboundPage extends StatelessWidget {
   Widget _targetSection(
     BuildContext context,
     AdditionalInboundController controller,
-    InboundDokodemoDoorState inbound,
+    AdditionalInboundTargetViewData data,
   ) {
     final l10n = AppLocalizations.of(context)!;
     return SettingSection(
@@ -158,40 +154,15 @@ class AdditionalInboundPage extends StatelessWidget {
           hintText: '8888',
           keyboardType: TextInputType.number,
         ),
-        SelectSettingRow<DokodemoDoorNetwork>(
+        SelectSettingRow<AdditionalInboundOptionViewData>(
           leading: const Icon(LucideIcons.route),
           title: l10n.routingRulePageNetwork,
-          value: inbound.network.name,
-          selections: DokodemoDoorNetwork.values,
-          titleBuilder: (value) => value.name,
-          onSelected: controller.updateNetwork,
+          value: data.network,
+          selections: data.networkOptions,
+          titleBuilder: (option) => option.title,
+          onSelected: (option) => controller.updateNetwork(option.value),
         ),
       ],
     );
-  }
-
-  String _pageTitle(BuildContext context, AdditionalInboundType type) {
-    final l10n = AppLocalizations.of(context)!;
-    return switch (type) {
-      AdditionalInboundType.socks => l10n.inboundAdditionalPageSocksTitle,
-      AdditionalInboundType.http => l10n.inboundAdditionalPageHttpTitle,
-      AdditionalInboundType.dokodemoDoor =>
-        l10n.inboundAdditionalPageDokodemoDoorTitle,
-    };
-  }
-
-  String _listenTitle(BuildContext context, String value) {
-    final l10n = AppLocalizations.of(context)!;
-    return value == AdditionalInboundState.allInterfacesListen
-        ? l10n.inboundAdditionalPageAllInterfaces
-        : l10n.inboundAdditionalPageLocalhost;
-  }
-
-  String _protocolName(AdditionalInboundType type) {
-    return switch (type) {
-      AdditionalInboundType.socks => 'socks',
-      AdditionalInboundType.http => 'http',
-      AdditionalInboundType.dokodemoDoor => 'dokodemo-door',
-    };
   }
 }

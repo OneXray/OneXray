@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_additional/params.dart';
+import 'package:onexray/pages/core/xray/profile/inbound_additional/view_data.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
@@ -30,6 +32,57 @@ class AdditionalInboundController
   final passwordController = TextEditingController();
   final targetAddressController = TextEditingController();
   final targetPortController = TextEditingController();
+
+  AdditionalInboundViewData buildViewData(AppLocalizations localizations) {
+    final inbound = state.inbound;
+    final editableListen = inbound is AuthenticatedAdditionalInboundState;
+    final listen = editableListen
+        ? inbound.listen
+        : AdditionalInboundState.localListen;
+    final target = inbound is InboundDokodemoDoorState
+        ? AdditionalInboundTargetViewData(
+            network: inbound.network.name,
+            networkOptions: DokodemoDoorNetwork.values
+                .map(
+                  (network) => AdditionalInboundOptionViewData(
+                    value: network.name,
+                    title: network.name,
+                  ),
+                )
+                .toList(growable: false),
+          )
+        : null;
+
+    return AdditionalInboundViewData(
+      pageTitle: _pageTitle(localizations, inbound.type),
+      listener: AdditionalInboundListenerViewData(
+        editable: editableListen,
+        value: listen,
+        displayValue: editableListen
+            ? _listenTitle(localizations, listen)
+            : listen,
+        warning:
+            editableListen &&
+                listen == AdditionalInboundState.allInterfacesListen
+            ? localizations.inboundAdditionalPageAllInterfacesWarning
+            : null,
+        protocolName: _protocolName(inbound.type),
+        options: editableListen
+            ? AdditionalInboundState.listenValues
+                  .map(
+                    (value) => AdditionalInboundOptionViewData(
+                      value: value,
+                      title: _listenTitle(localizations, value),
+                    ),
+                  )
+                  .toList(growable: false)
+            : const [],
+      ),
+      showsAuthentication: editableListen,
+      showsUdp: inbound is InboundSocksState,
+      target: target,
+    );
+  }
 
   void _initInputs() {
     final inbound = state.inbound;
@@ -64,11 +117,17 @@ class AdditionalInboundController
     }
   }
 
-  void updateNetwork(DokodemoDoorNetwork value) {
+  void updateNetwork(String value) {
     final inbound = state.inbound;
-    if (inbound is InboundDokodemoDoorState) {
-      inbound.network = value;
-      emit(state.bumped());
+    if (inbound is! InboundDokodemoDoorState) {
+      return;
+    }
+    for (final network in DokodemoDoorNetwork.values) {
+      if (network.name == value) {
+        inbound.network = network;
+        emit(state.bumped());
+        return;
+      }
     }
   }
 
@@ -95,5 +154,33 @@ class AdditionalInboundController
       return;
     }
     context.pop<AdditionalInboundState>(inbound);
+  }
+
+  String _pageTitle(
+    AppLocalizations localizations,
+    AdditionalInboundType type,
+  ) {
+    return switch (type) {
+      AdditionalInboundType.socks =>
+        localizations.inboundAdditionalPageSocksTitle,
+      AdditionalInboundType.http =>
+        localizations.inboundAdditionalPageHttpTitle,
+      AdditionalInboundType.dokodemoDoor =>
+        localizations.inboundAdditionalPageDokodemoDoorTitle,
+    };
+  }
+
+  String _listenTitle(AppLocalizations localizations, String value) {
+    return value == AdditionalInboundState.allInterfacesListen
+        ? localizations.inboundAdditionalPageAllInterfaces
+        : localizations.inboundAdditionalPageLocalhost;
+  }
+
+  String _protocolName(AdditionalInboundType type) {
+    return switch (type) {
+      AdditionalInboundType.socks => 'socks',
+      AdditionalInboundType.http => 'http',
+      AdditionalInboundType.dokodemoDoor => 'dokodemo-door',
+    };
   }
 }
