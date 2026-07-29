@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/xray/profile/inbounds/view_data.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
-import 'package:onexray/service/xray/profile/inbounds_state.dart';
 
 class InboundsView extends StatelessWidget {
-  final InboundsState state;
+  final InboundsViewData data;
   final VoidCallback onEditTun;
   final VoidCallback onEditPing;
   final ValueChanged<AdditionalInboundType> onAddAdditional;
@@ -17,7 +17,7 @@ class InboundsView extends StatelessWidget {
 
   const InboundsView({
     super.key,
-    required this.state,
+    required this.data,
     required this.onEditTun,
     required this.onEditPing,
     required this.onAddAdditional,
@@ -75,70 +75,33 @@ class InboundsView extends StatelessWidget {
           subtitle: l10n.inboundsPageAdditionalDescription,
           trailing: AppMenuButton<AdditionalInboundType>(
             icon: LucideIcons.plus,
-            entries: AdditionalInboundType.values
+            entries: data.addItems
                 .map(
-                  (type) => AppMenuEntry<AdditionalInboundType>.item(
-                    value: type,
-                    title: _typeTitle(context, type),
+                  (item) => AppMenuEntry<AdditionalInboundType>.item(
+                    value: item.type,
+                    title: item.title,
                   ),
                 )
                 .toList(),
             onSelected: onAddAdditional,
           ),
         ),
-        ...state.additional.asMap().entries.map(
-          (entry) => _additionalRow(context, entry.key, entry.value),
-        ),
+        ...data.additionalRows.map(_additionalRow),
       ],
     );
   }
 
-  Widget _additionalRow(
-    BuildContext context,
-    int index,
-    AdditionalInboundState inbound,
-  ) {
+  Widget _additionalRow(AdditionalInboundRowViewData row) {
     return SettingRow(
-      leading: Icon(_typeIcon(inbound.type)),
-      title: inbound.tag,
-      subtitle: _inboundDescription(context, inbound),
-      onTap: () => onEditAdditional(index),
+      leading: Icon(row.icon),
+      title: row.title,
+      subtitle: row.subtitle,
+      onTap: () => onEditAdditional(row.index),
       trailing: AppMenuButton<IconMenuId>(
         icon: LucideIcons.ellipsis,
         entries: iconMenuEntries(<IconMenuId>[IconMenuId.delete]),
-        onSelected: (_) => onDeleteAdditional(index),
+        onSelected: (_) => onDeleteAdditional(row.index),
       ),
     );
-  }
-
-  String _inboundDescription(
-    BuildContext context,
-    AdditionalInboundState inbound,
-  ) {
-    final listen = inbound.listen.isEmpty
-        ? AppLocalizations.of(context)!.inboundAdditionalPageAllInterfaces
-        : inbound.listen;
-    final listener = '$listen:${inbound.port}';
-    if (inbound is InboundDokodemoDoorState) {
-      return '$listener → ${inbound.targetAddress}:${inbound.targetPort}';
-    }
-    return '${_typeTitle(context, inbound.type)} · $listener';
-  }
-
-  String _typeTitle(BuildContext context, AdditionalInboundType type) {
-    final l10n = AppLocalizations.of(context)!;
-    return switch (type) {
-      AdditionalInboundType.socks => l10n.inboundsPageAddSocks,
-      AdditionalInboundType.http => l10n.inboundsPageAddHttp,
-      AdditionalInboundType.dokodemoDoor => l10n.inboundsPageAddDokodemoDoor,
-    };
-  }
-
-  IconData _typeIcon(AdditionalInboundType type) {
-    return switch (type) {
-      AdditionalInboundType.socks => LucideIcons.network,
-      AdditionalInboundType.http => LucideIcons.globe2,
-      AdditionalInboundType.dokodemoDoor => LucideIcons.arrowRightLeft,
-    };
   }
 }

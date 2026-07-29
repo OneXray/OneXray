@@ -79,6 +79,24 @@ void main() {
     expect(state.validate(const <String>{}), isNotNull);
   });
 
+  test('additional inbound normalization preserves credentials', () {
+    final inbound = InboundSocksState(
+      listen: ' 127.0.0.1 ',
+      port: ' 12080 ',
+      tag: ' localProxy ',
+      user: 'user name',
+      pass: ' pass phrase ',
+    );
+
+    inbound.removeWhitespace();
+
+    expect(inbound.listen, '127.0.0.1');
+    expect(inbound.port, '12080');
+    expect(inbound.tag, 'localProxy');
+    expect(inbound.user, 'user name');
+    expect(inbound.pass, ' pass phrase ');
+  });
+
   test('new additional inbound names and ports stay unique', () {
     final state = InboundsState();
     final first = state.createAdditional(AdditionalInboundType.socks);

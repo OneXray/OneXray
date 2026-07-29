@@ -134,13 +134,6 @@ abstract class AuthenticatedAdditionalInboundState
   bool get hasCompleteCredentials => user.isNotEmpty && pass.isNotEmpty;
 
   @override
-  void removeWhitespace() {
-    super.removeWhitespace();
-    user = user.removeWhitespace;
-    pass = pass.removeWhitespace;
-  }
-
-  @override
   String? validate({
     Set<String> unavailableTags = const {},
     Set<int> unavailablePorts = const {},

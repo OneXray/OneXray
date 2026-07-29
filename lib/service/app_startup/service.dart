@@ -125,12 +125,13 @@ final class AppStartupService {
       return;
     }
     final result = await setLaunchAtLogin(false);
-    if (result.state != LaunchAtLoginState.disabled &&
-        result.state != LaunchAtLoginState.unavailable) {
-      ygLogger(
-        "disable launch at login during data cleanup failed: "
-        "${result.message ?? result.state.name}",
-      );
+    if (result.state == LaunchAtLoginState.disabled) {
+      return;
     }
+    final message = result.message ?? result.state.name;
+    ygLogger("disable launch at login during data cleanup failed: $message");
+    throw StateError(
+      "disable launch at login during data cleanup failed: $message",
+    );
   }
 }

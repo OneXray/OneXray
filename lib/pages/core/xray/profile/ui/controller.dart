@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
 import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
+import 'package:onexray/pages/core/xray/profile/inbounds/view_data.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_additional/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
 import 'package:onexray/pages/core/xray/profile/inbound_tun/params.dart';
@@ -22,6 +23,7 @@ import 'package:onexray/pages/core/xray/raw_edit/params.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
@@ -150,6 +152,70 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
     if (section != state.section) {
       emit(state.copyWith(section: section, version: state.version + 1));
     }
+  }
+
+  InboundsViewData buildInboundsViewData(AppLocalizations localizations) {
+    final additional = _xrayProfileState.inbounds.additional;
+    return InboundsViewData(
+      addItems: AdditionalInboundType.values
+          .map(
+            (type) => AdditionalInboundMenuItemViewData(
+              type: type,
+              title: _additionalInboundTypeTitle(localizations, type),
+            ),
+          )
+          .toList(growable: false),
+      additionalRows: additional
+          .asMap()
+          .entries
+          .map(
+            (entry) => AdditionalInboundRowViewData(
+              index: entry.key,
+              icon: _additionalInboundTypeIcon(entry.value.type),
+              title: entry.value.tag,
+              subtitle: _additionalInboundDescription(
+                localizations,
+                entry.value,
+              ),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  String _additionalInboundDescription(
+    AppLocalizations localizations,
+    AdditionalInboundState inbound,
+  ) {
+    final listen = inbound.listen.isEmpty
+        ? localizations.inboundAdditionalPageAllInterfaces
+        : inbound.listen;
+    final listener = '$listen:${inbound.port}';
+    if (inbound is InboundDokodemoDoorState) {
+      return '$listener → ${inbound.targetAddress}:${inbound.targetPort}';
+    }
+    return '${_additionalInboundTypeTitle(localizations, inbound.type)}'
+        ' · $listener';
+  }
+
+  String _additionalInboundTypeTitle(
+    AppLocalizations localizations,
+    AdditionalInboundType type,
+  ) {
+    return switch (type) {
+      AdditionalInboundType.socks => localizations.inboundsPageAddSocks,
+      AdditionalInboundType.http => localizations.inboundsPageAddHttp,
+      AdditionalInboundType.dokodemoDoor =>
+        localizations.inboundsPageAddDokodemoDoor,
+    };
+  }
+
+  IconData _additionalInboundTypeIcon(AdditionalInboundType type) {
+    return switch (type) {
+      AdditionalInboundType.socks => LucideIcons.network,
+      AdditionalInboundType.http => LucideIcons.globe2,
+      AdditionalInboundType.dokodemoDoor => LucideIcons.arrowRightLeft,
+    };
   }
 
   Future<void> gotoRawEdit(BuildContext context) async {
