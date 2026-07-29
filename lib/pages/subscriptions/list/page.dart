@@ -89,7 +89,9 @@ class _SubscriptionListView extends StatelessWidget {
       stream: controller.rowsStream,
       builder: (context, snapshot) {
         return BlocBuilder<AppEventBus, AppEventBusState>(
-          buildWhen: (previous, current) => previous.pinging != current.pinging,
+          buildWhen: (previous, current) =>
+              previous.pinging != current.pinging ||
+              previous.downloading != current.downloading,
           builder: (context, eventState) => SubscriptionListView(
             items: snapshot.data ?? const [],
             emptyMessage: AppLocalizations.of(
@@ -98,7 +100,9 @@ class _SubscriptionListView extends StatelessWidget {
             addLabel: AppLocalizations.of(context)!.buttonAdd,
             pingLabel: AppLocalizations.of(context)!.outboundPageRealPing,
             pinging: eventState.pinging,
-            onAdd: () => controller.addSubscription(context),
+            onAdd: eventState.downloading
+                ? null
+                : () => controller.addSubscription(context),
             onOpen: (subscription) =>
                 controller.openNodes(context, subscription.id),
             onPing: (subscription) => controller.ping(subscription.id),

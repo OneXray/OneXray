@@ -172,4 +172,27 @@ void main() {
     await tester.tap(find.text('Add'));
     expect(added, isTrue);
   });
+
+  testWidgets('subscription list empty state disables add while downloading', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        SubscriptionListView(
+          items: const [],
+          emptyMessage: 'No subscriptions',
+          addLabel: 'Add',
+          pingLabel: 'Ping',
+          pinging: false,
+          onAdd: null,
+          onOpen: (_) {},
+          onPing: (_) {},
+          onAction: (_, IconMenuId _) {},
+        ),
+      ),
+    );
+
+    expect(find.text('No subscriptions'), findsOneWidget);
+    expect(find.text('Add'), findsNothing);
+  });
 }

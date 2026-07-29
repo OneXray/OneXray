@@ -28,7 +28,7 @@ class SubscriptionListView extends StatelessWidget {
   final String addLabel;
   final String pingLabel;
   final bool pinging;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final ValueChanged<SubscriptionData> onOpen;
   final ValueChanged<SubscriptionData> onPing;
   final void Function(SubscriptionData, IconMenuId) onAction;
