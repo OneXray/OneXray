@@ -71,7 +71,6 @@ class TunSettingsContent extends StatelessWidget {
   ) {
     if (AppPlatform.isIOS || AppPlatform.isMacOS) {
       return [
-        _routeSection(context, state, controller),
         _dotSection(context, state, controller),
         _onDemandSection(context, state, controller),
       ];
@@ -105,29 +104,6 @@ class TunSettingsContent extends StatelessWidget {
       children: [
         _enableIPv6(context, state, controller),
         _metricsEnabled(context, state, controller),
-      ],
-    );
-  }
-
-  Widget _routeSection(
-    BuildContext context,
-    TunSettingsPageState state,
-    TunSettingsController controller,
-  ) {
-    return SettingSection(
-      title: AppLocalizations.of(context)!.tunSettingsPageRoute,
-      children: [
-        SwitchSettingRow(
-          leading: const Icon(LucideIcons.route),
-          title: AppLocalizations.of(
-            context,
-          )!.tunSettingsPageExcludeLocalNetworks,
-          subtitle: AppLocalizations.of(
-            context,
-          )!.tunSettingsPageExcludeLocalNetworksTip,
-          value: state.tunSettings.excludeLocalNetworks,
-          onChanged: controller.updateExcludeLocalNetworks,
-        ),
       ],
     );
   }

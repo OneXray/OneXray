@@ -65,8 +65,6 @@ class VPNManager {
         conf.serverAddress = serverAddress
 
         conf.username = serverAddress
-        conf.includeAllNetworks = true
-        conf.enforceRoutes = false
         conf.excludeLocalNetworks = true
 
         vpn.protocolConfiguration = conf
@@ -291,30 +289,23 @@ class VPNManager {
 
     private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async {
         vpn.isEnabled = true
-        if let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
-            // The packet tunnel installs default routes, so use full-tunnel
-            // semantics instead of enforcing split-tunnel route precedence.
-            conf.includeAllNetworks = true
-            conf.enforceRoutes = false
-            conf.excludeLocalNetworks = tun.excludeLocalNetworks ?? true
-            if let request {
-                do {
-                    var providerConfig = conf.providerConfiguration ?? [:]
-                    let encodedRequest: Data
-                    if Constants.useSystemExtension {
-                        let rewritten = rewriteRequestForExtension(request)
-                        encodedRequest = try JsonTool.encode(rewritten)
-                        if let xrayJson = readAndRewriteXrayJson() {
-                            providerConfig["xrayJson"] = xrayJson
-                        }
-                    } else {
-                        encodedRequest = try JsonTool.encode(request)
+        if let request, let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
+            do {
+                var providerConfig = conf.providerConfiguration ?? [:]
+                let encodedRequest: Data
+                if Constants.useSystemExtension {
+                    let rewritten = rewriteRequestForExtension(request)
+                    encodedRequest = try JsonTool.encode(rewritten)
+                    if let xrayJson = readAndRewriteXrayJson() {
+                        providerConfig["xrayJson"] = xrayJson
                     }
-                    providerConfig["request"] = encodedRequest
-                    conf.providerConfiguration = providerConfig
-                } catch {
-                    YGLog(error.localizedDescription)
+                } else {
+                    encodedRequest = try JsonTool.encode(request)
                 }
+                providerConfig["request"] = encodedRequest
+                conf.providerConfiguration = providerConfig
+            } catch {
+                YGLog(error.localizedDescription)
             }
         }
         if let onDemandEnabled = tun.onDemandEnabled, onDemandEnabled {

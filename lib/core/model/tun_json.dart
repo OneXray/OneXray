@@ -19,7 +19,6 @@ class TunJson {
   String? autoOutboundsInterface;
 
   // apple
-  bool? excludeLocalNetworks;
   bool? onDemandEnabled;
   bool? disconnectOnSleep;
   List<OnDemandRule>? onDemandRules;
@@ -37,7 +36,6 @@ class TunJson {
     this.metricsEnabled,
     this.tunName,
     this.autoOutboundsInterface,
-    this.excludeLocalNetworks,
     this.onDemandEnabled,
     this.disconnectOnSleep,
     this.onDemandRules,

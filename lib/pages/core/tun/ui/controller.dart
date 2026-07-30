@@ -71,11 +71,6 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
     emit(state._copy());
   }
 
-  void updateExcludeLocalNetworks(bool value) {
-    state.tunSettings.excludeLocalNetworks = value;
-    emit(state._copy());
-  }
-
   Future<void> editInterface(BuildContext context) async {
     final params = NetworkInterfaceParams(
       state.tunSettings.autoOutboundsInterface,
