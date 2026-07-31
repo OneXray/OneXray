@@ -12,12 +12,10 @@ extension OutboundStatePing on OutboundState {
     int fallbackDelay = PingDelayConstants.unknown,
   }) async {
     final xrayJson = XrayJsonStandard.standard..outbounds = [this.xrayJson];
-    final results = await PingBatchRunner.run([
+    final result = await PingBatchRunner.runSingle(
       PingBatchSource(JsonTool.encoder.convert(xrayJson.toJson())),
-    ], pingState);
-    if (results.isEmpty) {
-      return fallbackDelay;
-    }
-    return results.first.delay;
+      pingState,
+    );
+    return result?.delay ?? fallbackDelay;
   }
 }

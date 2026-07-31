@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -146,22 +147,27 @@ class PingService {
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
     final pingState = PingState();
     await pingState.readFromPreferences();
-    final pingRows = <CoreConfigData>[];
-    final sources = <PingBatchSource>[];
-    for (final row in rows) {
-      final source = _makePingSource(row);
-      if (source != null) {
-        pingRows.add(row);
-        sources.add(source);
-      }
-    }
-    if (sources.isEmpty) {
-      return;
-    }
 
-    final results = await PingBatchRunner.run(sources, pingState);
-    for (var index = 0; index < pingRows.length; index++) {
-      await _updateRow(db, pingRows[index], results[index].delay);
+    for (final rowSlice in rows.slices(PingBatchRunner.maxBatchSize)) {
+      final batchRows = <CoreConfigData>[];
+      final sources = <PingBatchSource>[];
+      for (final row in rowSlice) {
+        final source = _makePingSource(row);
+        if (source != null) {
+          batchRows.add(row);
+          sources.add(source);
+        }
+      }
+      if (sources.isEmpty) {
+        continue;
+      }
+
+      final results = await PingBatchRunner.run(sources, pingState);
+      await db.transaction(() async {
+        for (var index = 0; index < results.length; index++) {
+          await _updateRow(db, batchRows[index], results[index].delay);
+        }
+      });
     }
   }
 

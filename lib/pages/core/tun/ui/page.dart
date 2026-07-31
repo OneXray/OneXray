@@ -71,6 +71,7 @@ class TunSettingsContent extends StatelessWidget {
   ) {
     if (AppPlatform.isIOS || AppPlatform.isMacOS) {
       return [
+        _appleRoutingSection(context, state, controller),
         _dotSection(context, state, controller),
         _onDemandSection(context, state, controller),
       ];
@@ -82,6 +83,57 @@ class TunSettingsContent extends StatelessWidget {
       return [_interfaceSection(context, state, controller)];
     }
     return const [];
+  }
+
+  Widget _appleRoutingSection(
+    BuildContext context,
+    TunSettingsPageState state,
+    TunSettingsController controller,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    return SettingSection(
+      title: localizations.tunSettingsPageAppleRouting,
+      children: [
+        SwitchSettingRow(
+          leading: const Icon(LucideIcons.network),
+          title: localizations.tunSettingsPageIncludeAllNetworks,
+          subtitle: localizations.tunSettingsPageIncludeAllNetworksTip,
+          value: state.tunSettings.includeAllNetworks,
+          onChanged: controller.updateIncludeAllNetworks,
+        ),
+        if (state.tunSettings.includeAllNetworks) ...[
+          SwitchSettingRow(
+            leading: const Icon(LucideIcons.house),
+            title: localizations.tunSettingsPageExcludeLocalNetworks,
+            subtitle: localizations.tunSettingsPageExcludeLocalNetworksTip,
+            value: state.tunSettings.excludeLocalNetworks,
+            onChanged: controller.updateExcludeLocalNetworks,
+          ),
+          SwitchSettingRow(
+            leading: const Icon(LucideIcons.radioTower),
+            title: localizations.tunSettingsPageExcludeCellularServices,
+            subtitle: localizations.tunSettingsPageExcludeCellularServicesTip,
+            value: state.tunSettings.excludeCellularServices,
+            onChanged: controller.updateExcludeCellularServices,
+          ),
+          SwitchSettingRow(
+            leading: const Icon(LucideIcons.zap),
+            title: localizations.tunSettingsPageExcludeAPNs,
+            subtitle: localizations.tunSettingsPageExcludeAPNsTip,
+            value: state.tunSettings.excludeAPNs,
+            onChanged: controller.updateExcludeAPNs,
+          ),
+          SwitchSettingRow(
+            leading: const Icon(LucideIcons.smartphone),
+            title: localizations.tunSettingsPageExcludeDeviceCommunication,
+            subtitle:
+                localizations.tunSettingsPageExcludeDeviceCommunicationTip,
+            value: state.tunSettings.excludeDeviceCommunication,
+            onChanged: controller.updateExcludeDeviceCommunication,
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _dnsSection(BuildContext context, TunSettingsController controller) {

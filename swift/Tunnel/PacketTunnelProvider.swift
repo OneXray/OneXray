@@ -6,7 +6,7 @@ enum TunnelError: Error {
     case noSocketFd
     case noStartModel
     case noGroupContainer
-    case noXrayConfigPath
+    case noXrayJson
     case startXrayTimeout
     case startXrayFailed(String)
 }
@@ -99,24 +99,12 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
 
         // Prepare extension-side directories.
-        let runDir = extGroupURL.adaptedAppendPath(path: "run")
         let datDir = extGroupURL.adaptedAppendPath(path: "dat")
         let stagingDir = extGroupURL.adaptedAppendPath(path: "dat.staging")
         let fm = FileManager.default
-        try? fm.createDirectory(at: runDir, withIntermediateDirectories: true)
         try? fm.createDirectory(at: datDir, withIntermediateDirectories: true)
         // Abandoned staging from an aborted previous sync → discard.
         try? fm.removeItem(at: stagingDir)
-
-        // Materialize xray.json (already path-rewritten by the app).
-        if let xrayJson = providerConfig["xrayJson"] as? Data {
-            let xrayURL = runDir.adaptedAppendPath(path: "xray.json")
-            do {
-                try xrayJson.write(to: xrayURL)
-            } catch {
-                YGLog("startTunnel write xray.json error: \(error)")
-            }
-        }
 
         // App-driven path waits for the dat sync + start_xray signal.
         // On-demand path skips the wait and uses whatever is already in dat/.
@@ -338,8 +326,10 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             YGLog("PacketTunnelProvider TunnelError.noSocketFd")
             throw TunnelError.noSocketFd
         }
-        let request = try LibXrayInvokeRequest.fromText(requestJson)
-        try patchRuntimeEnv(fd: fd, request: request)
+        let request = try patchRuntimeEnv(
+            fd: fd,
+            request: LibXrayInvokeRequest.fromText(requestJson)
+        )
         let requestText = try request.toText()
 
         let responseText = await Task.detached(priority: .userInitiated) {
@@ -358,14 +348,15 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
     }
 
-    private func patchRuntimeEnv(fd: Int32, request: LibXrayInvokeRequest) throws {
-        guard let configPath = request.payload?.configPath, !configPath.isEmpty else {
-            YGLog("PacketTunnelProvider TunnelError.noXrayConfigPath")
-            throw TunnelError.noXrayConfigPath
+    private func patchRuntimeEnv(
+        fd: Int32,
+        request: LibXrayInvokeRequest
+    ) throws -> LibXrayInvokeRequest {
+        guard let xrayJson = request.payload?.xrayJson, !xrayJson.isEmpty else {
+            YGLog("PacketTunnelProvider TunnelError.noXrayJson")
+            throw TunnelError.noXrayJson
         }
-        let url = URL(fileURLWithPath: configPath)
-        let data = try Data(contentsOf: url)
-        var root = try JsonTool.decodeObject(from: data)
+        var root = try JsonTool.decodeObject(from: Data(xrayJson.utf8))
         var env = try XrayEnv.fromObject(root["env"])
         env.tunFd = "\(fd)"
         if Constants.useSystemExtension {
@@ -378,7 +369,15 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             env.certLocation = datPath
         }
         root["env"] = try env.toObject()
-        try JsonTool.encodeObject(root).write(to: url, options: .atomic)
+        let data = try JsonTool.encodeObject(root)
+        guard let updatedJson = String(data: data, encoding: .utf8) else {
+            throw TunnelError.noXrayJson
+        }
+        var updatedRequest = request
+        var payload = request.payload ?? RunXrayRequest(xrayJson: nil)
+        payload.xrayJson = updatedJson
+        updatedRequest.payload = payload
+        return updatedRequest
     }
 
     private func stopXray() {

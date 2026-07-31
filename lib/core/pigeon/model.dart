@@ -147,10 +147,10 @@ class PingBatchRequest {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class PingBatchItemRequest {
-  String? configPath;
+  String? xrayJson;
   String? outboundTag;
 
-  PingBatchItemRequest(this.configPath, {this.outboundTag});
+  PingBatchItemRequest(this.xrayJson, {this.outboundTag});
 
   factory PingBatchItemRequest.fromJson(Map<String, dynamic> json) =>
       _$PingBatchItemRequestFromJson(json);
@@ -160,14 +160,26 @@ class PingBatchItemRequest {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class RunXrayRequest {
-  String? configPath;
+  String? xrayJson;
 
-  RunXrayRequest(this.configPath);
+  RunXrayRequest(this.xrayJson);
 
   factory RunXrayRequest.fromJson(Map<String, dynamic> json) =>
       _$RunXrayRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$RunXrayRequestToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class TestXrayRequest {
+  String? xrayJson;
+
+  TestXrayRequest(this.xrayJson);
+
+  factory TestXrayRequest.fromJson(Map<String, dynamic> json) =>
+      _$TestXrayRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TestXrayRequestToJson(this);
 }
 
 enum LibXrayMethod {
@@ -185,8 +197,6 @@ enum LibXrayMethod {
   testXray,
   @JsonValue("runXray")
   runXray,
-  @JsonValue("runXrayFromJson")
-  runXrayFromJson,
   @JsonValue("stopXray")
   stopXray,
   @JsonValue("xrayVersion")
@@ -201,7 +211,7 @@ class LibXrayInvokeRequest {
   LibXrayMethod? method;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 1;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 2;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);
@@ -247,18 +257,6 @@ class ConvertXrayJsonToShareLinksRequest {
 
   Map<String, dynamic> toJson() =>
       _$ConvertXrayJsonToShareLinksRequestToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class RunXrayFromJSONRequest {
-  String? configJSON;
-
-  RunXrayFromJSONRequest(this.configJSON);
-
-  factory RunXrayFromJSONRequest.fromJson(Map<String, dynamic> json) =>
-      _$RunXrayFromJSONRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$RunXrayFromJSONRequestToJson(this);
 }
 
 class LibXrayRunConfig {

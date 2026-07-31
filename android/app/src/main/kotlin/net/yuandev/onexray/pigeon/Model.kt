@@ -29,8 +29,12 @@ data class TunJson(
     val metricsEnabled: Boolean?,
     val tunName: String?,
     val autoOutboundsInterface: String?,
+    val includeAllNetworks: Boolean?,
+    val excludeLocalNetworks: Boolean?,
+    val excludeCellularServices: Boolean?,
+    val excludeAPNs: Boolean?,
+    val excludeDeviceCommunication: Boolean?,
     val onDemandEnabled: Boolean?,
-    val disconnectOnSleep: Boolean?,
     val onDemandRules: List<OnDemandRule>?,
     val perAppVPNMode: PerAppVPNMode?,
     val allowAppList: List<String>?,
@@ -75,9 +79,6 @@ enum class LibXrayMethod {
     @SerialName("runXray")
     RUN_XRAY,
 
-    @SerialName("runXrayFromJson")
-    RUN_XRAY_FROM_JSON,
-
     @SerialName("stopXray")
     STOP_XRAY,
 
@@ -90,7 +91,7 @@ enum class LibXrayMethod {
 
 @Serializable
 data class RunXrayRequest(
-    val configPath: String? = null,
+    val xrayJson: String? = null,
 )
 
 @Serializable
@@ -105,7 +106,7 @@ data class XrayEnv(
 
 @Serializable
 data class LibXrayInvokeRequest(
-    val apiVersion: Int? = 1,
+    val apiVersion: Int? = 2,
     val method: LibXrayMethod? = null,
     val payload: RunXrayRequest? = null,
 )

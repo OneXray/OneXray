@@ -41,30 +41,14 @@ class WindowsFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
-    final configPath = request.request.configPath;
-    if (configPath == null || configPath.isEmpty) {
-      ygLogger("start core failed: config path is empty");
-      return false;
-    }
-
-    return _startCoreProcess(
-      label: "core",
-      verb: "runas",
-      configPath: configPath,
-    );
+    return _startCoreProcess(label: "core", verb: "runas", request: request);
   }
 
   Future<bool> startProxyCore(LibXrayRunConfig request) async {
-    final configPath = request.request.configPath;
-    if (configPath == null || configPath.isEmpty) {
-      ygLogger("start proxy core failed: config path is empty");
-      return false;
-    }
-
     return _startCoreProcess(
       label: "proxy core",
       verb: "open",
-      configPath: configPath,
+      request: request,
     );
   }
 
@@ -124,13 +108,18 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<bool> _startCoreProcess({
     required String label,
     required String verb,
-    required String configPath,
+    required LibXrayRunConfig request,
   }) async {
     if (!await _stopProcess(label: label)) {
       return false;
     }
 
     try {
+      final configPath = await materializeRunXrayConfig(request);
+      if (configPath == null) {
+        ygLogger("start $label failed: xrayJson is empty");
+        return false;
+      }
       final result = _runCommand(
         verb: verb,
         file: corePath,

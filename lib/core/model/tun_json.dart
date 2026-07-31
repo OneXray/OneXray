@@ -19,8 +19,12 @@ class TunJson {
   String? autoOutboundsInterface;
 
   // apple
+  bool? includeAllNetworks;
+  bool? excludeLocalNetworks;
+  bool? excludeCellularServices;
+  bool? excludeAPNs;
+  bool? excludeDeviceCommunication;
   bool? onDemandEnabled;
-  bool? disconnectOnSleep;
   List<OnDemandRule>? onDemandRules;
   // android
   String? perAppVPNMode;
@@ -36,8 +40,12 @@ class TunJson {
     this.metricsEnabled,
     this.tunName,
     this.autoOutboundsInterface,
+    this.includeAllNetworks,
+    this.excludeLocalNetworks,
+    this.excludeCellularServices,
+    this.excludeAPNs,
+    this.excludeDeviceCommunication,
     this.onDemandEnabled,
-    this.disconnectOnSleep,
     this.onDemandRules,
     this.perAppVPNMode,
     this.allowAppList,

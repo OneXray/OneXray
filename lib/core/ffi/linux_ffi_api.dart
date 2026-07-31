@@ -34,14 +34,14 @@ class LinuxFfiApi extends BaseFfiApi {
 
   Future<bool> _startCore(LibXrayRunConfig request) async {
     try {
-      final configPath = request.request.configPath;
-      if (configPath == null || configPath.isEmpty) {
-        ygLogger("start core failed: config path is empty");
+      if (!await _stopCoreProcess()) {
+        ygLogger("start core failed: previous core is still running");
         return false;
       }
 
-      if (!await _stopCoreProcess()) {
-        ygLogger("start core failed: previous core is still running");
+      final configPath = await materializeRunXrayConfig(request);
+      if (configPath == null) {
+        ygLogger("start core failed: xrayJson is empty");
         return false;
       }
 

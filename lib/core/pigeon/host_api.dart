@@ -210,12 +210,12 @@ class AppHostApi {
     return null;
   }
 
-  Future<String> testXray(String configPath) async {
+  Future<String> testXray(String xrayJson) async {
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
-          payload: RunXrayRequest(configPath).toJson(),
+          payload: TestXrayRequest(xrayJson).toJson(),
         ),
       );
       final resp = LibXrayInvokeResponseParser.parse(res);

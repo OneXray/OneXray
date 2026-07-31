@@ -67,8 +67,12 @@ struct TunJson: Codable {
     var metricsEnabled: Bool?
     var tunName: String?
     var autoOutboundsInterface: String?
+    var includeAllNetworks: Bool?
+    var excludeLocalNetworks: Bool?
+    var excludeCellularServices: Bool?
+    var excludeAPNs: Bool?
+    var excludeDeviceCommunication: Bool?
     var onDemandEnabled: Bool?
-    var disconnectOnSleep: Bool?
     var onDemandRules: [OnDemandRule]?
     var perAppVPNMode: String?
     var allowAppList: [String]?
@@ -116,14 +120,13 @@ enum LibXrayMethod: String, Codable {
     case pingBatch
     case testXray
     case runXray
-    case runXrayFromJson
     case stopXray
     case xrayVersion
     case getXrayState
 }
 
 struct RunXrayRequest: Codable, Hashable {
-    var configPath: String?
+    var xrayJson: String?
 }
 
 struct XrayEnv: Codable, Hashable {
@@ -155,7 +158,7 @@ struct LibXrayInvokeRequest: Codable, Hashable {
     var payload: RunXrayRequest?
 
     init(
-        apiVersion: Int? = 1,
+        apiVersion: Int? = 2,
         method: LibXrayMethod? = nil,
         payload: RunXrayRequest? = nil
     ) {

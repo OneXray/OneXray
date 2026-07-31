@@ -18,8 +18,12 @@ class TunSettingsState {
 
   var autoOutboundsInterface = autoOutboundsInterfaceAuto;
 
+  var includeAllNetworks = false;
+  var excludeLocalNetworks = true;
+  var excludeCellularServices = true;
+  var excludeAPNs = true;
+  var excludeDeviceCommunication = true;
   var onDemandEnabled = false;
-  var disconnectOnSleep = false;
   var onDemandRules = <OnDemandRuleState>[];
   var perAppVPNMode = PerAppVPNMode.allow;
   var allowAppList = <String>{};
@@ -54,11 +58,23 @@ class TunSettingsState {
       autoOutboundsInterface = tunJson.autoOutboundsInterface!;
     }
 
+    if (tunJson.includeAllNetworks != null) {
+      includeAllNetworks = tunJson.includeAllNetworks!;
+    }
+    if (tunJson.excludeLocalNetworks != null) {
+      excludeLocalNetworks = tunJson.excludeLocalNetworks!;
+    }
+    if (tunJson.excludeCellularServices != null) {
+      excludeCellularServices = tunJson.excludeCellularServices!;
+    }
+    if (tunJson.excludeAPNs != null) {
+      excludeAPNs = tunJson.excludeAPNs!;
+    }
+    if (tunJson.excludeDeviceCommunication != null) {
+      excludeDeviceCommunication = tunJson.excludeDeviceCommunication!;
+    }
     if (tunJson.onDemandEnabled != null) {
       onDemandEnabled = tunJson.onDemandEnabled!;
-    }
-    if (tunJson.disconnectOnSleep != null) {
-      disconnectOnSleep = tunJson.disconnectOnSleep!;
     }
     if (EmptyTool.checkList(tunJson.onDemandRules)) {
       final rules = OnDemandRuleState.readFromJsonList(tunJson.onDemandRules!);
@@ -95,8 +111,12 @@ class TunSettingsState {
 
     tunJson.autoOutboundsInterface = autoOutboundsInterface;
 
+    tunJson.includeAllNetworks = includeAllNetworks;
+    tunJson.excludeLocalNetworks = excludeLocalNetworks;
+    tunJson.excludeCellularServices = excludeCellularServices;
+    tunJson.excludeAPNs = excludeAPNs;
+    tunJson.excludeDeviceCommunication = excludeDeviceCommunication;
     tunJson.onDemandEnabled = onDemandEnabled;
-    tunJson.disconnectOnSleep = disconnectOnSleep;
     tunJson.onDemandRules = onDemandRules.map((e) => e.tunJson).toList();
 
     tunJson.perAppVPNMode = perAppVPNMode.name;

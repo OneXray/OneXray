@@ -8,12 +8,10 @@ class XrayRawPing {
     PingState pingState, {
     int fallbackDelay = PingDelayConstants.unknown,
   }) async {
-    final results = await PingBatchRunner.run([
+    final result = await PingBatchRunner.runSingle(
       PingBatchSource(rawText),
-    ], pingState);
-    if (results.isEmpty) {
-      return fallbackDelay;
-    }
-    return results.first.delay;
+      pingState,
+    );
+    return result?.delay ?? fallbackDelay;
   }
 }

@@ -143,22 +143,28 @@ Map<String, dynamic> _$PingBatchRequestToJson(PingBatchRequest instance) =>
 PingBatchItemRequest _$PingBatchItemRequestFromJson(
   Map<String, dynamic> json,
 ) => PingBatchItemRequest(
-  json['configPath'] as String?,
+  json['xrayJson'] as String?,
   outboundTag: json['outboundTag'] as String?,
 );
 
 Map<String, dynamic> _$PingBatchItemRequestToJson(
   PingBatchItemRequest instance,
 ) => <String, dynamic>{
-  'configPath': ?instance.configPath,
+  'xrayJson': ?instance.xrayJson,
   'outboundTag': ?instance.outboundTag,
 };
 
 RunXrayRequest _$RunXrayRequestFromJson(Map<String, dynamic> json) =>
-    RunXrayRequest(json['configPath'] as String?);
+    RunXrayRequest(json['xrayJson'] as String?);
 
 Map<String, dynamic> _$RunXrayRequestToJson(RunXrayRequest instance) =>
-    <String, dynamic>{'configPath': ?instance.configPath};
+    <String, dynamic>{'xrayJson': ?instance.xrayJson};
+
+TestXrayRequest _$TestXrayRequestFromJson(Map<String, dynamic> json) =>
+    TestXrayRequest(json['xrayJson'] as String?);
+
+Map<String, dynamic> _$TestXrayRequestToJson(TestXrayRequest instance) =>
+    <String, dynamic>{'xrayJson': ?instance.xrayJson};
 
 LibXrayInvokeRequest _$LibXrayInvokeRequestFromJson(
   Map<String, dynamic> json,
@@ -183,7 +189,6 @@ const _$LibXrayMethodEnumMap = {
   LibXrayMethod.pingBatch: 'pingBatch',
   LibXrayMethod.testXray: 'testXray',
   LibXrayMethod.runXray: 'runXray',
-  LibXrayMethod.runXrayFromJson: 'runXrayFromJson',
   LibXrayMethod.stopXray: 'stopXray',
   LibXrayMethod.xrayVersion: 'xrayVersion',
   LibXrayMethod.getXrayState: 'getXrayState',
@@ -211,11 +216,3 @@ ConvertXrayJsonToShareLinksRequest _$ConvertXrayJsonToShareLinksRequestFromJson(
 Map<String, dynamic> _$ConvertXrayJsonToShareLinksRequestToJson(
   ConvertXrayJsonToShareLinksRequest instance,
 ) => <String, dynamic>{'xrayJson': ?instance.xrayJson};
-
-RunXrayFromJSONRequest _$RunXrayFromJSONRequestFromJson(
-  Map<String, dynamic> json,
-) => RunXrayFromJSONRequest(json['configJSON'] as String?);
-
-Map<String, dynamic> _$RunXrayFromJSONRequestToJson(
-  RunXrayFromJSONRequest instance,
-) => <String, dynamic>{'configJSON': ?instance.configJSON};

@@ -440,13 +440,14 @@ class OneVpnService : VpnService() {
 
     private fun patchRuntimeEnv(requestJson: String, fd: Int): String {
         val request = JsonTool.json.decodeFromString<LibXrayInvokeRequest>(requestJson)
-        val configPath = request.payload?.configPath
-            ?: throw IllegalStateException("configPath is empty")
-        if (configPath.isEmpty()) {
-            throw IllegalStateException("configPath is empty")
+        val payload = request.payload
+            ?: throw IllegalStateException("runXray payload is empty")
+        val xrayJson = payload.xrayJson
+            ?: throw IllegalStateException("xrayJson is empty")
+        if (xrayJson.isEmpty()) {
+            throw IllegalStateException("xrayJson is empty")
         }
-        val configFile = File(configPath)
-        val root = JsonTool.json.parseToJsonElement(configFile.readText()).jsonObject
+        val root = JsonTool.json.parseToJsonElement(xrayJson).jsonObject
         val currentEnv = root["env"]?.let {
             JsonTool.json.decodeFromJsonElement<XrayEnv>(it)
         } ?: XrayEnv()
@@ -459,7 +460,9 @@ class OneVpnService : VpnService() {
             }
             put("env", JsonTool.json.encodeToJsonElement(env))
         }
-        configFile.writeText(JsonTool.json.encodeToString(updated))
-        return JsonTool.json.encodeToString(request)
+        val updatedPayload = payload.copy(
+            xrayJson = JsonTool.json.encodeToString(updated),
+        )
+        return JsonTool.json.encodeToString(request.copy(payload = updatedPayload))
     }
 }

@@ -108,7 +108,7 @@ final class XrayRuntimeConfigService {
     await _clearXrayLogs();
     final invoke = LibXrayInvokeRequest(
       method: LibXrayMethod.runXray,
-      payload: RunXrayRequest(configPath).toJson(),
+      payload: RunXrayRequest(await File(configPath).readAsString()).toJson(),
     );
     return XrayRuntimeConfig(
       mode: mode,

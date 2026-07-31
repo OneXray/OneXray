@@ -65,7 +65,6 @@ class VPNManager {
         conf.serverAddress = serverAddress
 
         conf.username = serverAddress
-        conf.excludeLocalNetworks = true
 
         vpn.protocolConfiguration = conf
         vpn.localizedDescription = serverAddress
@@ -289,23 +288,23 @@ class VPNManager {
 
     private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async {
         vpn.isEnabled = true
-        if let request, let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
-            do {
-                var providerConfig = conf.providerConfiguration ?? [:]
-                let encodedRequest: Data
-                if Constants.useSystemExtension {
-                    let rewritten = rewriteRequestForExtension(request)
-                    encodedRequest = try JsonTool.encode(rewritten)
-                    if let xrayJson = readAndRewriteXrayJson() {
-                        providerConfig["xrayJson"] = xrayJson
+        if let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
+            applyAppleNetworkRouting(conf, tun: tun)
+            if let request {
+                do {
+                    var providerConfig = conf.providerConfiguration ?? [:]
+                    let encodedRequest: Data
+                    if Constants.useSystemExtension {
+                        let rewritten = rewriteRequestForExtension(request)
+                        encodedRequest = try JsonTool.encode(rewritten)
+                    } else {
+                        encodedRequest = try JsonTool.encode(request)
                     }
-                } else {
-                    encodedRequest = try JsonTool.encode(request)
+                    providerConfig["request"] = encodedRequest
+                    conf.providerConfiguration = providerConfig
+                } catch {
+                    YGLog(error.localizedDescription)
                 }
-                providerConfig["request"] = encodedRequest
-                conf.providerConfiguration = providerConfig
-            } catch {
-                YGLog(error.localizedDescription)
             }
         }
         if let onDemandEnabled = tun.onDemandEnabled, onDemandEnabled {
@@ -322,21 +321,28 @@ class VPNManager {
                 vpn.isOnDemandEnabled = true
                 vpn.onDemandRules = [NEOnDemandRuleConnect()]
             }
-            if let disconnectOnSleep = tun.disconnectOnSleep, disconnectOnSleep {
-                vpn.protocolConfiguration?.disconnectOnSleep = true
-            } else {
-                vpn.protocolConfiguration?.disconnectOnSleep = false
-            }
         } else {
             vpn.isOnDemandEnabled = false
             vpn.onDemandRules = nil
-            vpn.protocolConfiguration?.disconnectOnSleep = false
         }
+        vpn.protocolConfiguration?.disconnectOnSleep = false
         do {
             try await vpn.saveToPreferences()
             try await vpn.loadFromPreferences()
         } catch {
             YGLog(error.localizedDescription)
+        }
+    }
+
+    private func applyAppleNetworkRouting(_ conf: NETunnelProviderProtocol, tun: TunJson) {
+        conf.includeAllNetworks = tun.includeAllNetworks ?? false
+        conf.excludeLocalNetworks = tun.excludeLocalNetworks ?? true
+        if #available(macOS 13.3, iOS 16.4, *) {
+            conf.excludeCellularServices = tun.excludeCellularServices ?? true
+            conf.excludeAPNs = tun.excludeAPNs ?? true
+        }
+        if #available(macOS 14.4, iOS 17.4, *) {
+            conf.excludeDeviceCommunication = tun.excludeDeviceCommunication ?? true
         }
     }
 
@@ -426,23 +432,20 @@ class VPNManager {
     private func rewriteRequestForExtension(_ request: StartVpnRequest) -> StartVpnRequest {
         guard let mapping = pathMapping() else { return request }
         var newRequest = request
-        if let text = request.coreInvokeText {
-            let rewritten = text.replacingOccurrences(of: mapping.user, with: mapping.ext)
-            newRequest.coreInvokeText = rewritten
+        if let text = request.coreInvokeText,
+           var invoke = try? LibXrayInvokeRequest.fromText(text),
+           var payload = invoke.payload,
+           let xrayJson = payload.xrayJson {
+            payload.xrayJson = xrayJson.replacingOccurrences(
+                of: mapping.user,
+                with: mapping.ext
+            )
+            invoke.payload = payload
+            if let rewritten = try? invoke.toText() {
+                newRequest.coreInvokeText = rewritten
+            }
         }
         return newRequest
-    }
-
-    private func readAndRewriteXrayJson() -> Data? {
-        guard let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
-            return nil
-        }
-        let xrayURL = userGroup.adaptedAppendPath(path: "run/xray.json")
-        guard let data = try? Data(contentsOf: xrayURL) else { return nil }
-        guard let mapping = pathMapping() else { return data }
-        guard let text = String(data: data, encoding: .utf8) else { return data }
-        let rewritten = text.replacingOccurrences(of: mapping.user, with: mapping.ext)
-        return rewritten.data(using: .utf8) ?? data
     }
 
     private func syncDatAndStart(session: NETunnelProviderSession) async throws {

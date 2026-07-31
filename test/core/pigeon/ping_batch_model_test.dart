@@ -6,17 +6,17 @@ void main() {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.pingBatch,
       payload: PingBatchRequest(
-        [PingBatchItemRequest('/tmp/node-1.json', outboundTag: 'proxy')],
+        [PingBatchItemRequest('{"outbounds":[]}', outboundTag: 'proxy')],
         5,
         'https://cp.cloudflare.com/',
       ).toJson(),
     ).toJson();
 
-    expect(request['apiVersion'], 1);
+    expect(request['apiVersion'], 2);
     expect(request['method'], 'pingBatch');
     expect(request['payload'], {
       'configs': [
-        {'configPath': '/tmp/node-1.json', 'outboundTag': 'proxy'},
+        {'xrayJson': '{"outbounds":[]}', 'outboundTag': 'proxy'},
       ],
       'timeout': 5,
       'url': 'https://cp.cloudflare.com/',

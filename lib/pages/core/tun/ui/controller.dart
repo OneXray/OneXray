@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/core/tun/network_interface/params.dart';
 import 'package:onexray/pages/core/tun/on_demand_rule/params.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/tun_settings/enum.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/tun_settings/state_validator.dart';
+import 'package:onexray/service/vpn/service.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
 class TunSettingsPageState {
@@ -68,6 +71,31 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
 
   void updateMetricsEnabled(bool value) {
     state.tunSettings.metricsEnabled = value;
+    emit(state._copy());
+  }
+
+  void updateIncludeAllNetworks(bool value) {
+    state.tunSettings.includeAllNetworks = value;
+    emit(state._copy());
+  }
+
+  void updateExcludeLocalNetworks(bool value) {
+    state.tunSettings.excludeLocalNetworks = value;
+    emit(state._copy());
+  }
+
+  void updateExcludeCellularServices(bool value) {
+    state.tunSettings.excludeCellularServices = value;
+    emit(state._copy());
+  }
+
+  void updateExcludeAPNs(bool value) {
+    state.tunSettings.excludeAPNs = value;
+    emit(state._copy());
+  }
+
+  void updateExcludeDeviceCommunication(bool value) {
+    state.tunSettings.excludeDeviceCommunication = value;
     emit(state._copy());
   }
 
@@ -200,12 +228,52 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
     emit(state._copy());
 
     final checked = await _validate(context);
-    if (checked) {
-      await state.tunSettings.saveToPreferences();
-      if (context.mounted) {
-        context.pop();
+    if (!checked) {
+      return;
+    }
+
+    await state.tunSettings.saveToPreferences();
+    final vpnService = VpnService();
+    await vpnService.asyncInit();
+    if (!context.mounted) {
+      return;
+    }
+    if (!vpnService.vpnRunning) {
+      context.pop();
+      return;
+    }
+
+    final restart = await _showRestartVpnDialog(context);
+    if (!context.mounted) {
+      return;
+    }
+    if (restart == true) {
+      final result = await vpnService.restartCurrentVpn();
+      if (!context.mounted) {
+        return;
+      }
+      if (result.state == NativeVpnCommandState.failed) {
+        ContextAlert.showToast(
+          context,
+          result.message ?? AppLocalizations.of(context)!.vpnCommandFailed,
+        );
+        return;
       }
     }
+    context.pop();
+  }
+
+  Future<bool?> _showRestartVpnDialog(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AppConfirmationDialog(
+        title: localizations.tunSettingsPageRestartVpnTitle,
+        content: localizations.tunSettingsPageRestartVpnContent,
+        cancelLabel: localizations.buttonCancel,
+        confirmLabel: localizations.buttonRestart,
+      ),
+    );
   }
 
   void _mergeInputToState(TunSettingsState tunState) {

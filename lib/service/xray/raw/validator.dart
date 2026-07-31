@@ -1,12 +1,11 @@
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
-import 'package:onexray/service/xray/raw/writer.dart';
 
 class XrayRawValidationResult {
   final bool isValid;
@@ -74,13 +73,8 @@ class XrayRawValidator {
     XrayRawFix.fixEnv(jsonMap);
     XrayRawFix.fixMetrics(jsonMap);
 
+    await FileTool.checkDir(VpnConstants.runDir);
     final rawText = JsonTool.encoder.convert(jsonMap);
-    final configPath = await XrayRawWriter.writeConfig(rawText);
-    try {
-      await FileTool.checkDir(VpnConstants.runDir);
-      return await AppHostApi().testXray(configPath);
-    } finally {
-      await FileTool.deleteFileIfExists(configPath);
-    }
+    return AppHostApi().testXray(rawText);
   }
 }

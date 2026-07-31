@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:io';
 
 import 'package:ffi/ffi.dart';
 import 'package:isolate_manager/isolate_manager.dart';
@@ -10,6 +11,7 @@ import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:path/path.dart' as p;
 
 abstract class BaseFfiApi {
   Future<String> getTunFilesDir() async {
@@ -66,6 +68,25 @@ abstract class BaseFfiApi {
 
   Future<bool> startCore(LibXrayRunConfig request) async {
     return true;
+  }
+
+  Future<String?> materializeRunXrayConfig(LibXrayRunConfig request) async {
+    final xrayJson = request.request.xrayJson;
+    if (xrayJson == null || xrayJson.isEmpty) {
+      return null;
+    }
+
+    final runDir = Directory(p.join(await getTunFilesDir(), "run"));
+    await runDir.create(recursive: true);
+    final configPath = p.join(runDir.path, "xray.json");
+    final temporary = File("$configPath.tmp");
+    await temporary.writeAsString(xrayJson, flush: true);
+    final config = File(configPath);
+    if (Platform.isWindows && await config.exists()) {
+      await config.delete();
+    }
+    await temporary.rename(configPath);
+    return configPath;
   }
 
   Future<bool> stopCore() async => true;
