@@ -5,6 +5,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/auto_update/state.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
@@ -101,7 +102,7 @@ class SubscriptionAddController extends PageCubit<SubscriptionAddPageState> {
     _updateAgeKeyPairValidation();
   }
 
-  Future<void> generateAgeKey(BuildContext context) async {
+  Future<void> generateAgeKey(BuildContext context, AgeKeyType keyType) async {
     if (state.generatingAgeKey) {
       return;
     }
@@ -121,7 +122,7 @@ class SubscriptionAddController extends PageCubit<SubscriptionAddPageState> {
 
     emit(state.copyWith(generatingAgeKey: true));
     try {
-      final pair = await AppHostApi().generateAgeKeyPair();
+      final pair = await AppHostApi().generateAgeKeyPair(keyType: keyType);
       if (isPageActive) {
         ageSecretKeyController.text = pair.secretKey ?? '';
         agePublicKeyController.text = pair.publicKey ?? '';

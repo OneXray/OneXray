@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -32,6 +34,8 @@ class SubscriptionFormView extends StatelessWidget {
     required this.revealAgeSecretKeyLabel,
     required this.hideAgeSecretKeyLabel,
     required this.generateAgeKeyLabel,
+    required this.generateAgeX25519KeyLabel,
+    required this.generateAgeHybridKeyLabel,
     required this.clearAgeKeyLabel,
     required this.onToggleAgeSecretKeyVisibility,
     required this.onGenerateAgeKey,
@@ -64,9 +68,11 @@ class SubscriptionFormView extends StatelessWidget {
   final String revealAgeSecretKeyLabel;
   final String hideAgeSecretKeyLabel;
   final String generateAgeKeyLabel;
+  final String generateAgeX25519KeyLabel;
+  final String generateAgeHybridKeyLabel;
   final String clearAgeKeyLabel;
   final VoidCallback onToggleAgeSecretKeyVisibility;
-  final VoidCallback onGenerateAgeKey;
+  final ValueChanged<AgeKeyType> onGenerateAgeKey;
   final VoidCallback onClearAgeKey;
   final bool generatingAgeKey;
 
@@ -159,15 +165,39 @@ class SubscriptionFormView extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    ShadButton.outline(
-                      leading: generatingAgeKey
-                          ? const SizedBox.square(
-                              dimension: 15,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(LucideIcons.keyRound),
-                      onPressed: generatingAgeKey ? null : onGenerateAgeKey,
-                      child: Text(generateAgeKeyLabel),
+                    AppMenuButton<AgeKeyType>(
+                      entries: [
+                        AppMenuEntry<AgeKeyType>.item(
+                          value: AgeKeyType.x25519,
+                          title: generateAgeX25519KeyLabel,
+                        ),
+                        AppMenuEntry<AgeKeyType>.item(
+                          value: AgeKeyType.hybrid,
+                          title: generateAgeHybridKeyLabel,
+                        ),
+                      ],
+                      onSelected: onGenerateAgeKey,
+                      triggerBuilder: (toggleMenu) => ShadButton.outline(
+                        leading: generatingAgeKey
+                            ? const SizedBox.square(
+                                dimension: 15,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(LucideIcons.keyRound),
+                        onPressed: generatingAgeKey ? null : toggleMenu,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(generateAgeKeyLabel),
+                            if (!generatingAgeKey) ...[
+                              const SizedBox(width: 6),
+                              const Icon(LucideIcons.chevronDown, size: 15),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                     ShadButton.ghost(
                       leading: const Icon(LucideIcons.trash2),

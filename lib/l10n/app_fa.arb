@@ -466,6 +466,8 @@
     "subscriptionAgePublicKey": "کلید عمومی age",
     "subscriptionAgePublicKeyHint": "age1...",
     "subscriptionGenerateAgeKey": "ایجاد کلید",
+    "subscriptionGenerateAgeX25519Key": "X25519",
+    "subscriptionGenerateAgeHybridKey": "Hybrid (ML-KEM-768 + X25519)",
     "subscriptionClearAgeKey": "پاک کردن",
     "subscriptionRevealAgeKey": "نمایش کلید",
     "subscriptionHideAgeKey": "پنهان کردن کلید",

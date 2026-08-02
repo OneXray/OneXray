@@ -466,6 +466,8 @@
   "subscriptionAgePublicKey": "Открытый ключ age",
   "subscriptionAgePublicKeyHint": "age1...",
   "subscriptionGenerateAgeKey": "Создать ключ",
+  "subscriptionGenerateAgeX25519Key": "X25519",
+  "subscriptionGenerateAgeHybridKey": "Hybrid (ML-KEM-768 + X25519)",
   "subscriptionClearAgeKey": "Очистить",
   "subscriptionRevealAgeKey": "Показать ключ",
   "subscriptionHideAgeKey": "Скрыть ключ",

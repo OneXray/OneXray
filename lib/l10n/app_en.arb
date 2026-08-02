@@ -466,6 +466,8 @@
   "subscriptionAgePublicKey": "Age Public Key",
   "subscriptionAgePublicKeyHint": "age1...",
   "subscriptionGenerateAgeKey": "Generate Key",
+  "subscriptionGenerateAgeX25519Key": "X25519",
+  "subscriptionGenerateAgeHybridKey": "Hybrid (ML-KEM-768 + X25519)",
   "subscriptionClearAgeKey": "Clear",
   "subscriptionRevealAgeKey": "Reveal key",
   "subscriptionHideAgeKey": "Hide key",

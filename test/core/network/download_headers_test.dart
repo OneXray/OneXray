@@ -102,6 +102,26 @@ void main() {
     expect(sourceHeader, publicKey);
     expect(targetHeader, publicKey);
   });
+
+  test('sends a Mihomo hybrid age public key without truncation', () async {
+    final hybridPublicKey = 'age1pq1${List.filled(1950, 'q').join()}';
+    String? receivedHeader;
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    server.listen((request) async {
+      receivedHeader = request.headers.value('X-Age-Public-Key');
+      request.response.write('encrypted subscription');
+      await request.response.close();
+    });
+
+    final text = await NetClient().getText(
+      _serverUrl(server),
+      requestHeaders: DownloadRequestHeaders(agePublicKey: hybridPublicKey),
+    );
+
+    expect(text, 'encrypted subscription');
+    expect(receivedHeader, hybridPublicKey);
+  });
 }
 
 String _serverUrl(HttpServer server) =>

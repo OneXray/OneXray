@@ -466,6 +466,8 @@
   "subscriptionAgePublicKey": "Age 公钥",
   "subscriptionAgePublicKeyHint": "age1...",
   "subscriptionGenerateAgeKey": "生成密钥",
+  "subscriptionGenerateAgeX25519Key": "X25519",
+  "subscriptionGenerateAgeHybridKey": "Hybrid（ML-KEM-768 + X25519）",
   "subscriptionClearAgeKey": "清除",
   "subscriptionRevealAgeKey": "显示密钥",
   "subscriptionHideAgeKey": "隐藏密钥",

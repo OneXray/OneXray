@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/subscriptions/list/view.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
@@ -51,6 +52,7 @@ void main() {
     addTearDown(urlController.dispose);
     addTearDown(ageSecretKeyController.dispose);
     addTearDown(agePublicKeyController.dispose);
+    AgeKeyType? generatedKeyType;
 
     await tester.pumpWidget(
       app(
@@ -79,9 +81,11 @@ void main() {
           revealAgeSecretKeyLabel: 'Reveal',
           hideAgeSecretKeyLabel: 'Hide',
           generateAgeKeyLabel: 'Generate',
+          generateAgeX25519KeyLabel: 'X25519',
+          generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
           clearAgeKeyLabel: 'Clear',
           onToggleAgeSecretKeyVisibility: () {},
-          onGenerateAgeKey: () {},
+          onGenerateAgeKey: (keyType) => generatedKeyType = keyType,
           onClearAgeKey: () {},
         ),
       ),
@@ -111,6 +115,14 @@ void main() {
     expect(autoUpdateValueAlign.alignment, AlignmentDirectional.centerEnd);
     expect(find.byType(ShadInput), findsNWidgets(4));
     expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Generate'));
+    await tester.pumpAndSettle();
+    expect(find.text('X25519'), findsOneWidget);
+    expect(find.text('Hybrid (ML-KEM-768 + X25519)'), findsOneWidget);
+    await tester.tap(find.text('Hybrid (ML-KEM-768 + X25519)'));
+    await tester.pumpAndSettle();
+    expect(generatedKeyType, AgeKeyType.hybrid);
   });
 
   testWidgets('subscription form remains scrollable without overflow on phone', (
@@ -152,9 +164,11 @@ void main() {
           revealAgeSecretKeyLabel: 'Reveal',
           hideAgeSecretKeyLabel: 'Hide',
           generateAgeKeyLabel: 'Generate',
+          generateAgeX25519KeyLabel: 'X25519',
+          generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
           clearAgeKeyLabel: 'Clear',
           onToggleAgeSecretKeyVisibility: () {},
-          onGenerateAgeKey: () {},
+          onGenerateAgeKey: (_) {},
           onClearAgeKey: () {},
         ),
       ),

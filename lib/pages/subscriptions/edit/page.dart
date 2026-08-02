@@ -60,10 +60,15 @@ class SubscriptionEditPage extends StatelessWidget {
                       localizations.subscriptionRevealAgeKey,
                   hideAgeSecretKeyLabel: localizations.subscriptionHideAgeKey,
                   generateAgeKeyLabel: localizations.subscriptionGenerateAgeKey,
+                  generateAgeX25519KeyLabel:
+                      localizations.subscriptionGenerateAgeX25519Key,
+                  generateAgeHybridKeyLabel:
+                      localizations.subscriptionGenerateAgeHybridKey,
                   clearAgeKeyLabel: localizations.subscriptionClearAgeKey,
                   onToggleAgeSecretKeyVisibility:
                       controller.toggleAgeSecretKeyVisibility,
-                  onGenerateAgeKey: () => controller.generateAgeKey(context),
+                  onGenerateAgeKey: (keyType) =>
+                      controller.generateAgeKey(context, keyType),
                   onClearAgeKey: controller.clearAgeKeyPair,
                   generatingAgeKey: pageState.generatingAgeKey,
                 ),

@@ -104,6 +104,10 @@ void main() {
       method: LibXrayMethod.generateAgeKeyPair,
       payload: GenerateAgeKeyPairRequest(AgeKeyType.x25519).toJson(),
     );
+    final generateHybrid = LibXrayInvokeRequest(
+      method: LibXrayMethod.generateAgeKeyPair,
+      payload: GenerateAgeKeyPairRequest(AgeKeyType.hybrid).toJson(),
+    );
 
     expect(convert.toJson(), {
       'apiVersion': 2,
@@ -117,6 +121,11 @@ void main() {
       'apiVersion': 2,
       'method': 'generateAgeKeyPair',
       'payload': {'keyType': 'x25519'},
+    });
+    expect(generateHybrid.toJson(), {
+      'apiVersion': 2,
+      'method': 'generateAgeKeyPair',
+      'payload': {'keyType': 'hybrid'},
     });
   });
 

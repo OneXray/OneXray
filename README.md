@@ -49,9 +49,10 @@ OneXray is a client-only app. It does not provide VPN or proxy servers, subscrip
 ## Age-Encrypted Subscriptions
 
 When adding or editing an HTTPS subscription, open **Encryption** and either
-generate or enter an X25519/hybrid age key pair. OneXray sends only the saved
-public recipient as `X-Age-Public-Key`; the secret key remains local and the
-pair is reused for automatic refreshes.
+enter an existing age key pair or generate an X25519 or Mihomo-compatible
+Hybrid key (`ML-KEM-768 + X25519`). OneXray sends only the saved public
+recipient as `X-Age-Public-Key`; the secret key remains local and the pair is
+reused for automatic refreshes.
 
 HTTPS is still required. OneXray backups are not encrypted and include the age
 key pair so restored subscriptions remain usable; store backup ZIP files
