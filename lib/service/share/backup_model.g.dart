@@ -41,6 +41,8 @@ BackupSubscriptionJson _$BackupSubscriptionJsonFromJson(
 ) => BackupSubscriptionJson(
   json['name'] as String?,
   json['url'] as String?,
+  json['ageSecretKey'] as String?,
+  json['agePublicKey'] as String?,
   (json['timestamp'] as num?)?.toInt(),
   json['expanded'] as bool?,
 );
@@ -50,6 +52,8 @@ Map<String, dynamic> _$BackupSubscriptionJsonToJson(
 ) => <String, dynamic>{
   'name': ?instance.name,
   'url': ?instance.url,
+  'ageSecretKey': ?instance.ageSecretKey,
+  'agePublicKey': ?instance.agePublicKey,
   'timestamp': ?instance.timestamp,
   'expanded': ?instance.expanded,
 };

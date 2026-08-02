@@ -16,8 +16,8 @@ class SubscriptionEditPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SubscriptionEditController(params),
-      child: Builder(
-        builder: (context) {
+      child: BlocBuilder<SubscriptionEditController, SubscriptionEditPageState>(
+        builder: (context, pageState) {
           final controller = context.read<SubscriptionEditController>();
           return BlocBuilder<AppEventBus, AppEventBusState>(
             bloc: AppEventBus.instance,
@@ -40,6 +40,32 @@ class SubscriptionEditPage extends StatelessWidget {
                   urlController: controller.urlController,
                   urlHint: localizations.subscriptionAddPageUrlExample,
                   urlHelper: localizations.helpURL,
+                  encryptionTitle: localizations.subscriptionEncryptionSection,
+                  ageProviderSupportTitle:
+                      localizations.subscriptionAgeProviderSupportTitle,
+                  ageProviderSupportDescription:
+                      localizations.subscriptionAgeProviderSupportDescription,
+                  ageSecretKeyLabel: localizations.subscriptionAgeSecretKey,
+                  ageSecretKeyHint: localizations.subscriptionAgeSecretKeyHint,
+                  ageSecretKeyController: controller.ageSecretKeyController,
+                  agePublicKeyLabel: localizations.subscriptionAgePublicKey,
+                  agePublicKeyHint: localizations.subscriptionAgePublicKeyHint,
+                  agePublicKeyController: controller.agePublicKeyController,
+                  ageKeyPairErrorText: pageState.ageKeyPairInvalid
+                      ? localizations.subscriptionInvalidAgeSecretKey
+                      : null,
+                  onAgeKeyChanged: controller.ageKeyChanged,
+                  obscureAgeSecretKey: pageState.obscureAgeSecretKey,
+                  revealAgeSecretKeyLabel:
+                      localizations.subscriptionRevealAgeKey,
+                  hideAgeSecretKeyLabel: localizations.subscriptionHideAgeKey,
+                  generateAgeKeyLabel: localizations.subscriptionGenerateAgeKey,
+                  clearAgeKeyLabel: localizations.subscriptionClearAgeKey,
+                  onToggleAgeSecretKeyVisibility:
+                      controller.toggleAgeSecretKeyVisibility,
+                  onGenerateAgeKey: () => controller.generateAgeKey(context),
+                  onClearAgeKey: controller.clearAgeKeyPair,
+                  generatingAgeKey: pageState.generatingAgeKey,
                 ),
               );
             },

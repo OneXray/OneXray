@@ -90,6 +90,43 @@ class ContextAlert {
     );
   }
 
+  static Future<bool> showConfirmDialog(
+    BuildContext context, {
+    required String title,
+    required String content,
+    String? confirmLabel,
+  }) async {
+    final confirmed = await _showDialog<bool>(
+      context: context,
+      variant: ShadDialogVariant.alert,
+      builder: (ctx) => ShadDialog.alert(
+        title: _dialogTitle(ctx, icon: LucideIcons.triangleAlert, title: title),
+        description: _dialogDescription(ctx, content),
+        backgroundColor: _dialogBackground(ctx),
+        closeIcon: const SizedBox.shrink(),
+        constraints: _dialogConstraints(ctx),
+        padding: const EdgeInsets.all(20),
+        gap: 20,
+        removeBorderRadiusWhenTiny: false,
+        titleTextAlign: TextAlign.start,
+        descriptionTextAlign: TextAlign.start,
+        scrollable: false,
+        useSafeArea: false,
+        actions: [
+          ShadButton.outline(
+            child: Text(AppLocalizations.of(ctx)!.buttonCancel),
+            onPressed: () => Navigator.of(ctx).pop(false),
+          ),
+          ShadButton(
+            child: Text(confirmLabel ?? AppLocalizations.of(ctx)!.buttonOK),
+            onPressed: () => Navigator.of(ctx).pop(true),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   static void showToast(BuildContext context, String message) {
     final size = MediaQuery.sizeOf(context);
     final compact = size.width < 600;

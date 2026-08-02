@@ -158,14 +158,44 @@ class NetClient {
     return null;
   }
 
-  Future<String?> getText(String url) async {
+  static const _maxDownloadRedirects = 8;
+
+  Future<String?> getText(
+    String url, {
+    DownloadRequestHeaders? requestHeaders,
+  }) async {
     try {
       await asyncInit();
-      final res = await _downloadClient.get<String>(
-        url,
-        options: Options(responseType: ResponseType.plain),
-      );
-      return res.data;
+      var uri = Uri.parse(url);
+      final headers = requestHeaders?.toHttpHeaders();
+      for (
+        var redirectCount = 0;
+        redirectCount <= _maxDownloadRedirects;
+        redirectCount++
+      ) {
+        final res = await _downloadClient.getUri<String>(
+          uri,
+          options: Options(
+            responseType: ResponseType.plain,
+            headers: headers,
+            followRedirects: false,
+            validateStatus: (status) =>
+                status != null && status >= 200 && status < 400,
+          ),
+        );
+        final status = res.statusCode ?? 0;
+        if (status < 300) {
+          return res.data;
+        }
+        final location = res.headers.value(HttpHeaders.locationHeader);
+        if (location == null ||
+            location.isEmpty ||
+            redirectCount == _maxDownloadRedirects) {
+          return null;
+        }
+        uri = uri.resolve(location);
+      }
+      return null;
     } catch (e) {
       ygLogger("$e");
       return null;

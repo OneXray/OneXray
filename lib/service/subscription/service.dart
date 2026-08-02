@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/network/model.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/auto_update/state.dart';
 import 'package:onexray/service/db/config_writer.dart';
@@ -13,7 +16,10 @@ import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/validator.dart';
 
-typedef _SubscriptionInsertResult = ({int subId, int count});
+typedef _SubscriptionLoadResult = ({
+  SubscriptionUpdateResult status,
+  List<CoreConfigCompanion> rows,
+});
 
 class SubscriptionService {
   static final SubscriptionService _singleton = SubscriptionService._internal();
@@ -32,8 +38,11 @@ class SubscriptionService {
     if (!checked.item1) {
       return false;
     }
-    final count = await insertSubscription(subscriptionName, url, showLoading);
-    return count > 0;
+    final result = await insertSubscription(
+      SubscriptionInput(name: subscriptionName, url: url),
+      showLoading,
+    );
+    return result.success;
   }
 
   Future<int> importSubscriptions(List<SubscriptionImportEntry> entries) async {
@@ -46,8 +55,10 @@ class SubscriptionService {
         if (!checked.item1) {
           continue;
         }
-        final result = await _insertSubscription(name, entry.url);
-        if (result.count > 0) {
+        final result = await _insertSubscription(
+          SubscriptionInput(name: name, url: entry.url),
+        );
+        if (result.success) {
           imported += 1;
           importedSubIds.add(result.subId);
         }
@@ -63,86 +74,109 @@ class SubscriptionService {
     return imported;
   }
 
-  Future<int> insertSubscription(
-    String name,
-    String url,
+  Future<SubscriptionInsertResult> insertSubscription(
+    SubscriptionInput input,
     bool showLoading,
   ) async {
     final eventBus = AppEventBus.instance;
     if (showLoading) {
       eventBus.updateDownloading(true);
     }
-    var result = (subId: DBConstants.defaultId, count: 0);
+    var result = const SubscriptionInsertResult(
+      status: SubscriptionUpdateResult.writeFailed,
+    );
     try {
-      result = await _insertSubscription(name, url);
+      result = await _insertSubscription(input);
     } finally {
       if (showLoading) {
         eventBus.updateDownloading(false);
       }
     }
 
-    if (result.count > 0) {
+    if (result.success) {
       PingService().schedulePingSubscription(result.subId);
     }
 
-    return result.count;
+    return result;
   }
 
-  Future<_SubscriptionInsertResult> _insertSubscription(
-    String name,
-    String url,
+  Future<SubscriptionInsertResult> _insertSubscription(
+    SubscriptionInput input,
   ) async {
-    final text = await NetClient().getText(url);
-    final rows = await _readConfigs(text);
-    if (rows.isEmpty) {
-      return (subId: DBConstants.defaultId, count: 0);
+    final loaded = await _loadRows(input);
+    if (loaded.status != SubscriptionUpdateResult.success) {
+      return SubscriptionInsertResult(status: loaded.status);
     }
+    final rows = loaded.rows;
 
     final db = AppDatabase();
-    return db.transaction(() async {
-      final row = SubscriptionCompanion.insert(
-        name: name,
-        url: url,
-        timestamp: DateTime.now(),
-        count: rows.length,
-        expanded: true,
+    try {
+      return await db.transaction(() async {
+        final row = SubscriptionCompanion.insert(
+          name: input.name,
+          url: input.url,
+          ageSecretKey: Value(input.normalizedAgeSecretKey),
+          agePublicKey: Value(input.normalizedAgePublicKey),
+          timestamp: DateTime.now(),
+          count: rows.length,
+          expanded: true,
+        );
+        final nextSubId = await db.subscriptionDao.insertRow(row);
+        if (nextSubId <= DBConstants.defaultId) {
+          throw StateError('insert subscription failed');
+        }
+        final count = await ConfigWriter.writeRowsBatchInTransaction(
+          db,
+          rows,
+          nextSubId,
+        );
+        if (count != rows.length) {
+          throw StateError('insert subscription configs failed');
+        }
+        return SubscriptionInsertResult(
+          status: SubscriptionUpdateResult.success,
+          subId: nextSubId,
+          count: count,
+        );
+      });
+    } catch (error, stackTrace) {
+      ygLogger(
+        'insert subscription failed (${error.runtimeType})\n$stackTrace',
       );
-      final nextSubId = await db.subscriptionDao.insertRow(row);
-      if (nextSubId <= DBConstants.defaultId) {
-        throw StateError('insert subscription failed');
-      }
-      final count = await ConfigWriter.writeRowsBatchInTransaction(
-        db,
-        rows,
-        nextSubId,
+      return const SubscriptionInsertResult(
+        status: SubscriptionUpdateResult.writeFailed,
       );
-      if (count != rows.length) {
-        throw StateError('insert subscription configs failed');
-      }
-      return (subId: nextSubId, count: count);
-    });
+    }
   }
 
   Future<SubscriptionUpdateResult> updateSubscription(
     int id,
-    String name,
-    String url,
+    SubscriptionInput input,
   ) async {
+    if (input.hasIncompleteAgeKeyPair) {
+      return SubscriptionUpdateResult.invalidAgeSecretKey;
+    }
     final db = AppDatabase();
     final subscription = await db.subscriptionDao.searchRow(id);
     if (subscription == null) {
       return SubscriptionUpdateResult.notFound;
     }
-    if (subscription.url == url) {
+    final ageSecretKey = input.normalizedAgeSecretKey;
+    final agePublicKey = input.normalizedAgePublicKey;
+    if (subscription.url == input.url &&
+        subscription.ageSecretKey == ageSecretKey &&
+        subscription.agePublicKey == agePublicKey) {
       try {
         final updated = await db.subscriptionDao.updateRow(
-          subscription.copyWith(name: name),
+          subscription.copyWith(name: input.name),
         );
         return updated
             ? SubscriptionUpdateResult.success
             : SubscriptionUpdateResult.writeFailed;
       } catch (error, stackTrace) {
-        ygLogger('update subscription failed: $error\n$stackTrace');
+        ygLogger(
+          'update subscription failed (${error.runtimeType})\n$stackTrace',
+        );
         return SubscriptionUpdateResult.writeFailed;
       }
     }
@@ -150,21 +184,11 @@ class SubscriptionService {
     final eventBus = AppEventBus.instance;
     eventBus.updateDownloading(true);
     try {
-      final text = await NetClient().getText(url);
-      if (text == null) {
-        return SubscriptionUpdateResult.downloadFailed;
+      final loaded = await _loadRows(input);
+      if (loaded.status != SubscriptionUpdateResult.success) {
+        return loaded.status;
       }
-
-      late final List<CoreConfigCompanion> rows;
-      try {
-        rows = await _readConfigs(text);
-      } catch (error, stackTrace) {
-        ygLogger('parse subscription failed: $error\n$stackTrace');
-        return SubscriptionUpdateResult.invalidContent;
-      }
-      if (rows.isEmpty) {
-        return SubscriptionUpdateResult.invalidContent;
-      }
+      final rows = loaded.rows;
 
       try {
         await db.transaction(() async {
@@ -178,8 +202,10 @@ class SubscriptionService {
             throw StateError('replace subscription configs failed');
           }
           final updated = subscription.copyWith(
-            name: name,
-            url: url,
+            name: input.name,
+            url: input.url,
+            ageSecretKey: Value(ageSecretKey),
+            agePublicKey: Value(agePublicKey),
             timestamp: DateTime.now(),
             count: count,
           );
@@ -188,7 +214,9 @@ class SubscriptionService {
           }
         });
       } catch (error, stackTrace) {
-        ygLogger('replace subscription failed: $error\n$stackTrace');
+        ygLogger(
+          'replace subscription failed (${error.runtimeType})\n$stackTrace',
+        );
         return SubscriptionUpdateResult.writeFailed;
       }
 
@@ -209,29 +237,42 @@ class SubscriptionService {
     }
     var count = 0;
     try {
-      final text = await NetClient().getText(subscription.url);
-      final rows = await _readConfigs(text);
-      if (rows.isNotEmpty) {
+      final loaded = await _loadRows(
+        SubscriptionInput(
+          name: subscription.name,
+          url: subscription.url,
+          ageSecretKey: subscription.ageSecretKey,
+          agePublicKey: subscription.agePublicKey,
+        ),
+      );
+      if (loaded.status == SubscriptionUpdateResult.success) {
+        final rows = loaded.rows;
         final db = AppDatabase();
-        count = await db.transaction(() async {
-          await db.subscriptionDao.deleteConfigs(subscription.id);
-          final writeCount = await ConfigWriter.writeRowsBatchInTransaction(
-            db,
-            rows,
-            subscription.id,
+        try {
+          count = await db.transaction(() async {
+            await db.subscriptionDao.deleteConfigs(subscription.id);
+            final writeCount = await ConfigWriter.writeRowsBatchInTransaction(
+              db,
+              rows,
+              subscription.id,
+            );
+            if (writeCount != rows.length) {
+              throw StateError('replace subscription configs failed');
+            }
+            final newRow = subscription.copyWith(
+              timestamp: DateTime.now(),
+              count: writeCount,
+            );
+            if (!await db.subscriptionDao.updateRow(newRow)) {
+              throw StateError('update subscription failed');
+            }
+            return writeCount;
+          });
+        } catch (error, stackTrace) {
+          ygLogger(
+            'refresh subscription failed (${error.runtimeType})\n$stackTrace',
           );
-          if (writeCount != rows.length) {
-            throw StateError('replace subscription configs failed');
-          }
-          final newRow = subscription.copyWith(
-            timestamp: DateTime.now(),
-            count: writeCount,
-          );
-          if (!await db.subscriptionDao.updateRow(newRow)) {
-            throw StateError('update subscription failed');
-          }
-          return writeCount;
-        });
+        }
       }
     } finally {
       if (showLoading) {
@@ -244,12 +285,15 @@ class SubscriptionService {
     return count;
   }
 
-  Future<List<CoreConfigCompanion>> _readConfigs(String? text) async {
-    if (text == null) {
-      return [];
-    }
+  Future<List<CoreConfigCompanion>> _readConfigs(
+    String text, {
+    String? ageSecretKey,
+  }) async {
     final url = text.trim();
-    final rows = await XrayShareReader().parseOutboundShareText(url);
+    final rows = await XrayShareReader().parseOutboundShareText(
+      url,
+      ageSecretKey: ageSecretKey,
+    );
     return rows
         .where(
           (row) =>
@@ -257,6 +301,70 @@ class SubscriptionService {
               row.type.value == CoreConfigType.outbound.name,
         )
         .toList();
+  }
+
+  Future<_SubscriptionLoadResult> _loadRows(SubscriptionInput input) async {
+    if (input.hasIncompleteAgeKeyPair) {
+      return (
+        status: SubscriptionUpdateResult.invalidAgeSecretKey,
+        rows: <CoreConfigCompanion>[],
+      );
+    }
+    final ageContext = input.normalizedAgeContext;
+
+    final text = await NetClient().getText(
+      input.url,
+      requestHeaders: DownloadRequestHeaders(
+        agePublicKey: ageContext?.publicKey,
+      ),
+    );
+    if (text == null) {
+      return (
+        status: SubscriptionUpdateResult.downloadFailed,
+        rows: <CoreConfigCompanion>[],
+      );
+    }
+
+    try {
+      final rows = await _readConfigs(
+        text,
+        ageSecretKey: ageContext?.secretKey,
+      );
+      return (
+        status: rows.isEmpty
+            ? SubscriptionUpdateResult.invalidContent
+            : SubscriptionUpdateResult.success,
+        rows: rows,
+      );
+    } on LibXrayInvokeException catch (error) {
+      return (
+        status: _ageErrorStatus(error.message),
+        rows: <CoreConfigCompanion>[],
+      );
+    } catch (error, stackTrace) {
+      ygLogger('parse subscription failed (${error.runtimeType})\n$stackTrace');
+      return (
+        status: SubscriptionUpdateResult.invalidContent,
+        rows: <CoreConfigCompanion>[],
+      );
+    }
+  }
+
+  SubscriptionUpdateResult _ageErrorStatus(String error) {
+    return switch (error) {
+      LibXrayErrorMessage.invalidAgeSecretKey =>
+        SubscriptionUpdateResult.invalidAgeSecretKey,
+      LibXrayErrorMessage.missingAgeSecretKey =>
+        SubscriptionUpdateResult.missingAgeSecretKey,
+      LibXrayErrorMessage.ageDecryptFailed ||
+      LibXrayErrorMessage.malformedAgeArmor =>
+        SubscriptionUpdateResult.decryptFailed,
+      LibXrayErrorMessage.agePlaintextTooLarge =>
+        SubscriptionUpdateResult.contentTooLarge,
+      LibXrayErrorMessage.agePlaintextUnsupported =>
+        SubscriptionUpdateResult.invalidContent,
+      _ => SubscriptionUpdateResult.invalidContent,
+    };
   }
 
   Future<void> refreshAllSubscription({bool updateDownloading = true}) async {

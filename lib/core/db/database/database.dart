@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:onexray/core/db/dao/core_config.dart';
 import 'package:onexray/core/db/dao/geo_data.dart';
 import 'package:onexray/core/db/dao/subscription.dart';
@@ -22,8 +23,24 @@ class AppDatabase extends _$AppDatabase {
 
   AppDatabase._internal() : super(_openConnection());
 
+  @visibleForTesting
+  AppDatabase.forTesting(super.executor);
+
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (migrator) => migrator.createAll(),
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(subscription, subscription.ageSecretKey);
+      }
+      if (from < 3) {
+        await migrator.addColumn(subscription, subscription.agePublicKey);
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     if (AppPlatform.isLinux || AppPlatform.isWindows) {

@@ -34,12 +34,16 @@ class BackupCoreConfigJson {
 class BackupSubscriptionJson {
   final String? name;
   final String? url;
+  final String? ageSecretKey;
+  final String? agePublicKey;
   final int? timestamp;
   final bool? expanded;
 
   const BackupSubscriptionJson(
     this.name,
     this.url,
+    this.ageSecretKey,
+    this.agePublicKey,
     this.timestamp,
     this.expanded,
   );

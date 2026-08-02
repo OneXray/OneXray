@@ -38,7 +38,8 @@ class BackupService {
 
   BackupService._internal();
 
-  static const _backupVersion = 3;
+  static const _backupVersion = 4;
+  static const _supportedBackupVersions = {3, _backupVersion};
   static const _datDir = "dat";
   static const _manifestFile = "manifest.json";
   static const _coreConfigsFile = "core_configs.json";
@@ -213,7 +214,7 @@ class BackupService {
       BackupManifestJson.fromJson,
     );
     if (manifest == null ||
-        manifest.version != _backupVersion ||
+        !_supportedBackupVersions.contains(manifest.version) ||
         manifest.createdAt == null) {
       return null;
     }
@@ -280,7 +281,9 @@ class BackupService {
       if (subscription.name == null ||
           subscription.url == null ||
           subscription.timestamp == null ||
-          subscription.expanded == null) {
+          subscription.expanded == null ||
+          ((subscription.ageSecretKey == null) !=
+              (subscription.agePublicKey == null))) {
         return false;
       }
     }
@@ -394,6 +397,8 @@ class BackupService {
           (subscription) => BackupSubscriptionJson(
             subscription.name,
             subscription.url,
+            subscription.ageSecretKey,
+            subscription.agePublicKey,
             subscription.timestamp.millisecondsSinceEpoch,
             subscription.expanded,
           ),
@@ -462,6 +467,8 @@ class BackupService {
           SubscriptionCompanion.insert(
             name: row.name!,
             url: row.url!,
+            ageSecretKey: Value(row.ageSecretKey),
+            agePublicKey: Value(row.agePublicKey),
             timestamp: timestamp,
             count: 0,
             expanded: row.expanded!,
@@ -475,6 +482,8 @@ class BackupService {
             id: subId,
             name: row.name!,
             url: row.url!,
+            ageSecretKey: row.ageSecretKey,
+            agePublicKey: row.agePublicKey,
             timestamp: timestamp,
             count: 0,
             expanded: row.expanded!,

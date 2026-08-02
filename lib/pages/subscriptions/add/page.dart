@@ -55,6 +55,30 @@ class SubscriptionAddPage extends StatelessWidget {
         autoUpdateTitle: localizations.autoUpdatePageTitle,
         autoUpdateValue: autoUpdateValue,
         onOpenAutoUpdate: () => controller.gotoAutoUpdate(context),
+        encryptionTitle: localizations.subscriptionEncryptionSection,
+        ageProviderSupportTitle:
+            localizations.subscriptionAgeProviderSupportTitle,
+        ageProviderSupportDescription:
+            localizations.subscriptionAgeProviderSupportDescription,
+        ageSecretKeyLabel: localizations.subscriptionAgeSecretKey,
+        ageSecretKeyHint: localizations.subscriptionAgeSecretKeyHint,
+        ageSecretKeyController: controller.ageSecretKeyController,
+        agePublicKeyLabel: localizations.subscriptionAgePublicKey,
+        agePublicKeyHint: localizations.subscriptionAgePublicKeyHint,
+        agePublicKeyController: controller.agePublicKeyController,
+        ageKeyPairErrorText: state.ageKeyPairInvalid
+            ? localizations.subscriptionInvalidAgeSecretKey
+            : null,
+        onAgeKeyChanged: controller.ageKeyChanged,
+        obscureAgeSecretKey: state.obscureAgeSecretKey,
+        revealAgeSecretKeyLabel: localizations.subscriptionRevealAgeKey,
+        hideAgeSecretKeyLabel: localizations.subscriptionHideAgeKey,
+        generateAgeKeyLabel: localizations.subscriptionGenerateAgeKey,
+        clearAgeKeyLabel: localizations.subscriptionClearAgeKey,
+        onToggleAgeSecretKeyVisibility: controller.toggleAgeSecretKeyVisibility,
+        onGenerateAgeKey: () => controller.generateAgeKey(context),
+        onClearAgeKey: controller.clearAgeKeyPair,
+        generatingAgeKey: state.generatingAgeKey,
       ),
     );
   }

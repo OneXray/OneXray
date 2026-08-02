@@ -4,6 +4,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/backup/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/date_view.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
@@ -137,7 +138,6 @@ class BackupPage extends StatelessWidget {
         final backup = _backupButton(context, state, controller, processing);
         return Container(
           width: double.infinity,
-          constraints: BoxConstraints(minHeight: compact ? 62 : 64),
           padding: EdgeInsetsDirectional.symmetric(
             horizontal: compact ? 12 : 22,
             vertical: compact ? 9 : 10,
@@ -148,21 +148,46 @@ class BackupPage extends StatelessWidget {
               top: BorderSide(color: ColorManager.border(context)),
             ),
           ),
-          child: Row(
-            mainAxisAlignment: compact
-                ? MainAxisAlignment.start
-                : MainAxisAlignment.end,
-            children: compact
-                ? [
-                    Expanded(child: restore),
-                    const SizedBox(width: 10),
-                    Expanded(child: backup),
-                  ]
-                : [
-                    SizedBox(width: 128, child: restore),
-                    const SizedBox(width: 10),
-                    SizedBox(width: 128, child: backup),
-                  ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    LucideIcons.shieldAlert,
+                    size: 17,
+                    color: ColorManager.secondaryText(context),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context)!.backupPageSensitiveWarning,
+                      style: AppTypography.supporting.copyWith(
+                        color: ColorManager.secondaryText(context),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: compact
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.end,
+                children: compact
+                    ? [
+                        Expanded(child: restore),
+                        const SizedBox(width: 10),
+                        Expanded(child: backup),
+                      ]
+                    : [
+                        SizedBox(width: 128, child: restore),
+                        const SizedBox(width: 10),
+                        SizedBox(width: 128, child: backup),
+                      ],
+              ),
+            ],
           ),
         );
       },

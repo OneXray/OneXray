@@ -7,6 +7,10 @@ class Subscription extends Table {
 
   TextColumn get url => text()();
 
+  TextColumn get ageSecretKey => text().nullable()();
+
+  TextColumn get agePublicKey => text().nullable()();
+
   DateTimeColumn get timestamp => dateTime()();
 
   IntColumn get count => integer()();

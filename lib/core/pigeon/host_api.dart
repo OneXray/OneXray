@@ -129,25 +129,60 @@ class AppHostApi {
     return [];
   }
 
-  Future<XrayJson> convertShareLinksToXrayJson(String text) async {
+  Future<XrayJson> convertShareLinksToXrayJson(
+    String text, {
+    String? ageSecretKey,
+  }) async {
     try {
-      final res = await _invoke(
-        LibXrayInvokeRequest(
-          method: LibXrayMethod.convertShareLinksToXrayJson,
-          payload: ConvertShareLinksToXrayJsonRequest(text).toJson(),
-        ),
+      return await convertShareLinksToXrayJsonStrict(
+        text,
+        ageSecretKey: ageSecretKey,
       );
-      final resp = LibXrayInvokeResponseParser.parse(res);
-      if (resp.data != null) {
-        if (resp.success) {
-          final xrayJson = XrayJson.fromJson(resp.data!);
-          return xrayJson;
-        }
-      }
     } catch (error, stackTrace) {
       _reportUnexpected('convertShareLinksToXrayJson', error, stackTrace);
     }
     return XrayJsonStandard.standard;
+  }
+
+  Future<XrayJson> convertShareLinksToXrayJsonStrict(
+    String text, {
+    String? ageSecretKey,
+  }) async {
+    final key = ageSecretKey?.trim();
+    final res = await _invoke(
+      LibXrayInvokeRequest(
+        method: LibXrayMethod.convertShareLinksToXrayJson,
+        payload: ConvertShareLinksToXrayJsonRequest(
+          text,
+          age: key == null || key.isEmpty ? null : AgeDecryptConfig(key),
+        ).toJson(),
+      ),
+    );
+    final resp = LibXrayInvokeResponseParser.parse(res);
+    if (resp.success && resp.data != null) {
+      return XrayJson.fromJson(resp.data!);
+    }
+    throw LibXrayInvokeException(resp.error);
+  }
+
+  Future<GenerateAgeKeyPairResponse> generateAgeKeyPair({
+    AgeKeyType keyType = AgeKeyType.x25519,
+  }) async {
+    final res = await _invoke(
+      LibXrayInvokeRequest(
+        method: LibXrayMethod.generateAgeKeyPair,
+        payload: GenerateAgeKeyPairRequest(keyType).toJson(),
+      ),
+    );
+    final resp = LibXrayInvokeResponseParser.parse(res);
+    if (resp.success && resp.data != null) {
+      final response = GenerateAgeKeyPairResponse.fromJson(resp.data!);
+      if ((response.secretKey?.isNotEmpty ?? false) &&
+          (response.publicKey?.isNotEmpty ?? false)) {
+        return response;
+      }
+    }
+    throw LibXrayInvokeException(resp.error);
   }
 
   Future<String> convertXrayJsonToShareLinks(XrayJson xrayJson) async {

@@ -45,8 +45,12 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final nameController = TextEditingController();
     final urlController = TextEditingController();
+    final ageSecretKeyController = TextEditingController();
+    final agePublicKeyController = TextEditingController();
     addTearDown(nameController.dispose);
     addTearDown(urlController.dispose);
+    addTearDown(ageSecretKeyController.dispose);
+    addTearDown(agePublicKeyController.dispose);
 
     await tester.pumpWidget(
       app(
@@ -61,6 +65,24 @@ void main() {
           autoUpdateTitle: 'Auto Update',
           autoUpdateValue: 'Enabled · Three days',
           onOpenAutoUpdate: () {},
+          encryptionTitle: 'Encryption',
+          ageProviderSupportTitle: 'Provider support required',
+          ageProviderSupportDescription:
+              'Enter age keys only when your subscription provider supports age encryption.',
+          ageSecretKeyLabel: 'Age Secret Key',
+          ageSecretKeyHint: 'AGE-SECRET-KEY-...',
+          ageSecretKeyController: ageSecretKeyController,
+          agePublicKeyLabel: 'Age Public Key',
+          agePublicKeyHint: 'age1...',
+          agePublicKeyController: agePublicKeyController,
+          obscureAgeSecretKey: true,
+          revealAgeSecretKeyLabel: 'Reveal',
+          hideAgeSecretKeyLabel: 'Hide',
+          generateAgeKeyLabel: 'Generate',
+          clearAgeKeyLabel: 'Clear',
+          onToggleAgeSecretKeyVisibility: () {},
+          onGenerateAgeKey: () {},
+          onClearAgeKey: () {},
         ),
       ),
     );
@@ -71,43 +93,76 @@ void main() {
     expect(find.text('HTTPS only'), findsOneWidget);
     expect(find.text('Auto Update'), findsOneWidget);
     expect(find.text('Enabled · Three days'), findsOneWidget);
+    expect(find.text('Encryption'), findsOneWidget);
+    expect(find.text('Provider support required'), findsOneWidget);
+    expect(
+      find.text(
+        'Enter age keys only when your subscription provider supports age encryption.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Age Secret Key'), findsOneWidget);
+    expect(find.text('Age Public Key'), findsOneWidget);
+    expect(find.text('Generate'), findsOneWidget);
+    expect(find.text('Clear'), findsOneWidget);
     final autoUpdateValueAlign = tester.widget<Align>(
       find.byKey(const ValueKey('subscriptionAutoUpdateValue')),
     );
     expect(autoUpdateValueAlign.alignment, AlignmentDirectional.centerEnd);
-    expect(find.byType(ShadInput), findsNWidgets(2));
+    expect(find.byType(ShadInput), findsNWidgets(4));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'subscription form remains scrollable without overflow on phone',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 640));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final nameController = TextEditingController();
-      final urlController = TextEditingController();
-      addTearDown(nameController.dispose);
-      addTearDown(urlController.dispose);
+  testWidgets('subscription form remains scrollable without overflow on phone', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final nameController = TextEditingController();
+    final urlController = TextEditingController();
+    final ageSecretKeyController = TextEditingController();
+    final agePublicKeyController = TextEditingController();
+    addTearDown(nameController.dispose);
+    addTearDown(urlController.dispose);
+    addTearDown(ageSecretKeyController.dispose);
+    addTearDown(agePublicKeyController.dispose);
 
-      await tester.pumpWidget(
-        app(
-          SubscriptionFormView(
-            supportText: 'Supported formats',
-            nameLabel: 'Name',
-            nameController: nameController,
-            urlLabel: 'URL',
-            urlController: urlController,
-            urlHelper: 'HTTPS only',
-            autoUpdateTitle: 'Auto Update',
-            onOpenAutoUpdate: () {},
-          ),
+    await tester.pumpWidget(
+      app(
+        SubscriptionFormView(
+          supportText: 'Supported formats',
+          nameLabel: 'Name',
+          nameController: nameController,
+          urlLabel: 'URL',
+          urlController: urlController,
+          urlHelper: 'HTTPS only',
+          autoUpdateTitle: 'Auto Update',
+          onOpenAutoUpdate: () {},
+          encryptionTitle: 'Encryption',
+          ageProviderSupportTitle: 'Provider support required',
+          ageProviderSupportDescription:
+              'Enter age keys only when your subscription provider supports age encryption.',
+          ageSecretKeyLabel: 'Age Secret Key',
+          ageSecretKeyHint: 'AGE-SECRET-KEY-...',
+          ageSecretKeyController: ageSecretKeyController,
+          agePublicKeyLabel: 'Age Public Key',
+          agePublicKeyHint: 'age1...',
+          agePublicKeyController: agePublicKeyController,
+          obscureAgeSecretKey: true,
+          revealAgeSecretKeyLabel: 'Reveal',
+          hideAgeSecretKeyLabel: 'Hide',
+          generateAgeKeyLabel: 'Generate',
+          clearAgeKeyLabel: 'Clear',
+          onToggleAgeSecretKeyVisibility: () {},
+          onGenerateAgeKey: () {},
+          onClearAgeKey: () {},
         ),
-      );
+      ),
+    );
 
-      expect(find.byType(SingleChildScrollView), findsWidgets);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(find.byType(SingleChildScrollView), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('subscription list card exposes count and open action', (
     tester,

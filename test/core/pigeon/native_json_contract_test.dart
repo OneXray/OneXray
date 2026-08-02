@@ -92,6 +92,34 @@ void main() {
     });
   });
 
+  test('age subscription requests use the typed v2 contract', () {
+    final convert = LibXrayInvokeRequest(
+      method: LibXrayMethod.convertShareLinksToXrayJson,
+      payload: ConvertShareLinksToXrayJsonRequest(
+        'encrypted text',
+        age: AgeDecryptConfig('AGE-SECRET-KEY-1TEST'),
+      ).toJson(),
+    );
+    final generate = LibXrayInvokeRequest(
+      method: LibXrayMethod.generateAgeKeyPair,
+      payload: GenerateAgeKeyPairRequest(AgeKeyType.x25519).toJson(),
+    );
+
+    expect(convert.toJson(), {
+      'apiVersion': 2,
+      'method': 'convertShareLinksToXrayJson',
+      'payload': {
+        'text': 'encrypted text',
+        'age': {'secretKey': 'AGE-SECRET-KEY-1TEST'},
+      },
+    });
+    expect(generate.toJson(), {
+      'apiVersion': 2,
+      'method': 'generateAgeKeyPair',
+      'payload': {'keyType': 'x25519'},
+    });
+  });
+
   test('desktop core cleanup record contains minimal process identity', () {
     const record = DesktopCoreProcessRecord(pid: 42);
 

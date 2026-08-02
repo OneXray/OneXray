@@ -19,8 +19,14 @@ class XrayShareReader {
     return parseShareText(text);
   }
 
-  Future<List<CoreConfigCompanion>> parseOutboundShareText(String text) async {
-    final xrayJson = await AppHostApi().convertShareLinksToXrayJson(text);
+  Future<List<CoreConfigCompanion>> parseOutboundShareText(
+    String text, {
+    String? ageSecretKey,
+  }) async {
+    final xrayJson = await AppHostApi().convertShareLinksToXrayJsonStrict(
+      text,
+      ageSecretKey: ageSecretKey,
+    );
     return readXrayJsonOutbounds(xrayJson);
   }
 
@@ -52,7 +58,9 @@ class XrayShareReader {
         state.removeWhitespace();
         res.add(state.outboundCompanion);
       } catch (error, stackTrace) {
-        ygLogger("Failed to read imported outbound: $error\n$stackTrace");
+        ygLogger(
+          "Failed to read imported outbound (${error.runtimeType})\n$stackTrace",
+        );
       }
     }
     return res;

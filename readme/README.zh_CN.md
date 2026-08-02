@@ -46,6 +46,15 @@ OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服�
 - **本地工具**：节点 Ping、Xray 日志、GeoData 与规则集管理、备份和恢复。
 - **平台集成**：Android Per-App VPN、Apple On Demand、桌面托盘控制和出站网卡选择。
 
+## age 加密订阅
+
+添加或编辑 HTTPS 订阅时，可在“加密”区域生成或填写 X25519/hybrid age 密钥对。
+OneXray 只通过 `X-Age-Public-Key` 发送已保存的公钥；私钥仅保存在本地，密钥对
+会在自动更新订阅时复用。
+
+订阅仍必须使用 HTTPS。OneXray 备份文件未加密，并会包含 age 密钥对，以保证恢复后
+订阅仍可用；请妥善保管备份 ZIP 文件。
+
 ## 下载
 
 | 平台 | 要求 | 下载 |

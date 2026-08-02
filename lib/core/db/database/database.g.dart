@@ -473,6 +473,28 @@ class $SubscriptionTable extends Subscription
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _ageSecretKeyMeta = const VerificationMeta(
+    'ageSecretKey',
+  );
+  @override
+  late final GeneratedColumn<String> ageSecretKey = GeneratedColumn<String>(
+    'age_secret_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _agePublicKeyMeta = const VerificationMeta(
+    'agePublicKey',
+  );
+  @override
+  late final GeneratedColumn<String> agePublicKey = GeneratedColumn<String>(
+    'age_public_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _timestampMeta = const VerificationMeta(
     'timestamp',
   );
@@ -512,6 +534,8 @@ class $SubscriptionTable extends Subscription
     id,
     name,
     url,
+    ageSecretKey,
+    agePublicKey,
     timestamp,
     count,
     expanded,
@@ -546,6 +570,24 @@ class $SubscriptionTable extends Subscription
       );
     } else if (isInserting) {
       context.missing(_urlMeta);
+    }
+    if (data.containsKey('age_secret_key')) {
+      context.handle(
+        _ageSecretKeyMeta,
+        ageSecretKey.isAcceptableOrUnknown(
+          data['age_secret_key']!,
+          _ageSecretKeyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('age_public_key')) {
+      context.handle(
+        _agePublicKeyMeta,
+        agePublicKey.isAcceptableOrUnknown(
+          data['age_public_key']!,
+          _agePublicKeyMeta,
+        ),
+      );
     }
     if (data.containsKey('timestamp')) {
       context.handle(
@@ -592,6 +634,14 @@ class $SubscriptionTable extends Subscription
         DriftSqlType.string,
         data['${effectivePrefix}url'],
       )!,
+      ageSecretKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}age_secret_key'],
+      ),
+      agePublicKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}age_public_key'],
+      ),
       timestamp: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}timestamp'],
@@ -618,6 +668,8 @@ class SubscriptionData extends DataClass
   final int id;
   final String name;
   final String url;
+  final String? ageSecretKey;
+  final String? agePublicKey;
   final DateTime timestamp;
   final int count;
   final bool expanded;
@@ -625,6 +677,8 @@ class SubscriptionData extends DataClass
     required this.id,
     required this.name,
     required this.url,
+    this.ageSecretKey,
+    this.agePublicKey,
     required this.timestamp,
     required this.count,
     required this.expanded,
@@ -635,6 +689,12 @@ class SubscriptionData extends DataClass
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['url'] = Variable<String>(url);
+    if (!nullToAbsent || ageSecretKey != null) {
+      map['age_secret_key'] = Variable<String>(ageSecretKey);
+    }
+    if (!nullToAbsent || agePublicKey != null) {
+      map['age_public_key'] = Variable<String>(agePublicKey);
+    }
     map['timestamp'] = Variable<DateTime>(timestamp);
     map['count'] = Variable<int>(count);
     map['expanded'] = Variable<bool>(expanded);
@@ -646,6 +706,12 @@ class SubscriptionData extends DataClass
       id: Value(id),
       name: Value(name),
       url: Value(url),
+      ageSecretKey: ageSecretKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ageSecretKey),
+      agePublicKey: agePublicKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agePublicKey),
       timestamp: Value(timestamp),
       count: Value(count),
       expanded: Value(expanded),
@@ -661,6 +727,8 @@ class SubscriptionData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       url: serializer.fromJson<String>(json['url']),
+      ageSecretKey: serializer.fromJson<String?>(json['ageSecretKey']),
+      agePublicKey: serializer.fromJson<String?>(json['agePublicKey']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
       count: serializer.fromJson<int>(json['count']),
       expanded: serializer.fromJson<bool>(json['expanded']),
@@ -673,6 +741,8 @@ class SubscriptionData extends DataClass
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'url': serializer.toJson<String>(url),
+      'ageSecretKey': serializer.toJson<String?>(ageSecretKey),
+      'agePublicKey': serializer.toJson<String?>(agePublicKey),
       'timestamp': serializer.toJson<DateTime>(timestamp),
       'count': serializer.toJson<int>(count),
       'expanded': serializer.toJson<bool>(expanded),
@@ -683,6 +753,8 @@ class SubscriptionData extends DataClass
     int? id,
     String? name,
     String? url,
+    Value<String?> ageSecretKey = const Value.absent(),
+    Value<String?> agePublicKey = const Value.absent(),
     DateTime? timestamp,
     int? count,
     bool? expanded,
@@ -690,6 +762,8 @@ class SubscriptionData extends DataClass
     id: id ?? this.id,
     name: name ?? this.name,
     url: url ?? this.url,
+    ageSecretKey: ageSecretKey.present ? ageSecretKey.value : this.ageSecretKey,
+    agePublicKey: agePublicKey.present ? agePublicKey.value : this.agePublicKey,
     timestamp: timestamp ?? this.timestamp,
     count: count ?? this.count,
     expanded: expanded ?? this.expanded,
@@ -699,6 +773,12 @@ class SubscriptionData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       url: data.url.present ? data.url.value : this.url,
+      ageSecretKey: data.ageSecretKey.present
+          ? data.ageSecretKey.value
+          : this.ageSecretKey,
+      agePublicKey: data.agePublicKey.present
+          ? data.agePublicKey.value
+          : this.agePublicKey,
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
       count: data.count.present ? data.count.value : this.count,
       expanded: data.expanded.present ? data.expanded.value : this.expanded,
@@ -711,6 +791,8 @@ class SubscriptionData extends DataClass
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('url: $url, ')
+          ..write('ageSecretKey: $ageSecretKey, ')
+          ..write('agePublicKey: $agePublicKey, ')
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
           ..write('expanded: $expanded')
@@ -719,7 +801,16 @@ class SubscriptionData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, name, url, timestamp, count, expanded);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    url,
+    ageSecretKey,
+    agePublicKey,
+    timestamp,
+    count,
+    expanded,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -727,6 +818,8 @@ class SubscriptionData extends DataClass
           other.id == this.id &&
           other.name == this.name &&
           other.url == this.url &&
+          other.ageSecretKey == this.ageSecretKey &&
+          other.agePublicKey == this.agePublicKey &&
           other.timestamp == this.timestamp &&
           other.count == this.count &&
           other.expanded == this.expanded);
@@ -736,6 +829,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
   final Value<int> id;
   final Value<String> name;
   final Value<String> url;
+  final Value<String?> ageSecretKey;
+  final Value<String?> agePublicKey;
   final Value<DateTime> timestamp;
   final Value<int> count;
   final Value<bool> expanded;
@@ -743,6 +838,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.url = const Value.absent(),
+    this.ageSecretKey = const Value.absent(),
+    this.agePublicKey = const Value.absent(),
     this.timestamp = const Value.absent(),
     this.count = const Value.absent(),
     this.expanded = const Value.absent(),
@@ -751,6 +848,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.id = const Value.absent(),
     required String name,
     required String url,
+    this.ageSecretKey = const Value.absent(),
+    this.agePublicKey = const Value.absent(),
     required DateTime timestamp,
     required int count,
     required bool expanded,
@@ -763,6 +862,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? url,
+    Expression<String>? ageSecretKey,
+    Expression<String>? agePublicKey,
     Expression<DateTime>? timestamp,
     Expression<int>? count,
     Expression<bool>? expanded,
@@ -771,6 +872,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (url != null) 'url': url,
+      if (ageSecretKey != null) 'age_secret_key': ageSecretKey,
+      if (agePublicKey != null) 'age_public_key': agePublicKey,
       if (timestamp != null) 'timestamp': timestamp,
       if (count != null) 'count': count,
       if (expanded != null) 'expanded': expanded,
@@ -781,6 +884,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Value<int>? id,
     Value<String>? name,
     Value<String>? url,
+    Value<String?>? ageSecretKey,
+    Value<String?>? agePublicKey,
     Value<DateTime>? timestamp,
     Value<int>? count,
     Value<bool>? expanded,
@@ -789,6 +894,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       id: id ?? this.id,
       name: name ?? this.name,
       url: url ?? this.url,
+      ageSecretKey: ageSecretKey ?? this.ageSecretKey,
+      agePublicKey: agePublicKey ?? this.agePublicKey,
       timestamp: timestamp ?? this.timestamp,
       count: count ?? this.count,
       expanded: expanded ?? this.expanded,
@@ -806,6 +913,12 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     }
     if (url.present) {
       map['url'] = Variable<String>(url.value);
+    }
+    if (ageSecretKey.present) {
+      map['age_secret_key'] = Variable<String>(ageSecretKey.value);
+    }
+    if (agePublicKey.present) {
+      map['age_public_key'] = Variable<String>(agePublicKey.value);
     }
     if (timestamp.present) {
       map['timestamp'] = Variable<DateTime>(timestamp.value);
@@ -825,6 +938,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('url: $url, ')
+          ..write('ageSecretKey: $ageSecretKey, ')
+          ..write('agePublicKey: $agePublicKey, ')
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
           ..write('expanded: $expanded')
@@ -1537,6 +1652,8 @@ typedef $$SubscriptionTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       required String url,
+      Value<String?> ageSecretKey,
+      Value<String?> agePublicKey,
       required DateTime timestamp,
       required int count,
       required bool expanded,
@@ -1546,6 +1663,8 @@ typedef $$SubscriptionTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> name,
       Value<String> url,
+      Value<String?> ageSecretKey,
+      Value<String?> agePublicKey,
       Value<DateTime> timestamp,
       Value<int> count,
       Value<bool> expanded,
@@ -1572,6 +1691,16 @@ class $$SubscriptionTableFilterComposer
 
   ColumnFilters<String> get url => $composableBuilder(
     column: $table.url,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ageSecretKey => $composableBuilder(
+    column: $table.ageSecretKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get agePublicKey => $composableBuilder(
+    column: $table.agePublicKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1615,6 +1744,16 @@ class $$SubscriptionTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get ageSecretKey => $composableBuilder(
+    column: $table.ageSecretKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get agePublicKey => $composableBuilder(
+    column: $table.agePublicKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get timestamp => $composableBuilder(
     column: $table.timestamp,
     builder: (column) => ColumnOrderings(column),
@@ -1648,6 +1787,16 @@ class $$SubscriptionTableAnnotationComposer
 
   GeneratedColumn<String> get url =>
       $composableBuilder(column: $table.url, builder: (column) => column);
+
+  GeneratedColumn<String> get ageSecretKey => $composableBuilder(
+    column: $table.ageSecretKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get agePublicKey => $composableBuilder(
+    column: $table.agePublicKey,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get timestamp =>
       $composableBuilder(column: $table.timestamp, builder: (column) => column);
@@ -1693,6 +1842,8 @@ class $$SubscriptionTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> url = const Value.absent(),
+                Value<String?> ageSecretKey = const Value.absent(),
+                Value<String?> agePublicKey = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<int> count = const Value.absent(),
                 Value<bool> expanded = const Value.absent(),
@@ -1700,6 +1851,8 @@ class $$SubscriptionTableTableManager
                 id: id,
                 name: name,
                 url: url,
+                ageSecretKey: ageSecretKey,
+                agePublicKey: agePublicKey,
                 timestamp: timestamp,
                 count: count,
                 expanded: expanded,
@@ -1709,6 +1862,8 @@ class $$SubscriptionTableTableManager
                 Value<int> id = const Value.absent(),
                 required String name,
                 required String url,
+                Value<String?> ageSecretKey = const Value.absent(),
+                Value<String?> agePublicKey = const Value.absent(),
                 required DateTime timestamp,
                 required int count,
                 required bool expanded,
@@ -1716,6 +1871,8 @@ class $$SubscriptionTableTableManager
                 id: id,
                 name: name,
                 url: url,
+                ageSecretKey: ageSecretKey,
+                agePublicKey: agePublicKey,
                 timestamp: timestamp,
                 count: count,
                 expanded: expanded,

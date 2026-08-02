@@ -46,6 +46,17 @@ OneXray is a client-only app. It does not provide VPN or proxy servers, subscrip
 - **Local tools** — node ping, Xray logs, GeoData and rule-set management, backup, and restore.
 - **Platform integration** — Android Per-App VPN, Apple On Demand, desktop tray controls, and outbound-interface selection.
 
+## Age-Encrypted Subscriptions
+
+When adding or editing an HTTPS subscription, open **Encryption** and either
+generate or enter an X25519/hybrid age key pair. OneXray sends only the saved
+public recipient as `X-Age-Public-Key`; the secret key remains local and the
+pair is reused for automatic refreshes.
+
+HTTPS is still required. OneXray backups are not encrypted and include the age
+key pair so restored subscriptions remain usable; store backup ZIP files
+carefully.
+
 ## Download
 
 | Platform | Requirements | Download |
