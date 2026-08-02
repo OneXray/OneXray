@@ -457,6 +457,7 @@
   "subscriptionAddPageUrl": "URL",
   "subscriptionAddPageUrlExample": "https://example.com/sub.txt",
   "subscriptionAddPageNoConfigs": "No Xray config found for the url",
+  "subscriptionDownloadFailed": "Failed to download the subscription",
   "subscriptionListPageTitle": "Subscriptions",
   "subscriptionListPageEmpty": "No subscriptions",
   "sharePageTitle": "Share",

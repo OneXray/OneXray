@@ -123,11 +123,79 @@ class SubscriptionService {
     });
   }
 
-  Future<void> updateSubscription(int id, String name) async {
-    final sub = await AppDatabase().subscriptionDao.searchRow(id);
-    if (sub != null) {
-      final newRow = sub.copyWith(name: name);
-      await AppDatabase().subscriptionDao.updateRow(newRow);
+  Future<SubscriptionUpdateResult> updateSubscription(
+    int id,
+    String name,
+    String url,
+  ) async {
+    final db = AppDatabase();
+    final subscription = await db.subscriptionDao.searchRow(id);
+    if (subscription == null) {
+      return SubscriptionUpdateResult.notFound;
+    }
+    if (subscription.url == url) {
+      try {
+        final updated = await db.subscriptionDao.updateRow(
+          subscription.copyWith(name: name),
+        );
+        return updated
+            ? SubscriptionUpdateResult.success
+            : SubscriptionUpdateResult.writeFailed;
+      } catch (error, stackTrace) {
+        ygLogger('update subscription failed: $error\n$stackTrace');
+        return SubscriptionUpdateResult.writeFailed;
+      }
+    }
+
+    final eventBus = AppEventBus.instance;
+    eventBus.updateDownloading(true);
+    try {
+      final text = await NetClient().getText(url);
+      if (text == null) {
+        return SubscriptionUpdateResult.downloadFailed;
+      }
+
+      late final List<CoreConfigCompanion> rows;
+      try {
+        rows = await _readConfigs(text);
+      } catch (error, stackTrace) {
+        ygLogger('parse subscription failed: $error\n$stackTrace');
+        return SubscriptionUpdateResult.invalidContent;
+      }
+      if (rows.isEmpty) {
+        return SubscriptionUpdateResult.invalidContent;
+      }
+
+      try {
+        await db.transaction(() async {
+          await db.subscriptionDao.deleteConfigs(subscription.id);
+          final count = await ConfigWriter.writeRowsBatchInTransaction(
+            db,
+            rows,
+            subscription.id,
+          );
+          if (count != rows.length) {
+            throw StateError('replace subscription configs failed');
+          }
+          final updated = subscription.copyWith(
+            name: name,
+            url: url,
+            timestamp: DateTime.now(),
+            count: count,
+          );
+          if (!await db.subscriptionDao.updateRow(updated)) {
+            throw StateError('update subscription failed');
+          }
+        });
+      } catch (error, stackTrace) {
+        ygLogger('replace subscription failed: $error\n$stackTrace');
+        return SubscriptionUpdateResult.writeFailed;
+      }
+
+      PingService().schedulePingSubscription(subscription.id);
+      return SubscriptionUpdateResult.success;
+    } finally {
+      eventBus.updateDownloading(false);
     }
   }
 

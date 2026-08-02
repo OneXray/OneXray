@@ -457,6 +457,7 @@
   "subscriptionAddPageUrl": "鏈接",
   "subscriptionAddPageUrlExample": "https://example.com/sub.txt",
   "subscriptionAddPageNoConfigs": "該鏈接不含有效配置",
+  "subscriptionDownloadFailed": "訂閱下載失敗",
   "subscriptionListPageTitle": "訂閱列表",
   "subscriptionListPageEmpty": "暫無訂閱",
   "sharePageTitle": "分享",

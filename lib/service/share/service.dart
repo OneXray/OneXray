@@ -47,10 +47,9 @@ final class ShareService {
         continue;
       }
 
-      final fragmentIndex = line.indexOf('#');
       entries.add(
         SubscriptionImportEntry(
-          url: fragmentIndex < 0 ? line : line.substring(0, fragmentIndex),
+          url: SubscriptionUrl.normalize(line),
           name: Uri.decodeComponent(uri.fragment),
         ),
       );

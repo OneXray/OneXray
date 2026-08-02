@@ -20,10 +20,12 @@ class SubscriptionDao extends DatabaseAccessor<AppDatabase>
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
-  Future<bool> urlExists(String url) async {
-    final res = await (select(
-      subscription,
-    )..where((tbl) => tbl.url.equals(url))).getSingleOrNull();
+  Future<bool> urlExists(String url, {int? excludingId}) async {
+    final query = select(subscription)..where((tbl) => tbl.url.equals(url));
+    if (excludingId != null) {
+      query.where((tbl) => tbl.id.equals(excludingId).not());
+    }
+    final res = await query.getSingleOrNull();
     return res != null;
   }
 

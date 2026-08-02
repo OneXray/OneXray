@@ -11,21 +11,19 @@ class SubscriptionFormView extends StatelessWidget {
     required this.nameLabel,
     required this.nameController,
     required this.urlLabel,
-    this.urlController,
-    this.readOnlyUrl,
+    required this.urlController,
     this.urlHint,
     this.urlHelper,
     this.autoUpdateTitle,
     this.autoUpdateValue,
     this.onOpenAutoUpdate,
-  }) : assert(urlController != null || readOnlyUrl != null);
+  });
 
   final String supportText;
   final String nameLabel;
   final TextEditingController nameController;
   final String urlLabel;
-  final TextEditingController? urlController;
-  final String? readOnlyUrl;
+  final TextEditingController urlController;
   final String? urlHint;
   final String? urlHelper;
   final String? autoUpdateTitle;
@@ -81,15 +79,13 @@ class SubscriptionFormView extends StatelessWidget {
                 controller: nameController,
                 hintText: nameLabel,
               );
-              final url = urlController == null
-                  ? _readOnlyField(context)
-                  : _editableField(
-                      context,
-                      label: urlLabel,
-                      controller: urlController!,
-                      hintText: urlHint,
-                      helperText: urlHelper,
-                    );
+              final url = _editableField(
+                context,
+                label: urlLabel,
+                controller: urlController,
+                hintText: urlHint,
+                helperText: urlHelper,
+              );
               if (compact) {
                 return Column(
                   children: [
@@ -146,27 +142,6 @@ class SubscriptionFormView extends StatelessWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _readOnlyField(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 14, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _fieldLabel(context, urlLabel),
-          const SizedBox(height: 8),
-          Text(
-            readOnlyUrl ?? "",
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.rowTitle.copyWith(
-              color: ColorManager.primaryText(context),
-            ),
-          ),
         ],
       ),
     );

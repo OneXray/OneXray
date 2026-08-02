@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/service/auto_update/state.dart';
+import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
 
@@ -34,7 +34,7 @@ class SubscriptionAddController extends PageCubit<SubscriptionAddPageState> {
 
   Future<void> save(BuildContext context) async {
     final name = nameController.text.trim();
-    final url = urlController.text.removeWhitespace;
+    final url = SubscriptionUrl.normalize(urlController.text);
     final check = await SubscriptionValidator.validate(name, url);
     if (check.item1) {
       final count = await SubscriptionService().insertSubscription(

@@ -5,6 +5,8 @@ import 'package:onexray/pages/subscriptions/edit/controller.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/event_bus/state.dart';
 
 class SubscriptionEditPage extends StatelessWidget {
   final SubscriptionEditParams params;
@@ -14,21 +16,33 @@ class SubscriptionEditPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SubscriptionEditController(params),
-      child: BlocBuilder<SubscriptionEditController, SubscriptionEditPageState>(
-        builder: (context, state) {
+      child: Builder(
+        builder: (context) {
           final controller = context.read<SubscriptionEditController>();
-          final localizations = AppLocalizations.of(context)!;
-          return SettingsPageScaffold(
-            title: localizations.subscriptionEditPageTitle,
-            onSave: () => controller.save(context),
-            saveLabel: localizations.buttonSave,
-            body: SubscriptionFormView(
-              supportText: localizations.subscriptionAddPageSection,
-              nameLabel: localizations.subscriptionAddPageName,
-              nameController: controller.nameController,
-              urlLabel: localizations.subscriptionAddPageUrl,
-              readOnlyUrl: state.url,
-            ),
+          return BlocBuilder<AppEventBus, AppEventBusState>(
+            bloc: AppEventBus.instance,
+            buildWhen: (previous, current) =>
+                previous.downloading != current.downloading,
+            builder: (context, state) {
+              final localizations = AppLocalizations.of(context)!;
+              return SettingsPageScaffold(
+                title: localizations.subscriptionEditPageTitle,
+                onSave: state.downloading
+                    ? null
+                    : () => controller.save(context),
+                saveLoading: state.downloading,
+                saveLabel: localizations.buttonSave,
+                body: SubscriptionFormView(
+                  supportText: localizations.subscriptionAddPageSection,
+                  nameLabel: localizations.subscriptionAddPageName,
+                  nameController: controller.nameController,
+                  urlLabel: localizations.subscriptionAddPageUrl,
+                  urlController: controller.urlController,
+                  urlHint: localizations.subscriptionAddPageUrlExample,
+                  urlHelper: localizations.helpURL,
+                ),
+              );
+            },
           );
         },
       ),

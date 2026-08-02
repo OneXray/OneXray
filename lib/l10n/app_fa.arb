@@ -457,6 +457,7 @@
     "subscriptionAddPageUrl": "نشانی اینترنتی",
     "subscriptionAddPageUrlExample": "https://example.com/sub.txt",
     "subscriptionAddPageNoConfigs": "هیچ پیکربندی Xray برای این URL یافت نشد",
+    "subscriptionDownloadFailed": "بارگیری اشتراک ناموفق بود",
     "subscriptionListPageTitle": "اشتراک‌ها",
     "subscriptionListPageEmpty": "اشتراکی وجود ندارد",
     "sharePageTitle": "اشتراک‌گذاری",

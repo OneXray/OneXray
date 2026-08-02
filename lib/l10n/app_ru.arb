@@ -457,6 +457,7 @@
   "subscriptionAddPageUrl": "Ссылка",
   "subscriptionAddPageUrlExample": "https://example.com/sub.txt",
   "subscriptionAddPageNoConfigs": "Нет валидной конфигурации",
+  "subscriptionDownloadFailed": "Не удалось загрузить подписку",
   "subscriptionListPageTitle": "Подписки",
   "subscriptionListPageEmpty": "Нет подписок",
   "sharePageTitle": "Поделиться",

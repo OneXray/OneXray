@@ -5,33 +5,23 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
+import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
+import 'package:onexray/service/subscription/validator.dart';
 
-class SubscriptionEditPageState {
-  final String url;
-
-  const SubscriptionEditPageState({required this.url});
-
-  factory SubscriptionEditPageState.initial() =>
-      const SubscriptionEditPageState(url: "");
-
-  SubscriptionEditPageState copyWith({String? url}) {
-    return SubscriptionEditPageState(url: url ?? this.url);
-  }
-}
-
-class SubscriptionEditController extends PageCubit<SubscriptionEditPageState> {
+class SubscriptionEditController extends PageCubit<void> {
   final SubscriptionEditParams params;
-  SubscriptionEditController(this.params)
-    : super(SubscriptionEditPageState.initial()) {
+  SubscriptionEditController(this.params) : super(null) {
     _init();
   }
 
   final nameController = TextEditingController();
+  final urlController = TextEditingController();
 
   @override
   Future<void> disposePageResources() async {
     nameController.dispose();
+    urlController.dispose();
   }
 
   Future<void> _init() async {
@@ -41,28 +31,53 @@ class SubscriptionEditController extends PageCubit<SubscriptionEditPageState> {
     }
     if (sub != null) {
       nameController.text = sub.name;
-      emit(state.copyWith(url: sub.url));
+      urlController.text = sub.url;
     }
   }
 
   Future<void> save(BuildContext context) async {
-    final sub = await AppDatabase().subscriptionDao.searchRow(params.id);
-    if (sub == null) {
+    final name = nameController.text.trim();
+    final url = SubscriptionUrl.normalize(urlController.text);
+    final check = await SubscriptionValidator.validate(
+      name,
+      url,
+      excludingId: params.id,
+    );
+    if (!context.mounted) {
       return;
     }
-    final name = nameController.text.trim();
-    if (name.isEmpty) {
-      if (context.mounted) {
+    if (!check.item1) {
+      ContextAlert.showToast(context, check.item2);
+      return;
+    }
+
+    final result = await SubscriptionService().updateSubscription(
+      params.id,
+      name,
+      url,
+    );
+    if (!context.mounted) {
+      return;
+    }
+    switch (result) {
+      case SubscriptionUpdateResult.success:
+        context.pop();
+      case SubscriptionUpdateResult.downloadFailed:
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.validationNameRequired,
+          AppLocalizations.of(context)!.subscriptionDownloadFailed,
         );
-      }
-      return;
-    }
-    await SubscriptionService().updateSubscription(params.id, name);
-    if (context.mounted) {
-      context.pop();
+      case SubscriptionUpdateResult.invalidContent:
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.subscriptionAddPageNoConfigs,
+        );
+      case SubscriptionUpdateResult.notFound:
+      case SubscriptionUpdateResult.writeFailed:
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.buttonSaveFailed,
+        );
     }
   }
 }

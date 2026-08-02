@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
 
   #---------- flutter.dev plugin
+  cupertino_icons: ^1.0.9
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
@@ -21,6 +22,7 @@ dependencies:
   go_router: ^17.3.0
   image_picker: ^1.2.3
   process: ^5.0.5
+  webview_flutter: ^4.14.1
 
   #---------- dart.dev plugin
   # core
@@ -43,13 +45,13 @@ dependencies:
   share_plus: ^13.3.0
 
   #---------- third party plugin
-  drift: ^2.34.2
+  drift: ^2.34.3
   drift_flutter: ^0.3.1
   sqlite3: ^3.5.0
 
   dio: ^5.11.0
   uuid: ^4.6.0
-  permission_handler: ^12.0.3
+  permission_handler: ^13.0.0
   # qrcode
   file_picker: ^12.0.0-beta.7
   mobile_scanner: ^7.4.0
@@ -59,7 +61,7 @@ dependencies:
   archive: ^4.0.9
   # state management
   flutter_bloc: ^9.1.1
-  shadcn_ui: ^0.55.0
+  shadcn_ui: ^0.56.0
   lucide_icons_flutter: ^3.1.15
   # markdown
   flutter_markdown_plus: ^1.0.12
@@ -71,24 +73,25 @@ dependencies:
 
   isolate_manager: ^6.3.2
 
+  # editor
+  re_editor: ^0.10.0
+  re_highlight: ^0.0.3
+
   # desktop
   tray_manager: ^0.5.3
   window_manager: ^0.5.2
   win32: ^6.3.0
-  cupertino_icons: ^1.0.9
-  re_editor: ^0.10.0
-  re_highlight: ^0.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: ^2.15.1
-  json_serializable: ^6.14.0
+  json_serializable: ^6.14.1
   drift_dev: ^2.34.0
   pigeon: ^27.3.0
   flutter_lints: ^6.0.0
   flutter_gen_runner: ^5.15.0
-  ffigen: ^20.1.1
+  ffigen: ^21.0.0
 
 # re_editor only uses APIs that remain compatible with isolate_manager 6.x.
 dependency_overrides:
