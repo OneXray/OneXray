@@ -80,6 +80,7 @@ import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/settings/auto_update/page.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
+import 'package:onexray/pages/settings/general/page.dart';
 import 'package:onexray/pages/settings/language/page.dart';
 import 'package:onexray/pages/settings/main/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
@@ -458,6 +459,10 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       AppSecondaryDestination.configFileViewer,
       (params) => ConfigFileViewerPage(params: params),
     ),
+  ),
+  _route(
+    AppSecondaryDestination.generalSettings,
+    (_, _) => const GeneralSettingsPage(),
   ),
   _route(AppSecondaryDestination.autoUpdate, (_, _) => const AutoUpdatePage()),
   _route(

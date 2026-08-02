@@ -70,6 +70,7 @@ enum AppSecondaryDestination {
   ping("ping"),
   logFile("log-file"),
   configFileViewer("config-file-viewer"),
+  generalSettings("general-settings"),
   autoUpdate("auto-update"),
   desktopSettings("desktop-settings"),
   backup("backup"),

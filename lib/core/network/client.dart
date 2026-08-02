@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/network/ping_auth.dart';
+import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -52,17 +54,45 @@ class NetClient {
 
   String _proxyPort = "${NetConstants.defaultPingPort}";
   XrayInboundAccount? _proxyAuth;
+  Future<void>? _initFuture;
 
   String get _proxy {
     return "PROXY ${NetConstants.proxyHost}:$_proxyPort";
   }
 
-  Future<void> asyncInit() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    final userAgent =
-        'OneXray/${packageInfo.version} (${packageInfo.packageName}; build:${packageInfo.buildNumber}; ${Platform.operatingSystem})';
-    final headers = <String, String>{'User-Agent': userAgent};
-    _downloadClient.options.headers = headers;
+  Future<void> asyncInit() {
+    return _initFuture ??= _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final mode = await PreferencesKey().readDownloadUserAgentMode();
+    await _applyUserAgentMode(mode);
+  }
+
+  Future<void> updateUserAgentMode(DownloadUserAgentMode mode) async {
+    await asyncInit();
+    await _applyUserAgentMode(mode);
+  }
+
+  Future<void> _applyUserAgentMode(DownloadUserAgentMode mode) async {
+    final oneXrayUserAgent = await _oneXrayUserAgent();
+    final userAgent = await DownloadUserAgent.resolve(
+      mode: mode,
+      oneXrayUserAgent: oneXrayUserAgent,
+    );
+    _downloadClient.options.headers['User-Agent'] = userAgent;
+  }
+
+  Future<String> _oneXrayUserAgent() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      return 'OneXray/${packageInfo.version} '
+          '(${packageInfo.packageName}; build:${packageInfo.buildNumber}; '
+          '${Platform.operatingSystem})';
+    } catch (error) {
+      ygLogger('Unable to build the OneXray User-Agent: $error');
+      return 'OneXray (${Platform.operatingSystem})';
+    }
   }
 
   static const _connectivityRetryCount = 3;
@@ -130,6 +160,7 @@ class NetClient {
 
   Future<String?> getText(String url) async {
     try {
+      await asyncInit();
       final res = await _downloadClient.get<String>(
         url,
         options: Options(responseType: ResponseType.plain),
@@ -143,6 +174,7 @@ class NetClient {
 
   Future<Map<String, dynamic>?> getJson(String url) async {
     try {
+      await asyncInit();
       final res = await _downloadClient.get<Map<String, dynamic>>(url);
       return res.data;
     } catch (e) {
@@ -153,6 +185,7 @@ class NetClient {
 
   Future<bool> downloadFile(String url, String savePath) async {
     try {
+      await asyncInit();
       await _downloadClient.download(url, savePath);
       return true;
     } catch (e) {

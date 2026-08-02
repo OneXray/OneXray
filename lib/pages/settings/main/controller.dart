@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -19,16 +18,12 @@ import 'package:url_launcher/url_launcher.dart';
 class SettingsPageState {
   final String appVersion;
   final String xrayVersion;
-  final bool connectOnAppLaunch;
-  final bool loadingConnectOnAppLaunch;
   final bool checkingUpdate;
   final bool clearingData;
 
   const SettingsPageState({
     this.appVersion = "",
     this.xrayVersion = "",
-    this.connectOnAppLaunch = false,
-    this.loadingConnectOnAppLaunch = true,
     this.checkingUpdate = false,
     this.clearingData = false,
   });
@@ -36,17 +31,12 @@ class SettingsPageState {
   SettingsPageState copyWith({
     String? appVersion,
     String? xrayVersion,
-    bool? connectOnAppLaunch,
-    bool? loadingConnectOnAppLaunch,
     bool? checkingUpdate,
     bool? clearingData,
   }) {
     return SettingsPageState(
       appVersion: appVersion ?? this.appVersion,
       xrayVersion: xrayVersion ?? this.xrayVersion,
-      connectOnAppLaunch: connectOnAppLaunch ?? this.connectOnAppLaunch,
-      loadingConnectOnAppLaunch:
-          loadingConnectOnAppLaunch ?? this.loadingConnectOnAppLaunch,
       checkingUpdate: checkingUpdate ?? this.checkingUpdate,
       clearingData: clearingData ?? this.clearingData,
     );
@@ -62,23 +52,8 @@ class SettingsController extends PageCubit<SettingsPageState> {
     final packageInfo = await PackageInfo.fromPlatform();
     final appVersion = "${packageInfo.version}+${packageInfo.buildNumber}";
     final xrayVersion = await AppHostApi().xrayVersion();
-    final connectOnAppLaunch = await PreferencesKey().readConnectOnAppLaunch();
     if (isPageActive) {
-      emit(
-        state.copyWith(
-          appVersion: appVersion,
-          xrayVersion: xrayVersion,
-          connectOnAppLaunch: connectOnAppLaunch,
-          loadingConnectOnAppLaunch: false,
-        ),
-      );
-    }
-  }
-
-  Future<void> updateConnectOnAppLaunch(bool enabled) async {
-    await PreferencesKey().saveConnectOnAppLaunch(enabled);
-    if (isPageActive) {
-      emit(state.copyWith(connectOnAppLaunch: enabled));
+      emit(state.copyWith(appVersion: appVersion, xrayVersion: xrayVersion));
     }
   }
 
@@ -92,6 +67,10 @@ class SettingsController extends PageCubit<SettingsPageState> {
 
   void gotoAutoUpdate(BuildContext context) {
     context.goScoped(AppSecondaryDestination.autoUpdate);
+  }
+
+  void gotoGeneralSettings(BuildContext context) {
+    context.goScoped(AppSecondaryDestination.generalSettings);
   }
 
   void gotoDesktopSettings(BuildContext context) {

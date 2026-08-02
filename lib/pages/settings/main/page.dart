@@ -46,7 +46,7 @@ class SettingsContent extends StatelessWidget {
             onAppIcon: () => controller.gotoAppIcon(context),
             onTheme: () => controller.gotoTheme(context),
             onLanguage: () => controller.gotoLanguage(context),
-            onConnectOnAppLaunchChanged: controller.updateConnectOnAppLaunch,
+            onGeneralSettings: () => controller.gotoGeneralSettings(context),
             onDesktopSettings: () => controller.gotoDesktopSettings(context),
             onDocumentation: () => controller.openDoc(context),
             onReview: () => controller.gotoReview(context),
@@ -75,7 +75,7 @@ class SettingsOverviewView extends StatelessWidget {
   final VoidCallback onAppIcon;
   final VoidCallback onTheme;
   final VoidCallback onLanguage;
-  final ValueChanged<bool> onConnectOnAppLaunchChanged;
+  final VoidCallback onGeneralSettings;
   final VoidCallback onDesktopSettings;
   final VoidCallback onDocumentation;
   final VoidCallback onReview;
@@ -99,7 +99,7 @@ class SettingsOverviewView extends StatelessWidget {
     required this.onAppIcon,
     required this.onTheme,
     required this.onLanguage,
-    required this.onConnectOnAppLaunchChanged,
+    required this.onGeneralSettings,
     required this.onDesktopSettings,
     required this.onDocumentation,
     required this.onReview,
@@ -205,14 +205,11 @@ class SettingsOverviewView extends StatelessWidget {
     return SettingSection(
       title: l10n.settingsPageSectionApp,
       children: [
-        SwitchSettingRow(
-          title: l10n.settingsPageConnectOnLaunch,
-          subtitle: l10n.settingsPageConnectOnLaunchDescription,
-          leading: const Icon(LucideIcons.power),
-          value: state.connectOnAppLaunch,
-          onChanged: state.loadingConnectOnAppLaunch
-              ? null
-              : onConnectOnAppLaunchChanged,
+        NavigationSettingRow(
+          title: l10n.settingsPageGeneral,
+          subtitle: l10n.settingsPageGeneralDescription,
+          leading: const Icon(LucideIcons.settings2),
+          onTap: onGeneralSettings,
         ),
         if (showDesktopSettings)
           NavigationSettingRow(

@@ -1,6 +1,8 @@
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/file.dart';
@@ -72,6 +74,9 @@ final class AppDataCleanupService {
         targetXrayProfileId: targetXrayProfileId,
         clearUserDataPreferences: clearUserDataPreferences,
       );
+      if (clearUserDataPreferences) {
+        await NetClient().updateUserAgentMode(DownloadUserAgentMode.system);
+      }
       await _clearDatabase();
       await _clearRuntimeFiles();
       await _resetDatDir();

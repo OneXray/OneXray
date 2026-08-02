@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
+import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/first_run/controller.dart';
 import 'package:onexray/pages/launch/first_run/page.dart';
@@ -8,6 +9,8 @@ import 'package:onexray/pages/launch/privacy/page.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
 import 'package:onexray/pages/settings/desktop/controller.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
+import 'package:onexray/pages/settings/general/controller.dart';
+import 'package:onexray/pages/settings/general/page.dart';
 import 'package:onexray/pages/settings/main/controller.dart';
 import 'package:onexray/pages/settings/main/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
@@ -42,8 +45,6 @@ void main() {
       state: const SettingsPageState(
         appVersion: '26.7.3+412',
         xrayVersion: '26.7.11',
-        connectOnAppLaunch: true,
-        loadingConnectOnAppLaunch: false,
       ),
       showAppIcon: true,
       useDockIconLabel: useDockIconLabel,
@@ -56,7 +57,7 @@ void main() {
       onAppIcon: noop,
       onTheme: noop,
       onLanguage: noop,
-      onConnectOnAppLaunchChanged: (_) {},
+      onGeneralSettings: noop,
       onDesktopSettings: noop,
       onDocumentation: noop,
       onReview: noop,
@@ -85,7 +86,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('settings exposes connect on app launch on mobile', (
+  testWidgets('settings keeps configuration controls off the overview', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -94,8 +95,38 @@ void main() {
     await tester.pumpWidget(app(settingsView()));
     await tester.pump();
 
+    expect(find.text('General'), findsOneWidget);
+    expect(find.text('Connect on App Launch'), findsNothing);
+    expect(find.byType(ShadSwitch), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('general settings exposes startup and User-Agent choices', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      app(
+        GeneralSettingsView(
+          state: const GeneralSettingsPageState(
+            connectOnAppLaunch: true,
+            userAgentMode: DownloadUserAgentMode.system,
+            loading: false,
+          ),
+          onConnectOnAppLaunchChanged: (_) {},
+          onUserAgentModeChanged: (_) {},
+        ),
+      ),
+    );
+    await tester.pump();
+
     expect(find.text('Connect on App Launch'), findsOneWidget);
+    expect(find.text('System User-Agent'), findsOneWidget);
+    expect(find.text('OneXray User-Agent'), findsOneWidget);
     expect(find.byType(ShadSwitch), findsOneWidget);
+    expect(find.byIcon(LucideIcons.check), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -209,8 +240,8 @@ void main() {
     expect(find.text('Desktop'), findsOneWidget);
     expect(find.text('Toolbox'), findsNothing);
     expect(find.text('Start Hidden'), findsNothing);
-    expect(find.text('Connect on App Launch'), findsOneWidget);
-    expect(find.byType(ShadSwitch), findsOneWidget);
+    expect(find.text('Connect on App Launch'), findsNothing);
+    expect(find.byType(ShadSwitch), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -179,7 +179,7 @@ class SettingsChoiceRow extends StatelessWidget {
   final String? description;
   final Widget? leading;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const SettingsChoiceRow({
     super.key,
