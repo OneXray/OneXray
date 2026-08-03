@@ -100,6 +100,8 @@ Android поддерживает `arm64-v8a` и `x86_64`. 32-битные ARM-у
 
 Если App Store недоступен для вашего Apple ID, скачайте `OneXray-ios.ipa` и установите его через [AltStore](https://altstore.io/) или другой совместимый инструмент sideloading.
 
+Для самостоятельной установки IPA необходимо повторно подписать OneXray и расширение Packet Tunnel с помощью provisioning profile, разрешающего Network Extension capability. Apple не предоставляет эту возможность бесплатным учетным записям Personal Team, поэтому требуется платное членство в Apple Developer Program. Без него приложение может открываться и проверять задержку узлов, но VPN не запустится. См. [Apple Developer Forums](https://developer.apple.com/forums/thread/128767) и [Поддерживаемые возможности iOS](https://developer.apple.com/help/account/reference/supported-capabilities-ios/).
+
 ### Linux
 
 Для DEB-пакета:

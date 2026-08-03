@@ -99,6 +99,8 @@ Android builds support `arm64-v8a` and `x86_64`. 32-bit ARM devices are not supp
 
 If the App Store is unavailable for your Apple ID, download `OneXray-ios.ipa` and install it with [AltStore](https://altstore.io/) or another compatible sideloading tool.
 
+Self-installing the IPA requires re-signing both OneXray and its Packet Tunnel extension with a provisioning profile that authorizes the Network Extension capability. Apple does not support this capability for free Personal Team accounts, so a paid Apple Developer Program membership is required. Without it, the app may open and ping nodes, but the VPN cannot start. See [Apple Developer Forums](https://developer.apple.com/forums/thread/128767) and [Supported capabilities (iOS)](https://developer.apple.com/help/account/reference/supported-capabilities-ios/).
+
 ### Linux
 
 For a DEB package:

@@ -97,6 +97,8 @@ Android 版本支持 `arm64-v8a` 与 `x86_64`，不支持 32 位 ARM 设备。
 
 若您的 Apple ID 无法使用 App Store，可下载 `OneXray-ios.ipa`，并通过 [AltStore](https://altstore.io/) 或其他兼容的侧载工具安装。
 
+自行安装 IPA 时，必须使用授权 Network Extension capability 的 provisioning profile，重新签名 OneXray 主 App 与 Packet Tunnel extension。Apple 不向免费的 Personal Team 账号提供该 capability，因此必须加入付费 Apple Developer Program。否则 App 可能可以打开并进行节点测速，但无法启动 VPN。参阅 [Apple Developer Forums](https://developer.apple.com/forums/thread/128767) 和 [iOS 支持的能力](https://developer.apple.com/help/account/reference/supported-capabilities-ios/)。
+
 ### Linux
 
 使用 DEB 包：
