@@ -59,6 +59,30 @@ HTTPS остается обязательным. Резервные ZIP-файл
 содержат пару ключей age, чтобы подписка работала после восстановления;
 храните их в безопасном месте.
 
+## URL-схема OneXray
+
+OneXray может делиться данными и импортировать их через собственные URL
+`onexray://`:
+
+```text
+onexray://onexray.com/config/add?type=outbound|profile|full|raw&data=<percent-encoded-base64-json>#Name
+onexray://onexray.com/sub/add?url=<percent-encoded-https-url>[&age=x25519|hybrid]#Name
+onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Name
+```
+
+Если конфигурация использует пользовательские GeoData из OneXray, их ссылки
+добавляются перед ссылкой конфигурации.
+
+Поддерживаются только перечисленные типы. Устаревший `type=setting`, резервные
+копии и другие команды не принимаются. Для ссылки age-подписки приложение
+создает новую локальную пару ключей, отправляет при первой загрузке только
+публичный ключ и сохраняет пару после успешного импорта.
+
+Android, iOS и установленные приложения macOS регистрируют схему напрямую. В
+Windows и Linux используйте EXE/winget или DEB: ZIP-пакеты не регистрируют
+схему автоматически. Версия из Mac App Store и OneXraySE используют одну
+схему, поэтому при одновременной установке macOS может выбрать любое из них.
+
 ## Загрузка
 
 | Платформа | Требования | Загрузка |
@@ -82,6 +106,24 @@ HTTPS остается обязательным. Резервные ZIP-файл
 brew install --cask onexrayse
 brew uninstall --cask onexrayse
 ```
+
+#### Universal ZIP
+
+1. Скачайте и распакуйте `OneXray-macos-universal.zip`.
+2. Переместите `OneXraySE.app` в `/Applications` («Программы»). Не запускайте приложение непосредственно из папки «Загрузки» или другой папки: macOS требует, чтобы приложение с System Extension находилось в системном каталоге Applications.
+3. Откройте OneXraySE из папки «Программы» и подтвердите первый запуск в macOS.
+
+При первом подключении VPN:
+
+1. Импортируйте подписку или узел, выберите узел и нажмите кнопку запуска.
+2. Откройте **Системные настройки > Основные > Объекты входа и расширения**.
+3. В разделе **Расширения** откройте **Сетевые расширения**, включите **OneXraySE** и нажмите **Готово**.
+4. Если в разделе **Конфиденциальность и безопасность** также отображается запрос, нажмите **Разрешить** и перезапустите Mac, если это потребуется.
+5. Вернитесь в OneXraySE и снова нажмите кнопку запуска.
+
+Для обновления ZIP-версии закройте OneXraySE, замените приложение в `/Applications` на новый распакованный `OneXraySE.app` и снова откройте его. Если macOS запросит подтверждение обновления System Extension, разрешите его.
+
+См. [Installing System Extensions and Drivers](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers) и [Change Login Items & Extensions settings](https://support.apple.com/guide/mac-help/change-login-items-extension-settings-mtusr003/mac).
 
 ### Windows
 

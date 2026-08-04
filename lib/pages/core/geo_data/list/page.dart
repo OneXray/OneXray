@@ -219,7 +219,11 @@ class GeoDataListPage extends StatelessWidget {
         children: [
           AppMenuButton<IconMenuId>(
             icon: LucideIcons.ellipsis,
-            entries: iconMenuEntries([IconMenuId.refresh, IconMenuId.delete]),
+            entries: iconMenuEntries([
+              IconMenuId.refresh,
+              IconMenuId.share,
+              IconMenuId.delete,
+            ]),
             onSelected: (menuId) =>
                 controller.moreAction(context, data, menuId),
           ),

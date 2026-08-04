@@ -483,6 +483,8 @@
   "sharePageTitle": "Share",
   "sharePageXrayLink": "VMessAEAD/VLESS sharing protocol. Widely used, keeps full compatibility with other apps (except VMess).",
   "sharePageSubscriptionLink": "HTTPS link. Widely used, keeps full compatibility with other apps.",
+  "sharePageAppLink": "OneXray URL scheme. Only OneXray can import this link.",
+  "sharePageOneXrayLink": "OneXray Link",
   "sharePageQRCode": "QRCode",
   "sharePageShareQRCode": "Share QRCode",
   "sharePageSaveQRCode": "Save QRCode",

@@ -58,6 +58,30 @@ HTTPS is still required. OneXray backups are not encrypted and include the age
 key pair so restored subscriptions remain usable; store backup ZIP files
 carefully.
 
+## OneXray URL Scheme
+
+OneXray can share and import content through its proprietary `onexray://` URLs:
+
+```text
+onexray://onexray.com/config/add?type=outbound|profile|full|raw&data=<percent-encoded-base64-json>#Name
+onexray://onexray.com/sub/add?url=<percent-encoded-https-url>[&age=x25519|hybrid]#Name
+onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Name
+```
+
+When a shared config references custom GeoData stored in OneXray, matching
+GeoData links are placed before the config link.
+
+Only the types shown above are supported. Legacy `type=setting`, backups, and
+other commands are not accepted. An age subscription link generates a new
+local key pair, sends only its public key for the first download, and stores
+the pair when the subscription is imported successfully.
+
+Android, iOS, and installed macOS apps register the scheme directly. On
+Windows and Linux, use the EXE/winget or DEB package; ZIP packages do not
+register the scheme automatically. The Mac App Store app and OneXraySE share
+the same scheme, so installing both can make macOS choose either app as the
+handler.
+
 ## Download
 
 | Platform | Requirements | Download |
@@ -81,6 +105,24 @@ The Mac App Store build is a separate store package. Homebrew and the Universal 
 brew install --cask onexrayse
 brew uninstall --cask onexrayse
 ```
+
+#### Universal ZIP
+
+1. Download and extract `OneXray-macos-universal.zip`.
+2. Move `OneXraySE.app` to `/Applications`. Do not run it directly from Downloads or another folder; macOS requires an app containing a System Extension to be installed in a system Applications directory.
+3. Open OneXraySE from Applications and accept the macOS launch confirmation.
+
+For the first VPN connection:
+
+1. Import a subscription or node, select a node, and click Start.
+2. Open **System Settings > General > Login Items & Extensions**.
+3. Under **Extensions**, open **Network Extensions**, enable **OneXraySE**, and click **Done**.
+4. If **Privacy & Security** also shows an approval request, click **Allow** and restart the Mac if requested.
+5. Return to OneXraySE and click Start again.
+
+To update the ZIP build, quit OneXraySE, replace the existing app in `/Applications` with the newly extracted `OneXraySE.app`, and reopen it. Approve the System Extension update if macOS asks.
+
+See [Installing System Extensions and Drivers](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers) and [Change Login Items & Extensions settings](https://support.apple.com/guide/mac-help/change-login-items-extension-settings-mtusr003/mac).
 
 ### Windows
 

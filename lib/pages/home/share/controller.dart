@@ -18,6 +18,7 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/share/params.dart';
+import 'package:onexray/service/share/app_link_share_service.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_writer.dart';
@@ -35,6 +36,8 @@ class SharePageState {
   final String linkSection;
   final String linkUrl;
   final bool linkQrcodeSuccess;
+  final bool showAppLinkSection;
+  final String appLinkUrl;
   final bool showTextSection;
   final String textSection;
   final String textContent;
@@ -47,6 +50,8 @@ class SharePageState {
     required this.linkSection,
     required this.linkUrl,
     required this.linkQrcodeSuccess,
+    required this.showAppLinkSection,
+    required this.appLinkUrl,
     required this.showTextSection,
     required this.textSection,
     required this.textContent,
@@ -60,6 +65,8 @@ class SharePageState {
     linkSection: "",
     linkUrl: "",
     linkQrcodeSuccess: false,
+    showAppLinkSection: false,
+    appLinkUrl: "",
     showTextSection: false,
     textSection: "",
     textContent: "",
@@ -73,6 +80,8 @@ class SharePageState {
     String? linkSection,
     String? linkUrl,
     bool? linkQrcodeSuccess,
+    bool? showAppLinkSection,
+    String? appLinkUrl,
     bool? showTextSection,
     String? textSection,
     String? textContent,
@@ -85,6 +94,8 @@ class SharePageState {
       linkSection: linkSection ?? this.linkSection,
       linkUrl: linkUrl ?? this.linkUrl,
       linkQrcodeSuccess: linkQrcodeSuccess ?? this.linkQrcodeSuccess,
+      showAppLinkSection: showAppLinkSection ?? this.showAppLinkSection,
+      appLinkUrl: appLinkUrl ?? this.appLinkUrl,
       showTextSection: showTextSection ?? this.showTextSection,
       textSection: textSection ?? this.textSection,
       textContent: textContent ?? this.textContent,
@@ -103,6 +114,7 @@ class ShareController extends PageCubit<SharePageState> {
 
   var _linkQrcode = Uint8List(0);
   var _name = "";
+  final _appLinkShareService = OneXrayAppLinkShareService();
 
   void _initParams() {
     switch (params.type) {
@@ -112,6 +124,9 @@ class ShareController extends PageCubit<SharePageState> {
       case ShareType.subscription:
         _querySubscription(params.id);
         break;
+      case ShareType.geoData:
+        _queryGeoData(params.id);
+        break;
     }
   }
 
@@ -120,6 +135,7 @@ class ShareController extends PageCubit<SharePageState> {
     if (configId != DBConstants.defaultId) {
       final config = await db.coreConfigDao.searchRow(configId);
       if (config != null) {
+        _finishAppLink(await _appLinkShareService.config(config), config.name);
         final type = CoreConfigType.fromString(config.type);
         switch (type) {
           case CoreConfigType.outbound:
@@ -156,6 +172,10 @@ class ShareController extends PageCubit<SharePageState> {
     if (subscriptionId != DBConstants.defaultId) {
       final subscription = await db.subscriptionDao.searchRow(subscriptionId);
       if (subscription != null) {
+        _finishAppLink(
+          _appLinkShareService.subscription(subscription),
+          subscription.name,
+        );
         emit(
           state.copyWith(
             showLinkSection: true,
@@ -164,6 +184,17 @@ class ShareController extends PageCubit<SharePageState> {
         );
         await _parseShareSubscription(subscription);
       }
+    }
+  }
+
+  Future<void> _queryGeoData(int geoDataId) async {
+    final db = AppDatabase();
+    if (geoDataId == DBConstants.defaultId) {
+      return;
+    }
+    final geoData = await db.geoDataDao.searchRow(geoDataId);
+    if (geoData != null) {
+      _finishAppLink(_appLinkShareService.geoData(geoData), geoData.name);
     }
   }
 
@@ -202,6 +233,14 @@ class ShareController extends PageCubit<SharePageState> {
       _linkQrcode = qrcode;
       emit(state.copyWith(linkQrcodeSuccess: true));
     }
+  }
+
+  void _finishAppLink(String? link, String name) {
+    if (link == null || link.isEmpty) {
+      return;
+    }
+    _name = name;
+    emit(state.copyWith(showAppLinkSection: true, appLinkUrl: link));
   }
 
   Future<void> _finishJsonExport(String text, String name) async {
@@ -342,6 +381,14 @@ class ShareController extends PageCubit<SharePageState> {
 
   Future<void> copyLinkUrl(BuildContext context) async {
     await _copyUrl(context, state.linkUrl);
+  }
+
+  Future<void> shareAppLink(BuildContext context) async {
+    await _shareUrl(context, state.appLinkUrl);
+  }
+
+  Future<void> copyAppLink(BuildContext context) async {
+    await _copyUrl(context, state.appLinkUrl);
   }
 
   Future<void> _copyUrl(BuildContext context, String url) async {

@@ -7,13 +7,21 @@ import 'package:onexray/service/xray/profile/state_writer.dart';
 import 'package:tuple/tuple.dart';
 
 extension XrayProfileStateValidator on XrayProfileState {
-  Future<Tuple2<bool, String>> validate() async {
+  Tuple2<bool, String> validateFields() {
     if (!EmptyTool.checkString(name)) {
       return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
     }
     final inboundsError = inbounds.validate(dns.inboundTags.toSet());
     if (inboundsError != null) {
       return Tuple2(false, inboundsError);
+    }
+    return const Tuple2(true, "");
+  }
+
+  Future<Tuple2<bool, String>> validate() async {
+    final fields = validateFields();
+    if (!fields.item1) {
+      return fields;
     }
     final xrayJson = this.xrayJson;
     removeTunInbound(xrayJson);

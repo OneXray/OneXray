@@ -9,9 +9,17 @@ import 'package:onexray/core/model/xray_standard.dart';
 import 'package:tuple/tuple.dart';
 
 extension OutboundStateValidator on OutboundState {
-  Future<Tuple2<bool, String>> validate() async {
+  Tuple2<bool, String> validateFields() {
     if (!EmptyTool.checkString(name)) {
       return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
+    }
+    return const Tuple2(true, "");
+  }
+
+  Future<Tuple2<bool, String>> validate() async {
+    final fields = validateFields();
+    if (!fields.item1) {
+      return fields;
     }
     final xrayJson = XrayJsonStandard.standard;
 

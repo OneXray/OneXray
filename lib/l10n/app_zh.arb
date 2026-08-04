@@ -483,6 +483,8 @@
   "sharePageTitle": "分享",
   "sharePageXrayLink": "VMessAEAD/VLESS 分享协议。广泛使用，与其他 App 保持兼容(VMess除外)。",
   "sharePageSubscriptionLink": "HTTPS 链接。广泛使用，与其他 App 保持兼容。",
+  "sharePageAppLink": "OneXray 专用链接。仅 OneXray 可导入此链接。",
+  "sharePageOneXrayLink": "OneXray 链接",
   "sharePageQRCode": "二维码",
   "sharePageShareQRCode": "分享二维码",
   "sharePageSaveQRCode": "保存二维码",

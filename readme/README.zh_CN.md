@@ -56,6 +56,27 @@ X25519、Mihomo 兼容的 Hybrid（`ML-KEM-768 + X25519`）密钥。OneXray 只�
 订阅仍必须使用 HTTPS。OneXray 备份文件未加密，并会包含 age 密钥对，以保证恢复后
 订阅仍可用；请妥善保管备份 ZIP 文件。
 
+## OneXray URL Scheme
+
+OneXray 可通过专有的 `onexray://` URL 分享和导入内容：
+
+```text
+onexray://onexray.com/config/add?type=outbound|profile|full|raw&data=<经过百分号编码的-base64-json>#名称
+onexray://onexray.com/sub/add?url=<经过百分号编码的-https-url>[&age=x25519|hybrid]#名称
+onexray://onexray.com/dat/add?type=domain|ip&url=<经过百分号编码的-https-url>#名称
+```
+
+分享的配置引用了 OneXray 中已有的自定义 GeoData 时，对应 GeoData 链接会排列在
+配置链接之前。
+
+仅支持上面列出的类型，不接受旧版 `type=setting`、备份或其他命令。导入 age
+订阅链接时，App 会生成一对新的本地密钥，首次下载只发送公钥，并在订阅成功
+导入后保存密钥对。
+
+Android、iOS 和已安装的 macOS App 会直接注册该协议。Windows 和 Linux
+请使用 EXE/winget 或 DEB 包；ZIP 包不会自动注册协议。Mac App Store 版本与
+OneXraySE 使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
+
 ## 下载
 
 | 平台 | 要求 | 下载 |
@@ -79,6 +100,24 @@ Mac App Store 版本是单独的商店包。Homebrew 与 Universal ZIP 使用同
 brew install --cask onexrayse
 brew uninstall --cask onexrayse
 ```
+
+#### Universal ZIP
+
+1. 下载并解压 `OneXray-macos-universal.zip`。
+2. 将 `OneXraySE.app` 移动到 `/Applications`（“应用程序”）目录。不要直接从“下载”目录或其他目录运行；macOS 要求包含 System Extension 的 App 安装在系统的“应用程序”目录中。
+3. 从“应用程序”目录打开 OneXraySE，并确认 macOS 的首次打开提示。
+
+首次连接 VPN：
+
+1. 导入订阅或节点，选中节点，然后点击启动。
+2. 打开“系统设置 > 通用 > 登录项与扩展”。
+3. 在“扩展”区域打开“网络扩展”，启用 OneXraySE，然后点击“完成”。
+4. 如果“隐私与安全性”页面也显示批准请求，请点击“允许”；系统要求重启时请重启 Mac。
+5. 返回 OneXraySE，再次点击启动。
+
+更新 ZIP 版本时，请先退出 OneXraySE，再用新解压的 `OneXraySE.app` 替换 `/Applications` 中的旧版本并重新打开。如果 macOS 要求批准 System Extension 更新，请按提示操作。
+
+参阅 [Installing System Extensions and Drivers](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers) 和 [更改“登录项与扩展”设置](https://support.apple.com/guide/mac-help/change-login-items-extension-settings-mtusr003/mac)。
 
 ### Windows
 

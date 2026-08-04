@@ -483,6 +483,8 @@
     "sharePageTitle": "اشتراک‌گذاری",
     "sharePageXrayLink": "پروتکل اشتراک VMessAEAD/VLESS. به‌طور گسترده استفاده می‌شود و با سایر برنامه‌ها کاملاً سازگار است (به‌جز VMess).",
     "sharePageSubscriptionLink": "لینک HTTPS. به‌طور گسترده استفاده می‌شود و با سایر برنامه‌ها کاملاً سازگار است.",
+    "sharePageAppLink": "پیوند اختصاصی OneXray. این پیوند فقط در OneXray قابل وارد کردن است.",
+    "sharePageOneXrayLink": "پیوند OneXray",
     "sharePageQRCode": "QRCode",
     "sharePageShareQRCode": "اشتراک کد QR",
     "sharePageSaveQRCode": "ذخیره کد QR",

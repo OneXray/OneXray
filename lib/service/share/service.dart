@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 
+import 'package:app_links/app_links.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +15,8 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
+import 'package:onexray/service/share/app_link_importer.dart';
+import 'package:onexray/service/share/app_link_parser.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
@@ -27,9 +32,66 @@ final class ShareService {
 
   //==========================
 
-  void init() {}
+  final Queue<Uri> _pendingAppLinks = Queue<Uri>();
+  final OneXrayAppLinkImporter _appLinkImporter = OneXrayAppLinkImporter();
+  StreamSubscription<Uri>? _appLinkSubscription;
+  var _appLinksReady = false;
+  var _processingAppLinks = false;
 
-  void dispose() {}
+  void startAppLinks() {
+    if (_appLinkSubscription != null) {
+      return;
+    }
+    _appLinkSubscription = AppLinks().uriLinkStream.listen(
+      (uri) {
+        _pendingAppLinks.add(uri);
+        unawaited(_processAppLinks());
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        ygLogger('receive app link failed: $error\n$stackTrace');
+      },
+    );
+  }
+
+  Future<void> init() async {
+    startAppLinks();
+    _appLinksReady = true;
+    await _processAppLinks();
+  }
+
+  void dispose() {
+    _appLinksReady = false;
+    _pendingAppLinks.clear();
+    final subscription = _appLinkSubscription;
+    _appLinkSubscription = null;
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+    }
+  }
+
+  Future<void> _processAppLinks() async {
+    if (!_appLinksReady || _processingAppLinks) {
+      return;
+    }
+    _processingAppLinks = true;
+    try {
+      while (_appLinksReady && _pendingAppLinks.isNotEmpty) {
+        final uri = _pendingAppLinks.removeFirst();
+        final link = OneXrayAppLinkParser.parse(uri);
+        final success = link != null && await _appLinkImporter.importLink(link);
+        ToastService().showToast(
+          success
+              ? appLocalizationsNoContext().homeOutboundViewImportSuccess
+              : appLocalizationsNoContext().homeOutboundViewNoValidConfig,
+        );
+      }
+    } finally {
+      _processingAppLinks = false;
+      if (_appLinksReady && _pendingAppLinks.isNotEmpty) {
+        unawaited(_processAppLinks());
+      }
+    }
+  }
 
   @visibleForTesting
   static List<SubscriptionImportEntry> parseSubscriptionImportEntries(
@@ -180,7 +242,14 @@ final class ShareService {
       eventBus.updateDownloading(true);
       try {
         final url = text.trim();
-        if (url.startsWith("https://")) {
+        if (url.startsWith('onexray://')) {
+          final links = OneXrayAppLinkParser.parseText(url);
+          for (final link in links) {
+            if (await _appLinkImporter.importLink(link, showLoading: false)) {
+              success = true;
+            }
+          }
+        } else if (url.startsWith("https://")) {
           final entries = parseSubscriptionImportEntries(url);
           final imported = await SubscriptionService().importSubscriptions(
             entries,

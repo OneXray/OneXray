@@ -35,7 +35,6 @@ abstract final class ServiceManager {
     await _runInit("NetClient", () => NetClient().asyncInit());
     await _runInit("TrayService", () => TrayService().init());
     await _runInit("VpnService", () => VpnService().asyncInit());
-    await _runInit("ShareService", () => ShareService().init());
     await _runInit(
       "NotificationService",
       () => NotificationService().asyncInit(),
@@ -48,6 +47,7 @@ abstract final class ServiceManager {
     }
     await _runInit("WindowService", () => WindowService().asyncInit());
     await _runInit("ToastService", () => ToastService().init());
+    await _runInit("ShareService", () => ShareService().init());
     await _runInit(
       "AppStartupService",
       () => AppStartupService().handleServicesReady(),

@@ -27,6 +27,12 @@ class GeoDataDao extends DatabaseAccessor<AppDatabase> with _$GeoDataDaoMixin {
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
+  Future<GeoDataData?> searchRowByName(String name) async {
+    return (select(
+      geoData,
+    )..where((tbl) => tbl.name.equals(name))).getSingleOrNull();
+  }
+
   Future<bool> nameExists(String name) async {
     final res = await (select(
       geoData,

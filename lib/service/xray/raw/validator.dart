@@ -11,22 +11,27 @@ class XrayRawValidationResult {
   final bool isValid;
   final String error;
   final String? normalizedText;
+  final String? name;
 
   const XrayRawValidationResult._(
     this.isValid,
     this.error,
     this.normalizedText,
+    this.name,
   );
 
-  const XrayRawValidationResult.valid(String normalizedText)
-    : this._(true, "", normalizedText);
+  const XrayRawValidationResult.valid(String normalizedText, String name)
+    : this._(true, "", normalizedText, name);
 
   const XrayRawValidationResult.invalid(String error)
-    : this._(false, error, null);
+    : this._(false, error, null, null);
 }
 
 class XrayRawValidator {
-  static XrayRawValidationResult normalize(String rawText) {
+  static XrayRawValidationResult normalize(
+    String rawText, {
+    String? nameOverride,
+  }) {
     late final Map<String, dynamic> jsonMap;
     late final XrayJson xrayJson;
     try {
@@ -35,6 +40,10 @@ class XrayRawValidator {
         throw const FormatException("Xray config root must be an object");
       }
       jsonMap = decoded;
+      final normalizedNameOverride = nameOverride?.trim();
+      if (normalizedNameOverride != null && normalizedNameOverride.isNotEmpty) {
+        jsonMap['name'] = normalizedNameOverride;
+      }
       xrayJson = XrayJson.fromJson(jsonMap);
     } catch (_) {
       return XrayRawValidationResult.invalid(
@@ -49,7 +58,7 @@ class XrayRawValidator {
 
     XrayRawFix.keepOnlyPingInbound(jsonMap);
     final normalizedText = JsonTool.encoder.convert(jsonMap);
-    return XrayRawValidationResult.valid(normalizedText);
+    return XrayRawValidationResult.valid(normalizedText, xrayJson.name!);
   }
 
   static Future<XrayRawValidationResult> validate(String rawText) async {

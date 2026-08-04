@@ -1,4 +1,4 @@
-enum ShareType { config, subscription }
+enum ShareType { config, subscription, geoData }
 
 class SharePageParams {
   final ShareType type;

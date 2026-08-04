@@ -32,10 +32,13 @@ class SharePage extends StatelessWidget {
   Widget _body(BuildContext context, SharePageState state) {
     final description = state.showLinkSection
         ? state.linkSection
+        : state.showAppLinkSection
+        ? AppLocalizations.of(context)!.sharePageAppLink
         : state.showTextSection
         ? state.textSection
         : "";
     if (!state.showLinkSection &&
+        !state.showAppLinkSection &&
         !state.showTextSection &&
         !state.showJsonFileSection) {
       return const Center(child: CircularProgressIndicator());
@@ -61,6 +64,7 @@ class SharePage extends StatelessWidget {
                 const SizedBox(height: 18),
               ],
               if (state.showLinkSection) ..._linkSections(context, state),
+              if (state.showAppLinkSection) ..._appLinkSections(context),
               if (state.showTextSection) ..._textSections(context),
               if (state.showJsonFileSection) ..._jsonFileSections(context),
             ],
@@ -68,6 +72,29 @@ class SharePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _appLinkSections(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final controller = context.read<ShareController>();
+    return [
+      _ShareActionSection(
+        title: localizations.sharePageOneXrayLink,
+        actions: [
+          _ShareAction(
+            title: localizations.sharePageShareLink,
+            icon: LucideIcons.share2,
+            onTap: () => controller.shareAppLink(context),
+          ),
+          _ShareAction(
+            title: localizations.sharePageCopyLink,
+            icon: LucideIcons.copy,
+            onTap: () => controller.copyAppLink(context),
+          ),
+        ],
+      ),
+      const SizedBox(height: 18),
+    ];
   }
 
   List<Widget> _linkSections(BuildContext context, SharePageState state) {

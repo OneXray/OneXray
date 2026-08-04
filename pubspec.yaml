@@ -23,6 +23,7 @@ dependencies:
   image_picker: ^1.2.3
   process: ^5.0.5
   webview_flutter: ^4.14.1
+  app_links: ^7.2.1
 
   #---------- dart.dev plugin
   # core

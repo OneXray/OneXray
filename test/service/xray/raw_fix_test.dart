@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
+import 'package:onexray/service/xray/raw/validator.dart';
 
 void main() {
   test('Raw config keeps only the app-managed ping inbound', () {
@@ -73,5 +75,24 @@ void main() {
     final routing = jsonMap['routing']! as Map<String, dynamic>;
     final rules = routing['rules']! as List<dynamic>;
     expect(rules.single, containsPair('outboundTag', 'direct'));
+  });
+
+  test('Raw normalization applies an imported name override', () {
+    final result = XrayRawValidator.normalize('''
+      {
+        "name": "Original",
+        "inbounds": [{"tag": "tunIn", "protocol": "tun"}],
+        "outbounds": [{"tag": "direct", "protocol": "freedom"}]
+      }
+      ''', nameOverride: 'Imported');
+
+    expect(result.isValid, isTrue);
+    expect(result.name, 'Imported');
+    final normalized =
+        JsonTool.decoder.convert(result.normalizedText!)
+            as Map<String, dynamic>;
+    expect(normalized['name'], 'Imported');
+    final inbounds = normalized['inbounds']! as List<dynamic>;
+    expect(inbounds.single, containsPair('tag', 'pingIn'));
   });
 }
