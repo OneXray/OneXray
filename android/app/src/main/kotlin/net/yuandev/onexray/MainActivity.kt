@@ -24,6 +24,7 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        registerVpnStatusReceiver()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -35,19 +36,20 @@ class MainActivity : FlutterFragmentActivity() {
         hostApi.onInit(flutterApi)
     }
 
+    // 接收器在 onCreate 中注册、onDestroy 中注销，避免在 onPause（系统弹窗导致 Activity 暂停）
+    // 期间错过 OneVpnService 发出的 VPN 状态广播，否则 Dart 侧会因收不到 CONNECTED 而超时断开。
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    override fun onResume() {
-        super.onResume()
-        // 注册跨进程广播接收器
-        if (vpnStatusReceiver == null) {
-            vpnStatusReceiver = object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    if (intent?.action == OneVpnService.ACTION_VPN_STATUS) {
-                        val running = intent.getBooleanExtra(OneVpnService.EXTRA_RUNNING, false)
-                        XLog.d("MainActivity: received VPN status changed: $running")
-                        // 将状态交给现有 hostApi（可触发 Flutter 通知或内部状态更新）
-                        hostApi.onVpnStatusChanged(running)
-                    }
+    private fun registerVpnStatusReceiver() {
+        if (vpnStatusReceiver != null) {
+            return
+        }
+        vpnStatusReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == OneVpnService.ACTION_VPN_STATUS) {
+                    val running = intent.getBooleanExtra(OneVpnService.EXTRA_RUNNING, false)
+                    XLog.d("MainActivity: received VPN status changed: $running")
+                    // 将状态交给现有 hostApi（可触发 Flutter 通知或内部状态更新）
+                    hostApi.onVpnStatusChanged(running)
                 }
             }
         }
@@ -61,17 +63,6 @@ class MainActivity : FlutterFragmentActivity() {
                 registerReceiver(it, filter)
             }
         }
-    }
-
-    override fun onPause() {
-        // 解绑接收器避免泄漏
-        vpnStatusReceiver?.let {
-            try {
-                unregisterReceiver(it)
-            } catch (_: Exception) {
-            }
-        }
-        super.onPause()
     }
 
     override fun onDestroy() {
