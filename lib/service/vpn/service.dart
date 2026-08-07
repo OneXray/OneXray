@@ -56,6 +56,13 @@ final class VpnService {
   Future<void>? _initFuture;
 
   bool get vpnRunning => _vpnRunning;
+  bool get vpnRunningOrStarting {
+    final actionState = AppEventBus.instance.state.vpnActionState;
+    return _isCoreActive ||
+        actionState == VpnActionState.preparing ||
+        actionState == VpnActionState.connecting;
+  }
+
   CoreRunMode get _selectedRunMode =>
       CoreRunModePolicy.resolve(AppEventBus.instance.state.coreRunMode);
 

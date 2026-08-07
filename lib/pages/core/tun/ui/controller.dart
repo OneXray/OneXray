@@ -238,7 +238,7 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
     if (!context.mounted) {
       return;
     }
-    if (!vpnService.vpnRunning) {
+    if (!vpnService.vpnRunningOrStarting) {
       context.pop();
       return;
     }

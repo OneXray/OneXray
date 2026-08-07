@@ -36,13 +36,14 @@ class SubscriptionAddPage extends StatelessWidget {
   ) {
     final localizations = AppLocalizations.of(context)!;
     final autoUpdate = state.autoUpdateState;
+    final saveLoading = downloading || state.generatingAgeKey;
     final autoUpdateValue = autoUpdate.subscriptionEnabled
         ? "${localizations.autoUpdatePageEnabled} · ${autoUpdate.subscriptionInterval}"
         : localizations.autoUpdatePageDisabled;
     return SettingsPageScaffold(
       title: localizations.subscriptionAddPageTitle,
-      onSave: downloading ? null : () => controller.save(context),
-      saveLoading: downloading,
+      onSave: saveLoading ? null : () => controller.save(context),
+      saveLoading: saveLoading,
       saveLabel: localizations.buttonSave,
       body: SubscriptionFormView(
         supportText: localizations.subscriptionAddPageSection,

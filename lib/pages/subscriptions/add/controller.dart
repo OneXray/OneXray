@@ -61,6 +61,9 @@ class SubscriptionAddController extends PageCubit<SubscriptionAddPageState> {
   }
 
   Future<void> save(BuildContext context) async {
+    if (state.generatingAgeKey) {
+      return;
+    }
     final name = nameController.text.trim();
     final url = SubscriptionUrl.normalize(urlController.text);
     final check = await SubscriptionValidator.validate(name, url);

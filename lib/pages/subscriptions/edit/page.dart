@@ -25,12 +25,12 @@ class SubscriptionEditPage extends StatelessWidget {
                 previous.downloading != current.downloading,
             builder: (context, state) {
               final localizations = AppLocalizations.of(context)!;
+              final saveLoading =
+                  state.downloading || pageState.generatingAgeKey;
               return SettingsPageScaffold(
                 title: localizations.subscriptionEditPageTitle,
-                onSave: state.downloading
-                    ? null
-                    : () => controller.save(context),
-                saveLoading: state.downloading,
+                onSave: saveLoading ? null : () => controller.save(context),
+                saveLoading: saveLoading,
                 saveLabel: localizations.buttonSave,
                 body: SubscriptionFormView(
                   supportText: localizations.subscriptionAddPageSection,

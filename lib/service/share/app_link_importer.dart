@@ -51,9 +51,7 @@ final class OneXrayAppLinkImporter {
     if (result.count != 1) {
       return false;
     }
-    if (link.type == OneXrayConfigLinkType.outbound) {
-      PingService().schedulePingConfigIds(result.ids);
-    }
+    PingService().schedulePingConfigIds(result.ids);
     return true;
   }
 
