@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 abstract final class AppFontFamily {
   static const sans = "packages/shadcn_ui/Geist";
   static const mono = "packages/shadcn_ui/GeistMono";
+  static const windowsSansFallback = <String>[
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+  ];
+
+  static List<String>? get sansFallback =>
+      AppPlatform.isWindows ? windowsSansFallback : null;
 }
 
 abstract final class AppTypography {
   static final _shadDefaults = ShadTextTheme(family: AppFontFamily.sans);
 
   static TextStyle _normalize(TextStyle style) {
-    return style.copyWith(letterSpacing: 0);
+    return style.copyWith(
+      letterSpacing: 0,
+      fontFamilyFallback: AppFontFamily.sansFallback,
+    );
   }
 
   static final shad = ShadTextTheme.custom(

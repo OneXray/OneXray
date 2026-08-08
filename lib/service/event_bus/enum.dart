@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/localizations/locale.dart';
 import 'package:onexray/service/localizations/service.dart';
 
 enum ThemeCode {
@@ -103,10 +104,8 @@ enum LanguageCode {
         break;
       default:
         current = switch (this) {
-          LanguageCode.zhHant => const Locale.fromSubtags(
-            languageCode: "zh",
-            scriptCode: "Hant",
-          ),
+          LanguageCode.zh => AppLocalePolicy.simplifiedChinese,
+          LanguageCode.zhHant => AppLocalePolicy.traditionalChinese,
           _ => Locale(name),
         };
         break;

@@ -83,11 +83,19 @@ void main() {
       final shad = AppTheme.shad(Brightness.light);
 
       expect(material.textTheme.bodyMedium?.fontFamily, AppFontFamily.sans);
+      expect(
+        material.textTheme.bodyMedium?.fontFamilyFallback,
+        AppFontFamily.sansFallback,
+      );
       expect(material.textTheme.bodyMedium?.fontSize, 14);
       expect(material.textTheme.bodyMedium?.height, 20 / 14);
       expect(material.textTheme.bodySmall?.fontSize, 14);
       expect(material.textTheme.labelSmall?.fontSize, 14);
       expect(shad.textTheme.family, AppFontFamily.sans);
+      expect(
+        shad.textTheme.muted.fontFamilyFallback,
+        AppFontFamily.sansFallback,
+      );
       expect(shad.textTheme.p.fontSize, 16);
       expect(shad.textTheme.p.height, 28 / 16);
       expect(shad.textTheme.small.fontSize, 14);
@@ -101,6 +109,10 @@ void main() {
       expect(AppTypography.code.fontFamily, AppFontFamily.mono);
       expect(AppTypography.code.fontSize, 14);
       expect(AppTypography.code.height, 20 / 14);
+      expect(AppFontFamily.windowsSansFallback, const <String>[
+        "Microsoft YaHei UI",
+        "Microsoft YaHei",
+      ]);
     });
 
     test('legacy color accessors map to semantic prototype tokens', () {
