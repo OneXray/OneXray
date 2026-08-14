@@ -1,10 +1,10 @@
 name: onexray
 description: "Cross Platform Xray-core Client"
 publish_to: "none"
-version: 26.8.3+1
+version: 26.8.4+1
 
 environment:
-  sdk: ">=3.12.0 <4.0.0"
+  sdk: ">=3.13.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -19,7 +19,7 @@ dependencies:
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
   quick_actions: ^1.1.0
-  go_router: ^17.3.0
+  go_router: ^17.5.0
   image_picker: ^1.2.3
   process: ^5.0.5
   webview_flutter: ^4.14.1
@@ -32,7 +32,7 @@ dependencies:
   crypto: ^3.0.7
   pub_semver: ^2.2.0
   # i18n
-  intl: ^0.20.2
+  intl: ^0.20.3
   # native
   ffi: ^2.2.0
 
@@ -48,11 +48,11 @@ dependencies:
   #---------- third party plugin
   drift: ^2.34.3
   drift_flutter: ^0.3.1
-  sqlite3: ^3.5.0
+  sqlite3: ^3.5.1
 
   dio: ^5.11.0
   uuid: ^4.6.0
-  permission_handler: ^13.0.0
+  permission_handler: ^13.0.1
   # qrcode
   file_picker: ^12.0.0-beta.7
   mobile_scanner: ^7.4.0
@@ -62,13 +62,13 @@ dependencies:
   archive: ^4.0.9
   # state management
   flutter_bloc: ^9.1.1
-  shadcn_ui: ^0.56.0
+  shadcn_ui: ^0.56.1
   lucide_icons_flutter: ^3.1.15
   # markdown
   flutter_markdown_plus: ^1.0.12
   duration: ^4.0.3
 
-  flutter_local_notifications: ^22.2.0
+  flutter_local_notifications: ^22.3.0
 
   in_app_review: ^2.0.12
 
@@ -81,7 +81,7 @@ dependencies:
   # desktop
   tray_manager: ^0.5.3
   window_manager: ^0.5.2
-  win32: ^6.3.0
+  win32: ^6.4.0
 
 dev_dependencies:
   flutter_test:

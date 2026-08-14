@@ -75,7 +75,9 @@ final class AppDataCleanupService {
         clearUserDataPreferences: clearUserDataPreferences,
       );
       if (clearUserDataPreferences) {
-        await NetClient().updateUserAgentMode(DownloadUserAgentMode.system);
+        await NetClient().updateUserAgentMode(
+          DownloadUserAgentMode.defaultMode,
+        );
       }
       await _clearDatabase();
       await _clearRuntimeFiles();

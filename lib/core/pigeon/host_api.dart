@@ -36,9 +36,9 @@ class AppHostApi {
   Future<bool?> cleanupStaleDesktopCore() async {
     try {
       if (AppPlatform.isLinux) {
-        return LinuxFfiApi().cleanupStaleCore();
+        return await LinuxFfiApi().cleanupStaleCore();
       } else if (AppPlatform.isWindows) {
-        return WindowsFfiApi().cleanupStaleCore();
+        return await WindowsFfiApi().cleanupStaleCore();
       }
     } catch (error, stackTrace) {
       _reportUnexpected('cleanupStaleDesktopCore', error, stackTrace);

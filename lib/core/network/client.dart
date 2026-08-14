@@ -60,6 +60,9 @@ class NetClient {
     return "PROXY ${NetConstants.proxyHost}:$_proxyPort";
   }
 
+  String get downloadUserAgent =>
+      _downloadClient.options.headers['User-Agent']?.toString() ?? '';
+
   Future<void> asyncInit() {
     return _initFuture ??= _initialize();
   }

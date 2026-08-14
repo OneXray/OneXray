@@ -8,8 +8,7 @@ void main() {
   test(
     'converts supported outbounds without app-side Xray validation',
     () async {
-      final json =
-          jsonDecode('''
+      final json = jsonDecode('''
 {
   "outbounds": [
     {
@@ -38,8 +37,7 @@ void main() {
     }
   ]
 }
-''')
-              as Map<String, dynamic>;
+''') as Map<String, dynamic>;
       final xrayJson = XrayJson.fromJson(json);
 
       final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);

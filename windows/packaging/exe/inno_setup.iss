@@ -49,7 +49,6 @@ ArchitecturesInstallIn64BitMode={{ARCHITECTURES_INSTALL_IN_64BIT_MODE}}
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: {% if CREATE_DESKTOP_ICON != true %}unchecked{% else %}checkedonce{% endif %}
-Name: "launchAtStartup"; Description: "{cm:AutoStartProgram,{{DISPLAY_NAME}}}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: {% if LAUNCH_AT_STARTUP != true %}unchecked{% else %}checkedonce{% endif %}
 
 [Files]
 Source: "{{SOURCE_DIR}}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -57,7 +56,6 @@ Source: "{{SOURCE_DIR}}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdir
 [Icons]
 Name: "{autoprograms}\{{DISPLAY_NAME}}"; Filename: "{app}\{{EXECUTABLE_NAME}}"
 Name: "{autodesktop}\{{DISPLAY_NAME}}"; Filename: "{app}\{{EXECUTABLE_NAME}}"; Tasks: desktopicon
-Name: "{userstartup}\{{DISPLAY_NAME}}"; Filename: "{app}\{{EXECUTABLE_NAME}}"; WorkingDir: "{app}"; Tasks: launchAtStartup
 
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\onexray"; ValueType: string; ValueName: ""; ValueData: "URL:OneXray Protocol"; Flags: uninsdeletekey
@@ -67,3 +65,38 @@ Root: HKCU; Subkey: "Software\Classes\onexray\shell\open\command"; ValueType: st
 
 [Run]
 Filename: "{app}\{{EXECUTABLE_NAME}}"; Description: "{cm:LaunchProgram,{{DISPLAY_NAME}}}"; Flags: {% if PRIVILEGES_REQUIRED == 'admin' %}runascurrentuser{% endif %} nowait postinstall skipifsilent
+
+[Code]
+function StartupShortcutTargetsCurrentInstall(const ShortcutPath,
+  ExpectedTarget: String): Boolean;
+var
+  Shell, Shortcut: Variant;
+  TargetPath: String;
+begin
+  Result := False;
+  if not FileExists(ShortcutPath) then
+    Exit;
+
+  try
+    Shell := CreateOleObject('WScript.Shell');
+    Shortcut := Shell.CreateShortcut(ShortcutPath);
+    TargetPath := Shortcut.TargetPath;
+    Result := (TargetPath <> '') and PathSame(TargetPath, ExpectedTarget);
+  except
+    Log('Unable to inspect the OneXray startup shortcut.');
+  end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  ExpectedTarget, ShortcutPath: String;
+begin
+  if CurUninstallStep <> usUninstall then
+    Exit;
+
+  ExpectedTarget := ExpandConstant('{app}\{{EXECUTABLE_NAME}}');
+  ShortcutPath := ExpandConstant('{userstartup}\{{DISPLAY_NAME}}.lnk');
+  if StartupShortcutTargetsCurrentInstall(ShortcutPath, ExpectedTarget) and
+     not DeleteFile(ShortcutPath) then
+    Log('Unable to remove the OneXray startup shortcut.');
+end;

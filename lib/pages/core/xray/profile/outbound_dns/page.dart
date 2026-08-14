@@ -184,24 +184,21 @@ class OutboundDnsPage extends StatelessWidget {
           TextFieldSettingRow(
             controller: controller.ruleQTypeControllers[ruleIndex],
             label: AppLocalizations.of(context)!.outboundDnsPageRuleQType,
-            hintText: AppLocalizations.of(
-              context,
-            )!.outboundDnsPageRuleQTypeExample,
+            hintText: AppLocalizations.of(context)!
+                .outboundDnsPageRuleQTypeExample,
           ),
           TextFieldSettingRow(
             controller: controller.ruleDomainControllers[ruleIndex],
             label: AppLocalizations.of(context)!.outboundDnsPageRuleDomain,
-            hintText: AppLocalizations.of(
-              context,
-            )!.outboundDnsPageRuleDomainExample,
+            hintText: AppLocalizations.of(context)!
+                .outboundDnsPageRuleDomainExample,
             maxLines: 2,
           ),
           TextFieldSettingRow(
             controller: controller.ruleRCodeControllers[ruleIndex],
             label: AppLocalizations.of(context)!.outboundDnsPageRuleRCode,
-            hintText: AppLocalizations.of(
-              context,
-            )!.outboundDnsPageRuleRCodeExample,
+            hintText: AppLocalizations.of(context)!
+                .outboundDnsPageRuleRCodeExample,
             keyboardType: TextInputType.number,
           ),
         ],

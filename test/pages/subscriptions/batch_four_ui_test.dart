@@ -69,8 +69,7 @@ void main() {
           onOpenAutoUpdate: () {},
           encryptionTitle: 'Encryption',
           ageProviderSupportTitle: 'Provider support required',
-          ageProviderSupportDescription:
-              'Enter age keys only when your subscription provider supports age encryption.',
+          ageProviderSupportDescription: 'Enter age keys only when your subscription provider supports age encryption.',
           ageSecretKeyLabel: 'Age Secret Key',
           ageSecretKeyHint: 'AGE-SECRET-KEY-...',
           ageSecretKeyController: ageSecretKeyController,
@@ -125,58 +124,58 @@ void main() {
     expect(generatedKeyType, AgeKeyType.hybrid);
   });
 
-  testWidgets('subscription form remains scrollable without overflow on phone', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 640));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final nameController = TextEditingController();
-    final urlController = TextEditingController();
-    final ageSecretKeyController = TextEditingController();
-    final agePublicKeyController = TextEditingController();
-    addTearDown(nameController.dispose);
-    addTearDown(urlController.dispose);
-    addTearDown(ageSecretKeyController.dispose);
-    addTearDown(agePublicKeyController.dispose);
+  testWidgets(
+    'subscription form remains scrollable without overflow on phone',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final nameController = TextEditingController();
+      final urlController = TextEditingController();
+      final ageSecretKeyController = TextEditingController();
+      final agePublicKeyController = TextEditingController();
+      addTearDown(nameController.dispose);
+      addTearDown(urlController.dispose);
+      addTearDown(ageSecretKeyController.dispose);
+      addTearDown(agePublicKeyController.dispose);
 
-    await tester.pumpWidget(
-      app(
-        SubscriptionFormView(
-          supportText: 'Supported formats',
-          nameLabel: 'Name',
-          nameController: nameController,
-          urlLabel: 'URL',
-          urlController: urlController,
-          urlHelper: 'HTTPS only',
-          autoUpdateTitle: 'Auto Update',
-          onOpenAutoUpdate: () {},
-          encryptionTitle: 'Encryption',
-          ageProviderSupportTitle: 'Provider support required',
-          ageProviderSupportDescription:
-              'Enter age keys only when your subscription provider supports age encryption.',
-          ageSecretKeyLabel: 'Age Secret Key',
-          ageSecretKeyHint: 'AGE-SECRET-KEY-...',
-          ageSecretKeyController: ageSecretKeyController,
-          agePublicKeyLabel: 'Age Public Key',
-          agePublicKeyHint: 'age1...',
-          agePublicKeyController: agePublicKeyController,
-          obscureAgeSecretKey: true,
-          revealAgeSecretKeyLabel: 'Reveal',
-          hideAgeSecretKeyLabel: 'Hide',
-          generateAgeKeyLabel: 'Generate',
-          generateAgeX25519KeyLabel: 'X25519',
-          generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
-          clearAgeKeyLabel: 'Clear',
-          onToggleAgeSecretKeyVisibility: () {},
-          onGenerateAgeKey: (_) {},
-          onClearAgeKey: () {},
+      await tester.pumpWidget(
+        app(
+          SubscriptionFormView(
+            supportText: 'Supported formats',
+            nameLabel: 'Name',
+            nameController: nameController,
+            urlLabel: 'URL',
+            urlController: urlController,
+            urlHelper: 'HTTPS only',
+            autoUpdateTitle: 'Auto Update',
+            onOpenAutoUpdate: () {},
+            encryptionTitle: 'Encryption',
+            ageProviderSupportTitle: 'Provider support required',
+            ageProviderSupportDescription: 'Enter age keys only when your subscription provider supports age encryption.',
+            ageSecretKeyLabel: 'Age Secret Key',
+            ageSecretKeyHint: 'AGE-SECRET-KEY-...',
+            ageSecretKeyController: ageSecretKeyController,
+            agePublicKeyLabel: 'Age Public Key',
+            agePublicKeyHint: 'age1...',
+            agePublicKeyController: agePublicKeyController,
+            obscureAgeSecretKey: true,
+            revealAgeSecretKeyLabel: 'Reveal',
+            hideAgeSecretKeyLabel: 'Hide',
+            generateAgeKeyLabel: 'Generate',
+            generateAgeX25519KeyLabel: 'X25519',
+            generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
+            clearAgeKeyLabel: 'Clear',
+            onToggleAgeSecretKeyVisibility: () {},
+            onGenerateAgeKey: (_) {},
+            onClearAgeKey: () {},
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.byType(SingleChildScrollView), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byType(SingleChildScrollView), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('subscription list card exposes count and open action', (
     tester,

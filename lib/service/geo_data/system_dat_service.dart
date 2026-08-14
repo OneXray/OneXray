@@ -50,9 +50,8 @@ final class SystemGeoDatService {
         data.offsetInBytes,
         data.lengthInBytes,
       );
-      await File(
-        p.join(datPath, p.basename(asset)),
-      ).writeAsBytes(bytes, flush: true);
+      await File(p.join(datPath, p.basename(asset)))
+          .writeAsBytes(bytes, flush: true);
     }
   }
 }

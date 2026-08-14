@@ -2,7 +2,8 @@
 # Builds OneXray across all supported platforms.
 #
 # Trigger:
-#   - workflow_dispatch: manual trigger from the Actions tab
+#   - workflow_dispatch: manually builds all or one operating system
+#     (`macos` builds both the MAS and Developer ID variants)
 #   - push to a tag matching `v*`: builds release artifacts
 #
 # Required repository secrets (set under Settings → Secrets and variables → Actions):
@@ -41,26 +42,29 @@
 #   outputs under `<workspace>/output`.
 
 name: Build
+run-name: Build ${{ inputs.target || 'all' }} · ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
     inputs:
       target:
-        description: Build target
+        description: Operating system to build
         required: true
         type: choice
         default: all
         options:
           - all
+          - android
           - ios
           - macos
-          - android
+          - windows
+          - linux
   push:
     tags:
       - "v*"
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: build-${{ github.ref }}-${{ inputs.target || 'all' }}
   cancel-in-progress: false
 
 env:
@@ -87,6 +91,7 @@ jobs:
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
           echo "${LIBXRAY_REF}" > release-metadata/libxray-sha.txt
           echo "${XRAY_CORE_REF}" > release-metadata/xray-core-sha.txt
+          echo "${{ inputs.target || 'all' }}" > release-metadata/target.txt
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             echo "${GITHUB_REF_NAME}" > release-metadata/tag.txt
           fi
@@ -260,7 +265,7 @@ jobs:
   #   + notarized + zipped
   # =================================================================
   macos_se:
-    if: github.event_name == 'push' || inputs.target == 'all'
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'macos'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -430,7 +435,7 @@ jobs:
   #   all match the target architecture.
   # =================================================================
   windows:
-    if: github.event_name == 'push' || inputs.target == 'all'
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'windows'
     strategy:
       fail-fast: false
       matrix:
@@ -568,7 +573,7 @@ jobs:
   #   for private ones.
   # =================================================================
   linux:
-    if: github.event_name == 'push' || inputs.target == 'all'
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'linux'
     strategy:
       fail-fast: false
       matrix:

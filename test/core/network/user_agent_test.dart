@@ -102,10 +102,26 @@ void main() {
     expect(readerCalled, isFalse);
   });
 
-  test('unknown persisted modes default to the system mode', () {
+  test('valid persisted modes retain the explicit selection', () {
+    expect(
+      DownloadUserAgentMode.fromString('system'),
+      DownloadUserAgentMode.system,
+    );
+    expect(
+      DownloadUserAgentMode.fromString('oneXray'),
+      DownloadUserAgentMode.oneXray,
+    );
+  });
+
+  test('missing or unknown persisted modes default to OneXray', () {
+    expect(DownloadUserAgentMode.defaultMode, DownloadUserAgentMode.oneXray);
+    expect(
+      DownloadUserAgentMode.fromString(null),
+      DownloadUserAgentMode.oneXray,
+    );
     expect(
       DownloadUserAgentMode.fromString('unknown'),
-      DownloadUserAgentMode.system,
+      DownloadUserAgentMode.oneXray,
     );
   });
 }

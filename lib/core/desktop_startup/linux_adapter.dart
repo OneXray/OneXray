@@ -78,7 +78,7 @@ final class LinuxLaunchAtLoginAdapter extends LaunchAtLoginAdapter {
           await temporary.delete();
         }
       }
-      return query();
+      return await query();
     } catch (error) {
       return LaunchAtLoginStatus.error(error.toString());
     }

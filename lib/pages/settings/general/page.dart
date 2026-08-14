@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/general/controller.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -87,9 +89,33 @@ class GeneralSettingsView extends StatelessWidget {
                     : () =>
                           onUserAgentModeChanged(DownloadUserAgentMode.oneXray),
               ),
+              if (state.userAgent.isNotEmpty)
+                _UserAgentPreview(userAgent: state.userAgent),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UserAgentPreview extends StatelessWidget {
+  final String userAgent;
+
+  const _UserAgentPreview({required this.userAgent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: ColorManager.tagBackground(context).withValues(alpha: 0.45),
+      padding: const EdgeInsetsDirectional.fromSTEB(13, 11, 13, 12),
+      child: SelectableText(
+        userAgent,
+        textDirection: TextDirection.ltr,
+        style: AppTypography.code.copyWith(
+          color: ColorManager.secondaryText(context),
+        ),
       ),
     );
   }

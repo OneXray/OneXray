@@ -67,9 +67,9 @@ class XrayRawValidator {
       return normalized;
     }
 
-    final jsonMap =
-        JsonTool.decoder.convert(normalized.normalizedText!)
-            as Map<String, dynamic>;
+    final jsonMap = JsonTool.decoder.convert(
+      normalized.normalizedText!,
+    ) as Map<String, dynamic>;
     final res = await _test(jsonMap);
     if (res.isNotEmpty) {
       return XrayRawValidationResult.invalid(res);

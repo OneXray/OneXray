@@ -50,7 +50,7 @@ class SettingsController extends PageCubit<SettingsPageState> {
 
   Future<void> _readSettings() async {
     final packageInfo = await PackageInfo.fromPlatform();
-    final appVersion = "${packageInfo.version}+${packageInfo.buildNumber}";
+    final appVersion = packageInfo.version;
     final xrayVersion = await AppHostApi().xrayVersion();
     if (isPageActive) {
       emit(state.copyWith(appVersion: appVersion, xrayVersion: xrayVersion));

@@ -164,9 +164,8 @@ class AutoUpdatePage extends StatelessWidget {
     AutoUpdateController controller,
   ) {
     return SwitchSettingRow(
-      title: AppLocalizations.of(
-        context,
-      )!.autoUpdatePageGeoDataUpdateAfterVpnConnected,
+      title: AppLocalizations.of(context)!
+          .autoUpdatePageGeoDataUpdateAfterVpnConnected,
       leading: const Icon(LucideIcons.cloudDownload),
       value: state.autoUpdateState.geoDataUpdateAfterVpnConnected,
       onChanged: (value) =>

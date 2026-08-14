@@ -81,9 +81,8 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
                         size: 16,
                       ),
                       child: Text(
-                        AppLocalizations.of(
-                          context,
-                        )!.logFileViewerContinueFollowing,
+                        AppLocalizations.of(context)!
+                            .logFileViewerContinueFollowing,
                       ),
                     ),
                   ),

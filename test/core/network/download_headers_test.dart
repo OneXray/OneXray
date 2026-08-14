@@ -1,10 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/network/model.dart';
-import 'package:onexray/core/network/user_agent.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -14,12 +12,9 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 void main() {
   const publicKey = 'age1testpublickey';
 
-  setUpAll(() async {
+  setUpAll(() {
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
-    await PreferencesKey().saveDownloadUserAgentMode(
-      DownloadUserAgentMode.oneXray,
-    );
     PackageInfo.setMockInitialValues(
       appName: 'OneXray',
       packageName: 'net.yuandev.onexray',
@@ -29,12 +24,14 @@ void main() {
     );
   });
 
-  test('does not add the age header to an unrelated download', () async {
-    String? receivedHeader;
+  test('uses the default OneXray UA for an unrelated download', () async {
+    String? receivedAgeHeader;
+    String? receivedUserAgent;
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));
     server.listen((request) async {
-      receivedHeader = request.headers.value('X-Age-Public-Key');
+      receivedAgeHeader = request.headers.value('X-Age-Public-Key');
+      receivedUserAgent = request.headers.value(HttpHeaders.userAgentHeader);
       request.response.write('plain subscription');
       await request.response.close();
     });
@@ -42,7 +39,13 @@ void main() {
     final text = await NetClient().getText(_serverUrl(server));
 
     expect(text, 'plain subscription');
-    expect(receivedHeader, isNull);
+    expect(receivedAgeHeader, isNull);
+    expect(
+      receivedUserAgent,
+      'OneXray/1.0.0 '
+      '(net.yuandev.onexray; build:1; ${Platform.operatingSystem})',
+    );
+    expect(NetClient().downloadUserAgent, receivedUserAgent);
   });
 
   test('preserves the age header across a same-origin redirect', () async {

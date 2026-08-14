@@ -43,7 +43,7 @@ void main() {
     void noop() {}
     return SettingsOverviewView(
       state: const SettingsPageState(
-        appVersion: '26.7.3+412',
+        appVersion: '26.7.3',
         xrayVersion: '26.7.11',
       ),
       showAppIcon: true,
@@ -83,6 +83,8 @@ void main() {
     expect(dataY, lessThan(appY));
     expect(appY, lessThan(versionY));
     expect(versionY, lessThan(supportY));
+    expect(find.text('26.7.3'), findsOneWidget);
+    expect(find.textContaining('+412'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -112,7 +114,7 @@ void main() {
         GeneralSettingsView(
           state: const GeneralSettingsPageState(
             connectOnAppLaunch: true,
-            userAgentMode: DownloadUserAgentMode.system,
+            userAgent: 'OneXray/26.8.4 (net.yuandev.onexray; build:1; macos)',
             loading: false,
           ),
           onConnectOnAppLaunchChanged: (_) {},
@@ -125,8 +127,16 @@ void main() {
     expect(find.text('Connect on App Launch'), findsOneWidget);
     expect(find.text('System User-Agent'), findsOneWidget);
     expect(find.text('OneXray User-Agent'), findsOneWidget);
+    expect(
+      find.text('OneXray/26.8.4 (net.yuandev.onexray; build:1; macos)'),
+      findsOneWidget,
+    );
     expect(find.byType(ShadSwitch), findsOneWidget);
     expect(find.byIcon(LucideIcons.check), findsOneWidget);
+    expect(
+      const GeneralSettingsPageState().userAgentMode,
+      DownloadUserAgentMode.oneXray,
+    );
     expect(tester.takeException(), isNull);
   });
 

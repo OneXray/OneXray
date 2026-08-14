@@ -64,9 +64,8 @@ class PingPage extends StatelessWidget {
   ) {
     return SwitchSettingRow(
       title: AppLocalizations.of(context)!.pingPageAutoPingNewConfigs,
-      subtitle: AppLocalizations.of(
-        context,
-      )!.pingPageAutoPingNewConfigsDescription,
+      subtitle: AppLocalizations.of(context)!
+          .pingPageAutoPingNewConfigsDescription,
       leading: const Icon(LucideIcons.wifi),
       value: state.pingState.autoPingNewConfigs,
       onChanged: (value) => controller.updateAutoPingNewConfigs(value),

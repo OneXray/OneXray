@@ -94,9 +94,8 @@ class _SubscriptionListView extends StatelessWidget {
               previous.downloading != current.downloading,
           builder: (context, eventState) => SubscriptionListView(
             items: snapshot.data ?? const [],
-            emptyMessage: AppLocalizations.of(
-              context,
-            )!.subscriptionListPageEmpty,
+            emptyMessage: AppLocalizations.of(context)!
+                .subscriptionListPageEmpty,
             addLabel: AppLocalizations.of(context)!.buttonAdd,
             pingLabel: AppLocalizations.of(context)!.outboundPageRealPing,
             pinging: eventState.pinging,

@@ -250,9 +250,8 @@ class AppConfirmationDialog extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 7),
                     Text(
@@ -268,9 +267,8 @@ class AppConfirmationDialog extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: ColorManager.tagBackground(
-                    context,
-                  ).withValues(alpha: 0.45),
+                  color: ColorManager.tagBackground(context)
+                      .withValues(alpha: 0.45),
                   border: Border(
                     top: BorderSide(color: ColorManager.border(context)),
                   ),
@@ -580,9 +578,8 @@ class _SettingsJsonEditorFrame extends StatelessWidget {
                   height: 30,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.primary
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Icon(

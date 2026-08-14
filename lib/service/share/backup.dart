@@ -159,7 +159,7 @@ class BackupService {
   ) async {
     try {
       await _archiveExtractor.extract(zipPath, cacheDir);
-      return _readBackupDir(cacheDir);
+      return await _readBackupDir(cacheDir);
     } catch (e, stackTrace) {
       ygLogger("read backup error: $e\n$stackTrace");
       return null;
@@ -531,9 +531,8 @@ final class _DatRestoreSwap {
   static Future<_DatRestoreSwap> prepare(String backupRoot) async {
     final source = p.join(backupRoot, BackupService._datDir);
     final destination = Directory(VpnConstants.datDir);
-    final parent = await Directory(
-      p.dirname(destination.path),
-    ).create(recursive: true);
+    final parent = await Directory(p.dirname(destination.path))
+        .create(recursive: true);
     final staged = await parent.createTemp('.onexray-dat-restore-');
     try {
       await BackupDatStager().stage(

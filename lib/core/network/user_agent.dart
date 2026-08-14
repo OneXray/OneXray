@@ -11,10 +11,12 @@ enum DownloadUserAgentMode {
   system,
   oneXray;
 
+  static const defaultMode = DownloadUserAgentMode.oneXray;
+
   static DownloadUserAgentMode fromString(String? value) {
     return DownloadUserAgentMode.values.firstWhere(
       (mode) => mode.name == value,
-      orElse: () => DownloadUserAgentMode.system,
+      orElse: () => defaultMode,
     );
   }
 }

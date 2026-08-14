@@ -101,9 +101,8 @@ class FirstRunView extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             l10n.firstRunPageIntroTitle,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 5),
           Text(

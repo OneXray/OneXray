@@ -105,6 +105,31 @@ class WindowsPackagingTest(unittest.TestCase):
         self.builder.target_architecture = "arm64"
         self.assertEqual(self.builder._wintun_architecture(), "arm64")
 
+    def test_installer_leaves_startup_shortcut_creation_to_the_app(self):
+        template_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "windows",
+                "packaging",
+                "exe",
+                "inno_setup.iss",
+            )
+        )
+        with open(template_path, mode="r", encoding="utf-8") as f:
+            template = f.read()
+
+        self.assertNotIn("launchAtStartup", template)
+        self.assertNotIn("[UninstallDelete]", template)
+        self.assertIn(
+            "StartupShortcutTargetsCurrentInstall",
+            template,
+        )
+        self.assertNotIn("CurrentVersion\\Run", template)
+        self.assertNotIn("LegacyRun", template)
+        self.assertNotIn("RegDeleteValue", template)
+
 
 if __name__ == "__main__":
     unittest.main()

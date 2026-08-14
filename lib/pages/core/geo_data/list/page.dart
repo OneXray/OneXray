@@ -125,9 +125,8 @@ class GeoDataListPage extends StatelessWidget {
               ? [
                   DataListInlineEmptyRow(
                     message: state.query.isEmpty
-                        ? AppLocalizations.of(
-                            context,
-                          )!.geoDataListPageEmptyCustom
+                        ? AppLocalizations.of(context)!
+                              .geoDataListPageEmptyCustom
                         : AppLocalizations.of(context)!.listNoSearchResult,
                     icon: state.query.isEmpty
                         ? LucideIcons.folderX
@@ -246,18 +245,16 @@ class GeoDataListPage extends StatelessWidget {
     if (data.categoryCount > 0) {
       tags.add(
         TagView(
-          tag: AppLocalizations.of(
-            context,
-          )!.geoDataListPageCategoryCount(data.categoryCount),
+          tag: AppLocalizations.of(context)!
+              .geoDataListPageCategoryCount(data.categoryCount),
         ),
       );
     }
     if (data.ruleCount > 0) {
       tags.add(
         TagView(
-          tag: AppLocalizations.of(
-            context,
-          )!.geoDataListPageRuleCount(data.ruleCount),
+          tag: AppLocalizations.of(context)!
+              .geoDataListPageRuleCount(data.ruleCount),
         ),
       );
     }

@@ -121,9 +121,8 @@ class NodeInfoContent extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.10),
+              color: Theme.of(context).colorScheme.primary
+                  .withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,

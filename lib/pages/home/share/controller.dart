@@ -298,17 +298,15 @@ class ShareController extends PageCubit<SharePageState> {
     if (success) {
       ContextAlert.showToast(
         context,
-        AppLocalizations.of(
-          context,
-        )!.actionResult(action, AppLocalizations.of(context)!.resultSuccess),
+        AppLocalizations.of(context)!
+            .actionResult(action, AppLocalizations.of(context)!.resultSuccess),
       );
       context.pop();
     } else {
       ContextAlert.showToast(
         context,
-        AppLocalizations.of(
-          context,
-        )!.actionResult(action, AppLocalizations.of(context)!.resultFailed),
+        AppLocalizations.of(context)!
+            .actionResult(action, AppLocalizations.of(context)!.resultFailed),
       );
     }
   }
