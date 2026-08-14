@@ -602,9 +602,8 @@ class OutboundUIPage extends StatelessWidget
     return TextFieldSettingRow(
       controller: controller.grpcAuthorityController,
       label: AppLocalizations.of(context)!.outboundUIPageGrpcAuthority,
-      hintText: AppLocalizations.of(
-        context,
-      )!.outboundUIPageGrpcAuthorityExample,
+      hintText: AppLocalizations.of(context)!
+          .outboundUIPageGrpcAuthorityExample,
     );
   }
 

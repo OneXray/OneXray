@@ -87,9 +87,8 @@ class ConfigGridCard extends StatelessWidget {
         child: InkWell(
           borderRadius: radius,
           onTap: tapCallback,
-          hoverColor: Theme.of(
-            context,
-          ).colorScheme.primary.withValues(alpha: 0.06),
+          hoverColor: Theme.of(context).colorScheme.primary
+              .withValues(alpha: 0.06),
           mouseCursor: tapCallback == null
               ? MouseCursor.defer
               : SystemMouseCursors.click,

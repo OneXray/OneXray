@@ -88,9 +88,9 @@ void main() {
 
     expect(result.isValid, isTrue);
     expect(result.name, 'Imported');
-    final normalized =
-        JsonTool.decoder.convert(result.normalizedText!)
-            as Map<String, dynamic>;
+    final normalized = JsonTool.decoder.convert(
+      result.normalizedText!,
+    ) as Map<String, dynamic>;
     expect(normalized['name'], 'Imported');
     final inbounds = normalized['inbounds']! as List<dynamic>;
     expect(inbounds.single, containsPair('tag', 'pingIn'));

@@ -153,9 +153,8 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return [
       localItem,
       ...rows.map((row) {
-        final data = _convertRowToCoreConfigData(
-          row,
-        ).copyWith(subId: DBConstants.defaultId);
+        final data = _convertRowToCoreConfigData(row)
+            .copyWith(subId: DBConstants.defaultId);
         return ConfigItem(data, ConfigQueryRowType.config);
       }),
     ];

@@ -210,9 +210,8 @@ class TunSettingsContent extends StatelessWidget {
     return TextFieldSettingRow(
       controller: controller.tunDnsServerNameController,
       label: AppLocalizations.of(context)!.tunSettingsPageTunDnsServerName,
-      hintText: AppLocalizations.of(
-        context,
-      )!.tunSettingsPageTunDnsServerNameExample,
+      hintText: AppLocalizations.of(context)!
+          .tunSettingsPageTunDnsServerNameExample,
     );
   }
 
@@ -409,9 +408,8 @@ class TunSettingsContent extends StatelessWidget {
     return NavigationSettingRow(
       leading: const Icon(LucideIcons.appWindow),
       title: AppLocalizations.of(context)!.tunSettingsPagePerAppVPN,
-      value: AppLocalizations.of(
-        context,
-      )!.tunSettingsPagePerAppVPNCount("$length"),
+      value: AppLocalizations.of(context)!
+          .tunSettingsPagePerAppVPNCount("$length"),
       subtitle: AppLocalizations.of(context)!.tunSettingsPagePerAppVPNHelp,
       onTap: () => controller.editAppList(context),
     );

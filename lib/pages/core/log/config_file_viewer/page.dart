@@ -27,9 +27,8 @@ class ConfigFileViewerPage extends StatelessWidget {
               actions: [
                 if (!AppPlatform.isLinux)
                   IconButton(
-                    tooltip: AppLocalizations.of(
-                      context,
-                    )!.configFileViewerPageShare,
+                    tooltip: AppLocalizations.of(context)!
+                        .configFileViewerPageShare,
                     onPressed: () => controller.shareFile(context),
                     icon: const Icon(LucideIcons.share2),
                   ),

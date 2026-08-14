@@ -154,9 +154,8 @@ class XrayProfileListPage extends StatelessWidget {
                               if (selected) ...[
                                 const SizedBox(width: 7),
                                 SettingsBadge(
-                                  label: AppLocalizations.of(
-                                    context,
-                                  )!.listStatusSelected,
+                                  label: AppLocalizations.of(context)!
+                                      .listStatusSelected,
                                   selected: true,
                                 ),
                               ],
@@ -165,12 +164,10 @@ class XrayProfileListPage extends StatelessWidget {
                           const SizedBox(height: 5),
                           Text(
                             builtIn
-                                ? AppLocalizations.of(
-                                    context,
-                                  )!.xrayProfileSimplePageTitle
-                                : AppLocalizations.of(
-                                    context,
-                                  )!.xrayProfileUIPageTitle,
+                                ? AppLocalizations.of(context)!
+                                      .xrayProfileSimplePageTitle
+                                : AppLocalizations.of(context)!
+                                      .xrayProfileUIPageTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTypography.supporting.copyWith(

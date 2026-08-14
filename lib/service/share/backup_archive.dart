@@ -56,9 +56,8 @@ final class BackupArchiveExtractor {
     try {
       archive = ZipDecoder().decodeStream(input);
       final entries = _validate(archive);
-      await Directory(
-        p.join(outputPath, dataDirectory),
-      ).create(recursive: true);
+      await Directory(p.join(outputPath, dataDirectory))
+          .create(recursive: true);
       for (final entry in entries) {
         final destination = p.joinAll([
           outputPath,

@@ -89,9 +89,8 @@ class XrayProfileSimplePage extends StatelessWidget {
       children: [
         SelectSettingRow(
           leading: const Icon(LucideIcons.route),
-          title: AppLocalizations.of(
-            context,
-          )!.xrayProfileSimplePageDomainStrategy,
+          title: AppLocalizations.of(context)!
+              .xrayProfileSimplePageDomainStrategy,
           value: state.xrayProfile.routing.domainStrategy.name,
           selections: RoutingDomainStrategy.simpleStrategy,
           onSelected: controller.updateDomainStrategy,
@@ -123,9 +122,8 @@ class XrayProfileSimplePage extends StatelessWidget {
         ),
         SwitchSettingRow(
           leading: const Icon(LucideIcons.listFilter),
-          title: AppLocalizations.of(
-            context,
-          )!.xrayProfileSimplePageEnableIPRule,
+          title: AppLocalizations.of(context)!
+              .xrayProfileSimplePageEnableIPRule,
           value: state.xrayProfile.routing.enableIPRule,
           onChanged: controller.updateEnableIPRule,
         ),

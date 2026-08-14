@@ -31,11 +31,11 @@ final class OneXrayAppLinkImporter {
     bool showLoading = true,
   }) async {
     try {
-      return switch (link) {
+      return await (switch (link) {
         OneXrayConfigLink() => _importConfig(link),
         OneXraySubscriptionLink() => _importSubscription(link, showLoading),
         OneXrayGeoDataLink() => _importGeoData(link, showLoading),
-      };
+      });
     } catch (error, stackTrace) {
       ygLogger('import onexray link failed: $error\n$stackTrace');
       return false;

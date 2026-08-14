@@ -97,9 +97,8 @@ mixin OutboundSecuritySection {
     return TextFieldSettingRow(
       controller: controller.pinnedPeerCertSha256Controller,
       label: AppLocalizations.of(context)!.outboundUIPagePinnedPeerCertSha256,
-      hintText: AppLocalizations.of(
-        context,
-      )!.outboundUIPagePinnedPeerCertSha256,
+      hintText: AppLocalizations.of(context)!
+          .outboundUIPagePinnedPeerCertSha256,
     );
   }
 
@@ -110,9 +109,8 @@ mixin OutboundSecuritySection {
     return TextFieldSettingRow(
       controller: controller.verifyPeerCertByNameController,
       label: AppLocalizations.of(context)!.outboundUIPageVerifyPeerCertByName,
-      hintText: AppLocalizations.of(
-        context,
-      )!.outboundUIPageVerifyPeerCertByName,
+      hintText: AppLocalizations.of(context)!
+          .outboundUIPageVerifyPeerCertByName,
     );
   }
 

@@ -140,9 +140,8 @@ mixin OutboundAdvancedSection {
     return TextFieldSettingRow(
       controller: controller.happyEyeballsMaxConcurrentTryController,
       label: AppLocalizations.of(context)!.outboundUIPageMaxConcurrentTry,
-      hintText: AppLocalizations.of(
-        context,
-      )!.outboundUIPageMaxConcurrentTryExample,
+      hintText: AppLocalizations.of(context)!
+          .outboundUIPageMaxConcurrentTryExample,
     );
   }
 
@@ -196,9 +195,8 @@ mixin OutboundAdvancedSection {
     return TextFieldSettingRow(
       controller: controller.muxConcurrencyController,
       label: AppLocalizations.of(context)!.outboundUIPageMuxConcurrency,
-      hintText: AppLocalizations.of(
-        context,
-      )!.outboundUIPageMuxConcurrencyExample,
+      hintText: AppLocalizations.of(context)!
+          .outboundUIPageMuxConcurrencyExample,
     );
   }
 
@@ -209,9 +207,8 @@ mixin OutboundAdvancedSection {
     return TextFieldSettingRow(
       controller: controller.muxXudpConcurrencyController,
       label: AppLocalizations.of(context)!.outboundUIPageMuxXudpConcurrency,
-      hintText: AppLocalizations.of(
-        context,
-      )!.outboundUIPageMuxXudpConcurrencyExample,
+      hintText: AppLocalizations.of(context)!
+          .outboundUIPageMuxXudpConcurrencyExample,
     );
   }
 }

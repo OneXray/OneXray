@@ -4,7 +4,7 @@ publish_to: "none"
 version: 26.8.4+1
 
 environment:
-  sdk: ">=3.12.0 <4.0.0"
+  sdk: ">=3.13.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -32,7 +32,7 @@ dependencies:
   crypto: ^3.0.7
   pub_semver: ^2.2.0
   # i18n
-  intl: ^0.20.2
+  intl: ^0.20.3
   # native
   ffi: ^2.2.0
 

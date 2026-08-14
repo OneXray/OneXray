@@ -164,8 +164,10 @@ List<GoRoute> _buildSharedSecondaryRoutes() {
       .toList();
 }
 
-typedef _SecondaryRouteBuilder =
-    Widget Function(BuildContext context, GoRouterState state);
+typedef _SecondaryRouteBuilder = Widget Function(
+  BuildContext context,
+  GoRouterState state,
+);
 
 class _SharedSecondaryRoute {
   final AppSecondaryDestination destination;
