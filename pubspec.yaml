@@ -19,7 +19,7 @@ dependencies:
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
   quick_actions: ^1.1.0
-  go_router: ^17.4.0
+  go_router: ^17.5.0
   image_picker: ^1.2.3
   process: ^5.0.5
   webview_flutter: ^4.14.1
@@ -52,7 +52,7 @@ dependencies:
 
   dio: ^5.11.0
   uuid: ^4.6.0
-  permission_handler: ^13.0.0
+  permission_handler: ^13.0.1
   # qrcode
   file_picker: ^12.0.0-beta.7
   mobile_scanner: ^7.4.0
