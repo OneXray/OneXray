@@ -21,6 +21,7 @@ import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/toast/service.dart';
+import 'package:path/path.dart' as p;
 import 'package:zxing2/qrcode.dart';
 
 final class ShareService {
@@ -183,29 +184,35 @@ final class ShareService {
     final allowedExtensions = <String>[];
     allowedExtensions.addAll(textFiles);
     allowedExtensions.addAll(imageFiles);
-    final result = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: allowedExtensions,
     );
 
-    if (result != null) {
-      final file = result.files.single;
-      if (file.path != null) {
-        if (imageFiles.contains(file.extension)) {
-          final text = await _readImageFile(file.path!);
-          await readShareText(text);
-        } else {
-          final pFile = File(file.path!);
-          final text = await pFile.readAsString();
-          await readShareText(text);
-        }
-      } else {
-        ToastService().showToast(
-          appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-        );
-      }
-    } else {
+    if (file == null) {
       ygLogger('User canceled file picking');
+      return;
+    }
+
+    final path = file.path;
+    if (path == null) {
+      ToastService().showToast(
+        appLocalizationsNoContext().homeOutboundViewNoValidConfig,
+      );
+      return;
+    }
+
+    final extension = p
+        .extension(file.name)
+        .toLowerCase()
+        .replaceFirst('.', '');
+    if (imageFiles.contains(extension)) {
+      final text = await _readImageFile(path);
+      await readShareText(text);
+    } else {
+      final pFile = File(path);
+      final text = await pFile.readAsString();
+      await readShareText(text);
     }
   }
 

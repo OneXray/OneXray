@@ -65,6 +65,8 @@ When source models, ARB files, Pigeon definitions, or Drift schema files change,
 
 # Validation Commands
 
+Run every `flutter` and `dart` command serially. Wait for the current command to exit before starting another `flutter` or `dart` command. This rule applies across terminal sessions, parallel tool calls, and agents; these commands must never overlap because they share `.dart_tool` and native-asset build state.
+
 Common validation commands:
 
 ```shell

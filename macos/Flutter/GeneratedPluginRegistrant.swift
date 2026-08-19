@@ -7,7 +7,7 @@ import Foundation
 
 import app_links
 import device_info_plus
-import file_picker
+import file_picker_darwin
 import file_selector_macos
 import flutter_local_notifications
 import in_app_review
