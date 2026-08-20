@@ -11,6 +11,7 @@ import 'package:onexray/pages/core/main/page.dart';
 import 'package:onexray/pages/core/ping/page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/ping/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -81,6 +82,21 @@ void main() {
     expect(find.text('Resolved URL'), findsOneWidget);
     expect(find.text('Auto ping new nodes'), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ping settings restore a custom URL', (tester) async {
+    final pingState = PingState()
+      ..url = PingUrl.custom
+      ..customUrl = 'https://example.com/ping';
+    await pingState.saveToPreferences();
+
+    await tester.pumpWidget(app(const PingPage()));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final input = tester.widget<ShadInput>(find.byType(ShadInput));
+    expect(input.controller?.text, 'https://example.com/ping');
+    expect(find.text('Resolved URL'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

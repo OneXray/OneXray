@@ -21,10 +21,21 @@ class PingController extends PageCubit<PingPageState> {
     _readPingState();
   }
 
+  final customUrlController = TextEditingController();
+
   Future<void> _readPingState() async {
     final pingState = PingState();
     await pingState.readFromPreferences();
+    if (!isPageActive) {
+      return;
+    }
+    customUrlController.text = pingState.customUrl;
     emit(PingPageState(pingState: pingState));
+  }
+
+  @override
+  void disposePageResources() {
+    customUrlController.dispose();
   }
 
   void updateTimeout(double value) {
@@ -46,7 +57,7 @@ class PingController extends PageCubit<PingPageState> {
   }
 
   Future<void> copyResolvedUrl(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: state.pingState.url.url));
+    await Clipboard.setData(ClipboardData(text: state.pingState.realUrl));
     if (context.mounted) {
       final localizations = AppLocalizations.of(context)!;
       ContextAlert.showToast(
@@ -60,6 +71,19 @@ class PingController extends PageCubit<PingPageState> {
   }
 
   Future<void> save(BuildContext context) async {
+    final customUrl = customUrlController.text.trim();
+    if (state.pingState.url == PingUrl.custom) {
+      final localizations = AppLocalizations.of(context)!;
+      if (customUrl.isEmpty) {
+        ContextAlert.showToast(context, localizations.validationUrlRequired);
+        return;
+      }
+      if (!PingUrl.isValidCustomUrl(customUrl)) {
+        ContextAlert.showToast(context, localizations.validationUrlInvalid);
+        return;
+      }
+    }
+    state.pingState.customUrl = customUrl;
     await state.pingState.saveToPreferences();
     if (context.mounted) {
       context.pop();

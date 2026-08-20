@@ -6,9 +6,10 @@ part 'ping_json.g.dart';
 class PingJson {
   double? timeout;
   String? url;
+  String? customUrl;
   bool? autoPingNewConfigs;
 
-  PingJson(this.timeout, this.url, this.autoPingNewConfigs);
+  PingJson(this.timeout, this.url, this.customUrl, this.autoPingNewConfigs);
 
   factory PingJson.fromJson(Map<String, dynamic> json) =>
       _$PingJsonFromJson(json);
