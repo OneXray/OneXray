@@ -430,9 +430,9 @@ jobs:
 
   # =================================================================
   # Windows x64 and arm64 — fastforge .zip + .exe
-  #   x64 stays on Windows Server 2022; arm64 uses GitHub's native
-  #   Windows 11 arm64 runner so Flutter, libXray, Xray-core, and Wintun
-  #   all match the target architecture.
+  #   x64 uses Windows Server 2025 with Visual Studio 2026; arm64 uses
+  #   GitHub's native Windows 11 arm64 runner so Flutter, libXray,
+  #   Xray-core, and Wintun all match the target architecture.
   # =================================================================
   windows:
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'windows'
@@ -443,7 +443,7 @@ jobs:
           - arch: x64
             goarch: amd64
             package_suffix: windows-amd64
-            runner: windows-2022
+            runner: windows-2025
           - arch: arm64
             goarch: arm64
             package_suffix: windows-arm64
