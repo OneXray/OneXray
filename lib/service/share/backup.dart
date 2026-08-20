@@ -68,25 +68,25 @@ class BackupService {
   }
 
   Future<bool> importBackup() async {
-    final result = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ["zip"],
     );
-    if (result == null) {
+    if (file == null) {
       return false;
     }
-    final file = result.files.single;
-    if (file.path == null) {
+    final path = file.path;
+    if (path == null) {
       return false;
     }
 
     final cacheDir = await FileTool.makeCacheDir();
     try {
-      final payload = await _readBackupPayload(file.path!, cacheDir);
+      final payload = await _readBackupPayload(path, cacheDir);
       if (payload == null) {
         return false;
       }
-      await _saveBackupFile(file.path!, payload.createdAt);
+      await _saveBackupFile(path, payload.createdAt);
       return true;
     } finally {
       await FileTool.deleteDirIfExists(cacheDir);

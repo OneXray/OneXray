@@ -10,6 +10,9 @@ set(BINARY_NAME "OneXray")
 # versions of CMake.
 cmake_policy(VERSION 3.14...3.25)
 
+# my fix, https://github.com/Baseflow/flutter-permission-handler/issues/1534
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Define build configuration option.
 get_property(IS_MULTICONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if (IS_MULTICONFIG)

@@ -51,7 +51,10 @@ class PingPage extends StatelessWidget {
       children: [
         _timeout(context, state, controller),
         _url(context, state, controller),
-        _realUrl(context, state),
+        if (state.pingState.url == PingUrl.custom)
+          _customUrl(context, controller)
+        else
+          _realUrl(context, state),
         _autoPingNewConfigs(context, state, controller),
       ],
     );
@@ -107,10 +110,20 @@ class PingPage extends StatelessWidget {
   Widget _realUrl(BuildContext context, PingPageState state) {
     return SettingRow(
       title: AppLocalizations.of(context)!.pingPageResolvedUrl,
-      subtitle: state.pingState.url.url,
+      subtitle: state.pingState.realUrl,
       leading: const Icon(LucideIcons.link),
       onTap: () => context.read<PingController>().copyResolvedUrl(context),
       trailing: const Icon(LucideIcons.copy),
+    );
+  }
+
+  Widget _customUrl(BuildContext context, PingController controller) {
+    return TextFieldSettingRow(
+      controller: controller.customUrlController,
+      label: AppLocalizations.of(context)!.pingPageUrl,
+      hintText: AppLocalizations.of(context)!.pingPageUrl,
+      leading: const Icon(LucideIcons.link),
+      keyboardType: TextInputType.url,
     );
   }
 }

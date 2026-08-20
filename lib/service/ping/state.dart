@@ -5,7 +5,8 @@ import 'package:onexray/core/tools/empty.dart';
 
 enum PingUrl {
   cloudflare("Cloudflare", "https://cp.cloudflare.com/"),
-  google("Google", "https://www.google.com/generate_204");
+  google("Google", "https://www.google.com/generate_204"),
+  custom("Custom", "");
 
   const PingUrl(this.name, this.url);
 
@@ -21,6 +22,15 @@ enum PingUrl {
   static List<String> get names {
     return PingUrl.values.map((e) => e.name).toList();
   }
+
+  static bool isValidCustomUrl(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.host.isEmpty) {
+      return false;
+    }
+    final scheme = uri.scheme.toLowerCase();
+    return scheme == "http" || scheme == "https";
+  }
 }
 
 class PingTimeout {
@@ -33,9 +43,10 @@ class PingTimeout {
 class PingState {
   var timeout = PingTimeout.defaultValue;
   var url = PingUrl.cloudflare;
+  var customUrl = "";
   var autoPingNewConfigs = false;
 
-  String get realUrl => url.url;
+  String get realUrl => url == PingUrl.custom ? customUrl : url.url;
 
   Future<void> readFromPreferences() async {
     final jsonMap = await PreferencesKey().readPingState();
@@ -58,13 +69,19 @@ class PingState {
         this.url = url;
       }
     }
+    if (EmptyTool.checkString(pingJson.customUrl)) {
+      customUrl = pingJson.customUrl!;
+    }
+    if (url == PingUrl.custom && !PingUrl.isValidCustomUrl(customUrl)) {
+      url = PingUrl.cloudflare;
+    }
     if (pingJson.autoPingNewConfigs != null) {
       autoPingNewConfigs = pingJson.autoPingNewConfigs!;
     }
   }
 
   Future<void> saveToPreferences() async {
-    final pingJson = PingJson(timeout, url.name, autoPingNewConfigs);
+    final pingJson = PingJson(timeout, url.name, customUrl, autoPingNewConfigs);
     await PreferencesKey().savePingState(pingJson.toJson());
   }
 }

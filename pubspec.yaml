@@ -54,12 +54,12 @@ dependencies:
   uuid: ^4.6.0
   permission_handler: ^13.0.1
   # qrcode
-  file_picker: ^12.0.0-beta.7
+  file_picker: ^12.0.0
   mobile_scanner: ^7.4.0
-  image: ^4.9.1
+  image: ^4.9.2
   zxing2: ^0.2.4
   # export
-  archive: ^4.0.9
+  archive: ^4.1.0
   # state management
   flutter_bloc: ^9.1.1
   shadcn_ui: ^0.56.1
@@ -86,10 +86,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  build_runner: ^2.15.1
+  build_runner: ^2.16.0
   json_serializable: ^6.14.1
-  drift_dev: ^2.34.0
-  pigeon: ^27.3.0
+  drift_dev: ^2.34.5
+  pigeon: ^27.3.1
   flutter_lints: ^6.0.0
   flutter_gen_runner: ^5.15.0
   ffigen: ^21.0.0

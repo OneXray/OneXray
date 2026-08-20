@@ -25,15 +25,15 @@ final class JsonImportResult {
 final class JsonImporter {
   static Future<JsonImportResult> pickFile() async {
     try {
-      final result = await FilePicker.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ["txt", "json"],
       );
-      if (result == null) {
+      if (file == null) {
         return const JsonImportResult.canceled();
       }
 
-      final path = result.files.single.path;
+      final path = file.path;
       if (path == null) {
         return const JsonImportResult.invalid();
       }

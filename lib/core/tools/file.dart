@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:onexray/core/tools/logger.dart';
 import "package:path/path.dart" as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:uuid/uuid.dart';
 
 class ConfigFileType {
@@ -81,7 +80,7 @@ class FileTool {
     String name,
     String extension,
   ) async {
-    String? outputFile = await FilePicker.saveFile(
+    final outputFile = await FilePicker.saveFile(
       fileName: name,
       type: FileType.custom,
       allowedExtensions: [extension],
@@ -91,11 +90,6 @@ class FileTool {
     if (outputFile == null) {
       return false;
     }
-
-    if (AppPlatform.isDesktop) {
-      await File(outputFile).writeAsBytes(data);
-    }
-
     return true;
   }
 

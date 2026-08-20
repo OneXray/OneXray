@@ -1415,26 +1415,24 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
 }
 
-typedef $$CoreConfigTableCreateCompanionBuilder =
-    CoreConfigCompanion Function({
-      Value<int> id,
-      required String name,
-      required String type,
-      required String tags,
-      Value<String?> data,
-      required int delay,
-      required int subId,
-    });
-typedef $$CoreConfigTableUpdateCompanionBuilder =
-    CoreConfigCompanion Function({
-      Value<int> id,
-      Value<String> name,
-      Value<String> type,
-      Value<String> tags,
-      Value<String?> data,
-      Value<int> delay,
-      Value<int> subId,
-    });
+typedef $$CoreConfigTableCreateCompanionBuilder = CoreConfigCompanion Function({
+  Value<int> id,
+  required String name,
+  required String type,
+  required String tags,
+  Value<String?> data,
+  required int delay,
+  required int subId,
+});
+typedef $$CoreConfigTableUpdateCompanionBuilder = CoreConfigCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<String> type,
+  Value<String> tags,
+  Value<String?> data,
+  Value<int> delay,
+  Value<int> subId,
+});
 
 class $$CoreConfigTableFilterComposer
     extends Composer<_$AppDatabase, $CoreConfigTable> {
@@ -1902,26 +1900,24 @@ typedef $$SubscriptionTableProcessedTableManager =
       SubscriptionData,
       PrefetchHooks Function()
     >;
-typedef $$GeoDataTableCreateCompanionBuilder =
-    GeoDataCompanion Function({
-      Value<int> id,
-      required String name,
-      required String type,
-      required String url,
-      required DateTime timestamp,
-      required int categoryCount,
-      required int ruleCount,
-    });
-typedef $$GeoDataTableUpdateCompanionBuilder =
-    GeoDataCompanion Function({
-      Value<int> id,
-      Value<String> name,
-      Value<String> type,
-      Value<String> url,
-      Value<DateTime> timestamp,
-      Value<int> categoryCount,
-      Value<int> ruleCount,
-    });
+typedef $$GeoDataTableCreateCompanionBuilder = GeoDataCompanion Function({
+  Value<int> id,
+  required String name,
+  required String type,
+  required String url,
+  required DateTime timestamp,
+  required int categoryCount,
+  required int ruleCount,
+});
+typedef $$GeoDataTableUpdateCompanionBuilder = GeoDataCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<String> type,
+  Value<String> url,
+  Value<DateTime> timestamp,
+  Value<int> categoryCount,
+  Value<int> ruleCount,
+});
 
 class $$GeoDataTableFilterComposer
     extends Composer<_$AppDatabase, $GeoDataTable> {
