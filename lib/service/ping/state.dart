@@ -72,6 +72,9 @@ class PingState {
     if (EmptyTool.checkString(pingJson.customUrl)) {
       customUrl = pingJson.customUrl!;
     }
+    if (url == PingUrl.custom && !PingUrl.isValidCustomUrl(customUrl)) {
+      url = PingUrl.cloudflare;
+    }
     if (pingJson.autoPingNewConfigs != null) {
       autoPingNewConfigs = pingJson.autoPingNewConfigs!;
     }

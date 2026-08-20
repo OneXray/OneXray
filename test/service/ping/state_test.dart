@@ -65,4 +65,25 @@ void main() {
       expect(restored.autoPingNewConfigs, isFalse);
     },
   );
+
+  test('invalid legacy custom URLs are retained but not activated', () async {
+    for (final customUrl in [
+      'example.com/ping',
+      'ftp://legacy.example.com/ping',
+    ]) {
+      await PreferencesKey().savePingState({
+        'timeout': 5,
+        'url': 'Custom',
+        'customUrl': customUrl,
+      });
+
+      final restored = PingState();
+      await restored.readFromPreferences();
+
+      expect(restored.url, PingUrl.cloudflare, reason: customUrl);
+      expect(restored.customUrl, customUrl, reason: customUrl);
+      expect(restored.realUrl, PingUrl.cloudflare.url, reason: customUrl);
+      expect(restored.autoPingNewConfigs, isFalse, reason: customUrl);
+    }
+  });
 }
