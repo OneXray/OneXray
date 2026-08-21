@@ -114,17 +114,17 @@ jobs:
       run:
         working-directory: OneXray
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: OneXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
@@ -135,12 +135,12 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           check-latest: true
@@ -157,7 +157,7 @@ jobs:
         run: echo "$ASC_KEY_B64" | base64 -d > ios/fastlane/AuthKey.p8
 
       - name: Import Apple Distribution certificate
-        uses: apple-actions/import-codesign-certs@v6
+        uses: apple-actions/import-codesign-certs@v7
         with:
           p12-file-base64: ${{ secrets.APPLE_DISTRIBUTION_P12_BASE64 }}
           p12-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -191,17 +191,17 @@ jobs:
       run:
         working-directory: OneXray
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: OneXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
@@ -212,12 +212,12 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           check-latest: true
@@ -234,7 +234,7 @@ jobs:
         run: echo "$ASC_KEY_B64" | base64 -d > macos/fastlane/AuthKey.p8
 
       - name: Import Apple Distribution certificate
-        uses: apple-actions/import-codesign-certs@v6
+        uses: apple-actions/import-codesign-certs@v7
         with:
           p12-file-base64: ${{ secrets.APPLE_DISTRIBUTION_P12_BASE64 }}
           p12-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -242,7 +242,7 @@ jobs:
           keychain: signing_temp
 
       - name: Import Mac installer certificate
-        uses: apple-actions/import-codesign-certs@v6
+        uses: apple-actions/import-codesign-certs@v7
         with:
           p12-file-base64: ${{ secrets.APPLE_MAC_INSTALLER_P12_BASE64 }}
           p12-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -272,17 +272,17 @@ jobs:
       run:
         working-directory: OneXray
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: OneXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
@@ -293,12 +293,12 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           check-latest: true
@@ -315,7 +315,7 @@ jobs:
         run: echo "$ASC_KEY_B64" | base64 -d > macos_se/fastlane/AuthKey.p8
 
       - name: Import Developer ID Application certificate
-        uses: apple-actions/import-codesign-certs@v6
+        uses: apple-actions/import-codesign-certs@v7
         with:
           p12-file-base64: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64 }}
           p12-password: ${{ secrets.KEYCHAIN_PASSWORD }}
@@ -349,17 +349,17 @@ jobs:
       run:
         working-directory: OneXray
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: OneXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
@@ -370,12 +370,12 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           check-latest: true
@@ -458,28 +458,28 @@ jobs:
         shell: bash
         working-directory: OneXray
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: OneXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           check-latest: true
@@ -588,28 +588,28 @@ jobs:
       run:
         working-directory: OneXray
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           path: OneXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ env.XRAY_CORE_REPOSITORY }}
           ref: ${{ env.XRAY_CORE_REF }}
           path: Xray-core
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           check-latest: true
