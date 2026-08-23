@@ -265,17 +265,11 @@ class AppHostApi {
   }
 
   Future<String> runXray(String coreInvokeText) async {
+    if (!AppPlatform.isIOS) {
+      return _errorResult;
+    }
     try {
-      final request = _runXrayRequestFromText(coreInvokeText);
-      if (AppPlatform.isLinux) {
-        return await _runDesktopProxyCore(
-          () => LinuxFfiApi().startProxyCore(request),
-        );
-      } else if (AppPlatform.isWindows) {
-        return await _runDesktopProxyCore(
-          () => WindowsFfiApi().startProxyCore(request),
-        );
-      }
+      final request = LibXrayRunConfig.fromInvokeText(coreInvokeText);
       final res = await _invoke(request.invoke);
       final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
@@ -288,25 +282,9 @@ class AppHostApi {
     return _errorResult;
   }
 
-  LibXrayRunConfig _runXrayRequestFromText(String coreInvokeText) {
-    return LibXrayRunConfig.fromInvokeText(coreInvokeText);
-  }
-
-  Future<String> _runDesktopProxyCore(Future<bool> Function() start) async {
-    try {
-      final started = await start();
-      return started ? "" : _errorResult;
-    } catch (error, stackTrace) {
-      _reportUnexpected('runDesktopProxyCore', error, stackTrace);
-      return _errorResult;
-    }
-  }
-
   Future<String> stopXray() async {
-    if (AppPlatform.isLinux) {
-      return await LinuxFfiApi().stopProxyCore();
-    } else if (AppPlatform.isWindows) {
-      return await WindowsFfiApi().stopProxyCore();
+    if (!AppPlatform.isIOS) {
+      return _errorResult;
     }
     try {
       final res = await _invoke(
@@ -324,10 +302,8 @@ class AppHostApi {
   }
 
   Future<bool> getXrayState() async {
-    if (AppPlatform.isLinux) {
-      return await LinuxFfiApi().proxyCoreRunning();
-    } else if (AppPlatform.isWindows) {
-      return await WindowsFfiApi().proxyCoreRunning();
+    if (!AppPlatform.isIOS) {
+      return false;
     }
     try {
       final res = await _invoke(

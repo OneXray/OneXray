@@ -1,22 +1,29 @@
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/model/core_run_mode.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/localizations/service.dart';
 
 export 'package:onexray/core/model/core_run_mode.dart';
 
 abstract final class CoreRunModePolicy {
-  static const proxyEnabled = kDebugMode;
+  static bool get proxyEnabled =>
+      resolve(CoreRunMode.proxy) == CoreRunMode.proxy;
 
   static CoreRunMode resolve(CoreRunMode requested) {
-    return resolveForBuild(requested, debugMode: proxyEnabled);
+    return resolveForEnvironment(
+      requested,
+      debugMode: kDebugMode,
+      isIOS: AppPlatform.isIOS,
+    );
   }
 
   @visibleForTesting
-  static CoreRunMode resolveForBuild(
+  static CoreRunMode resolveForEnvironment(
     CoreRunMode requested, {
     required bool debugMode,
+    required bool isIOS,
   }) {
-    return debugMode ? requested : CoreRunMode.tun;
+    return debugMode && isIOS ? requested : CoreRunMode.tun;
   }
 }
 

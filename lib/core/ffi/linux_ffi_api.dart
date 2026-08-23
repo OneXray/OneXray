@@ -20,7 +20,6 @@ class LinuxFfiApi extends BaseFfiApi {
 
   //===================================
   static const _coreBin = "OneXrayCore";
-  static const _stopProxyCoreFailed = "stop proxy core failed";
   final _processManager = LocalProcessManager();
   final _processStore = DesktopCoreProcessStore();
   Future<String?>? _effectiveUserIdFuture;
@@ -29,10 +28,6 @@ class LinuxFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
-    return _startCore(request);
-  }
-
-  Future<bool> _startCore(LibXrayRunConfig request) async {
     try {
       if (!await _stopCoreProcess()) {
         ygLogger("start core failed: previous core is still running");
@@ -63,10 +58,6 @@ class LinuxFfiApi extends BaseFfiApi {
     return await queryCoreRunning() ?? false;
   }
 
-  Future<bool> startProxyCore(LibXrayRunConfig request) async {
-    return _startCore(request);
-  }
-
   Future<bool> cleanupStaleCore() async {
     if (_coreProcess != null) {
       return true;
@@ -76,17 +67,6 @@ class LinuxFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> stopCore() => _stopCoreProcess();
-
-  Future<String> stopProxyCore() async {
-    final stopped = await _stopProxyCore();
-    return stopped ? "" : _stopProxyCoreFailed;
-  }
-
-  Future<bool> proxyCoreRunning() async => await queryCoreRunning() ?? false;
-
-  Future<bool> _stopProxyCore() async {
-    return _stopCoreProcess();
-  }
 
   Future<bool> _stopCoreProcess() async {
     final process = _coreProcess;
