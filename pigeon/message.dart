@@ -14,51 +14,51 @@ import 'package:pigeon/pigeon.dart';
 )
 @HostApi()
 abstract class BridgeHostApi {
-  @async
+  @asyncCallback
   String getTunFilesDir();
 
-  @async
+  @asyncCallback
   NativeVpnCommandResult readVpnStatus();
 
-  @async
+  @asyncCallback
   NativeVpnCommandResult startVpn();
 
-  @async
+  @asyncCallback
   NativeVpnCommandResult stopVpn();
 
-  @async
+  @asyncCallback
   String invoke(String requestJson);
 
   //platform======================
-  @async
+  @asyncCallback
   PlatformPermissionResult queryPlatformPermission();
 
-  @async
+  @asyncCallback
   PlatformPermissionResult requestPlatformPermission();
 
   //android=======================
 
-  @async
+  @asyncCallback
   List<AndroidAppInfo> getInstalledApps();
 
   //macOS======================
-  @async
+  @asyncCallback
   bool useSystemExtension();
 
-  @async
+  @asyncCallback
   NativeLaunchAtLoginResult queryLaunchAtLogin();
 
-  @async
+  @asyncCallback
   NativeLaunchAtLoginResult setLaunchAtLogin(bool enabled);
 
-  @async
+  @asyncCallback
   bool openLaunchAtLoginSettings();
 
   //Apple app icon======================
-  @async
+  @asyncCallback
   bool setAppIcon(String appIcon);
 
-  @async
+  @asyncCallback
   String getCurrentAppIcon();
 }
 
@@ -124,9 +124,9 @@ class AndroidAppInfo {
 
 @FlutterApi()
 abstract class BridgeFlutterApi {
-  @async
+  @asyncCallback
   void vpnStatusChanged(VpnStatus status);
 
-  @async
+  @asyncCallback
   void refreshVpn(RefreshVpnResult result);
 }

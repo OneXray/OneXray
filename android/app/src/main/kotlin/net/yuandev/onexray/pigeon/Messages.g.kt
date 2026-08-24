@@ -13,12 +13,6 @@ import io.flutter.plugin.common.StandardMethodCodec
 import io.flutter.plugin.common.StandardMessageCodec
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 private object MessagesPigeonUtils {
 
   fun createConnectionError(channelName: String): FlutterError {
@@ -556,20 +550,20 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface BridgeHostApi {
-  suspend fun getTunFilesDir(): String
-  suspend fun readVpnStatus(): NativeVpnCommandResult
-  suspend fun startVpn(): NativeVpnCommandResult
-  suspend fun stopVpn(): NativeVpnCommandResult
-  suspend fun invoke(requestJson: String): String
-  suspend fun queryPlatformPermission(): PlatformPermissionResult
-  suspend fun requestPlatformPermission(): PlatformPermissionResult
-  suspend fun getInstalledApps(): List<AndroidAppInfo>
-  suspend fun useSystemExtension(): Boolean
-  suspend fun queryLaunchAtLogin(): NativeLaunchAtLoginResult
-  suspend fun setLaunchAtLogin(enabled: Boolean): NativeLaunchAtLoginResult
-  suspend fun openLaunchAtLoginSettings(): Boolean
-  suspend fun setAppIcon(appIcon: String): Boolean
-  suspend fun getCurrentAppIcon(): String
+  fun getTunFilesDir(callback: (Result<String>) -> Unit)
+  fun readVpnStatus(callback: (Result<NativeVpnCommandResult>) -> Unit)
+  fun startVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
+  fun stopVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
+  fun invoke(requestJson: String, callback: (Result<String>) -> Unit)
+  fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
+  fun requestPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
+  fun getInstalledApps(callback: (Result<List<AndroidAppInfo>>) -> Unit)
+  fun useSystemExtension(callback: (Result<Boolean>) -> Unit)
+  fun queryLaunchAtLogin(callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
+  fun setLaunchAtLogin(enabled: Boolean, callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
+  fun openLaunchAtLoginSettings(callback: (Result<Boolean>) -> Unit)
+  fun setAppIcon(appIcon: String, callback: (Result<Boolean>) -> Unit)
+  fun getCurrentAppIcon(callback: (Result<String>) -> Unit)
 
   companion object {
     /** The codec used by BridgeHostApi. */
@@ -584,13 +578,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.getTunFilesDir$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.getTunFilesDir())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.getTunFilesDir{ result: Result<String> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -601,13 +596,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.readVpnStatus$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.readVpnStatus())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.readVpnStatus{ result: Result<NativeVpnCommandResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -618,13 +614,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.startVpn$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.startVpn())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.startVpn{ result: Result<NativeVpnCommandResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -635,13 +632,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.stopVpn$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.stopVpn())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.stopVpn{ result: Result<NativeVpnCommandResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -654,13 +652,14 @@ interface BridgeHostApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val requestJsonArg = args[0] as String
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.invoke(requestJsonArg))
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.invoke(requestJsonArg) { result: Result<String> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -671,13 +670,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.queryPlatformPermission$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.queryPlatformPermission())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.queryPlatformPermission{ result: Result<PlatformPermissionResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -688,13 +688,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.requestPlatformPermission$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.requestPlatformPermission())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.requestPlatformPermission{ result: Result<PlatformPermissionResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -705,13 +706,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.getInstalledApps$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.getInstalledApps())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.getInstalledApps{ result: Result<List<AndroidAppInfo>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -722,13 +724,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.useSystemExtension$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.useSystemExtension())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.useSystemExtension{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -739,13 +742,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.queryLaunchAtLogin$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.queryLaunchAtLogin())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.queryLaunchAtLogin{ result: Result<NativeLaunchAtLoginResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -758,13 +762,14 @@ interface BridgeHostApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val enabledArg = args[0] as Boolean
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.setLaunchAtLogin(enabledArg))
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.setLaunchAtLogin(enabledArg) { result: Result<NativeLaunchAtLoginResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -775,13 +780,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.openLaunchAtLoginSettings$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.openLaunchAtLoginSettings())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.openLaunchAtLoginSettings{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -794,13 +800,14 @@ interface BridgeHostApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val appIconArg = args[0] as String
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.setAppIcon(appIconArg))
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.setAppIcon(appIconArg) { result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -811,13 +818,14 @@ interface BridgeHostApi {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.getCurrentAppIcon$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            CoroutineScope(Dispatchers.Main).launch {
-              val wrapped: List<Any?> = try {
-                listOf(api.getCurrentAppIcon())
-              } catch (exception: Throwable) {
-                MessagesPigeonUtils.wrapError(exception)
+            api.getCurrentAppIcon{ result: Result<String> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
               }
-              reply.reply(wrapped)
             }
           }
         } else {
@@ -835,42 +843,38 @@ class BridgeFlutterApi(private val binaryMessenger: BinaryMessenger, private val
       MessagesPigeonCodec()
     }
   }
-  suspend fun vpnStatusChanged(statusArg: VpnStatus)
+  fun vpnStatusChanged(statusArg: VpnStatus, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    return suspendCancellableCoroutine { continuation ->
-      val channelName = "dev.flutter.pigeon.onexray.BridgeFlutterApi.vpnStatusChanged$separatedMessageChannelSuffix"
-      val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-      channel.send(listOf(statusArg)) {
-        if (it is List<*>) {
-          if (it.size > 1) {
-            continuation.resumeWithException(FlutterError(it[0] as String, it[1] as String, it[2] as String?))
-          } else {
-            continuation.resume(Unit)
-          }
+    val channelName = "dev.flutter.pigeon.onexray.BridgeFlutterApi.vpnStatusChanged$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(statusArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
         } else {
-          continuation.resumeWithException(MessagesPigeonUtils.createConnectionError(channelName))
-        } 
-      }
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(MessagesPigeonUtils.createConnectionError(channelName)))
+      } 
     }
   }
-  suspend fun refreshVpn(resultArg: RefreshVpnResult)
+  fun refreshVpn(resultArg: RefreshVpnResult, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    return suspendCancellableCoroutine { continuation ->
-      val channelName = "dev.flutter.pigeon.onexray.BridgeFlutterApi.refreshVpn$separatedMessageChannelSuffix"
-      val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-      channel.send(listOf(resultArg)) {
-        if (it is List<*>) {
-          if (it.size > 1) {
-            continuation.resumeWithException(FlutterError(it[0] as String, it[1] as String, it[2] as String?))
-          } else {
-            continuation.resume(Unit)
-          }
+    val channelName = "dev.flutter.pigeon.onexray.BridgeFlutterApi.refreshVpn$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(resultArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
         } else {
-          continuation.resumeWithException(MessagesPigeonUtils.createConnectionError(channelName))
-        } 
-      }
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(MessagesPigeonUtils.createConnectionError(channelName)))
+      } 
     }
   }
 }
