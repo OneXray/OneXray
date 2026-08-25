@@ -30,7 +30,9 @@ extension XrayProfileStateWriter on XrayProfileState {
 
   XrayProfileState get copy {
     final copy = XrayProfileState();
-    copy.readFromXrayJson(xrayJson);
+    if (!copy.readFromXrayJson(xrayJson)) {
+      throw StateError('failed to copy Xray profile state');
+    }
     return copy;
   }
 

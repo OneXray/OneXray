@@ -19,7 +19,7 @@ class OutboundState {
   var vmessId = "";
   var vmessSecurity = VMessSecurity.auto;
 
-  var shadowsocksMethod = ShadowsocksMethod.none;
+  var shadowsocksMethod = ShadowsocksMethod.aes256gcm;
   var shadowsocksPassword = "";
 
   var trojanPassword = "";

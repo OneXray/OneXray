@@ -36,28 +36,52 @@ class XrayProfileUIPage extends StatelessWidget {
                 icon: const Icon(LucideIcons.braces),
               ),
             ],
-            body: Column(
-              children: [
-                _nameEditor(context, controller),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final wide = constraints.maxWidth >= 760;
-                      if (wide) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              width: 224,
-                              child: SettingsSectionNavigation(
-                                compact: false,
-                                selected: state.section,
-                                items: _navigationItems(context),
-                                onSelected: controller.updateSection,
+            body: IgnorePointer(
+              ignoring: !state.loaded,
+              child: Column(
+                children: [
+                  _nameEditor(context, controller),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final wide = constraints.maxWidth >= 760;
+                        if (wide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                width: 224,
+                                child: SettingsSectionNavigation(
+                                  compact: false,
+                                  selected: state.section,
+                                  items: _navigationItems(context),
+                                  onSelected: controller.updateSection,
+                                ),
                               ),
+                              VerticalDivider(
+                                width: 1,
+                                color: ColorManager.border(context),
+                              ),
+                              Expanded(
+                                child: _sectionContent(
+                                  context,
+                                  controller,
+                                  state,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return Column(
+                          children: [
+                            SettingsSectionNavigation(
+                              compact: true,
+                              selected: state.section,
+                              items: _navigationItems(context),
+                              onSelected: controller.updateSection,
                             ),
-                            VerticalDivider(
-                              width: 1,
+                            Divider(
+                              height: 1,
                               color: ColorManager.border(context),
                             ),
                             Expanded(
@@ -69,28 +93,11 @@ class XrayProfileUIPage extends StatelessWidget {
                             ),
                           ],
                         );
-                      }
-                      return Column(
-                        children: [
-                          SettingsSectionNavigation(
-                            compact: true,
-                            selected: state.section,
-                            items: _navigationItems(context),
-                            onSelected: controller.updateSection,
-                          ),
-                          Divider(
-                            height: 1,
-                            color: ColorManager.border(context),
-                          ),
-                          Expanded(
-                            child: _sectionContent(context, controller, state),
-                          ),
-                        ],
-                      );
-                    },
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },

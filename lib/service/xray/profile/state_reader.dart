@@ -11,21 +11,25 @@ import 'package:onexray/service/xray/profile/simple_state_writer.dart';
 import 'package:onexray/service/xray/profile/state.dart';
 
 extension XrayProfileStateReader on XrayProfileState {
-  void readFromDbData(CoreConfigData setting) {
+  bool readFromDbData(CoreConfigData setting) {
     if (EmptyTool.checkString(setting.data)) {
       final bytes = base64Decode(setting.data!);
       final text = utf8.decode(bytes);
-      readFromText(text);
+      return readFromText(text);
     }
+    return false;
   }
 
-  void readFromText(String text) {
+  bool readFromText(String text) {
     final jsonData = JsonTool.decoder.convert(text);
     final xrayJson = XrayJson.fromJson(jsonData);
-    readFromXrayJson(xrayJson);
+    return readFromXrayJson(xrayJson);
   }
 
-  void readFromXrayJson(XrayJson xrayJson) {
+  bool readFromXrayJson(XrayJson xrayJson) {
+    if (!outbounds.readFromXrayJson(xrayJson)) {
+      return false;
+    }
     if (EmptyTool.checkString(xrayJson.name)) {
       name = xrayJson.name!;
     }
@@ -34,8 +38,8 @@ extension XrayProfileStateReader on XrayProfileState {
     fakeDns.readFromXrayJson(xrayJson);
     routing.readFromXrayJson(xrayJson);
     inbounds.readFromXrayJson(xrayJson);
-    outbounds.readFromXrayJson(xrayJson);
     metrics.readFromXrayJson(xrayJson);
+    return true;
   }
 
   static Future<XrayProfileState> loadFromDb(
@@ -54,7 +58,9 @@ extension XrayProfileStateReader on XrayProfileState {
         final db = AppDatabase();
         final xrayProfileData = await db.coreConfigDao.searchRow(id);
         if (xrayProfileData != null && xrayProfileData.data != null) {
-          state.readFromDbData(xrayProfileData);
+          if (!state.readFromDbData(xrayProfileData)) {
+            throw const FormatException('invalid Xray profile data');
+          }
         } else {
           await PreferencesKey().saveXrayProfileId(XrayProfileSimple.simpleId);
           final xrayProfileSimple = XrayProfileSimple();

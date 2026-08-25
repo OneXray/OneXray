@@ -56,7 +56,10 @@ class OutboundUIPage extends StatelessWidget
                 },
               ),
             ],
-            body: _body(context, controller, state),
+            body: IgnorePointer(
+              ignoring: !state.loaded,
+              child: _body(context, controller, state),
+            ),
           );
         },
       ),

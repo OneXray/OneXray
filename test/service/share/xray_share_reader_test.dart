@@ -49,4 +49,39 @@ void main() {
       );
     },
   );
+
+  test('skips Shadowsocks outbounds with non-canonical methods', () async {
+    final json = jsonDecode('''
+{
+  "outbounds": [
+    {
+      "name": "Canonical",
+      "protocol": "shadowsocks",
+      "settings": {
+        "address": "example.com",
+        "port": 8388,
+        "method": "aes-256-gcm",
+        "password": "password"
+      }
+    },
+    {
+      "name": "Alias",
+      "protocol": "shadowsocks",
+      "settings": {
+        "address": "example.com",
+        "port": 8388,
+        "method": "aead_aes_256_gcm",
+        "password": "password"
+      }
+    }
+  ]
+}
+''') as Map<String, dynamic>;
+    final xrayJson = XrayJson.fromJson(json);
+
+    final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
+
+    expect(rows, hasLength(1));
+    expect(rows.single.name.value, 'Canonical');
+  });
 }

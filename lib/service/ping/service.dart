@@ -190,7 +190,10 @@ class PingService {
           final bytes = base64Decode(row.data!);
           return PingBatchSource(utf8.decode(bytes));
         case CoreConfigType.full:
-          final state = XrayFullConfigState()..readFromDbData(row);
+          final state = XrayFullConfigState();
+          if (!state.readFromDbData(row)) {
+            return null;
+          }
           return PingBatchSource(
             JsonTool.encoder.convert(state.xrayJson.toJson()),
           );

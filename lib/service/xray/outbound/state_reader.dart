@@ -213,19 +213,17 @@ extension OutboundStateReader on OutboundState {
   }
 
   bool _readShadowsocksSettings(XrayOutboundShadowsocks settings) {
+    final method = ShadowsocksMethod.fromString(settings.method ?? "");
+    if (method == null) {
+      return false;
+    }
+    shadowsocksMethod = method;
+
     if (EmptyTool.checkString(settings.address)) {
       address = settings.address!;
     }
     if (settings.port != null) {
       port = "${settings.port!}";
-    }
-    if (EmptyTool.checkString(settings.method)) {
-      final method = ShadowsocksMethod.fromString(settings.method!);
-      if (method != null) {
-        shadowsocksMethod = method;
-      } else {
-        return false;
-      }
     }
     if (EmptyTool.checkString(settings.password)) {
       shadowsocksPassword = settings.password!;

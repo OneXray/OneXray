@@ -86,7 +86,9 @@ final class OneXrayAppLinkImporter {
 
   CoreConfigCompanion? _readProfile(OneXrayConfigLink link) {
     final state = XrayProfileState();
-    state.readFromText(link.xrayJson);
+    if (!state.readFromText(link.xrayJson)) {
+      return null;
+    }
     if (link.name.isNotEmpty) {
       state.name = link.name;
     }
@@ -99,7 +101,9 @@ final class OneXrayAppLinkImporter {
 
   CoreConfigCompanion? _readFullConfig(OneXrayConfigLink link) {
     final state = XrayFullConfigState();
-    state.readFromText(link.xrayJson);
+    if (!state.readFromText(link.xrayJson)) {
+      return null;
+    }
     if (link.name.isNotEmpty) {
       state.name = link.name;
     }

@@ -28,11 +28,13 @@ import 'package:onexray/pages/main/navigation.dart';
 class OutboundUIPageState {
   final OutboundState outboundState;
   final List<String> dialerProxies;
+  final bool loaded;
   final int version;
 
   const OutboundUIPageState({
     required this.outboundState,
     required this.dialerProxies,
+    this.loaded = false,
     this.version = 0,
   });
 
@@ -44,11 +46,13 @@ class OutboundUIPageState {
   OutboundUIPageState copyWith({
     OutboundState? outboundState,
     List<String>? dialerProxies,
+    bool? loaded,
     int? version,
   }) {
     return OutboundUIPageState(
       outboundState: outboundState ?? this.outboundState,
       dialerProxies: dialerProxies ?? this.dialerProxies,
+      loaded: loaded ?? this.loaded,
       version: version ?? this.version,
     );
   }
@@ -129,9 +133,12 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
       return;
     }
     if (outbound != null) {
-      _outboundData = outbound;
       final outboundState = OutboundState();
-      outboundState.readFromDbData(outbound);
+      if (!outboundState.readFromDbData(outbound)) {
+        ygLogger("Read outbound failed: ${outbound.id}");
+        return;
+      }
+      _outboundData = outbound;
       _updateState(outboundState);
     }
   }
@@ -145,6 +152,7 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
       state.copyWith(
         outboundState: outboundState,
         dialerProxies: dialerProxies,
+        loaded: true,
         version: state.version + 1,
       ),
     );
@@ -243,6 +251,9 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   }
 
   Future<void> gotoRawEdit(BuildContext context) async {
+    if (!_ensureLoaded(context)) {
+      return;
+    }
     final xrayJson = XrayJsonStandard.standard;
     xrayJson.outbounds = [state.outboundState.xrayJson];
     final jsonMap = xrayJson.toJson();
@@ -519,6 +530,9 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   final happyEyeballsMaxConcurrentTryController = TextEditingController();
 
   Future<void> realPing(BuildContext context) async {
+    if (!_ensureLoaded(context)) {
+      return;
+    }
     _mergeInputToState(state.outboundState);
     emit(state.bumped());
     final eventBus = AppEventBus.instance;
@@ -536,6 +550,9 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   }
 
   Future<void> save(BuildContext context) async {
+    if (!_ensureLoaded(context)) {
+      return;
+    }
     _mergeInputToState(state.outboundState);
     emit(state.bumped());
     final checked = await _validate(context);
@@ -562,6 +579,17 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
         await state.outboundState.updateToDb(_outboundData!);
       }
     }
+  }
+
+  bool _ensureLoaded(BuildContext context) {
+    if (params.id == DBConstants.defaultId || _outboundData != null) {
+      return true;
+    }
+    ContextAlert.showToast(
+      context,
+      AppLocalizations.of(context)!.vpnOutboundInvalid,
+    );
+    return false;
   }
 
   void _mergeInputToState(OutboundState outboundState) {

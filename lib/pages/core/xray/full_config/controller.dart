@@ -41,24 +41,27 @@ enum XrayFullConfigSection { outbounds, routing, dns }
 
 class XrayFullConfigPageState {
   final XrayFullConfigSection section;
+  final bool loaded;
   final int version;
 
   const XrayFullConfigPageState({
     this.section = XrayFullConfigSection.outbounds,
+    this.loaded = false,
     this.version = 0,
   });
 
   factory XrayFullConfigPageState.initial() => const XrayFullConfigPageState();
 
-  XrayFullConfigPageState bumped() =>
-      XrayFullConfigPageState(section: section, version: version + 1);
+  XrayFullConfigPageState bumped() => copyWith(version: version + 1);
 
   XrayFullConfigPageState copyWith({
     XrayFullConfigSection? section,
+    bool? loaded,
     int? version,
   }) {
     return XrayFullConfigPageState(
       section: section ?? this.section,
+      loaded: loaded ?? this.loaded,
       version: version ?? this.version,
     );
   }
@@ -112,11 +115,15 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
       return;
     }
     _defaultDnsServerAddress = tunSettings.tunDnsIPv4;
-    final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
-    if (!isPageActive) {
-      return;
+    try {
+      final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
+      if (!isPageActive) {
+        return;
+      }
+      _profileInboundTags = profile.inbounds.additionalTags;
+    } catch (_) {
+      _profileInboundTags = <String>{};
     }
-    _profileInboundTags = profile.inbounds.additionalTags;
 
     if (params.id != DBConstants.defaultId) {
       final db = AppDatabase();
@@ -125,14 +132,23 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
         return;
       }
       if (config != null) {
-        _configData = config;
         final state = XrayFullConfigState();
-        state.readFromDbData(config);
+        var valid = false;
+        try {
+          valid = state.readFromDbData(config);
+        } catch (_) {
+          valid = false;
+        }
+        if (!valid) {
+          return;
+        }
+        _configData = config;
         _updateState(state);
       }
     } else {
       _fullConfigState.dns.servers = [_newDnsServer()];
       _initInputs(_fullConfigState);
+      _notifyChanged(loaded: true);
     }
   }
 
@@ -142,7 +158,7 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   void _updateState(XrayFullConfigState state) {
     _fullConfigState = state;
     _initInputs(state);
-    _notifyChanged();
+    _notifyChanged(loaded: true);
   }
 
   void _initInputs(XrayFullConfigState state) {
@@ -159,6 +175,9 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   }
 
   Future<void> gotoRawEdit(BuildContext context) async {
+    if (!_ensureLoaded(context)) {
+      return;
+    }
     _mergeInputToState(_fullConfigState);
     final text = JsonTool.encoder.convert(_fullConfigState.xrayJson.toJson());
     final params = XrayRawEditParams(
@@ -173,8 +192,9 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
       return;
     }
     final state = XrayFullConfigState();
+    var valid = false;
     try {
-      state.readFromText(newText);
+      valid = state.readFromText(newText);
     } catch (_) {
       if (!context.mounted) {
         return;
@@ -183,6 +203,15 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
         context,
         AppLocalizations.of(context)!.validationJsonInvalid,
       );
+      return;
+    }
+    if (!valid) {
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.vpnOutboundInvalid,
+        );
+      }
       return;
     }
     _updateState(state);
@@ -470,7 +499,9 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
 
   OutboundState _cloneOutbound(OutboundState outbound) {
     final clone = OutboundState();
-    clone.readFromOutbound(outbound.xrayJson);
+    if (!clone.readFromOutbound(outbound.xrayJson)) {
+      throw StateError('failed to clone outbound state');
+    }
     clone.name = outbound.name;
     return clone;
   }
@@ -651,6 +682,9 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   }
 
   Future<void> save(BuildContext context) async {
+    if (!_ensureLoaded(context)) {
+      return;
+    }
     _mergeInputToState(_fullConfigState);
     final checked = await _validate(context);
     if (!checked) {
@@ -689,9 +723,20 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     return tuple.item1;
   }
 
-  void _notifyChanged() {
+  bool _ensureLoaded(BuildContext context) {
+    if (params.id == DBConstants.defaultId || _configData != null) {
+      return true;
+    }
+    ContextAlert.showToast(
+      context,
+      AppLocalizations.of(context)!.vpnOutboundInvalid,
+    );
+    return false;
+  }
+
+  void _notifyChanged({bool? loaded}) {
     if (isPageActive) {
-      emit(state.bumped());
+      emit(state.copyWith(loaded: loaded, version: state.version + 1));
     }
   }
 }

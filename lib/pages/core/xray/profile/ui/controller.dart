@@ -47,24 +47,27 @@ enum XrayProfileUISection { inbounds, outbounds, routing, dns, fakeDns, log }
 
 class XrayProfileUIPageState {
   final XrayProfileUISection section;
+  final bool loaded;
   final int version;
 
   const XrayProfileUIPageState({
     this.section = XrayProfileUISection.inbounds,
+    this.loaded = false,
     this.version = 0,
   });
 
   factory XrayProfileUIPageState.initial() => const XrayProfileUIPageState();
 
-  XrayProfileUIPageState bumped() =>
-      XrayProfileUIPageState(section: section, version: version + 1);
+  XrayProfileUIPageState bumped() => copyWith(version: version + 1);
 
   XrayProfileUIPageState copyWith({
     XrayProfileUISection? section,
+    bool? loaded,
     int? version,
   }) {
     return XrayProfileUIPageState(
       section: section ?? this.section,
+      loaded: loaded ?? this.loaded,
       version: version ?? this.version,
     );
   }
@@ -118,14 +121,23 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
         return;
       }
       if (xrayProfile != null) {
-        _xrayProfileData = xrayProfile;
         final state = XrayProfileState();
-        state.readFromDbData(xrayProfile);
+        var valid = false;
+        try {
+          valid = state.readFromDbData(xrayProfile);
+        } catch (_) {
+          valid = false;
+        }
+        if (!valid) {
+          return;
+        }
+        _xrayProfileData = xrayProfile;
         _updateState(state);
       }
     } else {
       _xrayProfileState.dns.servers = [_newDnsServer()];
       _initInputs(_xrayProfileState);
+      _notifyChanged(loaded: true);
     }
   }
 
@@ -135,7 +147,7 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
   void _updateState(XrayProfileState state) {
     _xrayProfileState = state;
     _initInputs(state);
-    _notifyChanged();
+    _notifyChanged(loaded: true);
   }
 
   void _initInputs(XrayProfileState state) {
@@ -219,6 +231,9 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
   }
 
   Future<void> gotoRawEdit(BuildContext context) async {
+    if (!_ensureLoaded(context)) {
+      return;
+    }
     _mergeInputToState(_xrayProfileState);
     final text = JsonTool.encoder.convert(_xrayProfileState.xrayJson.toJson());
     final params = XrayRawEditParams(
@@ -229,11 +244,32 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
       AppSecondaryDestination.xrayRawEdit,
       extra: params,
     );
-    if (newText != null) {
-      final state = XrayProfileState();
-      state.readFromText(newText);
-      _updateState(state);
+    if (newText == null) {
+      return;
     }
+    final state = XrayProfileState();
+    var valid = false;
+    try {
+      valid = state.readFromText(newText);
+    } catch (_) {
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.validationJsonInvalid,
+        );
+      }
+      return;
+    }
+    if (!valid) {
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.vpnOutboundInvalid,
+        );
+      }
+      return;
+    }
+    _updateState(state);
   }
 
   Future<void> editTun(BuildContext context) async {
@@ -612,6 +648,9 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
   }
 
   Future<void> save(BuildContext context) async {
+    if (!_ensureLoaded(context)) {
+      return;
+    }
     _mergeInputToState(_xrayProfileState);
     final checked = await _validate(context);
     if (!checked) {
@@ -687,9 +726,20 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
     };
   }
 
-  void _notifyChanged() {
+  bool _ensureLoaded(BuildContext context) {
+    if (params.id == DBConstants.defaultId || _xrayProfileData != null) {
+      return true;
+    }
+    ContextAlert.showToast(
+      context,
+      AppLocalizations.of(context)!.vpnOutboundInvalid,
+    );
+    return false;
+  }
+
+  void _notifyChanged({bool? loaded}) {
     if (isPageActive) {
-      emit(state.bumped());
+      emit(state.copyWith(loaded: loaded, version: state.version + 1));
     }
   }
 }

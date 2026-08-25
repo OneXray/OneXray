@@ -301,7 +301,9 @@ final class XrayRuntimeConfigService {
   ) async {
     final full = XrayFullConfigState();
     try {
-      full.readFromDbData(config);
+      if (!full.readFromDbData(config)) {
+        throw const FormatException('invalid full config data');
+      }
     } catch (_) {
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnOutboundInvalid,

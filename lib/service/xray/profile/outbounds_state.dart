@@ -161,10 +161,13 @@ class OutboundsState {
     dns.removeWhitespace();
   }
 
-  void readFromXrayJson(XrayJson xrayJson) {
+  bool readFromXrayJson(XrayJson xrayJson) {
     if (EmptyTool.checkList(xrayJson.outbounds)) {
       final outbounds = xrayJson.outbounds!;
       for (final outbound in outbounds) {
+        if (!_hasCanonicalShadowsocksMethod(outbound)) {
+          return false;
+        }
         if (outbound.protocol == XrayOutboundProtocol.freedom.name &&
             outbound.tag == RoutingOutboundTag.direct.name) {
           _readFreedomOutbound(outbound);
@@ -212,6 +215,15 @@ class OutboundsState {
       }
       fixDnsDialerProxy();
     }
+    return true;
+  }
+
+  bool _hasCanonicalShadowsocksMethod(XrayOutbound outbound) {
+    if (outbound.protocol != XrayOutboundProtocol.shadowsocks.name) {
+      return true;
+    }
+    final method = outbound.settings?["method"];
+    return method is String && ShadowsocksMethod.fromString(method) != null;
   }
 
   void _readFreedomOutbound(XrayOutbound outbound) {

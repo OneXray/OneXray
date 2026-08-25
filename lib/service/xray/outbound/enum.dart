@@ -75,8 +75,7 @@ enum ShadowsocksMethod {
   aes128gcm("aes-128-gcm"),
   aes256gcm("aes-256-gcm"),
   chacha20poly1305("chacha20-poly1305"),
-  xchacha20poly1305("xchacha20-poly1305"),
-  none("none");
+  xchacha20poly1305("xchacha20-poly1305");
 
   const ShadowsocksMethod(this.name);
 
@@ -85,26 +84,8 @@ enum ShadowsocksMethod {
   @override
   String toString() => name;
 
-  static ShadowsocksMethod? fromString(String name) {
-    final clean = name.toLowerCase().replaceAll("_", "-");
-    switch (clean) {
-      case "aead-aes-128-gcm":
-        return ShadowsocksMethod.aes128gcm;
-      case "aead-aes-256-gcm":
-        return ShadowsocksMethod.aes256gcm;
-      case "aead-chacha20-poly1305":
-      case "chacha20-ietf-poly1305":
-        return ShadowsocksMethod.chacha20poly1305;
-      case "xchacha20-ietf-poly1305":
-        return ShadowsocksMethod.xchacha20poly1305;
-      case "plain":
-        return ShadowsocksMethod.none;
-      default:
-        return ShadowsocksMethod.values.firstWhereOrNull(
-          (value) => value.name == name,
-        );
-    }
-  }
+  static ShadowsocksMethod? fromString(String name) =>
+      ShadowsocksMethod.values.firstWhereOrNull((value) => value.name == name);
 }
 
 enum StreamSettingsNetwork {

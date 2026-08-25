@@ -152,7 +152,10 @@ class ShareController extends PageCubit<SharePageState> {
             await _finishJsonExport(text, config.name);
             break;
           case CoreConfigType.full:
-            final state = XrayFullConfigState()..readFromDbData(config);
+            final state = XrayFullConfigState();
+            if (!state.readFromDbData(config)) {
+              return;
+            }
             final text = JsonTool.encoder.convert(state.xrayJson.toJson());
             await _finishJsonExport(text, config.name);
             break;
@@ -200,7 +203,9 @@ class ShareController extends PageCubit<SharePageState> {
 
   Future<void> _parseXrayJson(CoreConfigData outbound) async {
     final outboundState = OutboundState();
-    outboundState.readFromDbData(outbound);
+    if (!outboundState.readFromDbData(outbound)) {
+      return;
+    }
     final xrayJson = XrayJsonStandard.standard;
     xrayJson.outbounds = [_readXrayOutbounds(outboundState)];
     final url = await AppHostApi().convertXrayJsonToShareLinks(xrayJson);

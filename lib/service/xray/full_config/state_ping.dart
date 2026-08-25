@@ -29,7 +29,13 @@ extension XrayFullConfigDataPing on CoreConfigData {
       return fallbackDelay;
     }
     final state = XrayFullConfigState();
-    state.readFromDbData(this);
+    try {
+      if (!state.readFromDbData(this)) {
+        return fallbackDelay;
+      }
+    } catch (_) {
+      return fallbackDelay;
+    }
     return state.ping(pingState, fallbackDelay: fallbackDelay);
   }
 }
