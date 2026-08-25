@@ -3,18 +3,18 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class XrayFullConfigOutboundsView extends StatelessWidget {
-  final OutboundState? primaryProxy;
-  final List<OutboundState> customOutbounds;
+  final Map<String, dynamic>? primaryProxy;
+  final List<Map<String, dynamic>> customOutbounds;
   final VoidCallback onEditPrimaryProxy;
   final VoidCallback onImportPrimaryProxy;
   final VoidCallback onAddCustomOutbound;
   final VoidCallback onImportCustomOutbound;
-  final ValueChanged<OutboundState> onEditCustomOutbound;
-  final ValueChanged<OutboundState> onDeleteCustomOutbound;
+  final ValueChanged<Map<String, dynamic>> onEditCustomOutbound;
+  final ValueChanged<Map<String, dynamic>> onDeleteCustomOutbound;
   final VoidCallback onEditFreedom;
   final VoidCallback onEditFragment;
   final VoidCallback onEditBlackHole;
@@ -39,6 +39,7 @@ class XrayFullConfigOutboundsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final primaryProxy = this.primaryProxy;
     return SettingsPageScroll(
       child: Column(
         children: [
@@ -56,8 +57,9 @@ class XrayFullConfigOutboundsView extends StatelessWidget {
                   final compact = constraints.maxWidth < 520;
                   return NavigationSettingRow(
                     leading: const Icon(LucideIcons.server),
-                    title:
-                        primaryProxy?.name ?? l10n.xrayFullConfigProxyMissing,
+                    title: primaryProxy == null
+                        ? l10n.xrayFullConfigProxyMissing
+                        : outboundDisplayName(primaryProxy),
                     value: compact ? null : "proxy",
                     subtitle: compact ? "proxy" : null,
                     onTap: onEditPrimaryProxy,
@@ -125,16 +127,23 @@ class XrayFullConfigOutboundsView extends StatelessWidget {
     );
   }
 
-  Widget _customOutboundRow(BuildContext context, OutboundState outbound) {
+  Widget _customOutboundRow(
+    BuildContext context,
+    Map<String, dynamic> outbound,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 520;
-        final details = "${outbound.protocol.name} · ${outbound.network.name}";
+        final details = [
+          outboundString(outbound, 'protocol'),
+          outboundNetwork(outbound),
+        ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
+        final tag = outboundString(outbound, 'tag') ?? '';
         return SettingRow(
           leading: const Icon(LucideIcons.globe2),
-          title: outbound.name,
-          subtitle: compact ? "$details · ${outbound.tag}" : details,
-          value: compact ? null : outbound.tag,
+          title: outboundDisplayName(outbound),
+          subtitle: compact ? "$details · $tag" : details,
+          value: compact ? null : tag,
           onTap: () => onEditCustomOutbound(outbound),
           trailing: ActionCluster(
             children: [

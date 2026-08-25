@@ -1,17 +1,13 @@
-import 'package:onexray/service/xray/outbound/state.dart';
-
 class OutboundUIParams {
   final int id;
-  final OutboundState state;
-  final List<String> outboundTags;
+  final Map<String, dynamic> outbound;
   final bool saveToDb;
   final String fixedTag;
   final bool editableTag;
 
   OutboundUIParams(
     this.id,
-    this.state,
-    this.outboundTags, {
+    this.outbound, {
     this.saveToDb = true,
     this.fixedTag = "",
     this.editableTag = false,

@@ -7,7 +7,7 @@ import 'package:onexray/pages/home/node_info/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/share/service.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 enum HomeAddMenuAction {
@@ -59,7 +59,7 @@ final class HomeActions {
   }
 
   void _addOutboundConfig() {
-    final params = OutboundUIParams(DBConstants.defaultId, OutboundState(), []);
+    final params = OutboundUIParams(DBConstants.defaultId, newOutboundMap());
     context.pushScoped(AppSecondaryDestination.outboundUI, extra: params);
   }
 

@@ -5,6 +5,7 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/xray/full_config/state.dart';
 import 'package:onexray/service/xray/full_config/state_writer.dart';
 import 'package:onexray/service/xray/json_writer.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:tuple/tuple.dart';
@@ -13,6 +14,11 @@ extension XrayFullConfigStateValidator on XrayFullConfigState {
   Tuple2<bool, String> validateFields() {
     if (!EmptyTool.checkString(name)) {
       return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
+    }
+    try {
+      outbounds.requireCanonicalProtocolSettings();
+    } on FormatException catch (error) {
+      return Tuple2(false, error.message.toString());
     }
     removeWhitespace();
     final proxy = _proxyOutboundExists();
@@ -43,11 +49,17 @@ extension XrayFullConfigStateValidator on XrayFullConfigState {
 
   bool _proxyOutboundExists() {
     return outbounds.outbounds.any(
-      (outbound) => outbound.tag == RoutingOutboundTag.proxy.name,
+      (outbound) =>
+          outboundString(outbound, 'tag') == RoutingOutboundTag.proxy.name,
     );
   }
 
   bool _tagsAreUnique() {
+    for (final outbound in outbounds.outbounds) {
+      if (!EmptyTool.checkString(outboundString(outbound, 'tag'))) {
+        return false;
+      }
+    }
     final tags = <String>{};
     for (final tag in outbounds.outboundTags) {
       if (!EmptyTool.checkString(tag)) {

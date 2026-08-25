@@ -26,8 +26,8 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/profile/dns_server_state.dart';
 import 'package:onexray/service/xray/profile/dns_state.dart';
 import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
@@ -418,14 +418,11 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
     if (outbound == null) {
       return;
     }
-    final finalOutbound = OutboundState();
-    var valid = false;
+    late final Map<String, dynamic> finalOutbound;
     try {
-      valid = finalOutbound.readFromDbData(outbound);
+      finalOutbound = readOutboundFromDbData(outbound);
+      requireCanonicalOutbound(finalOutbound);
     } catch (_) {
-      valid = false;
-    }
-    if (!valid) {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
@@ -434,9 +431,12 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
       }
       return;
     }
-    finalOutbound.name = outbound.name;
-    finalOutbound.tag = RoutingOutboundTag.chainProxy.name;
-    finalOutbound.dialerProxy = "";
+    final name = outboundDisplayName(finalOutbound, fallback: outbound.name);
+    if (name.isNotEmpty) {
+      finalOutbound['name'] = name;
+    }
+    setOutboundTag(finalOutbound, RoutingOutboundTag.chainProxy.name);
+    removeOutboundDialerProxy(finalOutbound);
     _xrayProfileState.outbounds.finalOutbound = finalOutbound;
     _notifyChanged();
   }

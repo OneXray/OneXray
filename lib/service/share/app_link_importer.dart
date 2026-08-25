@@ -13,10 +13,8 @@ import 'package:onexray/service/xray/full_config/state.dart';
 import 'package:onexray/service/xray/full_config/state_db.dart';
 import 'package:onexray/service/xray/full_config/state_reader.dart';
 import 'package:onexray/service/xray/full_config/state_validator.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:onexray/service/xray/outbound/state_normalizer.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
 import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
@@ -70,18 +68,12 @@ final class OneXrayAppLinkImporter {
   }
 
   CoreConfigCompanion? _readOutbound(OneXrayConfigLink link) {
-    final state = OutboundState();
-    if (!state.readFromText(link.xrayJson)) {
+    final outbound = decodeSingleOutbound(link.xrayJson);
+    final databaseName = link.name.isEmpty ? null : link.name;
+    if (!validateOutboundFields(outbound, databaseName: databaseName).item1) {
       return null;
     }
-    if (link.name.isNotEmpty) {
-      state.name = link.name;
-    }
-    state.removeWhitespace();
-    if (!state.validateFields().item1) {
-      return null;
-    }
-    return state.outboundCompanion;
+    return outboundCompanion(outbound, databaseName: databaseName);
   }
 
   CoreConfigCompanion? _readProfile(OneXrayConfigLink link) {

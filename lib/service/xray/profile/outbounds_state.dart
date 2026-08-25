@@ -1,13 +1,10 @@
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/outbound/state_normalizer.dart';
-import 'package:onexray/service/xray/outbound/state_writer.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/core/model/xray_standard.dart';
 
 class OutboundFreedomState {
   final protocol = XrayOutboundProtocol.freedom;
@@ -143,8 +140,8 @@ class OutboundDnsState {
 }
 
 class OutboundsState {
-  final outbounds = <OutboundState>[];
-  OutboundState? finalOutbound;
+  final outbounds = <Map<String, dynamic>>[];
+  Map<String, dynamic>? finalOutbound;
 
   var freedom = OutboundFreedomState();
   var fragment = OutboundFragmentState();
@@ -152,82 +149,70 @@ class OutboundsState {
   var dns = OutboundDnsState();
 
   void removeWhitespace() {
-    for (final outbound in outbounds) {
-      outbound.removeWhitespace();
-    }
-    finalOutbound?.removeWhitespace();
     freedom.removeWhitespace();
     fragment.removeWhitespace();
     dns.removeWhitespace();
   }
 
   bool readFromXrayJson(XrayJson xrayJson) {
-    if (EmptyTool.checkList(xrayJson.outbounds)) {
-      final outbounds = xrayJson.outbounds!;
-      for (final outbound in outbounds) {
-        if (!_hasCanonicalProtocolSetting(outbound)) {
-          return false;
-        }
-        if (outbound.protocol == XrayOutboundProtocol.freedom.name &&
-            outbound.tag == RoutingOutboundTag.direct.name) {
-          _readFreedomOutbound(outbound);
-          continue;
-        }
-        if (outbound.protocol == XrayOutboundProtocol.freedom.name &&
-            outbound.tag == RoutingOutboundTag.fragment.name) {
-          _readFragmentOutbound(outbound);
-          continue;
-        }
-        if (outbound.protocol == XrayOutboundProtocol.blackhole.name &&
-            outbound.tag == RoutingOutboundTag.block.name) {
-          continue;
-        }
-        if (outbound.protocol == XrayOutboundProtocol.dns.name &&
-            outbound.tag == RoutingOutboundTag.dnsOut.name) {
-          _readDnsOutbound(outbound);
-          continue;
-        }
-        if (outbound.tag == RoutingOutboundTag.chainProxy.name) {
-          final finalOutbound = OutboundState();
-          var valid = false;
-          try {
-            valid = finalOutbound.readFromOutbound(outbound);
-          } catch (_) {
-            valid = false;
-          }
-          if (valid) {
-            finalOutbound.tag = RoutingOutboundTag.chainProxy.name;
-            finalOutbound.dialerProxy = "";
-            this.finalOutbound = finalOutbound;
-          }
-          continue;
-        }
-        final customOutbound = OutboundState();
-        var valid = false;
-        try {
-          valid = customOutbound.readFromOutbound(outbound);
-        } catch (_) {
-          valid = false;
-        }
-        if (valid) {
-          this.outbounds.add(customOutbound);
-        }
-      }
-      fixDnsDialerProxy();
+    if (!EmptyTool.checkList(xrayJson.outbounds)) {
+      return true;
     }
+
+    final candidate = OutboundsState();
+    try {
+      for (final outbound in xrayJson.outbounds!) {
+        requireCanonicalOutbound(outbound);
+        final protocol = outboundString(outbound, 'protocol');
+        final tag = outboundString(outbound, 'tag');
+        if (protocol == XrayOutboundProtocol.freedom.name &&
+            tag == RoutingOutboundTag.direct.name) {
+          candidate._readFreedomOutbound(XrayOutbound.fromJson(outbound));
+          continue;
+        }
+        if (protocol == XrayOutboundProtocol.freedom.name &&
+            tag == RoutingOutboundTag.fragment.name) {
+          candidate._readFragmentOutbound(XrayOutbound.fromJson(outbound));
+          continue;
+        }
+        if (protocol == XrayOutboundProtocol.blackhole.name &&
+            tag == RoutingOutboundTag.block.name) {
+          continue;
+        }
+        if (protocol == XrayOutboundProtocol.dns.name &&
+            tag == RoutingOutboundTag.dnsOut.name) {
+          candidate._readDnsOutbound(XrayOutbound.fromJson(outbound));
+          continue;
+        }
+        if (tag == RoutingOutboundTag.chainProxy.name) {
+          candidate.finalOutbound = copyOutboundMap(outbound);
+          continue;
+        }
+        candidate.outbounds.add(copyOutboundMap(outbound));
+      }
+      candidate.fixDnsDialerProxy();
+    } catch (_) {
+      return false;
+    }
+
+    outbounds
+      ..clear()
+      ..addAll(candidate.outbounds);
+    finalOutbound = candidate.finalOutbound;
+    freedom = candidate.freedom;
+    fragment = candidate.fragment;
+    blackHole = candidate.blackHole;
+    dns = candidate.dns;
     return true;
   }
 
-  bool _hasCanonicalProtocolSetting(XrayOutbound outbound) {
-    if (outbound.protocol == XrayOutboundProtocol.vmess.name) {
-      final security = outbound.settings?["security"];
-      return security is String && VMessSecurity.fromString(security) != null;
+  void requireCanonicalProtocolSettings() {
+    for (final outbound in outbounds) {
+      requireCanonicalOutbound(outbound);
     }
-    if (outbound.protocol == XrayOutboundProtocol.shadowsocks.name) {
-      final method = outbound.settings?["method"];
-      return method is String && ShadowsocksMethod.fromString(method) != null;
+    if (finalOutbound != null) {
+      requireCanonicalOutbound(finalOutbound!);
     }
-    return true;
   }
 
   void _readFreedomOutbound(XrayOutbound outbound) {
@@ -299,27 +284,26 @@ class OutboundsState {
     }
   }
 
-  List<XrayOutbound> get xrayJson {
-    final outbounds = <XrayOutbound>[];
-    final otherOutbounds = <OutboundState>[];
+  List<Map<String, dynamic>> get xrayJson {
+    requireCanonicalProtocolSettings();
+
+    final outbounds = <Map<String, dynamic>>[];
+    final otherOutbounds = <Map<String, dynamic>>[];
     for (final outbound in this.outbounds) {
-      if (outbound.tag == RoutingOutboundTag.proxy.name) {
-        outbounds.add(outbound.xrayJson);
+      final copy = copyOutboundMap(outbound);
+      if (outboundString(outbound, 'tag') == RoutingOutboundTag.proxy.name) {
+        outbounds.add(copy);
       } else {
-        otherOutbounds.add(outbound);
+        otherOutbounds.add(copy);
       }
     }
     if (finalOutbound != null) {
-      final finalOutbound = this.finalOutbound!;
-      finalOutbound.tag = RoutingOutboundTag.chainProxy.name;
-      finalOutbound.dialerProxy = "";
-      outbounds.add(finalOutbound.xrayJson);
+      final finalOutbound = copyOutboundMap(this.finalOutbound!);
+      setOutboundTag(finalOutbound, RoutingOutboundTag.chainProxy.name);
+      removeOutboundDialerProxy(finalOutbound);
+      outbounds.add(finalOutbound);
     }
-    if (otherOutbounds.isNotEmpty) {
-      for (final outbound in otherOutbounds) {
-        outbounds.add(outbound.xrayJson);
-      }
-    }
+    outbounds.addAll(otherOutbounds);
 
     final systemOutbounds = <XrayOutbound>[
       freedom.xrayJson,
@@ -328,14 +312,15 @@ class OutboundsState {
       dns.xrayJson,
     ];
 
-    outbounds.addAll(systemOutbounds);
+    outbounds.addAll(systemOutbounds.map((outbound) => outbound.toJson()));
 
     return outbounds;
   }
 
   List<String> get outboundTags {
     final customTags = outbounds
-        .map((outbound) => outbound.tag)
+        .map((outbound) => outboundString(outbound, 'tag'))
+        .whereType<String>()
         .where((tag) => tag.isNotEmpty)
         .toList();
     final tags = <String>[

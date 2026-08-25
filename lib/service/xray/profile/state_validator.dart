@@ -11,6 +11,11 @@ extension XrayProfileStateValidator on XrayProfileState {
     if (!EmptyTool.checkString(name)) {
       return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
     }
+    try {
+      outbounds.requireCanonicalProtocolSettings();
+    } on FormatException catch (error) {
+      return Tuple2(false, error.message.toString());
+    }
     final inboundsError = inbounds.validate(dns.inboundTags.toSet());
     if (inboundsError != null) {
       return Tuple2(false, inboundsError);

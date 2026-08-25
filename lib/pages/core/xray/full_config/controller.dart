@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/json.dart';
@@ -20,6 +19,7 @@ import 'package:onexray/pages/core/xray/raw_edit/params.dart';
 import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/full_config/state.dart';
@@ -27,9 +27,8 @@ import 'package:onexray/service/xray/full_config/state_db.dart';
 import 'package:onexray/service/xray/full_config/state_reader.dart';
 import 'package:onexray/service/xray/full_config/state_validator.dart';
 import 'package:onexray/service/xray/full_config/state_writer.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/outbound/state_writer.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/profile/dns_server_state.dart';
 import 'package:onexray/service/xray/profile/dns_state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
@@ -82,19 +81,22 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
 
   XrayFullConfigState get fullConfigState => _fullConfigState;
 
-  OutboundState? get primaryProxy {
+  Map<String, dynamic>? get primaryProxy {
     for (final outbound in _fullConfigState.outbounds.outbounds) {
-      if (outbound.tag == RoutingOutboundTag.proxy.name) {
+      if (outboundString(outbound, 'tag') == RoutingOutboundTag.proxy.name) {
         return outbound;
       }
     }
     return null;
   }
 
-  List<OutboundState> get customOutbounds => _fullConfigState
+  List<Map<String, dynamic>> get customOutbounds => _fullConfigState
       .outbounds
       .outbounds
-      .where((outbound) => outbound.tag != RoutingOutboundTag.proxy.name)
+      .where(
+        (outbound) =>
+            outboundString(outbound, 'tag') != RoutingOutboundTag.proxy.name,
+      )
       .toList();
 
   final nameController = TextEditingController();
@@ -220,15 +222,15 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
   Future<void> editPrimaryProxy(BuildContext context) async {
     final current = primaryProxy;
     final outbound = current == null
-        ? OutboundState()
-        : _cloneOutbound(current);
+        ? newOutboundMap()
+        : copyOutboundMap(current);
     final edited = await _editOutbound(
       context,
       outbound,
       fixedTag: RoutingOutboundTag.proxy.name,
     );
     if (edited != null) {
-      edited.tag = RoutingOutboundTag.proxy.name;
+      setOutboundTag(edited, RoutingOutboundTag.proxy.name);
       _replacePrimaryProxy(edited);
     }
   }
@@ -238,13 +240,13 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     if (outbound == null) {
       return;
     }
-    outbound.tag = RoutingOutboundTag.proxy.name;
-    outbound.dialerProxy = "";
+    setOutboundTag(outbound, RoutingOutboundTag.proxy.name);
+    removeOutboundDialerProxy(outbound);
     _replacePrimaryProxy(outbound);
   }
 
   Future<void> addCustomOutbound(BuildContext context) async {
-    final outbound = OutboundState()..tag = _nextCustomTag();
+    final outbound = newOutboundMap(tag: _nextCustomTag());
     final edited = await _editOutbound(context, outbound, editableTag: true);
     if (edited != null && context.mounted) {
       _appendCustomOutbound(context, edited);
@@ -256,19 +258,19 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     if (outbound == null || !context.mounted) {
       return;
     }
-    if (!_isCustomTagAvailable(outbound.tag)) {
-      outbound.tag = _nextCustomTag();
+    if (!_isCustomTagAvailable(outboundString(outbound, 'tag') ?? '')) {
+      setOutboundTag(outbound, _nextCustomTag());
     }
     _appendCustomOutbound(context, outbound);
   }
 
   Future<void> editCustomOutbound(
     BuildContext context,
-    OutboundState outbound,
+    Map<String, dynamic> outbound,
   ) async {
     final edited = await _editOutbound(
       context,
-      _cloneOutbound(outbound),
+      copyOutboundMap(outbound),
       editableTag: true,
     );
     if (edited != null && context.mounted) {
@@ -276,7 +278,7 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     }
   }
 
-  void deleteCustomOutbound(OutboundState outbound) {
+  void deleteCustomOutbound(Map<String, dynamic> outbound) {
     _fullConfigState.outbounds.outbounds.remove(outbound);
     _fullConfigState.outbounds.fixDnsDialerProxy();
     _notifyChanged();
@@ -326,34 +328,26 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     }
   }
 
-  Future<OutboundState?> _editOutbound(
+  Future<Map<String, dynamic>?> _editOutbound(
     BuildContext context,
-    OutboundState outbound, {
+    Map<String, dynamic> outbound, {
     String fixedTag = "",
     bool editableTag = false,
   }) {
     final params = OutboundUIParams(
       DBConstants.defaultId,
       outbound,
-      _dialerProxyTags(outbound),
       saveToDb: false,
       fixedTag: fixedTag,
       editableTag: editableTag,
     );
-    return context.pushScoped<OutboundState>(
+    return context.pushScoped<Map<String, dynamic>>(
       AppSecondaryDestination.outboundUI,
       extra: params,
     );
   }
 
-  List<String> _dialerProxyTags(OutboundState outbound) {
-    return _fullConfigState.outbounds.outboundTags
-        .where((tag) => tag != outbound.tag)
-        .where((tag) => !_nonDialerProxyTags.contains(tag))
-        .toList();
-  }
-
-  Future<OutboundState?> _selectOutbound(BuildContext context) async {
+  Future<Map<String, dynamic>?> _selectOutbound(BuildContext context) async {
     final row = await context.pushScoped<CoreConfigData>(
       AppSecondaryDestination.outboundSelect,
       extra: OutboundSelectParams(),
@@ -361,14 +355,11 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     if (row == null) {
       return null;
     }
-    final outbound = OutboundState();
-    var valid = false;
+    Map<String, dynamic> outbound;
     try {
-      valid = outbound.readFromDbData(row);
+      outbound = readOutboundFromDbData(row);
+      requireCanonicalOutbound(outbound);
     } catch (_) {
-      valid = false;
-    }
-    if (!valid) {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
@@ -377,20 +368,25 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
       }
       return null;
     }
-    outbound.name = row.name;
+    if (outboundString(outbound, 'name')?.isNotEmpty != true) {
+      outbound['name'] = row.name;
+    }
     return outbound;
   }
 
-  void _replacePrimaryProxy(OutboundState outbound) {
+  void _replacePrimaryProxy(Map<String, dynamic> outbound) {
     _fullConfigState.outbounds.outbounds.removeWhere(
-      (item) => item.tag == RoutingOutboundTag.proxy.name,
+      (item) => outboundString(item, 'tag') == RoutingOutboundTag.proxy.name,
     );
     _fullConfigState.outbounds.outbounds.insert(0, outbound);
     _notifyChanged();
   }
 
-  void _appendCustomOutbound(BuildContext context, OutboundState outbound) {
-    if (!_validateCustomTag(context, outbound.tag)) {
+  void _appendCustomOutbound(
+    BuildContext context,
+    Map<String, dynamic> outbound,
+  ) {
+    if (!_validateCustomTag(context, outboundString(outbound, 'tag') ?? '')) {
       return;
     }
     _fullConfigState.outbounds.outbounds.add(outbound);
@@ -399,18 +395,24 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
 
   void _replaceCustomOutbound(
     BuildContext context,
-    OutboundState oldOutbound,
-    OutboundState newOutbound,
+    Map<String, dynamic> oldOutbound,
+    Map<String, dynamic> newOutbound,
   ) {
-    if (!_validateCustomTag(context, newOutbound.tag, except: oldOutbound)) {
+    final index = _fullConfigState.outbounds.outbounds.indexOf(oldOutbound);
+    if (index < 0) {
       return;
     }
-    _renameOutboundReferences(oldOutbound.tag, newOutbound.tag);
-    final index = _fullConfigState.outbounds.outbounds.indexOf(oldOutbound);
-    if (index >= 0) {
-      _fullConfigState.outbounds.outbounds[index] = newOutbound;
-      _notifyChanged();
+    final oldTag = outboundString(oldOutbound, 'tag') ?? '';
+    final newTag = outboundString(newOutbound, 'tag') ?? '';
+    if (!_validateCustomTag(context, newTag, except: oldOutbound)) {
+      return;
     }
+    if (outboundDialerProxy(newOutbound) == oldTag) {
+      setOutboundDialerProxy(newOutbound, newTag);
+    }
+    _renameOutboundReferences(oldTag, newTag);
+    _fullConfigState.outbounds.outbounds[index] = newOutbound;
+    _notifyChanged();
   }
 
   void _renameOutboundReferences(String oldTag, String newTag) {
@@ -430,8 +432,8 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
       }
     }
     for (final outbound in _fullConfigState.outbounds.outbounds) {
-      if (outbound.dialerProxy == oldTag) {
-        outbound.dialerProxy = newTag;
+      if (outboundDialerProxy(outbound) == oldTag) {
+        setOutboundDialerProxy(outbound, newTag);
       }
     }
     if (_fullConfigState.outbounds.dns.dialerProxy == oldTag) {
@@ -439,7 +441,7 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     }
   }
 
-  bool _isCustomTagAvailable(String tag, {OutboundState? except}) {
+  bool _isCustomTagAvailable(String tag, {Map<String, dynamic>? except}) {
     if (tag.isEmpty || tag == RoutingOutboundTag.proxy.name) {
       return false;
     }
@@ -447,14 +449,16 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
       return false;
     }
     return !_fullConfigState.outbounds.outbounds.any(
-      (outbound) => outbound != except && outbound.tag == tag,
+      (outbound) =>
+          !identical(outbound, except) &&
+          outboundString(outbound, 'tag') == tag,
     );
   }
 
   bool _validateCustomTag(
     BuildContext context,
     String tag, {
-    OutboundState? except,
+    Map<String, dynamic>? except,
   }) {
     if (tag.isEmpty) {
       ContextAlert.showToast(
@@ -491,20 +495,6 @@ class XrayFullConfigController extends PageCubit<XrayFullConfigPageState> {
     RoutingOutboundTag.dnsOut.name,
     RoutingOutboundTag.chainProxy.name,
   };
-
-  Set<String> get _nonDialerProxyTags => {
-    RoutingOutboundTag.block.name,
-    RoutingOutboundTag.dnsOut.name,
-  };
-
-  OutboundState _cloneOutbound(OutboundState outbound) {
-    final clone = OutboundState();
-    if (!clone.readFromOutbound(outbound.xrayJson)) {
-      throw StateError('failed to clone outbound state');
-    }
-    clone.name = outbound.name;
-    return clone;
-  }
 
   void updateDomainStrategy(String value) {
     final domainStrategy = RoutingDomainStrategy.fromString(value);

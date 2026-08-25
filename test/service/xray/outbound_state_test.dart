@@ -5,9 +5,8 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/xray/full_config/state.dart';
 import 'package:onexray/service/xray/full_config/state_reader.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/outbound/state_writer.dart';
 import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
 
@@ -58,82 +57,65 @@ void main() {
     });
   });
 
-  test('new outbound defaults to aes-256-gcm', () {
-    final state = OutboundState()..protocol = XrayOutboundProtocol.shadowsocks;
+  test('new Shadowsocks form uses the canonical default', () {
+    final state = OutboundState()
+      ..changeProtocol(XrayOutboundProtocol.shadowsocks);
 
     expect(state.shadowsocksMethod, ShadowsocksMethod.aes256gcm);
-    expect(state.xrayJson.settings?['method'], 'aes-256-gcm');
+    expect((state.materialize()['settings'] as Map)['method'], 'aes-256-gcm');
   });
 
-  group('Shadowsocks outbound reader', () {
-    test('reads every canonical method', () {
-      for (final method in canonicalMethods) {
-        final state = OutboundState();
+  test('projects every canonical method without rebuilding the Map', () {
+    for (final method in canonicalMethods) {
+      final outbound = decodeSingleOutbound(_shadowsocksJson(method));
+      final state = OutboundState(outbound);
 
-        expect(state.readFromText(_shadowsocksJson(method)), isTrue);
-        expect(state.shadowsocksMethod.name, method);
-        expect(state.address, 'example.com');
-        expect(state.port, '8388');
-        expect(state.shadowsocksPassword, 'password');
-        expect(state.xrayJson.settings, {
-          'address': 'example.com',
-          'port': 8388,
-          'method': method,
-          'password': 'password',
-        });
-      }
-    });
+      expect(state.shadowsocksMethodName, method);
+      expect(state.address, 'example.com');
+      expect(state.port, '8388');
+      expect(state.shadowsocksPassword, 'password');
+      expect(state.materialize(), outbound);
+    }
+  });
 
-    test('returns failure for non-canonical methods', () {
-      for (final method in nonCanonicalMethods) {
-        final state = OutboundState();
+  test('canonical gate rejects every non-canonical method', () {
+    for (final method in <String?>[...nonCanonicalMethods, '', null]) {
+      final outbound = decodeSingleOutbound(_shadowsocksJson(method));
+      expect(
+        () => requireCanonicalOutbound(outbound),
+        throwsFormatException,
+        reason: '$method',
+      );
+    }
+  });
 
-        expect(
-          state.readFromText(_shadowsocksJson(method)),
-          isFalse,
-          reason: method,
-        );
-      }
-    });
-
-    test('returns failure for an empty or missing method', () {
-      expect(OutboundState().readFromText(_shadowsocksJson('')), isFalse);
-      expect(OutboundState().readFromText(_shadowsocksJson(null)), isFalse);
-    });
-
-    test('propagates failure through profile and full config readers', () {
+  test(
+    'non-canonical method fails through profile and full config readers',
+    () {
       for (final tag in ['proxy', 'chainProxy']) {
         final xrayJson = XrayJson.fromJson(
           jsonDecode(_shadowsocksJson('aead_aes_256_gcm', tag: tag)),
         );
 
-        expect(
-          XrayProfileState().readFromXrayJson(xrayJson),
-          isFalse,
-          reason: tag,
-        );
-        expect(
-          XrayFullConfigState().readFromXrayJson(xrayJson),
-          isFalse,
-          reason: tag,
-        );
+        expect(XrayProfileState().readFromXrayJson(xrayJson), isFalse);
+        expect(XrayFullConfigState().readFromXrayJson(xrayJson), isFalse);
       }
-    });
+    },
+  );
 
-    test('does not propagate failures from other Shadowsocks fields', () {
-      final json = jsonDecode(_shadowsocksJson('aes-256-gcm'));
-      final outbound = (json['outbounds'] as List<dynamic>).single;
-      outbound['mux'] = {'enabled': true, 'xudpProxyUDP443': 'unsupported'};
-      final xrayJson = XrayJson.fromJson(json);
+  test('profile and full config preserve an App-unprojected sibling', () {
+    final json = jsonDecode(_shadowsocksJson('aes-256-gcm'));
+    final outbound = (json['outbounds'] as List<dynamic>).single;
+    outbound['mux'] = {'enabled': true, 'xudpProxyUDP443': 'editorOnly'};
+    final xrayJson = XrayJson.fromJson(json);
 
-      final profile = XrayProfileState();
-      expect(profile.readFromXrayJson(xrayJson), isTrue);
-      expect(profile.outbounds.outbounds, isEmpty);
+    final profile = XrayProfileState();
+    expect(profile.readFromXrayJson(xrayJson), isTrue);
+    expect(profile.outbounds.outbounds, [outbound]);
 
-      final fullConfig = XrayFullConfigState();
-      expect(fullConfig.readFromXrayJson(xrayJson), isTrue);
-      expect(fullConfig.outbounds.outbounds, isEmpty);
-    });
+    final fullConfig = XrayFullConfigState();
+    expect(fullConfig.readFromXrayJson(xrayJson), isTrue);
+    expect(fullConfig.outbounds.outbounds, [outbound]);
   });
 }
 

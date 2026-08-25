@@ -10,7 +10,7 @@ import 'package:onexray/pages/core/xray/full_config/params.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -170,10 +170,13 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final primaryProxy = OutboundState()..name = 'Singapore-Premium-Reality';
-    final customOutbound = OutboundState()
-      ..name = 'Seattle-Standard-XHTTP'
-      ..tag = 'custom1';
+    final primaryProxy = newOutboundMap(name: 'Singapore-Premium-Reality');
+    final customOutbound = newOutboundMap(
+      name: 'Seattle-Standard-XHTTP',
+      tag: 'custom1',
+    )..['appUnprojected'] = <String, dynamic>{'keep': true};
+    Map<String, dynamic>? editedOutbound;
+    Map<String, dynamic>? deletedOutbound;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -194,8 +197,8 @@ void main() {
             onImportPrimaryProxy: () {},
             onAddCustomOutbound: () {},
             onImportCustomOutbound: () {},
-            onEditCustomOutbound: (_) {},
-            onDeleteCustomOutbound: (_) {},
+            onEditCustomOutbound: (outbound) => editedOutbound = outbound,
+            onDeleteCustomOutbound: (outbound) => deletedOutbound = outbound,
             onEditFreedom: () {},
             onEditFragment: () {},
             onEditBlackHole: () {},
@@ -216,5 +219,14 @@ void main() {
     expect(find.text('vless · raw · custom1'), findsOneWidget);
     expect(find.byIcon(LucideIcons.pencil), findsNothing);
     expect(find.byIcon(LucideIcons.trash2), findsOneWidget);
+
+    await tester.tap(find.text('Seattle-Standard-XHTTP'));
+    await tester.pump();
+    expect(identical(editedOutbound, customOutbound), true);
+
+    await tester.tap(find.byIcon(LucideIcons.trash2));
+    await tester.pump();
+    expect(identical(deletedOutbound, customOutbound), true);
+    expect(customOutbound['appUnprojected'], <String, dynamic>{'keep': true});
   });
 }

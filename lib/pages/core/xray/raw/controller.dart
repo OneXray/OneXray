@@ -14,7 +14,7 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/json_importer.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/raw/ping.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
@@ -92,10 +92,11 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
 
   String get _templateXrayJson {
     final settings = XrayProfileState();
-    final outbound = OutboundState();
-    outbound.address = "example.com";
-    outbound.port = "443";
-    outbound.vlessId = Uuid().v4();
+    final outbound = newOutboundMap();
+    final outboundSettings = outbound['settings'] as Map<String, dynamic>;
+    outboundSettings['address'] = 'example.com';
+    outboundSettings['port'] = 443;
+    outboundSettings['id'] = Uuid().v4();
     settings.outbounds.outbounds.add(outbound);
 
     return JsonTool.encoder.convert(settings.xrayJson.toJson());

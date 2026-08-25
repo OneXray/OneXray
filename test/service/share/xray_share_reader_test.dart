@@ -6,7 +6,7 @@ import 'package:onexray/service/share/xray_share_reader.dart';
 
 void main() {
   test(
-    'converts supported outbounds without app-side Xray validation',
+    'preserves libXray outbound maps without app-side schema validation',
     () async {
       final json = jsonDecode('''
 {
@@ -14,11 +14,13 @@ void main() {
     {
       "name": "Valid",
       "protocol": "vless",
+      "editorOnly": {"keep": true},
       "settings": {
         "address": "example.com",
         "port": 443,
         "id": "00000000-0000-0000-0000-000000000000",
-        "encryption": "none"
+        "encryption": "none",
+        "advanced": {"keep": true}
       }
     },
     {
@@ -42,11 +44,22 @@ void main() {
 
       final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
 
-      expect(rows, hasLength(2));
+      expect(rows, hasLength(3));
       expect(
         rows.map((row) => row.name.value),
-        containsAll(<String>['Valid', 'Incomplete']),
+        containsAll(<String>['Valid', 'Incomplete', 'Unsupported']),
       );
+      final valid = rows.firstWhere((row) => row.name.value == 'Valid');
+      final wrapper = jsonDecode(
+        utf8.decode(base64Decode(valid.data.value!)),
+      ) as Map<String, dynamic>;
+      final stored =
+          (wrapper['outbounds'] as List<dynamic>).single
+              as Map<String, dynamic>;
+      expect(stored['editorOnly'], {'keep': true});
+      expect((stored['settings'] as Map<String, dynamic>)['advanced'], {
+        'keep': true,
+      });
     },
   );
 
@@ -118,5 +131,33 @@ void main() {
 
     expect(rows, hasLength(1));
     expect(rows.single.name.value, 'Canonical');
+  });
+
+  test('moves libXray share name metadata into the App name field', () async {
+    final xrayJson = XrayJson.fromJson({
+      'outbounds': [
+        {
+          'protocol': 'vless',
+          'sendThrough': 'Imported Node',
+          'settings': {
+            'address': 'example.com',
+            'port': 443,
+            'id': '00000000-0000-0000-0000-000000000000',
+            'encryption': 'none',
+          },
+        },
+      ],
+    });
+
+    final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
+
+    expect(rows.single.name.value, 'Imported Node');
+    final wrapper = jsonDecode(
+      utf8.decode(base64Decode(rows.single.data.value!)),
+    ) as Map<String, dynamic>;
+    final stored =
+        (wrapper['outbounds'] as List<dynamic>).single as Map<String, dynamic>;
+    expect(stored['name'], 'Imported Node');
+    expect(stored, isNot(contains('sendThrough')));
   });
 }

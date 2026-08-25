@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
 
 void main() {
-  test('removed outbound strategy fields are ignored', () {
+  test('XrayJson preserves user fields outside the App projection', () {
     final config = XrayJson.fromJson({
       'outbounds': [
         {
@@ -21,12 +21,12 @@ void main() {
     });
 
     final outbound = config.toJson()['outbounds']!.first;
-    expect(outbound, isNot(contains('targetStrategy')));
+    expect(outbound['targetStrategy'], 'UseIP');
 
     final streamSettings = outbound['streamSettings'] as Map<String, dynamic>;
     final sockopt = streamSettings['sockopt'] as Map<String, dynamic>;
     expect(sockopt['dialerProxy'], 'chainProxy');
-    expect(sockopt, isNot(contains('domainStrategy')));
-    expect(sockopt, isNot(contains('addressPortStrategy')));
+    expect(sockopt['domainStrategy'], 'UseIPv4');
+    expect(sockopt['addressPortStrategy'], 'SrvPortOnly');
   });
 }

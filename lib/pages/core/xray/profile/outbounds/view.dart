@@ -4,6 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/outbounds/final_outbound_section.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/outbounds_state.dart';
 
 class OutboundsView extends StatelessWidget {
@@ -35,7 +36,9 @@ class OutboundsView extends StatelessWidget {
             breakpoint: 860,
             children: [
               FinalOutboundSection(
-                name: state.finalOutbound?.name,
+                name: state.finalOutbound == null
+                    ? null
+                    : outboundDisplayName(state.finalOutbound!),
                 onSelect: onImportFinalOutbound,
                 onDelete: state.finalOutbound == null
                     ? null

@@ -41,6 +41,7 @@ extension XrayProfileStateWriter on XrayProfileState {
     TunSettingsState tunSettingsState,
     XrayPorts ports,
   ) async {
+    outbounds.requireCanonicalProtocolSettings();
     _applyRuntimeDnsQueryStrategy(tunSettingsState);
     fixInboundsPort(ports);
     await _fixSystemExtensionLogs();
@@ -74,9 +75,6 @@ extension XrayProfileStateWriter on XrayProfileState {
   void _removeSettingInterface() {
     outbounds.freedom.interface = "";
     outbounds.fragment.interface = "";
-    for (final outbound in outbounds.outbounds) {
-      outbound.interface = "";
-    }
     inbounds.tun.settings.autoOutboundsInterface = "";
     inbounds.tun.settings.gateway = [];
     inbounds.tun.settings.dns = [];

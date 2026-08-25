@@ -118,52 +118,11 @@ extension XrayInboundTunStandard on XrayInboundTun {
 }
 
 extension XrayOutboundStandard on XrayOutbound {
-  static XrayOutbound get standard =>
-      XrayOutbound(null, null, null, null, null, null, null);
-}
-
-extension XrayOutboundShadowsocksStandard on XrayOutboundShadowsocks {
-  static XrayOutboundShadowsocks get standard =>
-      XrayOutboundShadowsocks(null, null, null, null);
-}
-
-extension XrayOutboundSocksStandard on XrayOutboundSocks {
-  static XrayOutboundSocks get standard =>
-      XrayOutboundSocks(null, null, null, null);
-}
-
-extension XrayOutboundHttpStandard on XrayOutboundHttp {
-  static XrayOutboundHttp get standard =>
-      XrayOutboundHttp(null, null, null, null, null);
-}
-
-extension XrayOutboundTrojanStandard on XrayOutboundTrojan {
-  static XrayOutboundTrojan get standard =>
-      XrayOutboundTrojan(null, null, null);
-}
-
-extension XrayOutboundVLESSStandard on XrayOutboundVLESS {
-  static XrayOutboundVLESS get standard =>
-      XrayOutboundVLESS(null, null, null, null, null, null);
-}
-
-extension XrayOutboundVLESSReverseStandard on XrayOutboundVLESSReverse {
-  static XrayOutboundVLESSReverse get standard =>
-      XrayOutboundVLESSReverse(null);
-}
-
-extension XrayOutboundVMessStandard on XrayOutboundVMess {
-  static XrayOutboundVMess get standard =>
-      XrayOutboundVMess(null, null, null, null);
-}
-
-extension XrayOutboundHysteriaStandard on XrayOutboundHysteria {
-  static XrayOutboundHysteria get standard =>
-      XrayOutboundHysteria(null, null, null);
+  static XrayOutbound get standard => XrayOutbound(null, null, null, null);
 }
 
 extension XrayOutboundFreedomStandard on XrayOutboundFreedom {
-  static XrayOutboundFreedom get standard => XrayOutboundFreedom(null, null);
+  static XrayOutboundFreedom get standard => XrayOutboundFreedom(null);
 }
 
 extension XrayOutboundFreedomFragmentStandard on XrayOutboundFreedomFragment {
@@ -171,109 +130,17 @@ extension XrayOutboundFreedomFragmentStandard on XrayOutboundFreedomFragment {
       XrayOutboundFreedomFragment(null, null, null);
 }
 
-extension XrayOutboundFreedomNoisesStandard on XrayOutboundFreedomNoises {
-  static XrayOutboundFreedomNoises get standard =>
-      XrayOutboundFreedomNoises(null, null, null);
-}
-
 extension XrayOutboundDnsStandard on XrayOutboundDns {
   static XrayOutboundDns get standard =>
       XrayOutboundDns(null, null, null, null);
 }
 
-extension XrayOutboundDnsRuleStandard on XrayOutboundDnsRule {
-  static XrayOutboundDnsRule get standard =>
-      XrayOutboundDnsRule(null, null, null, null);
-}
-
 extension XrayStreamSettingsStandard on XrayStreamSettings {
-  static XrayStreamSettings get standard => XrayStreamSettings(
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-  );
-}
-
-extension XrayTlsSettingsStandard on XrayTlsSettings {
-  static XrayTlsSettings get standard =>
-      XrayTlsSettings(null, null, null, null, null, null);
-}
-
-extension XrayRealitySettingsStandard on XrayRealitySettings {
-  static XrayRealitySettings get standard =>
-      XrayRealitySettings(null, null, null, null, null, null, null, null);
-}
-
-extension XrayRawSettingsStandard on XrayRawSettings {
-  static XrayRawSettings get standard => XrayRawSettings(null);
-}
-
-extension XrayRawSettingsHeaderStandard on XrayRawSettingsHeader {
-  static XrayRawSettingsHeader get standard =>
-      XrayRawSettingsHeader(null, null);
-}
-
-extension XrayRawSettingsHeaderRequestStandard on XrayRawSettingsHeaderRequest {
-  static XrayRawSettingsHeaderRequest get standard =>
-      XrayRawSettingsHeaderRequest(null, null);
-}
-
-extension XrayRawSettingsHeaderRequestHeadersStandard
-    on XrayRawSettingsHeaderRequestHeaders {
-  static XrayRawSettingsHeaderRequestHeaders get standard =>
-      XrayRawSettingsHeaderRequestHeaders(null);
-}
-
-extension XrayKcpSettingsStandard on XrayKcpSettings {
-  static XrayKcpSettings get standard => XrayKcpSettings();
-}
-
-extension XrayWsSettingsStandard on XrayWsSettings {
-  static XrayWsSettings get standard => XrayWsSettings(null, null);
-}
-
-extension XrayGrpcSettingsStandard on XrayGrpcSettings {
-  static XrayGrpcSettings get standard => XrayGrpcSettings(null, null, null);
-}
-
-extension XrayHttpupgradeSettingsStandard on XrayHttpupgradeSettings {
-  static XrayHttpupgradeSettings get standard =>
-      XrayHttpupgradeSettings(null, null);
-}
-
-extension XrayXhttpSettingsStandard on XrayXhttpSettings {
-  static XrayXhttpSettings get standard =>
-      XrayXhttpSettings(null, null, null, null);
-}
-
-extension XrayHysteriaSettingsStandard on XrayHysteriaSettings {
-  static XrayHysteriaSettings get standard => XrayHysteriaSettings(null, null);
+  static XrayStreamSettings get standard => XrayStreamSettings(null);
 }
 
 extension XraySockoptStandard on XraySockopt {
-  static XraySockopt get standard =>
-      XraySockopt(null, null, null, null, null, null);
-}
-
-extension XrayHappyEyeballsStandard on XrayHappyEyeballs {
-  static XrayHappyEyeballs get standard =>
-      XrayHappyEyeballs(null, null, null, null);
-}
-
-extension XrayMuxStandard on XrayMux {
-  static XrayMux get standard => XrayMux(null, null, null, null);
+  static XraySockopt get standard => XraySockopt(null, null);
 }
 
 extension XrayFakeDnsStandard on XrayFakeDns {

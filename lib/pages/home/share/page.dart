@@ -40,7 +40,8 @@ class SharePage extends StatelessWidget {
     if (!state.showLinkSection &&
         !state.showAppLinkSection &&
         !state.showTextSection &&
-        !state.showJsonFileSection) {
+        !state.showJsonFileSection &&
+        state.linkError.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
     return SingleChildScrollView(
@@ -59,6 +60,15 @@ class SharePage extends StatelessWidget {
                     style: AppTypography.supporting.copyWith(
                       color: ColorManager.secondaryText(context),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
+              if (state.linkError.isNotEmpty) ...[
+                Text(
+                  state.linkError,
+                  style: AppTypography.supporting.copyWith(
+                    color: Theme.of(context).colorScheme.error,
                   ),
                 ),
                 const SizedBox(height: 18),

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -16,9 +15,8 @@ import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/full_config/state.dart';
 import 'package:onexray/service/xray/full_config/state_reader.dart';
 import 'package:onexray/service/xray/full_config/state_writer.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/outbound/state_writer.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 
 class PingService {
   static final PingService _singleton = PingService._internal();
@@ -179,13 +177,9 @@ class PingService {
       final type = CoreConfigType.fromString(row.type);
       switch (type) {
         case CoreConfigType.outbound:
-          final outbound = OutboundState();
-          if (!outbound.readFromDbData(row)) {
-            return null;
-          }
-          final xrayJson = XrayJsonStandard.standard
-            ..outbounds = [outbound.xrayJson];
-          return PingBatchSource(JsonTool.encoder.convert(xrayJson.toJson()));
+          final outbound = readOutboundFromDbData(row);
+          requireCanonicalOutbound(outbound);
+          return PingBatchSource(encodeSingleOutbound(outbound));
         case CoreConfigType.raw:
           final bytes = base64Decode(row.data!);
           return PingBatchSource(utf8.decode(bytes));

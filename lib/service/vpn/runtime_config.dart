@@ -20,8 +20,8 @@ import 'package:onexray/service/xray/full_config/state_reader.dart';
 import 'package:onexray/service/xray/full_config/state_validator.dart';
 import 'package:onexray/service/xray/full_config/state_writer.dart';
 import 'package:onexray/service/xray/json_writer.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
@@ -176,11 +176,10 @@ final class XrayRuntimeConfigService {
     XrayPorts ports,
     String runDir,
   ) async {
-    final outbound = OutboundState();
+    late final Map<String, dynamic> outbound;
     try {
-      if (!outbound.readFromDbData(config)) {
-        throw const FormatException('invalid outbound data');
-      }
+      outbound = readOutboundFromDbData(config);
+      requireCanonicalOutbound(outbound);
     } catch (_) {
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnOutboundInvalid,
@@ -194,7 +193,7 @@ final class XrayRuntimeConfigService {
 
   Future<void> _applyFinalOutbound(
     XrayProfileState profile,
-    OutboundState outbound,
+    Map<String, dynamic> outbound,
     CoreConfigData config,
   ) async {
     final simpleFinalOutboundId = await _simpleFinalOutboundId();
@@ -211,14 +210,14 @@ final class XrayRuntimeConfigService {
 
     final finalOutbound = profile.outbounds.finalOutbound;
     if (finalOutbound == null) {
-      outbound.tag = RoutingOutboundTag.proxy.name;
+      setOutboundTag(outbound, RoutingOutboundTag.proxy.name);
       return;
     }
 
-    outbound.tag = RoutingOutboundTag.chainProxy.name;
-    outbound.dialerProxy = '';
-    finalOutbound.tag = RoutingOutboundTag.proxy.name;
-    finalOutbound.dialerProxy = RoutingOutboundTag.chainProxy.name;
+    setOutboundTag(outbound, RoutingOutboundTag.chainProxy.name);
+    removeOutboundDialerProxy(outbound);
+    setOutboundTag(finalOutbound, RoutingOutboundTag.proxy.name);
+    setOutboundDialerProxy(finalOutbound, RoutingOutboundTag.chainProxy.name);
     profile.outbounds.finalOutbound = null;
     profile.outbounds.outbounds.add(finalOutbound);
   }
@@ -233,7 +232,7 @@ final class XrayRuntimeConfigService {
     return simple.finalOutboundId;
   }
 
-  Future<OutboundState> _loadFinalOutbound(int id) async {
+  Future<Map<String, dynamic>> _loadFinalOutbound(int id) async {
     final row = await AppDatabase().coreConfigDao.searchRow(id);
     if (row == null) {
       throw XrayRuntimeConfigException(
@@ -245,19 +244,20 @@ final class XrayRuntimeConfigService {
         appLocalizationsNoContext().vpnFinalOutboundInvalid,
       );
     }
-    final outbound = OutboundState();
+    late final Map<String, dynamic> outbound;
     try {
-      if (!outbound.readFromDbData(row)) {
-        throw const FormatException('invalid final outbound data');
-      }
+      outbound = readOutboundFromDbData(row);
+      requireCanonicalOutbound(outbound);
     } catch (_) {
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnFinalOutboundInvalid,
       );
     }
-    outbound.name = row.name;
-    outbound.tag = RoutingOutboundTag.proxy.name;
-    outbound.dialerProxy = '';
+    if (outboundString(outbound, 'name')?.isNotEmpty != true) {
+      outbound['name'] = row.name;
+    }
+    setOutboundTag(outbound, RoutingOutboundTag.proxy.name);
+    removeOutboundDialerProxy(outbound);
     return outbound;
   }
 

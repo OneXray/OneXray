@@ -25,20 +25,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        builder: (context, child) => ShadTheme(
-          data: ShadThemeData(
-            colorScheme: const ShadBlueColorScheme.light(),
-            radius: const BorderRadius.all(Radius.circular(8)),
-          ),
-          child: child ?? const SizedBox.shrink(),
-        ),
-        home: XrayRawEditPage(
-          params: XrayRawEditParams('Raw Edit', '{\n  "name": "Test"\n}'),
-        ),
-      ),
+      _testApp(XrayRawEditParams('Raw Edit', '{\n  "name": "Test"\n}')),
     );
     await tester.pump();
 
@@ -55,7 +42,49 @@ void main() {
     expect(tester.takeException(), isNull);
 
     FocusManager.instance.primaryFocus?.unfocus();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('custom validation keeps invalid content in the editor', (
+    tester,
+  ) async {
+    const text = '{"outbounds":[]}';
+    await tester.pumpWidget(
+      _testApp(
+        XrayRawEditParams(
+          'Raw Edit',
+          text,
+          validator: (_) => 'Exactly one outbound is required',
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(LucideIcons.save));
+    await tester.pump();
+
+    final editor = tester.widget<CodeEditor>(find.byType(CodeEditor));
+    expect(editor.controller!.text, text);
+    expect(find.text('Exactly one outbound is required'), findsOneWidget);
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+}
+
+Widget _testApp(XrayRawEditParams params) {
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    builder: (context, child) => ShadTheme(
+      data: ShadThemeData(
+        colorScheme: const ShadBlueColorScheme.light(),
+        radius: const BorderRadius.all(Radius.circular(8)),
+      ),
+      child: ShadToaster(child: child ?? const SizedBox.shrink()),
+    ),
+    home: XrayRawEditPage(params: params),
+  );
 }

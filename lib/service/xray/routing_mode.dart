@@ -1,5 +1,6 @@
+import 'package:onexray/core/model/core_routing_mode.dart';
 import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/service/core_routing_mode/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 
 abstract final class XrayRoutingModeFix {
@@ -8,7 +9,11 @@ abstract final class XrayRoutingModeFix {
       case CoreRoutingMode.rule:
         return true;
       case CoreRoutingMode.global:
-        final outbounds = _globalOutbounds(xrayJson.outbounds ?? const []);
+        final copiedOutbounds = _copyOutbounds(xrayJson.outbounds);
+        if (copiedOutbounds == null) {
+          return false;
+        }
+        final outbounds = _globalOutbounds(copiedOutbounds);
         if (outbounds == null) {
           return false;
         }
@@ -17,38 +22,31 @@ abstract final class XrayRoutingModeFix {
         xrayJson.outbounds = outbounds;
         return true;
       case CoreRoutingMode.direct:
+        final outbounds = _copyOutbounds(xrayJson.outbounds);
+        if (outbounds == null) {
+          return false;
+        }
         final direct = _outboundByTag(
-          xrayJson.outbounds ?? const [],
+          outbounds,
           RoutingOutboundTag.direct.name,
         );
         if (direct == null) {
           return false;
         }
-        _clearDialerProxy(direct);
+        removeOutboundDialerProxy(direct);
         xrayJson.dns = null;
         xrayJson.routing = null;
-        xrayJson.outbounds = <XrayOutbound>[direct];
+        xrayJson.outbounds = <Map<String, dynamic>>[direct];
         return true;
     }
   }
 
   static bool applyGlobalToRawJson(Map<String, dynamic> jsonMap) {
-    final rawOutbounds = jsonMap['outbounds'];
-    if (rawOutbounds is! List) {
+    final copiedOutbounds = _copyOutbounds(jsonMap['outbounds']);
+    if (copiedOutbounds == null) {
       return false;
     }
-    final rawOutboundMaps = <Map>[];
-    for (final outbound in rawOutbounds) {
-      if (outbound is! Map) {
-        return false;
-      }
-      rawOutboundMaps.add(outbound);
-    }
-    final nextOutbounds = _globalOutboundChain<Map>(
-      rawOutboundMaps,
-      tagOf: _rawOutboundTag,
-      dependencyOf: _rawDialerProxy,
-    );
+    final nextOutbounds = _globalOutbounds(copiedOutbounds);
     if (nextOutbounds == null) {
       return false;
     }
@@ -59,22 +57,12 @@ abstract final class XrayRoutingModeFix {
     return true;
   }
 
-  static List<XrayOutbound>? _globalOutbounds(List<XrayOutbound> outbounds) {
-    return _globalOutboundChain<XrayOutbound>(
-      outbounds,
-      tagOf: (outbound) => outbound.tag,
-      dependencyOf: _dialerProxy,
-    );
-  }
-
-  static List<T>? _globalOutboundChain<T extends Object>(
-    List<T> outbounds, {
-    required String? Function(T outbound) tagOf,
-    required String? Function(T outbound) dependencyOf,
-  }) {
-    final outboundsByTag = <String, T>{};
+  static List<Map<String, dynamic>>? _globalOutbounds(
+    List<Map<String, dynamic>> outbounds,
+  ) {
+    final outboundsByTag = <String, Map<String, dynamic>>{};
     for (final outbound in outbounds) {
-      final tag = tagOf(outbound);
+      final tag = outboundString(outbound, 'tag');
       if (tag == null || tag.isEmpty) {
         continue;
       }
@@ -89,17 +77,17 @@ abstract final class XrayRoutingModeFix {
       return null;
     }
 
-    final result = <T>[];
+    final result = <Map<String, dynamic>>[];
     final visited = <String>{};
     var current = proxy;
     while (true) {
-      final currentTag = tagOf(current);
+      final currentTag = outboundString(current, 'tag');
       if (currentTag == null || !visited.add(currentTag)) {
         return null;
       }
       result.add(current);
 
-      final dependencyTag = dependencyOf(current);
+      final dependencyTag = outboundDialerProxy(current);
       if (dependencyTag == null || dependencyTag.isEmpty) {
         break;
       }
@@ -112,41 +100,33 @@ abstract final class XrayRoutingModeFix {
     return result;
   }
 
-  static XrayOutbound? _outboundByTag(
-    List<XrayOutbound> outbounds,
+  static Map<String, dynamic>? _outboundByTag(
+    List<Map<String, dynamic>> outbounds,
     String tag,
   ) {
     for (final outbound in outbounds) {
-      if (outbound.tag == tag) {
+      if (outboundString(outbound, 'tag') == tag) {
         return outbound;
       }
     }
     return null;
   }
 
-  static String? _rawOutboundTag(Map outbound) {
-    final tag = outbound['tag'];
-    return tag is String ? tag : null;
-  }
-
-  static String? _rawDialerProxy(Map outbound) {
-    final streamSettings = outbound['streamSettings'];
-    if (streamSettings is! Map) {
+  static List<Map<String, dynamic>>? _copyOutbounds(Object? value) {
+    if (value is! List) {
       return null;
     }
-    final sockopt = streamSettings['sockopt'];
-    if (sockopt is! Map) {
+    try {
+      final outbounds = <Map<String, dynamic>>[];
+      for (final outbound in value) {
+        if (outbound is! Map<String, dynamic>) {
+          return null;
+        }
+        outbounds.add(copyOutboundMap(outbound));
+      }
+      return outbounds;
+    } catch (_) {
       return null;
     }
-    final dialerProxy = sockopt['dialerProxy'];
-    return dialerProxy is String ? dialerProxy : null;
-  }
-
-  static String? _dialerProxy(XrayOutbound outbound) {
-    return outbound.streamSettings?.sockopt?.dialerProxy;
-  }
-
-  static void _clearDialerProxy(XrayOutbound outbound) {
-    outbound.streamSettings?.sockopt?.dialerProxy = null;
   }
 }

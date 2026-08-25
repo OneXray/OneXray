@@ -10,18 +10,17 @@ import 'package:image/image.dart' as img;
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
+import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/service/share/app_link_share_service.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/outbound/state_writer.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/full_config/state.dart';
 import 'package:onexray/service/xray/full_config/state_reader.dart';
 import 'package:onexray/service/xray/full_config/state_writer.dart';
@@ -36,6 +35,7 @@ class SharePageState {
   final String linkSection;
   final String linkUrl;
   final bool linkQrcodeSuccess;
+  final String linkError;
   final bool showAppLinkSection;
   final String appLinkUrl;
   final bool showTextSection;
@@ -50,6 +50,7 @@ class SharePageState {
     required this.linkSection,
     required this.linkUrl,
     required this.linkQrcodeSuccess,
+    required this.linkError,
     required this.showAppLinkSection,
     required this.appLinkUrl,
     required this.showTextSection,
@@ -65,6 +66,7 @@ class SharePageState {
     linkSection: "",
     linkUrl: "",
     linkQrcodeSuccess: false,
+    linkError: "",
     showAppLinkSection: false,
     appLinkUrl: "",
     showTextSection: false,
@@ -80,6 +82,7 @@ class SharePageState {
     String? linkSection,
     String? linkUrl,
     bool? linkQrcodeSuccess,
+    String? linkError,
     bool? showAppLinkSection,
     String? appLinkUrl,
     bool? showTextSection,
@@ -94,6 +97,7 @@ class SharePageState {
       linkSection: linkSection ?? this.linkSection,
       linkUrl: linkUrl ?? this.linkUrl,
       linkQrcodeSuccess: linkQrcodeSuccess ?? this.linkQrcodeSuccess,
+      linkError: linkError ?? this.linkError,
       showAppLinkSection: showAppLinkSection ?? this.showAppLinkSection,
       appLinkUrl: appLinkUrl ?? this.appLinkUrl,
       showTextSection: showTextSection ?? this.showTextSection,
@@ -139,13 +143,14 @@ class ShareController extends PageCubit<SharePageState> {
         final type = CoreConfigType.fromString(config.type);
         switch (type) {
           case CoreConfigType.outbound:
-            emit(
-              state.copyWith(
-                showLinkSection: true,
-                linkSection: appLocalizationsNoContext().sharePageXrayLink,
-              ),
-            );
-            await _parseXrayJson(config);
+            try {
+              await _parseXrayJson(config);
+            } catch (error, stackTrace) {
+              ygLogger(
+                'generate outbound share link failed: $error\n$stackTrace',
+              );
+              _finishLinkError();
+            }
             break;
           case CoreConfigType.raw:
             final text = XrayRawDb.readFromDbData(config);
@@ -202,20 +207,25 @@ class ShareController extends PageCubit<SharePageState> {
   }
 
   Future<void> _parseXrayJson(CoreConfigData outbound) async {
-    final outboundState = OutboundState();
-    if (!outboundState.readFromDbData(outbound)) {
+    final outboundMap = readOutboundFromDbData(outbound);
+    requireCanonicalOutbound(outboundMap);
+    final name = outboundDisplayName(outboundMap, fallback: outbound.name);
+    final exportMap = copyOutboundMap(outboundMap)..['sendThrough'] = name;
+    final xrayJson = XrayJsonStandard.standard;
+    xrayJson.outbounds = [exportMap];
+    final url = await AppHostApi().convertXrayJsonToShareLinks(xrayJson);
+    if (url.trim().isEmpty) {
+      _finishLinkError();
       return;
     }
-    final xrayJson = XrayJsonStandard.standard;
-    xrayJson.outbounds = [_readXrayOutbounds(outboundState)];
-    final url = await AppHostApi().convertXrayJsonToShareLinks(xrayJson);
-    await _finishLink(url, outboundState.name);
-  }
-
-  XrayOutbound _readXrayOutbounds(OutboundState outboundState) {
-    final outbound = outboundState.xrayJson;
-    outbound.sendThrough = outbound.name;
-    return outbound;
+    emit(
+      state.copyWith(
+        showLinkSection: true,
+        linkSection: appLocalizationsNoContext().sharePageXrayLink,
+        linkError: '',
+      ),
+    );
+    await _finishLink(url, name);
   }
 
   Future<void> _parseShareSubscription(SubscriptionData subscription) async {
@@ -232,12 +242,25 @@ class ShareController extends PageCubit<SharePageState> {
 
   Future<void> _finishLink(String url, String name) async {
     _name = name;
-    emit(state.copyWith(linkUrl: url));
+    emit(state.copyWith(linkUrl: url, linkError: ''));
     final qrcode = await Isolate.run(() => _drawQrcode(url, name));
     if (qrcode != null) {
       _linkQrcode = qrcode;
       emit(state.copyWith(linkQrcodeSuccess: true));
     }
+  }
+
+  void _finishLinkError() {
+    final localizations = appLocalizationsNoContext();
+    emit(
+      state.copyWith(
+        showLinkSection: false,
+        linkUrl: '',
+        linkQrcodeSuccess: false,
+        linkError:
+            '${localizations.sharePageLink}: ${localizations.resultFailed}',
+      ),
+    );
   }
 
   void _finishAppLink(String? link, String name) {
