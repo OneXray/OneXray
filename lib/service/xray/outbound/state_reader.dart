@@ -173,6 +173,12 @@ extension OutboundStateReader on OutboundState {
   }
 
   bool _readVmessSettings(XrayOutboundVMess settings) {
+    final security = VMessSecurity.fromString(settings.security ?? "");
+    if (security == null) {
+      return false;
+    }
+    vmessSecurity = security;
+
     if (EmptyTool.checkString(settings.address)) {
       address = settings.address!;
     }
@@ -182,13 +188,6 @@ extension OutboundStateReader on OutboundState {
 
     if (EmptyTool.checkString(settings.id)) {
       vmessId = settings.id!;
-    }
-    if (EmptyTool.checkString(settings.security)) {
-      final security = VMessSecurity.fromString(settings.security!);
-      if (security == null) {
-        return false;
-      }
-      vmessSecurity = security;
     }
 
     return true;

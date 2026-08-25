@@ -84,4 +84,39 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single.name.value, 'Canonical');
   });
+
+  test('skips VMess outbounds with non-canonical securities', () async {
+    final json = jsonDecode('''
+{
+  "outbounds": [
+    {
+      "name": "Canonical",
+      "protocol": "vmess",
+      "settings": {
+        "address": "example.com",
+        "port": 443,
+        "id": "00000000-0000-0000-0000-000000000000",
+        "security": "auto"
+      }
+    },
+    {
+      "name": "Legacy",
+      "protocol": "vmess",
+      "settings": {
+        "address": "example.com",
+        "port": 443,
+        "id": "00000000-0000-0000-0000-000000000000",
+        "security": "none"
+      }
+    }
+  ]
+}
+''') as Map<String, dynamic>;
+    final xrayJson = XrayJson.fromJson(json);
+
+    final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
+
+    expect(rows, hasLength(1));
+    expect(rows.single.name.value, 'Canonical');
+  });
 }

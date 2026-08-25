@@ -165,7 +165,7 @@ class OutboundsState {
     if (EmptyTool.checkList(xrayJson.outbounds)) {
       final outbounds = xrayJson.outbounds!;
       for (final outbound in outbounds) {
-        if (!_hasCanonicalShadowsocksMethod(outbound)) {
+        if (!_hasCanonicalProtocolSetting(outbound)) {
           return false;
         }
         if (outbound.protocol == XrayOutboundProtocol.freedom.name &&
@@ -218,12 +218,16 @@ class OutboundsState {
     return true;
   }
 
-  bool _hasCanonicalShadowsocksMethod(XrayOutbound outbound) {
-    if (outbound.protocol != XrayOutboundProtocol.shadowsocks.name) {
-      return true;
+  bool _hasCanonicalProtocolSetting(XrayOutbound outbound) {
+    if (outbound.protocol == XrayOutboundProtocol.vmess.name) {
+      final security = outbound.settings?["security"];
+      return security is String && VMessSecurity.fromString(security) != null;
     }
-    final method = outbound.settings?["method"];
-    return method is String && ShadowsocksMethod.fromString(method) != null;
+    if (outbound.protocol == XrayOutboundProtocol.shadowsocks.name) {
+      final method = outbound.settings?["method"];
+      return method is String && ShadowsocksMethod.fromString(method) != null;
+    }
+    return true;
   }
 
   void _readFreedomOutbound(XrayOutbound outbound) {

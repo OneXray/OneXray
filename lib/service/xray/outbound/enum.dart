@@ -53,9 +53,7 @@ enum VLESSFlow {
 enum VMessSecurity {
   aes128gcm("aes-128-gcm"),
   chacha20poly1305("chacha20-poly1305"),
-  auto("auto"),
-  none("none"),
-  zero("zero");
+  auto("auto");
 
   const VMessSecurity(this.name);
 
