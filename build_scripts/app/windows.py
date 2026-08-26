@@ -6,9 +6,11 @@ import yaml
 from app.builder import Builder
 from app.command_line import (
     check_and_create_dir,
+    dart_command,
     download_file,
     is_amd64,
     is_arm64,
+    run_command,
 )
 
 
@@ -77,6 +79,7 @@ class WindowsBuilder(Builder):
     def build_app(self):
         self.fastforge_build("zip")
         self.package_exe()
+        self.package_msix()
 
     def package_exe(self):
         config_path = os.path.join(
@@ -105,6 +108,40 @@ class WindowsBuilder(Builder):
         finally:
             with open(config_path, mode="wb") as f:
                 f.write(original_content)
+
+    def package_msix(self):
+        run_command(
+            [
+                dart_command(),
+                "run",
+                "msix:create",
+                "--build-windows",
+                "false",
+                "--store",
+                "--architecture",
+                self.target_architecture,
+                "--version",
+                self.msix_version(),
+                "--output-path",
+                self.output_dir,
+                "--output-name",
+                f"{self.project}-{self.package_suffix}",
+            ]
+        )
+
+    def msix_version(self) -> str:
+        marketing_parts = self.read_version().split("+", maxsplit=1)[0].split(".")
+        if len(marketing_parts) != 3:
+            raise ValueError("MSIX version must contain major, minor, and patch")
+        try:
+            values = [int(component) for component in (*marketing_parts, "0")]
+        except ValueError as error:
+            raise ValueError("MSIX version components must be numeric") from error
+        if any(value < 0 or value > 65535 for value in values):
+            raise ValueError("MSIX version components must be between 0 and 65535")
+        if values[0] == 0:
+            raise ValueError("MSIX major version must be greater than 0")
+        return ".".join(str(value) for value in values)
 
     def after_build(self):
         super().after_build()

@@ -47,6 +47,9 @@ class WindowsPackagingTest(unittest.TestCase):
             calls.append((target, self.builder.read_version()))
 
         self.builder.fastforge_build = record_version
+        self.builder.package_msix = lambda: calls.append(
+            ("msix", self.builder.read_version())
+        )
 
         self.builder.build_app()
 
@@ -55,6 +58,7 @@ class WindowsPackagingTest(unittest.TestCase):
             [
                 ("zip", "26.7.3+412"),
                 ("exe", "26.7.3"),
+                ("msix", "26.7.3+412"),
             ],
         )
         with open(self.pubspec_path, mode="rb") as f:
@@ -69,6 +73,7 @@ class WindowsPackagingTest(unittest.TestCase):
                 raise RuntimeError("packaging failed")
 
         self.builder.fastforge_build = fail_on_exe
+        self.builder.package_msix = self.fail
 
         with self.assertRaisesRegex(RuntimeError, "packaging failed"):
             self.builder.build_app()
@@ -96,6 +101,54 @@ class WindowsPackagingTest(unittest.TestCase):
         )
         with open(self.exe_config_path, mode="rb") as f:
             self.assertEqual(f.read(), self.exe_config_content)
+
+    def test_msix_uses_store_version_without_rebuilding_windows(self):
+        with (
+            patch("app.windows.dart_command", return_value="dart"),
+            patch("app.windows.run_command") as run_command,
+        ):
+            self.builder.package_msix()
+
+        run_command.assert_called_once_with(
+            [
+                "dart",
+                "run",
+                "msix:create",
+                "--build-windows",
+                "false",
+                "--store",
+                "--architecture",
+                "x64",
+                "--version",
+                "26.7.3.0",
+                "--output-path",
+                self.builder.output_dir,
+                "--output-name",
+                "OneXray-windows-amd64",
+            ]
+        )
+
+    def test_arm64_msix_uses_arm64_architecture(self):
+        self.builder.target_architecture = "arm64"
+        self.builder.package_suffix = "windows-arm64"
+
+        with (
+            patch("app.windows.dart_command", return_value="dart"),
+            patch("app.windows.run_command") as run_command,
+        ):
+            self.builder.package_msix()
+
+        command = run_command.call_args.args[0]
+        self.assertEqual(command[command.index("--architecture") + 1], "arm64")
+        self.assertEqual(command[-1], "OneXray-windows-arm64")
+
+    def test_msix_rejects_versions_the_store_cannot_accept(self):
+        versions = ("26.8", "dev.8.5", "26.70000.5", "0.8.5")
+        for version in versions:
+            with self.subTest(version=version):
+                with patch.object(self.builder, "read_version", return_value=version):
+                    with self.assertRaises(ValueError):
+                        self.builder.msix_version()
 
     def test_target_architecture_prefers_workflow_setting(self):
         with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):

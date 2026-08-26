@@ -75,7 +75,7 @@ the CLI syntax.
 | `macos` | macOS | Mac App Store build and upload. |
 | `macos_se` | macOS | Signed and notarized Developer ID universal ZIP. |
 | `android` | Android toolchain | Play internal AAB upload and universal APK. |
-| `windows` | Windows x64 or ARM64 | ZIP and EXE for selected architecture. |
+| `windows` | Windows x64 or ARM64 | ZIP, EXE, and Microsoft Store MSIX for selected architecture. |
 | `linux` | Linux x64 or ARM64 | ZIP and DEB for the host architecture. |
 
 For Windows, the architecture is detected from the host. CI can set
@@ -166,7 +166,7 @@ python build_scripts/main.py OneXray <system>
 | `macos` | macOS | 构建并上传 Mac App Store 版本。 |
 | `macos_se` | macOS | 签名、公证并生成 Developer ID 通用 ZIP。 |
 | `android` | Android 工具链 | 上传 Play internal AAB 并获取 universal APK。 |
-| `windows` | Windows x64 或 ARM64 | 为所选架构生成 ZIP 和 EXE。 |
+| `windows` | Windows x64 或 ARM64 | 为所选架构生成 ZIP、EXE 和 Microsoft Store MSIX。 |
 | `linux` | Linux x64 或 ARM64 | 为主机架构生成 ZIP 和 DEB。 |
 
 Windows 默认根据主机识别架构。CI 可以在已经配置好对应 runner 和 CGo
@@ -258,7 +258,7 @@ python build_scripts/main.py OneXray <system>
 | `macos` | macOS | Сборка и загрузка версии Mac App Store. |
 | `macos_se` | macOS | Подписанный и нотариализированный универсальный ZIP. |
 | `android` | Android toolchain | Загрузка AAB в Play internal; universal APK. |
-| `windows` | Windows x64 или ARM64 | ZIP и EXE для выбранной архитектуры. |
+| `windows` | Windows x64 или ARM64 | ZIP, EXE и MSIX для Microsoft Store выбранной архитектуры. |
 | `linux` | Linux x64 или ARM64 | ZIP и DEB для архитектуры хоста. |
 
 В Windows архитектура по умолчанию определяется по системе. В CI переменную

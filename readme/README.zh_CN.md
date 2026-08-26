@@ -74,8 +74,8 @@ onexray://onexray.com/dat/add?type=domain|ip&url=<经过百分号编码的-https
 导入后保存密钥对。
 
 Android、iOS 和已安装的 macOS App 会直接注册该协议。Windows 和 Linux
-请使用 EXE/winget 或 DEB 包；ZIP 包不会自动注册协议。Mac App Store 版本与
-OneXraySE 使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
+请使用 EXE/winget/Microsoft Store 或 DEB 包；ZIP 包不会自动注册协议。Mac App Store
+版本与 OneXraySE 使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
 
 ## 下载
 

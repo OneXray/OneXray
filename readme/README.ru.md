@@ -79,9 +79,10 @@ onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Nam
 публичный ключ и сохраняет пару после успешного импорта.
 
 Android, iOS и установленные приложения macOS регистрируют схему напрямую. В
-Windows и Linux используйте EXE/winget или DEB: ZIP-пакеты не регистрируют
-схему автоматически. Версия из Mac App Store и OneXraySE используют одну
-схему, поэтому при одновременной установке macOS может выбрать любое из них.
+Windows и Linux используйте EXE/winget/Microsoft Store или DEB: ZIP-пакеты не
+регистрируют схему автоматически. Версия из Mac App Store и OneXraySE
+используют одну схему, поэтому при одновременной установке macOS может выбрать
+любое из них.
 
 ## Загрузка
 

@@ -77,10 +77,10 @@ local key pair, sends only its public key for the first download, and stores
 the pair when the subscription is imported successfully.
 
 Android, iOS, and installed macOS apps register the scheme directly. On
-Windows and Linux, use the EXE/winget or DEB package; ZIP packages do not
-register the scheme automatically. The Mac App Store app and OneXraySE share
-the same scheme, so installing both can make macOS choose either app as the
-handler.
+Windows and Linux, use the EXE/winget/Microsoft Store or DEB package; ZIP
+packages do not register the scheme automatically. The Mac App Store app and
+OneXraySE share the same scheme, so installing both can make macOS choose either
+app as the handler.
 
 ## Download
 
