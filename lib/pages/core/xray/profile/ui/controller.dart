@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/xray/dns_server_dialog.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
@@ -43,13 +44,11 @@ class XrayProfileUIPageState {
   final XrayProfileUISection section;
   final bool loaded;
   final bool saving;
-  final int version;
 
   const XrayProfileUIPageState({
     this.section = XrayProfileUISection.inbounds,
     this.loaded = false,
     this.saving = false,
-    this.version = 0,
   });
 
   factory XrayProfileUIPageState.initial() => const XrayProfileUIPageState();
@@ -58,13 +57,11 @@ class XrayProfileUIPageState {
     XrayProfileUISection? section,
     bool? loaded,
     bool? saving,
-    int? version,
   }) {
     return XrayProfileUIPageState(
       section: section ?? this.section,
       loaded: loaded ?? this.loaded,
       saving: saving ?? this.saving,
-      version: version ?? this.version,
     );
   }
 }
@@ -263,7 +260,7 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
 
   void updateSection(XrayProfileUISection section) {
     if (section != state.section) {
-      emit(state.copyWith(section: section, version: state.version + 1));
+      emit(state.copyWith(section: section));
     }
   }
 
@@ -416,51 +413,9 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
       return;
     }
     final server = servers[index] as Map<String, dynamic>;
-    var address = server['address'] as String? ?? '';
-    var port = server['port']?.toString() ?? '';
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final l10n = AppLocalizations.of(dialogContext)!;
-        return AlertDialog(
-          title: Text(l10n.dnsPageServers),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                initialValue: address,
-                onChanged: (value) => address = value,
-                decoration: InputDecoration(
-                  labelText: l10n.dnsServerPageAddress,
-                  hintText: l10n.dnsServerPageAddressExample,
-                ),
-              ),
-              TextFormField(
-                initialValue: port,
-                onChanged: (value) => port = value,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: l10n.dnsServerPagePort,
-                  hintText: l10n.dnsServerPagePortExample,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(l10n.buttonCancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(l10n.buttonSave),
-            ),
-          ],
-        );
-      },
-    );
-    if (accepted == true && context.mounted) {
-      if (!updateDnsServer(index, address, port)) {
+    final edited = await showDnsServerEditDialog(context, server);
+    if (edited != null && context.mounted) {
+      if (!updateDnsServer(index, edited.address, edited.port)) {
         ContextAlert.showToast(
           context,
           AppLocalizations.of(context)!.validationPortInvalid,
@@ -734,7 +689,7 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
 
   void _notifyChanged({bool? loaded}) {
     if (isPageActive) {
-      emit(state.copyWith(loaded: loaded, version: state.version + 1));
+      emit(state.copyWith(loaded: loaded));
     }
   }
 

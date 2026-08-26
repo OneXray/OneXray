@@ -11,13 +11,11 @@ import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_db.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
-import 'package:onexray/service/xray/profile/state_validator.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
 
@@ -79,9 +77,6 @@ final class OneXrayAppLinkImporter {
       link.xrayJson,
       nameOverride: link.name,
     );
-    if (!validateProfileFields(profile).item1) {
-      return null;
-    }
     return profileCompanion(profile);
   }
 
@@ -90,9 +85,6 @@ final class OneXrayAppLinkImporter {
       link.xrayJson,
       nameOverride: link.name,
     );
-    if (!validateMultiNodeOutboundFields(config).item1) {
-      return null;
-    }
     return multiNodeOutboundCompanion(config);
   }
 

@@ -158,17 +158,6 @@ class PingService {
           failedMultiNodeOutboundRows.add(row);
         }
       }
-      if (sources.isEmpty) {
-        if (failedMultiNodeOutboundRows.isNotEmpty) {
-          await db.transaction(() async {
-            for (final row in failedMultiNodeOutboundRows) {
-              await _updateRow(db, row, PingDelayConstants.error);
-            }
-          });
-        }
-        continue;
-      }
-
       final results = await PingBatchRunner.run(sources, pingState);
       await db.transaction(() async {
         for (final row in failedMultiNodeOutboundRows) {

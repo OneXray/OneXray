@@ -22,30 +22,18 @@ import 'package:onexray/service/xray/outbound/state_validator.dart';
 class OutboundUIPageState {
   final OutboundState outboundState;
   final bool loaded;
-  final int version;
 
-  const OutboundUIPageState({
-    required this.outboundState,
-    this.loaded = false,
-    this.version = 0,
-  });
+  const OutboundUIPageState({required this.outboundState, this.loaded = false});
 
   factory OutboundUIPageState.initial() =>
       OutboundUIPageState(outboundState: OutboundState());
 
-  OutboundUIPageState copyWith({
-    OutboundState? outboundState,
-    bool? loaded,
-    int? version,
-  }) {
+  OutboundUIPageState copyWith({OutboundState? outboundState, bool? loaded}) {
     return OutboundUIPageState(
       outboundState: outboundState ?? this.outboundState,
       loaded: loaded ?? this.loaded,
-      version: version ?? this.version,
     );
   }
-
-  OutboundUIPageState bumped() => copyWith(version: version + 1);
 }
 
 class OutboundUIController extends PageCubit<OutboundUIPageState> {
@@ -165,13 +153,7 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
       outboundState.tag = params.fixedTag;
     }
     _initInputs(outboundState);
-    emit(
-      state.copyWith(
-        outboundState: outboundState,
-        loaded: true,
-        version: state.version + 1,
-      ),
-    );
+    emit(state.copyWith(outboundState: outboundState, loaded: true));
   }
 
   void _initInputs(OutboundState outboundState) {
@@ -250,12 +232,12 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
 
   void updateVmessSecurity(VMessSecurity value) {
     state.outboundState.selectVmessSecurity(value);
-    emit(state.bumped());
+    emit(state.copyWith());
   }
 
   void updateShadowsocksMethod(ShadowsocksMethod value) {
     state.outboundState.selectShadowsocksMethod(value);
-    emit(state.bumped());
+    emit(state.copyWith());
   }
 
   void updateNetwork(StreamSettingsNetwork value) {
@@ -266,7 +248,7 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
 
   void updateGrpcMultiMode(bool value) {
     state.outboundState.grpcMultiMode = value;
-    emit(state.bumped());
+    emit(state.copyWith());
   }
 
   void updateSecurity(StreamSettingsSecurity value) {
@@ -349,7 +331,7 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   Map<String, dynamic> _outboundFromInputs() {
     _readInputsIntoState(state.outboundState);
     final outbound = state.outboundState.materialize();
-    emit(state.bumped());
+    emit(state.copyWith());
     return outbound;
   }
 

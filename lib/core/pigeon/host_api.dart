@@ -127,21 +127,6 @@ class AppHostApi {
     return [];
   }
 
-  Future<Map<String, dynamic>> convertShareLinksToXrayJson(
-    String text, {
-    String? ageSecretKey,
-  }) async {
-    try {
-      return await convertShareLinksToXrayJsonStrict(
-        text,
-        ageSecretKey: ageSecretKey,
-      );
-    } catch (error, stackTrace) {
-      _reportUnexpected('convertShareLinksToXrayJson', error, stackTrace);
-    }
-    return <String, dynamic>{};
-  }
-
   Future<Map<String, dynamic>> convertShareLinksToXrayJsonStrict(
     String text, {
     String? ageSecretKey,

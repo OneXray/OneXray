@@ -92,6 +92,31 @@ void main() {
     expect(future['keep'], isTrue);
   });
 
+  test('Profile preserves App-unprojected user outbound Maps', () {
+    final outbound = <String, dynamic>{
+      'name': '  node  ',
+      'tag': 'proxy',
+      'protocol': 'future-protocol',
+      'settings': <dynamic>['core', 'owned', 'shape'],
+      'streamSettings': {
+        'network': 'tcp',
+        'security': 'future-security',
+        'sockopt': {'interface': ' en0 ', 'appUnprojected': true},
+      },
+      'appUnprojected': {
+        'nested': [1, 2],
+      },
+    };
+    final profile = readProfileMapFromText(
+      jsonEncode({
+        'name': 'Profile',
+        'outbounds': [outbound],
+      }),
+    );
+
+    expect(profile['outbounds'], [outbound]);
+  });
+
   test(
     'Profile text reader applies the final name without projecting fields',
     () {

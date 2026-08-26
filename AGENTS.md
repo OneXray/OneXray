@@ -1,6 +1,6 @@
 # Project Overview
 
-OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux. Use [CONTEXT.md](CONTEXT.md) for canonical configuration terminology.
+OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux. Use “Multi-node Outbound（多节点出站）” for a runnable configuration source that groups multiple outbound nodes with its DNS and routing policy; avoid “Full Config”, “Multi Outbounds”, and “多出站配置”.
 
 The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use TUN mode; Proxy mode is an in-memory iOS Debug-only tool.
 

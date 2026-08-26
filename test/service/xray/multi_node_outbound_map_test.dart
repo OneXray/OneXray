@@ -180,6 +180,17 @@ void main() {
         {'protocol': 'vless'},
       ],
       [
+        {
+          'tag': 'proxy',
+          'protocol': 'vless',
+          'settings': {'encryption': 'none'},
+        },
+        {
+          'protocol': 'vless',
+          'settings': {'encryption': 'none'},
+        },
+      ],
+      [
         {'tag': 'same', 'protocol': 'vless'},
         {'tag': 'same', 'protocol': 'vless'},
       ],

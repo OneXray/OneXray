@@ -336,22 +336,9 @@ class XrayRawFix {
     fixEnv(jsonMap);
   }
 
-  static void fixInboundsPort(Map<String, dynamic> jsonMap, XrayPorts ports) {
-    final inbounds = _ensureList(jsonMap, "inbounds");
-    inbounds.removeWhere(_isPingInbound);
-
-    inbounds.add(_pingInbound(ports));
-
-    _fixPingRoutingRule(jsonMap);
-  }
-
   static Map<String, dynamic> _pingInbound(XrayPorts? ports) => ports == null
       ? createPingInboundMap()
       : createPingInboundMap(port: ports.pingPort, auth: ports.pingAuth);
-
-  static bool _isPingInbound(dynamic inbound) {
-    return inbound is Map && inbound["tag"] == RoutingInboundTag.pingIn.name;
-  }
 
   static void _fixPingRoutingRule(
     Map<String, dynamic> jsonMap, {

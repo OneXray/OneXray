@@ -4,7 +4,6 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/multi_node_outbound/controller.dart';
 import 'package:onexray/pages/core/xray/multi_node_outbound/outbounds/view.dart';
 import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
-import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/data_list.dart';
@@ -295,7 +294,7 @@ class XrayMultiNodeOutboundPage extends StatelessWidget {
         title: address,
         subtitle: editable ? port : 'Raw JSON',
         onTap: editable
-            ? () => _editDnsServer(context, controller, index, server)
+            ? () => controller.editDnsServer(context, index)
             : () => controller.editRoot(context, 'dns'),
         trailing: ActionCluster(
           children: [
@@ -312,66 +311,6 @@ class XrayMultiNodeOutboundPage extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _editDnsServer(
-    BuildContext context,
-    XrayMultiNodeOutboundController controller,
-    int index,
-    Map<dynamic, dynamic> server,
-  ) async {
-    var address = server['address'] as String? ?? '';
-    var port = server['port']?.toString() ?? '';
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final l10n = AppLocalizations.of(dialogContext)!;
-        return AlertDialog(
-          title: Text(l10n.dnsPageServers),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                initialValue: address,
-                onChanged: (value) => address = value,
-                decoration: InputDecoration(
-                  labelText: l10n.dnsServerPageAddress,
-                  hintText: l10n.dnsServerPageAddressExample,
-                ),
-              ),
-              TextFormField(
-                initialValue: port,
-                onChanged: (value) => port = value,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: l10n.dnsServerPagePort,
-                  hintText: l10n.dnsServerPagePortExample,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(l10n.buttonCancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(l10n.buttonSave),
-            ),
-          ],
-        );
-      },
-    );
-    if (accepted == true && context.mounted) {
-      final updated = controller.updateDnsServer(index, address, port);
-      if (!updated) {
-        ContextAlert.showToast(
-          context,
-          AppLocalizations.of(context)!.validationPortInvalid,
-        );
-      }
-    }
   }
 
   Widget _routingSection(

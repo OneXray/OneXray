@@ -108,21 +108,12 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
   }
 
   Map<String, dynamic> _localDns(List<String> domain) {
-    late final String address;
-    switch (routing.directSet) {
-      case SimpleCountry.other:
-        address = 'tcp://8.8.8.8';
-        break;
-      case SimpleCountry.cn:
-        address = 'tcp://223.5.5.5';
-        break;
-      case SimpleCountry.ir:
-        address = 'tcp://5.200.200.200';
-        break;
-      case SimpleCountry.ru:
-        address = 'tcp://9.9.9.9';
-        break;
-    }
+    final address = switch (routing.directSet) {
+      SimpleCountry.other => 'tcp://8.8.8.8',
+      SimpleCountry.cn => 'tcp://223.5.5.5',
+      SimpleCountry.ir => 'tcp://5.200.200.200',
+      SimpleCountry.ru => 'tcp://9.9.9.9',
+    };
     return <String, dynamic>{
       'address': address,
       if (domain.isNotEmpty) 'domains': domain,
@@ -132,49 +123,29 @@ extension XrayProfileSimpleWriter on XrayProfileSimple {
   }
 
   List<String> get _domain {
-    final domain = <String>[];
-    if (routing.localDirect) {
-      domain.add('geosite:PRIVATE');
-    }
-    if (routing.appleDirect) {
-      domain.add('geosite:APPLE');
-    }
-    switch (routing.directSet) {
-      case SimpleCountry.other:
-        break;
-      case SimpleCountry.cn:
-        domain.add('geosite:CN');
-        break;
-      case SimpleCountry.ir:
-        domain.add('geosite:CATEGORY-IR');
-        break;
-      case SimpleCountry.ru:
-        domain.add('geosite:CATEGORY-RU');
-        break;
-    }
-    return domain;
+    final countryDomain = switch (routing.directSet) {
+      SimpleCountry.other => null,
+      SimpleCountry.cn => 'geosite:CN',
+      SimpleCountry.ir => 'geosite:CATEGORY-IR',
+      SimpleCountry.ru => 'geosite:CATEGORY-RU',
+    };
+    return <String>[
+      if (routing.localDirect) 'geosite:PRIVATE',
+      if (routing.appleDirect) 'geosite:APPLE',
+      ?countryDomain,
+    ];
   }
 
   List<String> get _ip {
-    final ip = <String>[];
-    if (routing.localDirect) {
-      ip.add('geoip:PRIVATE');
-    }
-    if (routing.enableIPRule) {
-      switch (routing.directSet) {
-        case SimpleCountry.other:
-          break;
-        case SimpleCountry.cn:
-          ip.add('geoip:CN');
-          break;
-        case SimpleCountry.ir:
-          ip.add('geoip:IR');
-          break;
-        case SimpleCountry.ru:
-          ip.add('geoip:RU');
-          break;
-      }
-    }
-    return ip;
+    final countryIp = switch (routing.directSet) {
+      SimpleCountry.other => null,
+      SimpleCountry.cn => 'geoip:CN',
+      SimpleCountry.ir => 'geoip:IR',
+      SimpleCountry.ru => 'geoip:RU',
+    };
+    return <String>[
+      if (routing.localDirect) 'geoip:PRIVATE',
+      if (routing.enableIPRule && countryIp != null) countryIp,
+    ];
   }
 }

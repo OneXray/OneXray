@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/xray/dns_server_dialog.dart';
 import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
@@ -28,13 +29,11 @@ class XrayMultiNodeOutboundPageState {
   final XrayMultiNodeOutboundSection section;
   final bool loaded;
   final bool saving;
-  final int version;
 
   const XrayMultiNodeOutboundPageState({
     this.section = XrayMultiNodeOutboundSection.outbounds,
     this.loaded = false,
     this.saving = false,
-    this.version = 0,
   });
 
   factory XrayMultiNodeOutboundPageState.initial() =>
@@ -44,13 +43,11 @@ class XrayMultiNodeOutboundPageState {
     XrayMultiNodeOutboundSection? section,
     bool? loaded,
     bool? saving,
-    int? version,
   }) {
     return XrayMultiNodeOutboundPageState(
       section: section ?? this.section,
       loaded: loaded ?? this.loaded,
       saving: saving ?? this.saving,
-      version: version ?? this.version,
     );
   }
 }
@@ -194,7 +191,7 @@ class XrayMultiNodeOutboundController
 
   void updateSection(XrayMultiNodeOutboundSection section) {
     if (section != state.section) {
-      emit(state.copyWith(section: section, version: state.version + 1));
+      emit(state.copyWith(section: section));
     }
   }
 
@@ -714,6 +711,25 @@ class XrayMultiNodeOutboundController
     updateDnsServer(null, _defaultDnsServerAddress, '');
   }
 
+  Future<void> editDnsServer(BuildContext context, int index) async {
+    final servers = dnsServers;
+    if (index < 0 ||
+        index >= servers.length ||
+        !isEditableDnsServer(servers[index])) {
+      return;
+    }
+    final server = servers[index] as Map<String, dynamic>;
+    final edited = await showDnsServerEditDialog(context, server);
+    if (edited != null && context.mounted) {
+      if (!updateDnsServer(index, edited.address, edited.port)) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.validationPortInvalid,
+        );
+      }
+    }
+  }
+
   void deleteDnsServer(int index) {
     final next = copyXrayConfigMap(_draft);
     final servers = _ensureDnsServers(next);
@@ -861,7 +877,7 @@ class XrayMultiNodeOutboundController
 
   void _notifyChanged({bool? loaded}) {
     if (isPageActive) {
-      emit(state.copyWith(loaded: loaded, version: state.version + 1));
+      emit(state.copyWith(loaded: loaded));
     }
   }
 

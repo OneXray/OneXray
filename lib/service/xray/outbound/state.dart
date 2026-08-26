@@ -77,32 +77,14 @@ class OutboundState {
   var networkFieldsProjectable = false;
   var securityFieldsProjectable = false;
 
-  XrayOutboundProtocol? get protocol => switch (protocolName) {
-    'vless' => XrayOutboundProtocol.vless,
-    'vmess' => XrayOutboundProtocol.vmess,
-    'shadowsocks' => XrayOutboundProtocol.shadowsocks,
-    'trojan' => XrayOutboundProtocol.trojan,
-    'socks' => XrayOutboundProtocol.socks,
-    'hysteria' => XrayOutboundProtocol.hysteria,
-    _ => null,
-  };
+  XrayOutboundProtocol? get protocol =>
+      outboundProtocols.asNameMap()[protocolName];
 
-  StreamSettingsNetwork? get network => switch (networkName) {
-    'raw' => StreamSettingsNetwork.raw,
-    'ws' => StreamSettingsNetwork.ws,
-    'grpc' => StreamSettingsNetwork.grpc,
-    'httpupgrade' => StreamSettingsNetwork.httpupgrade,
-    'xhttp' => StreamSettingsNetwork.xhttp,
-    'hysteria' => StreamSettingsNetwork.hysteria,
-    _ => null,
-  };
+  StreamSettingsNetwork? get network =>
+      StreamSettingsNetwork.values.asNameMap()[networkName];
 
-  StreamSettingsSecurity? get security => switch (securityName) {
-    'none' => StreamSettingsSecurity.none,
-    'tls' => StreamSettingsSecurity.tls,
-    'reality' => StreamSettingsSecurity.reality,
-    _ => null,
-  };
+  StreamSettingsSecurity? get security =>
+      StreamSettingsSecurity.values.asNameMap()[securityName];
 
   VMessSecurity? get vmessSecurity =>
       VMessSecurity.fromString(vmessSecurityName);
