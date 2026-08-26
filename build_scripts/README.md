@@ -26,7 +26,7 @@ do not clone or pin those repositories for a local build.
 
 ### Prerequisites
 
-- Python 3.12 or newer with `pyyaml`, `requests`, and `typer`.
+- Python 3.12 or newer and `uv`. The scripts use only the Python standard library.
 - Flutter, Dart, and Go available on `PATH`.
 - A toolchain for the target operating system. Apple targets require macOS,
   Xcode, CocoaPods, and Fastlane; Android requires a JDK, Android SDK/NDK, and
@@ -36,10 +36,11 @@ do not clone or pin those repositories for a local build.
 - A positive integer in the `BUILD_NUMBER` environment variable. It is added to
   the configured `build_number.base` (currently `400`).
 
-Install the shared Python and desktop packaging dependencies when needed:
+Create the Python environment with `uv`. Fastforge is only needed for Linux
+packaging:
 
 ```bash
-python3 -m pip install pyyaml requests typer
+uv sync --project build_scripts
 dart pub global activate fastforge
 ```
 
@@ -54,18 +55,18 @@ Run the entry point from the OneXray repository root:
 
 ```bash
 export BUILD_NUMBER=1
-python3 build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
 Windows PowerShell:
 
 ```powershell
 $env:BUILD_NUMBER = "1"
-python build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
-Use `python3 build_scripts/main.py --help` (or `python` on Windows) to display
-the CLI syntax.
+Use `uv run --project build_scripts python build_scripts/main.py --help` to
+display the CLI syntax.
 
 ### Supported systems
 
@@ -119,7 +120,7 @@ workspace/
 
 ### 前置条件
 
-- Python 3.12 或更高版本，并安装 `pyyaml`、`requests` 和 `typer`。
+- Python 3.12 或更高版本，并安装 `uv`。脚本仅使用 Python 标准库。
 - `PATH` 中可以找到 Flutter、Dart 和 Go。
 - 安装目标系统所需的工具链。Apple 平台需要 macOS、Xcode、CocoaPods 和
   Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Linux 打包需要
@@ -128,10 +129,10 @@ workspace/
 - 设置正整数环境变量 `BUILD_NUMBER`。脚本会将它加到配置中的
   `build_number.base`（当前为 `400`）上。
 
-按需安装通用 Python 依赖和桌面打包工具：
+使用 `uv` 创建 Python 环境。只有 Linux 打包需要 Fastforge：
 
 ```bash
-python3 -m pip install pyyaml requests typer
+uv sync --project build_scripts
 dart pub global activate fastforge
 ```
 
@@ -145,18 +146,18 @@ dart pub global activate fastforge
 
 ```bash
 export BUILD_NUMBER=1
-python3 build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
 Windows PowerShell：
 
 ```powershell
 $env:BUILD_NUMBER = "1"
-python build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
-可以运行 `python3 build_scripts/main.py --help` 查看命令格式；Windows 使用
-`python`。
+可以运行 `uv run --project build_scripts python build_scripts/main.py --help`
+查看命令格式。
 
 ### 支持的系统
 
@@ -209,7 +210,7 @@ workspace/
 
 ### Требования
 
-- Python 3.12 или новее с пакетами `pyyaml`, `requests` и `typer`.
+- Python 3.12 или новее и `uv`. Скрипты используют только стандартную библиотеку Python.
 - Flutter, Dart и Go, доступные через `PATH`.
 - Инструменты для целевой системы. Для Apple требуются macOS, Xcode, CocoaPods
   и Fastlane; для Android — JDK, Android SDK/NDK и Fastlane; для упаковки под
@@ -219,10 +220,11 @@ workspace/
 - Положительное целое число в переменной окружения `BUILD_NUMBER`. Оно
   прибавляется к параметру `build_number.base` (сейчас `400`).
 
-При необходимости установите общие зависимости Python и инструмент упаковки:
+Создайте среду Python с помощью `uv`. Fastforge требуется только для упаковки
+Linux:
 
 ```bash
-python3 -m pip install pyyaml requests typer
+uv sync --project build_scripts
 dart pub global activate fastforge
 ```
 
@@ -237,18 +239,18 @@ dart pub global activate fastforge
 
 ```bash
 export BUILD_NUMBER=1
-python3 build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
 Windows PowerShell:
 
 ```powershell
 $env:BUILD_NUMBER = "1"
-python build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
-Команда `python3 build_scripts/main.py --help` выводит синтаксис CLI; в Windows
-используйте `python`.
+Команда `uv run --project build_scripts python build_scripts/main.py --help`
+выводит синтаксис CLI.
 
 ### Поддерживаемые системы
 

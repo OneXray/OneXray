@@ -1,4 +1,3 @@
-import os
 import re
 from pathlib import Path
 
@@ -6,22 +5,6 @@ from app.builder import Builder
 
 
 class LinuxBuilder(Builder):
-    def __init__(
-        self,
-        project: str,
-        system: str,
-        build_scripts_dir: str,
-    ):
-        super().__init__(project, system, build_scripts_dir)
-        self.version = ""
-
-    def build(self):
-        self.before_build()
-
-        self.build_app()
-
-        self.after_build()
-
     def before_build(self):
         super().before_build()
         self.build_core()
@@ -62,7 +45,6 @@ class LinuxBuilder(Builder):
 
     def after_build(self):
         super().after_build()
-
         for file_type in (".zip", ".deb"):
             file_name = self.find_file(file_type)
             if file_name:

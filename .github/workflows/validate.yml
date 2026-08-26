@@ -18,6 +18,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+          check-latest: true
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Test build scripts
+        working-directory: build_scripts
+        run: uv run python -m unittest discover -s tests -p 'test_*.py'
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
 

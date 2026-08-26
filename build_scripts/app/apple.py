@@ -1,37 +1,22 @@
-import os
-
 from app.builder import Builder
 from app.command_line import run_command
 
 
 class AppleBuilder(Builder):
-    def __init__(self, project: str, system: str, build_scripts_dir: str):
-        super().__init__(project, system, build_scripts_dir)
-        self.package_suffix = "ios"
-
-    def build(self):
-        self.before_build()
-
-        self.build_app()
-
-        self.after_build()
-
     def before_build(self):
         super().before_build()
-
         self.build_core()
-
         self.update_build_number()
-
         self.update_pod()
 
     def update_build_number(self):
-        os.chdir(self.project_dir)
-        run_command(["xcrun", "agvtool", "new-version", "-all", str(self.build_number)])
+        run_command(
+            ["xcrun", "agvtool", "new-version", "-all", str(self.build_number)],
+            cwd=self.project_dir,
+        )
 
     def update_pod(self):
-        run_command(["pod", "repo", "update"])
+        run_command(["pod", "repo", "update"], cwd=self.project_dir)
 
     def build_app(self):
-        os.chdir(self.project_dir)
-        run_command(["fastlane", self.fastlane, "--verbose"])
+        run_command(["fastlane", self.fastlane, "--verbose"], cwd=self.project_dir)

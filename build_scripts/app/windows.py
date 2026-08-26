@@ -40,17 +40,9 @@ class WindowsBuilder(Builder):
     def _wintun_architecture(self) -> str:
         return "amd64" if self.target_architecture == "x64" else "arm64"
 
-    def build(self):
-        self.before_build()
-
-        self.build_app()
-
-        self.after_build()
-
     def before_build(self):
         super().before_build()
         self.build_core()
-
         self.download_win_tun()
 
     def download_win_tun(self):
@@ -93,7 +85,8 @@ class WindowsBuilder(Builder):
                 self.output_dir,
                 "--output-name",
                 f"{self.project}-{self.package_suffix}",
-            ]
+            ],
+            cwd=self.root_dir,
         )
 
     def msix_version(self) -> str:

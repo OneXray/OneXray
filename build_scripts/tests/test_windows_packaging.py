@@ -23,6 +23,7 @@ class WindowsPackagingTest(unittest.TestCase):
 
         self.builder = WindowsBuilder.__new__(WindowsBuilder)
         self.builder.project = "OneXray"
+        self.builder.root_dir = self.temp_dir.name
         self.builder.project_dir = self.project_dir
         self.builder.output_dir = os.path.join(self.temp_dir.name, "output")
         self.builder.package_suffix = "windows-amd64"
@@ -61,7 +62,8 @@ class WindowsPackagingTest(unittest.TestCase):
                 self.builder.output_dir,
                 "--output-name",
                 "OneXray-windows-amd64",
-            ]
+            ],
+            cwd=self.builder.root_dir,
         )
 
     def test_arm64_msix_uses_arm64_architecture(self):

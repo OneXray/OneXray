@@ -1,14 +1,10 @@
 [project]
 name = "build"
 version = "0.1.0"
-description = ""
+description = "OneXray build automation"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "pyyaml>=6.0.3",
-    "requests>=2.34.2",
-    "typer>=0.24.2",
-]
+dependencies = []
 
 [tool.uv]
 package = false

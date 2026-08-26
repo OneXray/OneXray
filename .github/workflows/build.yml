@@ -145,11 +145,10 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore App Store Connect API key
         env:
@@ -171,7 +170,7 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-        run: python3 build_scripts/main.py OneXray ios
+        run: uv run --project build_scripts python build_scripts/main.py OneXray ios
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -222,11 +221,10 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore App Store Connect API key
         env:
@@ -258,7 +256,7 @@ jobs:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
           FASTLANE_MAS_INSTALLER_CERT: ${{ secrets.FASTLANE_MAS_INSTALLER_CERT }}
-        run: python3 build_scripts/main.py OneXray macos
+        run: uv run --project build_scripts python build_scripts/main.py OneXray macos
 
   # =================================================================
   # macOS SE (Developer ID) — universal binary, Developer ID signed
@@ -303,11 +301,10 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore App Store Connect API key
         env:
@@ -329,7 +326,7 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-        run: python3 build_scripts/main.py OneXray macos_se
+        run: uv run --project build_scripts python build_scripts/main.py OneXray macos_se
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -380,6 +377,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
 
@@ -390,9 +389,6 @@ jobs:
         with:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: true
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Play Store service account
         env:
@@ -419,7 +415,7 @@ jobs:
         run: sudo gem install fastlane --no-document
 
       - name: Build & upload
-        run: python3 build_scripts/main.py OneXray android
+        run: uv run --project build_scripts python build_scripts/main.py OneXray android
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -484,11 +480,10 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Install LLVM-MinGW for Windows ARM64
         if: matrix.arch == 'arm64'
@@ -544,7 +539,7 @@ jobs:
           }
 
       - name: Build
-        run: python build_scripts/main.py OneXray windows
+        run: uv run --project build_scripts python build_scripts/main.py OneXray windows
 
       - name: Verify core CLI
         run: ./windows/app/OneXrayCore.exe -h
@@ -607,6 +602,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
 
@@ -619,16 +616,13 @@ jobs:
             libayatana-appindicator3-dev \
             file lintian
 
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
-
       - name: Install fastforge
         run: |
           dart pub global activate fastforge
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
       - name: Build
-        run: python3 build_scripts/main.py OneXray linux
+        run: uv run --project build_scripts python build_scripts/main.py OneXray linux
 
       - name: Verify Debian package
         run: |
