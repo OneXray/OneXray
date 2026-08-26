@@ -13,8 +13,6 @@ const xrayConfigRootNames = <String>{
   'fakeDns',
   'observatory',
   'burstObservatory',
-  'version',
-  'geodata',
 };
 
 const multiNodeOutboundRootNames = <String>{

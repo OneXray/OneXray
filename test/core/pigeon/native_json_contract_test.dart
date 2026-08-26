@@ -1,8 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/model/tun_json.dart';
-import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/service/xray/raw/fix.dart';
 
 void main() {
   test('TUN and start request JSON fields match the native contract', () {
@@ -66,17 +67,11 @@ void main() {
   });
 
   test('runtime env JSON exposes only the native-supported keys', () {
-    final env = XrayEnv(
-      assetLocation: '/tmp/dat',
-      certLocation: '/tmp/cert',
-      tunFd: '3',
-    );
+    final jsonMap = <String, dynamic>{};
+    XrayRawFix.fixEnv(jsonMap);
+    final env = jsonMap['env'] as Map<String, dynamic>;
 
-    expect(env.toJson().keys.toSet(), {
-      'xray.location.asset',
-      'xray.location.cert',
-      'xray.tun.fd',
-    });
+    expect(env.keys.toSet(), {'xray.location.asset', 'xray.location.cert'});
   });
 
   test('runXray request uses the v2 in-memory JSON contract', () {

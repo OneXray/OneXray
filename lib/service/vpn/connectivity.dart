@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:duration/duration.dart';
 import 'package:duration/locale.dart';
 import 'package:onexray/core/constants/preferences.dart';
-import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';

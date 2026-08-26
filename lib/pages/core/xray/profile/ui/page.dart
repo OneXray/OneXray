@@ -9,7 +9,6 @@ import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/profile/log_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class XrayProfileUIPage extends StatelessWidget {

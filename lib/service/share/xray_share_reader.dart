@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -34,11 +33,11 @@ class XrayShareReader {
 
   @visibleForTesting
   Future<List<CoreConfigCompanion>> readXrayJsonOutbounds(
-    XrayJson xrayJson,
+    Map<String, dynamic> xrayJson,
   ) async {
     final res = <CoreConfigCompanion>[];
-    final outbounds = xrayJson.outbounds;
-    if (outbounds == null) {
+    final outbounds = xrayJson['outbounds'];
+    if (outbounds is! List<dynamic>) {
       return res;
     }
 
@@ -46,7 +45,11 @@ class XrayShareReader {
       if (index > 0 && index % 64 == 0) {
         await Future<void>.delayed(Duration.zero);
       }
-      final outbound = copyOutboundMap(outbounds[index]);
+      final value = outbounds[index];
+      if (value is! Map<String, dynamic>) {
+        continue;
+      }
+      final outbound = copyOutboundMap(value);
       try {
         requireCanonicalOutbound(outbound);
         final name = outboundDisplayName(outbound, useSendThrough: true);

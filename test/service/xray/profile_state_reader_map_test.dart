@@ -7,6 +7,7 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/config_map.dart';
+import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
@@ -139,8 +140,8 @@ void main() {
         },
       },
       'stats': {'future': true},
-      'geodata': {
-        'loader': 'standard',
+      'observatory': {
+        'probeInterval': '30s',
         'future': {'keep': true},
       },
     };
@@ -176,6 +177,8 @@ void main() {
         {'name': ''},
         {'name': '  '},
         {'name': 'Profile', 'api': <String, dynamic>{}},
+        {'name': 'Profile', 'version': <String, dynamic>{}},
+        {'name': 'Profile', 'geodata': <String, dynamic>{}},
         {
           'name': 'Profile',
           'outbounds': ['not-an-object'],
@@ -232,22 +235,6 @@ void main() {
     expect(source, snapshot);
   });
 
-  test('default GeoData updates the bundled assets every 24 hours', () {
-    expect(defaultProfileGeodata(), {
-      'cron': '@every 24h',
-      'assets': [
-        {
-          'url': 'https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat',
-          'file': 'geosite.dat',
-        },
-        {
-          'url': 'https://github.com/v2fly/geoip/releases/latest/download/geoip.dat',
-          'file': 'geoip.dat',
-        },
-      ],
-    });
-  });
-
   test('new Profile Map uses the requested default DNS server', () {
     final first = newProfileMap('9.9.9.9');
     final second = newProfileMap('9.9.9.9');
@@ -271,7 +258,28 @@ void main() {
     });
     expect(second, isNot(contains('metrics')));
     expect(second, isNot(contains('stats')));
-    expect(second['geodata'], defaultProfileGeodata());
+    expect(second, isNot(contains('version')));
+    expect(second, isNot(contains('geodata')));
+    expect(second['fakeDns'], [
+      {'ipPool': '198.18.0.0/15', 'poolSize': 32768},
+    ]);
+    final routing = second['routing'] as Map<String, dynamic>;
+    final rules = (routing['rules'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    expect(rules.map((rule) => rule['ruleTag']), <String>[
+      RoutingRuleTag.dnsQuery,
+      RoutingRuleTag.dnsOut,
+      RoutingRuleTag.dnsDoT,
+      RoutingRuleTag.ping,
+    ]);
+    final outbounds = (second['outbounds'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    expect(outbounds.map((outbound) => outbound['tag']), <String>[
+      RoutingOutboundTag.direct.name,
+      RoutingOutboundTag.fragment.name,
+      RoutingOutboundTag.block.name,
+      RoutingOutboundTag.dnsOut.name,
+    ]);
     expect(() => validateXrayConfigMap(second), returnsNormally);
   });
 
@@ -283,7 +291,8 @@ void main() {
       final profile = await loadSelectedProfileMap(tunSettings);
 
       expect(profile['name'], XrayProfileSimple.simpleName);
-      expect(profile['geodata'], defaultProfileGeodata());
+      expect(profile, isNot(contains('version')));
+      expect(profile, isNot(contains('geodata')));
       expect(() => validateXrayConfigMap(profile), returnsNormally);
       final dns = profile['dns'] as Map<String, dynamic>;
       final servers = dns['servers'] as List<dynamic>;

@@ -15,7 +15,6 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/profile/log_state.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
 import 'package:onexray/service/xray/profile/state_validator.dart';
@@ -36,8 +35,6 @@ const xrayProfileAdvancedRoots = <String>[
   'stats',
   'observatory',
   'burstObservatory',
-  'version',
-  'geodata',
 ];
 
 const xrayProfileReadOnlyRoots = <String>{'metrics', 'stats'};

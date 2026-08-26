@@ -39,8 +39,6 @@ void main() {
       ],
       'observatory': <String, dynamic>{},
       'burstObservatory': <String, dynamic>{},
-      'version': <String, dynamic>{},
-      'geodata': {'loader': 'standard'},
     };
 
     final decoded = decodeXrayConfigMap(encodeXrayConfigMap(source));
@@ -58,7 +56,15 @@ void main() {
 
   test('config validation rejects unsupported roots and invalid shapes', () {
     expect(() => decodeXrayConfigMap('[]'), throwsFormatException);
-    for (final root in ['env', 'api', 'transport', 'reverse', 'typo']) {
+    for (final root in [
+      'env',
+      'api',
+      'transport',
+      'reverse',
+      'version',
+      'geodata',
+      'typo',
+    ]) {
       expect(
         () => decodeXrayConfigMap(JsonTool.encoder.convert({root: null})),
         throwsFormatException,

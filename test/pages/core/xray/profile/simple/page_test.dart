@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/simple/page.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -15,7 +14,7 @@ void main() {
         InMemorySharedPreferencesAsync.empty();
   });
 
-  testWidgets('Simple Profile shows the fixed GeoData update interval', (
+  testWidgets('Simple Profile does not expose Version or GeoData', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -34,12 +33,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('GeoData'), findsOneWidget);
-    final intervalFinder = find.widgetWithText(SettingRow, 'Interval');
-    final interval = tester.widget<SettingRow>(intervalFinder);
-    expect(interval.value, 'One day');
-    expect(interval.onTap, isNull);
-    expect(find.textContaining('geosite.dat'), findsNothing);
-    expect(find.textContaining('geoip.dat'), findsNothing);
+    expect(find.text('Version'), findsNothing);
+    expect(find.text('GeoData'), findsNothing);
+    expect(find.text('Interval'), findsNothing);
   });
 }

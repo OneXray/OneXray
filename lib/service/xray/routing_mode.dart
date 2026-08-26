@@ -1,5 +1,4 @@
 import 'package:onexray/core/model/core_routing_mode.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 
@@ -38,44 +37,6 @@ abstract final class XrayRoutingModeFix {
     jsonMap.remove('dns');
     jsonMap.remove('routing');
     return true;
-  }
-
-  static bool applyToXrayJson(XrayJson xrayJson, CoreRoutingMode mode) {
-    switch (mode) {
-      case CoreRoutingMode.rule:
-        return true;
-      case CoreRoutingMode.global:
-        final copiedOutbounds = _copyOutbounds(xrayJson.outbounds);
-        if (copiedOutbounds == null) {
-          return false;
-        }
-        final outbounds = _globalOutbounds(copiedOutbounds);
-        if (outbounds == null) {
-          return false;
-        }
-        xrayJson.dns = null;
-        xrayJson.routing = null;
-        xrayJson.outbounds = outbounds;
-        return true;
-      case CoreRoutingMode.direct:
-        final outbounds = _copyOutbounds(xrayJson.outbounds);
-        if (outbounds == null) {
-          return false;
-        }
-        final direct = _outboundByTag(
-          outbounds,
-          RoutingOutboundTag.direct.name,
-        );
-        if (direct == null) {
-          return false;
-        }
-        removeOutboundDialerProxy(direct);
-        removeOutboundProxyTag(direct);
-        xrayJson.dns = null;
-        xrayJson.routing = null;
-        xrayJson.outbounds = <Map<String, dynamic>>[direct];
-        return true;
-    }
   }
 
   static bool applyGlobalToRawJson(Map<String, dynamic> jsonMap) {

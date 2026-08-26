@@ -113,6 +113,8 @@ void main() {
     expect(find.text('{"listen":"127.0.0.1:0"}'), findsOneWidget);
     expect(find.text('stats'), findsOneWidget);
     expect(find.text('{}'), findsOneWidget);
+    expect(find.text('Edit version JSON'), findsNothing);
+    expect(find.text('Edit geodata JSON'), findsNothing);
   });
 }
 

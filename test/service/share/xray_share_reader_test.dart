@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
 
 void main() {
@@ -40,9 +39,7 @@ void main() {
   ]
 }
 ''') as Map<String, dynamic>;
-      final xrayJson = XrayJson.fromJson(json);
-
-      final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
+      final rows = await XrayShareReader().readXrayJsonOutbounds(json);
 
       expect(rows, hasLength(3));
       expect(
@@ -90,9 +87,7 @@ void main() {
   ]
 }
 ''') as Map<String, dynamic>;
-    final xrayJson = XrayJson.fromJson(json);
-
-    final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
+    final rows = await XrayShareReader().readXrayJsonOutbounds(json);
 
     expect(rows, hasLength(1));
     expect(rows.single.name.value, 'Canonical');
@@ -125,16 +120,14 @@ void main() {
   ]
 }
 ''') as Map<String, dynamic>;
-    final xrayJson = XrayJson.fromJson(json);
-
-    final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
+    final rows = await XrayShareReader().readXrayJsonOutbounds(json);
 
     expect(rows, hasLength(1));
     expect(rows.single.name.value, 'Canonical');
   });
 
   test('moves libXray share name metadata into the App name field', () async {
-    final xrayJson = XrayJson.fromJson({
+    final xrayJson = <String, dynamic>{
       'outbounds': [
         {
           'protocol': 'vless',
@@ -147,7 +140,7 @@ void main() {
           },
         },
       ],
-    });
+    };
 
     final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
 

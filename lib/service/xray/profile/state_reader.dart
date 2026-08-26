@@ -4,29 +4,14 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/geo_data/system_state.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/config_map.dart';
-import 'package:onexray/service/xray/profile/dns_server_state.dart';
+import 'package:onexray/service/xray/profile/map.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/service/xray/profile/simple_state_writer.dart';
-import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
 
 const defaultProfileMetrics = <String, dynamic>{'listen': '127.0.0.1:0'};
 const defaultProfileStats = <String, dynamic>{};
-const defaultProfileGeodataCron = '@every 24h';
-
-Map<String, dynamic> defaultProfileGeodata() => <String, dynamic>{
-  'cron': defaultProfileGeodataCron,
-  'assets': <dynamic>[
-    <String, dynamic>{
-      'url': SystemGeoDatURL.geoSite.name,
-      'file': 'geosite.dat',
-    },
-    <String, dynamic>{'url': SystemGeoDatURL.geoIp.name, 'file': 'geoip.dat'},
-  ],
-};
 
 Map<String, dynamic> readProfileMapFromDbData(CoreConfigData setting) {
   if (!EmptyTool.checkString(setting.data)) {
@@ -64,9 +49,7 @@ String profileName(Map<String, dynamic> profile) {
 }
 
 Map<String, dynamic> newProfileMap(String defaultDnsServerAddress) {
-  final profile = XrayProfileState();
-  profile.dns.servers = [DnsServerState()..address = defaultDnsServerAddress];
-  final map = profile.xrayJson.toJson();
+  final map = createBaseProfileMap(dnsServerAddress: defaultDnsServerAddress);
   map['policy'] = <String, dynamic>{
     'system': <String, dynamic>{
       'statsInboundUplink': true,
@@ -75,7 +58,6 @@ Map<String, dynamic> newProfileMap(String defaultDnsServerAddress) {
       'statsOutboundDownlink': true,
     },
   };
-  map['geodata'] = defaultProfileGeodata();
   return copyXrayConfigMap(map);
 }
 
@@ -101,8 +83,5 @@ Future<Map<String, dynamic>> _loadSimpleProfileMap(
 ) async {
   final simple = XrayProfileSimple();
   await simple.readFromPreferences();
-  final profile = simple.xrayProfileState(tunSettings.tunDnsIPv4);
-  final map = profile.xrayJson.toJson();
-  map['geodata'] = defaultProfileGeodata();
-  return copyXrayConfigMap(map);
+  return copyXrayConfigMap(simple.xrayProfileMap(tunSettings.tunDnsIPv4));
 }

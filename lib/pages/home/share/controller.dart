@@ -24,7 +24,6 @@ import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/raw/db.dart';
-import 'package:onexray/core/model/xray_standard.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:zxing2/qrcode.dart';
@@ -221,9 +220,11 @@ class ShareController extends PageCubit<SharePageState> {
     requireCanonicalOutbound(outboundMap);
     final name = outboundDisplayName(outboundMap, fallback: outbound.name);
     final exportMap = copyOutboundMap(outboundMap)..['sendThrough'] = name;
-    final xrayJson = XrayJsonStandard.standard;
-    xrayJson.outbounds = [exportMap];
-    final url = await AppHostApi().convertXrayJsonToShareLinks(xrayJson);
+    final url = await AppHostApi().convertXrayJsonToShareLinks(
+      <String, dynamic>{
+        'outbounds': <dynamic>[exportMap],
+      },
+    );
     if (url.trim().isEmpty) {
       _finishLinkError();
       return;

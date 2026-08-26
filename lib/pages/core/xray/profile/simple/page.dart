@@ -31,7 +31,6 @@ class XrayProfileSimplePage extends StatelessWidget {
                         secondFlex: 6,
                         first: [
                           _logSection(context, controller, state),
-                          _geoDataSection(context),
                           _finalOutboundSection(context, controller, state),
                         ],
                         second: [
@@ -46,20 +45,6 @@ class XrayProfileSimplePage extends StatelessWidget {
               );
             },
           ),
-    );
-  }
-
-  Widget _geoDataSection(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return SettingSection(
-      title: l10n.autoUpdatePageGeoData,
-      children: [
-        SettingRow(
-          leading: const Icon(LucideIcons.refreshCw),
-          title: l10n.autoUpdatePageInterval,
-          value: l10n.autoUpdatePageIntervalOneDay,
-        ),
-      ],
     );
   }
 

@@ -1,4 +1,3 @@
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/constants.dart';
@@ -11,8 +10,6 @@ import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
-import 'package:onexray/service/xray/profile/log_state.dart';
-import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
 class XrayRawFix {
@@ -68,12 +65,9 @@ class XrayRawFix {
     final shouldDisableLog =
         disableLog ?? await AppHostApi().useSystemExtension();
 
-    final runtimeInbounds = InboundsState();
-    runtimeInbounds.ping.port = ports.pingPort;
-    runtimeInbounds.ping.auth = ports.pingAuth;
     fixEnv(jsonMap);
     _fixDnsQueryStrategy(jsonMap, tunSettingsState);
-    _applyProfileRuntimeInbounds(jsonMap, runtimeInbounds, mode);
+    _applyProfileRuntimeInbounds(jsonMap, _pingInbound(ports), mode);
     _fixPingRoutingRule(jsonMap, rejectConflicts: true);
     fixLog(jsonMap, disableLog: shouldDisableLog);
     if (metricsEnabled) {
@@ -106,9 +100,6 @@ class XrayRawFix {
     final shouldDisableLog =
         disableLog ?? await AppHostApi().useSystemExtension();
 
-    final runtimeInbounds = InboundsState();
-    runtimeInbounds.ping.port = ports.pingPort;
-    runtimeInbounds.ping.auth = ports.pingAuth;
     final profileCopy = copyXrayConfigMap(profileMap);
     if (mode == CoreRunMode.tun) {
       jsonMap['inbounds'] = profileCopy['inbounds'];
@@ -117,7 +108,7 @@ class XrayRawFix {
     }
     fixEnv(jsonMap);
     _fixDnsQueryStrategy(jsonMap, tunSettingsState);
-    _applyProfileRuntimeInbounds(jsonMap, runtimeInbounds, mode);
+    _applyProfileRuntimeInbounds(jsonMap, _pingInbound(ports), mode);
     _fixPingRoutingRule(jsonMap);
     fixLog(jsonMap, disableLog: shouldDisableLog);
     fixMetrics(jsonMap, metricsEnabled ? ports.metricsPort : null);
@@ -138,10 +129,10 @@ class XrayRawFix {
   }
 
   static void fixEnv(Map<String, dynamic> jsonMap) {
-    jsonMap["env"] = XrayEnv(
-      assetLocation: VpnConstants.datDir,
-      certLocation: VpnConstants.datDir,
-    ).toJson();
+    jsonMap['env'] = <String, dynamic>{
+      'xray.location.asset': VpnConstants.datDir,
+      'xray.location.cert': VpnConstants.datDir,
+    };
   }
 
   static void _fixDnsQueryStrategy(
@@ -168,7 +159,7 @@ class XrayRawFix {
 
   static void _applyProfileRuntimeInbounds(
     Map<String, dynamic> jsonMap,
-    InboundsState settingInbounds,
+    Map<String, dynamic> ping,
     CoreRunMode mode,
   ) {
     final existing = jsonMap['inbounds'];
@@ -184,7 +175,6 @@ class XrayRawFix {
       XrayInboundProtocol.http.name,
     );
 
-    final ping = settingInbounds.ping.xrayJson.toJson();
     final result = <dynamic>[
       ...inbounds.where(
         (inbound) =>
@@ -206,7 +196,7 @@ class XrayRawFix {
         break;
       }
     }
-    final generatedTun = settingInbounds.tun.xrayJson.toJson();
+    final generatedTun = createTunInboundMap();
     final tun = existingTun == null
         ? generatedTun
         : _mergeRuntimeTun(existingTun, generatedTun);
@@ -332,12 +322,16 @@ class XrayRawFix {
     Map<String, dynamic> jsonMap, {
     XrayPorts? ports,
   }) {
-    jsonMap["inbounds"] = [_pingInbound(ports).toJson()];
+    jsonMap['inbounds'] = <dynamic>[_pingInbound(ports)];
     _fixPingRoutingRule(jsonMap);
   }
 
   static void prepareProfileValidationConfig(Map<String, dynamic> jsonMap) {
-    _applyProfileRuntimeInbounds(jsonMap, InboundsState(), CoreRunMode.tun);
+    _applyProfileRuntimeInbounds(
+      jsonMap,
+      createPingInboundMap(),
+      CoreRunMode.tun,
+    );
     _fixPingRoutingRule(jsonMap, rejectConflicts: true);
     fixEnv(jsonMap);
   }
@@ -346,19 +340,14 @@ class XrayRawFix {
     final inbounds = _ensureList(jsonMap, "inbounds");
     inbounds.removeWhere(_isPingInbound);
 
-    inbounds.add(_pingInbound(ports).toJson());
+    inbounds.add(_pingInbound(ports));
 
     _fixPingRoutingRule(jsonMap);
   }
 
-  static XrayInbound _pingInbound(XrayPorts? ports) {
-    final pingInbound = InboundPingState();
-    if (ports != null) {
-      pingInbound.port = ports.pingPort;
-      pingInbound.auth = ports.pingAuth;
-    }
-    return pingInbound.xrayJson;
-  }
+  static Map<String, dynamic> _pingInbound(XrayPorts? ports) => ports == null
+      ? createPingInboundMap()
+      : createPingInboundMap(port: ports.pingPort, auth: ports.pingAuth);
 
   static bool _isPingInbound(dynamic inbound) {
     return inbound is Map && inbound["tag"] == RoutingInboundTag.pingIn.name;

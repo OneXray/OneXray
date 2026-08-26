@@ -1,8 +1,6 @@
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows_ffi_api.dart';
-import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/invoke_limits.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -129,7 +127,7 @@ class AppHostApi {
     return [];
   }
 
-  Future<XrayJson> convertShareLinksToXrayJson(
+  Future<Map<String, dynamic>> convertShareLinksToXrayJson(
     String text, {
     String? ageSecretKey,
   }) async {
@@ -141,10 +139,10 @@ class AppHostApi {
     } catch (error, stackTrace) {
       _reportUnexpected('convertShareLinksToXrayJson', error, stackTrace);
     }
-    return XrayJsonStandard.standard;
+    return <String, dynamic>{};
   }
 
-  Future<XrayJson> convertShareLinksToXrayJsonStrict(
+  Future<Map<String, dynamic>> convertShareLinksToXrayJsonStrict(
     String text, {
     String? ageSecretKey,
   }) async {
@@ -160,7 +158,7 @@ class AppHostApi {
     );
     final resp = LibXrayInvokeResponseParser.parse(res);
     if (resp.success && resp.data != null) {
-      return XrayJson.fromJson(resp.data!);
+      return resp.data!;
     }
     throw LibXrayInvokeException(resp.error);
   }
@@ -185,9 +183,11 @@ class AppHostApi {
     throw LibXrayInvokeException(resp.error);
   }
 
-  Future<String> convertXrayJsonToShareLinks(XrayJson xrayJson) async {
+  Future<String> convertXrayJsonToShareLinks(
+    Map<String, dynamic> xrayJson,
+  ) async {
     try {
-      final xrayJsonText = JsonTool.encoder.convert(xrayJson.toJson());
+      final xrayJsonText = JsonTool.encoder.convert(xrayJson);
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.convertXrayJsonToShareLinks,

@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/network/constants.dart';
 
-export 'package:onexray/core/model/xray_json.dart' show XrayInboundAccount;
+export 'package:onexray/core/model/xray_inbound_account.dart'
+    show XrayInboundAccount;
 
 extension XrayInboundAccountNetwork on XrayInboundAccount {
   bool get isValid => user?.isNotEmpty == true && pass?.isNotEmpty == true;

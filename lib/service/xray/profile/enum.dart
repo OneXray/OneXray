@@ -13,14 +13,6 @@ enum XrayInboundProtocol {
 
   @override
   String toString() => name;
-
-  static XrayInboundProtocol? fromString(String name) => XrayInboundProtocol
-      .values
-      .firstWhereOrNull((value) => value.name == name);
-
-  static List<String> get names {
-    return XrayInboundProtocol.values.map((e) => e.name).toList();
-  }
 }
 
 enum RoutingDomainStrategy {
@@ -66,13 +58,6 @@ enum RoutingOutboundTag {
 
   @override
   String toString() => name;
-
-  static RoutingOutboundTag? fromString(String name) =>
-      RoutingOutboundTag.values.firstWhereOrNull((value) => value.name == name);
-
-  static List<String> get names {
-    return RoutingOutboundTag.values.map((e) => e.name).toList();
-  }
 }
 
 enum RoutingInboundTag {
@@ -85,58 +70,48 @@ enum RoutingInboundTag {
 
   @override
   String toString() => name;
+}
 
-  static RoutingInboundTag? fromString(String name) =>
-      RoutingInboundTag.values.firstWhereOrNull((value) => value.name == name);
+enum XrayLogLevel {
+  debug("debug"),
+  info("info"),
+  warning("warning"),
+  error("error"),
+  none("none");
+
+  const XrayLogLevel(this.name);
+
+  final String name;
+
+  @override
+  String toString() => name;
+
+  static XrayLogLevel? fromString(String name) =>
+      XrayLogLevel.values.firstWhereOrNull((value) => value.name == name);
 
   static List<String> get names {
-    return RoutingInboundTag.values.map((e) => e.name).toList();
-  }
-
-  static List<String> get userVisibleNames {
-    return [RoutingInboundTag.tunIn.name];
+    return XrayLogLevel.values.map((e) => e.name).toList();
   }
 }
 
-enum DnsNetwork {
+enum XrayLogMaskAddress {
   none(""),
-  tcp("tcp"),
-  udp("udp");
+  quarter("quarter"),
+  half("half"),
+  full("full");
 
-  const DnsNetwork(this.name);
-
-  final String name;
-
-  @override
-  String toString() => name;
-
-  static DnsNetwork? fromString(String name) =>
-      DnsNetwork.values.firstWhereOrNull((value) => value.name == name);
-
-  static List<String> get names {
-    return DnsNetwork.values.map((e) => e.name).toList();
-  }
-}
-
-enum DnsOutboundRuleAction {
-  direct("direct"),
-  drop("drop"),
-  returnAction("return"),
-  hijack("hijack");
-
-  const DnsOutboundRuleAction(this.name);
+  const XrayLogMaskAddress(this.name);
 
   final String name;
 
   @override
   String toString() => name;
 
-  static DnsOutboundRuleAction? fromString(String name) => DnsOutboundRuleAction
-      .values
-      .firstWhereOrNull((value) => value.name == name);
+  static XrayLogMaskAddress? fromString(String name) =>
+      XrayLogMaskAddress.values.firstWhereOrNull((value) => value.name == name);
 
   static List<String> get names {
-    return DnsOutboundRuleAction.values.map((e) => e.name).toList();
+    return XrayLogMaskAddress.values.map((e) => e.name).toList();
   }
 }
 
@@ -151,13 +126,6 @@ enum DnsQueryStrategy {
 
   @override
   String toString() => name;
-
-  static DnsQueryStrategy? fromString(String name) =>
-      DnsQueryStrategy.values.firstWhereOrNull((value) => value.name == name);
-
-  static List<String> get names {
-    return DnsQueryStrategy.values.map((e) => e.name).toList();
-  }
 
   static DnsQueryStrategy fromTunSettings(TunSettingsState tunSettings) {
     return tunSettings.enableIPv6

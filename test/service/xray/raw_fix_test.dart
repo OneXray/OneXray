@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
@@ -109,8 +109,6 @@ void main() {
         'stats': <String, dynamic>{'user': true},
         'metrics': <String, dynamic>{'listen': '127.0.0.1:1000'},
         'observatory': <String, dynamic>{'subjectSelector': <dynamic>[]},
-        'version': <String, dynamic>{'min': ' keep  spaces '},
-        'geodata': <String, dynamic>{'loader': 'standard'},
         'inbounds': <dynamic>[
           <String, dynamic>{
             'tag': 'tunIn',
@@ -164,8 +162,6 @@ void main() {
       expect(jsonMap['stats'], <String, dynamic>{'user': true});
       expect(jsonMap['metrics'], <String, dynamic>{'listen': '127.0.0.1:1000'});
       expect(jsonMap['observatory'], isNotNull);
-      expect(jsonMap['version'], source['version']);
-      expect(jsonMap['geodata'], source['geodata']);
       expect(jsonMap['env'], isNotNull);
       final inbounds = jsonMap['inbounds']! as List<dynamic>;
       expect(inbounds.map((inbound) => (inbound as Map)['tag']), <String>[
