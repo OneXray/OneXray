@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
@@ -74,35 +74,40 @@ void main() {
     }
   });
 
-  test(
-    'non-canonical security fails through profile and full config readers',
-    () {
-      for (final tag in ['proxy', 'chainProxy']) {
-        final xrayJson = XrayJson.fromJson(
-          jsonDecode(_vmessJson('none', tag: tag)),
-        );
+  test('non-canonical security fails through profile and multi-node outbound readers', () {
+    for (final tag in ['proxy', 'chainProxy']) {
+      final xrayJson = XrayJson.fromJson(
+        jsonDecode(_vmessJson('none', tag: tag)),
+      );
 
-        expect(XrayProfileState().readFromXrayJson(xrayJson), isFalse);
-        expect(XrayFullConfigState().readFromXrayJson(xrayJson), isFalse);
-      }
+      expect(XrayProfileState().readFromXrayJson(xrayJson), isFalse);
+      final multiNodeOutbound = <String, dynamic>{
+        'name': 'Multi-node Outbound',
+        ...jsonDecode(_vmessJson('none', tag: tag)),
+      };
+      expect(validateMultiNodeOutboundFields(multiNodeOutbound).item1, isFalse);
+    }
+  });
+
+  test(
+    'profile and multi-node outbound preserve an App-unprojected sibling',
+    () {
+      final json = jsonDecode(_vmessJson('auto'));
+      final outbound = (json['outbounds'] as List<dynamic>).single;
+      final settings = outbound['settings'] as Map<String, dynamic>;
+      settings['address'] = 123;
+      final xrayJson = XrayJson.fromJson(json);
+
+      final profile = XrayProfileState();
+      expect(profile.readFromXrayJson(xrayJson), isTrue);
+      expect(profile.outbounds.outbounds, [outbound]);
+
+      final multiNodeOutbound = readMultiNodeOutboundFromText(
+        jsonEncode(<String, dynamic>{'name': 'Multi-node Outbound', ...json}),
+      );
+      expect(multiNodeOutbound['outbounds'], [outbound]);
     },
   );
-
-  test('profile and full config preserve an App-unprojected sibling', () {
-    final json = jsonDecode(_vmessJson('auto'));
-    final outbound = (json['outbounds'] as List<dynamic>).single;
-    final settings = outbound['settings'] as Map<String, dynamic>;
-    settings['address'] = 123;
-    final xrayJson = XrayJson.fromJson(json);
-
-    final profile = XrayProfileState();
-    expect(profile.readFromXrayJson(xrayJson), isTrue);
-    expect(profile.outbounds.outbounds, [outbound]);
-
-    final fullConfig = XrayFullConfigState();
-    expect(fullConfig.readFromXrayJson(xrayJson), isTrue);
-    expect(fullConfig.outbounds.outbounds, [outbound]);
-  });
 }
 
 String _vmessJson(String? security, {String tag = 'proxy'}) => jsonEncode({

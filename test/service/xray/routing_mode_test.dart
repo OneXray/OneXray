@@ -215,6 +215,10 @@ void main() {
           'appUnprojectedStream': 4,
         },
         'mux': <String, dynamic>{'enabled': true, 'appUnprojectedMux': 5},
+        'proxySettings': <String, dynamic>{
+          'tag': RoutingOutboundTag.fragment.name,
+          'transportLayer': true,
+        },
         'appUnprojectedRoot': 6,
       });
     final originalDirect = _snapshotMap(direct);
@@ -224,6 +228,9 @@ void main() {
     final expectedSockopt =
         expectedStreamSettings['sockopt']! as Map<String, dynamic>;
     expectedSockopt.remove('dialerProxy');
+    final expectedProxySettings =
+        expectedDirect['proxySettings']! as Map<String, dynamic>;
+    expectedProxySettings.remove('tag');
 
     expect(
       XrayRoutingModeFix.applyToXrayJson(xray, CoreRoutingMode.direct),
@@ -242,6 +249,7 @@ void main() {
     );
     expect(direct, originalDirect);
     expect(_dialerProxy(direct), RoutingOutboundTag.fragment.name);
+    expect(_proxyTag(direct), RoutingOutboundTag.fragment.name);
   });
 
   test('Global Raw JSON preserves App-unprojected siblings on copies', () {
@@ -303,6 +311,128 @@ void main() {
       ((raw['inbounds']! as List<dynamic>).single
           as Map<String, dynamic>)['port'],
       1080,
+    );
+  });
+
+  test('Multi-node Outbound global mode keeps every outbound', () {
+    final proxy = _newOutbound(
+      RoutingOutboundTag.proxy.name,
+      protocol: 'vless',
+    );
+    _setDialerProxy(proxy, 'custom');
+    final originalProxy = _snapshotMap(proxy);
+    final raw = <String, dynamic>{
+      'dns': <String, dynamic>{},
+      'routing': <String, dynamic>{},
+      'outbounds': <dynamic>[
+        _newOutbound(RoutingOutboundTag.direct.name, protocol: 'freedom'),
+        proxy,
+        _newOutbound(RoutingOutboundTag.block.name, protocol: 'blackhole'),
+        _newOutbound('custom', protocol: 'socks'),
+      ],
+    };
+
+    expect(
+      XrayRoutingModeFix.applyToRawJson(raw, CoreRoutingMode.global),
+      true,
+    );
+
+    final outbounds = raw['outbounds']! as List<Map<String, dynamic>>;
+    expect(outbounds.map(_tag), <String?>[
+      RoutingOutboundTag.proxy.name,
+      RoutingOutboundTag.direct.name,
+      RoutingOutboundTag.block.name,
+      'custom',
+    ]);
+    expect(raw.containsKey('dns'), false);
+    expect(raw.containsKey('routing'), false);
+    expect(proxy, originalProxy);
+    expect(identical(outbounds.first, proxy), false);
+  });
+
+  test('Multi-node Outbound direct mode clears only the direct chain', () {
+    final direct = _newOutbound(
+      RoutingOutboundTag.direct.name,
+      protocol: 'freedom',
+    );
+    _setDialerProxy(direct, RoutingOutboundTag.fragment.name);
+    _setProxyTag(direct, RoutingOutboundTag.fragment.name);
+    final raw = <String, dynamic>{
+      'outbounds': <dynamic>[
+        _newOutbound(RoutingOutboundTag.proxy.name, protocol: 'vless'),
+        direct,
+        _newOutbound(RoutingOutboundTag.block.name, protocol: 'blackhole'),
+      ],
+    };
+
+    expect(
+      XrayRoutingModeFix.applyToRawJson(raw, CoreRoutingMode.direct),
+      true,
+    );
+
+    final outbounds = raw['outbounds']! as List<Map<String, dynamic>>;
+    expect(outbounds.map(_tag), <String?>[
+      RoutingOutboundTag.direct.name,
+      RoutingOutboundTag.proxy.name,
+      RoutingOutboundTag.block.name,
+    ]);
+    expect(_dialerProxy(outbounds.first), isNull);
+    expect(_proxyTag(outbounds.first), isNull);
+    expect(_dialerProxy(direct), RoutingOutboundTag.fragment.name);
+    expect(_proxyTag(direct), RoutingOutboundTag.fragment.name);
+  });
+
+  test('Multi-node Outbound rejects a missing proxySettings dependency', () {
+    final proxy = _newOutbound(
+      RoutingOutboundTag.proxy.name,
+      protocol: 'vless',
+    );
+    _setProxyTag(proxy, 'missing');
+    final raw = <String, dynamic>{
+      'outbounds': <dynamic>[
+        proxy,
+        _newOutbound(RoutingOutboundTag.direct.name, protocol: 'freedom'),
+      ],
+    };
+    final original = _snapshot(raw);
+
+    expect(
+      XrayRoutingModeFix.applyToRawJson(raw, CoreRoutingMode.global),
+      false,
+    );
+    expect(raw, original);
+  });
+
+  test('Multi-node Outbound rejects conflicting dependency mechanisms', () {
+    final proxy = _newOutbound(
+      RoutingOutboundTag.proxy.name,
+      protocol: 'vless',
+    );
+    _setDialerProxy(proxy, 'chain');
+    _setProxyTag(proxy, 'chain');
+    final raw = <String, dynamic>{
+      'outbounds': <dynamic>[proxy, _newOutbound('chain', protocol: 'socks')],
+    };
+    final original = _snapshot(raw);
+
+    expect(
+      XrayRoutingModeFix.applyToRawJson(raw, CoreRoutingMode.global),
+      false,
+    );
+    expect(raw, original);
+  });
+
+  test('Multi-node Outbound routing modes reject duplicate tags', () {
+    final raw = <String, dynamic>{
+      'outbounds': <dynamic>[
+        _newOutbound(RoutingOutboundTag.proxy.name, protocol: 'vless'),
+        _newOutbound(RoutingOutboundTag.proxy.name, protocol: 'vless'),
+      ],
+    };
+
+    expect(
+      XrayRoutingModeFix.applyToRawJson(raw, CoreRoutingMode.global),
+      false,
     );
   });
 
@@ -389,6 +519,13 @@ void _setDialerProxy(Map<String, dynamic> outbound, String tag) {
   outbound['streamSettings'] = streamSettings;
 }
 
+void _setProxyTag(Map<String, dynamic> outbound, String tag) {
+  outbound['proxySettings'] = <String, dynamic>{
+    'tag': tag,
+    'transportLayer': true,
+  };
+}
+
 List<String?> _outboundTags(XrayJson xray) {
   return xray.outbounds!.map(_tag).toList();
 }
@@ -409,6 +546,15 @@ String? _dialerProxy(Map<String, dynamic> outbound) {
   }
   final dialerProxy = sockopt['dialerProxy'];
   return dialerProxy is String ? dialerProxy : null;
+}
+
+String? _proxyTag(Map<String, dynamic> outbound) {
+  final proxySettings = outbound['proxySettings'];
+  if (proxySettings is! Map<String, dynamic>) {
+    return null;
+  }
+  final tag = proxySettings['tag'];
+  return tag is String ? tag : null;
 }
 
 Map<String, dynamic> _snapshotMap(Map<String, dynamic> value) {

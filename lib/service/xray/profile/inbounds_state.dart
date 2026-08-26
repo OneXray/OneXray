@@ -339,6 +339,7 @@ class XrayPorts {
       final ports = await AppHostApi().getFreePorts(2);
       final availablePorts = ports
           .where((port) => !excludedPorts.contains(port))
+          .toSet()
           .toList();
       if (availablePorts.length == 2) {
         return XrayPorts(

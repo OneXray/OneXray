@@ -1,8 +1,8 @@
 # Project Overview
 
-OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux.
+OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux. Use [CONTEXT.md](CONTEXT.md) for canonical configuration terminology.
 
-The app manages nodes, subscriptions, Xray Profiles, Full Configs, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use TUN mode; Proxy mode is an in-memory iOS Debug-only tool.
+The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use TUN mode; Proxy mode is an in-memory iOS Debug-only tool.
 
 # Repository Layout
 
@@ -35,7 +35,7 @@ The app manages nodes, subscriptions, Xray Profiles, Full Configs, Raw Json conf
 
 After a node is selected on Home, `VpnService` reads the selected node, selected Xray Profile, and TUN Settings. Production builds and non-iOS platforms always resolve the runtime mode to TUN. iOS Debug builds may select Proxy mode for development, and that selection is not persisted.
 
-When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Full Config, the Full Config overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but its user-defined inbounds are ignored. Runtime inbounds always come from the selected Xray Profile: TUN mode writes `tunIn`, Profile-owned additional SOCKS / HTTP / dokodemo-door inbounds, and `pingIn`; the iOS Debug-only Proxy mode writes only `pingIn`. Additional inbound routing is always user-authored; the runtime does not generate routing rules for dokodemo-door.
+When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Multi-node Outbound, it overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but its user-defined inbounds are ignored. Runtime inbounds always come from the selected Xray Profile: TUN mode writes `tunIn`, Profile-owned additional SOCKS / HTTP / dokodemo-door inbounds, and `pingIn`; the iOS Debug-only Proxy mode writes only `pingIn`. Additional inbound routing is always user-authored; the runtime does not generate routing rules for dokodemo-door.
 
 After the final runtime Xray JSON is written, TUN mode enters the platform VPN / TUN startup path. On iOS Debug builds only, Proxy mode starts local Xray core without the platform VPN; only the internal `pingIn` inbound is App-managed.
 

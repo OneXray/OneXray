@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/constants.dart';
@@ -12,9 +11,8 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/ping/batch.dart';
 import 'package:onexray/service/ping/state.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
-import 'package:onexray/service/xray/full_config/state_writer.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 
@@ -139,7 +137,7 @@ class PingService {
     final type = CoreConfigType.fromString(row.type);
     return type == CoreConfigType.outbound ||
         type == CoreConfigType.raw ||
-        type == CoreConfigType.full;
+        type == CoreConfigType.multiNodeOutbound;
   }
 
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
@@ -148,20 +146,34 @@ class PingService {
 
     for (final rowSlice in rows.slices(PingBatchRunner.maxBatchSize)) {
       final batchRows = <CoreConfigData>[];
+      final failedMultiNodeOutboundRows = <CoreConfigData>[];
       final sources = <PingBatchSource>[];
       for (final row in rowSlice) {
         final source = _makePingSource(row);
         if (source != null) {
           batchRows.add(row);
           sources.add(source);
+        } else if (CoreConfigType.fromString(row.type) ==
+            CoreConfigType.multiNodeOutbound) {
+          failedMultiNodeOutboundRows.add(row);
         }
       }
       if (sources.isEmpty) {
+        if (failedMultiNodeOutboundRows.isNotEmpty) {
+          await db.transaction(() async {
+            for (final row in failedMultiNodeOutboundRows) {
+              await _updateRow(db, row, PingDelayConstants.error);
+            }
+          });
+        }
         continue;
       }
 
       final results = await PingBatchRunner.run(sources, pingState);
       await db.transaction(() async {
+        for (final row in failedMultiNodeOutboundRows) {
+          await _updateRow(db, row, PingDelayConstants.error);
+        }
         for (var index = 0; index < results.length; index++) {
           await _updateRow(db, batchRows[index], results[index].delay);
         }
@@ -183,14 +195,12 @@ class PingService {
         case CoreConfigType.raw:
           final bytes = base64Decode(row.data!);
           return PingBatchSource(utf8.decode(bytes));
-        case CoreConfigType.full:
-          final state = XrayFullConfigState();
-          if (!state.readFromDbData(row)) {
+        case CoreConfigType.multiNodeOutbound:
+          final multiNodeOutbound = readMultiNodeOutboundFromDbData(row);
+          if (!validateMultiNodeOutboundFields(multiNodeOutbound).item1) {
             return null;
           }
-          return PingBatchSource(
-            JsonTool.encoder.convert(state.xrayJson.toJson()),
-          );
+          return PingBatchSource(encodeMultiNodeOutboundMap(multiNodeOutbound));
         default:
           return null;
       }

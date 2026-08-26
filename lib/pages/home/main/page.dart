@@ -165,8 +165,8 @@ class HomeAddMenuButton extends StatelessWidget {
               icon: LucideIcons.server,
             ),
             AppMenuEntry<HomeAddMenuAction>.item(
-              value: HomeAddMenuAction.manualFull,
-              title: localizations.homeManualInputFullConfig,
+              value: HomeAddMenuAction.manualMultiNodeOutbound,
+              title: localizations.homeManualInputMultiNodeOutbound,
               icon: LucideIcons.slidersHorizontal,
             ),
             AppMenuEntry<HomeAddMenuAction>.item(

@@ -43,7 +43,8 @@ enum AppSecondaryDestination {
   selectedApp("selected-app"),
   installedApp("installed-app"),
   xray("xray"),
-  xrayFullConfig("xray-full-config"),
+  // Legacy route segment retained for navigation compatibility.
+  xrayMultiNodeOutbound("xray-full-config"),
   xrayProfileSimple("xray-profile-simple"),
   xrayProfileUI("xray-profile-ui"),
   dnsHosts("dns-hosts"),

@@ -21,9 +21,8 @@ import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/service/share/app_link_share_service.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
-import 'package:onexray/service/xray/full_config/state_writer.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/core/model/xray_standard.dart';
 import 'package:path/path.dart' as p;
@@ -139,8 +138,23 @@ class ShareController extends PageCubit<SharePageState> {
     if (configId != DBConstants.defaultId) {
       final config = await db.coreConfigDao.searchRow(configId);
       if (config != null) {
-        _finishAppLink(await _appLinkShareService.config(config), config.name);
         final type = CoreConfigType.fromString(config.type);
+        Map<String, dynamic>? multiNodeOutbound;
+        if (type == CoreConfigType.multiNodeOutbound) {
+          try {
+            multiNodeOutbound = readMultiNodeOutboundFromDbData(config);
+            if (!validateMultiNodeOutboundFields(multiNodeOutbound).item1) {
+              throw const FormatException('Invalid Multi-node Outbound');
+            }
+          } catch (error, stackTrace) {
+            ygLogger(
+              'generate Multi-node Outbound share failed: $error\n$stackTrace',
+            );
+            _finishLinkError();
+            return;
+          }
+        }
+        _finishAppLink(await _appLinkShareService.config(config), config.name);
         switch (type) {
           case CoreConfigType.outbound:
             try {
@@ -156,12 +170,8 @@ class ShareController extends PageCubit<SharePageState> {
             final text = XrayRawDb.readFromDbData(config);
             await _finishJsonExport(text, config.name);
             break;
-          case CoreConfigType.full:
-            final state = XrayFullConfigState();
-            if (!state.readFromDbData(config)) {
-              return;
-            }
-            final text = JsonTool.encoder.convert(state.xrayJson.toJson());
+          case CoreConfigType.multiNodeOutbound:
+            final text = encodeMultiNodeOutboundMap(multiNodeOutbound!);
             await _finishJsonExport(text, config.name);
             break;
           case CoreConfigType.profile:

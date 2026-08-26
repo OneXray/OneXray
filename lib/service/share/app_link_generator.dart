@@ -16,7 +16,8 @@ abstract final class OneXrayAppLinkGenerator {
     final type = switch (CoreConfigType.fromString(config.type)) {
       CoreConfigType.outbound => OneXrayConfigLinkType.outbound,
       CoreConfigType.profile => OneXrayConfigLinkType.profile,
-      CoreConfigType.full => OneXrayConfigLinkType.full,
+      CoreConfigType.multiNodeOutbound =>
+        OneXrayConfigLinkType.multiNodeOutbound,
       CoreConfigType.raw => OneXrayConfigLinkType.raw,
       null => null,
     };
@@ -30,7 +31,7 @@ abstract final class OneXrayAppLinkGenerator {
         scheme: OneXrayAppLinkParser.scheme,
         host: OneXrayAppLinkParser.host,
         path: OneXrayAppLinkParser.configPath,
-        queryParameters: {'type': type.name, 'data': data},
+        queryParameters: {'type': type.wireName, 'data': data},
         fragment: config.name,
       ),
     );

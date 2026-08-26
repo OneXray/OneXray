@@ -15,10 +15,10 @@ void main() {
     for (final entry in const <CoreConfigType, OneXrayConfigLinkType>{
       CoreConfigType.outbound: OneXrayConfigLinkType.outbound,
       CoreConfigType.profile: OneXrayConfigLinkType.profile,
-      CoreConfigType.full: OneXrayConfigLinkType.full,
+      CoreConfigType.multiNodeOutbound: OneXrayConfigLinkType.multiNodeOutbound,
       CoreConfigType.raw: OneXrayConfigLinkType.raw,
     }.entries) {
-      test('generates and parses ${entry.value.name}', () {
+      test('generates and parses ${entry.value.wireName}', () {
         const xrayJson = '{"name":"Example"}';
         final uri = OneXrayAppLinkGenerator.config(
           _config(
@@ -28,12 +28,24 @@ void main() {
         );
 
         expect(uri, isNotNull);
-        final link = OneXrayAppLinkParser.parse(uri!)! as OneXrayConfigLink;
+        final generatedUri = uri!;
+        expect(generatedUri.queryParameters['type'], entry.value.wireName);
+        final link =
+            OneXrayAppLinkParser.parse(generatedUri)! as OneXrayConfigLink;
         expect(link.type, entry.value);
         expect(link.xrayJson, xrayJson);
         expect(link.name, 'Shared Config');
       });
     }
+
+    test('keeps Multi-node Outbound legacy wire values', () {
+      expect(CoreConfigType.multiNodeOutbound.name, 'full');
+      expect(
+        CoreConfigType.fromString('full'),
+        CoreConfigType.multiNodeOutbound,
+      );
+      expect(OneXrayConfigLinkType.multiNodeOutbound.wireName, 'full');
+    });
 
     test('rejects unsupported types and invalid data', () {
       expect(

@@ -9,10 +9,9 @@ import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_db.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
-import 'package:onexray/service/xray/full_config/state_validator.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_db.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
@@ -58,7 +57,7 @@ final class OneXrayAppLinkImporter {
       return switch (link.type) {
         OneXrayConfigLinkType.outbound => _readOutbound(link),
         OneXrayConfigLinkType.profile => _readProfile(link),
-        OneXrayConfigLinkType.full => _readFullConfig(link),
+        OneXrayConfigLinkType.multiNodeOutbound => _readMultiNodeOutbound(link),
         OneXrayConfigLinkType.raw => _readRawConfig(link),
       };
     } catch (error, stackTrace) {
@@ -91,18 +90,15 @@ final class OneXrayAppLinkImporter {
     return state.configCompanion();
   }
 
-  CoreConfigCompanion? _readFullConfig(OneXrayConfigLink link) {
-    final state = XrayFullConfigState();
-    if (!state.readFromText(link.xrayJson)) {
+  CoreConfigCompanion? _readMultiNodeOutbound(OneXrayConfigLink link) {
+    final config = readMultiNodeOutboundFromText(
+      link.xrayJson,
+      nameOverride: link.name,
+    );
+    if (!validateMultiNodeOutboundFields(config).item1) {
       return null;
     }
-    if (link.name.isNotEmpty) {
-      state.name = link.name;
-    }
-    if (!state.validateFields().item1) {
-      return null;
-    }
-    return state.configCompanion();
+    return multiNodeOutboundCompanion(config);
   }
 
   CoreConfigCompanion? _readRawConfig(OneXrayConfigLink link) {

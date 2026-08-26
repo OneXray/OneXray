@@ -1,10 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
-import 'package:onexray/service/xray/full_config/state_validator.dart';
-import 'package:onexray/service/xray/full_config/state_writer.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
@@ -17,7 +14,7 @@ void main() {
   setUpAll(() => eventBus = AppEventBus());
   tearDownAll(() => eventBus.close());
 
-  test('Profile and Full preserve App-unprojected user outbound Maps', () {
+  test('Profile preserves App-unprojected user outbound Maps', () {
     final outbound = <String, dynamic>{
       'name': '  node  ',
       'tag': 'proxy',
@@ -41,11 +38,6 @@ void main() {
     profile.removeWhitespace();
     expect(profile.outbounds.outbounds, [outbound]);
     expect(profile.xrayJson.outbounds!.first, outbound);
-
-    final full = XrayFullConfigState();
-    expect(full.readFromXrayJson(xrayJson), isTrue);
-    expect(full.validateFields().item1, isTrue);
-    expect(full.xrayJson.outbounds!.first, outbound);
   });
 
   test('System Outbounds stay typed and final patches use a Map copy', () {
@@ -93,68 +85,44 @@ void main() {
     expect(outboundDialerProxy(profile.outbounds.finalOutbound!), 'upstream');
   });
 
-  test('Full reader canonical failure is atomic', () {
-    final existing = <String, dynamic>{
-      'tag': 'proxy',
-      'protocol': 'vless',
-      'settings': {'encryption': 'none'},
-    };
-    final full = XrayFullConfigState()
-      ..name = 'existing'
-      ..outbounds.outbounds.add(copyOutboundMap(existing));
-    final replacement = <String, dynamic>{
-      'tag': 'proxy',
-      'protocol': 'future-protocol',
-    };
-    final invalid = <String, dynamic>{
-      'tag': 'custom',
-      'protocol': 'vmess',
-      'settings': {'security': 'none'},
-    };
-
-    expect(
-      full.readFromXrayJson(
-        XrayJson.fromJson({
-          'name': 'replacement',
-          'outbounds': [replacement, invalid],
-        }),
-      ),
-      isFalse,
-    );
-
-    expect(full.name, 'existing');
-    expect(full.outbounds.outbounds, [existing]);
-  });
-
-  test('Profile and Full reject non-canonical Maps before writing', () {
-    final invalid = <String, dynamic>{
-      'tag': 'proxy',
-      'protocol': 'shadowsocks',
-      'settings': {'method': 'plain'},
-    };
-    final profile = XrayProfileState()
-      ..outbounds.outbounds.add(copyOutboundMap(invalid));
-    final full = XrayFullConfigState()
-      ..outbounds.outbounds.add(copyOutboundMap(invalid));
-
-    expect(profile.validateFields().item1, isFalse);
-    expect(() => profile.xrayJson, throwsFormatException);
-    expect(full.validateFields().item1, isFalse);
-    expect(() => full.xrayJson, throwsFormatException);
-  });
-
-  test('Full validator rejects a missing custom tag', () {
-    final full = XrayFullConfigState()
-      ..outbounds.outbounds.add({
+  test(
+    'Profile and Multi-node Outbound reject non-canonical Maps before writing',
+    () {
+      final invalid = <String, dynamic>{
         'tag': 'proxy',
-        'protocol': 'vless',
-        'settings': {'encryption': 'none'},
-      })
-      ..outbounds.outbounds.add({
-        'protocol': 'vless',
-        'settings': {'encryption': 'none'},
-      });
+        'protocol': 'shadowsocks',
+        'settings': {'method': 'plain'},
+      };
+      final profile = XrayProfileState()
+        ..outbounds.outbounds.add(copyOutboundMap(invalid));
+      expect(profile.validateFields().item1, isFalse);
+      expect(() => profile.xrayJson, throwsFormatException);
+      expect(
+        validateMultiNodeOutboundFields({
+          'name': 'Multi-node Outbound',
+          'outbounds': [invalid],
+        }).item1,
+        isFalse,
+      );
+    },
+  );
 
-    expect(full.validateFields().item1, isFalse);
+  test('Multi-node Outbound validator rejects a missing custom tag', () {
+    final multiNodeOutbound = <String, dynamic>{
+      'name': 'Multi-node Outbound',
+      'outbounds': [
+        {
+          'tag': 'proxy',
+          'protocol': 'vless',
+          'settings': {'encryption': 'none'},
+        },
+        {
+          'protocol': 'vless',
+          'settings': {'encryption': 'none'},
+        },
+      ],
+    };
+
+    expect(validateMultiNodeOutboundFields(multiNodeOutbound).item1, isFalse);
   });
 }

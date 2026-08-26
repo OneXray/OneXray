@@ -11,7 +11,7 @@ void main() {
     for (final entry in const <String, OneXrayConfigLinkType>{
       'outbound': OneXrayConfigLinkType.outbound,
       'profile': OneXrayConfigLinkType.profile,
-      'full': OneXrayConfigLinkType.full,
+      'full': OneXrayConfigLinkType.multiNodeOutbound,
       'raw': OneXrayConfigLinkType.raw,
     }.entries) {
       test('parses ${entry.key}', () {

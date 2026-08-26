@@ -14,11 +14,10 @@ import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/constants.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
-import 'package:onexray/service/xray/full_config/state_validator.dart';
-import 'package:onexray/service/xray/full_config/state_writer.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
@@ -84,16 +83,31 @@ final class XrayRuntimeConfigService {
     await tunSettings.readFromPreferences();
     final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
 
-    final ports = await XrayPorts.getPorts(
-      excludedPorts: profile.inbounds.additionalPorts,
-    );
+    final materializeMultiNodeOutbound =
+        config != null &&
+        CoreConfigType.fromString(config.type) ==
+            CoreConfigType.multiNodeOutbound;
+    final selectedProfileMap = materializeMultiNodeOutbound
+        ? await loadSelectedProfileMap(tunSettings)
+        : null;
+    final excludedPorts = <int>{...profile.inbounds.additionalPorts};
+    if (materializeMultiNodeOutbound) {
+      excludedPorts.addAll(
+        _runtimeListeningPorts(
+          selectedProfileMap!,
+          includeMetrics: !tunSettings.metricsEnabled,
+        ),
+      );
+    }
+    final ports = await XrayPorts.getPorts(excludedPorts: excludedPorts);
     if (ports == null) {
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnLocalPortFailed,
       );
     }
 
-    final configPath = routingMode == CoreRoutingMode.direct
+    final configPath =
+        routingMode == CoreRoutingMode.direct && !materializeMultiNodeOutbound
         ? await _writeDirect(profile, mode, tunSettings, ports, runDir)
         : await _writeSelectedConfig(
             config,
@@ -103,6 +117,7 @@ final class XrayRuntimeConfigService {
             tunSettings,
             ports,
             runDir,
+            selectedProfileMap,
           );
 
     await _clearXrayLogs();
@@ -127,6 +142,7 @@ final class XrayRuntimeConfigService {
     TunSettingsState tunSettings,
     XrayPorts ports,
     String runDir,
+    Map<String, dynamic>? selectedProfileMap,
   ) async {
     if (config == null) {
       throw XrayRuntimeConfigException(
@@ -152,14 +168,15 @@ final class XrayRuntimeConfigService {
         tunSettings,
         ports,
       ),
-      CoreConfigType.full => _writeFull(
+      CoreConfigType.multiNodeOutbound => _writeMultiNodeOutbound(
         config,
+        selectedProfileMap ??
+            (throw StateError('Multi-node Outbound profile is missing')),
         profile,
         mode,
         routingMode,
         tunSettings,
         ports,
-        runDir,
       ),
       _ => throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnSelectOneConfig,
@@ -290,32 +307,47 @@ final class XrayRuntimeConfigService {
     return file.path;
   }
 
-  Future<String> _writeFull(
+  Future<String> _writeMultiNodeOutbound(
     CoreConfigData config,
+    Map<String, dynamic> profileMap,
     XrayProfileState profile,
     CoreRunMode mode,
     CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
     XrayPorts ports,
-    String runDir,
   ) async {
-    final full = XrayFullConfigState();
+    late final Map<String, dynamic> multiNodeOutbound;
     try {
-      if (!full.readFromDbData(config)) {
-        throw const FormatException('invalid full config data');
-      }
+      multiNodeOutbound = readMultiNodeOutboundFromDbData(config);
     } catch (_) {
       throw XrayRuntimeConfigException(
         appLocalizationsNoContext().vpnOutboundInvalid,
       );
     }
-    final validation = full.validateFields();
+    final validation = validateMultiNodeOutboundFields(multiNodeOutbound);
     if (!validation.item1) {
       throw XrayRuntimeConfigException(validation.item2);
     }
-    full.applyToXrayProfile(profile);
-    final xrayJson = await profile.fixSetting(mode, tunSettings, ports);
-    return _writeTypedConfig(xrayJson, routingMode, runDir);
+    final runtimeMap = applyMultiNodeOutboundOverlay(
+      profileMap,
+      multiNodeOutbound,
+    );
+    await XrayRawFix.fixProfileConfig(
+      runtimeMap,
+      profile,
+      mode,
+      tunSettings,
+      ports,
+      tunSettings.metricsEnabled,
+    );
+    if (!XrayRoutingModeFix.applyToRawJson(runtimeMap, routingMode)) {
+      throw XrayRuntimeConfigException(
+        appLocalizationsNoContext().vpnRoutingModeProxyMissing,
+      );
+    }
+    final file = File(XrayStateConstants.configFilePath);
+    await file.writeAsString(JsonTool.encoder.convert(runtimeMap));
+    return file.path;
   }
 
   Future<String> _writeDirect(
@@ -347,5 +379,65 @@ final class XrayRuntimeConfigService {
       File(XrayStateConstants.accessLogPath).writeAsString(''),
       File(XrayStateConstants.errorLogPath).writeAsString(''),
     ]);
+  }
+}
+
+Set<int> _runtimeListeningPorts(
+  Map<String, dynamic> config, {
+  required bool includeMetrics,
+}) {
+  final ports = <int>{};
+  final inbounds = config['inbounds'];
+  if (inbounds is List<dynamic>) {
+    for (final inbound in inbounds.whereType<Map>()) {
+      _addPortValue(ports, inbound['port']);
+    }
+  }
+  if (includeMetrics) {
+    final metrics = config['metrics'];
+    if (metrics is Map) {
+      final listen = metrics['listen'];
+      if (listen is String) {
+        _addPort(ports, listen.substring(listen.lastIndexOf(':') + 1));
+      }
+    }
+  }
+  return ports;
+}
+
+void _addPortValue(Set<int> ports, dynamic value) {
+  if (value is int) {
+    _addPort(ports, '$value');
+    return;
+  }
+  if (value is! String) {
+    return;
+  }
+  for (final part in value.split(',')) {
+    final bounds = part.trim().split('-');
+    if (bounds.length == 1) {
+      _addPort(ports, bounds.single);
+      continue;
+    }
+    if (bounds.length != 2) {
+      continue;
+    }
+    final start = int.tryParse(bounds.first.trim());
+    final end = int.tryParse(bounds.last.trim());
+    if (start == null || end == null || start > end) {
+      continue;
+    }
+    final firstPort = start < 1 ? 1 : start;
+    final lastPort = end > 65535 ? 65535 : end;
+    for (var port = firstPort; port <= lastPort; port++) {
+      ports.add(port);
+    }
+  }
+}
+
+void _addPort(Set<int> ports, String value) {
+  final port = int.tryParse(value.trim());
+  if (port != null && port > 0 && port <= 65535) {
+    ports.add(port);
   }
 }

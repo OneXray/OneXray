@@ -115,6 +115,20 @@ void removeOutboundDialerProxy(Map<String, dynamic> outbound) {
   }
 }
 
+String? outboundProxyTag(Map<String, dynamic> outbound) {
+  final settings = outbound['proxySettings'];
+  return settings is Map<String, dynamic>
+      ? outboundString(settings, 'tag')
+      : null;
+}
+
+void removeOutboundProxyTag(Map<String, dynamic> outbound) {
+  final settings = outbound['proxySettings'];
+  if (settings is Map<String, dynamic>) {
+    settings.remove('tag');
+  }
+}
+
 void requireCanonicalOutbound(Map<String, dynamic> outbound) {
   final protocol = outboundString(outbound, 'protocol');
   if (protocol != 'vmess' && protocol != 'shadowsocks') {

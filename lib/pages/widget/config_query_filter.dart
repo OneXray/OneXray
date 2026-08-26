@@ -1,5 +1,6 @@
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/db/database/enum.dart';
 
 abstract final class ConfigQueryFilter {
   static List<ConfigQueryRow> filterRows(
@@ -60,9 +61,12 @@ abstract final class ConfigQueryFilter {
   }
 
   static bool _matchesConfig(CoreConfigData config, String keyword) {
+    final type = config.type == CoreConfigType.multiNodeOutbound.name
+        ? 'multi-node outbound multi node outbound 多节点出站 多節點出站'
+        : config.type;
     return _contains(config.name, keyword) ||
         _contains(config.tags, keyword) ||
-        _contains(config.type, keyword);
+        _contains(type, keyword);
   }
 
   static bool _contains(String value, String keyword) {
