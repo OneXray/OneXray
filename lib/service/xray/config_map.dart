@@ -50,7 +50,7 @@ void validateXrayConfigMap(Map<String, dynamic> config) {
       continue;
     }
     if (root == 'name') {
-      if (value is! String || value.isEmpty) {
+      if (value is! String || value.trim().isEmpty) {
         throw const FormatException('name must be a non-empty string');
       }
     } else if (root == 'inbounds' || root == 'outbounds') {
@@ -75,7 +75,7 @@ void validateMultiNodeOutboundMap(Map<String, dynamic> config) {
   }
   validateXrayConfigMap(config);
   final name = config['name'];
-  if (name is! String || name.isEmpty) {
+  if (name is! String || name.trim().isEmpty) {
     throw const FormatException('Multi-node Outbound name is required');
   }
 }

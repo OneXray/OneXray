@@ -72,6 +72,7 @@ void main() {
     }
     for (final config in <Map<String, dynamic>>[
       {'name': ''},
+      {'name': '   '},
       {'inbounds': <String, dynamic>{}},
       {'outbounds': <String, dynamic>{}},
       {'fakeDns': '198.18.0.0/15'},

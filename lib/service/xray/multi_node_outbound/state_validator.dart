@@ -19,7 +19,7 @@ Tuple2<bool, String> validateMultiNodeOutboundFields(
   Map<String, dynamic> config,
 ) {
   final name = config['name'];
-  if (name is! String || name.isEmpty) {
+  if (name is! String || name.trim().isEmpty) {
     return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
   }
   try {

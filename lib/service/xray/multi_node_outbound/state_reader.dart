@@ -35,7 +35,7 @@ String encodeMultiNodeOutboundMap(Map<String, dynamic> config) {
 
 String multiNodeOutboundName(Map<String, dynamic> config) {
   final name = config['name'];
-  if (name is! String || name.isEmpty) {
+  if (name is! String || name.trim().isEmpty) {
     throw const FormatException('Multi-node Outbound name is required');
   }
   return name;

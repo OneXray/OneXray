@@ -120,6 +120,20 @@ void main() {
     expect(config['name'], 'Link Name');
   });
 
+  test('Multi-node Outbound rejects whitespace-only names', () {
+    final config = <String, dynamic>{
+      'name': '   ',
+      'outbounds': [
+        {'tag': 'proxy', 'protocol': 'freedom'},
+      ],
+    };
+
+    expect(validateMultiNodeOutboundFields(config).item1, isFalse);
+    expect(() => validateMultiNodeOutboundMap(config), throwsFormatException);
+    expect(() => multiNodeOutboundName(config), throwsFormatException);
+    expect(() => multiNodeOutboundCompanion(config), throwsFormatException);
+  });
+
   test('Multi-node Outbound field validation requires its own proxy', () {
     expect(
       validateMultiNodeOutboundFields({'name': 'Multi-node Outbound'}).item1,
