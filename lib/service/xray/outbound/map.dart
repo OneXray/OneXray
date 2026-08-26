@@ -3,16 +3,38 @@ import 'dart:convert';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
+import 'package:uuid/uuid.dart';
+
+const _exampleRealityPassword = 'T25lWHJheS1YSFRUUC1leGFtcGxlLWtleS0wMDAwMDA';
 
 Map<String, dynamic> newOutboundMap({
   String name = XrayStateConstants.defaultName,
   String tag = 'proxy',
-}) => {
+}) => <String, dynamic>{
   'name': name,
   'protocol': 'vless',
-  'settings': {'encryption': 'none'},
+  'settings': <String, dynamic>{
+    'address': 'example.com',
+    'port': 443,
+    'id': const Uuid().v4(),
+    'encryption': 'none',
+  },
   'tag': tag,
-  'streamSettings': {'network': 'raw', 'security': 'none'},
+  'streamSettings': <String, dynamic>{
+    'network': 'xhttp',
+    'xhttpSettings': <String, dynamic>{
+      'host': 'example.com',
+      'path': '/xhttp',
+      'mode': 'auto',
+    },
+    'security': 'reality',
+    'realitySettings': <String, dynamic>{
+      'show': false,
+      'fingerprint': 'chrome',
+      'serverName': 'example.com',
+      'password': _exampleRealityPassword,
+    },
+  },
 };
 
 Map<String, dynamic> copyOutboundMap(Map<String, dynamic> outbound) =>

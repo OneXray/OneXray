@@ -344,7 +344,7 @@ void main() {
       final paragraph = tester.renderObject<RenderParagraph>(find.text(name));
       expect(paragraph.didExceedMaxLines, isFalse, reason: name);
     }
-    expect(find.text('vless · raw · custom1'), findsOneWidget);
+    expect(find.text('vless · xhttp · custom1'), findsOneWidget);
     expect(find.byIcon(LucideIcons.pencil), findsNothing);
     expect(find.byIcon(LucideIcons.trash2), findsOneWidget);
 

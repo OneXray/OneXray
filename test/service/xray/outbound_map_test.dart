@@ -3,16 +3,46 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
+import 'package:uuid/uuid.dart';
 
 void main() {
-  test('new outbound contains only the required UI defaults', () {
-    expect(newOutboundMap(tag: 'custom'), {
+  test('new outbound contains a complete VLESS XHTTP example', () {
+    final outbound = newOutboundMap(tag: 'custom');
+    final settings = outbound['settings'] as Map<String, dynamic>;
+    final id = settings.remove('id');
+
+    expect(id, isA<String>());
+    expect(Uuid.isValidUUID(fromString: id as String), isTrue);
+    expect(outbound, {
       'name': 'xray',
       'protocol': 'vless',
-      'settings': {'encryption': 'none'},
+      'settings': {'address': 'example.com', 'port': 443, 'encryption': 'none'},
       'tag': 'custom',
-      'streamSettings': {'network': 'raw', 'security': 'none'},
+      'streamSettings': {
+        'network': 'xhttp',
+        'xhttpSettings': {
+          'host': 'example.com',
+          'path': '/xhttp',
+          'mode': 'auto',
+        },
+        'security': 'reality',
+        'realitySettings': {
+          'show': false,
+          'fingerprint': 'chrome',
+          'serverName': 'example.com',
+          'password': 'T25lWHJheS1YSFRUUC1leGFtcGxlLWtleS0wMDAwMDA',
+        },
+      },
     });
+  });
+
+  test('new outbound settings accept numeric JSON values', () {
+    final outbound = newOutboundMap();
+    final settings = outbound['settings'] as Map<String, dynamic>;
+
+    settings['port'] = 8443;
+
+    expect(settings['port'], 8443);
   });
 
   test('single outbound wrapper round-trips without shared references', () {

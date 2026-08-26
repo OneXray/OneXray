@@ -18,7 +18,6 @@ import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/raw/ping.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
 import 'package:onexray/service/xray/profile/map.dart';
-import 'package:uuid/uuid.dart';
 
 class XrayRawPageState {
   final bool validJson;
@@ -91,10 +90,6 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
   String get _templateXrayJson {
     final settings = createBaseProfileMap();
     final outbound = newOutboundMap();
-    final outboundSettings = outbound['settings'] as Map<String, dynamic>;
-    outboundSettings['address'] = 'example.com';
-    outboundSettings['port'] = 443;
-    outboundSettings['id'] = Uuid().v4();
     final outbounds = settings['outbounds'] as List<dynamic>;
     outbounds.insert(0, outbound);
 
