@@ -31,7 +31,6 @@ class WindowsFfiApi extends BaseFfiApi {
   static const _waitObject0 = 0;
   static const _waitTimeout = 258;
   static const _waitFailed = 0xFFFFFFFF;
-  static const _stopProxyCoreFailed = "stop proxy core failed";
 
   final _processStore = DesktopCoreProcessStore();
   HANDLE? _processHandle;
@@ -41,15 +40,7 @@ class WindowsFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> startCore(LibXrayRunConfig request) async {
-    return _startCoreProcess(label: "core", verb: "runas", request: request);
-  }
-
-  Future<bool> startProxyCore(LibXrayRunConfig request) async {
-    return _startCoreProcess(
-      label: "proxy core",
-      verb: "open",
-      request: request,
-    );
+    return _startCoreProcess(request);
   }
 
   Future<bool> cleanupStaleCore() async {
@@ -61,13 +52,6 @@ class WindowsFfiApi extends BaseFfiApi {
 
   @override
   Future<bool> stopCore() => _stopProcess(label: "core");
-
-  Future<String> stopProxyCore() async {
-    final stopped = await _stopProcess(label: "proxy core");
-    return stopped ? "" : _stopProxyCoreFailed;
-  }
-
-  Future<bool> proxyCoreRunning() async => await queryCoreRunning() ?? false;
 
   String get corePath {
     final bundleDir = p.dirname(Platform.resolvedExecutable);
@@ -105,45 +89,41 @@ class WindowsFfiApi extends BaseFfiApi {
     }
   }
 
-  Future<bool> _startCoreProcess({
-    required String label,
-    required String verb,
-    required LibXrayRunConfig request,
-  }) async {
-    if (!await _stopProcess(label: label)) {
+  Future<bool> _startCoreProcess(LibXrayRunConfig request) async {
+    if (!await _stopProcess(label: "core")) {
       return false;
     }
 
     try {
       final configPath = await materializeRunXrayConfig(request);
       if (configPath == null) {
-        ygLogger("start $label failed: xrayJson is empty");
+        ygLogger("start core failed: xrayJson is empty");
         return false;
       }
       final result = _runCommand(
-        verb: verb,
+        verb: "runas",
         file: corePath,
         parameters: _buildRunParameters(configPath),
       );
       if (!result.started || !result.processHandle.isValid) {
         final errorCode = GetLastError();
-        ygLogger("Start $label failed. errorCode=$errorCode");
+        ygLogger("Start core failed. errorCode=$errorCode");
         return false;
       }
       _processHandle = result.processHandle;
       final pid = GetProcessId(result.processHandle).value;
       if (pid == 0) {
-        ygLogger("Start $label failed: process id is unavailable");
-        await _stopProcess(label: label);
+        ygLogger("Start core failed: process id is unavailable");
+        await _stopProcess(label: "core");
         return false;
       }
       _processId = pid;
       await _processStore.write(DesktopCoreProcessRecord(pid: pid));
-      _startProcessMonitor(label);
-      ygLogger("$label process started with pid: $pid");
+      _startProcessMonitor("core");
+      ygLogger("core process started with pid: $pid");
     } catch (e) {
-      ygLogger("start $label failed: $e");
-      await _stopProcess(label: label);
+      ygLogger("start core failed: $e");
+      await _stopProcess(label: "core");
       return false;
     }
 

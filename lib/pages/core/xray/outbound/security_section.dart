@@ -1,171 +1,109 @@
 part of 'page.dart';
 
 mixin OutboundSecuritySection {
-  Widget _finalMask(BuildContext context, OutboundUIController controller) {
-    return NavigationSettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageFinalmask,
-      onTap: () => controller.editFinalMask(context),
-    );
-  }
-
   Widget _security(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageSecurity,
-      value: state.outboundState.security.name,
-      selections: StreamSettingsSecurity.values,
-      onSelected: (value) => controller.updateSecurity(value),
-    );
-  }
-
-  List<Widget> _securitySettingsFields(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    switch (state.outboundState.security) {
-      case StreamSettingsSecurity.tls:
-        return _tlsFields(context, controller, state);
-      case StreamSettingsSecurity.reality:
-        return _realityFields(context, controller, state);
-      case StreamSettingsSecurity.none:
-        return const [];
+    final outbound = state.outboundState;
+    final title = AppLocalizations.of(context)!.outboundUIPageSecurity;
+    if (outbound.isHysteria) {
+      return SettingRow(title: title, value: outbound.securityName);
     }
-  }
-
-  Widget _serverName(BuildContext context, OutboundUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.serverNameController,
-      label: AppLocalizations.of(context)!.outboundUIPageServerName,
-      hintText: AppLocalizations.of(context)!.outboundUIPageServerNameExample,
-    );
-  }
-
-  Widget _fingerprint(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
     return SelectSettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageFingerprint,
-      value: state.outboundState.fingerprint.name,
-      selections: StreamSettingsSecurityFingerprint.values,
-      onSelected: (value) => controller.updateFingerprint(value),
+      title: title,
+      value: outbound.securityName,
+      selections: StreamSettingsSecurity.values,
+      onSelected: controller.updateSecurity,
     );
   }
 
-  List<Widget> _tlsFields(
+  List<Widget> _securityFields(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
-    return [
-      _serverName(context, controller),
-      _alpn(context, controller, state),
-      _fingerprint(context, controller, state),
-      _pinnedPeerCertSha256(context, controller),
-      _verifyPeerCertByName(context, controller),
-      _echConfigList(context, controller),
-    ];
+    final outbound = state.outboundState;
+    if (!outbound.securityFieldsProjectable) {
+      return const [];
+    }
+    return switch (outbound.security) {
+      StreamSettingsSecurity.tls => [
+        _securityText(
+          context,
+          controller.serverNameController,
+          AppLocalizations.of(context)!.outboundUIPageServerName,
+          hint: AppLocalizations.of(context)!.outboundUIPageServerNameExample,
+        ),
+        _securityText(
+          context,
+          controller.fingerprintController,
+          AppLocalizations.of(context)!.outboundUIPageFingerprint,
+        ),
+        _securityText(
+          context,
+          controller.echConfigListController,
+          AppLocalizations.of(context)!.outboundUIPageEchConfigList,
+        ),
+        _securityText(
+          context,
+          controller.pinnedPeerCertSha256Controller,
+          AppLocalizations.of(context)!.outboundUIPagePinnedPeerCertSha256,
+        ),
+        _securityText(
+          context,
+          controller.verifyPeerCertByNameController,
+          AppLocalizations.of(context)!.outboundUIPageVerifyPeerCertByName,
+        ),
+      ],
+      StreamSettingsSecurity.reality => [
+        _securityText(
+          context,
+          controller.serverNameController,
+          AppLocalizations.of(context)!.outboundUIPageServerName,
+          hint: AppLocalizations.of(context)!.outboundUIPageServerNameExample,
+        ),
+        _securityText(
+          context,
+          controller.fingerprintController,
+          AppLocalizations.of(context)!.outboundUIPageFingerprint,
+        ),
+        _securityText(
+          context,
+          controller.realityPasswordController,
+          AppLocalizations.of(context)!.outboundUIPagePassword,
+        ),
+        _securityText(
+          context,
+          controller.shortIdController,
+          AppLocalizations.of(context)!.outboundUIPageShortId,
+        ),
+        _securityText(
+          context,
+          controller.mldsa65VerifyController,
+          AppLocalizations.of(context)!.outboundUIPageMldsa65Verify,
+        ),
+        _securityText(
+          context,
+          controller.spiderXController,
+          AppLocalizations.of(context)!.outboundUIPageSpiderX,
+        ),
+      ],
+      _ => const <Widget>[],
+    };
   }
 
-  Widget _alpn(
+  Widget _securityText(
     BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    final children = StreamSettingsSecurityALPN.values.map((value) {
-      return FilterChip(
-        label: Text(value.name),
-        selected: state.outboundState.alpn.contains(value),
-        onSelected: (bool selected) => controller.updateAlpn(selected, value),
-      );
-    }).toList();
-    return SettingRow(
-      title: AppLocalizations.of(context)!.outboundUIPageAlpn,
-      subtitleWidget: Wrap(spacing: 5.0, runSpacing: 5.0, children: children),
-    );
-  }
-
-  Widget _pinnedPeerCertSha256(
-    BuildContext context,
-    OutboundUIController controller,
-  ) {
+    TextEditingController controller,
+    String label, {
+    String? hint,
+  }) {
     return TextFieldSettingRow(
-      controller: controller.pinnedPeerCertSha256Controller,
-      label: AppLocalizations.of(context)!.outboundUIPagePinnedPeerCertSha256,
-      hintText: AppLocalizations.of(context)!
-          .outboundUIPagePinnedPeerCertSha256,
-    );
-  }
-
-  Widget _verifyPeerCertByName(
-    BuildContext context,
-    OutboundUIController controller,
-  ) {
-    return TextFieldSettingRow(
-      controller: controller.verifyPeerCertByNameController,
-      label: AppLocalizations.of(context)!.outboundUIPageVerifyPeerCertByName,
-      hintText: AppLocalizations.of(context)!
-          .outboundUIPageVerifyPeerCertByName,
-    );
-  }
-
-  Widget _echConfigList(BuildContext context, OutboundUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.echConfigListController,
-      label: AppLocalizations.of(context)!.outboundUIPageEchConfigList,
-      hintText: AppLocalizations.of(context)!.outboundUIPageEchConfigList,
-    );
-  }
-
-  List<Widget> _realityFields(
-    BuildContext context,
-    OutboundUIController controller,
-    OutboundUIPageState state,
-  ) {
-    return [
-      _fingerprint(context, controller, state),
-      _serverName(context, controller),
-      _password(context, controller),
-      _shortId(context, controller),
-      _mldsa65Verify(context, controller),
-      _spiderX(context, controller),
-    ];
-  }
-
-  Widget _password(BuildContext context, OutboundUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.passwordController,
-      label: AppLocalizations.of(context)!.outboundUIPagePassword,
-      hintText: AppLocalizations.of(context)!.outboundUIPagePassword,
-    );
-  }
-
-  Widget _shortId(BuildContext context, OutboundUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.shortIdController,
-      label: AppLocalizations.of(context)!.outboundUIPageShortId,
-      hintText: AppLocalizations.of(context)!.outboundUIPageShortId,
-    );
-  }
-
-  Widget _mldsa65Verify(BuildContext context, OutboundUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.mldsa65VerifyController,
-      label: AppLocalizations.of(context)!.outboundUIPageMldsa65Verify,
-      hintText: AppLocalizations.of(context)!.outboundUIPageMldsa65Verify,
-    );
-  }
-
-  Widget _spiderX(BuildContext context, OutboundUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.spiderXController,
-      label: AppLocalizations.of(context)!.outboundUIPageSpiderX,
-      hintText: AppLocalizations.of(context)!.outboundUIPageSpiderX,
+      controller: controller,
+      label: label,
+      hintText: hint ?? label,
     );
   }
 }

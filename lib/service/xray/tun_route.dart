@@ -1,4 +1,3 @@
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 
@@ -48,15 +47,6 @@ class XrayTunRouteConfig {
       autoSystemRoutingTable: autoSystemRoutingTable,
       autoOutboundsInterface: state.autoOutboundsInterface,
     );
-  }
-
-  void applyToXrayInboundTun(XrayInboundTun settings) {
-    settings.gateway = gateway.isEmpty ? null : gateway;
-    settings.dns = dns.isEmpty ? null : dns;
-    settings.autoSystemRoutingTable = autoSystemRoutingTable.isEmpty
-        ? null
-        : autoSystemRoutingTable;
-    settings.autoOutboundsInterface = autoOutboundsInterface;
   }
 
   void applyToRawTunSettings(Map<String, dynamic> settings) {

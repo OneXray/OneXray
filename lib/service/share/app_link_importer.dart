@@ -9,19 +9,13 @@ import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
-import 'package:onexray/service/xray/full_config/state.dart';
-import 'package:onexray/service/xray/full_config/state_db.dart';
-import 'package:onexray/service/xray/full_config/state_reader.dart';
-import 'package:onexray/service/xray/full_config/state_validator.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_db.dart';
+import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:onexray/service/xray/outbound/state_normalizer.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
-import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
-import 'package:onexray/service/xray/profile/state_validator.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
 
@@ -60,7 +54,7 @@ final class OneXrayAppLinkImporter {
       return switch (link.type) {
         OneXrayConfigLinkType.outbound => _readOutbound(link),
         OneXrayConfigLinkType.profile => _readProfile(link),
-        OneXrayConfigLinkType.full => _readFullConfig(link),
+        OneXrayConfigLinkType.multiNodeOutbound => _readMultiNodeOutbound(link),
         OneXrayConfigLinkType.raw => _readRawConfig(link),
       };
     } catch (error, stackTrace) {
@@ -70,43 +64,28 @@ final class OneXrayAppLinkImporter {
   }
 
   CoreConfigCompanion? _readOutbound(OneXrayConfigLink link) {
-    final state = OutboundState();
-    if (!state.readFromText(link.xrayJson)) {
+    final outbound = decodeSingleOutbound(link.xrayJson);
+    final databaseName = link.name.isEmpty ? null : link.name;
+    if (!validateOutboundFields(outbound, databaseName: databaseName).item1) {
       return null;
     }
-    if (link.name.isNotEmpty) {
-      state.name = link.name;
-    }
-    state.removeWhitespace();
-    if (!state.validateFields().item1) {
-      return null;
-    }
-    return state.outboundCompanion;
+    return outboundCompanion(outbound, databaseName: databaseName);
   }
 
   CoreConfigCompanion? _readProfile(OneXrayConfigLink link) {
-    final state = XrayProfileState();
-    state.readFromText(link.xrayJson);
-    if (link.name.isNotEmpty) {
-      state.name = link.name;
-    }
-    state.removeWhitespace();
-    if (!state.validateFields().item1) {
-      return null;
-    }
-    return state.configCompanion();
+    final profile = readProfileMapFromText(
+      link.xrayJson,
+      nameOverride: link.name,
+    );
+    return profileCompanion(profile);
   }
 
-  CoreConfigCompanion? _readFullConfig(OneXrayConfigLink link) {
-    final state = XrayFullConfigState();
-    state.readFromText(link.xrayJson);
-    if (link.name.isNotEmpty) {
-      state.name = link.name;
-    }
-    if (!state.validateFields().item1) {
-      return null;
-    }
-    return state.configCompanion();
+  CoreConfigCompanion? _readMultiNodeOutbound(OneXrayConfigLink link) {
+    final config = readMultiNodeOutboundFromText(
+      link.xrayJson,
+      nameOverride: link.name,
+    );
+    return multiNodeOutboundCompanion(config);
   }
 
   CoreConfigCompanion? _readRawConfig(OneXrayConfigLink link) {

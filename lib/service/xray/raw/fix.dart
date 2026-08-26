@@ -1,36 +1,116 @@
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/constants.dart';
-import 'package:onexray/service/xray/runtime_inbounds.dart';
+import 'package:onexray/service/xray/outbound/enum.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
-import 'package:onexray/service/xray/profile/log_state.dart';
-import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
 class XrayRawFix {
-  static Future<void> fixConfig(
+  static void applySelectedOutbound(
     Map<String, dynamic> jsonMap,
-    XrayProfileState settingState,
+    Map<String, dynamic> selectedOutbound, {
+    Map<String, dynamic>? finalOutbound,
+  }) {
+    final current = jsonMap['outbounds'];
+    final outbounds = current is List<dynamic> ? current : <dynamic>[];
+    final finalOutboundCount = outbounds
+        .where(
+          (outbound) =>
+              outbound is Map &&
+              outbound['tag'] == RoutingOutboundTag.chainProxy.name,
+        )
+        .length;
+    if (finalOutboundCount > 1) {
+      throw const FormatException('Duplicate chainProxy outbounds');
+    }
+    outbounds.removeWhere((outbound) {
+      if (outbound is! Map) {
+        return false;
+      }
+      final tag = outbound['tag'];
+      return tag == RoutingOutboundTag.proxy.name ||
+          tag == RoutingOutboundTag.chainProxy.name;
+    });
+
+    final selected = copyOutboundMap(selectedOutbound);
+    if (finalOutbound == null) {
+      setOutboundTag(selected, RoutingOutboundTag.proxy.name);
+      outbounds.insert(0, selected);
+    } else {
+      final finalCopy = copyOutboundMap(finalOutbound);
+      setOutboundTag(selected, RoutingOutboundTag.chainProxy.name);
+      removeOutboundDialerProxy(selected);
+      setOutboundTag(finalCopy, RoutingOutboundTag.proxy.name);
+      setOutboundDialerProxy(finalCopy, RoutingOutboundTag.chainProxy.name);
+      outbounds.insertAll(0, <dynamic>[finalCopy, selected]);
+    }
+    jsonMap['outbounds'] = outbounds;
+  }
+
+  static Future<void> fixProfileConfig(
+    Map<String, dynamic> jsonMap,
     CoreRunMode mode,
     TunSettingsState tunSettingsState,
     XrayPorts ports,
-    bool metricsEnabled,
-  ) async {
-    final disableLog = await AppHostApi().useSystemExtension();
+    bool metricsEnabled, {
+    bool? disableLog,
+  }) async {
+    final shouldDisableLog =
+        disableLog ?? await AppHostApi().useSystemExtension();
 
-    settingState.inbounds.ping.port = ports.pingPort;
-    settingState.inbounds.ping.auth = ports.pingAuth;
     fixEnv(jsonMap);
     _fixDnsQueryStrategy(jsonMap, tunSettingsState);
-    XrayRuntimeInbounds.applyToRawJson(jsonMap, settingState.inbounds, mode);
+    _applyProfileRuntimeInbounds(jsonMap, _pingInbound(ports), mode);
+    _fixPingRoutingRule(jsonMap, rejectConflicts: true);
+    fixLog(jsonMap, disableLog: shouldDisableLog);
+    if (metricsEnabled) {
+      _applyProfileMetrics(jsonMap, ports.metricsPort);
+    } else {
+      ports.metricsPort = "";
+    }
+
+    if (mode == CoreRunMode.tun &&
+        (AppPlatform.isWindows || AppPlatform.isLinux)) {
+      _removeConfigInterface(jsonMap, appOwnedOnly: true);
+      _applyRawTunRouteConfig(
+        jsonMap,
+        XrayTunRouteConfig.fromTunSetting(tunSettingsState),
+      );
+    } else {
+      _removeConfigInterface(jsonMap, appOwnedOnly: true);
+    }
+  }
+
+  static Future<void> fixConfig(
+    Map<String, dynamic> jsonMap,
+    Map<String, dynamic> profileMap,
+    CoreRunMode mode,
+    TunSettingsState tunSettingsState,
+    XrayPorts ports,
+    bool metricsEnabled, {
+    bool? disableLog,
+  }) async {
+    final shouldDisableLog =
+        disableLog ?? await AppHostApi().useSystemExtension();
+
+    final profileCopy = copyXrayConfigMap(profileMap);
+    if (mode == CoreRunMode.tun) {
+      jsonMap['inbounds'] = profileCopy['inbounds'];
+    } else {
+      jsonMap.remove('inbounds');
+    }
+    fixEnv(jsonMap);
+    _fixDnsQueryStrategy(jsonMap, tunSettingsState);
+    _applyProfileRuntimeInbounds(jsonMap, _pingInbound(ports), mode);
     _fixPingRoutingRule(jsonMap);
-    fixLog(jsonMap, disableLog: disableLog);
+    fixLog(jsonMap, disableLog: shouldDisableLog);
     fixMetrics(jsonMap, metricsEnabled ? ports.metricsPort : null);
     if (!metricsEnabled) {
       ports.metricsPort = "";
@@ -49,10 +129,10 @@ class XrayRawFix {
   }
 
   static void fixEnv(Map<String, dynamic> jsonMap) {
-    jsonMap["env"] = XrayEnv(
-      assetLocation: VpnConstants.datDir,
-      certLocation: VpnConstants.datDir,
-    ).toJson();
+    jsonMap['env'] = <String, dynamic>{
+      'xray.location.asset': VpnConstants.datDir,
+      'xray.location.cert': VpnConstants.datDir,
+    };
   }
 
   static void _fixDnsQueryStrategy(
@@ -77,10 +157,107 @@ class XrayRawFix {
     }
   }
 
-  static void _removeConfigInterface(Map<String, dynamic> jsonMap) {
+  static void _applyProfileRuntimeInbounds(
+    Map<String, dynamic> jsonMap,
+    Map<String, dynamic> ping,
+    CoreRunMode mode,
+  ) {
+    final existing = jsonMap['inbounds'];
+    final inbounds = existing is List ? existing : const <dynamic>[];
+    _requireCompatibleRuntimeInbound(
+      inbounds,
+      RoutingInboundTag.tunIn.name,
+      XrayInboundProtocol.tun.name,
+    );
+    _requireCompatibleRuntimeInbound(
+      inbounds,
+      RoutingInboundTag.pingIn.name,
+      XrayInboundProtocol.http.name,
+    );
+
+    final result = <dynamic>[
+      ...inbounds.where(
+        (inbound) =>
+            inbound is! Map ||
+            (inbound['tag'] != RoutingInboundTag.tunIn.name &&
+                inbound['tag'] != RoutingInboundTag.pingIn.name),
+      ),
+    ];
+    if (mode == CoreRunMode.proxy) {
+      result.add(ping);
+      jsonMap['inbounds'] = result;
+      return;
+    }
+
+    Map<dynamic, dynamic>? existingTun;
+    for (final inbound in inbounds.whereType<Map>()) {
+      if (inbound['tag'] == RoutingInboundTag.tunIn.name) {
+        existingTun = inbound;
+        break;
+      }
+    }
+    final generatedTun = createTunInboundMap();
+    final tun = existingTun == null
+        ? generatedTun
+        : _mergeRuntimeTun(existingTun, generatedTun);
+    result.insert(0, tun);
+    result.add(ping);
+    jsonMap['inbounds'] = result;
+  }
+
+  static Map<String, dynamic> _mergeRuntimeTun(
+    Map<dynamic, dynamic> existing,
+    Map<String, dynamic> generated,
+  ) {
+    final tun = Map<String, dynamic>.from(existing);
+    for (final key in const ['listen', 'protocol', 'tag']) {
+      tun[key] = generated[key];
+    }
+    final existingSettings = tun['settings'];
+    final settings = existingSettings is Map
+        ? Map<String, dynamic>.from(existingSettings)
+        : <String, dynamic>{};
+    final generatedSettings = generated['settings'] as Map<String, dynamic>;
+    for (final key in const ['name', 'mtu']) {
+      settings[key] = generatedSettings[key];
+    }
+    tun['settings'] = settings;
+    return tun;
+  }
+
+  static void _requireCompatibleRuntimeInbound(
+    List<dynamic> inbounds,
+    String tag,
+    String protocol,
+  ) {
+    final matches = inbounds
+        .whereType<Map>()
+        .where((inbound) => inbound['tag'] == tag)
+        .toList();
+    if (matches.length > 1 ||
+        (matches.isNotEmpty && matches.single['protocol'] != protocol)) {
+      throw FormatException('Reserved inbound $tag is invalid');
+    }
+  }
+
+  static void _removeConfigInterface(
+    Map<String, dynamic> jsonMap, {
+    bool appOwnedOnly = false,
+  }) {
     final List<dynamic>? outbounds = jsonMap["outbounds"];
     if (outbounds != null) {
       for (final outbound in outbounds) {
+        if (outbound is! Map) {
+          continue;
+        }
+        final tag = outbound["tag"];
+        final protocol = outbound["protocol"];
+        if (appOwnedOnly &&
+            (protocol != XrayOutboundProtocol.freedom.name ||
+                (tag != RoutingOutboundTag.direct.name &&
+                    tag != RoutingOutboundTag.fragment.name))) {
+          continue;
+        }
         final Map<String, dynamic>? streamSettings = outbound["streamSettings"];
         if (streamSettings != null) {
           final Map<String, dynamic>? sockopt = streamSettings["sockopt"];
@@ -96,6 +273,9 @@ class XrayRawFix {
       return;
     }
     for (final inbound in inbounds) {
+      if (inbound is! Map) {
+        continue;
+      }
       if (inbound["tag"] == RoutingInboundTag.tunIn.name &&
           inbound["protocol"] == XrayInboundProtocol.tun.name) {
         final settings = inbound["settings"];
@@ -116,6 +296,9 @@ class XrayRawFix {
       return;
     }
     for (final inbound in inbounds) {
+      if (inbound is! Map) {
+        continue;
+      }
       if (inbound["tag"] == RoutingInboundTag.tunIn.name &&
           inbound["protocol"] == XrayInboundProtocol.tun.name) {
         final settings = inbound["settings"];
@@ -139,35 +322,42 @@ class XrayRawFix {
     Map<String, dynamic> jsonMap, {
     XrayPorts? ports,
   }) {
-    jsonMap["inbounds"] = [_pingInbound(ports).toJson()];
+    jsonMap['inbounds'] = <dynamic>[_pingInbound(ports)];
     _fixPingRoutingRule(jsonMap);
   }
 
-  static void fixInboundsPort(Map<String, dynamic> jsonMap, XrayPorts ports) {
-    final inbounds = _ensureList(jsonMap, "inbounds");
-    inbounds.removeWhere(_isPingInbound);
-
-    inbounds.add(_pingInbound(ports).toJson());
-
-    _fixPingRoutingRule(jsonMap);
+  static void prepareProfileValidationConfig(Map<String, dynamic> jsonMap) {
+    _applyProfileRuntimeInbounds(
+      jsonMap,
+      createPingInboundMap(),
+      CoreRunMode.tun,
+    );
+    _fixPingRoutingRule(jsonMap, rejectConflicts: true);
+    fixEnv(jsonMap);
   }
 
-  static XrayInbound _pingInbound(XrayPorts? ports) {
-    final pingInbound = InboundPingState();
-    if (ports != null) {
-      pingInbound.port = ports.pingPort;
-      pingInbound.auth = ports.pingAuth;
-    }
-    return pingInbound.xrayJson;
-  }
+  static Map<String, dynamic> _pingInbound(XrayPorts? ports) => ports == null
+      ? createPingInboundMap()
+      : createPingInboundMap(port: ports.pingPort, auth: ports.pingAuth);
 
-  static bool _isPingInbound(dynamic inbound) {
-    return inbound is Map && inbound["tag"] == RoutingInboundTag.pingIn.name;
-  }
-
-  static void _fixPingRoutingRule(Map<String, dynamic> jsonMap) {
+  static void _fixPingRoutingRule(
+    Map<String, dynamic> jsonMap, {
+    bool rejectConflicts = false,
+  }) {
     final routing = _ensureMap(jsonMap, "routing");
+    final currentRules = routing["rules"];
+    if (rejectConflicts && currentRules != null && currentRules is! List) {
+      throw const FormatException('routing.rules must be an array');
+    }
     final rules = _ensureList(routing, "rules");
+    if (rejectConflicts) {
+      final reserved = rules.where(_isPingRoutingRule).toList();
+      if (reserved.length > 1 ||
+          (reserved.isNotEmpty &&
+              !_isCompatiblePingRoutingRule(reserved.single))) {
+        throw const FormatException('Reserved ping routing rule is invalid');
+      }
+    }
     rules.removeWhere(_isPingRoutingRule);
 
     final outboundTag = _pingOutboundTag(jsonMap);
@@ -193,6 +383,29 @@ class XrayRawFix {
       return inboundTag.contains(RoutingInboundTag.pingIn.name);
     }
     return inboundTag == RoutingInboundTag.pingIn.name;
+  }
+
+  static bool _isCompatiblePingRoutingRule(dynamic rule) {
+    if (rule is! Map || rule['ruleTag'] != RoutingRuleTag.ping) {
+      return false;
+    }
+    final inboundTag = rule['inboundTag'];
+    if (inboundTag is! List ||
+        inboundTag.length != 1 ||
+        inboundTag.single != RoutingInboundTag.pingIn.name) {
+      return false;
+    }
+    final outboundTag = rule['outboundTag'];
+    if (outboundTag is! String || outboundTag.isEmpty) {
+      return false;
+    }
+    final type = rule['type'];
+    if (type != null && type != 'field') {
+      return false;
+    }
+    return rule.keys.every(
+      const {'type', 'inboundTag', 'outboundTag', 'ruleTag'}.contains,
+    );
   }
 
   static String? _pingOutboundTag(Map<String, dynamic> jsonMap) {
@@ -264,12 +477,40 @@ class XrayRawFix {
     };
   }
 
+  static void _applyProfileMetrics(
+    Map<String, dynamic> jsonMap,
+    String metricsPort,
+  ) {
+    final stats = jsonMap['stats'];
+    if (stats is! Map<String, dynamic>) {
+      jsonMap['stats'] = <String, dynamic>{};
+    }
+
+    final policy = _ensureMap(jsonMap, 'policy');
+    final currentSystem = policy['system'];
+    final system = currentSystem is Map<String, dynamic>
+        ? currentSystem
+        : <String, dynamic>{};
+    system.addAll(<String, dynamic>{
+      'statsInboundUplink': true,
+      'statsInboundDownlink': true,
+      'statsOutboundUplink': true,
+      'statsOutboundDownlink': true,
+    });
+    policy['system'] = system;
+
+    final metrics = _ensureMap(jsonMap, 'metrics');
+    metrics['listen'] = '${NetConstants.proxyHost}:$metricsPort';
+  }
+
   static void fixLog(Map<String, dynamic> jsonMap, {bool disableLog = false}) {
     if (disableLog) {
-      jsonMap["log"] = <String, dynamic>{
-        "loglevel": XrayLogLevel.none.name,
-        "dnsLog": false,
-      };
+      final log = _ensureMap(jsonMap, "log");
+      log.remove("access");
+      log.remove("error");
+      log.remove("maskAddress");
+      log["loglevel"] = XrayLogLevel.none.name;
+      log["dnsLog"] = false;
       return;
     }
     final Map<String, dynamic>? log = jsonMap["log"];

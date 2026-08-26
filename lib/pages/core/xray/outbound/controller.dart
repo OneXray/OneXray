@@ -1,115 +1,117 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/core/tun/network_interface/params.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:onexray/service/xray/outbound/state_normalizer.dart';
 import 'package:onexray/service/xray/outbound/state_ping.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
-import 'package:onexray/service/xray/outbound/state_writer.dart';
-import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/core/model/xray_standard.dart';
-import 'package:onexray/pages/main/navigation.dart';
 
 class OutboundUIPageState {
   final OutboundState outboundState;
-  final List<String> dialerProxies;
-  final int version;
+  final bool loaded;
 
-  const OutboundUIPageState({
-    required this.outboundState,
-    required this.dialerProxies,
-    this.version = 0,
-  });
+  const OutboundUIPageState({required this.outboundState, this.loaded = false});
 
-  factory OutboundUIPageState.initial() => OutboundUIPageState(
-    outboundState: OutboundState(),
-    dialerProxies: const [],
-  );
+  factory OutboundUIPageState.initial() =>
+      OutboundUIPageState(outboundState: OutboundState());
 
-  OutboundUIPageState copyWith({
-    OutboundState? outboundState,
-    List<String>? dialerProxies,
-    int? version,
-  }) {
+  OutboundUIPageState copyWith({OutboundState? outboundState, bool? loaded}) {
     return OutboundUIPageState(
       outboundState: outboundState ?? this.outboundState,
-      dialerProxies: dialerProxies ?? this.dialerProxies,
-      version: version ?? this.version,
+      loaded: loaded ?? this.loaded,
     );
   }
-
-  OutboundUIPageState bumped() => copyWith(version: version + 1);
 }
 
 class OutboundUIController extends PageCubit<OutboundUIPageState> {
   final OutboundUIParams params;
+
   OutboundUIController(this.params) : super(OutboundUIPageState.initial()) {
     _initParams();
   }
 
   CoreConfigData? _outboundData;
 
+  final nameController = TextEditingController();
+  final addressController = TextEditingController();
+  final portController = TextEditingController();
+  final vlessIdController = TextEditingController();
+  final vlessEncryptionController = TextEditingController();
+  final vlessFlowController = TextEditingController();
+  final vmessIdController = TextEditingController();
+  final shadowsocksPasswordController = TextEditingController();
+  final trojanPasswordController = TextEditingController();
+  final socksUserController = TextEditingController();
+  final socksPassController = TextEditingController();
+  final tagController = TextEditingController();
+  final xhttpHostController = TextEditingController();
+  final xhttpPathController = TextEditingController();
+  final xhttpModeController = TextEditingController();
+  final grpcAuthorityController = TextEditingController();
+  final grpcServiceNameController = TextEditingController();
+  final wsPathController = TextEditingController();
+  final wsHostController = TextEditingController();
+  final httpupgradeHostController = TextEditingController();
+  final httpupgradePathController = TextEditingController();
+  final hysteriaAuthController = TextEditingController();
+  final serverNameController = TextEditingController();
+  final fingerprintController = TextEditingController();
+  final pinnedPeerCertSha256Controller = TextEditingController();
+  final verifyPeerCertByNameController = TextEditingController();
+  final echConfigListController = TextEditingController();
+  final realityPasswordController = TextEditingController();
+  final shortIdController = TextEditingController();
+  final mldsa65VerifyController = TextEditingController();
+  final spiderXController = TextEditingController();
+
   @override
   Future<void> disposePageResources() async {
-    nameController.dispose();
-    addressController.dispose();
-    portController.dispose();
-    vlessIdController.dispose();
-    vlessEncryptionController.dispose();
-    vlessReverseTagController.dispose();
-    vmessIdController.dispose();
-    shadowsocksPasswordController.dispose();
-    trojanPasswordController.dispose();
-    socksUserController.dispose();
-    socksPassController.dispose();
-    httpUserController.dispose();
-    httpPassController.dispose();
-    tagController.dispose();
-    xhttpHostController.dispose();
-    xhttpPathController.dispose();
-    grpcAuthorityController.dispose();
-    grpcServiceNameController.dispose();
-    wsPathController.dispose();
-    wsHostController.dispose();
-    httpupgradeHostController.dispose();
-    httpupgradePathController.dispose();
-
-    hysteriaAuthController.dispose();
-
-    serverNameController.dispose();
-    pinnedPeerCertSha256Controller.dispose();
-    verifyPeerCertByNameController.dispose();
-    echConfigListController.dispose();
-    passwordController.dispose();
-    shortIdController.dispose();
-    mldsa65VerifyController.dispose();
-    spiderXController.dispose();
-    muxConcurrencyController.dispose();
-    muxXudpConcurrencyController.dispose();
-    happyEyeballsTryDelayMsController.dispose();
-    happyEyeballsInterleaveController.dispose();
-    happyEyeballsMaxConcurrentTryController.dispose();
-
-    // dispose controller list
-    for (final controller in rawPathControllers) {
-      controller.dispose();
-    }
-    for (final controller in rawHostControllers) {
+    for (final controller in [
+      nameController,
+      addressController,
+      portController,
+      vlessIdController,
+      vlessEncryptionController,
+      vlessFlowController,
+      vmessIdController,
+      shadowsocksPasswordController,
+      trojanPasswordController,
+      socksUserController,
+      socksPassController,
+      tagController,
+      xhttpHostController,
+      xhttpPathController,
+      xhttpModeController,
+      grpcAuthorityController,
+      grpcServiceNameController,
+      wsPathController,
+      wsHostController,
+      httpupgradeHostController,
+      httpupgradePathController,
+      hysteriaAuthController,
+      serverNameController,
+      fingerprintController,
+      pinnedPeerCertSha256Controller,
+      verifyPeerCertByNameController,
+      echConfigListController,
+      realityPasswordController,
+      shortIdController,
+      mldsa65VerifyController,
+      spiderXController,
+    ]) {
       controller.dispose();
     }
   }
@@ -117,527 +119,273 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   void _initParams() {
     if (params.id != DBConstants.defaultId) {
       _queryOutbound();
-    } else {
-      _updateState(params.state);
+      return;
     }
+    final outbound = params.outbound.isEmpty
+        ? newOutboundMap()
+        : params.outbound;
+    _updateState(OutboundState(outbound));
   }
 
   Future<void> _queryOutbound() async {
-    final db = AppDatabase();
-    final outbound = await db.coreConfigDao.searchRow(params.id);
-    if (!isPageActive) {
+    final outbound = await AppDatabase().coreConfigDao.searchRow(params.id);
+    if (!isPageActive || outbound == null) {
       return;
     }
-    if (outbound != null) {
+    try {
+      final outboundState = OutboundState(readOutboundFromDbData(outbound));
+      final databaseName = outboundDisplayName(
+        outboundState.materialize(),
+        fallback: outbound.name,
+      );
+      if (databaseName != outboundState.name) {
+        outboundState.name = databaseName;
+      }
       _outboundData = outbound;
-      final outboundState = OutboundState();
-      outboundState.readFromDbData(outbound);
       _updateState(outboundState);
+    } on FormatException catch (error) {
+      ygLogger('Read outbound failed: ${outbound.id}, $error');
     }
   }
 
   void _updateState(OutboundState outboundState) {
-    _applyFixedTag(outboundState);
-    final dialerProxies = _fixDialerProxies(outboundState);
-    _initInputs(outboundState);
-    _initInput(outboundState);
-    emit(
-      state.copyWith(
-        outboundState: outboundState,
-        dialerProxies: dialerProxies,
-        version: state.version + 1,
-      ),
-    );
-  }
-
-  void _applyFixedTag(OutboundState outboundState) {
     if (params.fixedTag.isNotEmpty) {
       outboundState.tag = params.fixedTag;
     }
-  }
-
-  List<String> _fixDialerProxies(OutboundState outboundState) {
-    final outboundTags = <String>{
-      "",
-      RoutingOutboundTag.direct.name,
-      RoutingOutboundTag.fragment.name,
-      ...params.outboundTags,
-    }.toList();
-
-    if (outboundState.tag.isNotEmpty) {
-      outboundTags.remove(outboundState.tag);
-    }
-    if (outboundState.dialerProxy.isNotEmpty) {
-      if (!outboundTags.contains(outboundState.dialerProxy)) {
-        outboundState.dialerProxy = "";
-      }
-    }
-
-    return outboundTags;
+    _initInputs(outboundState);
+    emit(state.copyWith(outboundState: outboundState, loaded: true));
   }
 
   void _initInputs(OutboundState outboundState) {
-    final rawPathCtrls = outboundState.rawPath.map(
-      (e) => TextEditingController(text: e),
-    );
-    rawPathControllers.clear();
-    rawPathControllers.addAll(rawPathCtrls);
-
-    final rawHostCtrls = outboundState.rawHost.map(
-      (e) => TextEditingController(text: e),
-    );
-    rawHostControllers.clear();
-    rawHostControllers.addAll(rawHostCtrls);
-  }
-
-  void _initInput(OutboundState outboundState) {
     nameController.text = outboundState.name;
-
     addressController.text = outboundState.address;
     portController.text = outboundState.port;
-
     vlessIdController.text = outboundState.vlessId;
     vlessEncryptionController.text = outboundState.vlessEncryption;
-    vlessReverseTagController.text = outboundState.vlessReverseTag;
+    vlessFlowController.text = outboundState.vlessFlow;
     vmessIdController.text = outboundState.vmessId;
     shadowsocksPasswordController.text = outboundState.shadowsocksPassword;
     trojanPasswordController.text = outboundState.trojanPassword;
     socksUserController.text = outboundState.socksUser;
     socksPassController.text = outboundState.socksPass;
-    httpUserController.text = outboundState.httpUser;
-    httpPassController.text = outboundState.httpPass;
-
     tagController.text = outboundState.tag;
-
     xhttpHostController.text = outboundState.xhttpHost;
     xhttpPathController.text = outboundState.xhttpPath;
-
+    xhttpModeController.text = outboundState.xhttpMode;
     grpcAuthorityController.text = outboundState.grpcAuthority;
     grpcServiceNameController.text = outboundState.grpcServiceName;
-
     wsPathController.text = outboundState.wsPath;
     wsHostController.text = outboundState.wsHost;
-
     httpupgradeHostController.text = outboundState.httpupgradeHost;
     httpupgradePathController.text = outboundState.httpupgradePath;
-
     hysteriaAuthController.text = outboundState.hysteriaAuth;
-
     serverNameController.text = outboundState.serverName;
+    fingerprintController.text = outboundState.fingerprint;
     pinnedPeerCertSha256Controller.text = outboundState.pinnedPeerCertSha256;
     verifyPeerCertByNameController.text = outboundState.verifyPeerCertByName;
     echConfigListController.text = outboundState.echConfigList;
-    passwordController.text = outboundState.password;
+    realityPasswordController.text = outboundState.realityPassword;
     shortIdController.text = outboundState.shortId;
     mldsa65VerifyController.text = outboundState.mldsa65Verify;
     spiderXController.text = outboundState.spiderX;
-
-    muxConcurrencyController.text = outboundState.muxConcurrency;
-    muxXudpConcurrencyController.text = outboundState.muxXudpConcurrency;
-    happyEyeballsTryDelayMsController.text =
-        outboundState.happyEyeballsTryDelayMs;
-    happyEyeballsInterleaveController.text =
-        outboundState.happyEyeballsInterleave;
-    happyEyeballsMaxConcurrentTryController.text =
-        outboundState.happyEyeballsMaxConcurrentTry;
   }
 
   Future<void> gotoRawEdit(BuildContext context) async {
-    final xrayJson = XrayJsonStandard.standard;
-    xrayJson.outbounds = [state.outboundState.xrayJson];
-    final jsonMap = xrayJson.toJson();
-    final text = JsonTool.encoder.convert(jsonMap);
-    final params = XrayRawEditParams(
+    if (!_ensureLoaded(context)) {
+      return;
+    }
+    final outbound = _outboundFromInputs();
+    final rawParams = XrayRawEditParams(
       AppLocalizations.of(context)!.outboundPageTitle,
-      text,
+      encodeSingleOutbound(outbound),
+      validator: (text) {
+        try {
+          decodeSingleOutbound(text);
+          return null;
+        } on FormatException catch (error) {
+          return error.message;
+        }
+      },
     );
     final newText = await context.pushScoped<String>(
       AppSecondaryDestination.xrayRawEdit,
-      extra: params,
+      extra: rawParams,
     );
-    if (newText != null) {
-      final newOutboundState = OutboundState();
-      if (newOutboundState.readFromText(newText)) {
-        _updateState(newOutboundState);
-      }
+    if (newText == null || !context.mounted) {
+      return;
+    }
+    try {
+      _updateState(OutboundState(decodeSingleOutbound(newText)));
+    } on FormatException {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.validationJsonInvalid,
+      );
     }
   }
 
-  final nameController = TextEditingController();
-
   void updateProtocol(XrayOutboundProtocol value) {
-    state.outboundState.protocol = value;
-    emit(state.bumped());
+    _readInputsIntoState(state.outboundState);
+    state.outboundState.changeProtocol(value);
+    _updateState(state.outboundState);
   }
-
-  final addressController = TextEditingController();
-  final portController = TextEditingController();
-
-  final vlessIdController = TextEditingController();
-  final vlessEncryptionController = TextEditingController();
-  final vlessReverseTagController = TextEditingController();
-
-  void updateVlessFlow(VLESSFlow value) {
-    state.outboundState.vlessFlow = value;
-    emit(state.bumped());
-  }
-
-  final vmessIdController = TextEditingController();
 
   void updateVmessSecurity(VMessSecurity value) {
-    state.outboundState.vmessSecurity = value;
-    emit(state.bumped());
+    state.outboundState.selectVmessSecurity(value);
+    emit(state.copyWith());
   }
 
   void updateShadowsocksMethod(ShadowsocksMethod value) {
-    state.outboundState.shadowsocksMethod = value;
-    emit(state.bumped());
+    state.outboundState.selectShadowsocksMethod(value);
+    emit(state.copyWith());
   }
-
-  final shadowsocksPasswordController = TextEditingController();
-
-  final trojanPasswordController = TextEditingController();
-
-  final socksUserController = TextEditingController();
-  final socksPassController = TextEditingController();
-
-  final httpUserController = TextEditingController();
-  final httpPassController = TextEditingController();
-
-  Future<void> editHttpHeaders(BuildContext context) async {
-    final headers = state.outboundState.httpHeaders;
-    final text = JsonTool.encoder.convert(headers);
-    final params = XrayRawEditParams(
-      AppLocalizations.of(context)!.outboundUIPageHeaders,
-      text,
-    );
-    final newText = await context.pushScoped<String>(
-      AppSecondaryDestination.xrayRawEdit,
-      extra: params,
-    );
-    if (newText != null) {
-      final decoded = JsonTool.decoder.convert(newText);
-      if (decoded is Map) {
-        state.outboundState.httpHeaders = decoded.map(
-          (key, value) => MapEntry(key.toString(), value.toString()),
-        );
-        emit(state.bumped());
-      }
-    }
-  }
-
-  final tagController = TextEditingController();
 
   void updateNetwork(StreamSettingsNetwork value) {
-    state.outboundState.network = value;
-    emit(state.bumped());
+    _readInputsIntoState(state.outboundState);
+    state.outboundState.changeNetwork(value);
+    _updateState(state.outboundState);
   }
-
-  void updateRawHeaderType(RawHeaderType value) {
-    state.outboundState.rawHeaderType = value;
-    emit(state.bumped());
-  }
-
-  final rawPathControllers = <TextEditingController>[];
-
-  void appendRawPath() {
-    rawPathControllers.add(TextEditingController());
-    state.outboundState.rawPath.add("");
-    emit(state.bumped());
-  }
-
-  void deleteRawPath(BuildContext context, int index) {
-    final controller = rawPathControllers.removeAt(index);
-    controller.dispose();
-    state.outboundState.rawPath.removeAt(index);
-    emit(state.bumped());
-  }
-
-  final rawHostControllers = <TextEditingController>[];
-
-  void appendRawHost() {
-    rawHostControllers.add(TextEditingController());
-    state.outboundState.rawHost.add("");
-    emit(state.bumped());
-  }
-
-  void deleteRawHost(BuildContext context, int index) {
-    final controller = rawHostControllers.removeAt(index);
-    controller.dispose();
-    state.outboundState.rawHost.removeAt(index);
-    emit(state.bumped());
-  }
-
-  final wsPathController = TextEditingController();
-  final wsHostController = TextEditingController();
-
-  final grpcAuthorityController = TextEditingController();
-  final grpcServiceNameController = TextEditingController();
 
   void updateGrpcMultiMode(bool value) {
     state.outboundState.grpcMultiMode = value;
-    emit(state.bumped());
-  }
-
-  final httpupgradeHostController = TextEditingController();
-  final httpupgradePathController = TextEditingController();
-
-  final xhttpHostController = TextEditingController();
-  final xhttpPathController = TextEditingController();
-
-  void updateXhttpMode(XhttpMode value) {
-    state.outboundState.xhttpMode = value;
-    emit(state.bumped());
-  }
-
-  Future<void> editXhttpExtra(BuildContext context) async {
-    final xhttpExtra = state.outboundState.xhttpExtra;
-    final text = JsonTool.encoder.convert(xhttpExtra);
-    final params = XrayRawEditParams(
-      AppLocalizations.of(context)!.outboundUIPageXhttpExtra,
-      text,
-    );
-    final newText = await context.pushScoped<String>(
-      AppSecondaryDestination.xrayRawEdit,
-      extra: params,
-    );
-    if (newText != null) {
-      state.outboundState.xhttpExtra =
-          JsonTool.decoder.convert(newText) as Map<String, dynamic>;
-      emit(state.bumped());
-    }
-  }
-
-  final hysteriaAuthController = TextEditingController();
-
-  Future<void> editFinalMask(BuildContext context) async {
-    final finalMask = state.outboundState.finalMask;
-    final text = JsonTool.encoder.convert(finalMask);
-    final params = XrayRawEditParams(
-      AppLocalizations.of(context)!.outboundUIPageFinalmask,
-      text,
-    );
-    final newText = await context.pushScoped<String>(
-      AppSecondaryDestination.xrayRawEdit,
-      extra: params,
-    );
-    if (newText != null) {
-      state.outboundState.finalMask =
-          JsonTool.decoder.convert(newText) as Map<String, dynamic>;
-      emit(state.bumped());
-    }
+    emit(state.copyWith());
   }
 
   void updateSecurity(StreamSettingsSecurity value) {
-    state.outboundState.security = value;
-    emit(state.bumped());
+    _readInputsIntoState(state.outboundState);
+    state.outboundState.changeSecurity(value);
+    _updateState(state.outboundState);
   }
-
-  final serverNameController = TextEditingController();
-
-  void updateFingerprint(StreamSettingsSecurityFingerprint value) {
-    state.outboundState.fingerprint = value;
-    emit(state.bumped());
-  }
-
-  void updateAlpn(bool selected, StreamSettingsSecurityALPN value) {
-    if (selected) {
-      state.outboundState.alpn.add(value);
-    } else {
-      state.outboundState.alpn.remove(value);
-    }
-    emit(state.bumped());
-  }
-
-  final pinnedPeerCertSha256Controller = TextEditingController();
-  final verifyPeerCertByNameController = TextEditingController();
-
-  final echConfigListController = TextEditingController();
-
-  final passwordController = TextEditingController();
-  final shortIdController = TextEditingController();
-  final mldsa65VerifyController = TextEditingController();
-  final spiderXController = TextEditingController();
-
-  void updateMuxEnabled(bool value) {
-    state.outboundState.muxEnabled = value;
-    emit(state.bumped());
-  }
-
-  final muxConcurrencyController = TextEditingController();
-  final muxXudpConcurrencyController = TextEditingController();
-
-  void updateMuxXudpProxyUDP443(MuxXudpProxyUDP443 value) {
-    state.outboundState.muxXudpProxyUDP443 = value;
-    emit(state.bumped());
-  }
-
-  void updateTcpFastOpen(bool value) {
-    state.outboundState.tcpFastOpen = value;
-    emit(state.bumped());
-  }
-
-  void updateV6only(bool value) {
-    state.outboundState.v6only = value;
-    emit(state.bumped());
-  }
-
-  void updateDialerProxy(String value) {
-    state.outboundState.dialerProxy = value;
-    emit(state.bumped());
-  }
-
-  Future<void> editInterface(BuildContext context) async {
-    final params = NetworkInterfaceParams(state.outboundState.interface);
-    final networkInterface = await context.pushScoped<String>(
-      AppSecondaryDestination.networkInterface,
-      extra: params,
-    );
-    if (networkInterface != null) {
-      state.outboundState.interface = networkInterface;
-      emit(state.bumped());
-    }
-  }
-
-  void updateTcpMptcp(bool value) {
-    state.outboundState.tcpMptcp = value;
-    emit(state.bumped());
-  }
-
-  void updateHappyEyeballsEnabled(bool value) {
-    state.outboundState.happyEyeballsEnabled = value;
-    emit(state.bumped());
-  }
-
-  void updateHappyEyeballsPrioritizeIPv6(bool value) {
-    state.outboundState.happyEyeballsPrioritizeIPv6 = value;
-    emit(state.bumped());
-  }
-
-  final happyEyeballsTryDelayMsController = TextEditingController();
-  final happyEyeballsInterleaveController = TextEditingController();
-  final happyEyeballsMaxConcurrentTryController = TextEditingController();
 
   Future<void> realPing(BuildContext context) async {
-    _mergeInputToState(state.outboundState);
-    emit(state.bumped());
+    if (!_ensureLoaded(context)) {
+      return;
+    }
+    final outbound = _outboundFromInputs();
     final eventBus = AppEventBus.instance;
     eventBus.updatePinging(true);
-    final pingState = PingState();
-    await pingState.readFromPreferences();
-    final res = await state.outboundState.ping(
-      pingState,
-      fallbackDelay: PingDelayConstants.error,
-    );
-    eventBus.updatePinging(false);
-    if (context.mounted) {
-      await ContextAlert.showPingResultDialog(context, res);
+    try {
+      final pingState = PingState();
+      await pingState.readFromPreferences();
+      final result = await pingOutbound(
+        outbound,
+        pingState,
+        fallbackDelay: PingDelayConstants.error,
+      );
+      if (context.mounted) {
+        await ContextAlert.showPingResultDialog(context, result);
+      }
+    } on FormatException catch (error) {
+      if (context.mounted) {
+        ContextAlert.showToast(context, error.message);
+      }
+    } finally {
+      eventBus.updatePinging(false);
     }
   }
 
   Future<void> save(BuildContext context) async {
-    _mergeInputToState(state.outboundState);
-    emit(state.bumped());
-    final checked = await _validate(context);
-    if (checked) {
-      if (params.saveToDb) {
-        await _updateDb();
-      }
-      if (context.mounted) {
-        if (params.saveToDb) {
-          context.pop();
-        } else {
-          context.pop<OutboundState>(state.outboundState);
-        }
-      }
+    if (!_ensureLoaded(context)) {
+      return;
     }
-  }
-
-  Future<void> _updateDb() async {
-    if (params.id == DBConstants.defaultId) {
-      final id = await state.outboundState.insertToDb();
-      PingService().schedulePingConfigIds([id]);
+    final outbound = _outboundFromInputs();
+    if (!await _validate(context, outbound)) {
+      return;
+    }
+    if (params.saveToDb) {
+      await _updateDb(outbound);
+    }
+    if (!context.mounted) {
+      return;
+    }
+    if (params.saveToDb) {
+      context.pop();
     } else {
-      if (_outboundData != null) {
-        await state.outboundState.updateToDb(_outboundData!);
-      }
+      context.pop<Map<String, dynamic>>(outbound);
     }
   }
 
-  void _mergeInputToState(OutboundState outboundState) {
-    _mergeInputs(outboundState);
-    _mergeInput(outboundState);
-
-    outboundState.removeWhitespace();
+  Future<void> _updateDb(Map<String, dynamic> outbound) async {
+    if (params.id == DBConstants.defaultId) {
+      final id = await insertOutboundToDb(outbound);
+      PingService().schedulePingConfigIds([id]);
+      return;
+    }
+    final row = _outboundData;
+    if (row != null) {
+      await updateOutboundToDb(outbound, row);
+    }
   }
 
-  void _mergeInputs(OutboundState outboundState) {
-    outboundState.rawPath = rawPathControllers.map((c) => c.text).toList();
-    outboundState.rawHost = rawHostControllers.map((c) => c.text).toList();
+  bool _ensureLoaded(BuildContext context) {
+    if (params.id == DBConstants.defaultId || _outboundData != null) {
+      return true;
+    }
+    ContextAlert.showToast(
+      context,
+      AppLocalizations.of(context)!.vpnOutboundInvalid,
+    );
+    return false;
   }
 
-  void _mergeInput(OutboundState outboundState) {
+  Map<String, dynamic> _outboundFromInputs() {
+    _readInputsIntoState(state.outboundState);
+    final outbound = state.outboundState.materialize();
+    emit(state.copyWith());
+    return outbound;
+  }
+
+  void _readInputsIntoState(OutboundState outboundState) {
     outboundState.name = nameController.text;
-
     outboundState.address = addressController.text;
     outboundState.port = portController.text;
-
     outboundState.vlessId = vlessIdController.text;
     outboundState.vlessEncryption = vlessEncryptionController.text;
-    outboundState.vlessReverseTag = vlessReverseTagController.text;
+    outboundState.vlessFlow = vlessFlowController.text;
     outboundState.vmessId = vmessIdController.text;
     outboundState.shadowsocksPassword = shadowsocksPasswordController.text;
     outboundState.trojanPassword = trojanPasswordController.text;
     outboundState.socksUser = socksUserController.text;
     outboundState.socksPass = socksPassController.text;
-    outboundState.httpUser = httpUserController.text;
-    outboundState.httpPass = httpPassController.text;
-
-    outboundState.tag = tagController.text;
-    _applyFixedTag(outboundState);
-
+    outboundState.tag = params.fixedTag.isEmpty
+        ? tagController.text
+        : params.fixedTag;
     outboundState.xhttpHost = xhttpHostController.text;
     outboundState.xhttpPath = xhttpPathController.text;
-
+    outboundState.xhttpMode = xhttpModeController.text;
     outboundState.grpcAuthority = grpcAuthorityController.text;
     outboundState.grpcServiceName = grpcServiceNameController.text;
-
     outboundState.wsPath = wsPathController.text;
     outboundState.wsHost = wsHostController.text;
-
     outboundState.httpupgradeHost = httpupgradeHostController.text;
     outboundState.httpupgradePath = httpupgradePathController.text;
-
     outboundState.hysteriaAuth = hysteriaAuthController.text;
-
     outboundState.serverName = serverNameController.text;
+    outboundState.fingerprint = fingerprintController.text;
     outboundState.pinnedPeerCertSha256 = pinnedPeerCertSha256Controller.text;
     outboundState.verifyPeerCertByName = verifyPeerCertByNameController.text;
     outboundState.echConfigList = echConfigListController.text;
-    outboundState.password = passwordController.text;
+    outboundState.realityPassword = realityPasswordController.text;
     outboundState.shortId = shortIdController.text;
     outboundState.mldsa65Verify = mldsa65VerifyController.text;
     outboundState.spiderX = spiderXController.text;
-
-    outboundState.muxConcurrency = muxConcurrencyController.text;
-    outboundState.muxXudpConcurrency = muxXudpConcurrencyController.text;
-    outboundState.happyEyeballsTryDelayMs =
-        happyEyeballsTryDelayMsController.text;
-    outboundState.happyEyeballsInterleave =
-        happyEyeballsInterleaveController.text;
-    outboundState.happyEyeballsMaxConcurrentTry =
-        happyEyeballsMaxConcurrentTryController.text;
   }
 
-  Future<bool> _validate(BuildContext context) async {
-    final tuple = await state.outboundState.validate();
+  Future<bool> _validate(
+    BuildContext context,
+    Map<String, dynamic> outbound,
+  ) async {
+    final result = await validateOutbound(
+      outbound,
+      databaseName: _outboundData?.name,
+    );
     if (!context.mounted) {
       return false;
     }
-    if (!tuple.item1) {
-      ygLogger("Outbound validate failed: ${tuple.item2}");
-      ContextAlert.showToast(context, tuple.item2);
+    if (!result.item1) {
+      ygLogger('Outbound validate failed: ${result.item2}');
+      ContextAlert.showToast(context, result.item2);
     }
-    return tuple.item1;
+    return result.item1;
   }
 }

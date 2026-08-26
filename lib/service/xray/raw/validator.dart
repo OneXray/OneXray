@@ -1,4 +1,3 @@
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
@@ -33,7 +32,6 @@ class XrayRawValidator {
     String? nameOverride,
   }) {
     late final Map<String, dynamic> jsonMap;
-    late final XrayJson xrayJson;
     try {
       final decoded = JsonTool.decoder.convert(rawText);
       if (decoded is! Map<String, dynamic>) {
@@ -44,13 +42,13 @@ class XrayRawValidator {
       if (normalizedNameOverride != null && normalizedNameOverride.isNotEmpty) {
         jsonMap['name'] = normalizedNameOverride;
       }
-      xrayJson = XrayJson.fromJson(jsonMap);
     } catch (_) {
       return XrayRawValidationResult.invalid(
         appLocalizationsNoContext().validationJsonInvalid,
       );
     }
-    if (!EmptyTool.checkString(xrayJson.name)) {
+    final name = jsonMap['name'];
+    if (name is! String || !EmptyTool.checkString(name)) {
       return XrayRawValidationResult.invalid(
         appLocalizationsNoContext().validationNameRequired,
       );
@@ -58,7 +56,7 @@ class XrayRawValidator {
 
     XrayRawFix.keepOnlyPingInbound(jsonMap);
     final normalizedText = JsonTool.encoder.convert(jsonMap);
-    return XrayRawValidationResult.valid(normalizedText, xrayJson.name!);
+    return XrayRawValidationResult.valid(normalizedText, name);
   }
 
   static Future<XrayRawValidationResult> validate(String rawText) async {

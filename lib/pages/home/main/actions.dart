@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/core/db/database/constants.dart';
-import 'package:onexray/pages/core/xray/full_config/params.dart';
+import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/home/node_info/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/share/service.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 enum HomeAddMenuAction {
   manualOutbound,
   manualRaw,
-  manualFull,
+  manualMultiNodeOutbound,
   subscribeLink,
   scanQRCode,
   pickImage,
@@ -43,8 +43,8 @@ final class HomeActions {
         _addOutboundConfig();
       case HomeAddMenuAction.manualRaw:
         _addRawConfig();
-      case HomeAddMenuAction.manualFull:
-        _addFullConfig();
+      case HomeAddMenuAction.manualMultiNodeOutbound:
+        _addMultiNodeOutbound();
       case HomeAddMenuAction.subscribeLink:
         _addSubscription();
       case HomeAddMenuAction.scanQRCode:
@@ -59,7 +59,7 @@ final class HomeActions {
   }
 
   void _addOutboundConfig() {
-    final params = OutboundUIParams(DBConstants.defaultId, OutboundState(), []);
+    final params = OutboundUIParams(DBConstants.defaultId, newOutboundMap());
     context.pushScoped(AppSecondaryDestination.outboundUI, extra: params);
   }
 
@@ -68,9 +68,12 @@ final class HomeActions {
     context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
   }
 
-  void _addFullConfig() {
-    final params = XrayFullConfigParams(DBConstants.defaultId);
-    context.pushScoped(AppSecondaryDestination.xrayFullConfig, extra: params);
+  void _addMultiNodeOutbound() {
+    final params = XrayMultiNodeOutboundParams(DBConstants.defaultId);
+    context.pushScoped(
+      AppSecondaryDestination.xrayMultiNodeOutbound,
+      extra: params,
+    );
   }
 
   void _addSubscription() {

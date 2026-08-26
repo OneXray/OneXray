@@ -119,12 +119,13 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       rows,
       resolveSubId: (data, type) => switch (type) {
         CoreConfigType.raw => DBConstants.defaultId,
-        CoreConfigType.full => DBConstants.defaultId,
+        CoreConfigType.multiNodeOutbound => DBConstants.defaultId,
         CoreConfigType.outbound => data.subId,
         _ => null,
       },
       normalizeData: (data, type) {
-        if (type == CoreConfigType.raw || type == CoreConfigType.full) {
+        if (type == CoreConfigType.raw ||
+            type == CoreConfigType.multiNodeOutbound) {
           return data.copyWith(subId: DBConstants.defaultId);
         }
         return data;
@@ -197,7 +198,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       ..where(
         coreConfig.type.equals(CoreConfigType.outbound.name) |
             coreConfig.type.equals(CoreConfigType.raw.name) |
-            coreConfig.type.equals(CoreConfigType.full.name),
+            coreConfig.type.equals(CoreConfigType.multiNodeOutbound.name),
       );
     final queryStream = query.watch();
     await for (final rows in queryStream) {
@@ -211,7 +212,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       ..where(
         coreConfig.type.equals(CoreConfigType.outbound.name) |
             coreConfig.type.equals(CoreConfigType.raw.name) |
-            coreConfig.type.equals(CoreConfigType.full.name),
+            coreConfig.type.equals(CoreConfigType.multiNodeOutbound.name),
       );
     final rows = await query.get();
     final results = await _convertHomeNodeQueryRows(rows);
@@ -261,7 +262,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
                   (tbl.type.equals(CoreConfigType.outbound.name) &
                       tbl.subId.equals(DBConstants.defaultId)) |
                   tbl.type.equals(CoreConfigType.raw.name) |
-                  tbl.type.equals(CoreConfigType.full.name),
+                  tbl.type.equals(CoreConfigType.multiNodeOutbound.name),
             )
             ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
           .get();
@@ -389,7 +390,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
                     (tbl.type.equals(CoreConfigType.outbound.name) &
                         tbl.subId.equals(DBConstants.defaultId)) |
                     tbl.type.equals(CoreConfigType.raw.name) |
-                    tbl.type.equals(CoreConfigType.full.name),
+                    tbl.type.equals(CoreConfigType.multiNodeOutbound.name),
               )
               ..where(
                 (tbl) =>

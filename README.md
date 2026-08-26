@@ -40,7 +40,7 @@ OneXray is a client-only app. It does not provide VPN or proxy servers, subscrip
 ## Highlights
 
 - **Cross-platform TUN** — iOS, macOS, Android, Windows, and Linux.
-- **Flexible configuration** — Simple Profile, reusable Xray Profiles, Full Config, and Raw JSON.
+- **Flexible configuration** — Simple Profile, reusable Xray Profiles, Multi-node Outbound, and Raw JSON.
 - **Routing control** — switch between Rule, Global, and Direct behavior from Home.
 - **Import and organize** — supported share links and HTTPS subscriptions from QR codes, images, files, or the clipboard.
 - **Local tools** — node ping, Xray logs, GeoData and rule-set management, backup, and restore.

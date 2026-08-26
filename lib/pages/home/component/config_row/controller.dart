@@ -3,11 +3,11 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
-import 'package:onexray/pages/core/xray/full_config/params.dart';
+import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
@@ -46,17 +46,17 @@ class ConfigRowController {
     }
     switch (type) {
       case CoreConfigType.outbound:
-        final params = OutboundUIParams(config.id, OutboundState(), []);
+        final params = OutboundUIParams(config.id, newOutboundMap());
         context.pushScoped(AppSecondaryDestination.outboundUI, extra: params);
         break;
       case CoreConfigType.raw:
         final params = XrayRawParams(config.id);
         context.pushScoped(AppSecondaryDestination.xrayRaw, extra: params);
         break;
-      case CoreConfigType.full:
-        final params = XrayFullConfigParams(config.id);
+      case CoreConfigType.multiNodeOutbound:
+        final params = XrayMultiNodeOutboundParams(config.id);
         context.pushScoped(
-          AppSecondaryDestination.xrayFullConfig,
+          AppSecondaryDestination.xrayMultiNodeOutbound,
           extra: params,
         );
         break;

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/app_link_parser.dart';
@@ -16,7 +15,8 @@ abstract final class OneXrayAppLinkGenerator {
     final type = switch (CoreConfigType.fromString(config.type)) {
       CoreConfigType.outbound => OneXrayConfigLinkType.outbound,
       CoreConfigType.profile => OneXrayConfigLinkType.profile,
-      CoreConfigType.full => OneXrayConfigLinkType.full,
+      CoreConfigType.multiNodeOutbound =>
+        OneXrayConfigLinkType.multiNodeOutbound,
       CoreConfigType.raw => OneXrayConfigLinkType.raw,
       null => null,
     };
@@ -30,7 +30,7 @@ abstract final class OneXrayAppLinkGenerator {
         scheme: OneXrayAppLinkParser.scheme,
         host: OneXrayAppLinkParser.host,
         path: OneXrayAppLinkParser.configPath,
-        queryParameters: {'type': type.name, 'data': data},
+        queryParameters: {'type': type.wireName, 'data': data},
         fragment: config.name,
       ),
     );
@@ -148,13 +148,8 @@ abstract final class OneXrayAppLinkGenerator {
       if (value is! Map<String, dynamic>) {
         continue;
       }
-      try {
-        final rule = XrayRoutingRule.fromJson(value);
-        _collectGeoDataNames(rule.domain, names);
-        _collectGeoDataNames(rule.ip, names);
-      } catch (_) {
-        continue;
-      }
+      _collectGeoDataNames(_strings(value['domain']), names);
+      _collectGeoDataNames(_strings(value['ip']), names);
     }
   }
 
@@ -174,13 +169,11 @@ abstract final class OneXrayAppLinkGenerator {
       if (value is! Map<String, dynamic>) {
         continue;
       }
-      try {
-        final server = XrayDnsServer.fromJson(value);
-        _collectGeoDataNames(server.domains, names);
-        _collectGeoDataNames(server.expectedIPs, names);
-      } catch (_) {
-        continue;
-      }
+      _collectGeoDataNames(_strings(value['domains']), names);
+      _collectGeoDataNames(_strings(value['expectedIPs']), names);
     }
   }
+
+  static Iterable<String> _strings(Object? value) =>
+      value is List<dynamic> ? value.whereType<String>() : const <String>[];
 }

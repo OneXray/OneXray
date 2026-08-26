@@ -1,44 +1,58 @@
-import 'package:onexray/core/tools/empty.dart';
-import 'package:onexray/core/tools/extensions.dart';
+import 'package:onexray/core/pigeon/constants.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/tools/file.dart';
+import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/service/xray/json_writer.dart';
-import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
+import 'package:onexray/service/xray/config_map.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/raw/fix.dart';
 import 'package:tuple/tuple.dart';
 
-extension XrayProfileStateValidator on XrayProfileState {
-  Tuple2<bool, String> validateFields() {
-    if (!EmptyTool.checkString(name)) {
-      return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
-    }
-    final inboundsError = inbounds.validate(dns.inboundTags.toSet());
-    if (inboundsError != null) {
-      return Tuple2(false, inboundsError);
-    }
-    return const Tuple2(true, "");
+Tuple2<bool, String> validateProfileFields(Map<String, dynamic> profile) {
+  final name = profile['name'];
+  if (name is! String || name.trim().isEmpty) {
+    return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
+  }
+  try {
+    validateXrayConfigMap(profile);
+  } on FormatException catch (error) {
+    return Tuple2(false, error.message.toString());
   }
 
-  Future<Tuple2<bool, String>> validate() async {
-    final fields = validateFields();
-    if (!fields.item1) {
-      return fields;
+  final rawOutbounds = profile['outbounds'];
+  if (rawOutbounds == null) {
+    return const Tuple2(true, '');
+  }
+  for (final value in rawOutbounds as List<dynamic>) {
+    if (value is! Map<String, dynamic>) {
+      return const Tuple2(false, 'Outbound must be an object');
     }
-    final xrayJson = this.xrayJson;
-    removeTunInbound(xrayJson);
-    removeMetricsConfig(xrayJson);
-    final res = await xrayJson.test();
-    if (res.isNotEmpty) {
-      return Tuple2(false, res);
+    try {
+      requireCanonicalOutbound(value);
+    } on FormatException catch (error) {
+      return Tuple2(false, error.message.toString());
     }
-    return const Tuple2(true, "");
+  }
+  return const Tuple2(true, '');
+}
+
+Future<Tuple2<bool, String>> validateProfile(
+  Map<String, dynamic> profile,
+) async {
+  final fields = validateProfileFields(profile);
+  if (!fields.item1) {
+    return fields;
   }
 
-  void removeWhitespace() {
-    name = name.removeWhitespace;
-    dns.removeWhitespace();
-    fakeDns.removeWhitespace();
-    routing.removeWhitespace();
-    inbounds.removeWhitespace();
-    outbounds.removeWhitespace();
+  final materialized = copyXrayConfigMap(profile);
+  try {
+    XrayRawFix.prepareProfileValidationConfig(materialized);
+  } on FormatException catch (error) {
+    return Tuple2(false, error.message.toString());
   }
+  await FileTool.checkDir(VpnConstants.runDir);
+  final error = await AppHostApi().testXray(
+    JsonTool.encoder.convert(materialized),
+  );
+  return error.isEmpty ? const Tuple2(true, '') : Tuple2(false, error);
 }

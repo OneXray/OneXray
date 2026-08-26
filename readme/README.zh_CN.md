@@ -40,7 +40,7 @@ OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服�
 ## 核心能力
 
 - **跨平台 TUN**：支持 iOS、macOS、Android、Windows 和 Linux。
-- **灵活配置**：提供简易配置、可复用 Xray 配置、Full Config 和 Raw JSON。
+- **灵活配置**：提供简易配置、可复用 Xray 配置、多节点出站和 Raw JSON。
 - **路由控制**：可在 Home 切换规则、全局和直连模式。
 - **导入与管理**：通过二维码、图片、文件或剪贴板导入受支持的分享链接与 HTTPS 订阅。
 - **本地工具**：节点 Ping、Xray 日志、GeoData 与规则集管理、备份和恢复。

@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/tools/json.dart';
 

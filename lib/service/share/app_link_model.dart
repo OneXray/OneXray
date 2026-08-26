@@ -1,7 +1,16 @@
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/core/pigeon/model.dart';
 
-enum OneXrayConfigLinkType { outbound, profile, full, raw }
+enum OneXrayConfigLinkType {
+  outbound('outbound'),
+  profile('profile'),
+  multiNodeOutbound('full'),
+  raw('raw');
+
+  const OneXrayConfigLinkType(this.wireName);
+
+  final String wireName;
+}
 
 sealed class OneXrayAppLink {
   const OneXrayAppLink({required this.name});

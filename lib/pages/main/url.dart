@@ -23,39 +23,12 @@ import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/core/tun/ui/page.dart';
 import 'package:onexray/pages/core/xray/outbound/page.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
-import 'package:onexray/pages/core/xray/full_config/page.dart';
-import 'package:onexray/pages/core/xray/full_config/params.dart';
+import 'package:onexray/pages/core/xray/multi_node_outbound/page.dart';
+import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/page.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/page.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
-import 'package:onexray/pages/core/xray/profile/dns_hosts/page.dart';
-import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
-import 'package:onexray/pages/core/xray/profile/dns_server/page.dart';
-import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_additional/page.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_additional/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_ping/page.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_sniffing/page.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_sniffing/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_tun/page.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_tun/params.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_black_hole/page.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_dns/page.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_dns/params.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_fragment/page.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_fragment/params.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_freedom/page.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_freedom/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule/page.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_dot/page.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_dot/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/page.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_query/page.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_query/params.dart';
 import 'package:onexray/pages/core/xray/profile/simple/page.dart';
 import 'package:onexray/pages/core/xray/profile/ui/page.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
@@ -269,11 +242,11 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   ),
   _route(AppSecondaryDestination.xray, (_, _) => const XrayProfileListPage()),
   _route(
-    AppSecondaryDestination.xrayFullConfig,
-    (_, state) => _withExtra<XrayFullConfigParams>(
+    AppSecondaryDestination.xrayMultiNodeOutbound,
+    (_, state) => _withExtra<XrayMultiNodeOutboundParams>(
       state,
-      AppSecondaryDestination.xrayFullConfig,
-      (params) => XrayFullConfigPage(params: params),
+      AppSecondaryDestination.xrayMultiNodeOutbound,
+      (params) => XrayMultiNodeOutboundPage(params: params),
     ),
   ),
   _route(
@@ -286,114 +259,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       state,
       AppSecondaryDestination.xrayProfileUI,
       (params) => XrayProfileUIPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.dnsHosts,
-    (_, state) => _withExtra<DnsHostsParams>(
-      state,
-      AppSecondaryDestination.dnsHosts,
-      (params) => DnsHostsPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.dnsServer,
-    (_, state) => _withExtra<DnsServerParams>(
-      state,
-      AppSecondaryDestination.dnsServer,
-      (params) => DnsServerPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.routingRule,
-    (_, state) => _withExtra<RoutingRuleParams>(
-      state,
-      AppSecondaryDestination.routingRule,
-      (params) => RoutingRulePage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.routingRuleDnsQuery,
-    (_, state) => _withExtra<RoutingRuleDnsQueryParams>(
-      state,
-      AppSecondaryDestination.routingRuleDnsQuery,
-      (params) => RoutingRuleDnsQueryPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.routingRuleDnsOut,
-    (_, state) => _withExtra<RoutingRuleDnsOutParams>(
-      state,
-      AppSecondaryDestination.routingRuleDnsOut,
-      (params) => RoutingRuleDnsOutPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.routingRuleDnsDot,
-    (_, state) => _withExtra<RoutingRuleDnsDoTParams>(
-      state,
-      AppSecondaryDestination.routingRuleDnsDot,
-      (params) => RoutingRuleDnsDoTPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.inboundTun,
-    (_, state) => _withExtra<InboundTunParams>(
-      state,
-      AppSecondaryDestination.inboundTun,
-      (params) => InboundTunPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.inboundSniffing,
-    (_, state) => _withExtra<InboundSniffingParams>(
-      state,
-      AppSecondaryDestination.inboundSniffing,
-      (params) => InboundSniffingPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.inboundPing,
-    (_, state) => _withExtra<InboundPingParams>(
-      state,
-      AppSecondaryDestination.inboundPing,
-      (params) => InboundPingPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.inboundAdditional,
-    (_, state) => _withExtra<AdditionalInboundParams>(
-      state,
-      AppSecondaryDestination.inboundAdditional,
-      (params) => AdditionalInboundPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.outboundFreedom,
-    (_, state) => _withExtra<OutboundFreedomParams>(
-      state,
-      AppSecondaryDestination.outboundFreedom,
-      (params) => OutboundFreedomPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.outboundFragment,
-    (_, state) => _withExtra<OutboundFragmentParams>(
-      state,
-      AppSecondaryDestination.outboundFragment,
-      (params) => OutboundFragmentPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.outboundBlackHole,
-    (_, _) => const OutboundBlackHolePage(),
-  ),
-  _route(
-    AppSecondaryDestination.outboundDns,
-    (_, state) => _withExtra<OutboundDnsParams>(
-      state,
-      AppSecondaryDestination.outboundDns,
-      (params) => OutboundDnsPage(params: params),
     ),
   ),
   _route(

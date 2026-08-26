@@ -1,8 +1,6 @@
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows_ffi_api.dart';
-import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/model/xray_standard.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/invoke_limits.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -129,22 +127,7 @@ class AppHostApi {
     return [];
   }
 
-  Future<XrayJson> convertShareLinksToXrayJson(
-    String text, {
-    String? ageSecretKey,
-  }) async {
-    try {
-      return await convertShareLinksToXrayJsonStrict(
-        text,
-        ageSecretKey: ageSecretKey,
-      );
-    } catch (error, stackTrace) {
-      _reportUnexpected('convertShareLinksToXrayJson', error, stackTrace);
-    }
-    return XrayJsonStandard.standard;
-  }
-
-  Future<XrayJson> convertShareLinksToXrayJsonStrict(
+  Future<Map<String, dynamic>> convertShareLinksToXrayJsonStrict(
     String text, {
     String? ageSecretKey,
   }) async {
@@ -160,7 +143,7 @@ class AppHostApi {
     );
     final resp = LibXrayInvokeResponseParser.parse(res);
     if (resp.success && resp.data != null) {
-      return XrayJson.fromJson(resp.data!);
+      return resp.data!;
     }
     throw LibXrayInvokeException(resp.error);
   }
@@ -185,9 +168,11 @@ class AppHostApi {
     throw LibXrayInvokeException(resp.error);
   }
 
-  Future<String> convertXrayJsonToShareLinks(XrayJson xrayJson) async {
+  Future<String> convertXrayJsonToShareLinks(
+    Map<String, dynamic> xrayJson,
+  ) async {
     try {
-      final xrayJsonText = JsonTool.encoder.convert(xrayJson.toJson());
+      final xrayJsonText = JsonTool.encoder.convert(xrayJson);
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.convertXrayJsonToShareLinks,
@@ -265,17 +250,11 @@ class AppHostApi {
   }
 
   Future<String> runXray(String coreInvokeText) async {
+    if (!AppPlatform.isIOS) {
+      return _errorResult;
+    }
     try {
-      final request = _runXrayRequestFromText(coreInvokeText);
-      if (AppPlatform.isLinux) {
-        return await _runDesktopProxyCore(
-          () => LinuxFfiApi().startProxyCore(request),
-        );
-      } else if (AppPlatform.isWindows) {
-        return await _runDesktopProxyCore(
-          () => WindowsFfiApi().startProxyCore(request),
-        );
-      }
+      final request = LibXrayRunConfig.fromInvokeText(coreInvokeText);
       final res = await _invoke(request.invoke);
       final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
@@ -288,25 +267,9 @@ class AppHostApi {
     return _errorResult;
   }
 
-  LibXrayRunConfig _runXrayRequestFromText(String coreInvokeText) {
-    return LibXrayRunConfig.fromInvokeText(coreInvokeText);
-  }
-
-  Future<String> _runDesktopProxyCore(Future<bool> Function() start) async {
-    try {
-      final started = await start();
-      return started ? "" : _errorResult;
-    } catch (error, stackTrace) {
-      _reportUnexpected('runDesktopProxyCore', error, stackTrace);
-      return _errorResult;
-    }
-  }
-
   Future<String> stopXray() async {
-    if (AppPlatform.isLinux) {
-      return await LinuxFfiApi().stopProxyCore();
-    } else if (AppPlatform.isWindows) {
-      return await WindowsFfiApi().stopProxyCore();
+    if (!AppPlatform.isIOS) {
+      return _errorResult;
     }
     try {
       final res = await _invoke(
@@ -324,10 +287,8 @@ class AppHostApi {
   }
 
   Future<bool> getXrayState() async {
-    if (AppPlatform.isLinux) {
-      return await LinuxFfiApi().proxyCoreRunning();
-    } else if (AppPlatform.isWindows) {
-      return await WindowsFfiApi().proxyCoreRunning();
+    if (!AppPlatform.isIOS) {
+      return false;
     }
     try {
       final res = await _invoke(

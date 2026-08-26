@@ -13,3 +13,21 @@ class XrayStateConstants {
 
   static String get configFilePath => p.join(VpnConstants.runDir, configFile);
 }
+
+abstract final class RoutingRuleTag {
+  static const dnsQuery = "dnsQuery";
+  static const dnsOut = "dnsOut";
+  static const dnsDoT = "dnsDoT";
+  static const ping = "ping";
+  static const localDnsDirect = "localDnsDirect";
+  static const defaultDnsProxy = "defaultDnsProxy";
+  static const adBlock = "adBlock";
+  static const domainDirect = "domainDirect";
+  static const ipDirect = "IPDirect";
+}
+
+abstract final class DNSServerTag {
+  static const dnsQuery = "dnsQuery";
+  static const localDns = "localDns";
+  static const defaultDns = "defaultDns";
+}

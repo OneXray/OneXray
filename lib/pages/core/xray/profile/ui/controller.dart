@@ -1,71 +1,67 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/core/xray/profile/dns_hosts/params.dart';
-import 'package:onexray/pages/core/xray/profile/dns_server/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbounds/view_data.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_additional/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_ping/params.dart';
-import 'package:onexray/pages/core/xray/profile/inbound_tun/params.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_dns/params.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_fragment/params.dart';
-import 'package:onexray/pages/core/xray/profile/outbound_freedom/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_dot/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_out/params.dart';
-import 'package:onexray/pages/core/xray/profile/routing_rule_dns_query/params.dart';
+import 'package:onexray/pages/core/xray/dns_server_dialog.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/core/xray/raw_edit/params.dart';
-import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/outbound/state_reader.dart';
-import 'package:onexray/service/xray/profile/dns_server_state.dart';
-import 'package:onexray/service/xray/profile/dns_state.dart';
-import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
+import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
-import 'package:onexray/service/xray/profile/fake_dns_state.dart';
-import 'package:onexray/service/xray/profile/inbounds_state.dart';
-import 'package:onexray/service/xray/profile/log_state.dart';
-import 'package:onexray/service/xray/profile/outbounds_state.dart';
-import 'package:onexray/service/xray/profile/routing_rule_state.dart';
-import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
 import 'package:onexray/service/xray/profile/state_validator.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
 
-enum XrayProfileUISection { inbounds, outbounds, routing, dns, fakeDns, log }
+enum XrayProfileUISection {
+  inbounds,
+  outbounds,
+  routing,
+  dns,
+  fakeDns,
+  log,
+  advanced,
+}
+
+const xrayProfileAdvancedRoots = <String>[
+  'policy',
+  'metrics',
+  'stats',
+  'observatory',
+  'burstObservatory',
+];
+
+const xrayProfileReadOnlyRoots = <String>{'metrics', 'stats'};
 
 class XrayProfileUIPageState {
   final XrayProfileUISection section;
-  final int version;
+  final bool loaded;
+  final bool saving;
 
   const XrayProfileUIPageState({
     this.section = XrayProfileUISection.inbounds,
-    this.version = 0,
+    this.loaded = false,
+    this.saving = false,
   });
 
   factory XrayProfileUIPageState.initial() => const XrayProfileUIPageState();
 
-  XrayProfileUIPageState bumped() =>
-      XrayProfileUIPageState(section: section, version: version + 1);
-
   XrayProfileUIPageState copyWith({
     XrayProfileUISection? section,
-    int? version,
+    bool? loaded,
+    bool? saving,
   }) {
     return XrayProfileUIPageState(
       section: section ?? this.section,
-      version: version ?? this.version,
+      loaded: loaded ?? this.loaded,
+      saving: saving ?? this.saving,
     );
   }
 }
@@ -75,32 +71,165 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
 
   XrayProfileUIController(this.params)
     : super(XrayProfileUIPageState.initial()) {
+    nameController.addListener(_updateVisibleName);
     _queryXrayProfile();
   }
 
-  CoreConfigData? _xrayProfileData;
-  var _xrayProfileState = XrayProfileState();
+  CoreConfigData? _profileData;
+  Map<String, dynamic> _document = <String, dynamic>{};
   var _defaultDnsServerAddress = TunSettingsState().tunDnsIPv4;
-
-  XrayProfileState get profileState => _xrayProfileState;
+  var _syncingName = false;
 
   final nameController = TextEditingController();
-  final dnsClientIpController = TextEditingController();
-  final dnsServeExpiredTTLController = TextEditingController();
-  final fakeDnsIpv4IpPoolController = TextEditingController();
-  final fakeDnsIpv4PoolSizeController = TextEditingController();
-  final fakeDnsIpv6IpPoolController = TextEditingController();
-  final fakeDnsIpv6PoolSizeController = TextEditingController();
+
+  Map<String, dynamic> get document => _copyDocument(_document);
+
+  String get routingDomainStrategy {
+    final routing = _document['routing'];
+    if (routing is! Map<String, dynamic>) {
+      return RoutingDomainStrategy.asIs.name;
+    }
+    final value = routing['domainStrategy'];
+    return value is String
+        ? RoutingDomainStrategy.fromString(value)?.name ?? value
+        : RoutingDomainStrategy.asIs.name;
+  }
+
+  bool get routingRawOnly {
+    final routing = _document['routing'];
+    if (routing == null) {
+      return false;
+    }
+    if (routing is! Map<String, dynamic>) {
+      return true;
+    }
+    final value = routing['domainStrategy'];
+    return value != null &&
+        (value is! String || RoutingDomainStrategy.fromString(value) == null);
+  }
+
+  List<dynamic> get dnsServers {
+    final dns = _document['dns'];
+    if (dns is! Map<String, dynamic>) {
+      return const <dynamic>[];
+    }
+    final servers = dns['servers'];
+    return servers is List<dynamic> ? servers : const <dynamic>[];
+  }
+
+  bool get dnsServersRawOnly {
+    final dns = _document['dns'];
+    if (dns == null) {
+      return false;
+    }
+    if (dns is! Map<String, dynamic>) {
+      return true;
+    }
+    final servers = dns['servers'];
+    return servers != null && servers is! List<dynamic>;
+  }
+
+  bool isEditableDnsServer(dynamic server) {
+    if (server is! Map<String, dynamic>) {
+      return false;
+    }
+    final address = server['address'];
+    final port = server['port'];
+    return (address == null || address is String) &&
+        (port == null || port is int);
+  }
+
+  bool get fakeDnsRawOnly {
+    final fakeDns = _document['fakeDns'];
+    if (fakeDns == null) {
+      return false;
+    }
+    if (fakeDns is! List<dynamic>) {
+      return true;
+    }
+    var ipv4Count = 0;
+    var ipv6Count = 0;
+    for (final value in fakeDns) {
+      if (value is! Map<String, dynamic>) {
+        return true;
+      }
+      final address = _fakeDnsAddress(value);
+      final poolSize = value['poolSize'];
+      if (address == null || (poolSize != null && poolSize is! int)) {
+        return true;
+      }
+      if (address.type == InternetAddressType.IPv4) {
+        ipv4Count += 1;
+      } else if (address.type == InternetAddressType.IPv6) {
+        ipv6Count += 1;
+      }
+    }
+    return ipv4Count > 1 || ipv6Count > 1;
+  }
+
+  Map<String, dynamic>? fakeDnsPool(bool ipv6) {
+    if (fakeDnsRawOnly) {
+      return null;
+    }
+    final fakeDns = _document['fakeDns'];
+    if (fakeDns is! List<dynamic>) {
+      return null;
+    }
+    final expected = ipv6 ? InternetAddressType.IPv6 : InternetAddressType.IPv4;
+    for (final value in fakeDns.whereType<Map<String, dynamic>>()) {
+      if (_fakeDnsAddress(value)?.type == expected) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  String get logLevel {
+    final log = _document['log'];
+    if (log is! Map<String, dynamic>) {
+      return XrayLogLevel.none.name;
+    }
+    final value = log['loglevel'];
+    return value is String ? value : XrayLogLevel.none.name;
+  }
+
+  bool get dnsLog {
+    final log = _document['log'];
+    return log is Map<String, dynamic> && log['dnsLog'] is bool
+        ? log['dnsLog'] as bool
+        : false;
+  }
+
+  String get maskAddress {
+    final log = _document['log'];
+    if (log is! Map<String, dynamic>) {
+      return XrayLogMaskAddress.none.name;
+    }
+    final value = log['maskAddress'];
+    return value is String ? value : XrayLogMaskAddress.none.name;
+  }
+
+  bool get logRawOnly {
+    final log = _document['log'];
+    if (log == null) {
+      return false;
+    }
+    if (log is! Map<String, dynamic>) {
+      return true;
+    }
+    final level = log['loglevel'];
+    final dns = log['dnsLog'];
+    final mask = log['maskAddress'];
+    return level != null &&
+            (level is! String || XrayLogLevel.fromString(level) == null) ||
+        dns != null && dns is! bool ||
+        mask != null &&
+            (mask is! String || XrayLogMaskAddress.fromString(mask) == null);
+  }
 
   @override
   Future<void> disposePageResources() async {
     nameController.dispose();
-    dnsClientIpController.dispose();
-    dnsServeExpiredTTLController.dispose();
-    fakeDnsIpv4IpPoolController.dispose();
-    fakeDnsIpv4PoolSizeController.dispose();
-    fakeDnsIpv6IpPoolController.dispose();
-    fakeDnsIpv6PoolSizeController.dispose();
   }
 
   Future<void> _queryXrayProfile() async {
@@ -111,116 +240,41 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
     }
     _defaultDnsServerAddress = tunSettings.tunDnsIPv4;
 
-    if (params.id != DBConstants.defaultId) {
-      final db = AppDatabase();
-      final xrayProfile = await db.coreConfigDao.searchRow(params.id);
-      if (!isPageActive) {
-        return;
-      }
-      if (xrayProfile != null) {
-        _xrayProfileData = xrayProfile;
-        final state = XrayProfileState();
-        state.readFromDbData(xrayProfile);
-        _updateState(state);
-      }
-    } else {
-      _xrayProfileState.dns.servers = [_newDnsServer()];
-      _initInputs(_xrayProfileState);
+    if (params.id == DBConstants.defaultId) {
+      _replaceDocument(newProfileMap(_defaultDnsServerAddress), loaded: true);
+      return;
     }
-  }
 
-  DnsServerState _newDnsServer() =>
-      DnsServerState()..address = _defaultDnsServerAddress;
-
-  void _updateState(XrayProfileState state) {
-    _xrayProfileState = state;
-    _initInputs(state);
-    _notifyChanged();
-  }
-
-  void _initInputs(XrayProfileState state) {
-    nameController.text = state.name;
-    dnsClientIpController.text = state.dns.clientIp;
-    dnsServeExpiredTTLController.text = state.dns.serveExpiredTTL;
-    fakeDnsIpv4IpPoolController.text = state.fakeDns.ipv4.ipPool;
-    fakeDnsIpv4PoolSizeController.text = state.fakeDns.ipv4.poolSize;
-    fakeDnsIpv6IpPoolController.text = state.fakeDns.ipv6.ipPool;
-    fakeDnsIpv6PoolSizeController.text = state.fakeDns.ipv6.poolSize;
+    final profile = await AppDatabase().coreConfigDao.searchRow(params.id);
+    if (!isPageActive || profile == null) {
+      return;
+    }
+    try {
+      final next = readProfileMapFromDbData(profile);
+      _profileData = profile;
+      _replaceDocument(next, loaded: true);
+    } catch (_) {
+      return;
+    }
   }
 
   void updateSection(XrayProfileUISection section) {
     if (section != state.section) {
-      emit(state.copyWith(section: section, version: state.version + 1));
+      emit(state.copyWith(section: section));
     }
-  }
-
-  InboundsViewData buildInboundsViewData(AppLocalizations localizations) {
-    final additional = _xrayProfileState.inbounds.additional;
-    return InboundsViewData(
-      addItems: AdditionalInboundType.values
-          .map(
-            (type) => AdditionalInboundMenuItemViewData(
-              type: type,
-              title: _additionalInboundTypeTitle(localizations, type),
-            ),
-          )
-          .toList(growable: false),
-      additionalRows: additional
-          .asMap()
-          .entries
-          .map(
-            (entry) => AdditionalInboundRowViewData(
-              index: entry.key,
-              icon: _additionalInboundTypeIcon(entry.value.type),
-              title: entry.value.tag,
-              subtitle: _additionalInboundDescription(
-                localizations,
-                entry.value,
-              ),
-            ),
-          )
-          .toList(growable: false),
-    );
-  }
-
-  String _additionalInboundDescription(
-    AppLocalizations localizations,
-    AdditionalInboundState inbound,
-  ) {
-    final listen = inbound.listen.isEmpty
-        ? localizations.inboundAdditionalPageAllInterfaces
-        : inbound.listen;
-    final listener = '$listen:${inbound.port}';
-    if (inbound is InboundDokodemoDoorState) {
-      return '$listener → ${inbound.targetAddress}:${inbound.targetPort}';
-    }
-    return '${_additionalInboundTypeTitle(localizations, inbound.type)}'
-        ' · $listener';
-  }
-
-  String _additionalInboundTypeTitle(
-    AppLocalizations localizations,
-    AdditionalInboundType type,
-  ) {
-    return switch (type) {
-      AdditionalInboundType.socks => localizations.inboundsPageAddSocks,
-      AdditionalInboundType.http => localizations.inboundsPageAddHttp,
-      AdditionalInboundType.dokodemoDoor =>
-        localizations.inboundsPageAddDokodemoDoor,
-    };
-  }
-
-  IconData _additionalInboundTypeIcon(AdditionalInboundType type) {
-    return switch (type) {
-      AdditionalInboundType.socks => LucideIcons.network,
-      AdditionalInboundType.http => LucideIcons.globe2,
-      AdditionalInboundType.dokodemoDoor => LucideIcons.arrowRightLeft,
-    };
   }
 
   Future<void> gotoRawEdit(BuildContext context) async {
-    _mergeInputToState(_xrayProfileState);
-    final text = JsonTool.encoder.convert(_xrayProfileState.xrayJson.toJson());
+    if (!_ensureLoaded(context)) {
+      return;
+    }
+    late final String text;
+    try {
+      text = encodeProfileMap(_document);
+    } catch (_) {
+      _showJsonInvalid(context);
+      return;
+    }
     final params = XrayRawEditParams(
       AppLocalizations.of(context)!.xrayProfileUIPageTitle,
       text,
@@ -229,467 +283,416 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
       AppSecondaryDestination.xrayRawEdit,
       extra: params,
     );
-    if (newText != null) {
-      final state = XrayProfileState();
-      state.readFromText(newText);
-      _updateState(state);
-    }
-  }
-
-  Future<void> editTun(BuildContext context) async {
-    final params = InboundTunParams(_xrayProfileState.inbounds.tun);
-    final tun = await context.pushScoped<InboundTunState>(
-      AppSecondaryDestination.inboundTun,
-      extra: params,
-    );
-    if (tun != null) {
-      _xrayProfileState.inbounds.tun = tun;
-      _notifyChanged();
-    }
-  }
-
-  Future<void> editPing(BuildContext context) async {
-    final params = InboundPingParams(_xrayProfileState.inbounds.ping);
-    await context.pushScoped<InboundPingState>(
-      AppSecondaryDestination.inboundPing,
-      extra: params,
-    );
-  }
-
-  Future<void> addAdditionalInbound(
-    BuildContext context,
-    AdditionalInboundType type,
-  ) async {
-    final inbound = _xrayProfileState.inbounds.createAdditional(type);
-    final edited = await _editAdditionalInbound(context, inbound);
-    if (edited != null) {
-      _xrayProfileState.inbounds.additional.add(edited);
-      _notifyChanged();
-    }
-  }
-
-  Future<void> editAdditionalInbound(BuildContext context, int index) async {
-    final current = _xrayProfileState.inbounds.additional[index];
-    final edited = await _editAdditionalInbound(
-      context,
-      current,
-      editingIndex: index,
-    );
-    if (edited == null) {
+    if (newText == null) {
       return;
     }
-    if (edited.tag != current.tag) {
-      _xrayProfileState.routing.renameInboundTag(current.tag, edited.tag);
-    }
-    _xrayProfileState.inbounds.additional[index] = edited;
-    _notifyChanged();
-  }
-
-  Future<AdditionalInboundState?> _editAdditionalInbound(
-    BuildContext context,
-    AdditionalInboundState inbound, {
-    int? editingIndex,
-  }) {
-    final additional = _xrayProfileState.inbounds.additional;
-    final unavailableTags = <String>{
-      ...RoutingInboundTag.names,
-      ..._xrayProfileState.dns.inboundTags,
-    };
-    final unavailablePorts = <int>{};
-    for (var index = 0; index < additional.length; index++) {
-      if (index == editingIndex) {
-        continue;
-      }
-      unavailableTags.add(additional[index].tag);
-      final port = int.tryParse(additional[index].port);
-      if (port != null) {
-        unavailablePorts.add(port);
-      }
-    }
-    final params = AdditionalInboundParams(
-      inbound,
-      unavailableTags: unavailableTags,
-      unavailablePorts: unavailablePorts,
-    );
-    return context.pushScoped<AdditionalInboundState>(
-      AppSecondaryDestination.inboundAdditional,
-      extra: params,
-    );
-  }
-
-  void deleteAdditionalInbound(BuildContext context, int index) {
-    final inbound = _xrayProfileState.inbounds.additional[index];
-    if (_xrayProfileState.routing.referencesInboundTag(inbound.tag)) {
-      ContextAlert.showToast(
-        context,
-        AppLocalizations.of(context)!.validationInboundInUse,
-      );
-      return;
-    }
-    _xrayProfileState.inbounds.additional.removeAt(index);
-    _notifyChanged();
-  }
-
-  Future<void> editFreedom(BuildContext context) async {
-    final params = OutboundFreedomParams(_xrayProfileState.outbounds.freedom);
-    final freedom = await context.pushScoped<OutboundFreedomState>(
-      AppSecondaryDestination.outboundFreedom,
-      extra: params,
-    );
-    if (freedom != null) {
-      _xrayProfileState.outbounds.freedom = freedom;
-      _notifyChanged();
-    }
-  }
-
-  Future<void> editFragment(BuildContext context) async {
-    final params = OutboundFragmentParams(_xrayProfileState.outbounds.fragment);
-    final fragment = await context.pushScoped<OutboundFragmentState>(
-      AppSecondaryDestination.outboundFragment,
-      extra: params,
-    );
-    if (fragment != null) {
-      _xrayProfileState.outbounds.fragment = fragment;
-      _notifyChanged();
-    }
-  }
-
-  Future<void> editBlackHole(BuildContext context) async {
-    await context.pushScoped(AppSecondaryDestination.outboundBlackHole);
-  }
-
-  Future<void> editOutboundDns(BuildContext context) async {
-    final outbounds = _xrayProfileState.outbounds;
-    final params = OutboundDnsParams(
-      outbounds.dns,
-      outbounds.dnsDialerProxyTags,
-    );
-    final dns = await context.pushScoped<OutboundDnsState>(
-      AppSecondaryDestination.outboundDns,
-      extra: params,
-    );
-    if (dns != null) {
-      outbounds.dns = dns;
-      _notifyChanged();
-    }
-  }
-
-  Future<void> importFinalOutbound(BuildContext context) async {
-    final outbound = await context.pushScoped<CoreConfigData>(
-      AppSecondaryDestination.outboundSelect,
-      extra: OutboundSelectParams(),
-    );
-    if (outbound == null) {
-      return;
-    }
-    final finalOutbound = OutboundState();
-    var valid = false;
     try {
-      valid = finalOutbound.readFromDbData(outbound);
+      _replaceDocument(readProfileMapFromText(newText));
     } catch (_) {
-      valid = false;
-    }
-    if (!valid) {
       if (context.mounted) {
-        ContextAlert.showToast(
-          context,
-          AppLocalizations.of(context)!.finalOutboundValidationInvalid,
-        );
+        _showJsonInvalid(context);
       }
-      return;
     }
-    finalOutbound.name = outbound.name;
-    finalOutbound.tag = RoutingOutboundTag.chainProxy.name;
-    finalOutbound.dialerProxy = "";
-    _xrayProfileState.outbounds.finalOutbound = finalOutbound;
-    _notifyChanged();
   }
 
-  void deleteFinalOutbound() {
-    _xrayProfileState.outbounds.finalOutbound = null;
-    _xrayProfileState.outbounds.fixDnsDialerProxy();
-    _notifyChanged();
+  Future<void> editRoot(BuildContext context, String root) async {
+    if (xrayProfileReadOnlyRoots.contains(root)) {
+      return;
+    }
+    if (!_ensureLoaded(context)) {
+      return;
+    }
+    late final String text;
+    try {
+      text = encodeXrayRootEditor(_document, root);
+    } catch (_) {
+      _showJsonInvalid(context);
+      return;
+    }
+    final params = XrayRawEditParams(
+      '${AppLocalizations.of(context)!.menuEdit} $root JSON',
+      text,
+    );
+    final newText = await context.pushScoped<String>(
+      AppSecondaryDestination.xrayRawEdit,
+      extra: params,
+    );
+    if (newText == null) {
+      return;
+    }
+    try {
+      _replaceDocument(applyXrayRootEditor(_document, root, newText));
+    } catch (_) {
+      if (context.mounted) {
+        _showJsonInvalid(context);
+      }
+    }
+  }
+
+  String rootSummary(String root) {
+    if (!_document.containsKey(root)) {
+      return '-';
+    }
+    final value = _document[root];
+    if (value == null) {
+      return 'null';
+    }
+    if (value is List<dynamic>) {
+      return '${value.length}';
+    }
+    if (value is Map<String, dynamic>) {
+      return '${value.length}';
+    }
+    return '$value';
+  }
+
+  String rootJson(String root) {
+    if (_document.containsKey(root)) {
+      return jsonEncode(_document[root]);
+    }
+    final value = switch (root) {
+      'metrics' => defaultProfileMetrics,
+      'stats' => defaultProfileStats,
+      _ => null,
+    };
+    return value == null ? '-' : jsonEncode(value);
   }
 
   void updateDomainStrategy(String value) {
-    final domainStrategy = RoutingDomainStrategy.fromString(value);
-    if (domainStrategy != null) {
-      _xrayProfileState.routing.domainStrategy = domainStrategy;
-      _notifyChanged();
+    if (routingRawOnly || RoutingDomainStrategy.fromString(value) == null) {
+      return;
     }
+    _updateMapRoot('routing', (routing) {
+      routing['domainStrategy'] = value;
+    });
   }
 
-  Future<void> showSystemRule(BuildContext context, int index) async {
-    switch (index) {
-      case 0:
-        await _showDnsQueryRule(context);
-      case 1:
-        await _showDnsOutRule(context);
-      case 2:
-        await _showDnsDoTRule(context);
+  bool updateDnsServer(int? index, String address, String port) {
+    final parsedPort = port.isEmpty ? null : int.tryParse(port);
+    if (port.isNotEmpty && parsedPort == null) {
+      return false;
     }
-  }
-
-  Future<void> _showDnsQueryRule(BuildContext context) async {
-    final dnsOutboundTags = _dnsRoutingOutboundTags();
-    final params = RoutingRuleDnsQueryParams(
-      _xrayProfileState.routing.dnsQueryRule,
-      dnsOutboundTags,
-    );
-    final rule = await context.pushScoped<RoutingRuleState>(
-      AppSecondaryDestination.routingRuleDnsQuery,
-      extra: params,
-    );
-    if (rule != null) {
-      _xrayProfileState.routing.dnsQueryRule = rule;
-      _notifyChanged();
+    final next = _copyDocument(_document);
+    final servers = _ensureDnsServers(next);
+    if (servers == null) {
+      return false;
     }
-  }
-
-  Future<void> _showDnsOutRule(BuildContext context) async {
-    final params = RoutingRuleDnsOutParams(
-      _xrayProfileState.routing.dnsOutRule,
-    );
-    await context.pushScoped(
-      AppSecondaryDestination.routingRuleDnsOut,
-      extra: params,
-    );
-  }
-
-  Future<void> _showDnsDoTRule(BuildContext context) async {
-    final dnsOutboundTags = _dnsRoutingOutboundTags();
-    final params = RoutingRuleDnsDoTParams(
-      _xrayProfileState.routing.dnsDoTRule,
-      dnsOutboundTags,
-    );
-    final rule = await context.pushScoped<RoutingRuleState>(
-      AppSecondaryDestination.routingRuleDnsDot,
-      extra: params,
-    );
-    if (rule != null) {
-      _xrayProfileState.routing.dnsDoTRule = rule;
-      _notifyChanged();
+    if (index != null &&
+        (index < 0 ||
+            index >= servers.length ||
+            !isEditableDnsServer(servers[index]))) {
+      return false;
     }
-  }
-
-  List<String> _dnsRoutingOutboundTags() {
-    return _xrayProfileState.outbounds.outboundTags
-        .where((tag) => tag.isNotEmpty && tag != RoutingOutboundTag.block.name)
-        .toList();
-  }
-
-  void appendCustomRule() {
-    _xrayProfileState.routing.customRules.add(RoutingRuleState());
-    _notifyChanged();
-  }
-
-  void sortCustomRule(int oldIndex, int newIndex) {
-    final rules = _xrayProfileState.routing.customRules;
-    final rule = rules.removeAt(oldIndex);
-    rules.insert(newIndex, rule);
-    _notifyChanged();
-  }
-
-  Future<void> editCustomRule(BuildContext context, int index) async {
-    final params = RoutingRuleParams(
-      _xrayProfileState.routing.customRules[index],
-      _xrayProfileState.outbounds.outboundTags,
-      _routingInboundTags(_xrayProfileState.dns),
-    );
-    final rule = await context.pushScoped<RoutingRuleState>(
-      AppSecondaryDestination.routingRule,
-      extra: params,
-    );
-    if (rule != null) {
-      _xrayProfileState.routing.customRules[index] = rule;
-      _notifyChanged();
+    final server = index == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(servers[index] as Map<String, dynamic>);
+    server['address'] = address;
+    if (parsedPort == null) {
+      server.remove('port');
+    } else {
+      server['port'] = parsedPort;
     }
-  }
-
-  void deleteCustomRule(int index) {
-    _xrayProfileState.routing.customRules.removeAt(index);
-    _notifyChanged();
-  }
-
-  List<String> _routingInboundTags(DnsState dns) {
-    return <String>{
-      ...RoutingInboundTag.userVisibleNames,
-      ..._xrayProfileState.inbounds.additionalTags,
-      ...dns.inboundTags,
-    }.toList();
-  }
-
-  void updateDisableCache(bool value) {
-    _xrayProfileState.dns.disableCache = value;
-    _notifyChanged();
-  }
-
-  void updateServeStale(bool value) {
-    _xrayProfileState.dns.serveStale = value;
-    _notifyChanged();
-  }
-
-  void updateDisableFallback(bool value) {
-    _xrayProfileState.dns.disableFallback = value;
-    _notifyChanged();
-  }
-
-  void updateDisableFallbackIfMatch(bool value) {
-    _xrayProfileState.dns.disableFallbackIfMatch = value;
-    _notifyChanged();
-  }
-
-  void updateEnableParallelQuery(bool value) {
-    _xrayProfileState.dns.enableParallelQuery = value;
-    _notifyChanged();
-  }
-
-  void updateUseSystemHosts(bool value) {
-    _xrayProfileState.dns.useSystemHosts = value;
-    _notifyChanged();
-  }
-
-  Future<void> editHosts(BuildContext context) async {
-    final params = DnsHostsParams(_xrayProfileState.dns.hosts);
-    final hosts = await context.pushScoped<Map<String, List<String>>>(
-      AppSecondaryDestination.dnsHosts,
-      extra: params,
-    );
-    if (hosts != null) {
-      _xrayProfileState.dns.hosts = hosts;
-      _notifyChanged();
+    if (index == null) {
+      servers.add(server);
+    } else {
+      servers[index] = server;
     }
+    _replaceDocument(next);
+    return true;
   }
 
-  void appendDnsServer() {
-    _xrayProfileState.dns.servers.add(_newDnsServer());
-    _notifyChanged();
-  }
-
-  void sortDnsServer(int oldIndex, int newIndex) {
-    final servers = _xrayProfileState.dns.servers;
-    final server = servers.removeAt(oldIndex);
-    servers.insert(newIndex, server);
-    _notifyChanged();
+  void addDnsServer() {
+    updateDnsServer(null, _defaultDnsServerAddress, '');
   }
 
   Future<void> editDnsServer(BuildContext context, int index) async {
-    final params = DnsServerParams(_xrayProfileState.dns.servers[index]);
-    final server = await context.pushScoped<DnsServerState>(
-      AppSecondaryDestination.dnsServer,
-      extra: params,
-    );
-    if (server != null) {
-      _xrayProfileState.dns.servers[index] = server;
-      _notifyChanged();
+    final servers = dnsServers;
+    if (index < 0 ||
+        index >= servers.length ||
+        !isEditableDnsServer(servers[index])) {
+      return;
+    }
+    final server = servers[index] as Map<String, dynamic>;
+    final edited = await showDnsServerEditDialog(context, server);
+    if (edited != null && context.mounted) {
+      if (!updateDnsServer(index, edited.address, edited.port)) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.validationPortInvalid,
+        );
+      }
     }
   }
 
   void deleteDnsServer(int index) {
-    _xrayProfileState.dns.servers.removeAt(index);
-    _notifyChanged();
+    final next = _copyDocument(_document);
+    final servers = _ensureDnsServers(next);
+    if (servers == null || index < 0 || index >= servers.length) {
+      return;
+    }
+    servers.removeAt(index);
+    _replaceDocument(next);
+  }
+
+  void reorderDnsServer(int oldIndex, int newIndex) {
+    final next = _copyDocument(_document);
+    final servers = _ensureDnsServers(next);
+    if (servers == null || oldIndex < 0 || oldIndex >= servers.length) {
+      return;
+    }
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final server = servers.removeAt(oldIndex);
+    servers.insert(newIndex, server);
+    _replaceDocument(next);
+  }
+
+  bool updateFakeDnsPool(bool ipv6, String ipPool, String poolSize) {
+    final parsedPoolSize = poolSize.isEmpty ? null : int.tryParse(poolSize);
+    final address = InternetAddress.tryParse(ipPool.split('/').first);
+    final expected = ipv6 ? InternetAddressType.IPv6 : InternetAddressType.IPv4;
+    if (fakeDnsRawOnly ||
+        address?.type != expected ||
+        (poolSize.isNotEmpty && parsedPoolSize == null)) {
+      return false;
+    }
+
+    final next = _copyDocument(_document);
+    final current = next['fakeDns'];
+    final pools = current is List<dynamic> ? current : <dynamic>[];
+    final index = pools.indexWhere(
+      (value) =>
+          value is Map<String, dynamic> &&
+          _fakeDnsAddress(value)?.type == expected,
+    );
+    final pool = index < 0
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(pools[index] as Map<String, dynamic>);
+    pool['ipPool'] = ipPool;
+    if (parsedPoolSize == null) {
+      pool.remove('poolSize');
+    } else {
+      pool['poolSize'] = parsedPoolSize;
+    }
+    if (index < 0) {
+      pools.add(pool);
+    } else {
+      pools[index] = pool;
+    }
+    next['fakeDns'] = pools;
+    _replaceDocument(next);
+    return true;
+  }
+
+  Future<void> editFakeDnsPool(
+    BuildContext context, {
+    required bool ipv6,
+  }) async {
+    final pool = fakeDnsPool(ipv6);
+    var ipPool = pool?['ipPool'] as String? ?? '';
+    var poolSize = pool?['poolSize']?.toString() ?? '';
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext)!;
+        return AlertDialog(
+          title: Text(ipv6 ? l10n.fakeDnsPageIPv6 : l10n.fakeDnsPageIPv4),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                initialValue: ipPool,
+                onChanged: (value) => ipPool = value,
+                decoration: InputDecoration(labelText: l10n.fakeDnsPageIpPool),
+              ),
+              TextFormField(
+                initialValue: poolSize,
+                onChanged: (value) => poolSize = value,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: l10n.fakeDnsPagePoolSize,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.buttonCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(l10n.buttonSave),
+            ),
+          ],
+        );
+      },
+    );
+    if (accepted == true && context.mounted) {
+      if (!updateFakeDnsPool(ipv6, ipPool, poolSize)) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.fakeDnsValidationIpPoolInvalid,
+        );
+      }
+    }
   }
 
   void updateLogLevel(String value) {
-    final logLevel = XrayLogLevel.fromString(value);
-    if (logLevel != null) {
-      _xrayProfileState.log.logLevel = logLevel;
-      _notifyChanged();
+    if (logRawOnly || XrayLogLevel.fromString(value) == null) {
+      return;
     }
+    _updateMapRoot('log', (log) {
+      log['loglevel'] = value;
+    });
   }
 
   void updateDnsLog(bool value) {
-    _xrayProfileState.log.dnsLog = value;
-    _notifyChanged();
+    if (logRawOnly) {
+      return;
+    }
+    _updateMapRoot('log', (log) {
+      log['dnsLog'] = value;
+    });
   }
 
   void updateMaskAddress(String value) {
-    final maskAddress = XrayLogMaskAddress.fromString(value);
-    if (maskAddress != null) {
-      _xrayProfileState.log.maskAddress = maskAddress;
-      _notifyChanged();
+    if (logRawOnly || XrayLogMaskAddress.fromString(value) == null) {
+      return;
     }
+    _updateMapRoot('log', (log) {
+      log['maskAddress'] = value;
+    });
   }
 
   Future<void> save(BuildContext context) async {
-    _mergeInputToState(_xrayProfileState);
-    final checked = await _validate(context);
-    if (!checked) {
+    if (!_ensureLoaded(context) || state.saving) {
       return;
     }
-    if (params.id == DBConstants.defaultId) {
-      await _xrayProfileState.insertToDb();
-    } else if (_xrayProfileData != null) {
-      await _xrayProfileState.updateToDb(_xrayProfileData!);
-      final eventBus = AppEventBus.instance;
-      if (params.id == eventBus.state.xrayProfileId) {
-        eventBus.updateXrayProfileId(eventBus.state.xrayProfileId);
+    emit(state.copyWith(saving: true));
+    try {
+      final validation = await validateProfile(_document);
+      if (!context.mounted) {
+        return;
+      }
+      if (!validation.item1) {
+        ContextAlert.showToast(context, validation.item2);
+        return;
+      }
+
+      if (params.id == DBConstants.defaultId) {
+        await insertProfile(_document);
+      } else if (_profileData != null) {
+        if (!await updateProfile(_document, _profileData!)) {
+          throw StateError('Xray Profile no longer exists');
+        }
+        final eventBus = AppEventBus.instance;
+        if (params.id == eventBus.state.xrayProfileId) {
+          eventBus.updateXrayProfileId(eventBus.state.xrayProfileId);
+        }
+      }
+      if (context.mounted) {
+        context.pop();
+      }
+    } catch (_) {
+      if (context.mounted && isPageActive) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.vpnOutboundInvalid,
+        );
+      }
+    } finally {
+      if (isPageActive) {
+        emit(state.copyWith(saving: false));
       }
     }
-    if (context.mounted) {
-      context.pop();
-    }
   }
 
-  void _mergeInputToState(XrayProfileState state) {
-    state.name = nameController.text;
-    state.dns.clientIp = dnsClientIpController.text;
-    state.dns.serveExpiredTTL = dnsServeExpiredTTLController.text;
-    state.fakeDns.ipv4.ipPool = fakeDnsIpv4IpPoolController.text;
-    state.fakeDns.ipv4.poolSize = fakeDnsIpv4PoolSizeController.text;
-    state.fakeDns.ipv6.ipPool = fakeDnsIpv6IpPoolController.text;
-    state.fakeDns.ipv6.poolSize = fakeDnsIpv6PoolSizeController.text;
-    state.removeWhitespace();
-  }
-
-  Future<bool> _validate(BuildContext context) async {
-    final localMessage = _validateLocalFields(context);
-    if (localMessage != null) {
-      ContextAlert.showToast(context, localMessage);
-      return false;
-    }
-    final tuple = await _xrayProfileState.validate();
-    if (!context.mounted) {
-      return false;
-    }
-    if (!tuple.item1) {
-      ContextAlert.showToast(context, tuple.item2);
-    }
-    return tuple.item1;
-  }
-
-  String? _validateLocalFields(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final ipv4Error = _xrayProfileState.fakeDns.validateIPv4();
-    if (ipv4Error != null) {
-      return "${l10n.fakeDnsPageIPv4}: ${_fakeDnsErrorMessage(l10n, ipv4Error)}";
-    }
-    final ipv6Error = _xrayProfileState.fakeDns.validateIPv6();
-    if (ipv6Error != null) {
-      return "${l10n.fakeDnsPageIPv6}: ${_fakeDnsErrorMessage(l10n, ipv6Error)}";
-    }
-    return null;
-  }
-
-  String _fakeDnsErrorMessage(
-    AppLocalizations l10n,
-    FakeDnsValidationError error,
+  void _updateMapRoot(
+    String root,
+    void Function(Map<String, dynamic> value) update,
   ) {
-    return switch (error) {
-      FakeDnsValidationError.ipPoolRequired =>
-        l10n.fakeDnsValidationIpPoolRequired,
-      FakeDnsValidationError.ipPoolInvalid =>
-        l10n.fakeDnsValidationIpPoolInvalid,
-      FakeDnsValidationError.poolSizeInvalid =>
-        l10n.fakeDnsValidationPoolSizeInvalid,
-      FakeDnsValidationError.poolSizeTooLarge =>
-        l10n.fakeDnsValidationPoolSizeTooLarge,
-    };
+    final next = _copyDocument(_document);
+    final current = next[root];
+    final value = current is Map<String, dynamic>
+        ? current
+        : <String, dynamic>{};
+    update(value);
+    next[root] = value;
+    _replaceDocument(next);
   }
 
-  void _notifyChanged() {
+  List<dynamic>? _ensureDnsServers(Map<String, dynamic> document) {
+    final currentDns = document['dns'];
+    if (currentDns != null && currentDns is! Map<String, dynamic>) {
+      return null;
+    }
+    final dns = currentDns is Map<String, dynamic>
+        ? currentDns
+        : <String, dynamic>{};
+    final currentServers = dns['servers'];
+    if (currentServers != null && currentServers is! List<dynamic>) {
+      return null;
+    }
+    final servers = currentServers as List<dynamic>? ?? <dynamic>[];
+    dns['servers'] = servers;
+    document['dns'] = dns;
+    return servers;
+  }
+
+  InternetAddress? _fakeDnsAddress(Map<String, dynamic> pool) {
+    final ipPool = pool['ipPool'];
+    if (ipPool is! String || ipPool.isEmpty) {
+      return null;
+    }
+    return InternetAddress.tryParse(ipPool.split('/').first);
+  }
+
+  void _updateVisibleName() {
+    if (_syncingName || !state.loaded) {
+      return;
+    }
+    final next = _copyDocument(_document);
+    next['name'] = nameController.text;
+    _document = next;
+  }
+
+  void _replaceDocument(Map<String, dynamic> next, {bool? loaded}) {
+    _document = _copyDocument(next);
+    _syncingName = true;
+    nameController.text = _document['name'] is String
+        ? _document['name'] as String
+        : '';
+    _syncingName = false;
+    _notifyChanged(loaded: loaded);
+  }
+
+  void _showJsonInvalid(BuildContext context) {
+    ContextAlert.showToast(
+      context,
+      AppLocalizations.of(context)!.validationJsonInvalid,
+    );
+  }
+
+  bool _ensureLoaded(BuildContext context) {
+    if (state.loaded &&
+        (params.id == DBConstants.defaultId || _profileData != null)) {
+      return true;
+    }
+    ContextAlert.showToast(
+      context,
+      AppLocalizations.of(context)!.vpnOutboundInvalid,
+    );
+    return false;
+  }
+
+  void _notifyChanged({bool? loaded}) {
     if (isPageActive) {
-      emit(state.bumped());
+      emit(state.copyWith(loaded: loaded));
     }
   }
+
+  Map<String, dynamic> _copyDocument(Map<String, dynamic> source) =>
+      jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
 }

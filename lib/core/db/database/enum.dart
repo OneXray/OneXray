@@ -5,7 +5,8 @@ enum CoreConfigType {
   // Legacy persisted value. Product/code terminology is Xray Profile.
   profile("setting"),
   raw("raw"),
-  full("full");
+  // Legacy persisted value. Product/code terminology is Multi-node Outbound.
+  multiNodeOutbound("full");
 
   const CoreConfigType(this.name);
 

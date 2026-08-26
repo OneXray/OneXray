@@ -36,7 +36,7 @@ class XrayRawEditController extends PageCubit<XrayRawEditPageState> {
     var validJson = false;
     try {
       JsonTool.decoder.convert(text);
-      validJson = true;
+      validJson = params.validator?.call(text) == null;
     } catch (_) {
       validJson = false;
     }
@@ -115,6 +115,11 @@ class XrayRawEditController extends PageCubit<XrayRawEditPageState> {
       JsonTool.decoder.convert(rawText);
     } catch (_) {
       _showJsonInvalid(context);
+      return;
+    }
+    final validationError = params.validator?.call(rawText);
+    if (validationError != null) {
+      ContextAlert.showToast(context, validationError);
       return;
     }
     if (context.mounted) {

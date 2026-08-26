@@ -40,7 +40,7 @@ OneXray является только клиентом и не предоста�
 ## Возможности
 
 - **Кроссплатформенный TUN** — iOS, macOS, Android, Windows и Linux.
-- **Гибкая конфигурация** — Simple Profile, переиспользуемые Xray Profiles, Full Config и Raw JSON.
+- **Гибкая конфигурация** — Simple Profile, переиспользуемые Xray Profiles, Multi-node Outbound и Raw JSON.
 - **Управление маршрутизацией** — режимы Rule, Global и Direct переключаются на Home.
 - **Импорт и организация** — поддерживаемые share links и HTTPS-подписки из QR-кодов, изображений, файлов или буфера обмена.
 - **Локальные инструменты** — ping узлов, журналы Xray, управление GeoData и rule sets, backup и restore.

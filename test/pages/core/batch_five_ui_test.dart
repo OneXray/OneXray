@@ -66,6 +66,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Network & Runtime'), findsOneWidget);
+    expect(find.text('Run Mode'), findsNothing);
     expect(find.text('Data & Updates'), findsOneWidget);
     expect(find.text('Log'), findsOneWidget);
     expect(find.text('Xray config file'), findsOneWidget);

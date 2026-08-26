@@ -6,7 +6,7 @@ import 'package:onexray/pages/core/xray/outbound/page.dart';
 import 'package:onexray/pages/core/xray/outbound/params.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -20,11 +20,21 @@ void main() {
     await eventBus.close();
   });
 
-  testWidgets('outbound editor uses five top-level sections on phone', (
+  testWidgets('outbound editor shows only the shallow form and Raw JSON hint', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final outbound = newOutboundMap();
+    final stream = outbound['streamSettings'] as Map<String, dynamic>;
+    stream
+      ..['security'] = 'tls'
+      ..remove('realitySettings')
+      ..['tlsSettings'] = <String, dynamic>{
+        'serverName': 'example.com',
+        'alpn': ['h2'],
+      };
 
     await tester.pumpWidget(
       MaterialApp(
@@ -40,8 +50,7 @@ void main() {
         home: OutboundUIPage(
           params: OutboundUIParams(
             DBConstants.defaultId,
-            OutboundState(),
-            const [],
+            outbound,
             saveToDb: false,
           ),
         ),
@@ -49,9 +58,26 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(SettingSection), findsNWidgets(5));
-    expect(find.text('sockopt'), findsOneWidget);
-    expect(find.text('mux'), findsOneWidget);
+    expect(find.byType(SettingSection), findsNWidgets(3));
+    expect(
+      find.text(
+        'The UI supports only common Outbound fields; edit other fields in Raw JSON.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Raw JSON'), findsOneWidget);
+    expect(find.text('VLESS'), findsOneWidget);
+    expect(find.text('sockopt'), findsNothing);
+    expect(find.text('mux'), findsNothing);
+    expect(find.text('reverse'), findsNothing);
+    expect(find.text('finalmask'), findsNothing);
+    expect(find.text('ALPN'), findsNothing);
     expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('VLESS'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hysteria2'), findsOneWidget);
+    expect(find.text('HTTP'), findsNothing);
   });
 }

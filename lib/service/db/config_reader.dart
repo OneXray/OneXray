@@ -13,7 +13,7 @@ extension ConfigReader on CoreConfigData {
             .firstWhere((tag) => tag.isNotEmpty, orElse: () => type)
             .toUpperCase(),
       CoreConfigType.raw => 'JSON',
-      CoreConfigType.full => 'FULL',
+      CoreConfigType.multiNodeOutbound => 'MULTI-NODE',
       CoreConfigType.profile || null => '',
     };
   }
@@ -29,9 +29,9 @@ extension ConfigReader on CoreConfigData {
       CoreConfigType.raw => AppLocalizations.of(
         context,
       )!.homeManualInputRawJson,
-      CoreConfigType.full => AppLocalizations.of(
+      CoreConfigType.multiNodeOutbound => AppLocalizations.of(
         context,
-      )!.homeManualInputFullConfig,
+      )!.homeManualInputMultiNodeOutbound,
       CoreConfigType.profile || null => '',
     };
   }
@@ -49,8 +49,8 @@ extension ConfigReader on CoreConfigData {
         case CoreConfigType.raw:
           tags.add("JSON");
           break;
-        case CoreConfigType.full:
-          tags.add("FULL");
+        case CoreConfigType.multiNodeOutbound:
+          tags.add("MULTI-NODE");
           break;
         default:
           break;

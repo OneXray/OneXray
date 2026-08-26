@@ -3,7 +3,6 @@ import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -14,13 +13,11 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/json_importer.dart';
-import 'package:onexray/service/xray/outbound/state.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 import 'package:onexray/service/xray/raw/ping.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
-import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
-import 'package:uuid/uuid.dart';
+import 'package:onexray/service/xray/profile/map.dart';
 
 class XrayRawPageState {
   final bool validJson;
@@ -91,14 +88,12 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
   }
 
   String get _templateXrayJson {
-    final settings = XrayProfileState();
-    final outbound = OutboundState();
-    outbound.address = "example.com";
-    outbound.port = "443";
-    outbound.vlessId = Uuid().v4();
-    settings.outbounds.outbounds.add(outbound);
+    final settings = createBaseProfileMap();
+    final outbound = newOutboundMap();
+    final outbounds = settings['outbounds'] as List<dynamic>;
+    outbounds.insert(0, outbound);
 
-    return JsonTool.encoder.convert(settings.xrayJson.toJson());
+    return JsonTool.encoder.convert(settings);
   }
 
   Future<void> importAction(BuildContext context, IconMenuId menuId) async {
@@ -204,12 +199,8 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
   }
 
   String _readName(String rawText) {
-    final jsonMap = JsonTool.decoder.convert(rawText);
-    final xrayJson = XrayJson.fromJson(jsonMap);
-    if (EmptyTool.checkString(xrayJson.name)) {
-      return xrayJson.name!;
-    } else {
-      return "Unnamed";
-    }
+    final jsonMap = JsonTool.decoder.convert(rawText) as Map<String, dynamic>;
+    final name = jsonMap['name'];
+    return name is String && EmptyTool.checkString(name) ? name : 'Unnamed';
   }
 }
