@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/xray/profile/outbounds/final_outbound_section.dart';
-import 'package:onexray/pages/core/xray/profile/outbounds/view.dart';
-import 'package:onexray/service/xray/profile/outbounds_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -70,38 +68,5 @@ void main() {
     expect(find.text('Disabled'), findsOneWidget);
     expect(find.byIcon(LucideIcons.chevronRight), findsOneWidget);
     expect(find.byIcon(LucideIcons.trash2), findsNothing);
-  });
-
-  testWidgets('outbounds view falls back to the final outbound tag', (
-    tester,
-  ) async {
-    final state = OutboundsState()
-      ..finalOutbound = {'tag': 'chainProxy', 'protocol': 'vless'};
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        builder: (context, child) => ShadTheme(
-          data: ShadThemeData(
-            colorScheme: const ShadBlueColorScheme.light(),
-            radius: const BorderRadius.all(Radius.circular(8)),
-          ),
-          child: child ?? const SizedBox.shrink(),
-        ),
-        home: Scaffold(
-          body: OutboundsView(
-            state: state,
-            onImportFinalOutbound: () {},
-            onDeleteFinalOutbound: () {},
-            onEditFreedom: () {},
-            onEditFragment: () {},
-            onEditBlackHole: () {},
-            onEditDns: () {},
-          ),
-        ),
-      ),
-    );
-
-    expect(find.text('chainProxy'), findsOneWidget);
   });
 }

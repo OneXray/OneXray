@@ -4,40 +4,36 @@ import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
-import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/xray/profile/state.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
+import 'package:onexray/service/xray/profile/state_reader.dart';
+import 'package:onexray/service/xray/profile/state_validator.dart';
 
-extension XrayProfileStateDb on XrayProfileState {
-  CoreConfigCompanion configCompanion() {
-    final jsonData = JsonTool.encoder.convert(xrayJson);
-    final bytes = utf8.encode(jsonData);
-    final base64Data = base64Encode(bytes);
-    final row = CoreConfigCompanion.insert(
-      name: name,
+CoreConfigCompanion profileCompanion(Map<String, dynamic> profile) =>
+    CoreConfigCompanion.insert(
+      name: profileName(profile),
       type: CoreConfigType.profile.name,
-      tags: "",
-      data: Value<String>(base64Data),
+      tags: '',
+      data: Value<String>(_encodeProfile(profile)),
       delay: PingDelayConstants.unknown,
       subId: DBConstants.defaultId,
     );
-    return row;
-  }
 
-  Future<int> insertToDb() async {
-    final db = AppDatabase();
-    final newRow = configCompanion();
-    final res = await db.coreConfigDao.insertRow(newRow);
-    return res;
-  }
+Future<int> insertProfile(Map<String, dynamic> profile) =>
+    AppDatabase().coreConfigDao.insertRow(profileCompanion(profile));
 
-  Future<bool> updateToDb(CoreConfigData setting) async {
-    final jsonData = JsonTool.encoder.convert(xrayJson);
-    final bytes = utf8.encode(jsonData);
-    final base64Data = base64Encode(bytes);
-    final row = setting.copyWith(name: name, data: Value<String>(base64Data));
-    final db = AppDatabase();
-    final res = await db.coreConfigDao.updateRow(row);
-    return res;
+Future<bool> updateProfile(
+  Map<String, dynamic> profile,
+  CoreConfigData existing,
+) => AppDatabase().coreConfigDao.updateRow(
+  existing.copyWith(
+    name: profileName(profile),
+    data: Value<String>(_encodeProfile(profile)),
+  ),
+);
+
+String _encodeProfile(Map<String, dynamic> profile) {
+  final validation = validateProfileFields(profile);
+  if (!validation.item1) {
+    throw FormatException(validation.item2);
   }
+  return base64Encode(utf8.encode(encodeProfileMap(profile)));
 }

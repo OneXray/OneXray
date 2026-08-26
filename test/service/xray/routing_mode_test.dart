@@ -314,7 +314,7 @@ void main() {
     );
   });
 
-  test('Multi-node Outbound global mode keeps every outbound', () {
+  test('Map global mode keeps every outbound', () {
     final proxy = _newOutbound(
       RoutingOutboundTag.proxy.name,
       protocol: 'vless',
@@ -350,7 +350,7 @@ void main() {
     expect(identical(outbounds.first, proxy), false);
   });
 
-  test('Multi-node Outbound direct mode clears only the direct chain', () {
+  test('Map direct mode clears only the direct chain', () {
     final direct = _newOutbound(
       RoutingOutboundTag.direct.name,
       protocol: 'freedom',
@@ -358,10 +358,14 @@ void main() {
     _setDialerProxy(direct, RoutingOutboundTag.fragment.name);
     _setProxyTag(direct, RoutingOutboundTag.fragment.name);
     final raw = <String, dynamic>{
+      'name': 'Profile  name',
+      'observatory': <String, dynamic>{'future': ' keep  spaces '},
+      'version': <String, dynamic>{'min': '1.0'},
       'outbounds': <dynamic>[
         _newOutbound(RoutingOutboundTag.proxy.name, protocol: 'vless'),
         direct,
-        _newOutbound(RoutingOutboundTag.block.name, protocol: 'blackhole'),
+        _newOutbound(RoutingOutboundTag.block.name, protocol: 'blackhole')
+          ..['future'] = <String, dynamic>{'keep': true},
       ],
     };
 
@@ -380,6 +384,10 @@ void main() {
     expect(_proxyTag(outbounds.first), isNull);
     expect(_dialerProxy(direct), RoutingOutboundTag.fragment.name);
     expect(_proxyTag(direct), RoutingOutboundTag.fragment.name);
+    expect(raw['name'], 'Profile  name');
+    expect(raw['observatory'], <String, dynamic>{'future': ' keep  spaces '});
+    expect(raw['version'], <String, dynamic>{'min': '1.0'});
+    expect(outbounds.last['future'], <String, dynamic>{'keep': true});
   });
 
   test('Multi-node Outbound rejects a missing proxySettings dependency', () {

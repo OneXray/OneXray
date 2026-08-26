@@ -98,7 +98,9 @@ class XrayMultiNodeOutboundController
       return '';
     }
     final value = routing['domainStrategy'];
-    return value is String ? value : '';
+    return value is String
+        ? RoutingDomainStrategy.fromString(value)?.name ?? value
+        : '';
   }
 
   bool get routingDomainStrategyRawOnly {

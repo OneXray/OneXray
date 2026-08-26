@@ -25,8 +25,8 @@ enum XrayInboundProtocol {
 
 enum RoutingDomainStrategy {
   asIs("AsIs"),
-  ipIfNonMatch("IpIfNonMatch"),
-  ipOnDemand("IpOnDemand");
+  ipIfNonMatch("IPIfNonMatch"),
+  ipOnDemand("IPOnDemand");
 
   const RoutingDomainStrategy(this.name);
 
@@ -35,9 +35,12 @@ enum RoutingDomainStrategy {
   @override
   String toString() => name;
 
-  static RoutingDomainStrategy? fromString(String name) => RoutingDomainStrategy
-      .values
-      .firstWhereOrNull((value) => value.name == name);
+  static RoutingDomainStrategy? fromString(String name) {
+    final normalized = name.toLowerCase();
+    return RoutingDomainStrategy.values.firstWhereOrNull(
+      (value) => value.name.toLowerCase() == normalized,
+    );
+  }
 
   static List<String> get names {
     return RoutingDomainStrategy.values.map((e) => e.name).toList();

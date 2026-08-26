@@ -6,7 +6,6 @@ import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
-import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
 
@@ -104,12 +103,14 @@ void main() {
   test(
     'Profile runtime patch preserves user roots and custom inbounds',
     () async {
-      final jsonMap = <String, dynamic>{
+      final source = <String, dynamic>{
         'name': 'Multi-node Outbound',
         'policy': <String, dynamic>{'user': true},
         'stats': <String, dynamic>{'user': true},
         'metrics': <String, dynamic>{'listen': '127.0.0.1:1000'},
         'observatory': <String, dynamic>{'subjectSelector': <dynamic>[]},
+        'version': <String, dynamic>{'min': ' keep  spaces '},
+        'geodata': <String, dynamic>{'loader': 'standard'},
         'inbounds': <dynamic>[
           <String, dynamic>{
             'tag': 'tunIn',
@@ -121,9 +122,29 @@ void main() {
           <String, dynamic>{'tag': 'pingIn', 'protocol': 'http'},
         ],
         'outbounds': <dynamic>[
-          <String, dynamic>{'tag': 'proxy', 'protocol': 'freedom'},
+          <String, dynamic>{
+            'tag': 'proxy',
+            'protocol': 'freedom',
+            'streamSettings': <String, dynamic>{
+              'sockopt': <String, dynamic>{
+                'interface': ' user interface ',
+                'future': ' keep  spaces ',
+              },
+            },
+          },
+          <String, dynamic>{
+            'tag': 'direct',
+            'protocol': 'freedom',
+            'streamSettings': <String, dynamic>{
+              'sockopt': <String, dynamic>{
+                'interface': 'app-owned-interface',
+                'future': true,
+              },
+            },
+          },
         ],
       };
+      final jsonMap = copyXrayConfigMap(source);
       final ports = XrayPorts(
         '23456',
         '23457',
@@ -132,7 +153,6 @@ void main() {
 
       await XrayRawFix.fixProfileConfig(
         jsonMap,
-        XrayProfileState(),
         CoreRunMode.tun,
         TunSettingsState(),
         ports,
@@ -144,6 +164,8 @@ void main() {
       expect(jsonMap['stats'], <String, dynamic>{'user': true});
       expect(jsonMap['metrics'], <String, dynamic>{'listen': '127.0.0.1:1000'});
       expect(jsonMap['observatory'], isNotNull);
+      expect(jsonMap['version'], source['version']);
+      expect(jsonMap['geodata'], source['geodata']);
       expect(jsonMap['env'], isNotNull);
       final inbounds = jsonMap['inbounds']! as List<dynamic>;
       expect(inbounds.map((inbound) => (inbound as Map)['tag']), <String>[
@@ -161,8 +183,258 @@ void main() {
       expect(tunSettings['mtu'], 1500);
       expect((inbounds.last as Map)['port'], '23456');
       expect(ports.metricsPort, isEmpty);
+      final outbounds = jsonMap['outbounds']! as List<dynamic>;
+      final proxy = outbounds.first as Map<String, dynamic>;
+      final proxySockopt =
+          (proxy['streamSettings'] as Map<String, dynamic>)['sockopt']
+              as Map<String, dynamic>;
+      expect(proxySockopt['interface'], ' user interface ');
+      expect(proxySockopt['future'], ' keep  spaces ');
+      final direct = outbounds.last as Map<String, dynamic>;
+      final directSockopt =
+          (direct['streamSettings'] as Map<String, dynamic>)['sockopt']
+              as Map<String, dynamic>;
+      expect(directSockopt, isNot(contains('interface')));
+      expect(directSockopt['future'], isTrue);
+      expect(source['env'], isNull);
+      expect(
+        (((source['outbounds'] as List<dynamic>).first
+                as Map<String, dynamic>)['streamSettings']
+            as Map<String, dynamic>)['sockopt'],
+        containsPair('interface', ' user interface '),
+      );
     },
   );
+
+  test('Raw runtime inbounds come from the Profile Map copy', () async {
+    final profile = <String, dynamic>{
+      'name': 'Profile',
+      'fakeDns': <String, dynamic>{'ipPool': '198.18.0.0/15'},
+      'inbounds': <dynamic>[
+        <String, dynamic>{
+          'tag': 'tunIn',
+          'protocol': 'tun',
+          'settings': <String, dynamic>{'future': ' keep  spaces '},
+          'sniffing': <String, dynamic>{
+            'future': <dynamic>[1, 2],
+          },
+        },
+        <String, dynamic>{
+          'tag': 'customIn',
+          'protocol': 'socks',
+          'future': <String, dynamic>{'keep': true},
+        },
+      ],
+    };
+    final expectedProfile = copyXrayConfigMap(profile);
+    final raw = <String, dynamic>{
+      'inbounds': <dynamic>[
+        <String, dynamic>{'tag': 'rawIn', 'protocol': 'http'},
+      ],
+      'outbounds': <dynamic>[
+        <String, dynamic>{'tag': 'proxy', 'protocol': 'freedom'},
+      ],
+    };
+    final ports = XrayPorts(
+      '23456',
+      '23457',
+      XrayInboundAccount('ping-user', 'ping-pass'),
+    );
+
+    await XrayRawFix.fixConfig(
+      raw,
+      profile,
+      CoreRunMode.tun,
+      TunSettingsState(),
+      ports,
+      false,
+      disableLog: false,
+    );
+
+    expect(profile, expectedProfile);
+    final inbounds = raw['inbounds']! as List<dynamic>;
+    expect(inbounds.map((inbound) => (inbound as Map)['tag']), <String>[
+      'tunIn',
+      'customIn',
+      'pingIn',
+    ]);
+    final tun = inbounds.first as Map<String, dynamic>;
+    expect(tun['sniffing'], <String, dynamic>{
+      'future': <dynamic>[1, 2],
+    });
+    expect(
+      (tun['settings'] as Map<String, dynamic>)['future'],
+      ' keep  spaces ',
+    );
+    expect((inbounds[1] as Map)['future'], <String, dynamic>{'keep': true});
+
+    final proxyRaw = <String, dynamic>{
+      'inbounds': <dynamic>[
+        <String, dynamic>{'tag': 'rawIn', 'protocol': 'http'},
+      ],
+      'outbounds': <dynamic>[
+        <String, dynamic>{'tag': 'proxy', 'protocol': 'freedom'},
+      ],
+    };
+    await XrayRawFix.fixConfig(
+      proxyRaw,
+      profile,
+      CoreRunMode.proxy,
+      TunSettingsState(),
+      XrayPorts('23458', '23459', XrayInboundAccount('ping-user', 'ping-pass')),
+      false,
+      disableLog: false,
+    );
+    expect(
+      (proxyRaw['inbounds'] as List<dynamic>).map(
+        (inbound) => (inbound as Map)['tag'],
+      ),
+      <String>['pingIn'],
+    );
+    expect(profile, expectedProfile);
+  });
+
+  test('Profile selected and final outbounds materialize on a Map copy', () {
+    final storedProfile = <String, dynamic>{
+      'name': 'Profile  name',
+      'observatory': <String, dynamic>{'future': ' keep  spaces '},
+      'outbounds': <dynamic>[
+        <String, dynamic>{'tag': 'direct', 'protocol': 'freedom'},
+        <String, dynamic>{
+          'tag': 'proxy',
+          'protocol': 'vless',
+          'future': 'old-runtime-proxy',
+        },
+        <String, dynamic>{
+          'name': 'Final  name',
+          'tag': 'chainProxy',
+          'protocol': 'vless',
+          'settings': <String, dynamic>{'future': 'final'},
+        },
+        <String, dynamic>{
+          'tag': 'custom',
+          'protocol': 'socks',
+          'future': <String, dynamic>{'keep': true},
+        },
+      ],
+    };
+    final selected = <String, dynamic>{
+      'name': 'Selected  name',
+      'tag': 'stored-tag',
+      'protocol': 'vless',
+      'streamSettings': <String, dynamic>{
+        'sockopt': <String, dynamic>{
+          'dialerProxy': 'stored-upstream',
+          'interface': ' selected interface ',
+        },
+      },
+    };
+    final expectedProfile = copyXrayConfigMap(storedProfile);
+    final expectedSelected = JsonTool.decoder.convert(
+      JsonTool.encoder.convert(selected),
+    );
+    final runtime = copyXrayConfigMap(storedProfile);
+    final currentOutbounds = runtime['outbounds']! as List<dynamic>;
+    final finalOutbound = currentOutbounds[2] as Map<String, dynamic>;
+
+    XrayRawFix.applySelectedOutbound(
+      runtime,
+      selected,
+      finalOutbound: finalOutbound,
+    );
+
+    expect(storedProfile, expectedProfile);
+    expect(selected, expectedSelected);
+    expect(runtime['name'], 'Profile  name');
+    expect(runtime['observatory'], storedProfile['observatory']);
+    final outbounds = runtime['outbounds']! as List<dynamic>;
+    expect(outbounds.map((outbound) => (outbound as Map)['tag']), <String>[
+      'proxy',
+      'chainProxy',
+      'direct',
+      'custom',
+    ]);
+    final materializedFinal = outbounds[0] as Map<String, dynamic>;
+    expect(materializedFinal['name'], 'Final  name');
+    expect(
+      ((materializedFinal['streamSettings'] as Map)['sockopt']
+          as Map)['dialerProxy'],
+      'chainProxy',
+    );
+    final materializedSelected = outbounds[1] as Map<String, dynamic>;
+    expect(materializedSelected['name'], 'Selected  name');
+    final selectedSockopt =
+        (materializedSelected['streamSettings'] as Map)['sockopt'] as Map;
+    expect(selectedSockopt, isNot(contains('dialerProxy')));
+    expect(selectedSockopt['interface'], ' selected interface ');
+    expect((outbounds.last as Map)['future'], <String, dynamic>{'keep': true});
+    expect(
+      outbounds.where(
+        (outbound) =>
+            outbound is Map && outbound['future'] == 'old-runtime-proxy',
+      ),
+      isEmpty,
+    );
+
+    final withoutFinal = <String, dynamic>{
+      'outbounds': <dynamic>[
+        <String, dynamic>{'tag': 'direct', 'protocol': 'freedom'},
+      ],
+    };
+    XrayRawFix.applySelectedOutbound(withoutFinal, selected);
+    final directSelected =
+        (withoutFinal['outbounds'] as List<dynamic>).first as Map;
+    expect(directSelected['tag'], 'proxy');
+    expect(
+      ((directSelected['streamSettings'] as Map)['sockopt']
+          as Map)['dialerProxy'],
+      'stored-upstream',
+    );
+    expect(selected, expectedSelected);
+
+    final duplicateFinals = <String, dynamic>{
+      'name': 'Profile',
+      'outbounds': <dynamic>[
+        <String, dynamic>{'tag': 'chainProxy', 'protocol': 'vless'},
+        <String, dynamic>{'tag': 'chainProxy', 'protocol': 'trojan'},
+      ],
+    };
+    final expectedDuplicateFinals = copyXrayConfigMap(duplicateFinals);
+    final duplicateOutbounds = duplicateFinals['outbounds']! as List<dynamic>;
+    final duplicateFinal = duplicateOutbounds.first as Map<String, dynamic>;
+    expect(
+      () => XrayRawFix.applySelectedOutbound(
+        duplicateFinals,
+        selected,
+        finalOutbound: duplicateFinal,
+      ),
+      throwsFormatException,
+    );
+    expect(duplicateFinals, expectedDuplicateFinals);
+  });
+
+  test('Profile disabled logging preserves unknown log siblings', () {
+    final jsonMap = <String, dynamic>{
+      'log': <String, dynamic>{
+        'access': '/user/access.log',
+        'error': '/user/error.log',
+        'loglevel': 'debug',
+        'dnsLog': true,
+        'maskAddress': 'full',
+        'future': <String, dynamic>{'keep': ' value '},
+      },
+    };
+
+    XrayRawFix.fixLog(jsonMap, disableLog: true);
+
+    final log = jsonMap['log']! as Map<String, dynamic>;
+    expect(log['loglevel'], 'none');
+    expect(log['dnsLog'], isFalse);
+    expect(log, isNot(contains('access')));
+    expect(log, isNot(contains('error')));
+    expect(log, isNot(contains('maskAddress')));
+    expect(log['future'], <String, dynamic>{'keep': ' value '});
+  });
 
   test(
     'Profile validation keeps custom inbounds and adds runtime inbounds',
@@ -212,6 +484,12 @@ void main() {
       () => XrayRawFix.prepareProfileValidationConfig(jsonMap),
       throwsFormatException,
     );
+    expect(
+      () => XrayRawFix.prepareProfileValidationConfig(<String, dynamic>{
+        'routing': <String, dynamic>{'rules': <String, dynamic>{}},
+      }),
+      throwsFormatException,
+    );
   });
 
   test('Profile proxy runtime keeps custom inbounds', () async {
@@ -232,7 +510,6 @@ void main() {
 
     await XrayRawFix.fixProfileConfig(
       jsonMap,
-      XrayProfileState(),
       CoreRunMode.proxy,
       TunSettingsState(),
       ports,
@@ -281,7 +558,6 @@ void main() {
 
       await XrayRawFix.fixProfileConfig(
         runtime,
-        XrayProfileState(),
         CoreRunMode.proxy,
         TunSettingsState(),
         ports,
@@ -313,7 +589,6 @@ void main() {
     expect(
       () => XrayRawFix.fixProfileConfig(
         jsonMap,
-        XrayProfileState(),
         CoreRunMode.tun,
         TunSettingsState(),
         ports,
@@ -346,7 +621,6 @@ void main() {
 
     await XrayRawFix.fixProfileConfig(
       jsonMap,
-      XrayProfileState(),
       CoreRunMode.proxy,
       TunSettingsState(),
       ports,

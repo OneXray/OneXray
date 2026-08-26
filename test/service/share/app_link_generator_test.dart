@@ -9,6 +9,8 @@ import 'package:onexray/service/share/app_link_generator.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/app_link_parser.dart';
 import 'package:onexray/service/share/app_link_share_service.dart';
+import 'package:onexray/service/xray/profile/state_db.dart';
+import 'package:onexray/service/xray/profile/state_reader.dart';
 
 void main() {
   group('config links', () {
@@ -45,6 +47,42 @@ void main() {
         CoreConfigType.multiNodeOutbound,
       );
       expect(OneXrayConfigLinkType.multiNodeOutbound.wireName, 'full');
+    });
+
+    test('Profile Map link payload preserves unprojected fields', () {
+      final source = <String, dynamic>{
+        'name': 'Payload Profile',
+        'dns': {
+          'servers': ['1.1.1.1'],
+          'future': {'keep': true},
+          'text': 'keep  inner\nwhitespace',
+        },
+        'observatory': {
+          'probeInterval': '30s',
+          'future': {'keep': true},
+        },
+      };
+      final uri = OneXrayAppLinkGenerator.config(
+        _config(
+          type: CoreConfigType.profile.name,
+          data: base64Encode(utf8.encode(jsonEncode(source))),
+        ),
+      );
+      final link = OneXrayAppLinkParser.parse(uri!)! as OneXrayConfigLink;
+
+      final profile = readProfileMapFromText(
+        link.xrayJson,
+        nameOverride: link.name,
+      );
+      final companion = profileCompanion(profile);
+      final stored = jsonDecode(
+        utf8.decode(base64Decode(companion.data.value!)),
+      ) as Map<String, dynamic>;
+
+      expect(stored['name'], 'Shared Config');
+      expect(stored['dns'], source['dns']);
+      expect(stored['observatory'], source['observatory']);
+      expect(companion.type.value, 'setting');
     });
 
     test('rejects unsupported types and invalid data', () {

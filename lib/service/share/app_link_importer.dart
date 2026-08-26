@@ -15,7 +15,6 @@ import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/outbound/state_validator.dart';
-import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
 import 'package:onexray/service/xray/profile/state_validator.dart';
@@ -76,18 +75,14 @@ final class OneXrayAppLinkImporter {
   }
 
   CoreConfigCompanion? _readProfile(OneXrayConfigLink link) {
-    final state = XrayProfileState();
-    if (!state.readFromText(link.xrayJson)) {
+    final profile = readProfileMapFromText(
+      link.xrayJson,
+      nameOverride: link.name,
+    );
+    if (!validateProfileFields(profile).item1) {
       return null;
     }
-    if (link.name.isNotEmpty) {
-      state.name = link.name;
-    }
-    state.removeWhitespace();
-    if (!state.validateFields().item1) {
-      return null;
-    }
-    return state.configCompanion();
+    return profileCompanion(profile);
   }
 
   CoreConfigCompanion? _readMultiNodeOutbound(OneXrayConfigLink link) {

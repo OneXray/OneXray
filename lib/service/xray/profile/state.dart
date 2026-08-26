@@ -3,7 +3,6 @@ import 'package:onexray/service/xray/profile/dns_state.dart';
 import 'package:onexray/service/xray/profile/fake_dns_state.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/profile/log_state.dart';
-import 'package:onexray/service/xray/profile/metrics_state.dart';
 import 'package:onexray/service/xray/profile/outbounds_state.dart';
 import 'package:onexray/service/xray/profile/routing_state.dart';
 
@@ -35,7 +34,4 @@ class XrayProfileState {
   var routing = RoutingState();
   var inbounds = InboundsState();
   var outbounds = OutboundsState();
-  var policy = PolicyState();
-  var stats = StatsState();
-  var metrics = MetricsState();
 }

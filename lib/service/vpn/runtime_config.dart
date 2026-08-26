@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/file.dart';
@@ -18,15 +17,13 @@ import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
-import 'package:onexray/service/xray/json_writer.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
-import 'package:onexray/service/xray/profile/state.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
-import 'package:onexray/service/xray/profile/state_writer.dart';
+import 'package:onexray/service/xray/profile/state_validator.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
 import 'package:onexray/service/xray/routing_mode.dart';
 
@@ -81,24 +78,19 @@ final class XrayRuntimeConfigService {
 
     final tunSettings = TunSettingsState();
     await tunSettings.readFromPreferences();
-    final profile = await XrayProfileStateReader.loadFromDb(tunSettings);
-
+    final profileMap = await loadSelectedProfileMap(tunSettings);
+    final profileValidation = validateProfileFields(profileMap);
+    if (!profileValidation.item1) {
+      throw XrayRuntimeConfigException(profileValidation.item2);
+    }
     final materializeMultiNodeOutbound =
         config != null &&
         CoreConfigType.fromString(config.type) ==
             CoreConfigType.multiNodeOutbound;
-    final selectedProfileMap = materializeMultiNodeOutbound
-        ? await loadSelectedProfileMap(tunSettings)
-        : null;
-    final excludedPorts = <int>{...profile.inbounds.additionalPorts};
-    if (materializeMultiNodeOutbound) {
-      excludedPorts.addAll(
-        _runtimeListeningPorts(
-          selectedProfileMap!,
-          includeMetrics: !tunSettings.metricsEnabled,
-        ),
-      );
-    }
+    final excludedPorts = _runtimeListeningPorts(
+      profileMap,
+      includeMetrics: !tunSettings.metricsEnabled,
+    );
     final ports = await XrayPorts.getPorts(excludedPorts: excludedPorts);
     if (ports == null) {
       throw XrayRuntimeConfigException(
@@ -108,16 +100,14 @@ final class XrayRuntimeConfigService {
 
     final configPath =
         routingMode == CoreRoutingMode.direct && !materializeMultiNodeOutbound
-        ? await _writeDirect(profile, mode, tunSettings, ports, runDir)
+        ? await _writeDirect(profileMap, mode, tunSettings, ports)
         : await _writeSelectedConfig(
             config,
-            profile,
+            profileMap,
             mode,
             routingMode,
             tunSettings,
             ports,
-            runDir,
-            selectedProfileMap,
           );
 
     await _clearXrayLogs();
@@ -136,13 +126,11 @@ final class XrayRuntimeConfigService {
 
   Future<String> _writeSelectedConfig(
     CoreConfigData? config,
-    XrayProfileState profile,
+    Map<String, dynamic> profileMap,
     CoreRunMode mode,
     CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
     XrayPorts ports,
-    String runDir,
-    Map<String, dynamic>? selectedProfileMap,
   ) async {
     if (config == null) {
       throw XrayRuntimeConfigException(
@@ -153,16 +141,15 @@ final class XrayRuntimeConfigService {
     return switch (type) {
       CoreConfigType.outbound => _writeOutbound(
         config,
-        profile,
+        profileMap,
         mode,
         routingMode,
         tunSettings,
         ports,
-        runDir,
       ),
       CoreConfigType.raw => _writeRaw(
         config,
-        profile,
+        profileMap,
         mode,
         routingMode,
         tunSettings,
@@ -170,9 +157,7 @@ final class XrayRuntimeConfigService {
       ),
       CoreConfigType.multiNodeOutbound => _writeMultiNodeOutbound(
         config,
-        selectedProfileMap ??
-            (throw StateError('Multi-node Outbound profile is missing')),
-        profile,
+        profileMap,
         mode,
         routingMode,
         tunSettings,
@@ -186,12 +171,11 @@ final class XrayRuntimeConfigService {
 
   Future<String> _writeOutbound(
     CoreConfigData config,
-    XrayProfileState profile,
+    Map<String, dynamic> profileMap,
     CoreRunMode mode,
     CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
     XrayPorts ports,
-    String runDir,
   ) async {
     late final Map<String, dynamic> outbound;
     try {
@@ -202,15 +186,18 @@ final class XrayRuntimeConfigService {
         appLocalizationsNoContext().vpnOutboundInvalid,
       );
     }
-    await _applyFinalOutbound(profile, outbound, config);
-    profile.outbounds.outbounds.add(outbound);
-    final xrayJson = await profile.fixSetting(mode, tunSettings, ports);
-    return _writeTypedConfig(xrayJson, routingMode, runDir);
+    final runtimeMap = copyXrayConfigMap(profileMap);
+    final finalOutbound = await _resolveFinalOutbound(runtimeMap, config);
+    XrayRawFix.applySelectedOutbound(
+      runtimeMap,
+      outbound,
+      finalOutbound: finalOutbound,
+    );
+    return _writeProfileMap(runtimeMap, mode, routingMode, tunSettings, ports);
   }
 
-  Future<void> _applyFinalOutbound(
-    XrayProfileState profile,
-    Map<String, dynamic> outbound,
+  Future<Map<String, dynamic>?> _resolveFinalOutbound(
+    Map<String, dynamic> profileMap,
     CoreConfigData config,
   ) async {
     final simpleFinalOutboundId = await _simpleFinalOutboundId();
@@ -220,23 +207,10 @@ final class XrayRuntimeConfigService {
           appLocalizationsNoContext().vpnFinalOutboundSameAsOutbound,
         );
       }
-      profile.outbounds.finalOutbound = await _loadFinalOutbound(
-        simpleFinalOutboundId,
-      );
+      return _loadFinalOutbound(simpleFinalOutboundId);
     }
 
-    final finalOutbound = profile.outbounds.finalOutbound;
-    if (finalOutbound == null) {
-      setOutboundTag(outbound, RoutingOutboundTag.proxy.name);
-      return;
-    }
-
-    setOutboundTag(outbound, RoutingOutboundTag.chainProxy.name);
-    removeOutboundDialerProxy(outbound);
-    setOutboundTag(finalOutbound, RoutingOutboundTag.proxy.name);
-    setOutboundDialerProxy(finalOutbound, RoutingOutboundTag.chainProxy.name);
-    profile.outbounds.finalOutbound = null;
-    profile.outbounds.outbounds.add(finalOutbound);
+    return _embeddedFinalOutbound(profileMap);
   }
 
   Future<int?> _simpleFinalOutboundId() async {
@@ -280,7 +254,7 @@ final class XrayRuntimeConfigService {
 
   Future<String> _writeRaw(
     CoreConfigData config,
-    XrayProfileState profile,
+    Map<String, dynamic> profileMap,
     CoreRunMode mode,
     CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
@@ -290,7 +264,7 @@ final class XrayRuntimeConfigService {
     final jsonMap = JsonTool.decoder.convert(rawText);
     await XrayRawFix.fixConfig(
       jsonMap,
-      profile,
+      profileMap,
       mode,
       tunSettings,
       ports,
@@ -310,7 +284,6 @@ final class XrayRuntimeConfigService {
   Future<String> _writeMultiNodeOutbound(
     CoreConfigData config,
     Map<String, dynamic> profileMap,
-    XrayProfileState profile,
     CoreRunMode mode,
     CoreRoutingMode routingMode,
     TunSettingsState tunSettings,
@@ -332,9 +305,33 @@ final class XrayRuntimeConfigService {
       profileMap,
       multiNodeOutbound,
     );
+    return _writeProfileMap(runtimeMap, mode, routingMode, tunSettings, ports);
+  }
+
+  Future<String> _writeDirect(
+    Map<String, dynamic> profileMap,
+    CoreRunMode mode,
+    TunSettingsState tunSettings,
+    XrayPorts ports,
+  ) async {
+    return _writeProfileMap(
+      copyXrayConfigMap(profileMap),
+      mode,
+      CoreRoutingMode.direct,
+      tunSettings,
+      ports,
+    );
+  }
+
+  Future<String> _writeProfileMap(
+    Map<String, dynamic> runtimeMap,
+    CoreRunMode mode,
+    CoreRoutingMode routingMode,
+    TunSettingsState tunSettings,
+    XrayPorts ports,
+  ) async {
     await XrayRawFix.fixProfileConfig(
       runtimeMap,
-      profile,
       mode,
       tunSettings,
       ports,
@@ -350,36 +347,27 @@ final class XrayRuntimeConfigService {
     return file.path;
   }
 
-  Future<String> _writeDirect(
-    XrayProfileState profile,
-    CoreRunMode mode,
-    TunSettingsState tunSettings,
-    XrayPorts ports,
-    String runDir,
-  ) async {
-    final xrayJson = await profile.fixSetting(mode, tunSettings, ports);
-    return _writeTypedConfig(xrayJson, CoreRoutingMode.direct, runDir);
-  }
-
-  Future<String> _writeTypedConfig(
-    XrayJson xrayJson,
-    CoreRoutingMode routingMode,
-    String runDir,
-  ) async {
-    if (!XrayRoutingModeFix.applyToXrayJson(xrayJson, routingMode)) {
-      throw XrayRuntimeConfigException(
-        appLocalizationsNoContext().vpnRoutingModeProxyMissing,
-      );
-    }
-    return xrayJson.writeConfig(runDir);
-  }
-
   Future<void> _clearXrayLogs() async {
     await Future.wait([
       File(XrayStateConstants.accessLogPath).writeAsString(''),
       File(XrayStateConstants.errorLogPath).writeAsString(''),
     ]);
   }
+}
+
+Map<String, dynamic>? _embeddedFinalOutbound(Map<String, dynamic> profileMap) {
+  final outbounds = profileMap['outbounds'];
+  if (outbounds is! List<dynamic>) {
+    return null;
+  }
+  Map<String, dynamic>? result;
+  for (final outbound in outbounds.whereType<Map<String, dynamic>>()) {
+    if (outboundString(outbound, 'tag') == RoutingOutboundTag.chainProxy.name) {
+      requireCanonicalOutbound(outbound);
+      result = copyOutboundMap(outbound);
+    }
+  }
+  return result;
 }
 
 Set<int> _runtimeListeningPorts(

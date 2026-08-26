@@ -3,13 +3,10 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/extensions.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/core/model/xray_standard.dart';
-import 'package:onexray/service/core_run_mode/state.dart';
-import 'package:onexray/service/xray/profile/additional_inbound_state.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
 class InboundTunState {
@@ -21,28 +18,6 @@ class InboundTunState {
 
   void removeWhitespace() {
     sniffing.removeWhitespace();
-  }
-
-  void readFromXrayJson(XrayJson xrayJson) {
-    final inbound = _readTunInbound(xrayJson);
-    if (inbound == null) {
-      return;
-    }
-
-    sniffing.readFromInbound(inbound);
-  }
-
-  XrayInbound? _readTunInbound(XrayJson xrayJson) {
-    if (!EmptyTool.checkList(xrayJson.inbounds)) {
-      return null;
-    }
-    for (final inbound in xrayJson.inbounds!) {
-      if (inbound.protocol == XrayInboundProtocol.tun.name &&
-          inbound.tag == RoutingInboundTag.tunIn.name) {
-        return inbound;
-      }
-    }
-    return null;
   }
 
   XrayInbound get xrayJson {
@@ -145,34 +120,6 @@ class InboundSniffingState {
     ipsExcluded = ipsExcluded.removeWhitespace;
   }
 
-  void readFromInbound(XrayInbound inbound) {
-    final sniffing = inbound.sniffing;
-    if (sniffing == null) {
-      return;
-    }
-
-    if (sniffing.enabled != null) {
-      enabled = sniffing.enabled!;
-    }
-    if (sniffing.routeOnly != null) {
-      routeOnly = sniffing.routeOnly!;
-    }
-    if (sniffing.metadataOnly != null) {
-      metadataOnly = sniffing.metadataOnly!;
-    }
-    if (EmptyTool.checkList(sniffing.destOverride)) {
-      destOverride = InboundSniffingDestOverride.fromStrings(
-        sniffing.destOverride!,
-      );
-    }
-    if (EmptyTool.checkList(sniffing.domainsExcluded)) {
-      domainsExcluded = sniffing.domainsExcluded!;
-    }
-    if (EmptyTool.checkList(sniffing.ipsExcluded)) {
-      ipsExcluded = sniffing.ipsExcluded!;
-    }
-  }
-
   XrayInboundSniffing get xrayJson {
     final sniffing = XrayInboundSniffingStandard.standard;
     sniffing.enabled = enabled;
@@ -220,109 +167,9 @@ class InboundPingState {
 
 class InboundsState {
   var tun = InboundTunState();
-  var additional = <AdditionalInboundState>[];
   final ping = InboundPingState();
 
-  void removeWhitespace() {
-    tun.removeWhitespace();
-    for (final inbound in additional) {
-      inbound.removeWhitespace();
-    }
-  }
-
-  void readFromXrayJson(XrayJson xrayJson) {
-    tun.readFromXrayJson(xrayJson);
-    additional = <AdditionalInboundState>[];
-    for (final inbound in xrayJson.inbounds ?? const <XrayInbound>[]) {
-      if (inbound.tag == RoutingInboundTag.tunIn.name ||
-          inbound.tag == RoutingInboundTag.pingIn.name) {
-        continue;
-      }
-      final state = AdditionalInboundState.fromXrayInbound(inbound);
-      if (state != null) {
-        additional.add(state);
-      }
-    }
-  }
-
-  List<XrayInbound> get xrayJson {
-    return <XrayInbound>[
-      tun.xrayJson,
-      ...additional.map((inbound) => inbound.xrayJson),
-      ping.xrayJson,
-    ];
-  }
-
-  List<XrayInbound> runtimeXrayJson(CoreRunMode mode) {
-    return switch (mode) {
-      CoreRunMode.tun => <XrayInbound>[
-        tun.xrayJson,
-        ...additional.map((inbound) => inbound.xrayJson),
-        ping.xrayJson,
-      ],
-      CoreRunMode.proxy => <XrayInbound>[ping.xrayJson],
-    };
-  }
-
-  Set<String> get additionalTags =>
-      additional.map((inbound) => inbound.tag).toSet();
-
-  Set<int> get additionalPorts => additional
-      .map((inbound) => int.tryParse(inbound.port))
-      .whereType<int>()
-      .toSet();
-
-  AdditionalInboundState createAdditional(AdditionalInboundType type) {
-    final state = switch (type) {
-      AdditionalInboundType.socks => InboundSocksState(),
-      AdditionalInboundType.http => InboundHttpState(),
-      AdditionalInboundType.dokodemoDoor => InboundDokodemoDoorState(),
-    };
-    state.tag = _nextTag(state.tag.replaceFirst(RegExp(r'\d+$'), ''));
-    state.port = _nextPort(int.parse(state.port)).toString();
-    return state;
-  }
-
-  String _nextTag(String prefix) {
-    final tags = additionalTags;
-    var index = 1;
-    while (tags.contains('$prefix$index')) {
-      index++;
-    }
-    return '$prefix$index';
-  }
-
-  int _nextPort(int start) {
-    final ports = additionalPorts;
-    var port = start;
-    while (ports.contains(port) && port < 65535) {
-      port++;
-    }
-    return port;
-  }
-
-  String? validate(Set<String> dnsInboundTags) {
-    final unavailableTags = <String>{
-      ...RoutingInboundTag.names,
-      ...dnsInboundTags,
-    };
-    final unavailablePorts = <int>{};
-    for (final inbound in additional) {
-      final error = inbound.validate(
-        unavailableTags: unavailableTags,
-        unavailablePorts: unavailablePorts,
-      );
-      if (error != null) {
-        return error;
-      }
-      unavailableTags.add(inbound.tag);
-      final port = int.tryParse(inbound.port);
-      if (port != null) {
-        unavailablePorts.add(port);
-      }
-    }
-    return null;
-  }
+  List<XrayInbound> get xrayJson => <XrayInbound>[tun.xrayJson, ping.xrayJson];
 }
 
 class XrayPorts {
