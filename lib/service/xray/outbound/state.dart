@@ -64,7 +64,6 @@ class OutboundState {
 
   var securityName = '';
   var serverName = '';
-  var alpnText = '';
   var fingerprint = '';
   var pinnedPeerCertSha256 = '';
   var verifyPeerCertByName = '';
@@ -342,8 +341,7 @@ class OutboundState {
               'pinnedPeerCertSha256',
               'verifyPeerCertByName',
               'echConfigList',
-            ]) ||
-            !_validStringList(settings, 'alpn')) {
+            ])) {
           return false;
         }
         serverName = _string(settings, 'serverName');
@@ -351,7 +349,6 @@ class OutboundState {
         pinnedPeerCertSha256 = _string(settings, 'pinnedPeerCertSha256');
         verifyPeerCertByName = _string(settings, 'verifyPeerCertByName');
         echConfigList = _string(settings, 'echConfigList');
-        alpnText = _stringList(settings, 'alpn').join(',');
         return true;
       case StreamSettingsSecurity.reality:
         final settings = _optionalObject(stream, 'realitySettings');
@@ -497,13 +494,6 @@ class OutboundState {
           'verifyPeerCertByName',
         );
         _patch(settings, 'echConfigList', echConfigList, 'echConfigList');
-        _patch(
-          settings,
-          'alpn',
-          alpnText,
-          'alpnText',
-          value: alpnText.isEmpty ? <String>[] : alpnText.split(','),
-        );
         break;
       case StreamSettingsSecurity.reality:
         final settings = _objectForPatch(stream, 'realitySettings');
@@ -598,7 +588,6 @@ class OutboundState {
         'xhttpPath': xhttpPath,
         'xhttpMode': xhttpMode,
         'serverName': serverName,
-        'alpnText': alpnText,
         'fingerprint': fingerprint,
         'pinnedPeerCertSha256': pinnedPeerCertSha256,
         'verifyPeerCertByName': verifyPeerCertByName,
@@ -640,7 +629,6 @@ class OutboundState {
     xhttpMode = '';
     securityName = '';
     serverName = '';
-    alpnText = '';
     fingerprint = '';
     pinnedPeerCertSha256 = '';
     verifyPeerCertByName = '';
@@ -687,11 +675,6 @@ String _port(Map<String, dynamic> map, String key) {
   return value is int ? '$value' : '';
 }
 
-List<String> _stringList(Map<String, dynamic> map, String key) {
-  final value = map[key];
-  return value is List<dynamic> ? value.cast<String>() : const [];
-}
-
 bool _validString(Map<String, dynamic> map, String key) {
   final value = map[key];
   return value == null || value is String;
@@ -708,12 +691,6 @@ bool _validPort(Map<String, dynamic> map, String key) {
 bool _validBool(Map<String, dynamic> map, String key) {
   final value = map[key];
   return value == null || value is bool;
-}
-
-bool _validStringList(Map<String, dynamic> map, String key) {
-  final value = map[key];
-  return value == null ||
-      value is List<dynamic> && value.every((item) => item is String);
 }
 
 Map<String, dynamic>? _optionalObject(Map<String, dynamic> map, String key) {

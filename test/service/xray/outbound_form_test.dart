@@ -88,6 +88,29 @@ void main() {
     );
   });
 
+  test('non-UI TLS list fields remain untouched', () {
+    final outbound = <String, dynamic>{
+      'protocol': 'vless',
+      'settings': {'encryption': 'none'},
+      'streamSettings': {
+        'network': 'raw',
+        'security': 'tls',
+        'tlsSettings': {
+          'serverName': 'old.example.com',
+          'alpn': ['h2', 1],
+        },
+      },
+    };
+    final state = OutboundState(outbound)..serverName = 'new.example.com';
+
+    expect(state.securityFieldsProjectable, isTrue);
+    final settings =
+        ((state.materialize()['streamSettings'] as Map)['tlsSettings']
+            as Map<String, dynamic>);
+    expect(settings['serverName'], 'new.example.com');
+    expect(settings['alpn'], ['h2', 1]);
+  });
+
   test('an App-unprojected settings shape is never replaced by defaults', () {
     final outbound = <String, dynamic>{
       'protocol': 'vless',

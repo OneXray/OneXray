@@ -26,6 +26,16 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
+    final outbound = newOutboundMap();
+    final stream = outbound['streamSettings'] as Map<String, dynamic>;
+    stream
+      ..['security'] = 'tls'
+      ..remove('realitySettings')
+      ..['tlsSettings'] = <String, dynamic>{
+        'serverName': 'example.com',
+        'alpn': ['h2'],
+      };
+
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -40,7 +50,7 @@ void main() {
         home: OutboundUIPage(
           params: OutboundUIParams(
             DBConstants.defaultId,
-            newOutboundMap(),
+            outbound,
             saveToDb: false,
           ),
         ),
@@ -61,6 +71,7 @@ void main() {
     expect(find.text('mux'), findsNothing);
     expect(find.text('reverse'), findsNothing);
     expect(find.text('finalmask'), findsNothing);
+    expect(find.text('ALPN'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('VLESS'));

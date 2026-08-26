@@ -412,7 +412,6 @@
     "outboundUIPageSecurity": "security",
     "outboundUIPageServerName": "serverName",
     "outboundUIPageServerNameExample": "example.com",
-    "outboundUIPageAlpn": "ALPN",
     "outboundUIPageFingerprint": "fingerprint",
     "outboundUIPagePinnedPeerCertSha256": "pinnedPeerCertSha256",
     "outboundUIPageVerifyPeerCertByName": "verifyPeerCertByName",

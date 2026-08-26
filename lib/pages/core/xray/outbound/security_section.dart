@@ -38,11 +38,6 @@ mixin OutboundSecuritySection {
         ),
         _securityText(
           context,
-          controller.alpnController,
-          AppLocalizations.of(context)!.outboundUIPageAlpn,
-        ),
-        _securityText(
-          context,
           controller.fingerprintController,
           AppLocalizations.of(context)!.outboundUIPageFingerprint,
         ),

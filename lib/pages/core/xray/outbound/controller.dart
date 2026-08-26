@@ -80,7 +80,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   final httpupgradePathController = TextEditingController();
   final hysteriaAuthController = TextEditingController();
   final serverNameController = TextEditingController();
-  final alpnController = TextEditingController();
   final fingerprintController = TextEditingController();
   final pinnedPeerCertSha256Controller = TextEditingController();
   final verifyPeerCertByNameController = TextEditingController();
@@ -116,7 +115,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
       httpupgradePathController,
       hysteriaAuthController,
       serverNameController,
-      alpnController,
       fingerprintController,
       pinnedPeerCertSha256Controller,
       verifyPeerCertByNameController,
@@ -200,7 +198,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
     httpupgradePathController.text = outboundState.httpupgradePath;
     hysteriaAuthController.text = outboundState.hysteriaAuth;
     serverNameController.text = outboundState.serverName;
-    alpnController.text = outboundState.alpnText;
     fingerprintController.text = outboundState.fingerprint;
     pinnedPeerCertSha256Controller.text = outboundState.pinnedPeerCertSha256;
     verifyPeerCertByNameController.text = outboundState.verifyPeerCertByName;
@@ -382,7 +379,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
     outboundState.httpupgradePath = httpupgradePathController.text;
     outboundState.hysteriaAuth = hysteriaAuthController.text;
     outboundState.serverName = serverNameController.text;
-    outboundState.alpnText = alpnController.text;
     outboundState.fingerprint = fingerprintController.text;
     outboundState.pinnedPeerCertSha256 = pinnedPeerCertSha256Controller.text;
     outboundState.verifyPeerCertByName = verifyPeerCertByNameController.text;
