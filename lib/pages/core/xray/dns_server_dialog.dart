@@ -3,9 +3,9 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 
 Future<({String address, String port})?> showDnsServerEditDialog(
   BuildContext context,
-  Map<dynamic, dynamic> server,
+  Map<String, dynamic> server,
 ) async {
-  var address = server['address'] as String? ?? '';
+  var address = server['address']?.toString() ?? '';
   var port = server['port']?.toString() ?? '';
   final accepted = await showDialog<bool>(
     context: context,
