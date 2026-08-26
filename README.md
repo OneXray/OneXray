@@ -76,11 +76,11 @@ other commands are not accepted. An age subscription link generates a new
 local key pair, sends only its public key for the first download, and stores
 the pair when the subscription is imported successfully.
 
-Android, iOS, and installed macOS apps register the scheme directly. On
-Windows and Linux, use the EXE/winget/Microsoft Store or DEB package; ZIP
-packages do not register the scheme automatically. The Mac App Store app and
-OneXraySE share the same scheme, so installing both can make macOS choose either
-app as the handler.
+Android, iOS, installed macOS apps, and the Microsoft Store Windows app
+register the scheme directly. On Linux, use the DEB package; ZIP packages do
+not register the scheme automatically. The Mac App Store app and OneXraySE
+share the same scheme, so installing both can make macOS choose either app as
+the handler.
 
 ## Download
 
@@ -90,8 +90,8 @@ app as the handler.
 | macOS (Mac App Store) | macOS 13.0 and above, Apple silicon or Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS (Outside App Store) | macOS 13.0 and above, Apple silicon or Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 and above, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 or Windows 11 | winget: `winget install --id YuanDevLLC.OneXray -e`, [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
-| Windows ARM64 | Windows 11 | winget: `winget install --id YuanDevLLC.OneXray -e`, [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
+| Windows x86_64 | Windows 10 or Windows 11 | Microsoft Store |
+| Windows ARM64 | Windows 11 | Microsoft Store |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -126,12 +126,8 @@ See [Installing System Extensions and Drivers](https://developer.apple.com/docum
 
 ### Windows
 
-Winget automatically selects the x86_64 or ARM64 installer for the current device.
-
-```shell
-winget install --id YuanDevLLC.OneXray -e
-winget uninstall --id YuanDevLLC.OneXray -e
-```
+Microsoft Store selects the x86_64 or ARM64 package for the current device and
+handles updates.
 
 ### Android
 

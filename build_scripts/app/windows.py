@@ -1,8 +1,6 @@
 import os
 import shutil
 
-import yaml
-
 from app.builder import Builder
 from app.command_line import (
     check_and_create_dir,
@@ -22,7 +20,6 @@ class WindowsBuilder(Builder):
         build_scripts_dir: str,
     ):
         super().__init__(project, system, build_scripts_dir)
-        self.version = ""
         self.target_architecture = self._target_architecture()
         package_architecture = (
             "amd64" if self.target_architecture == "x64" else "arm64"
@@ -77,37 +74,7 @@ class WindowsBuilder(Builder):
         shutil.move(win_tun_src_path, app_path)
 
     def build_app(self):
-        self.fastforge_build("zip")
-        self.package_exe()
         self.package_msix()
-
-    def package_exe(self):
-        config_path = os.path.join(
-            self.project_dir, "packaging", "exe", "make_config.yaml"
-        )
-        with open(config_path, mode="rb") as f:
-            original_content = f.read()
-
-        config = yaml.load(original_content, Loader=yaml.CLoader)
-        architecture = (
-            "x64compatible" if self.target_architecture == "x64" else "arm64"
-        )
-        config["architectures_allowed"] = architecture
-        config["architectures_install_in_64bit_mode"] = architecture
-
-        try:
-            with open(config_path, mode="w", encoding="utf-8", newline="\n") as f:
-                yaml.dump(
-                    config,
-                    f,
-                    Dumper=yaml.CDumper,
-                    allow_unicode=True,
-                    sort_keys=False,
-                )
-            self.package_with_marketing_version("exe")
-        finally:
-            with open(config_path, mode="wb") as f:
-                f.write(original_content)
 
     def package_msix(self):
         run_command(
@@ -142,11 +109,3 @@ class WindowsBuilder(Builder):
         if values[0] == 0:
             raise ValueError("MSIX major version must be greater than 0")
         return ".".join(str(value) for value in values)
-
-    def after_build(self):
-        super().after_build()
-
-        for file_type in (".zip", ".exe"):
-            file_name = self.find_file(file_type)
-            if file_name:
-                self.rename_file(file_name, file_type)

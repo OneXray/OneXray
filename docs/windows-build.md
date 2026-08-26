@@ -6,7 +6,7 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 
 - x64 使用 `windows-2025`，目标环境为该镜像提供的 Visual Studio 2026 工具链。
 - arm64 使用 `windows-11-arm`。
-- 两个架构都从同一组 OneXray、libXray 和 Xray-core 源码构建，并分别生成 ZIP、EXE 和 Microsoft Store MSIX。
+- 两个架构都从同一组 OneXray、libXray 和 Xray-core 源码构建，最终只输出 Microsoft Store MSIX 分发包。
 - `.github/workflows/publish-microsoft-store.yml` 将两个架构的 MSIX 合并为 MSIX Bundle；release tag 构建会继续提交到 Microsoft Partner Center，手动构建只生成 Bundle。
 
 当前 job 没有显式安装 Visual Studio，也没有固定 CMake generator 或 toolset。构建脚本依赖 runner 镜像的默认工具链发现。因此把 x64 image 改为其它标签时，必须把“镜像实际预装并默认选择所需 Visual Studio/CMake 工具链”作为验证项，不能只根据标签名称推断。
@@ -27,7 +27,7 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 2. Flutter Windows runner、插件和 OneXrayCore 编译通过。
 3. `/W4 /WX` 下没有新增告警。
 4. 生成的 Core 可执行文件能够运行帮助命令。
-5. 两个架构的 ZIP、EXE、MSIX 和上传产物名称正确。
+5. 两个架构的 MSIX 和上传产物名称正确，且不再生成 ZIP 或 EXE 安装包。
 6. Microsoft Store workflow 能从两个 `windows-store-*` artifact 生成 MSIX Bundle；实际发布必须另行验证 Partner Center 凭据。
 
 本地不必伪造 GitHub 托管镜像。涉及镜像可用性、预装软件或标签变更时，以 GitHub 官方 runner image 清单和实际 workflow run 为准。
@@ -38,4 +38,4 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 - Microsoft Store Bundle 与发布：`.github/workflows/publish-microsoft-store.yml`
 - Windows CMake：`windows/CMakeLists.txt`、`windows/app.cmake`
 - App 构建编排：`build_scripts/`
-- Windows 打包：`windows/packaging/`
+- Windows 打包：`build_scripts/app/windows.py`、`pubspec.yaml`

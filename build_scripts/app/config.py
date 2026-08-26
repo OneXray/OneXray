@@ -17,6 +17,5 @@ PROJECT_CONFIG = {
         "core.bin.dst.file.windows": "app/OneXrayCore.exe",
         "app.release.dir.android": "../build/app/outputs",
         "app.release.dir.linux": "../dist",
-        "app.release.dir.windows": "../dist",
     },
 }

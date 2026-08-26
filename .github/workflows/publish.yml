@@ -108,8 +108,6 @@ jobs:
             artifacts/ios/**/*
             artifacts/macos_se/**/*
             artifacts/android-universal/**/*
-            artifacts/windows-x64/**/*
-            artifacts/windows-arm64/**/*
             artifacts/linux-x64/**/*
             artifacts/linux-arm64/**/*
           fail_on_unmatched_files: false

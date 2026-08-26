@@ -30,7 +30,7 @@ do not clone or pin those repositories for a local build.
 - Flutter, Dart, and Go available on `PATH`.
 - A toolchain for the target operating system. Apple targets require macOS,
   Xcode, CocoaPods, and Fastlane; Android requires a JDK, Android SDK/NDK, and
-  Fastlane; Windows and Linux packaging requires Fastforge.
+  Fastlane; Linux packaging requires Fastforge.
 - Signing credentials and platform configuration required by the selected
   Fastlane lane.
 - A positive integer in the `BUILD_NUMBER` environment variable. It is added to
@@ -75,7 +75,7 @@ the CLI syntax.
 | `macos` | macOS | Mac App Store build and upload. |
 | `macos_se` | macOS | Signed and notarized Developer ID universal ZIP. |
 | `android` | Android toolchain | Play internal AAB upload and universal APK. |
-| `windows` | Windows x64 or ARM64 | ZIP, EXE, and Microsoft Store MSIX for selected architecture. |
+| `windows` | Windows x64 or ARM64 | Microsoft Store MSIX for the selected architecture. |
 | `linux` | Linux x64 or ARM64 | ZIP and DEB for the host architecture. |
 
 For Windows, the architecture is detected from the host. CI can set
@@ -122,8 +122,8 @@ workspace/
 - Python 3.12 或更高版本，并安装 `pyyaml`、`requests` 和 `typer`。
 - `PATH` 中可以找到 Flutter、Dart 和 Go。
 - 安装目标系统所需的工具链。Apple 平台需要 macOS、Xcode、CocoaPods 和
-  Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Windows 和
-  Linux 打包需要 Fastforge。
+  Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Linux 打包需要
+  Fastforge。
 - 准备所选 Fastlane lane 需要的签名证书、凭据和平台配置。
 - 设置正整数环境变量 `BUILD_NUMBER`。脚本会将它加到配置中的
   `build_number.base`（当前为 `400`）上。
@@ -166,7 +166,7 @@ python build_scripts/main.py OneXray <system>
 | `macos` | macOS | 构建并上传 Mac App Store 版本。 |
 | `macos_se` | macOS | 签名、公证并生成 Developer ID 通用 ZIP。 |
 | `android` | Android 工具链 | 上传 Play internal AAB 并获取 universal APK。 |
-| `windows` | Windows x64 或 ARM64 | 为所选架构生成 ZIP、EXE 和 Microsoft Store MSIX。 |
+| `windows` | Windows x64 或 ARM64 | 为所选架构生成 Microsoft Store MSIX。 |
 | `linux` | Linux x64 或 ARM64 | 为主机架构生成 ZIP 和 DEB。 |
 
 Windows 默认根据主机识别架构。CI 可以在已经配置好对应 runner 和 CGo
@@ -213,7 +213,7 @@ workspace/
 - Flutter, Dart и Go, доступные через `PATH`.
 - Инструменты для целевой системы. Для Apple требуются macOS, Xcode, CocoaPods
   и Fastlane; для Android — JDK, Android SDK/NDK и Fastlane; для упаковки под
-  Windows и Linux требуется Fastforge.
+  Linux требуется Fastforge.
 - Сертификаты, учётные данные и настройки платформы, необходимые выбранному
   lane Fastlane.
 - Положительное целое число в переменной окружения `BUILD_NUMBER`. Оно
@@ -258,7 +258,7 @@ python build_scripts/main.py OneXray <system>
 | `macos` | macOS | Сборка и загрузка версии Mac App Store. |
 | `macos_se` | macOS | Подписанный и нотариализированный универсальный ZIP. |
 | `android` | Android toolchain | Загрузка AAB в Play internal; universal APK. |
-| `windows` | Windows x64 или ARM64 | ZIP, EXE и MSIX для Microsoft Store выбранной архитектуры. |
+| `windows` | Windows x64 или ARM64 | MSIX для Microsoft Store выбранной архитектуры. |
 | `linux` | Linux x64 или ARM64 | ZIP и DEB для архитектуры хоста. |
 
 В Windows архитектура по умолчанию определяется по системе. В CI переменную

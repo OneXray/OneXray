@@ -73,9 +73,9 @@ onexray://onexray.com/dat/add?type=domain|ip&url=<经过百分号编码的-https
 订阅链接时，App 会生成一对新的本地密钥，首次下载只发送公钥，并在订阅成功
 导入后保存密钥对。
 
-Android、iOS 和已安装的 macOS App 会直接注册该协议。Windows 和 Linux
-请使用 EXE/winget/Microsoft Store 或 DEB 包；ZIP 包不会自动注册协议。Mac App Store
-版本与 OneXraySE 使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
+Android、iOS、已安装的 macOS App 和 Microsoft Store Windows App 会直接注册该协议。
+Linux 请使用 DEB 包；ZIP 包不会自动注册协议。Mac App Store 版本与 OneXraySE
+使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
 
 ## 下载
 
@@ -85,8 +85,8 @@ Android、iOS 和已安装的 macOS App 会直接注册该协议。Windows 和 L
 | macOS（Mac App Store） | macOS 13.0 及以上，Apple silicon 或 Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS（商店外分发） | macOS 13.0 及以上，Apple silicon 或 Intel | Homebrew：`brew install --cask onexrayse`、[Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 及以上，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray)、[Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 或 Windows 11 | winget：`winget install --id YuanDevLLC.OneXray -e`、[EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
-| Windows ARM64 | Windows 11 | winget：`winget install --id YuanDevLLC.OneXray -e`、[EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.exe)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
+| Windows x86_64 | Windows 10 或 Windows 11 | Microsoft Store |
+| Windows ARM64 | Windows 11 | Microsoft Store |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -121,12 +121,7 @@ brew uninstall --cask onexrayse
 
 ### Windows
 
-Winget 会根据当前设备架构自动选择 x86_64 或 ARM64 安装包。
-
-```shell
-winget install --id YuanDevLLC.OneXray -e
-winget uninstall --id YuanDevLLC.OneXray -e
-```
+Microsoft Store 会根据当前设备架构选择 x86_64 或 ARM64 包并负责更新。
 
 ### Android
 
