@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/extensions.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/localizations/service.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:tuple/tuple.dart';
 
@@ -40,6 +42,14 @@ extension TunSettingsStateValidator on TunSettingsState {
       }
     }
 
+    if ((AppPlatform.isWindows || AppPlatform.isLinux) &&
+        !await _selectedInterfaceExists()) {
+      return Tuple2(
+        false,
+        appLocalizationsNoContext().validationInterfaceRequired,
+      );
+    }
+
     return const Tuple2(true, "");
   }
 
@@ -48,7 +58,7 @@ extension TunSettingsStateValidator on TunSettingsState {
     tunDnsIPv6 = tunDnsIPv6.removeWhitespace;
     dnsServerName = dnsServerName.removeWhitespace;
 
-    autoOutboundsInterface = autoOutboundsInterface.removeWhitespace;
+    outboundsInterface = outboundsInterface.trim();
 
     for (final rule in onDemandRules) {
       rule.removeWhitespace();
@@ -56,6 +66,18 @@ extension TunSettingsStateValidator on TunSettingsState {
 
     allowAppList = allowAppList.removeWhitespace;
     disallowAppList = disallowAppList.removeWhitespace;
+  }
+
+  Future<bool> _selectedInterfaceExists() async {
+    if (outboundsInterface.isEmpty) {
+      return false;
+    }
+    try {
+      final interfaces = await queryInterfaceList();
+      return interfaces.any((value) => value.name == outboundsInterface);
+    } catch (_) {
+      return false;
+    }
   }
 }
 

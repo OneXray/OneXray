@@ -7,7 +7,6 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
-import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -176,15 +175,6 @@ class FirstRunView extends StatelessWidget {
       title: l10n.firstRunPageInterfaceTitle,
       description: l10n.firstRunPageInterfaceSection,
       children: [
-        SettingsChoiceRow(
-          title: l10n.networkInterfacePageAuto,
-          description: l10n.firstRunPageInterfaceAutoDescription,
-          leading: const Icon(LucideIcons.network),
-          selected:
-              state.interface == TunSettingsState.autoOutboundsInterfaceAuto,
-          onTap: () =>
-              onInterfaceChanged(TunSettingsState.autoOutboundsInterfaceAuto),
-        ),
         ...state.interfaces.map((networkInterface) {
           final addresses = networkInterface.addresses
               .map((address) => address.address)

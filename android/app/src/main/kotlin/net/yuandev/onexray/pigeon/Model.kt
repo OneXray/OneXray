@@ -50,6 +50,7 @@ data class XrayInboundAccount(
 @Serializable
 data class StartVpnRequest(
     val tun: TunJson?,
+    val socksPort: String? = null,
     val pingPort: String?,
     val pingAuth: XrayInboundAccount?,
     val metricsPort: String?,

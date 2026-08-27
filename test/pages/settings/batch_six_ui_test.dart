@@ -280,6 +280,7 @@ void main() {
         .getTopLeft(find.text('Outbound Network Interface'))
         .dy;
     expect(ipv6Y, lessThan(interfaceY));
+    expect(find.text('Auto'), findsNothing);
     expect(find.text('Next Step'), findsOneWidget);
     await tester.drag(
       find.byType(SingleChildScrollView),

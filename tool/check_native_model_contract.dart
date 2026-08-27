@@ -54,8 +54,22 @@ const _contracts = [
   ),
   _Contract(
     'StartVpnRequest',
-    {'tun', 'pingPort', 'pingAuth', 'metricsPort', 'coreInvokeText'},
-    {'tun', 'pingPort', 'pingAuth', 'metricsPort', 'coreInvokeText'},
+    {
+      'tun',
+      'socksPort',
+      'pingPort',
+      'pingAuth',
+      'metricsPort',
+      'coreInvokeText',
+    },
+    {
+      'tun',
+      'socksPort',
+      'pingPort',
+      'pingAuth',
+      'metricsPort',
+      'coreInvokeText',
+    },
   ),
   _Contract(
     'XrayEnv',

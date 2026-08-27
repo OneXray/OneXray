@@ -92,10 +92,6 @@ class WindowsPackagingTest(unittest.TestCase):
         with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):
             self.assertEqual(WindowsBuilder._target_architecture(), "arm64")
 
-    def test_arm64_uses_arm64_wintun(self):
-        self.builder.target_architecture = "arm64"
-        self.assertEqual(self.builder._wintun_architecture(), "arm64")
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,7 @@ part 'model.g.dart';
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class StartVpnRequest {
   TunJson? tun;
+  String? socksPort;
   String? pingPort;
   XrayInboundAccount? pingAuth;
   String? metricsPort;
@@ -15,6 +16,7 @@ class StartVpnRequest {
 
   StartVpnRequest(
     this.tun,
+    this.socksPort,
     this.pingPort,
     this.pingAuth,
     this.metricsPort,

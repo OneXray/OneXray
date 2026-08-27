@@ -86,6 +86,7 @@ struct XrayInboundAccount: Codable {
 
 struct StartVpnRequest: Codable {
     var tun: TunJson?
+    var socksPort: String?
     var pingPort: String?
     var pingAuth: XrayInboundAccount?
     var metricsPort: String?

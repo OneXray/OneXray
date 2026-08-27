@@ -83,8 +83,6 @@ cp ../libXray/windows_dll/libXray.dll windows/app/
 (cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
 ```
 
-> `windows/app.cmake` 还会打包 `wintun.dll`。这个文件不来自 `libXray`，需要按 Windows 开发环境另行准备。
-
 ## 3. 启动调试
 
 按目标平台执行：

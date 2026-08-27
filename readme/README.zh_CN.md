@@ -39,7 +39,7 @@ OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服�
 
 ## 核心能力
 
-- **跨平台 TUN**：支持 iOS、macOS、Android、Windows 和 Linux。
+- **跨平台运行**：iOS、macOS、Android 和 Linux 使用 TUN，Windows 使用本地 SOCKS5。
 - **灵活配置**：提供简易配置、可复用 Xray 配置、多节点出站和 Raw JSON。
 - **路由控制**：可在 Home 切换规则、全局和直连模式。
 - **导入与管理**：通过二维码、图片、文件或剪贴板导入受支持的分享链接与 HTTPS 订阅。
@@ -121,7 +121,7 @@ brew uninstall --cask onexrayse
 
 ### Windows
 
-Microsoft Store 会根据当前设备架构选择 x86_64 或 ARM64 包并负责更新。
+Microsoft Store 会根据当前设备架构选择 x86_64 或 ARM64 包并负责更新。Windows 运行本地 SOCKS5 代理，当前地址显示在 Core 设置中。
 
 ### Android
 

@@ -105,7 +105,6 @@ msix_config:
   identity_name: YuanDevLLC.OneXray
   publisher: CN=3666BCB5-5482-46DD-9C19-D8A7290A39FD
   logo_path: assets/logo.png
-  capabilities: allowElevation
   protocol_activation: onexray
   languages: en-us
   os_min_version: 10.0.17763.0

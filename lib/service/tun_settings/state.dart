@@ -5,9 +5,7 @@ import 'package:onexray/service/tun_settings/enum.dart';
 import 'package:onexray/service/tun_settings/standard.dart';
 
 class TunSettingsState {
-  static const autoOutboundsInterfaceAuto = "auto";
-
-  // linux, windows
+  // linux
   final tunName = "OneXrayTun";
   var tunDnsIPv4 = "8.8.8.8";
   var tunDnsIPv6 = "2001:4860:4860::8888";
@@ -16,7 +14,7 @@ class TunSettingsState {
   var enableIPv6 = true;
   var metricsEnabled = true;
 
-  var autoOutboundsInterface = autoOutboundsInterfaceAuto;
+  var outboundsInterface = "";
 
   var includeAllNetworks = false;
   var excludeLocalNetworks = true;
@@ -55,7 +53,7 @@ class TunSettingsState {
     }
 
     if (EmptyTool.checkString(tunJson.autoOutboundsInterface)) {
-      autoOutboundsInterface = tunJson.autoOutboundsInterface!;
+      outboundsInterface = tunJson.autoOutboundsInterface!;
     }
 
     if (tunJson.includeAllNetworks != null) {
@@ -109,7 +107,7 @@ class TunSettingsState {
     tunJson.enableIPv6 = enableIPv6;
     tunJson.metricsEnabled = metricsEnabled;
 
-    tunJson.autoOutboundsInterface = autoOutboundsInterface;
+    tunJson.autoOutboundsInterface = outboundsInterface;
 
     tunJson.includeAllNetworks = includeAllNetworks;
     tunJson.excludeLocalNetworks = excludeLocalNetworks;

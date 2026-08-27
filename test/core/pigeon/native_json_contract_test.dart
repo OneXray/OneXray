@@ -15,7 +15,7 @@ void main() {
       true,
       true,
       'OneXrayTun',
-      'auto',
+      'Ethernet',
       true,
       false,
       false,
@@ -31,6 +31,7 @@ void main() {
     );
     final request = StartVpnRequest(
       tun,
+      '11999',
       '12000',
       XrayInboundAccount('user', 'pass'),
       '12001',
@@ -59,6 +60,7 @@ void main() {
     });
     expect(request.toJson().keys.toSet(), {
       'tun',
+      'socksPort',
       'pingPort',
       'pingAuth',
       'metricsPort',

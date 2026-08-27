@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/model_reader.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/core/tun/network_interface/params.dart';
@@ -18,12 +22,16 @@ import 'package:onexray/pages/main/navigation.dart';
 
 class TunSettingsPageState {
   final TunSettingsState tunSettings;
+  final String? socksAddress;
 
-  TunSettingsPageState({TunSettingsState? tunSettings})
+  TunSettingsPageState({TunSettingsState? tunSettings, this.socksAddress})
     : tunSettings = tunSettings ?? TunSettingsState();
 
   TunSettingsPageState _copy() {
-    return TunSettingsPageState(tunSettings: tunSettings);
+    return TunSettingsPageState(
+      tunSettings: tunSettings,
+      socksAddress: socksAddress,
+    );
   }
 }
 
@@ -46,11 +54,48 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
   Future<void> _readTunSettings() async {
     final tunState = TunSettingsState();
     await tunState.readFromPreferences();
+    final socksAddress = await _readSocksAddress();
     if (!isPageActive) {
       return;
     }
-    emit(TunSettingsPageState(tunSettings: tunState));
+    emit(
+      TunSettingsPageState(tunSettings: tunState, socksAddress: socksAddress),
+    );
     _initInputs(tunState);
+  }
+
+  Future<String?> _readSocksAddress() async {
+    if (!AppPlatform.isWindows) {
+      return null;
+    }
+    try {
+      final request = await StartVpnRequestReader.readFromStartFile();
+      final port = request.socksPort;
+      if (port == null || port.isEmpty) {
+        return null;
+      }
+      return 'socks5://${NetConstants.proxyHost}:$port';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> copySocksAddress(BuildContext context) async {
+    final address = state.socksAddress;
+    if (address == null) {
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: address));
+    if (context.mounted) {
+      final localizations = AppLocalizations.of(context)!;
+      ContextAlert.showToast(
+        context,
+        localizations.actionResult(
+          localizations.menuCopy,
+          localizations.resultSuccess,
+        ),
+      );
+    }
   }
 
   void _initInputs(TunSettingsState tunState) {
@@ -100,16 +145,13 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
   }
 
   Future<void> editInterface(BuildContext context) async {
-    final params = NetworkInterfaceParams(
-      state.tunSettings.autoOutboundsInterface,
-      showAuto: true,
-    );
+    final params = NetworkInterfaceParams(state.tunSettings.outboundsInterface);
     final networkInterface = await context.pushScoped<String>(
       AppSecondaryDestination.networkInterface,
       extra: params,
     );
     if (networkInterface != null) {
-      state.tunSettings.autoOutboundsInterface = networkInterface;
+      state.tunSettings.outboundsInterface = networkInterface;
       emit(state._copy());
     }
   }

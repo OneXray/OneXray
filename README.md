@@ -39,7 +39,7 @@ OneXray is a client-only app. It does not provide VPN or proxy servers, subscrip
 
 ## Highlights
 
-- **Cross-platform TUN** — iOS, macOS, Android, Windows, and Linux.
+- **Cross-platform runtime** — TUN on iOS, macOS, Android, and Linux; local SOCKS5 on Windows.
 - **Flexible configuration** — Simple Profile, reusable Xray Profiles, Multi-node Outbound, and Raw JSON.
 - **Routing control** — switch between Rule, Global, and Direct behavior from Home.
 - **Import and organize** — supported share links and HTTPS subscriptions from QR codes, images, files, or the clipboard.
@@ -127,7 +127,8 @@ See [Installing System Extensions and Drivers](https://developer.apple.com/docum
 ### Windows
 
 Microsoft Store selects the x86_64 or ARM64 package for the current device and
-handles updates.
+handles updates. Windows runs a local SOCKS5 proxy; its current address is shown
+in Core settings.
 
 ### Android
 

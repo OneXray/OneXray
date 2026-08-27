@@ -16,6 +16,7 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 - Windows CMake 工程使用 C++17。
 - MSVC 编译启用 `/W4 /WX`，警告会导致构建失败。
 - Flutter、Go 和 Xray-core 的架构必须与矩阵项一致。
+- Windows 使用 loopback SOCKS 入站，普通权限启动 `OneXrayCore.exe`；构建和 MSIX 不再包含 Wintun 或 `allowElevation`。
 - 完成构建和打包后、上传产物前执行 `OneXrayCore.exe -h`，用于发现无法加载或架构错误。
 - workflow 中的注释、runner 标签和实际构建步骤必须同步；外部调研结论不替代 GitHub Actions 实机结果。
 
@@ -28,7 +29,8 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 3. `/W4 /WX` 下没有新增告警。
 4. 生成的 Core 可执行文件能够运行帮助命令。
 5. 两个架构的 MSIX 和上传产物名称正确，且不再生成 ZIP 或 EXE 安装包。
-6. Microsoft Store workflow 能从两个 `windows-store-*` artifact 生成 MSIX Bundle；实际发布必须另行验证 Partner Center 凭据。
+6. MSIX 不包含 `wintun.dll` 或 `allowElevation`，Core 启动不触发 UAC。
+7. Microsoft Store workflow 能从两个 `windows-store-*` artifact 生成 MSIX Bundle；实际发布必须另行验证 Partner Center 凭据。
 
 本地不必伪造 GitHub 托管镜像。涉及镜像可用性、预装软件或标签变更时，以 GitHub 官方 runner image 清单和实际 workflow run 为准。
 

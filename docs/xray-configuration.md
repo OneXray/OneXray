@@ -117,11 +117,12 @@ Raw JSON 不使用自定义 Profile 的根字段白名单，但 JSON 顶层必�
 
 保存时 App 会将 `inbounds` 规范化为内部 `pingIn`。运行时：
 
-- TUN 模式从当前 Profile 复制 inbounds，再生成或合并 `tunIn` 和 `pingIn`。
+- Android、Apple 和 Linux 从当前 Profile 复制 inbounds，再生成或合并 TUN 协议的 `tunIn` 和 `pingIn`。
+- Windows 将 `tunIn` 物化为 loopback SOCKS 协议入站，tag 仍为 `tunIn`，端口由 App 在每次启动时动态分配。
 - iOS Debug Proxy 模式移除全部原有入站，只加入 App `pingIn`。
-- `env`、DNS query strategy、日志、metrics、Ping routing rule 和平台 TUN route 仍由 App 修补。
+- `env`、DNS query strategy、日志、metrics、Ping routing rule 和平台网络设置仍由 App 修补。
 
-因此 Raw JSON 是运行主体，但用户定义的运行时入站不拥有最终控制权。TUN 模式需要额外入站时，应在自定义 Profile 中配置；Proxy 模式不保留这些额外入站。
+因此 Raw JSON 是运行主体，但用户定义的运行时入站不拥有最终控制权。需要额外入站时，应在自定义 Profile 中配置；Proxy 模式不保留这些额外入站。
 
 ## 编辑与验证边界
 
@@ -149,9 +150,9 @@ Profile 验证直接使用 Profile 副本；多节点出站验证会先覆盖当
 - Raw JSON：保留自身主体，并从 Profile 接管运行时入站。
 - Direct 且选中项不是多节点出站：忽略选中节点，直接从 Profile 生成配置。
 
-随后 App 写入 `env`、运行时端口、inbounds、Ping rule、日志、metrics、DNS query strategy，以及 Windows/Linux TUN route。所有修改都发生在副本上，不反写数据库中的 JSON 映射。
+随后 App 写入 `env`、SOCKS/Ping/Metrics 动态端口、inbounds、Ping rule、日志、metrics 和 DNS query strategy。Linux 将用户明确选择的 interface 绑定到 TUN；Windows 将同一 interface 写入每个 outbound。所有修改都发生在副本上，不反写数据库中的 JSON 映射。
 
-Core 运行模式与路由模式是两个独立维度。正式版本和非 iOS 平台固定使用 TUN；Proxy 仅在 iOS Debug 中可选。
+Core 运行模式与路由模式是两个独立维度。正式版本和非 iOS 平台仍走受管 Core 生命周期，但 Windows 的实际主入站是本地 SOCKS，其它平台是 TUN；Proxy 仅在 iOS Debug 中可选。
 
 路由模式当前行为：
 

@@ -10,6 +10,5 @@ install(PROGRAMS
         DESTINATION "${APP_BIN_DIR}"
         COMPONENT Runtime)
 
-install(FILES "${APP_DIR}/wintun.dll"
-        DESTINATION "${APP_BIN_DIR}"
+install(CODE "file(REMOVE \"${APP_BIN_DIR}/wintun.dll\")"
         COMPONENT Runtime)

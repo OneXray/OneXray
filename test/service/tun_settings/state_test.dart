@@ -1,7 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/tun_settings/state_validator.dart';
 
 void main() {
+  test('Interface requires an explicit fixed selection', () {
+    final state = TunSettingsState();
+    expect(state.outboundsInterface, isEmpty);
+
+    state.outboundsInterface = '  Ethernet 2  ';
+    state.removeWhitespace();
+
+    expect(state.outboundsInterface, 'Ethernet 2');
+    expect(state.tunJson.autoOutboundsInterface, 'Ethernet 2');
+  });
+
   test('Apple network routing uses system-compatible defaults', () {
     final state = TunSettingsState();
 

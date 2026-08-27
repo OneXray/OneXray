@@ -250,12 +250,20 @@ class TunSettingsContent extends StatelessWidget {
     return SettingSection(
       title: AppLocalizations.of(context)!.tunSettingsPageInterface,
       children: [
-        SettingRow(
-          leading: const Icon(LucideIcons.radioTower),
-          title: AppLocalizations.of(context)!.tunSettingsPageTunName,
-          value: state.tunSettings.tunName,
-          enabled: false,
-        ),
+        if (AppPlatform.isLinux)
+          SettingRow(
+            leading: const Icon(LucideIcons.radioTower),
+            title: AppLocalizations.of(context)!.tunSettingsPageTunName,
+            value: state.tunSettings.tunName,
+            enabled: false,
+          ),
+        if (AppPlatform.isWindows && state.socksAddress != null)
+          SettingRow(
+            leading: const Icon(LucideIcons.copy),
+            title: AppLocalizations.of(context)!.tunSettingsPageSocksAddress,
+            value: state.socksAddress,
+            onTap: () => controller.copySocksAddress(context),
+          ),
         _interface(context, state, controller),
       ],
     );
@@ -269,7 +277,7 @@ class TunSettingsContent extends StatelessWidget {
     return NavigationSettingRow(
       leading: const Icon(LucideIcons.network),
       title: AppLocalizations.of(context)!.tunSettingsPageInterface,
-      value: state.tunSettings.autoOutboundsInterface,
+      value: state.tunSettings.outboundsInterface,
       onTap: () => controller.editInterface(context),
     );
   }

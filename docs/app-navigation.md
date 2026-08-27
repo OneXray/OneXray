@@ -30,7 +30,7 @@ Core 页面分为网络、数据和日志：
 - 数据：Profiles、GeoData，以及打开 Enhanced Routing 外部模板页面的入口。
 - 日志：访问日志、错误日志和最终 Xray 配置；部分平台按能力隐藏文件日志或分享操作。
 
-Core 运行模式的 Proxy 选择器只在 iOS Debug 构建中出现。正式构建和其它平台固定使用 TUN，代码与文档不得把 Proxy 描述为跨平台功能。
+Core 运行模式的 Proxy 选择器只在 iOS Debug 构建中出现。正式构建和其它平台固定使用受管 Core 生命周期；Windows 的主入站为本地 SOCKS，其它平台为 TUN。代码与文档不得把 iOS Debug Proxy 描述为跨平台功能。
 
 ## 设置
 

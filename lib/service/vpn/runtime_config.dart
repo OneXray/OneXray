@@ -13,6 +13,7 @@ import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
+import 'package:onexray/service/tun_settings/state_validator.dart';
 import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
@@ -78,6 +79,10 @@ final class XrayRuntimeConfigService {
 
     final tunSettings = TunSettingsState();
     await tunSettings.readFromPreferences();
+    final tunSettingsValidation = await tunSettings.validate();
+    if (!tunSettingsValidation.item1) {
+      throw XrayRuntimeConfigException(tunSettingsValidation.item2);
+    }
     final profileMap = await loadSelectedProfileMap(tunSettings);
     final profileValidation = validateProfileFields(profileMap);
     if (!profileValidation.item1) {
@@ -269,6 +274,7 @@ final class XrayRuntimeConfigService {
       tunSettings,
       ports,
       tunSettings.metricsEnabled,
+      runtimePlatform: XrayRuntimePlatform.current,
     );
     if (routingMode == CoreRoutingMode.global &&
         !XrayRoutingModeFix.applyGlobalToRawJson(jsonMap)) {
@@ -336,6 +342,7 @@ final class XrayRuntimeConfigService {
       tunSettings,
       ports,
       tunSettings.metricsEnabled,
+      runtimePlatform: XrayRuntimePlatform.current,
     );
     if (!XrayRoutingModeFix.applyToRawJson(runtimeMap, routingMode)) {
       throw XrayRuntimeConfigException(

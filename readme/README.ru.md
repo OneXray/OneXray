@@ -39,7 +39,7 @@ OneXray является только клиентом и не предоста�
 
 ## Возможности
 
-- **Кроссплатформенный TUN** — iOS, macOS, Android, Windows и Linux.
+- **Кроссплатформенный запуск** — TUN на iOS, macOS, Android и Linux; локальный SOCKS5 на Windows.
 - **Гибкая конфигурация** — Simple Profile, переиспользуемые Xray Profiles, Multi-node Outbound и Raw JSON.
 - **Управление маршрутизацией** — режимы Rule, Global и Direct переключаются на Home.
 - **Импорт и организация** — поддерживаемые share links и HTTPS-подписки из QR-кодов, изображений, файлов или буфера обмена.
@@ -129,7 +129,8 @@ brew uninstall --cask onexrayse
 ### Windows
 
 Microsoft Store выбирает пакет x86_64 или ARM64 для текущего устройства и
-устанавливает обновления.
+устанавливает обновления. Windows запускает локальный прокси SOCKS5; текущий
+адрес отображается в настройках Core.
 
 ### Android
 

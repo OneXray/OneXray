@@ -11,6 +11,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
@@ -903,6 +904,7 @@ final class VpnService {
   ) async {
     final request = StartVpnRequest(
       null,
+      null,
       port.pingPort,
       port.pingAuth,
       port.metricsPort,
@@ -928,7 +930,8 @@ final class VpnService {
     void Function() onStartInvoked,
   ) async {
     final request = StartVpnRequest(
-      tunSettingsState.tunJson,
+      AppPlatform.isWindows ? null : tunSettingsState.tunJson,
+      AppPlatform.isWindows ? port.socksPort : null,
       port.pingPort,
       port.pingAuth,
       port.metricsPort,
