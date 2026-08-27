@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -27,7 +28,7 @@ class LinuxFfiApi extends BaseFfiApi {
   bool _stopping = false;
 
   @override
-  Future<bool> startCore(LibXrayRunConfig request) async {
+  Future<bool> startCore(LibXrayRunConfig request, TunJson? tun) async {
     try {
       if (!await _stopCoreProcess()) {
         ygLogger("start core failed: previous core is still running");
@@ -40,7 +41,14 @@ class LinuxFfiApi extends BaseFfiApi {
         return false;
       }
 
-      final command = <String>[corePath, "run", "-config", configPath];
+      final command = <String>[
+        corePath,
+        ...desktopCoreRunArguments(
+          dns: tun?.tunDnsIPv4 ?? '',
+          interfaceName: tun?.autoOutboundsInterface ?? '',
+          configPath: configPath,
+        ),
+      ];
       ygLogger("Running command: ${command.join(" ")}");
       final process = await _processManager.start(command);
       _bindProcess(process);

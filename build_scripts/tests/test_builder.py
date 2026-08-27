@@ -30,6 +30,26 @@ class BuilderTest(unittest.TestCase):
             b"dependencies:\r\n",
         )
 
+    def test_core_binary_is_copied_from_libxray(self):
+        workspace = self.root_dir / "workspace"
+        source = workspace / "libXray" / "bin" / "xray.exe"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(b"libXray Core")
+
+        self.builder.workspace_dir = str(workspace)
+        self.builder.project_dir = str(workspace / "OneXray" / "windows")
+        self.builder.system = "windows"
+        self.builder.project_config = {
+            "core.dir": "libXray",
+            "core.bin.src.file.windows": "bin/xray.exe",
+            "core.bin.dst.file.windows": "app/OneXrayCore.exe",
+        }
+
+        self.builder.build_core_binary()
+
+        destination = workspace / "OneXray" / "windows" / "app" / "OneXrayCore.exe"
+        self.assertEqual(destination.read_bytes(), b"libXray Core")
+
     def test_download_file_uses_standard_url_handler(self):
         source = self.root_dir / "source.bin"
         destination = self.root_dir / "destination.bin"

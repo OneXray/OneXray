@@ -12,7 +12,6 @@ from app.command_line import (
 )
 from app.config import PROJECT_CONFIG
 
-XRAY_CORE_DIR_NAME = "Xray-core"
 LOCAL_XRAY_CORE_ARG = "local"
 # ponytail: Only pubspec's top-level version is needed; add a YAML parser if the
 # build interface ever needs structured YAML data.
@@ -97,34 +96,18 @@ class Builder:
         self.build_core_binary()
 
     def build_core_binary(self):
-        bin_dst_key = f"core.bin.dst.file.{self.system}"
-        if bin_dst_key not in self.project_config:
+        src_key = f"core.bin.src.file.{self.system}"
+        dst_key = f"core.bin.dst.file.{self.system}"
+        if src_key not in self.project_config or dst_key not in self.project_config:
             return
 
-        xray_core_dir = os.path.join(self.workspace_dir, XRAY_CORE_DIR_NAME)
-        if not os.path.isdir(xray_core_dir):
-            raise FileNotFoundError(f"Xray-core dir not found: {xray_core_dir}")
-
-        bin_dst_path = os.path.join(self.project_dir, self.project_config[bin_dst_key])
-        check_and_create_dir(os.path.dirname(bin_dst_path))
-        run_command(
-            [
-                "go",
-                "build",
-                "-o",
-                bin_dst_path,
-                "-trimpath",
-                "-buildvcs=false",
-                "-ldflags=-s -w -buildid=",
-                "-v",
-                "./main",
-            ],
-            cwd=xray_core_dir,
-            env={"CGO_ENABLED": "0"},
-        )
-
+        lib_dir = os.path.join(self.workspace_dir, self.project_config["core.dir"])
+        src_path = os.path.join(lib_dir, self.project_config[src_key])
+        dst_path = os.path.join(self.project_dir, self.project_config[dst_key])
+        check_and_create_dir(os.path.dirname(dst_path))
+        shutil.copy(src_path, dst_path)
         if self.system != "windows":
-            os.chmod(bin_dst_path, 0o755)
+            os.chmod(dst_path, 0o755)
 
     def after_build(self):
         pass

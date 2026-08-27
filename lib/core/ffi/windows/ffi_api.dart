@@ -75,7 +75,11 @@ class WindowsFfiApi extends BaseFfiApi {
         processes: [
           WindowsManagedProcess(
             executableRelativePath: _coreRelativePath,
-            arguments: ['run', '-config', coreConfig],
+            arguments: desktopCoreRunArguments(
+              dns: networkSettings.dnsIpv4Address,
+              interfaceName: request.tun?.autoOutboundsInterface ?? '',
+              configPath: coreConfig,
+            ),
           ),
         ],
       );

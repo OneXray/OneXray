@@ -128,9 +128,11 @@ See [Installing System Extensions and Drivers](https://developer.apple.com/docum
 
 Microsoft Store selects the x86_64 or ARM64 package for the current device and
 handles updates. The packaged VCore VPN Provider carries system traffic to an
-internal loopback SOCKS5 listener in OneXrayCore. The per-session VCore Session
-Host owns that Core process in a kill-on-close Job Object; the listener is not
-exposed as a user proxy. Standalone Windows EXE and ZIP builds are obsolete and are not
+internal loopback SOCKS5 listener in OneXrayCore. Its Go resolver sends
+bootstrap DNS through the selected physical interface before opening the proxy
+connection. The per-session VCore Session Host owns that Core process in a
+kill-on-close Job Object; the listener is not exposed as a user proxy.
+Standalone Windows EXE and ZIP builds are obsolete and are not
 upgrade sources for the MSIX package.
 
 ### Android

@@ -3,6 +3,33 @@ import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 
 void main() {
+  test('builds protected desktop Core arguments', () {
+    expect(
+      desktopCoreRunArguments(
+        dns: '8.8.8.8',
+        interfaceName: 'Ethernet',
+        configPath: r'C:\run\xray.json',
+      ),
+      <String>[
+        'run',
+        '-dns',
+        '8.8.8.8:53',
+        '-interface',
+        'Ethernet',
+        '-config',
+        r'C:\run\xray.json',
+      ],
+    );
+    expect(
+      () => desktopCoreRunArguments(
+        dns: '',
+        interfaceName: 'Ethernet',
+        configPath: 'xray.json',
+      ),
+      throwsFormatException,
+    );
+  });
+
   test('reports disconnected only after Core stops successfully', () async {
     final api = _TestFfiApi(stopResult: true);
     addTearDown(api.stopSharedIsolate);

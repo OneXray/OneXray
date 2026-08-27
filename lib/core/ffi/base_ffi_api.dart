@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:isolate_manager/isolate_manager.dart';
 import 'package:onexray/core/ffi/generated_bindings.dart';
+import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -12,6 +13,25 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:path/path.dart' as p;
+
+List<String> desktopCoreRunArguments({
+  required String dns,
+  required String interfaceName,
+  required String configPath,
+}) {
+  if (dns.isEmpty || interfaceName.isEmpty || configPath.isEmpty) {
+    throw const FormatException('Desktop Core DNS settings are missing');
+  }
+  return <String>[
+    'run',
+    '-dns',
+    '$dns:53',
+    '-interface',
+    interfaceName,
+    '-config',
+    configPath,
+  ];
+}
 
 abstract class BaseFfiApi {
   Future<String> getTunFilesDir() async {
@@ -45,7 +65,7 @@ abstract class BaseFfiApi {
     final request = await StartVpnRequestReader.readFromStartFile();
     final coreRequest = _readRunXrayRequest(request);
 
-    var res = await startCore(coreRequest);
+    var res = await startCore(coreRequest, request.tun);
     if (!res) {
       await stopVpn();
       return _commandFailed();
@@ -66,7 +86,7 @@ abstract class BaseFfiApi {
     return LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
   }
 
-  Future<bool> startCore(LibXrayRunConfig request) async {
+  Future<bool> startCore(LibXrayRunConfig request, TunJson? tun) async {
     return true;
   }
 

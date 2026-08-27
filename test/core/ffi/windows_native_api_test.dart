@@ -58,7 +58,15 @@ void main() {
         processes: [
           WindowsManagedProcess(
             executableRelativePath: 'OneXrayCore.exe',
-            arguments: ['run', '-config', r'C:\config.json'],
+            arguments: [
+              'run',
+              '-dns',
+              '8.8.8.8:53',
+              '-interface',
+              'Ethernet',
+              '-config',
+              r'C:\config.json',
+            ],
           ),
         ],
       ),
@@ -79,7 +87,15 @@ void main() {
           'processes': [
             {
               'executableRelativePath': 'OneXrayCore.exe',
-              'arguments': ['run', '-config', r'C:\config.json'],
+              'arguments': [
+                'run',
+                '-dns',
+                '8.8.8.8:53',
+                '-interface',
+                'Ethernet',
+                '-config',
+                r'C:\config.json',
+              ],
             },
           ],
         },

@@ -37,9 +37,9 @@
 #   XTLS/Xray-core to live as siblings of this repo. Every job therefore checks
 #   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
 #   `Xray-core/` at the workspace root. Windows also checks out VCore to
-#   `VCore/`. libXray is built with local Xray-core, Windows/Linux packages
-#   compile OneXrayCore from that checkout, and Windows builds architecture-
-#   matched VCore hosts. Outputs remain under `<workspace>/output`.
+#   `VCore/`. libXray is built with local Xray-core and provides the
+#   Windows/Linux OneXrayCore binary; Windows also builds architecture-matched
+#   VCore hosts. Outputs remain under `<workspace>/output`.
 
 name: Build
 run-name: Build ${{ inputs.target || 'all' }} · ${{ github.ref_name }}
@@ -73,7 +73,7 @@ env:
   XRAY_CORE_REPOSITORY: XTLS/Xray-core
   XRAY_CORE_REF: v26.7.28
   VCORE_REPOSITORY: ${{ github.repository_owner }}/VCore
-  VCORE_REF: 85550487a8ee69acbf9413a707e12d816d41a5aa
+  VCORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
