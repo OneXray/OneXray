@@ -7,6 +7,9 @@ import 'package:onexray/service/tun_settings/standard.dart';
 class TunSettingsState {
   // linux
   final tunName = "OneXrayTun";
+  // windows
+  var tunIPv4 = "192.168.3.1";
+  var tunIPv6 = "fd00::2";
   var tunDnsIPv4 = "8.8.8.8";
   var tunDnsIPv6 = "2001:4860:4860::8888";
   var enableDot = false;
@@ -33,6 +36,12 @@ class TunSettingsState {
       return;
     }
     final tunJson = TunJson.fromJson(jsonMap!);
+    if (EmptyTool.checkString(tunJson.tunIPv4)) {
+      tunIPv4 = tunJson.tunIPv4!;
+    }
+    if (EmptyTool.checkString(tunJson.tunIPv6)) {
+      tunIPv6 = tunJson.tunIPv6!;
+    }
     if (EmptyTool.checkString(tunJson.tunDnsIPv4)) {
       tunDnsIPv4 = tunJson.tunDnsIPv4!;
     }
@@ -100,6 +109,8 @@ class TunSettingsState {
   TunJson get tunJson {
     final tunJson = TunJsonStandard.standard;
     tunJson.tunName = tunName;
+    tunJson.tunIPv4 = tunIPv4;
+    tunJson.tunIPv6 = tunIPv6;
     tunJson.tunDnsIPv4 = tunDnsIPv4;
     tunJson.tunDnsIPv6 = tunDnsIPv6;
     tunJson.enableDot = enableDot;

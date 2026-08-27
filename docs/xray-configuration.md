@@ -118,7 +118,7 @@ Raw JSON 不使用自定义 Profile 的根字段白名单，但 JSON 顶层必�
 保存时 App 会将 `inbounds` 规范化为内部 `pingIn`。运行时：
 
 - Android、Apple 和 Linux 从当前 Profile 复制 inbounds，再生成或合并 TUN 协议的 `tunIn` 和 `pingIn`。
-- Windows 将 `tunIn` 物化为 loopback SOCKS 协议入站，tag 仍为 `tunIn`，端口由 App 在每次启动时动态分配。
+- Windows 将 `tunIn` 物化为只监听 `127.0.0.1` 的无认证 SOCKS5 入站，tag 仍为 `tunIn`，端口由 App 在每次启动时动态分配。VCore Session Host 将系统 VPN 数据送入该内部端口。
 - iOS Debug Proxy 模式移除全部原有入站，只加入 App `pingIn`。
 - `env`、DNS query strategy、日志、metrics、Ping routing rule 和平台网络设置仍由 App 修补。
 
@@ -152,7 +152,9 @@ Profile 验证直接使用 Profile 副本；多节点出站验证会先覆盖当
 
 随后 App 写入 `env`、SOCKS/Ping/Metrics 动态端口、inbounds、Ping rule、日志、metrics 和 DNS query strategy。Linux 将用户明确选择的 interface 绑定到 TUN；Windows 将同一 interface 写入每个 outbound。所有修改都发生在副本上，不反写数据库中的 JSON 映射。
 
-Core 运行模式与路由模式是两个独立维度。正式版本和非 iOS 平台仍走受管 Core 生命周期，但 Windows 的实际主入站是本地 SOCKS，其它平台是 TUN；Proxy 仅在 iOS Debug 中可选。
+Windows 另生成一份固定、最小的 VCore YAML：启用 TUN，以动态 loopback SOCKS5 为唯一 outbound，关闭 VCore DNS，并用 `MATCH` 转发全部进入 Provider 的流量。节点、DNS、业务路由和 metrics 仍只由 Xray 配置负责。
+
+Core 运行模式与路由模式是两个独立维度。正式版本和非 iOS 平台仍走受管 Core 生命周期；Windows 的系统 TUN 由 VCore Provider 提供，而 Xray 的实际主入站是其内部 SOCKS5。Proxy 仅在 iOS Debug 中可选。
 
 路由模式当前行为：
 

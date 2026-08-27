@@ -1,4 +1,6 @@
 import os
+import shutil
+import struct
 
 from app.builder import Builder
 from app.command_line import (
@@ -6,6 +8,13 @@ from app.command_line import (
     is_amd64,
     is_arm64,
     run_command,
+)
+from app.windows_msix import package_with_vcore
+
+_VCORE_ARTIFACTS = (
+    "vcore.dll",
+    "vcore-windows-vpn-host.exe",
+    "vcore-windows-session-host.exe",
 )
 
 
@@ -37,11 +46,68 @@ class WindowsBuilder(Builder):
     def before_build(self):
         super().before_build()
         self.build_core()
+        self.build_vcore()
+
+    def build_vcore(self):
+        vcore_dir = self._vcore_dir()
+        scripts = os.path.join(vcore_dir, "scripts")
+        run_command(
+            [
+                "uv",
+                "run",
+                "--project",
+                scripts,
+                "--locked",
+                "vcore-scripts",
+                "check",
+                "tls-dependencies",
+            ],
+            cwd=vcore_dir,
+        )
+        run_command(
+            [
+                "uv",
+                "run",
+                "--project",
+                scripts,
+                "--locked",
+                "vcore-scripts",
+                "build",
+                "windows",
+                "--architecture",
+                self.target_architecture,
+            ],
+            cwd=vcore_dir,
+        )
+
+        source = os.path.join(
+            vcore_dir, "dist", "windows", self.target_architecture
+        )
+        destination = os.path.join(self.project_dir, "app")
+        os.makedirs(destination, exist_ok=True)
+        expected_machine = 0x8664 if self.target_architecture == "x64" else 0xAA64
+        for name in _VCORE_ARTIFACTS:
+            artifact = os.path.join(source, name)
+            if _pe_machine(artifact) != expected_machine:
+                raise ValueError(
+                    f"VCore artifact has the wrong architecture: {artifact}"
+                )
+            shutil.copy2(artifact, destination)
+
+    def _vcore_dir(self) -> str:
+        configured = os.environ.get("VCORE_DIR")
+        candidates = [configured, os.path.join(self.workspace_dir, "VCore")]
+        for candidate in candidates:
+            if candidate and os.path.isfile(os.path.join(candidate, "Cargo.toml")):
+                return os.path.abspath(candidate)
+        raise FileNotFoundError("VCore checkout not found; set VCORE_DIR")
 
     def build_app(self):
         self.package_msix()
 
     def package_msix(self):
+        self._prepare_msix_bundle()
+        output_name = f"{self.project}-{self.package_suffix}"
         run_command(
             [
                 dart_command(),
@@ -57,10 +123,37 @@ class WindowsBuilder(Builder):
                 "--output-path",
                 self.output_dir,
                 "--output-name",
-                f"{self.project}-{self.package_suffix}",
+                output_name,
             ],
             cwd=self.root_dir,
         )
+        local_development = os.environ.get("ONEXRAY_DEV_SIGN") == "1"
+        package_with_vcore(
+            os.path.join(self.output_dir, f"{output_name}.msix"),
+            local_development=local_development,
+            certificate_path=os.environ.get("ONEXRAY_DEV_CERT_PATH"),
+            certificate_password=os.environ.get("ONEXRAY_DEV_CERT_PASSWORD"),
+            development_publisher=os.environ.get("ONEXRAY_DEV_PUBLISHER"),
+        )
+
+    def _prepare_msix_bundle(self):
+        source = os.path.join(
+            self.root_dir,
+            "build",
+            "windows",
+            self.target_architecture,
+            "runner",
+            "Release",
+        )
+        if not os.path.isfile(os.path.join(source, f"{self.project}.exe")):
+            raise FileNotFoundError(
+                f"Windows {self.target_architecture} release bundle not found: {source}"
+            )
+        destination = os.path.join(
+            self.root_dir, "build", "windows", "runner", "Release"
+        )
+        shutil.rmtree(destination, ignore_errors=True)
+        shutil.copytree(source, destination)
 
     def msix_version(self) -> str:
         marketing_parts = self.read_version().split("+", maxsplit=1)[0].split(".")
@@ -75,3 +168,20 @@ class WindowsBuilder(Builder):
         if values[0] == 0:
             raise ValueError("MSIX major version must be greater than 0")
         return ".".join(str(value) for value in values)
+
+
+def _pe_machine(path: str) -> int:
+    with open(path, "rb") as artifact:
+        if artifact.read(2) != b"MZ":
+            raise ValueError(f"not a PE artifact: {path}")
+        artifact.seek(0x3C)
+        pe_offset_data = artifact.read(4)
+        if len(pe_offset_data) != 4:
+            raise ValueError(f"invalid PE artifact: {path}")
+        artifact.seek(struct.unpack("<I", pe_offset_data)[0])
+        if artifact.read(4) != b"PE\0\0":
+            raise ValueError(f"invalid PE artifact: {path}")
+        machine = artifact.read(2)
+        if len(machine) != 2:
+            raise ValueError(f"invalid PE artifact: {path}")
+        return struct.unpack("<H", machine)[0]

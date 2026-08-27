@@ -10,24 +10,23 @@ the platform-specific outputs.
 
 ### Workspace layout
 
-The three repositories must be sibling directories. Build artifacts are written
-to the sibling `output` directory.
+OneXray, libXray, and Xray-core must be sibling directories. Windows builds also require a VCore checkout; set `VCORE_DIR` when it is not at `workspace/VCore`. Build artifacts are written to the sibling `output` directory.
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
 ├── Xray-core/
+├── VCore/         # Windows only
 └── output/        # created automatically
 ```
 
-The scripts use the currently checked-out libXray and Xray-core revisions. They
-do not clone or pin those repositories for a local build.
+The scripts use the currently checked-out libXray, Xray-core, and VCore revisions. They do not clone or pin those repositories for a local build.
 
 ### Prerequisites
 
 - Python 3.12 or newer and `uv`. The scripts use only the Python standard library.
-- Flutter, Dart, and Go available on `PATH`.
+- Flutter, Dart, and Go available on `PATH`; Windows also requires Rust and the Windows SDK `makeappx`/`signtool` tools.
 - A toolchain for the target operating system. Apple targets require macOS,
   Xcode, CocoaPods, and Fastlane; Android requires a JDK, Android SDK/NDK, and
   Fastlane; Linux packaging requires Fastforge.
@@ -79,9 +78,7 @@ display the CLI syntax.
 | `windows` | Windows x64 or ARM64 | Microsoft Store MSIX for the selected architecture. |
 | `linux` | Linux x64 or ARM64 | ZIP and DEB for the host architecture. |
 
-For Windows, the architecture is detected from the host. CI can set
-`ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching runner and CGo
-toolchain are already configured.
+For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching Flutter, Go, Rust, and MSVC toolchains are configured. Set `ONEXRAY_DEV_SIGN=1`, `ONEXRAY_DEV_CERT_PATH`, and `ONEXRAY_DEV_CERT_PASSWORD` to produce a locally signed `OneXray.Dev` package.
 
 ### Important behavior
 
@@ -105,23 +102,23 @@ toolchain are already configured.
 
 ### 工作区结构
 
-三个仓库必须位于同一级目录。构建产物会写入同级的 `output` 目录。
+OneXray、libXray 和 Xray-core 必须位于同一级目录。Windows 构建还需要 VCore；不在 `workspace/VCore` 时通过 `VCORE_DIR` 指定。构建产物写入同级 `output` 目录。
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
 ├── Xray-core/
+├── VCore/         # 仅 Windows
 └── output/        # 自动创建
 ```
 
-本地构建会直接使用 libXray 和 Xray-core 当前检出的版本，不会自动克隆或锁定
-这两个仓库的版本。
+本地构建直接使用 libXray、Xray-core 和 VCore 当前检出的版本，不会自动克隆或锁定这些仓库。
 
 ### 前置条件
 
 - Python 3.12 或更高版本，并安装 `uv`。脚本仅使用 Python 标准库。
-- `PATH` 中可以找到 Flutter、Dart 和 Go。
+- `PATH` 中可以找到 Flutter、Dart 和 Go；Windows 还需要 Rust 以及 Windows SDK 的 `makeappx`、`signtool`。
 - 安装目标系统所需的工具链。Apple 平台需要 macOS、Xcode、CocoaPods 和
   Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Linux 打包需要
   Fastforge。
@@ -170,8 +167,7 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 | `windows` | Windows x64 或 ARM64 | 为所选架构生成 Microsoft Store MSIX。 |
 | `linux` | Linux x64 或 ARM64 | 为主机架构生成 ZIP 和 DEB。 |
 
-Windows 默认根据主机识别架构。CI 可以在已经配置好对应 runner 和 CGo
-工具链的前提下，将 `ONEXRAY_WINDOWS_ARCH` 设置为 `x64` 或 `arm64`。
+Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 和 MSVC 工具链就绪时设置 `ONEXRAY_WINDOWS_ARCH`。设置 `ONEXRAY_DEV_SIGN=1`、`ONEXRAY_DEV_CERT_PATH` 和 `ONEXRAY_DEV_CERT_PASSWORD` 可生成本地签名的 `OneXray.Dev` 包。
 
 ### 重要行为
 
@@ -194,24 +190,23 @@ Xray-core, генерируют FFI-привязки Flutter, собирают �
 
 ### Структура рабочего каталога
 
-Три репозитория должны находиться в соседних каталогах. Результаты сборки
-записываются в соседний каталог `output`.
+OneXray, libXray и Xray-core должны находиться в соседних каталогах. Для Windows также нужен VCore; если он находится не в `workspace/VCore`, задайте `VCORE_DIR`. Результаты записываются в соседний каталог `output`.
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
 ├── Xray-core/
+├── VCore/         # только Windows
 └── output/        # создаётся автоматически
 ```
 
-При локальной сборке используются текущие версии libXray и Xray-core. Скрипты
-не клонируют эти репозитории и не закрепляют их ревизии.
+При локальной сборке используются текущие версии libXray, Xray-core и VCore. Скрипты не клонируют эти репозитории и не закрепляют их ревизии.
 
 ### Требования
 
 - Python 3.12 или новее и `uv`. Скрипты используют только стандартную библиотеку Python.
-- Flutter, Dart и Go, доступные через `PATH`.
+- Flutter, Dart и Go через `PATH`; для Windows также нужны Rust и инструменты Windows SDK `makeappx`/`signtool`.
 - Инструменты для целевой системы. Для Apple требуются macOS, Xcode, CocoaPods
   и Fastlane; для Android — JDK, Android SDK/NDK и Fastlane; для упаковки под
   Linux требуется Fastforge.
@@ -263,9 +258,7 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 | `windows` | Windows x64 или ARM64 | MSIX для Microsoft Store выбранной архитектуры. |
 | `linux` | Linux x64 или ARM64 | ZIP и DEB для архитектуры хоста. |
 
-В Windows архитектура по умолчанию определяется по системе. В CI переменную
-`ONEXRAY_WINDOWS_ARCH` можно установить в `x64` или `arm64`, если уже настроены
-соответствующий runner и CGo toolchain.
+В Windows архитектура определяется по системе. CI может задать `ONEXRAY_WINDOWS_ARCH`, когда настроены Flutter, Go, Rust и MSVC. Для локально подписанного пакета `OneXray.Dev` задайте `ONEXRAY_DEV_SIGN=1`, `ONEXRAY_DEV_CERT_PATH` и `ONEXRAY_DEV_CERT_PASSWORD`.
 
 ### Важные особенности
 

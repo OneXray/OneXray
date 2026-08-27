@@ -73,7 +73,7 @@ class DesktopSettingsView extends StatelessWidget {
                     ? l10n.settingsPageLaunchAtLoginUnavailable
                     : l10n.settingsPageLaunchAtLoginDescription,
                 leading: const Icon(LucideIcons.logIn),
-                value: launchStatus.registered,
+                value: launchStatus.enabled,
                 onChanged: state.launchToggleEnabled
                     ? onLaunchAtLoginChanged
                     : null,

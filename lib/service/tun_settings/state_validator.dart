@@ -10,6 +10,21 @@ import 'package:tuple/tuple.dart';
 
 extension TunSettingsStateValidator on TunSettingsState {
   Future<Tuple2<bool, String>> validate() async {
+    InternetAddress? tunAddressIPv4;
+    InternetAddress? tunAddressIPv6;
+    if (AppPlatform.isWindows) {
+      tunAddressIPv4 = InternetAddress.tryParse(tunIPv4);
+      if (tunAddressIPv4 == null ||
+          tunAddressIPv4.type != InternetAddressType.IPv4) {
+        return Tuple2(false, appLocalizationsNoContext().validationIPv4Invalid);
+      }
+      tunAddressIPv6 = InternetAddress.tryParse(tunIPv6);
+      if (tunAddressIPv6 == null ||
+          tunAddressIPv6.type != InternetAddressType.IPv6) {
+        return Tuple2(false, appLocalizationsNoContext().validationIPv6Invalid);
+      }
+    }
+
     if (!EmptyTool.checkString(tunDnsIPv4)) {
       return Tuple2(false, appLocalizationsNoContext().validationDnsRequired);
     }
@@ -19,7 +34,8 @@ extension TunSettingsStateValidator on TunSettingsState {
       return Tuple2(false, appLocalizationsNoContext().validationIPv4Invalid);
     }
 
-    if (ipv4.type != InternetAddressType.IPv4) {
+    if (ipv4.type != InternetAddressType.IPv4 ||
+        ipv4.address == tunAddressIPv4?.address) {
       return Tuple2(false, appLocalizationsNoContext().validationIPv4Invalid);
     }
 
@@ -32,7 +48,8 @@ extension TunSettingsStateValidator on TunSettingsState {
       return Tuple2(false, appLocalizationsNoContext().validationIPv6Invalid);
     }
 
-    if (ipv6.type != InternetAddressType.IPv6) {
+    if (ipv6.type != InternetAddressType.IPv6 ||
+        ipv6.address == tunAddressIPv6?.address) {
       return Tuple2(false, appLocalizationsNoContext().validationIPv6Invalid);
     }
 
@@ -54,6 +71,8 @@ extension TunSettingsStateValidator on TunSettingsState {
   }
 
   void removeWhitespace() {
+    tunIPv4 = tunIPv4.removeWhitespace;
+    tunIPv6 = tunIPv6.removeWhitespace;
     tunDnsIPv4 = tunDnsIPv4.removeWhitespace;
     tunDnsIPv6 = tunDnsIPv6.removeWhitespace;
     dnsServerName = dnsServerName.removeWhitespace;

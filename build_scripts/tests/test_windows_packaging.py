@@ -1,9 +1,11 @@
 import os
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 from app.windows import WindowsBuilder
+from app.windows_msix import augment_manifest, package_with_vcore
 
 
 class WindowsPackagingTest(unittest.TestCase):
@@ -28,6 +30,7 @@ class WindowsPackagingTest(unittest.TestCase):
         self.builder.output_dir = os.path.join(self.temp_dir.name, "output")
         self.builder.package_suffix = "windows-amd64"
         self.builder.target_architecture = "x64"
+        self.builder._prepare_msix_bundle = lambda: None
         os.makedirs(self.builder.output_dir)
 
     def test_build_app_packages_only_msix(self):
@@ -43,6 +46,7 @@ class WindowsPackagingTest(unittest.TestCase):
         with (
             patch("app.windows.dart_command", return_value="dart"),
             patch("app.windows.run_command") as run_command,
+            patch("app.windows.package_with_vcore") as package_with_vcore,
         ):
             self.builder.package_msix()
 
@@ -65,6 +69,16 @@ class WindowsPackagingTest(unittest.TestCase):
             ],
             cwd=self.builder.root_dir,
         )
+        package_with_vcore.assert_called_once_with(
+            os.path.join(
+                self.builder.output_dir,
+                "OneXray-windows-amd64.msix",
+            ),
+            local_development=False,
+            certificate_path=None,
+            certificate_password=None,
+            development_publisher=None,
+        )
 
     def test_arm64_msix_uses_arm64_architecture(self):
         self.builder.target_architecture = "arm64"
@@ -73,6 +87,7 @@ class WindowsPackagingTest(unittest.TestCase):
         with (
             patch("app.windows.dart_command", return_value="dart"),
             patch("app.windows.run_command") as run_command,
+            patch("app.windows.package_with_vcore"),
         ):
             self.builder.package_msix()
 
@@ -91,6 +106,67 @@ class WindowsPackagingTest(unittest.TestCase):
     def test_target_architecture_prefers_workflow_setting(self):
         with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):
             self.assertEqual(WindowsBuilder._target_architecture(), "arm64")
+
+    def test_local_signing_requires_certificate_and_publisher(self):
+        with self.assertRaises(ValueError):
+            package_with_vcore(
+                "missing.msix",
+                local_development=True,
+                certificate_path="missing.pfx",
+                certificate_password="test",
+                development_publisher="CN=OneXray Development",
+            )
+
+    def test_manifest_adds_vcore_hosts_and_activation(self):
+        manifest = os.path.join(self.temp_dir.name, "AppxManifest.xml")
+        with open(manifest, "w", encoding="utf-8") as output:
+            output.write(_MANIFEST_FIXTURE)
+
+        augment_manifest(
+            manifest,
+            local_development=True,
+            development_publisher="CN=OneXray Development",
+        )
+
+        root = ET.parse(manifest).getroot()
+        ns = {"f": _FOUNDATION}
+        identity = root.find("f:Identity", ns)
+        self.assertEqual(identity.attrib["Name"], "OneXray.Dev")
+        self.assertEqual(identity.attrib["Publisher"], "CN=OneXray Development")
+        self.assertIsNotNone(root.find(".//f:Application[@Id='SessionHost']", ns))
+        self.assertIsNotNone(root.find(".//f:Application[@Id='VpnProvider']", ns))
+        self.assertEqual(
+            root.find(".//f:InProcessServer/f:Path", ns).text,
+            "vcore.dll",
+        )
+
+
+_FOUNDATION = "http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+_DESKTOP = "http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+_MANIFEST_FIXTURE = f'''<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="{_FOUNDATION}"
+ xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+ xmlns:desktop="{_DESKTOP}"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+ IgnorableNamespaces="uap desktop rescap">
+ <Identity Name="YuanDevLLC.OneXray" Publisher="CN=Store" Version="1.0.0.0" ProcessorArchitecture="x64" />
+ <Capabilities>
+  <Capability Name="internetClientServer" />
+  <Capability Name="privateNetworkClientServer" />
+  <rescap:Capability Name="runFullTrust" />
+  <rescap:Capability Name="networkingVpnProvider" />
+ </Capabilities>
+ <Applications>
+  <Application Id="OneXray" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
+   <Extensions>
+    <desktop:Extension Category="windows.startupTask" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
+     <desktop:StartupTask TaskId="VCoreStartup" Enabled="false" DisplayName="OneXray" />
+    </desktop:Extension>
+   </Extensions>
+  </Application>
+ </Applications>
+</Package>
+'''
 
 
 if __name__ == "__main__":

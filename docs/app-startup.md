@@ -30,13 +30,9 @@
 
 ### Windows
 
-App 在当前用户的 Startup 文件夹管理 `OneXray.lnk`，使用 `IShellLink`：
+Microsoft Store MSIX 注册默认关闭的 package `StartupTask`，TaskId 为 `VCoreStartup`。Dart 通过 `vcore.dll` 的 `VCoreWindowsVpnInvoke` 查询、申请启用和关闭任务；用户或策略阻止启用时，设置页引导打开 `ms-settings:startupapps`。
 
-- 目标路径是当前 `OneXray.exe`；
-- 工作目录是可执行文件所在目录；
-- 启动参数为空。
-
-查询时会识别失效快捷方式。只有快捷方式属于当前 OneXray，或指向已经不存在的旧 OneXray 可执行文件时才允许替换或删除；不能覆盖同名但属于其它程序的快捷方式。当前实现不使用注册表启动项。
+该功能要求 package identity，未打包的 `flutter run windows` 中不可用。Windows 实现不读取或迁移 Startup Folder 快捷方式、注册表登录项及旧版偏好。StartupTask 只负责登录后启动 App；是否隐藏窗口和是否连接 VPN 仍分别由对应偏好决定。
 
 ### Linux
 
@@ -44,7 +40,7 @@ App 在 XDG autostart 目录管理 `net.yuandev.onexray.desktop`。优先使用 
 
 ## 清理与失败边界
 
-- 清理 App 数据且准备删除用户偏好时，必须先取消桌面登录项；取消失败时停止破坏性清理。恢复备份会保留登录项状态。
+- 清理 App 数据且准备删除用户偏好时，必须先取消当前平台登录项；取消失败时停止破坏性清理。Windows 只操作当前 MSIX 的 StartupTask。恢复备份会保留登录项状态。
 - 登录项注册状态由操作系统事实决定，不能只依据 Preferences 显示。
 - 自动连接只执行一次。重复的服务就绪事件不得重复启动 Core。
 - 自动连接前的 GeoData 检查与用户手动连接使用同一系统资源准备原则。

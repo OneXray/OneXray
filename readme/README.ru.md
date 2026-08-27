@@ -155,7 +155,7 @@ sudo apt remove onexray
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
-sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
 Пользователям GNOME следует установить расширение [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator). Linux arm64 в настоящее время использует английский язык для CJK locale.

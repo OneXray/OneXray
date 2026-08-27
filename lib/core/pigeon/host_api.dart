@@ -1,6 +1,8 @@
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
-import 'package:onexray/core/ffi/windows_ffi_api.dart';
+import 'package:onexray/core/ffi/windows/ffi_api.dart';
+import 'package:onexray/core/ffi/windows/model.dart';
+import 'package:onexray/core/ffi/windows/native_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/invoke_limits.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -10,6 +12,7 @@ import 'package:onexray/core/tools/logger.dart';
 
 class AppHostApi {
   final _api = BridgeHostApi();
+  final _windows = WindowsNativeApi();
 
   static final AppHostApi _singleton = AppHostApi._internal();
 
@@ -20,29 +23,40 @@ class AppHostApi {
   // ===============
   final _errorResult = "error";
   var _tunFilesDir = "";
+  var _windowsPackageAvailable = false;
+
+  bool get windowsPackageAvailable => _windowsPackageAvailable;
+  String? get windowsSnapshotToken => WindowsFfiApi().snapshotToken;
 
   Future<void> initTunFilesDir() async {
     if (AppPlatform.isLinux) {
       _tunFilesDir = await LinuxFfiApi().getTunFilesDir();
     } else if (AppPlatform.isWindows) {
-      _tunFilesDir = await WindowsFfiApi().getTunFilesDir();
+      try {
+        final environment = await _windows.getEnvironment();
+        _tunFilesDir = environment.packageLocalDataDir;
+        WindowsFfiApi().usePackageLocalDataDir(_tunFilesDir);
+        _windowsPackageAvailable = true;
+      } catch (error, stackTrace) {
+        _windowsPackageAvailable = false;
+        _reportUnexpected('getWindowsEnvironment', error, stackTrace);
+        _tunFilesDir = await WindowsFfiApi().getTunFilesDir();
+      }
     } else {
       _tunFilesDir = await _api.getTunFilesDir();
     }
   }
 
   Future<bool?> cleanupStaleDesktopCore() async {
+    if (!AppPlatform.isLinux) {
+      return null;
+    }
     try {
-      if (AppPlatform.isLinux) {
-        return await LinuxFfiApi().cleanupStaleCore();
-      } else if (AppPlatform.isWindows) {
-        return await WindowsFfiApi().cleanupStaleCore();
-      }
+      return await LinuxFfiApi().cleanupStaleCore();
     } catch (error, stackTrace) {
       _reportUnexpected('cleanupStaleDesktopCore', error, stackTrace);
       return false;
     }
-    return null;
   }
 
   Future<NativeVpnCommandResult> readVpnStatus() async {
@@ -64,20 +78,32 @@ class AppHostApi {
     }
   }
 
-  Future<NativeVpnCommandResult> startVpn() async {
+  Future<NativeVpnCommandResult> startVpn({
+    String? windowsConfigYaml,
+    WindowsVpnNetworkSettings? windowsNetworkSettings,
+  }) async {
     try {
-      return await _startVpn();
+      return await _startVpn(windowsConfigYaml, windowsNetworkSettings);
     } catch (error, stackTrace) {
       _reportUnexpected('startVpn', error, stackTrace);
-      return _commandFailed();
+      return _commandFailed(error.toString());
     }
   }
 
-  Future<NativeVpnCommandResult> _startVpn() async {
+  Future<NativeVpnCommandResult> _startVpn(
+    String? windowsConfigYaml,
+    WindowsVpnNetworkSettings? windowsNetworkSettings,
+  ) async {
     if (AppPlatform.isLinux) {
       return LinuxFfiApi().startVpn();
     } else if (AppPlatform.isWindows) {
-      return WindowsFfiApi().startVpn();
+      if (!_windowsPackageAvailable) {
+        return _commandFailed('Windows package identity is unavailable');
+      }
+      return WindowsFfiApi().startVpn(
+        configYaml: windowsConfigYaml,
+        networkSettings: windowsNetworkSettings,
+      );
     } else {
       return _api.startVpn();
     }
@@ -424,10 +450,11 @@ class AppHostApi {
     );
   }
 
-  NativeVpnCommandResult _commandFailed() {
+  NativeVpnCommandResult _commandFailed([String? message]) {
     return NativeVpnCommandResult(
       state: NativeVpnCommandState.failed,
       permission: _platformPermissionFailed(),
+      message: message,
     );
   }
 

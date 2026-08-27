@@ -28,7 +28,4 @@ final class LaunchAtLoginStatus {
 
   bool get enabled => state == LaunchAtLoginState.enabled;
 
-  bool get registered =>
-      state == LaunchAtLoginState.enabled ||
-      state == LaunchAtLoginState.requiresApproval;
 }

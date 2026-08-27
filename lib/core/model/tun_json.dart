@@ -4,6 +4,9 @@ part 'tun_json.g.dart';
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class TunJson {
+  // windows
+  String? tunIPv4;
+  String? tunIPv6;
   // all
   String? tunDnsIPv4;
   String? tunDnsIPv6;
@@ -32,6 +35,8 @@ class TunJson {
   List<String>? disallowAppList;
 
   TunJson(
+    this.tunIPv4,
+    this.tunIPv6,
     this.tunDnsIPv4,
     this.tunDnsIPv6,
     this.enableDot,

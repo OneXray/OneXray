@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
-import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/core/pigeon/model_reader.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/core/tun/network_interface/params.dart';
@@ -22,17 +18,12 @@ import 'package:onexray/pages/main/navigation.dart';
 
 class TunSettingsPageState {
   final TunSettingsState tunSettings;
-  final String? socksAddress;
 
-  TunSettingsPageState({TunSettingsState? tunSettings, this.socksAddress})
+  TunSettingsPageState({TunSettingsState? tunSettings})
     : tunSettings = tunSettings ?? TunSettingsState();
 
-  TunSettingsPageState _copy() {
-    return TunSettingsPageState(
-      tunSettings: tunSettings,
-      socksAddress: socksAddress,
-    );
-  }
+  TunSettingsPageState _copy() =>
+      TunSettingsPageState(tunSettings: tunSettings);
 }
 
 class TunSettingsController extends PageCubit<TunSettingsPageState> {
@@ -40,12 +31,16 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
     _readTunSettings();
   }
 
+  final tunIPv4Controller = TextEditingController();
+  final tunIPv6Controller = TextEditingController();
   final tunDnsIPv4Controller = TextEditingController();
   final tunDnsIPv6Controller = TextEditingController();
   final tunDnsServerNameController = TextEditingController();
 
   @override
   Future<void> disposePageResources() async {
+    tunIPv4Controller.dispose();
+    tunIPv6Controller.dispose();
     tunDnsIPv4Controller.dispose();
     tunDnsIPv6Controller.dispose();
     tunDnsServerNameController.dispose();
@@ -54,51 +49,16 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
   Future<void> _readTunSettings() async {
     final tunState = TunSettingsState();
     await tunState.readFromPreferences();
-    final socksAddress = await _readSocksAddress();
     if (!isPageActive) {
       return;
     }
-    emit(
-      TunSettingsPageState(tunSettings: tunState, socksAddress: socksAddress),
-    );
+    emit(TunSettingsPageState(tunSettings: tunState));
     _initInputs(tunState);
   }
 
-  Future<String?> _readSocksAddress() async {
-    if (!AppPlatform.isWindows) {
-      return null;
-    }
-    try {
-      final request = await StartVpnRequestReader.readFromStartFile();
-      final port = request.socksPort;
-      if (port == null || port.isEmpty) {
-        return null;
-      }
-      return 'socks5://${NetConstants.proxyHost}:$port';
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> copySocksAddress(BuildContext context) async {
-    final address = state.socksAddress;
-    if (address == null) {
-      return;
-    }
-    await Clipboard.setData(ClipboardData(text: address));
-    if (context.mounted) {
-      final localizations = AppLocalizations.of(context)!;
-      ContextAlert.showToast(
-        context,
-        localizations.actionResult(
-          localizations.menuCopy,
-          localizations.resultSuccess,
-        ),
-      );
-    }
-  }
-
   void _initInputs(TunSettingsState tunState) {
+    tunIPv4Controller.text = tunState.tunIPv4;
+    tunIPv6Controller.text = tunState.tunIPv6;
     tunDnsIPv4Controller.text = tunState.tunDnsIPv4;
     tunDnsIPv6Controller.text = tunState.tunDnsIPv6;
     tunDnsServerNameController.text = tunState.dnsServerName;
@@ -324,6 +284,8 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
   }
 
   void _mergeInput(TunSettingsState tunState) {
+    tunState.tunIPv4 = tunIPv4Controller.text;
+    tunState.tunIPv6 = tunIPv6Controller.text;
     tunState.tunDnsIPv4 = tunDnsIPv4Controller.text;
     tunState.tunDnsIPv6 = tunDnsIPv6Controller.text;
     tunState.dnsServerName = tunDnsServerNameController.text;

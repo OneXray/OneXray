@@ -12,6 +12,8 @@ const _contracts = [
   _Contract(
     'TunJson',
     {
+      'tunIPv4',
+      'tunIPv6',
       'tunDnsIPv4',
       'tunDnsIPv6',
       'enableDot',
@@ -32,6 +34,8 @@ const _contracts = [
       'disallowAppList',
     },
     {
+      'tunIPv4',
+      'tunIPv6',
       'tunDnsIPv4',
       'tunDnsIPv6',
       'enableDot',
@@ -61,6 +65,8 @@ const _contracts = [
       'pingAuth',
       'metricsPort',
       'coreInvokeText',
+      'configId',
+      'snapshotToken',
     },
     {
       'tun',
@@ -69,6 +75,8 @@ const _contracts = [
       'pingAuth',
       'metricsPort',
       'coreInvokeText',
+      'configId',
+      'snapshotToken',
     },
   ),
   _Contract(

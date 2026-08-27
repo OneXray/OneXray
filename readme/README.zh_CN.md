@@ -146,7 +146,7 @@ sudo apt remove onexray
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
-sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
 GNOME 用户需要安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) 扩展。Linux arm64 当前会将 CJK 界面语言回退为英文。

@@ -89,8 +89,9 @@ def run_command(
     *,
     cwd: str | None = None,
     env: dict[str, str] | None = None,
+    redact: bool = False,
 ):
-    print(cmd, flush=True)
+    print("[redacted command]" if redact else cmd, flush=True)
     subprocess.run(cmd, cwd=cwd, env=get_env(env), check=True)
 
 

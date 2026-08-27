@@ -13,6 +13,8 @@ class StartVpnRequest {
   XrayInboundAccount? pingAuth;
   String? metricsPort;
   String? coreInvokeText;
+  int? configId;
+  String? snapshotToken;
 
   StartVpnRequest(
     this.tun,
@@ -20,8 +22,10 @@ class StartVpnRequest {
     this.pingPort,
     this.pingAuth,
     this.metricsPort,
-    this.coreInvokeText,
-  );
+    this.coreInvokeText, {
+    this.configId,
+    this.snapshotToken,
+  });
 
   factory StartVpnRequest.fromJson(Map<String, dynamic> json) =>
       _$StartVpnRequestFromJson(json);

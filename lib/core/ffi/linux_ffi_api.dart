@@ -224,7 +224,7 @@ class LinuxFfiApi extends BaseFfiApi {
   String get corePath {
     if (kReleaseMode) {
       final bundleDir = p.dirname(Platform.resolvedExecutable);
-      final corePath = p.join(bundleDir, "bin", _coreBin);
+      final corePath = p.join(bundleDir, _coreBin);
       return corePath;
     } else {
       final homeDir = Platform.environment["HOME"];

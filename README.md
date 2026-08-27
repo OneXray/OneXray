@@ -39,7 +39,7 @@ OneXray is a client-only app. It does not provide VPN or proxy servers, subscrip
 
 ## Highlights
 
-- **Cross-platform runtime** — TUN on iOS, macOS, Android, and Linux; local SOCKS5 on Windows.
+- **Cross-platform runtime** — system TUN on every supported platform; Windows uses a packaged VCore VPN Provider backed by Xray-core.
 - **Flexible configuration** — Simple Profile, reusable Xray Profiles, Multi-node Outbound, and Raw JSON.
 - **Routing control** — switch between Rule, Global, and Direct behavior from Home.
 - **Import and organize** — supported share links and HTTPS subscriptions from QR codes, images, files, or the clipboard.
@@ -90,7 +90,7 @@ the handler.
 | macOS (Mac App Store) | macOS 13.0 and above, Apple silicon or Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS (Outside App Store) | macOS 13.0 and above, Apple silicon or Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 and above, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 or Windows 11 | Microsoft Store |
+| Windows x86_64 | Windows 10 20H2 or later | Microsoft Store |
 | Windows ARM64 | Windows 11 | Microsoft Store |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
@@ -127,8 +127,11 @@ See [Installing System Extensions and Drivers](https://developer.apple.com/docum
 ### Windows
 
 Microsoft Store selects the x86_64 or ARM64 package for the current device and
-handles updates. Windows runs a local SOCKS5 proxy; its current address is shown
-in Core settings.
+handles updates. The packaged VCore VPN Provider carries system traffic to an
+internal loopback SOCKS5 listener in OneXrayCore. The per-session VCore Session
+Host owns that Core process in a kill-on-close Job Object; the listener is not
+exposed as a user proxy. Standalone Windows EXE and ZIP builds are obsolete and are not
+upgrade sources for the MSIX package.
 
 ### Android
 
@@ -153,7 +156,7 @@ For a ZIP package, run these commands from the directory containing `OneXray`:
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
-sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
 GNOME users should install the [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) extension. Linux arm64 currently falls back to English for CJK locales.

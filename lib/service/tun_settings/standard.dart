@@ -20,6 +20,8 @@ extension TunJsonStandard on TunJson {
     null,
     null,
     null,
+    null,
+    null,
   );
 }
 

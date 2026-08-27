@@ -20,6 +20,8 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
             ),
       json['metricsPort'] as String?,
       json['coreInvokeText'] as String?,
+      configId: (json['configId'] as num?)?.toInt(),
+      snapshotToken: json['snapshotToken'] as String?,
     );
 
 Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
@@ -30,6 +32,8 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
       'pingAuth': ?instance.pingAuth?.toJson(),
       'metricsPort': ?instance.metricsPort,
       'coreInvokeText': ?instance.coreInvokeText,
+      'configId': ?instance.configId,
+      'snapshotToken': ?instance.snapshotToken,
     };
 
 LibXrayInvokeResponse _$LibXrayInvokeResponseFromJson(

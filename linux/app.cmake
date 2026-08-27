@@ -1,5 +1,4 @@
 set(APP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/app")
-set(APP_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin")
 
 target_link_libraries(${BINARY_NAME} PRIVATE
         "${APP_DIR}/libXray.so"
@@ -10,5 +9,5 @@ install(FILES "${APP_DIR}/libXray.so"
 
 install(PROGRAMS
         "${APP_DIR}/OneXrayCore"
-        DESTINATION "${APP_BIN_DIR}"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}"
         COMPONENT Runtime)

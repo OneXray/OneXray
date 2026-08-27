@@ -3,6 +3,15 @@ import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/tun_settings/state_validator.dart';
 
 void main() {
+  test('Windows Provider addresses use VCore-compatible defaults', () {
+    final state = TunSettingsState();
+
+    expect(state.tunIPv4, '192.168.3.1');
+    expect(state.tunIPv6, 'fd00::2');
+    expect(state.tunJson.tunIPv4, '192.168.3.1');
+    expect(state.tunJson.tunIPv6, 'fd00::2');
+  });
+
   test('Interface requires an explicit fixed selection', () {
     final state = TunSettingsState();
     expect(state.outboundsInterface, isEmpty);

@@ -10,7 +10,7 @@
 - [Age 加密订阅](age-encrypted-subscriptions.md)：密钥、下载、解密、备份与安全边界。
 - [App 启动行为](app-startup.md)：启动时连接、桌面隐藏启动和登录时启动。
 - [数据管理](data-management.md)：GeoData、自动更新、备份和恢复。
-- [Windows 构建](windows-build.md)：GitHub Actions 构建矩阵和 Visual Studio 2026 约束。
+- [Windows 构建](windows-build.md)：VCore/MSIX 打包、本地签名和 GitHub Actions 构建矩阵。
 
 ## 维护原则
 
