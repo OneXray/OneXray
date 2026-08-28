@@ -42,12 +42,12 @@ class WindowsFfiApi extends BaseFfiApi {
     }
     try {
       var state = await _native.getVpnStatus();
-      _snapshotToken = state.snapshotToken;
+      _rememberSnapshot(state);
       if ((state.status == WindowsVpnStatus.connected ||
               state.status == WindowsVpnStatus.connecting) &&
           !await _hasValidSession(state.snapshotToken)) {
         state = await _native.stopVpn();
-        _snapshotToken = state.snapshotToken;
+        _rememberSnapshot(state);
       }
       await _emitWindowsStatus(state.status);
       return _commandSuccess();
@@ -113,7 +113,7 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<NativeVpnCommandResult> stopVpn() async {
     try {
       final state = await _native.stopVpn();
-      _snapshotToken = state.snapshotToken;
+      _rememberSnapshot(state);
       await _emitWindowsStatus(state.status);
       return _commandSuccess();
     } catch (error, stackTrace) {
@@ -129,11 +129,17 @@ class WindowsFfiApi extends BaseFfiApi {
     }
     try {
       final state = await _native.stopVpn();
-      _snapshotToken = state.snapshotToken;
+      _rememberSnapshot(state);
       await _emitWindowsStatus(state.status);
     } catch (error) {
       ygLogger('rollback Windows VPN provider failed: $error');
     }
+  }
+
+  void _rememberSnapshot(WindowsVpnProfileState state) {
+    _snapshotToken = state.status == WindowsVpnStatus.disconnected
+        ? null
+        : state.snapshotToken;
   }
 
   Future<bool> _hasValidSession(String? snapshotToken) async {
