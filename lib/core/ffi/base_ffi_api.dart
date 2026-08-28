@@ -20,7 +20,9 @@ List<String> desktopCoreRunArguments({
   required String configPath,
 }) {
   if (dns.isEmpty || interfaceName.isEmpty || configPath.isEmpty) {
-    throw const FormatException('Desktop Core DNS settings are missing');
+    throw const FormatException(
+      'Desktop Core DNS, interface, or config path is missing',
+    );
   }
   return <String>[
     'run',
