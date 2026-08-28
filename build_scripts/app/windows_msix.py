@@ -199,7 +199,7 @@ def package_with_vcore(
             development_publisher=development_publisher,
         )
         run_command([makeappx, "pack", "/d", stage, "/p", rebuilt, "/o"])
-        os.replace(rebuilt, package)
+        shutil.move(rebuilt, package)
 
     if local_development:
         signtool = _sdk_tool("signtool.exe")
