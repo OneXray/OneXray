@@ -2,8 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/windows/tun2socks.dart';
 
 void main() {
-  test('builds the fixed credential-free VCore config', () {
-    expect(buildWindowsTun2SocksConfig('1080'), '''tun:
+  test('builds the credential-free VCore config with IPv6 policy', () {
+    final enabled = buildWindowsTun2SocksConfig('1080', enableIPv6: true);
+    expect(enabled, '''ipv6: true
+
+tun:
   enable: true
   mtu: 1500
 
@@ -21,7 +24,11 @@ rules:
   - MATCH,onexray-local-socks
 ''');
     expect(
-      () => buildWindowsTun2SocksConfig('0'),
+      buildWindowsTun2SocksConfig('1080', enableIPv6: false),
+      enabled.replaceFirst('ipv6: true', 'ipv6: false'),
+    );
+    expect(
+      () => buildWindowsTun2SocksConfig('0', enableIPv6: true),
       throwsA(isA<FormatException>()),
     );
   });

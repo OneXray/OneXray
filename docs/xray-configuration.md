@@ -152,7 +152,7 @@ Profile 验证直接使用 Profile 副本；多节点出站验证会先覆盖当
 
 随后 App 写入 `env`、SOCKS/Ping/Metrics 动态端口、inbounds、Ping rule、日志、metrics 和 DNS query strategy。Linux 将用户明确选择的 interface 绑定到 TUN；Windows 将同一 interface 写入每个 outbound。所有修改都发生在副本上，不反写数据库中的 JSON 映射。
 
-Windows 另生成一份固定、最小的 VCore YAML：启用 TUN，以动态 loopback SOCKS5 为唯一 outbound，关闭 VCore DNS，并用 `MATCH` 转发全部进入 Provider 的流量。节点、DNS、业务路由和 metrics 仍只由 Xray 配置负责。
+Windows 另生成一份最小的 VCore YAML：将 TUN Settings 的 `enableIPv6` 写入顶层 `ipv6`，启用 TUN，以动态 loopback SOCKS5 为唯一 outbound，关闭 VCore DNS，并用 `MATCH` 转发全部进入 Provider 的流量。节点、DNS、业务路由和 metrics 仍只由 Xray 配置负责。
 
 Core 运行模式与路由模式是两个独立维度。正式版本和非 iOS 平台仍走受管 Core 生命周期；Windows 的系统 TUN 由 VCore Provider 提供，而 Xray 的实际主入站是其内部 SOCKS5。Proxy 仅在 iOS Debug 中可选。
 

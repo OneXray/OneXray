@@ -79,7 +79,7 @@ display the CLI syntax.
 | `windows` | Windows x64 or ARM64 | Microsoft Store MSIX for the selected architecture. |
 | `linux` | Linux x64 or ARM64 | ZIP and DEB for the host architecture. |
 
-For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching Flutter, Go, Rust, and MSVC toolchains are configured. Set `ONEXRAY_DEV_SIGN=1`, `ONEXRAY_DEV_CERT_PATH`, and `ONEXRAY_DEV_CERT_PASSWORD` to produce a locally signed `OneXray.Dev` package.
+For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching Flutter, Go, Rust, and MSVC toolchains are configured. See the [Windows build documentation](../docs/windows-build.md#本地签名包) for the local signing requirements.
 
 ### Important behavior
 
@@ -169,7 +169,7 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 | `windows` | Windows x64 或 ARM64 | 为所选架构生成 Microsoft Store MSIX。 |
 | `linux` | Linux x64 或 ARM64 | 为主机架构生成 ZIP 和 DEB。 |
 
-Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 和 MSVC 工具链就绪时设置 `ONEXRAY_WINDOWS_ARCH`。设置 `ONEXRAY_DEV_SIGN=1`、`ONEXRAY_DEV_CERT_PATH` 和 `ONEXRAY_DEV_CERT_PASSWORD` 可生成本地签名的 `OneXray.Dev` 包。
+Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 和 MSVC 工具链就绪时设置 `ONEXRAY_WINDOWS_ARCH`。本地签名要求以 [Windows 构建文档](../docs/windows-build.md#本地签名包) 为准。
 
 ### 重要行为
 
@@ -261,7 +261,7 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 | `windows` | Windows x64 или ARM64 | MSIX для Microsoft Store выбранной архитектуры. |
 | `linux` | Linux x64 или ARM64 | ZIP и DEB для архитектуры хоста. |
 
-В Windows архитектура определяется по системе. CI может задать `ONEXRAY_WINDOWS_ARCH`, когда настроены Flutter, Go, Rust и MSVC. Для локально подписанного пакета `OneXray.Dev` задайте `ONEXRAY_DEV_SIGN=1`, `ONEXRAY_DEV_CERT_PATH` и `ONEXRAY_DEV_CERT_PASSWORD`.
+В Windows архитектура определяется по системе. CI может задать `ONEXRAY_WINDOWS_ARCH`, когда настроены Flutter, Go, Rust и MSVC. Требования к локальной подписи см. в [документации по сборке Windows](../docs/windows-build.md#本地签名包).
 
 ### Важные особенности
 

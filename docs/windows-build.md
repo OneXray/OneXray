@@ -1,15 +1,14 @@
 # Windows 构建
 
-Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记录选择 runner 时必须保留的工程约束，不固定 Actions、小版本或依赖清单。
+Windows 构建以 [`.github/workflows/build.yml`](../.github/workflows/build.yml) 为事实来源。本文只记录稳定的工程约束，不固定 runner、工具链版本、Actions、小版本或依赖清单。
 
-## 构建矩阵
+## CI 构建
 
-- x64 使用 `windows-2025`，目标环境为该镜像提供的 Visual Studio 2026 工具链。
-- arm64 使用 `windows-11-arm`。
-- 两个架构都从同一组 OneXray、libXray 和 VCore 源码构建；Xray-core 版本由 libXray 的 Go module 锁定。最终只输出 Microsoft Store MSIX 分发包。
-- `.github/workflows/publish-microsoft-store.yml` 将两个架构的 MSIX 合并为 MSIX Bundle；release tag 构建会继续提交到 Microsoft Partner Center，手动构建只生成 Bundle。
+Windows 的构建矩阵、runner 标签、工具链安装步骤和 artifact 名称直接查看 [Build workflow](../.github/workflows/build.yml)。两个架构都从同一组 OneXray、libXray 和 VCore 源码构建；Xray-core 版本由 libXray 的 Go module 锁定，最终只输出 Microsoft Store MSIX 分发包。
 
-当前 job 没有显式安装 Visual Studio，也没有固定 CMake generator 或 toolset。构建脚本依赖 runner 镜像的默认工具链发现。因此把 x64 image 改为其它标签时，必须把“镜像实际预装并默认选择所需 Visual Studio/CMake 工具链”作为验证项，不能只根据标签名称推断。
+[`publish-microsoft-store.yml`](../.github/workflows/publish-microsoft-store.yml) 将两个架构的 MSIX 合并为 MSIX Bundle；release tag 构建会继续提交到 Microsoft Partner Center，手动构建只生成 Bundle。
+
+选择或更换 runner 时，必须通过 GitHub Actions 验证镜像实际提供并默认选择了所需的 Visual Studio、CMake 和 Windows SDK 工具链，不能只根据 runner 标签推断。
 
 ## 工程约束
 
@@ -34,7 +33,7 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 5. 两个架构的 MSIX 和上传产物名称正确，且不再生成 ZIP 或 EXE 安装包。
 6. Manifest 包含三个 Application、VCore activation class、所需能力和 `VCoreStartup`；包内三个 VCore 文件均为目标架构。
 7. MSIX 不包含 `allowElevation`，Core 启动不触发 UAC。
-8. Microsoft Store workflow 能从两个 `windows-store-*` artifact 生成 MSIX Bundle；实际发布必须另行验证 Partner Center 凭据和受限能力审批。
+8. Microsoft Store workflow 能从两个架构的 MSIX artifact 生成 MSIX Bundle；实际发布必须另行验证 Partner Center 凭据和受限能力审批。
 
 ## 本地签名包
 

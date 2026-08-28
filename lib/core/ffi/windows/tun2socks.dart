@@ -1,9 +1,14 @@
-String buildWindowsTun2SocksConfig(String socksPort) {
+String buildWindowsTun2SocksConfig(
+  String socksPort, {
+  required bool enableIPv6,
+}) {
   final port = int.tryParse(socksPort);
   if (port == null || port < 1 || port > 65535) {
     throw const FormatException('invalid Windows SOCKS5 port');
   }
-  return '''tun:
+  return '''ipv6: $enableIPv6
+
+tun:
   enable: true
   mtu: 1500
 

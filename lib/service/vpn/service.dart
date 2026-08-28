@@ -4,8 +4,8 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
-import 'package:onexray/core/ffi/windows/native_api.dart';
 import 'package:onexray/core/ffi/windows/tun2socks.dart';
+import 'package:onexray/core/ffi/windows/vpn_status_observer.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -1082,7 +1082,10 @@ final class VpnService {
     onStartInvoked();
     final result = await AppHostApi().startVpn(
       windowsConfigYaml: AppPlatform.isWindows
-          ? buildWindowsTun2SocksConfig(port.socksPort)
+          ? buildWindowsTun2SocksConfig(
+              port.socksPort,
+              enableIPv6: tunSettingsState.enableIPv6,
+            )
           : null,
       windowsNetworkSettings: AppPlatform.isWindows
           ? WindowsVpnNetworkSettings(

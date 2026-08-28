@@ -9,7 +9,6 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
-import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
 
@@ -38,7 +37,7 @@ class WindowsFfiApi extends BaseFfiApi {
   @override
   Future<NativeVpnCommandResult> readVpnStatus() async {
     if (_starting) {
-      return _commandSuccess();
+      return commandSuccess();
     }
     try {
       var state = await _native.getVpnStatus();
@@ -50,10 +49,10 @@ class WindowsFfiApi extends BaseFfiApi {
         _rememberSnapshot(state);
       }
       await _emitWindowsStatus(state.status);
-      return _commandSuccess();
+      return commandSuccess();
     } catch (error) {
       ygLogger('read Windows VPN status failed: $error');
-      return _commandFailed(error.toString());
+      return commandFailed(error.toString());
     }
   }
 
@@ -63,14 +62,14 @@ class WindowsFfiApi extends BaseFfiApi {
     WindowsVpnNetworkSettings? networkSettings,
   }) async {
     if (configYaml == null || configYaml.isEmpty || networkSettings == null) {
-      return _commandFailed('Windows VPN settings are missing');
+      return commandFailed('Windows VPN settings are missing');
     }
 
     _starting = true;
     var providerStartInvoked = false;
     try {
       final request = await StartVpnRequestReader.readFromStartFile();
-      final coreConfig = await _publishCoreConfig(_readRunXrayRequest(request));
+      final coreConfig = await _publishCoreConfig(readRunXrayRequest(request));
       final backend = WindowsSessionBackend(
         processes: [
           WindowsManagedProcess(
@@ -99,11 +98,11 @@ class WindowsFfiApi extends BaseFfiApi {
       await request.writeToStartFile();
       _snapshotToken = token;
       await _emitWindowsStatus(state.status);
-      return _commandSuccess();
+      return commandSuccess();
     } catch (error, stackTrace) {
       ygLogger('start Windows VPN failed: $error\n$stackTrace');
       await _rollbackStart(providerStartInvoked);
-      return _commandFailed(error.toString());
+      return commandFailed(error.toString());
     } finally {
       _starting = false;
     }
@@ -115,10 +114,10 @@ class WindowsFfiApi extends BaseFfiApi {
       final state = await _native.stopVpn();
       _rememberSnapshot(state);
       await _emitWindowsStatus(state.status);
-      return _commandSuccess();
+      return commandSuccess();
     } catch (error, stackTrace) {
       ygLogger('stop Windows VPN failed: $error\n$stackTrace');
-      return _commandFailed(error.toString());
+      return commandFailed(error.toString());
     }
   }
 
@@ -152,18 +151,6 @@ class WindowsFfiApi extends BaseFfiApi {
     } catch (_) {
       return false;
     }
-  }
-
-  LibXrayRunConfig _readRunXrayRequest(StartVpnRequest request) {
-    if (!EmptyTool.checkString(request.coreInvokeText)) {
-      return LibXrayRunConfig(
-        LibXrayInvokeRequest(
-          method: LibXrayMethod.runXray,
-          payload: RunXrayRequest(null).toJson(),
-        ),
-      );
-    }
-    return LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
   }
 
   Future<String> _publishCoreConfig(LibXrayRunConfig request) async {
@@ -221,27 +208,5 @@ class WindowsFfiApi extends BaseFfiApi {
       WindowsVpnStatus.connecting => VpnStatus.connecting,
       WindowsVpnStatus.connected => VpnStatus.connected,
     });
-  }
-
-  NativeVpnCommandResult _commandSuccess() {
-    return NativeVpnCommandResult(
-      state: NativeVpnCommandState.success,
-      permission: _permissionNotRequired(),
-    );
-  }
-
-  NativeVpnCommandResult _commandFailed(String message) {
-    return NativeVpnCommandResult(
-      state: NativeVpnCommandState.failed,
-      permission: _permissionNotRequired(),
-      message: message,
-    );
-  }
-
-  PlatformPermissionResult _permissionNotRequired() {
-    return PlatformPermissionResult(
-      kind: PlatformPermissionKind.none,
-      state: PlatformPermissionState.notRequired,
-    );
   }
 }

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/native_api.dart';
+import 'package:onexray/core/ffi/windows/vpn_status_observer.dart';
 
 void main() {
   test(

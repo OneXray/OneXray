@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show protected;
 import 'package:isolate_manager/isolate_manager.dart';
 import 'package:onexray/core/ffi/generated_bindings.dart';
 import 'package:onexray/core/model/tun_json.dart';
@@ -51,7 +52,7 @@ abstract class BaseFfiApi {
       _vpnStatus = running ? VpnStatus.connected : VpnStatus.disconnected;
     }
     await AppFlutterApi().vpnStatusChanged(_vpnStatus);
-    return _commandSuccess();
+    return commandSuccess();
   }
 
   Future<bool?> queryCoreRunning() async => null;
@@ -65,18 +66,19 @@ abstract class BaseFfiApi {
     await updateVpnStatus(VpnStatus.connecting);
 
     final request = await StartVpnRequestReader.readFromStartFile();
-    final coreRequest = _readRunXrayRequest(request);
+    final coreRequest = readRunXrayRequest(request);
 
     var res = await startCore(coreRequest, request.tun);
     if (!res) {
       await stopVpn();
-      return _commandFailed();
+      return commandFailed();
     }
     await updateVpnStatus(VpnStatus.connected);
-    return _commandSuccess();
+    return commandSuccess();
   }
 
-  LibXrayRunConfig _readRunXrayRequest(StartVpnRequest request) {
+  @protected
+  LibXrayRunConfig readRunXrayRequest(StartVpnRequest request) {
     if (!EmptyTool.checkString(request.coreInvokeText)) {
       return LibXrayRunConfig(
         LibXrayInvokeRequest(
@@ -118,11 +120,11 @@ abstract class BaseFfiApi {
     final stopped = await stopCore();
     if (!stopped) {
       await updateVpnStatus(VpnStatus.connected);
-      return _commandFailed();
+      return commandFailed();
     }
     await Future.delayed(Duration(seconds: 1));
     await updateVpnStatus(VpnStatus.disconnected);
-    return _commandSuccess();
+    return commandSuccess();
   }
 
   PlatformPermissionResult _permissionNotRequired() {
@@ -132,17 +134,20 @@ abstract class BaseFfiApi {
     );
   }
 
-  NativeVpnCommandResult _commandSuccess() {
+  @protected
+  NativeVpnCommandResult commandSuccess() {
     return NativeVpnCommandResult(
       state: NativeVpnCommandState.success,
       permission: _permissionNotRequired(),
     );
   }
 
-  NativeVpnCommandResult _commandFailed() {
+  @protected
+  NativeVpnCommandResult commandFailed([String? message]) {
     return NativeVpnCommandResult(
       state: NativeVpnCommandState.failed,
       permission: _permissionNotRequired(),
+      message: message,
     );
   }
 
