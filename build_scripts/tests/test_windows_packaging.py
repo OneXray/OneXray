@@ -95,6 +95,30 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertEqual(command[command.index("--architecture") + 1], "arm64")
         self.assertEqual(command[-1], "OneXray-windows-arm64")
 
+    def test_vcore_build_lets_vcore_detect_native_architecture(self):
+        vcore_dir = os.path.join(self.temp_dir.name, "VCore")
+        with (
+            patch.object(self.builder, "_vcore_dir", return_value=vcore_dir),
+            patch("app.windows.run_command") as run_command,
+            patch("app.windows._pe_machine", return_value=0x8664),
+            patch("app.windows.shutil.copy2"),
+        ):
+            self.builder.build_vcore()
+
+        self.assertEqual(
+            run_command.call_args_list[1].args[0],
+            [
+                "uv",
+                "run",
+                "--project",
+                os.path.join(vcore_dir, "scripts"),
+                "--locked",
+                "vcore-scripts",
+                "build",
+                "windows",
+            ],
+        )
+
     def test_msix_rejects_versions_the_store_cannot_accept(self):
         versions = ("26.8", "dev.8.5", "26.70000.5", "0.8.5")
         for version in versions:

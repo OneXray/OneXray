@@ -63,7 +63,7 @@ jobs:
           echo "should_publish=false" >> "$GITHUB_OUTPUT"
 
           run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID")"
-          if [ "$(jq -r '.name' <<<"$run_json")" != "Build" ]; then
+          if [ "$(jq -r '.path' <<<"$run_json")" != ".github/workflows/build.yml" ]; then
             echo "Workflow run $BUILD_RUN_ID is not a Build run." >&2
             exit 1
           fi

@@ -74,8 +74,6 @@ class WindowsBuilder(Builder):
                 "vcore-scripts",
                 "build",
                 "windows",
-                "--architecture",
-                self.target_architecture,
             ],
             cwd=vcore_dir,
         )
