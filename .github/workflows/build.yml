@@ -33,13 +33,13 @@
 #     ANDROID_PLAY_SERVICE_JSON_BASE64  base64 of fastlane service account JSON
 #
 # Layout:
-#   build_scripts/app/builder.py#build_core expects XTLS/libXray and
-#   XTLS/Xray-core to live as siblings of this repo. Every job therefore checks
-#   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
-#   `Xray-core/` at the workspace root. Windows also checks out VCore to
-#   `VCore/`. libXray is built with local Xray-core and provides the
-#   Windows/Linux OneXrayCore binary; Windows also builds architecture-matched
-#   VCore hosts. Outputs remain under `<workspace>/output`.
+#   build_scripts/app/builder.py#build_core expects XTLS/libXray as a sibling
+#   of this repo. Every platform build job checks out this repo to `OneXray/`
+#   and libXray to `libXray/` at the workspace root. Windows also checks out
+#   VCore to `VCore/`.
+#   The standard libXray build provides the native library and the Windows/Linux
+#   OneXrayCore binary; Windows also builds architecture-matched VCore hosts.
+#   Outputs remain under `<workspace>/output`.
 
 name: Build
 run-name: Build ${{ inputs.target || 'all' }} · ${{ github.ref_name }}
@@ -70,8 +70,6 @@ concurrency:
 env:
   NDK_VERSION: r29
   LIBXRAY_REF: main
-  XRAY_CORE_REPOSITORY: XTLS/Xray-core
-  XRAY_CORE_REF: v26.7.28
   VCORE_REPOSITORY: ${{ github.repository_owner }}/VCore
   VCORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
@@ -92,7 +90,6 @@ jobs:
           echo "${GITHUB_REF_NAME}" > release-metadata/ref-name.txt
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
           echo "${LIBXRAY_REF}" > release-metadata/libxray-sha.txt
-          echo "${XRAY_CORE_REF}" > release-metadata/xray-core-sha.txt
           echo "${VCORE_REF}" > release-metadata/vcore-sha.txt
           echo "${{ inputs.target || 'all' }}" > release-metadata/target.txt
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
@@ -126,12 +123,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -202,12 +193,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -283,12 +268,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -359,12 +338,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -430,8 +403,8 @@ jobs:
   # =================================================================
   # Windows x64 and arm64 — Microsoft Store .msix only
   #   x64 uses Windows Server 2025 with Visual Studio 2026; arm64 uses
-  #   GitHub's native Windows 11 arm64 runner so Flutter, libXray,
-  #   Xray-core, and VCore all match the target architecture.
+  #   GitHub's native Windows 11 arm64 runner so Flutter, libXray, and VCore
+  #   all match the target architecture.
   # =================================================================
   windows:
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'windows'
@@ -468,12 +441,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - uses: actions/checkout@v7
         with:
@@ -604,12 +571,6 @@ jobs:
           repository: XTLS/libXray
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
-
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
 
       - uses: actions/setup-go@v7
         with:

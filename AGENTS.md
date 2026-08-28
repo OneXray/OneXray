@@ -18,7 +18,7 @@ The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw J
 | `macos_se/` | Developer ID / System Extension macOS package project. |
 | `windows/` | Windows Runner, FFI / Core startup code, and packaging resources. |
 | `linux/` | Linux Runner, packaging configuration, and runtime resource installation logic. |
-| `build_scripts/` | App build scripts, platform packaging scripts, and libXray / Xray-core artifact copy logic. |
+| `build_scripts/` | App build scripts, platform packaging scripts, and libXray artifact build/copy logic. |
 | `c/include/` | Native C headers used for Dart FFI binding generation. |
 
 # Dart Architecture

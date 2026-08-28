@@ -22,23 +22,24 @@ setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
 flutter pub get
 ```
 
-## 2. Подготовка артефактов libXray и Xray-core
+## 2. Подготовка артефактов libXray
 
-Локальная отладка OneXray зависит от артефактов, собранных из соседних репозиториев `libXray` и `Xray-core`. Основные выходные файлы:
+Локальная отладка OneXray зависит от артефактов, собранных из соседнего репозитория `libXray`. Основные выходные файлы:
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`, `libXray-sources.jar`
-- Linux: `linux_so/libXray.so` и Xray-core CLI, переименованный в `OneXrayCore`
-- Windows: `windows_dll/libXray.dll` и Xray-core CLI, переименованный в `OneXrayCore.exe`
+- Linux: `linux_so/libXray.so` и `bin/xray`, скопированный как `OneXrayCore`
+- Windows: `windows_dll/libXray.dll` и `bin/xray.exe`, скопированный как `OneXrayCore.exe`
 
-Сначала соберите нужные targets в `libXray`. Эти команды используют соседний checkout `Xray-core`:
+Сначала соберите нужные targets в `libXray`. Стандартная сборка получает
+Xray-core из зависимостей Go-модуля libXray:
 
 ```shell
 cd ../libXray
-python3 build/main.py apple go local
-python3 build/main.py android local
-python3 build/main.py linux local
-python3 build/main.py windows local
+python3 build/main.py apple go
+python3 build/main.py android
+python3 build/main.py linux
+python3 build/main.py windows
 ```
 
 Затем скопируйте артефакты в соответствующие каталоги OneXray.
@@ -65,22 +66,26 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` линкует `libXray.so` из `linux/app/` и устанавливает `OneXrayCore` в итоговый bundle. Скопируйте `libXray.so`, затем соберите Xray-core в имя, которое ожидает OneXray:
+`linux/app.cmake` линкует `libXray.so` из `linux/app/` и устанавливает
+`OneXrayCore` в итоговый bundle. Скопируйте оба артефакта libXray под именами,
+которые ожидает OneXray:
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray linux/app/OneXrayCore
 ```
 
 ### Windows
 
-`windows/app.cmake` устанавливает `libXray.dll` и `OneXrayCore.exe` из `windows/app/`. Скопируйте `libXray.dll`, затем соберите Xray-core в имя, которое ожидает OneXray:
+`windows/app.cmake` устанавливает `libXray.dll` и `OneXrayCore.exe` из
+`windows/app/`. Скопируйте оба артефакта libXray под именами, которые ожидает
+OneXray:
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
 ```
 
 ## 3. Запуск отладки

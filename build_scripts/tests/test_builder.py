@@ -2,6 +2,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from app.builder import Builder
 from app.command_line import download_file, run_command
@@ -49,6 +50,35 @@ class BuilderTest(unittest.TestCase):
 
         destination = workspace / "OneXray" / "windows" / "app" / "OneXrayCore.exe"
         self.assertEqual(destination.read_bytes(), b"libXray Core")
+
+    def test_core_build_uses_standard_libxray_build(self):
+        workspace = self.root_dir / "workspace"
+        self.builder.workspace_dir = str(workspace)
+
+        for system, command in (
+            ("linux", [sys.executable, "build/main.py", "linux"]),
+            ("macos", [sys.executable, "build/main.py", "apple", "go"]),
+        ):
+            with self.subTest(system=system):
+                self.builder.system = system
+                self.builder.project_dir = str(workspace / "OneXray" / system)
+                self.builder.project_config = {
+                    "core.dir": "libXray",
+                    f"core.lib.dst.dir.{system}": "app",
+                    f"core.lib.src.files.{system}": [],
+                    "core.dat.dst.dir": "assets/dat",
+                }
+
+                with (
+                    mock.patch("app.builder.run_command") as run,
+                    mock.patch("app.builder.check_and_create_dir"),
+                    mock.patch("app.builder.check_and_delete_dir"),
+                    mock.patch("app.builder.shutil.copytree"),
+                    mock.patch.object(self.builder, "build_core_binary"),
+                ):
+                    self.builder.build_core()
+
+                run.assert_called_once_with(command, cwd=str(workspace / "libXray"))
 
     def test_download_file_uses_standard_url_handler(self):
         source = self.root_dir / "source.bin"

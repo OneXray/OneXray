@@ -6,7 +6,7 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 
 - x64 使用 `windows-2025`，目标环境为该镜像提供的 Visual Studio 2026 工具链。
 - arm64 使用 `windows-11-arm`。
-- 两个架构都从同一组 OneXray、libXray、Xray-core 和固定 revision 的 VCore 源码构建，最终只输出 Microsoft Store MSIX 分发包。
+- 两个架构都从同一组 OneXray、libXray 和 VCore 源码构建；Xray-core 版本由 libXray 的 Go module 锁定。最终只输出 Microsoft Store MSIX 分发包。
 - `.github/workflows/publish-microsoft-store.yml` 将两个架构的 MSIX 合并为 MSIX Bundle；release tag 构建会继续提交到 Microsoft Partner Center，手动构建只生成 Bundle。
 
 当前 job 没有显式安装 Visual Studio，也没有固定 CMake generator 或 toolset。构建脚本依赖 runner 镜像的默认工具链发现。因此把 x64 image 改为其它标签时，必须把“镜像实际预装并默认选择所需 Visual Studio/CMake 工具链”作为验证项，不能只根据标签名称推断。
@@ -15,7 +15,7 @@ Windows 构建以 `.github/workflows/build.yml` 为事实来源。本文只记�
 
 - Windows CMake 工程使用 C++17。
 - MSVC 编译启用 `/W4 /WX`，警告会导致构建失败。
-- Flutter、Go、Xray-core 和三个 VCore 产物的架构必须与矩阵项一致。
+- Flutter、Go、libXray 生成的 `OneXrayCore.exe` 和三个 VCore 产物的架构必须与矩阵项一致。
 - MSIX 最低系统版本为 Windows 10 20H2（build 19042），包含完全信任前台 App、隐藏 Session Host 和 AppContainer VPN Provider。
 - VCore Provider 将系统 IP 包交给 Session Host；Session Host 用一个 kill-on-close Job Object 启动并监督普通权限 `OneXrayCore.exe`，VCore 再通过无认证的动态 loopback SOCKS5 转发。`sessionBackend` 只管理进程存活，不检查端口或 readiness；该 SOCKS5 仅监听 `127.0.0.1`，不是用户代理入口。
 - MSIX 声明 `networkingVpnProvider`、网络和 `runFullTrust` 能力，注册 `VCore.VpnBackgroundTask` 及默认关闭的 `VCoreStartup`。Core 不使用 `allowElevation`。

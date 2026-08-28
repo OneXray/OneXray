@@ -22,23 +22,24 @@ setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
 flutter pub get
 ```
 
-## 2. 准备 libXray 和 Xray-core 产物
+## 2. 准备 libXray 产物
 
-OneXray 本地 debug 依赖同级目录下的 `libXray` 和 `Xray-core` 仓库产物。主要产物如下：
+OneXray 本地 debug 依赖同级目录下 `libXray` 仓库构建的产物。主要产物如下：
 
 - Apple: `LibXray.xcframework`
 - Android: `libXray.aar`、`libXray-sources.jar`
-- Linux: `linux_so/libXray.so`，以及重命名为 `OneXrayCore` 的 Xray-core CLI
-- Windows: `windows_dll/libXray.dll`，以及重命名为 `OneXrayCore.exe` 的 Xray-core CLI
+- Linux: `linux_so/libXray.so`，以及复制为 `OneXrayCore` 的 `bin/xray`
+- Windows: `windows_dll/libXray.dll`，以及复制为 `OneXrayCore.exe` 的 `bin/xray.exe`
 
-建议先在 `libXray` 仓库完成目标平台构建。以下命令会使用同级目录下的 `Xray-core`：
+建议先在 `libXray` 仓库完成目标平台标准构建。Xray-core 由 libXray 的
+Go module 依赖解析：
 
 ```shell
 cd ../libXray
-python3 build/main.py apple go local
-python3 build/main.py android local
-python3 build/main.py linux local
-python3 build/main.py windows local
+python3 build/main.py apple go
+python3 build/main.py android
+python3 build/main.py linux
+python3 build/main.py windows
 ```
 
 然后把产物同步到 OneXray 对应目录。
@@ -65,22 +66,24 @@ cp ../libXray/libXray-sources.jar android/app/libs/
 
 ### Linux
 
-`linux/app.cmake` 会从 `linux/app/` 链接 `libXray.so`，并安装 `OneXrayCore` 到最终包内。因此需要复制 `libXray.so`，并将 Xray-core 编译成 OneXray 约定的文件名：
+`linux/app.cmake` 会从 `linux/app/` 链接 `libXray.so`，并安装
+`OneXrayCore` 到最终包内。将 libXray 的两个产物按 OneXray 约定的文件名复制：
 
 ```shell
 mkdir -p linux/app
 cp ../libXray/linux_so/libXray.so linux/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/linux/app/OneXrayCore -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray linux/app/OneXrayCore
 ```
 
 ### Windows
 
-`windows/app.cmake` 会从 `windows/app/` 安装 `libXray.dll` 和 `OneXrayCore.exe`。因此需要复制 `libXray.dll`，并将 Xray-core 编译成 OneXray 约定的文件名：
+`windows/app.cmake` 会从 `windows/app/` 安装 `libXray.dll` 和
+`OneXrayCore.exe`。将 libXray 的两个产物按 OneXray 约定的文件名复制：
 
 ```shell
 mkdir -p windows/app
 cp ../libXray/windows_dll/libXray.dll windows/app/
-(cd ../Xray-core && CGO_ENABLED=0 go build -o ../OneXray/windows/app/OneXrayCore.exe -trimpath -buildvcs=false -ldflags="-s -w -buildid=" ./main)
+cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
 ```
 
 ## 3. 启动调试

@@ -12,7 +12,6 @@ from app.command_line import (
 )
 from app.config import PROJECT_CONFIG
 
-LOCAL_XRAY_CORE_ARG = "local"
 # ponytail: Only pubspec's top-level version is needed; add a YAML parser if the
 # build interface ever needs structured YAML data.
 _PUBSPEC_VERSION = re.compile(
@@ -70,7 +69,6 @@ class Builder:
         cmd = [sys.executable, "build/main.py", cmd_system]
         if cmd_system == "apple":
             cmd.append("go")
-        cmd.append(LOCAL_XRAY_CORE_ARG)
         run_command(cmd, cwd=lib_dir)
 
         lib_dst_path = os.path.join(

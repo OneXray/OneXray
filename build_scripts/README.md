@@ -4,24 +4,25 @@
 
 ## English
 
-The scripts in this directory build libXray against the local Xray-core
-checkout, generate the Flutter FFI bindings, build the OneXray app, and package
-the platform-specific outputs.
+The scripts in this directory run the standard libXray build, generate the
+Flutter FFI bindings, build the OneXray app, and package the platform-specific
+outputs. libXray resolves Xray-core from its Go module dependencies.
 
 ### Workspace layout
 
-OneXray, libXray, and Xray-core must be sibling directories. Windows builds also require a VCore checkout; set `VCORE_DIR` when it is not at `workspace/VCore`. Build artifacts are written to the sibling `output` directory.
+OneXray and libXray must be sibling directories. Windows builds also require a VCore checkout; set `VCORE_DIR` when it is not at `workspace/VCore`. Build artifacts are written to the sibling `output` directory.
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
-├── Xray-core/
 ├── VCore/         # Windows only
 └── output/        # created automatically
 ```
 
-The scripts use the currently checked-out libXray, Xray-core, and VCore revisions. They do not clone or pin those repositories for a local build.
+The scripts use the currently checked-out libXray and VCore revisions. The
+Xray-core version is pinned by libXray's Go module; a sibling Xray-core checkout
+is not used.
 
 ### Prerequisites
 
@@ -97,23 +98,24 @@ For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WIN
 
 ## 简体中文
 
-本目录中的脚本会使用本地 Xray-core 构建 libXray、生成 Flutter FFI
-绑定、构建 OneXray App，并生成各平台对应的安装包。
+本目录中的脚本会执行 libXray 标准构建、生成 Flutter FFI 绑定、构建
+OneXray App，并生成各平台对应的安装包。Xray-core 由 libXray 的 Go module
+依赖解析。
 
 ### 工作区结构
 
-OneXray、libXray 和 Xray-core 必须位于同一级目录。Windows 构建还需要 VCore；不在 `workspace/VCore` 时通过 `VCORE_DIR` 指定。构建产物写入同级 `output` 目录。
+OneXray 和 libXray 必须位于同一级目录。Windows 构建还需要 VCore；不在 `workspace/VCore` 时通过 `VCORE_DIR` 指定。构建产物写入同级 `output` 目录。
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
-├── Xray-core/
 ├── VCore/         # 仅 Windows
 └── output/        # 自动创建
 ```
 
-本地构建直接使用 libXray、Xray-core 和 VCore 当前检出的版本，不会自动克隆或锁定这些仓库。
+本地构建直接使用 libXray 和 VCore 当前检出的版本。Xray-core 版本由
+libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
 
 ### 前置条件
 
@@ -184,24 +186,25 @@ Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 
 
 ## Русский
 
-Скрипты из этого каталога собирают libXray с использованием локальной копии
-Xray-core, генерируют FFI-привязки Flutter, собирают приложение OneXray и
-создают пакеты для выбранной платформы.
+Скрипты из этого каталога запускают стандартную сборку libXray, генерируют
+FFI-привязки Flutter, собирают приложение OneXray и создают пакеты для выбранной
+платформы. Версия Xray-core определяется зависимостями Go-модуля libXray.
 
 ### Структура рабочего каталога
 
-OneXray, libXray и Xray-core должны находиться в соседних каталогах. Для Windows также нужен VCore; если он находится не в `workspace/VCore`, задайте `VCORE_DIR`. Результаты записываются в соседний каталог `output`.
+OneXray и libXray должны находиться в соседних каталогах. Для Windows также нужен VCore; если он находится не в `workspace/VCore`, задайте `VCORE_DIR`. Результаты записываются в соседний каталог `output`.
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
-├── Xray-core/
 ├── VCore/         # только Windows
 └── output/        # создаётся автоматически
 ```
 
-При локальной сборке используются текущие версии libXray, Xray-core и VCore. Скрипты не клонируют эти репозитории и не закрепляют их ревизии.
+При локальной сборке используются текущие версии libXray и VCore. Версия
+Xray-core закреплена Go-модулем libXray; соседний checkout Xray-core не
+используется.
 
 ### Требования
 
