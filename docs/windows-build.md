@@ -6,7 +6,7 @@ Windows 构建以 [`.github/workflows/build.yml`](../.github/workflows/build.yml
 
 Windows 的构建矩阵、runner 标签、工具链安装步骤和 artifact 名称直接查看 [Build workflow](../.github/workflows/build.yml)。两个架构都从同一组 OneXray、libXray 和 VCore 源码构建；Xray-core 版本由 libXray 的 Go module 锁定，最终只输出 Microsoft Store MSIX 分发包。
 
-[`publish-microsoft-store.yml`](../.github/workflows/publish-microsoft-store.yml) 将两个架构的 MSIX 合并为 MSIX Bundle；release tag 构建会继续提交到 Microsoft Partner Center，手动构建只生成 Bundle。
+[`publish-microsoft-store.yml`](../.github/workflows/publish-microsoft-store.yml) 仅手动触发：输入一次成功 Build 的 run ID 后，将两个架构的 MSIX 合并为 MSIX Bundle；来源是 release tag 构建时继续提交到 Microsoft Partner Center，否则只生成 Bundle。
 
 选择或更换 runner 时，必须通过 GitHub Actions 验证镜像实际提供并默认选择了所需的 Visual Studio、CMake 和 Windows SDK 工具链，不能只根据 runner 标签推断。
 

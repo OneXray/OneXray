@@ -1,13 +1,11 @@
 #
 # Creates a multi-architecture MSIX bundle from Windows x64 and arm64 packages
-# produced by any successful Build run. Release-tag builds are also submitted
-# to Microsoft Partner Center.
+# produced by a manually selected successful Build run. When the selected run
+# is a release-tag build, the same manual invocation also submits the bundle to
+# Microsoft Partner Center.
 #
 # Trigger:
-#   - successful completion of the Build workflow: release-tag runs publish;
-#     manual Build runs are detected and skipped
-#   - workflow_dispatch: bundles any successful Build run; release-tag runs are
-#     also submitted to Microsoft Partner Center
+#   - workflow_dispatch only
 #
 # Required repository secrets:
 #   AZURE_AD_TENANT_ID                 Microsoft Entra tenant id
@@ -22,11 +20,6 @@
 name: Publish Microsoft Store
 
 on:
-  workflow_run:
-    workflows:
-      - Build
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       run_id:
@@ -35,7 +28,7 @@ on:
         type: string
 
 concurrency:
-  group: publish-microsoft-store-${{ github.event.workflow_run.id || inputs.run_id }}
+  group: publish-microsoft-store-${{ inputs.run_id }}
   cancel-in-progress: false
 
 permissions:
@@ -44,22 +37,18 @@ permissions:
 
 jobs:
   inspect:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     outputs:
       run_id: ${{ steps.build.outputs.run_id }}
-      should_bundle: ${{ steps.build.outputs.should_bundle }}
       should_publish: ${{ steps.build.outputs.should_publish }}
     steps:
       - name: Inspect Build run
         id: build
         env:
           GH_TOKEN: ${{ github.token }}
-          BUILD_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
-          TRIGGER_EVENT: ${{ github.event_name }}
+          BUILD_RUN_ID: ${{ inputs.run_id }}
         run: |
           echo "run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "should_bundle=false" >> "$GITHUB_OUTPUT"
           echo "should_publish=false" >> "$GITHUB_OUTPUT"
 
           run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID")"
@@ -71,8 +60,6 @@ jobs:
             echo "Build run $BUILD_RUN_ID did not complete successfully." >&2
             exit 1
           fi
-          build_event="$(jq -r '.event' <<<"$run_json")"
-
           artifact_names="$(gh api --paginate \
             "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID/artifacts?per_page=100" \
             --jq '.artifacts[].name')"
@@ -96,13 +83,6 @@ jobs:
             fi
           fi
 
-          if [ "$TRIGGER_EVENT" = "workflow_run" ]; then
-            if [ "$build_event" != "push" ] || [ -z "$metadata_tag" ]; then
-              echo "Build run $BUILD_RUN_ID is not a release-tag push; skipping Store bundle and submission."
-              exit 0
-            fi
-          fi
-
           for artifact in windows-store-x64 windows-store-arm64; do
             if ! grep -Fxq "$artifact" <<<"$artifact_names"; then
               echo "Build run $BUILD_RUN_ID is missing artifact: $artifact" >&2
@@ -110,15 +90,13 @@ jobs:
             fi
           done
 
-          echo "should_bundle=true" >> "$GITHUB_OUTPUT"
           if [ -n "$metadata_tag" ]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
           fi
 
   publish:
     needs: inspect
-    if: needs.inspect.outputs.should_bundle == 'true'
-    runs-on: windows-2022
+    runs-on: windows-2025
     timeout-minutes: 30
     steps:
       - name: Download Microsoft Store packages
