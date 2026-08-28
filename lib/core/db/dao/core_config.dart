@@ -54,6 +54,9 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
         .toList();
     final results = <ConfigQueryRow>[];
     for (final group in sortedGroups) {
+      if (group.subId == DBConstants.defaultId && group.count == 0) {
+        continue;
+      }
       results.add(group.subscription);
       if (group.subscription.subscription.expanded) {
         results.addAll(group.configs);
