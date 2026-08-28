@@ -27,5 +27,4 @@ final class LaunchAtLoginStatus {
       message = error;
 
   bool get enabled => state == LaunchAtLoginState.enabled;
-
 }
