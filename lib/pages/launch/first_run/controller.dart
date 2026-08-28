@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/interface.dart';
 import 'package:onexray/service/tun_settings/state.dart';
@@ -20,7 +23,7 @@ class FirstRunPageState {
   const FirstRunPageState({
     this.country = SimpleCountry.cn,
     this.interfaces = const [],
-    this.interface = TunSettingsState.autoOutboundsInterfaceAuto,
+    this.interface = "",
     this.enableIPv6 = true,
   });
 
@@ -66,6 +69,14 @@ class FirstRunController extends PageCubit<FirstRunPageState> {
   }
 
   Future<void> nextStep(BuildContext context) async {
+    if ((AppPlatform.isWindows || AppPlatform.isLinux) &&
+        state.interface.isEmpty) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.validationInterfaceRequired,
+      );
+      return;
+    }
     await _initSimpleSetting();
     await _initTunSettings();
     await PreferencesKey().saveFirstRun(false);
@@ -84,7 +95,7 @@ class FirstRunController extends PageCubit<FirstRunPageState> {
 
   Future<void> _initTunSettings() async {
     final tunSettings = TunSettingsState();
-    tunSettings.autoOutboundsInterface = state.interface;
+    tunSettings.outboundsInterface = state.interface;
     tunSettings.enableIPv6 = state.enableIPv6;
     await tunSettings.saveToPreferences();
   }

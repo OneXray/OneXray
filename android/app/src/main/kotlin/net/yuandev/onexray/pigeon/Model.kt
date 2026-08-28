@@ -21,6 +21,8 @@ enum class PerAppVPNMode {
 
 @Serializable
 data class TunJson(
+    val tunIPv4: String? = null,
+    val tunIPv6: String? = null,
     val tunDnsIPv4: String?,
     val tunDnsIPv6: String?,
     val enableDot: Boolean?,
@@ -50,10 +52,13 @@ data class XrayInboundAccount(
 @Serializable
 data class StartVpnRequest(
     val tun: TunJson?,
+    val socksPort: String? = null,
     val pingPort: String?,
     val pingAuth: XrayInboundAccount?,
     val metricsPort: String?,
     val coreInvokeText: String?,
+    val configId: Long? = null,
+    val snapshotToken: String? = null,
 )
 
 @Serializable

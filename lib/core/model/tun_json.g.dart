@@ -7,6 +7,8 @@ part of 'tun_json.dart';
 // **************************************************************************
 
 TunJson _$TunJsonFromJson(Map<String, dynamic> json) => TunJson(
+  json['tunIPv4'] as String?,
+  json['tunIPv6'] as String?,
   json['tunDnsIPv4'] as String?,
   json['tunDnsIPv6'] as String?,
   json['enableDot'] as bool?,
@@ -30,6 +32,8 @@ TunJson _$TunJsonFromJson(Map<String, dynamic> json) => TunJson(
 );
 
 Map<String, dynamic> _$TunJsonToJson(TunJson instance) => <String, dynamic>{
+  'tunIPv4': ?instance.tunIPv4,
+  'tunIPv6': ?instance.tunIPv6,
   'tunDnsIPv4': ?instance.tunDnsIPv4,
   'tunDnsIPv6': ?instance.tunDnsIPv6,
   'enableDot': ?instance.enableDot,

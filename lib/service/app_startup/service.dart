@@ -125,7 +125,9 @@ final class AppStartupService {
       return;
     }
     final result = await setLaunchAtLogin(false);
-    if (result.state == LaunchAtLoginState.disabled) {
+    if (result.state == LaunchAtLoginState.disabled ||
+        (AppPlatform.isWindows &&
+            result.state == LaunchAtLoginState.unavailable)) {
       return;
     }
     final message = result.message ?? result.state.name;

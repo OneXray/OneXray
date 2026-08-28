@@ -1,4 +1,3 @@
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 
 class XrayTunRouteConfig {
@@ -25,10 +24,6 @@ class XrayTunRouteConfig {
   });
 
   factory XrayTunRouteConfig.fromTunSetting(TunSettingsState state) {
-    if (!AppPlatform.isWindows && !AppPlatform.isLinux) {
-      return const XrayTunRouteConfig();
-    }
-
     final gateway = <String>[tunIPv4Gateway];
     final dns = <String>[if (state.tunDnsIPv4.isNotEmpty) state.tunDnsIPv4];
     final autoSystemRoutingTable = <String>[tunIPv4Route];
@@ -45,7 +40,7 @@ class XrayTunRouteConfig {
       gateway: gateway,
       dns: dns,
       autoSystemRoutingTable: autoSystemRoutingTable,
-      autoOutboundsInterface: state.autoOutboundsInterface,
+      autoOutboundsInterface: state.outboundsInterface,
     );
   }
 

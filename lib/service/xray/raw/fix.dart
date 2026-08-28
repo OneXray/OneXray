@@ -12,6 +12,22 @@ import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/tun_route.dart';
 
+enum XrayRuntimePlatform {
+  windows,
+  linux,
+  other;
+
+  static XrayRuntimePlatform get current {
+    if (AppPlatform.isWindows) {
+      return XrayRuntimePlatform.windows;
+    }
+    if (AppPlatform.isLinux) {
+      return XrayRuntimePlatform.linux;
+    }
+    return XrayRuntimePlatform.other;
+  }
+}
+
 class XrayRawFix {
   static void applySelectedOutbound(
     Map<String, dynamic> jsonMap,
@@ -61,13 +77,15 @@ class XrayRawFix {
     XrayPorts ports,
     bool metricsEnabled, {
     bool? disableLog,
+    XrayRuntimePlatform? runtimePlatform,
   }) async {
     final shouldDisableLog =
         disableLog ?? await AppHostApi().useSystemExtension();
+    final platform = runtimePlatform ?? XrayRuntimePlatform.current;
 
     fixEnv(jsonMap);
     _fixDnsQueryStrategy(jsonMap, tunSettingsState);
-    _applyProfileRuntimeInbounds(jsonMap, _pingInbound(ports), mode);
+    _applyProfileRuntimeInbounds(jsonMap, ports, mode, platform);
     _fixPingRoutingRule(jsonMap, rejectConflicts: true);
     fixLog(jsonMap, disableLog: shouldDisableLog);
     if (metricsEnabled) {
@@ -76,16 +94,13 @@ class XrayRawFix {
       ports.metricsPort = "";
     }
 
-    if (mode == CoreRunMode.tun &&
-        (AppPlatform.isWindows || AppPlatform.isLinux)) {
-      _removeConfigInterface(jsonMap, appOwnedOnly: true);
-      _applyRawTunRouteConfig(
-        jsonMap,
-        XrayTunRouteConfig.fromTunSetting(tunSettingsState),
-      );
-    } else {
-      _removeConfigInterface(jsonMap, appOwnedOnly: true);
-    }
+    _applyPlatformInterface(
+      jsonMap,
+      mode,
+      tunSettingsState,
+      platform,
+      appOwnedOnly: true,
+    );
   }
 
   static Future<void> fixConfig(
@@ -96,9 +111,11 @@ class XrayRawFix {
     XrayPorts ports,
     bool metricsEnabled, {
     bool? disableLog,
+    XrayRuntimePlatform? runtimePlatform,
   }) async {
     final shouldDisableLog =
         disableLog ?? await AppHostApi().useSystemExtension();
+    final platform = runtimePlatform ?? XrayRuntimePlatform.current;
 
     final profileCopy = copyXrayConfigMap(profileMap);
     if (mode == CoreRunMode.tun) {
@@ -108,7 +125,7 @@ class XrayRawFix {
     }
     fixEnv(jsonMap);
     _fixDnsQueryStrategy(jsonMap, tunSettingsState);
-    _applyProfileRuntimeInbounds(jsonMap, _pingInbound(ports), mode);
+    _applyProfileRuntimeInbounds(jsonMap, ports, mode, platform);
     _fixPingRoutingRule(jsonMap);
     fixLog(jsonMap, disableLog: shouldDisableLog);
     fixMetrics(jsonMap, metricsEnabled ? ports.metricsPort : null);
@@ -116,16 +133,7 @@ class XrayRawFix {
       ports.metricsPort = "";
     }
 
-    if (mode == CoreRunMode.tun &&
-        (AppPlatform.isWindows || AppPlatform.isLinux)) {
-      _removeConfigInterface(jsonMap);
-      _applyRawTunRouteConfig(
-        jsonMap,
-        XrayTunRouteConfig.fromTunSetting(tunSettingsState),
-      );
-    } else {
-      _removeConfigInterface(jsonMap);
-    }
+    _applyPlatformInterface(jsonMap, mode, tunSettingsState, platform);
   }
 
   static void fixEnv(Map<String, dynamic> jsonMap) {
@@ -159,8 +167,9 @@ class XrayRawFix {
 
   static void _applyProfileRuntimeInbounds(
     Map<String, dynamic> jsonMap,
-    Map<String, dynamic> ping,
+    XrayPorts? ports,
     CoreRunMode mode,
+    XrayRuntimePlatform platform,
   ) {
     final existing = jsonMap['inbounds'];
     final inbounds = existing is List ? existing : const <dynamic>[];
@@ -184,7 +193,7 @@ class XrayRawFix {
       ),
     ];
     if (mode == CoreRunMode.proxy) {
-      result.add(ping);
+      result.add(_pingInbound(ports));
       jsonMap['inbounds'] = result;
       return;
     }
@@ -196,13 +205,29 @@ class XrayRawFix {
         break;
       }
     }
-    final generatedTun = createTunInboundMap();
-    final tun = existingTun == null
-        ? generatedTun
-        : _mergeRuntimeTun(existingTun, generatedTun);
-    result.insert(0, tun);
-    result.add(ping);
+    final generated = platform == XrayRuntimePlatform.windows
+        ? createSocksInboundMap(ports!.socksPort)
+        : createTunInboundMap();
+    final inbound = existingTun == null
+        ? generated
+        : platform == XrayRuntimePlatform.windows
+        ? _mergeRuntimeSocks(existingTun, generated)
+        : _mergeRuntimeTun(existingTun, generated);
+    result.insert(0, inbound);
+    result.add(_pingInbound(ports));
     jsonMap['inbounds'] = result;
+  }
+
+  static Map<String, dynamic> _mergeRuntimeSocks(
+    Map<dynamic, dynamic> existing,
+    Map<String, dynamic> generated,
+  ) {
+    final socks = Map<String, dynamic>.from(existing);
+    for (final key in const ['listen', 'port', 'protocol', 'settings', 'tag']) {
+      socks[key] = generated[key];
+    }
+    socks['sniffing'] ??= generated['sniffing'];
+    return socks;
   }
 
   static Map<String, dynamic> _mergeRuntimeTun(
@@ -240,6 +265,68 @@ class XrayRawFix {
     }
   }
 
+  static void _applyPlatformInterface(
+    Map<String, dynamic> jsonMap,
+    CoreRunMode mode,
+    TunSettingsState tunSettings,
+    XrayRuntimePlatform platform, {
+    bool appOwnedOnly = false,
+  }) {
+    if (mode != CoreRunMode.tun) {
+      _removeConfigInterface(jsonMap, appOwnedOnly: appOwnedOnly);
+      return;
+    }
+    switch (platform) {
+      case XrayRuntimePlatform.windows:
+        _bindEveryOutbound(jsonMap, tunSettings.outboundsInterface);
+        return;
+      case XrayRuntimePlatform.linux:
+        _removeConfigInterface(jsonMap);
+        _applyRawTunRouteConfig(
+          jsonMap,
+          XrayTunRouteConfig.fromTunSetting(tunSettings),
+        );
+        return;
+      case XrayRuntimePlatform.other:
+        _removeConfigInterface(jsonMap, appOwnedOnly: appOwnedOnly);
+        return;
+    }
+  }
+
+  static void _bindEveryOutbound(
+    Map<String, dynamic> jsonMap,
+    String interface,
+  ) {
+    if (interface.isEmpty) {
+      throw const FormatException('Network interface is required');
+    }
+    final outbounds = jsonMap['outbounds'];
+    if (outbounds is! List) {
+      return;
+    }
+    for (final outbound in outbounds.whereType<Map>()) {
+      final streamSettings = _ensureObject(outbound, 'streamSettings');
+      final sockopt = _ensureObject(streamSettings, 'sockopt');
+      sockopt['interface'] = interface;
+    }
+  }
+
+  static Map<dynamic, dynamic> _ensureObject(
+    Map<dynamic, dynamic> parent,
+    String key,
+  ) {
+    final value = parent[key];
+    if (value == null) {
+      final result = <String, dynamic>{};
+      parent[key] = result;
+      return result;
+    }
+    if (value is! Map) {
+      throw FormatException('$key must be an object');
+    }
+    return value;
+  }
+
   static void _removeConfigInterface(
     Map<String, dynamic> jsonMap, {
     bool appOwnedOnly = false,
@@ -258,10 +345,10 @@ class XrayRawFix {
                     tag != RoutingOutboundTag.fragment.name))) {
           continue;
         }
-        final Map<String, dynamic>? streamSettings = outbound["streamSettings"];
-        if (streamSettings != null) {
-          final Map<String, dynamic>? sockopt = streamSettings["sockopt"];
-          if (sockopt != null) {
+        final streamSettings = outbound["streamSettings"];
+        if (streamSettings is Map) {
+          final sockopt = streamSettings["sockopt"];
+          if (sockopt is Map) {
             sockopt.remove("interface");
           }
         }
@@ -329,8 +416,9 @@ class XrayRawFix {
   static void prepareProfileValidationConfig(Map<String, dynamic> jsonMap) {
     _applyProfileRuntimeInbounds(
       jsonMap,
-      createPingInboundMap(),
+      null,
       CoreRunMode.tun,
+      XrayRuntimePlatform.other,
     );
     _fixPingRoutingRule(jsonMap, rejectConflicts: true);
     fixEnv(jsonMap);

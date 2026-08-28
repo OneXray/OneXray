@@ -39,7 +39,7 @@ OneXray является только клиентом и не предоста�
 
 ## Возможности
 
-- **Кроссплатформенный TUN** — iOS, macOS, Android, Windows и Linux.
+- **Кроссплатформенный запуск** — TUN на iOS, macOS, Android и Linux; локальный SOCKS5 на Windows.
 - **Гибкая конфигурация** — Simple Profile, переиспользуемые Xray Profiles, Multi-node Outbound и Raw JSON.
 - **Управление маршрутизацией** — режимы Rule, Global и Direct переключаются на Home.
 - **Импорт и организация** — поддерживаемые share links и HTTPS-подписки из QR-кодов, изображений, файлов или буфера обмена.
@@ -78,10 +78,11 @@ onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Nam
 создает новую локальную пару ключей, отправляет при первой загрузке только
 публичный ключ и сохраняет пару после успешного импорта.
 
-Android, iOS и установленные приложения macOS регистрируют схему напрямую. В
-Windows и Linux используйте EXE/winget или DEB: ZIP-пакеты не регистрируют
-схему автоматически. Версия из Mac App Store и OneXraySE используют одну
-схему, поэтому при одновременной установке macOS может выбрать любое из них.
+Android, iOS, установленные приложения macOS и версия Windows из Microsoft
+Store регистрируют схему напрямую. В Linux используйте DEB: ZIP-пакеты не
+регистрируют схему автоматически. Версия из Mac App Store и OneXraySE
+используют одну схему, поэтому при одновременной установке macOS может выбрать
+любое из них.
 
 ## Загрузка
 
@@ -91,8 +92,8 @@ Windows и Linux используйте EXE/winget или DEB: ZIP-пакеты 
 | macOS (Mac App Store) | macOS 13.0 и выше, Apple silicon или Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS (вне App Store) | macOS 13.0 и выше, Apple silicon или Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 и выше, arm64-v8a или x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 или Windows 11 | winget: `winget install --id YuanDevLLC.OneXray -e`, [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
-| Windows ARM64 | Windows 11 | winget: `winget install --id YuanDevLLC.OneXray -e`, [EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.exe), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
+| Windows x86_64 | Windows 10 или Windows 11 | Microsoft Store |
+| Windows ARM64 | Windows 11 | Microsoft Store |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -127,12 +128,9 @@ brew uninstall --cask onexrayse
 
 ### Windows
 
-Winget автоматически выбирает установщик x86_64 или ARM64 для текущего устройства.
-
-```shell
-winget install --id YuanDevLLC.OneXray -e
-winget uninstall --id YuanDevLLC.OneXray -e
-```
+Microsoft Store выбирает пакет x86_64 или ARM64 для текущего устройства и
+устанавливает обновления. Windows запускает локальный прокси SOCKS5; текущий
+адрес отображается в настройках Core.
 
 ### Android
 
@@ -157,7 +155,7 @@ sudo apt remove onexray
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
-sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
 Пользователям GNOME следует установить расширение [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator). Linux arm64 в настоящее время использует английский язык для CJK locale.

@@ -6,7 +6,6 @@ import 'package:onexray/pages/core/tun/network_interface/params.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
-import 'package:onexray/service/tun_settings/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class NetworkInterfacePage extends StatelessWidget {
@@ -42,7 +41,7 @@ class NetworkInterfacePage extends StatelessWidget {
     NetworkInterfacePageState state,
     NetworkInterfaceController controller,
   ) {
-    if (state.interfaceList.isEmpty && !controller.params.showAuto) {
+    if (state.interfaceList.isEmpty) {
       return ListEmptyView(
         message: AppLocalizations.of(context)!.networkInterfacePageNoInterface,
       );
@@ -56,8 +55,7 @@ class NetworkInterfacePage extends StatelessWidget {
         groupValue: state.currentInterface,
         child: ListView.separated(
           shrinkWrap: true,
-          itemCount:
-              state.interfaceList.length + (controller.params.showAuto ? 1 : 0),
+          itemCount: state.interfaceList.length,
           separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, index) =>
               _cell(context, state, controller, index),
@@ -72,19 +70,7 @@ class NetworkInterfacePage extends StatelessWidget {
     NetworkInterfaceController controller,
     int index,
   ) {
-    if (controller.params.showAuto && index == 0) {
-      return DataListRow(
-        title: AppLocalizations.of(context)!.networkInterfacePageAuto,
-        onTap: () => controller.updateInterface(
-          TunSettingsState.autoOutboundsInterfaceAuto,
-        ),
-        trailing: const Radio<String>(
-          value: TunSettingsState.autoOutboundsInterfaceAuto,
-        ),
-      );
-    }
-    final interfaceIndex = controller.params.showAuto ? index - 1 : index;
-    final interface = state.interfaceList[interfaceIndex];
+    final interface = state.interfaceList[index];
     final address = interface.addresses
         .map((value) => value.address)
         .join("\n");

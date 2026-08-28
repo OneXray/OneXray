@@ -154,6 +154,10 @@ class TunSettingsContent extends StatelessWidget {
     return SettingSection(
       title: AppLocalizations.of(context)!.settingsPageSectionNetwork,
       children: [
+        if (AppPlatform.isWindows) ...[
+          _tunIPv4(context, controller),
+          _tunIPv6(context, controller),
+        ],
         _enableIPv6(context, state, controller),
         _metricsEnabled(context, state, controller),
       ],
@@ -171,6 +175,22 @@ class TunSettingsContent extends StatelessWidget {
         _enableDot(context, state, controller),
         if (state.tunSettings.enableDot) _tunDnsServerName(context, controller),
       ],
+    );
+  }
+
+  Widget _tunIPv4(BuildContext context, TunSettingsController controller) {
+    return TextFieldSettingRow(
+      controller: controller.tunIPv4Controller,
+      label: AppLocalizations.of(context)!.tunSettingsPageTunIPv4,
+      hintText: AppLocalizations.of(context)!.tunSettingsPageTunIPv4Example,
+    );
+  }
+
+  Widget _tunIPv6(BuildContext context, TunSettingsController controller) {
+    return TextFieldSettingRow(
+      controller: controller.tunIPv6Controller,
+      label: AppLocalizations.of(context)!.tunSettingsPageTunIPv6,
+      hintText: AppLocalizations.of(context)!.tunSettingsPageTunIPv6Example,
     );
   }
 
@@ -250,12 +270,13 @@ class TunSettingsContent extends StatelessWidget {
     return SettingSection(
       title: AppLocalizations.of(context)!.tunSettingsPageInterface,
       children: [
-        SettingRow(
-          leading: const Icon(LucideIcons.radioTower),
-          title: AppLocalizations.of(context)!.tunSettingsPageTunName,
-          value: state.tunSettings.tunName,
-          enabled: false,
-        ),
+        if (AppPlatform.isLinux)
+          SettingRow(
+            leading: const Icon(LucideIcons.radioTower),
+            title: AppLocalizations.of(context)!.tunSettingsPageTunName,
+            value: state.tunSettings.tunName,
+            enabled: false,
+          ),
         _interface(context, state, controller),
       ],
     );
@@ -269,7 +290,7 @@ class TunSettingsContent extends StatelessWidget {
     return NavigationSettingRow(
       leading: const Icon(LucideIcons.network),
       title: AppLocalizations.of(context)!.tunSettingsPageInterface,
-      value: state.tunSettings.autoOutboundsInterface,
+      value: state.tunSettings.outboundsInterface,
       onTap: () => controller.editInterface(context),
     );
   }

@@ -1,7 +1,7 @@
 name: onexray
 description: "Cross Platform Xray-core Client"
 publish_to: "none"
-version: 26.8.5+1
+version: 26.8.5+401
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
@@ -93,10 +93,27 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_gen_runner: ^5.15.0
   ffigen: ^21.0.0
+  msix: ^3.18.0
 
 # re_editor only uses APIs that remain compatible with isolate_manager 6.x.
 dependency_overrides:
   isolate_manager: ^6.3.2
+
+msix_config:
+  display_name: OneXray
+  publisher_display_name: Yuan Dev LLC
+  identity_name: YuanDevLLC.OneXray
+  publisher: CN=3666BCB5-5482-46DD-9C19-D8A7290A39FD
+  logo_path: assets/logo.png
+  protocol_activation: onexray
+  languages: en-us
+  capabilities: internetClientServer, privateNetworkClientServer, networkingVpnProvider
+  startup_task:
+    task_id: VCoreStartup
+    enabled: false
+  os_min_version: 10.0.19042.0
+  build_windows: false
+  store: true
 
 flutter_gen:
   output: lib/gen/
@@ -114,9 +131,21 @@ flutter:
     - assets/macos_icon/
 
 ffigen:
+  name: NativeLibrary
+  description: Generated native bindings for libXray and VCore.
   llvm-path:
     - "C:\Program Files\LLVM"
   output: "lib/core/ffi/generated_bindings.dart"
+  compiler-opts:
+    - "-D_WIN32"
+  exclude-all-by-default: true
   headers:
     entry-points:
       - "c/include/libXray.h"
+      - "c/include/vcore.h"
+  functions:
+    include:
+      - "CGoInvoke"
+      - "CGoFree"
+      - "VCoreWindowsVpnInvoke"
+      - "VCoreFree"

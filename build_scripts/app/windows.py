@@ -1,14 +1,20 @@
 import os
 import shutil
-
-import yaml
+import struct
 
 from app.builder import Builder
 from app.command_line import (
-    check_and_create_dir,
-    download_file,
+    dart_command,
     is_amd64,
     is_arm64,
+    run_command,
+)
+from app.windows_msix import package_with_vcore
+
+_VCORE_ARTIFACTS = (
+    "vcore.dll",
+    "vcore-windows-vpn-host.exe",
+    "vcore-windows-session-host.exe",
 )
 
 
@@ -20,7 +26,6 @@ class WindowsBuilder(Builder):
         build_scripts_dir: str,
     ):
         super().__init__(project, system, build_scripts_dir)
-        self.version = ""
         self.target_architecture = self._target_architecture()
         package_architecture = (
             "amd64" if self.target_architecture == "x64" else "arm64"
@@ -38,78 +43,145 @@ class WindowsBuilder(Builder):
             return "arm64"
         raise ValueError("Windows builds only support x64 and arm64")
 
-    def _wintun_architecture(self) -> str:
-        return "amd64" if self.target_architecture == "x64" else "arm64"
-
-    def build(self):
-        self.before_build()
-
-        self.build_app()
-
-        self.after_build()
-
     def before_build(self):
         super().before_build()
         self.build_core()
+        self.build_vcore()
 
-        self.download_win_tun()
-
-    def download_win_tun(self):
-        app_path = os.path.join(
-            self.project_dir, self.project_config["core.lib.dst.dir.windows"]
+    def build_vcore(self):
+        vcore_dir = self._vcore_dir()
+        scripts = os.path.join(vcore_dir, "scripts")
+        run_command(
+            [
+                "uv",
+                "run",
+                "--project",
+                scripts,
+                "--locked",
+                "vcore-scripts",
+                "check",
+                "tls-dependencies",
+            ],
+            cwd=vcore_dir,
         )
-        check_and_create_dir(app_path)
-
-        zip_path = os.path.join(self.output_dir, "wintun.zip")
-        win_tun_url = "https://www.wintun.net/builds/wintun-0.14.1.zip"
-        download_file(win_tun_url, zip_path)
-        shutil.unpack_archive(zip_path, self.output_dir)
-
-        win_tun_src_path = os.path.join(
-            self.output_dir,
-            "wintun",
-            "bin",
-            self._wintun_architecture(),
-            "wintun.dll",
+        run_command(
+            [
+                "uv",
+                "run",
+                "--project",
+                scripts,
+                "--locked",
+                "vcore-scripts",
+                "build",
+                "windows",
+                "--architecture",
+                self.target_architecture,
+            ],
+            cwd=vcore_dir,
         )
-        shutil.move(win_tun_src_path, app_path)
+
+        source = os.path.join(
+            vcore_dir, "dist", "windows", self.target_architecture
+        )
+        destination = os.path.join(self.project_dir, "app")
+        os.makedirs(destination, exist_ok=True)
+        expected_machine = 0x8664 if self.target_architecture == "x64" else 0xAA64
+        for name in _VCORE_ARTIFACTS:
+            artifact = os.path.join(source, name)
+            if _pe_machine(artifact) != expected_machine:
+                raise ValueError(
+                    f"VCore artifact has the wrong architecture: {artifact}"
+                )
+            shutil.copy2(artifact, destination)
+
+    def _vcore_dir(self) -> str:
+        configured = os.environ.get("VCORE_DIR")
+        candidates = [configured, os.path.join(self.workspace_dir, "VCore")]
+        for candidate in candidates:
+            if candidate and os.path.isfile(os.path.join(candidate, "Cargo.toml")):
+                return os.path.abspath(candidate)
+        raise FileNotFoundError("VCore checkout not found; set VCORE_DIR")
 
     def build_app(self):
-        self.fastforge_build("zip")
-        self.package_exe()
+        self.package_msix()
 
-    def package_exe(self):
-        config_path = os.path.join(
-            self.project_dir, "packaging", "exe", "make_config.yaml"
+    def package_msix(self):
+        self._prepare_msix_bundle()
+        output_name = f"{self.project}-{self.package_suffix}"
+        run_command(
+            [
+                dart_command(),
+                "run",
+                "msix:create",
+                "--build-windows",
+                "false",
+                "--store",
+                "--architecture",
+                self.target_architecture,
+                "--version",
+                self.msix_version(),
+                "--output-path",
+                self.output_dir,
+                "--output-name",
+                output_name,
+            ],
+            cwd=self.root_dir,
         )
-        with open(config_path, mode="rb") as f:
-            original_content = f.read()
-
-        config = yaml.load(original_content, Loader=yaml.CLoader)
-        architecture = (
-            "x64compatible" if self.target_architecture == "x64" else "arm64"
+        local_development = os.environ.get("ONEXRAY_DEV_SIGN") == "1"
+        package_with_vcore(
+            os.path.join(self.output_dir, f"{output_name}.msix"),
+            local_development=local_development,
+            certificate_path=os.environ.get("ONEXRAY_DEV_CERT_PATH"),
+            certificate_password=os.environ.get("ONEXRAY_DEV_CERT_PASSWORD"),
+            development_publisher=os.environ.get("ONEXRAY_DEV_PUBLISHER"),
         )
-        config["architectures_allowed"] = architecture
-        config["architectures_install_in_64bit_mode"] = architecture
 
+    def _prepare_msix_bundle(self):
+        source = os.path.join(
+            self.root_dir,
+            "build",
+            "windows",
+            self.target_architecture,
+            "runner",
+            "Release",
+        )
+        if not os.path.isfile(os.path.join(source, f"{self.project}.exe")):
+            raise FileNotFoundError(
+                f"Windows {self.target_architecture} release bundle not found: {source}"
+            )
+        destination = os.path.join(
+            self.root_dir, "build", "windows", "runner", "Release"
+        )
+        shutil.rmtree(destination, ignore_errors=True)
+        shutil.copytree(source, destination)
+
+    def msix_version(self) -> str:
+        marketing_parts = self.read_version().split("+", maxsplit=1)[0].split(".")
+        if len(marketing_parts) != 3:
+            raise ValueError("MSIX version must contain major, minor, and patch")
         try:
-            with open(config_path, mode="w", encoding="utf-8", newline="\n") as f:
-                yaml.dump(
-                    config,
-                    f,
-                    Dumper=yaml.CDumper,
-                    allow_unicode=True,
-                    sort_keys=False,
-                )
-            self.package_with_marketing_version("exe")
-        finally:
-            with open(config_path, mode="wb") as f:
-                f.write(original_content)
+            values = [int(component) for component in (*marketing_parts, "0")]
+        except ValueError as error:
+            raise ValueError("MSIX version components must be numeric") from error
+        if any(value < 0 or value > 65535 for value in values):
+            raise ValueError("MSIX version components must be between 0 and 65535")
+        if values[0] == 0:
+            raise ValueError("MSIX major version must be greater than 0")
+        return ".".join(str(value) for value in values)
 
-    def after_build(self):
-        super().after_build()
 
-        for file_type in (".zip", ".exe"):
-            file_name = self.find_file(file_type)
-            if file_name:
-                self.rename_file(file_name, file_type)
+def _pe_machine(path: str) -> int:
+    with open(path, "rb") as artifact:
+        if artifact.read(2) != b"MZ":
+            raise ValueError(f"not a PE artifact: {path}")
+        artifact.seek(0x3C)
+        pe_offset_data = artifact.read(4)
+        if len(pe_offset_data) != 4:
+            raise ValueError(f"invalid PE artifact: {path}")
+        artifact.seek(struct.unpack("<I", pe_offset_data)[0])
+        if artifact.read(4) != b"PE\0\0":
+            raise ValueError(f"invalid PE artifact: {path}")
+        machine = artifact.read(2)
+        if len(machine) != 2:
+            raise ValueError(f"invalid PE artifact: {path}")
+        return struct.unpack("<H", machine)[0]

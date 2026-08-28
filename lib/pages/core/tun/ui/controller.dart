@@ -22,9 +22,8 @@ class TunSettingsPageState {
   TunSettingsPageState({TunSettingsState? tunSettings})
     : tunSettings = tunSettings ?? TunSettingsState();
 
-  TunSettingsPageState _copy() {
-    return TunSettingsPageState(tunSettings: tunSettings);
-  }
+  TunSettingsPageState _copy() =>
+      TunSettingsPageState(tunSettings: tunSettings);
 }
 
 class TunSettingsController extends PageCubit<TunSettingsPageState> {
@@ -32,12 +31,16 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
     _readTunSettings();
   }
 
+  final tunIPv4Controller = TextEditingController();
+  final tunIPv6Controller = TextEditingController();
   final tunDnsIPv4Controller = TextEditingController();
   final tunDnsIPv6Controller = TextEditingController();
   final tunDnsServerNameController = TextEditingController();
 
   @override
   Future<void> disposePageResources() async {
+    tunIPv4Controller.dispose();
+    tunIPv6Controller.dispose();
     tunDnsIPv4Controller.dispose();
     tunDnsIPv6Controller.dispose();
     tunDnsServerNameController.dispose();
@@ -54,6 +57,8 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
   }
 
   void _initInputs(TunSettingsState tunState) {
+    tunIPv4Controller.text = tunState.tunIPv4;
+    tunIPv6Controller.text = tunState.tunIPv6;
     tunDnsIPv4Controller.text = tunState.tunDnsIPv4;
     tunDnsIPv6Controller.text = tunState.tunDnsIPv6;
     tunDnsServerNameController.text = tunState.dnsServerName;
@@ -100,16 +105,13 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
   }
 
   Future<void> editInterface(BuildContext context) async {
-    final params = NetworkInterfaceParams(
-      state.tunSettings.autoOutboundsInterface,
-      showAuto: true,
-    );
+    final params = NetworkInterfaceParams(state.tunSettings.outboundsInterface);
     final networkInterface = await context.pushScoped<String>(
       AppSecondaryDestination.networkInterface,
       extra: params,
     );
     if (networkInterface != null) {
-      state.tunSettings.autoOutboundsInterface = networkInterface;
+      state.tunSettings.outboundsInterface = networkInterface;
       emit(state._copy());
     }
   }
@@ -282,6 +284,8 @@ class TunSettingsController extends PageCubit<TunSettingsPageState> {
   }
 
   void _mergeInput(TunSettingsState tunState) {
+    tunState.tunIPv4 = tunIPv4Controller.text;
+    tunState.tunIPv6 = tunIPv6Controller.text;
     tunState.tunDnsIPv4 = tunDnsIPv4Controller.text;
     tunState.tunDnsIPv6 = tunDnsIPv6Controller.text;
     tunState.dnsServerName = tunDnsServerNameController.text;

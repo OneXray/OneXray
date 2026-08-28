@@ -59,6 +59,8 @@ struct OnDemandRule: Codable {
 }
 
 struct TunJson: Codable {
+    var tunIPv4: String?
+    var tunIPv6: String?
     var tunDnsIPv4: String?
     var tunDnsIPv6: String?
     var enableDot: Bool?
@@ -86,10 +88,13 @@ struct XrayInboundAccount: Codable {
 
 struct StartVpnRequest: Codable {
     var tun: TunJson?
+    var socksPort: String?
     var pingPort: String?
     var pingAuth: XrayInboundAccount?
     var metricsPort: String?
     var coreInvokeText: String?
+    var configId: Int64?
+    var snapshotToken: String?
 
     private static func fromUrl(_ url: URL) throws -> Self {
         let data = try Data(contentsOf: url)

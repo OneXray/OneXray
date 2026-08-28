@@ -156,6 +156,7 @@ void main() {
         ports,
         false,
         disableLog: false,
+        runtimePlatform: XrayRuntimePlatform.other,
       );
 
       expect(jsonMap['policy'], <String, dynamic>{'user': true});
@@ -245,6 +246,7 @@ void main() {
       ports,
       false,
       disableLog: false,
+      runtimePlatform: XrayRuntimePlatform.other,
     );
 
     expect(profile, expectedProfile);
@@ -280,6 +282,7 @@ void main() {
       XrayPorts('23458', '23459', XrayInboundAccount('ping-user', 'ping-pass')),
       false,
       disableLog: false,
+      runtimePlatform: XrayRuntimePlatform.other,
     );
     expect(
       (proxyRaw['inbounds'] as List<dynamic>).map(
@@ -511,6 +514,7 @@ void main() {
       ports,
       false,
       disableLog: false,
+      runtimePlatform: XrayRuntimePlatform.other,
     );
 
     final inbounds = jsonMap['inbounds']! as List<dynamic>;
@@ -559,6 +563,7 @@ void main() {
         ports,
         false,
         disableLog: false,
+        runtimePlatform: XrayRuntimePlatform.other,
       );
 
       expect(profile, expectedProfile);
@@ -590,6 +595,7 @@ void main() {
         ports,
         false,
         disableLog: false,
+        runtimePlatform: XrayRuntimePlatform.other,
       ),
       throwsFormatException,
     );
@@ -622,6 +628,7 @@ void main() {
       ports,
       true,
       disableLog: false,
+      runtimePlatform: XrayRuntimePlatform.other,
     );
 
     final policy = jsonMap['policy']! as Map<String, dynamic>;
@@ -631,5 +638,127 @@ void main() {
     final metrics = jsonMap['metrics']! as Map<String, dynamic>;
     expect(metrics['user'], true);
     expect(metrics['listen'], endsWith(':23457'));
+  });
+
+  test('XrayPorts allocates separate SOCKS, ping, and metrics ports', () async {
+    var calls = 0;
+    final ports = await XrayPorts.getPorts(
+      excludedPorts: const <int>{10000},
+      portProvider: (count) async {
+        expect(count, 3);
+        calls += 1;
+        return calls == 1
+            ? <int>[10000, 10001, 10002]
+            : <int>[11000, 11001, 11002];
+      },
+    );
+
+    expect(calls, 2);
+    expect(ports?.socksPort, '11000');
+    expect(ports?.pingPort, '11001');
+    expect(ports?.metricsPort, '11002');
+  });
+
+  test('Windows uses SOCKS on tunIn and binds every outbound', () async {
+    final jsonMap = <String, dynamic>{
+      'inbounds': <dynamic>[
+        <String, dynamic>{
+          'tag': 'tunIn',
+          'protocol': 'tun',
+          'sniffing': <String, dynamic>{'enabled': true, 'user': true},
+        },
+      ],
+      'outbounds': <dynamic>[
+        <String, dynamic>{'tag': 'proxy', 'protocol': 'vless'},
+        <String, dynamic>{
+          'tag': 'direct',
+          'protocol': 'freedom',
+          'streamSettings': <String, dynamic>{
+            'sockopt': <String, dynamic>{'tcpFastOpen': true},
+          },
+        },
+        <String, dynamic>{'tag': 'block', 'protocol': 'blackhole'},
+      ],
+    };
+    final tunSettings = TunSettingsState()..outboundsInterface = 'Ethernet 2';
+    final ports = XrayPorts(
+      '23456',
+      '23457',
+      XrayInboundAccount('ping-user', 'ping-pass'),
+      socksPort: '23455',
+    );
+
+    await XrayRawFix.fixProfileConfig(
+      jsonMap,
+      CoreRunMode.tun,
+      tunSettings,
+      ports,
+      false,
+      disableLog: false,
+      runtimePlatform: XrayRuntimePlatform.windows,
+    );
+
+    final inbounds = (jsonMap['inbounds'] as List<dynamic>).cast<Map>();
+    final inbound = inbounds.first;
+    expect(inbound['tag'], 'tunIn');
+    expect(inbound['protocol'], 'socks');
+    expect(inbound['listen'], NetConstants.proxyHost);
+    expect(inbound['port'], '23455');
+    expect(inbound['settings'], <String, dynamic>{
+      'auth': 'noauth',
+      'udp': true,
+    });
+    expect(inbound['sniffing'], containsPair('user', true));
+    for (final outbound
+        in (jsonMap['outbounds'] as List<dynamic>).cast<Map>()) {
+      final streamSettings = outbound['streamSettings'] as Map;
+      final sockopt = streamSettings['sockopt'] as Map;
+      expect(sockopt['interface'], 'Ethernet 2');
+    }
+  });
+
+  test('Linux binds the interface only in the TUN inbound', () async {
+    final jsonMap = <String, dynamic>{
+      'outbounds': <dynamic>[
+        <String, dynamic>{
+          'tag': 'proxy',
+          'protocol': 'vless',
+          'streamSettings': <String, dynamic>{
+            'sockopt': <String, dynamic>{'interface': 'old0'},
+          },
+        },
+        <String, dynamic>{
+          'tag': 'direct',
+          'protocol': 'freedom',
+          'streamSettings': <String, dynamic>{
+            'sockopt': <String, dynamic>{'interface': 'old1'},
+          },
+        },
+      ],
+    };
+    final tunSettings = TunSettingsState()..outboundsInterface = 'eth0';
+
+    await XrayRawFix.fixProfileConfig(
+      jsonMap,
+      CoreRunMode.tun,
+      tunSettings,
+      XrayPorts('23456', '23457', XrayInboundAccount('ping-user', 'ping-pass')),
+      false,
+      disableLog: false,
+      runtimePlatform: XrayRuntimePlatform.linux,
+    );
+
+    final inbounds = (jsonMap['inbounds'] as List<dynamic>).cast<Map>();
+    final tun = inbounds.first;
+    expect(tun['protocol'], 'tun');
+    final settings = tun['settings'] as Map;
+    expect(settings['autoOutboundsInterface'], 'eth0');
+    expect(settings['autoSystemRoutingTable'], isNotEmpty);
+    for (final outbound
+        in (jsonMap['outbounds'] as List<dynamic>).cast<Map>()) {
+      final streamSettings = outbound['streamSettings'] as Map;
+      final sockopt = streamSettings['sockopt'] as Map;
+      expect(sockopt, isNot(contains('interface')));
+    }
   });
 }

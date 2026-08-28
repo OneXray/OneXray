@@ -3,14 +3,19 @@ import 'dart:async';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/ffi/windows/model.dart';
+import 'package:onexray/core/ffi/windows/tun2socks.dart';
+import 'package:onexray/core/ffi/windows/vpn_status_observer.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/core_routing_mode/state.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
@@ -38,6 +43,8 @@ final class VpnService {
   var _pendingConfigId = DBConstants.defaultId;
   var _vpnRunning = false;
   var _lastVpnStatus = VpnStatus.disconnected;
+  VpnStatus? _lastAppliedWindowsVpnStatus;
+  String? _lastAppliedWindowsSnapshotToken;
   var _runningMode = CoreRunMode.tun;
   var _pendingRunMode = CoreRunMode.tun;
   var _runningRoutingMode = CoreRoutingMode.rule;
@@ -54,6 +61,12 @@ final class VpnService {
   late final _runtimeConfig = XrayRuntimeConfigService();
   Future<void> _statusTail = Future<void>.value();
   Future<void>? _initFuture;
+  StreamSubscription<void>? _windowsStatusSubscription;
+  Timer? _windowsStatusPoll;
+  var _windowsStatusWatcherFailed = false;
+  var _windowsStatusObservationStopped = false;
+  var _windowsStatusPollRunning = false;
+  var _windowsStatusPollPending = false;
 
   bool get vpnRunning => _vpnRunning;
   bool get vpnRunningOrStarting {
@@ -79,7 +92,8 @@ final class VpnService {
   Future<void> _asyncInit() async {
     final eventBus = AppEventBus.instance;
     final preferences = PreferencesKey();
-    final cleanupResult = await AppHostApi().cleanupStaleDesktopCore();
+    final hostApi = AppHostApi();
+    final cleanupResult = await hostApi.cleanupStaleDesktopCore();
     _staleDesktopCoreCleanupRequired = cleanupResult == false;
     var savedRunningId = await preferences.readRunningConfigId();
     if (cleanupResult != null) {
@@ -89,6 +103,17 @@ final class VpnService {
       savedRunningId = DBConstants.defaultId;
       await preferences.saveRunningConfigId(savedRunningId);
       await _clearStartSnapshot();
+    } else if (AppPlatform.isWindows) {
+      savedRunningId = DBConstants.defaultId;
+      if (hostApi.windowsPackageAvailable) {
+        try {
+          final request = await StartVpnRequestReader.readFromStartFile();
+          savedRunningId = request.configId ?? DBConstants.defaultId;
+        } catch (_) {
+          // No active packaged session to restore.
+        }
+        await preferences.saveRunningConfigId(savedRunningId);
+      }
     }
     eventBus.updateRunningId(savedRunningId);
 
@@ -99,6 +124,7 @@ final class VpnService {
     _pendingRoutingMode = _runningRoutingMode;
 
     _listenVpnStatus();
+    _watchWindowsStatus();
     if (_staleDesktopCoreCleanupRequired) {
       _showStaleDesktopCoreCleanupFailure();
     }
@@ -109,6 +135,12 @@ final class VpnService {
     _initFuture = null;
     _commands.invalidate();
     _connectivity.stop();
+    _windowsStatusObservationStopped = true;
+    _windowsStatusPoll?.cancel();
+    _windowsStatusPoll = null;
+    final windowsStatusSubscription = _windowsStatusSubscription;
+    _windowsStatusSubscription = null;
+    unawaited(windowsStatusSubscription?.cancel() ?? Future.value());
     final vpnStatusSubscription = _vpnStatusSubscription;
     _vpnStatusSubscription = null;
     unawaited(vpnStatusSubscription?.cancel() ?? Future.value());
@@ -171,6 +203,9 @@ final class VpnService {
     final generation = _commands.currentGeneration;
     final update = _statusTail.then((_) async {
       if (!_commands.isCurrent(generation)) {
+        if (AppPlatform.isWindows) {
+          unawaited(_pollWindowsStatus());
+        }
         return;
       }
       try {
@@ -184,13 +219,20 @@ final class VpnService {
   }
 
   Future<void> _applyVpnStatus(VpnStatus status, int generation) async {
-    if (!_commands.isCurrent(generation)) {
+    final windowsSnapshotToken = AppPlatform.isWindows
+        ? AppHostApi().windowsSnapshotToken
+        : null;
+    if (!_commands.isCurrent(generation) ||
+        (AppPlatform.isWindows &&
+            _lastAppliedWindowsVpnStatus == status &&
+            _lastAppliedWindowsSnapshotToken == windowsSnapshotToken)) {
       return;
     }
     final eventBus = AppEventBus.instance;
     switch (status) {
       case VpnStatus.disconnecting:
         eventBus.updateVpnActionState(VpnActionState.disconnecting);
+        _ensureWindowsStatusPolling();
         break;
       case VpnStatus.disconnected:
         _vpnRunning = false;
@@ -203,11 +245,20 @@ final class VpnService {
         }
         await TrayService().refreshTrayManager();
         _connectivity.stop();
+        if (AppPlatform.isWindows) {
+          await _clearStartSnapshot();
+        }
+        if (!_windowsStatusWatcherFailed) {
+          _windowsStatusPoll?.cancel();
+          _windowsStatusPoll = null;
+        }
         break;
       case VpnStatus.connecting:
         eventBus.updateVpnActionState(VpnActionState.connecting);
+        _ensureWindowsStatusPolling();
         break;
       case VpnStatus.connected:
+        final wasRunning = _vpnRunning;
         _vpnRunning = true;
         _runningMode = _pendingRunMode;
         _runningRoutingMode = _pendingRoutingMode;
@@ -215,9 +266,11 @@ final class VpnService {
         eventBus.updateVpnActionState(VpnActionState.connected);
         final runningId = _runningRoutingMode == CoreRoutingMode.direct
             ? DBConstants.defaultId
-            : _pendingConfigId == DBConstants.defaultId
-            ? _lastConfigId
-            : _pendingConfigId;
+            : _pendingConfigId != DBConstants.defaultId
+            ? _pendingConfigId
+            : AppPlatform.isWindows
+            ? eventBus.state.runningId
+            : _lastConfigId;
         await _updateRunningId(runningId, generation);
         if (!_commands.isCurrent(generation)) {
           return;
@@ -225,8 +278,15 @@ final class VpnService {
         _pendingConfigId = DBConstants.defaultId;
         eventBus.updatePendingConfigId(DBConstants.defaultId);
         await TrayService().refreshTrayManager();
-        unawaited(_startConnectivity());
+        _ensureWindowsStatusPolling();
+        if (!wasRunning) {
+          unawaited(_startConnectivity());
+        }
         break;
+    }
+    if (AppPlatform.isWindows) {
+      _lastAppliedWindowsVpnStatus = status;
+      _lastAppliedWindowsSnapshotToken = windowsSnapshotToken;
     }
   }
 
@@ -235,6 +295,75 @@ final class VpnService {
       await _connectivity.start();
     } catch (error, stackTrace) {
       ygLogger('start VPN connectivity services failed: $error\n$stackTrace');
+    }
+  }
+
+  void _watchWindowsStatus() {
+    if (!AppPlatform.isWindows ||
+        !AppHostApi().windowsPackageAvailable ||
+        _windowsStatusSubscription != null) {
+      return;
+    }
+    _windowsStatusSubscription = watchWindowsVpnInvalidations().listen(
+      (_) => unawaited(_pollWindowsStatus()),
+      onError: _handleWindowsStatusWatcherFailure,
+      onDone: () => _handleWindowsStatusWatcherFailure(
+        StateError('Windows VPN status watcher stopped'),
+        StackTrace.current,
+      ),
+      cancelOnError: true,
+    );
+  }
+
+  void _handleWindowsStatusWatcherFailure(
+    Object error, [
+    StackTrace? stackTrace,
+  ]) {
+    if (_windowsStatusObservationStopped || _windowsStatusWatcherFailed) {
+      return;
+    }
+    _windowsStatusWatcherFailed = true;
+    _windowsStatusSubscription = null;
+    ygLogger(
+      'watch Windows VPN status failed; using polling fallback: '
+      '$error\n${stackTrace ?? StackTrace.current}',
+    );
+    _ensureWindowsStatusPolling();
+  }
+
+  void _ensureWindowsStatusPolling() {
+    if (!AppPlatform.isWindows ||
+        !_windowsStatusWatcherFailed ||
+        _pendingRunMode != CoreRunMode.tun ||
+        _windowsStatusPoll != null) {
+      return;
+    }
+    _windowsStatusPoll = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => unawaited(_pollWindowsStatus()),
+    );
+    unawaited(_pollWindowsStatus());
+  }
+
+  Future<void> _pollWindowsStatus() async {
+    _windowsStatusPollPending = true;
+    if (_windowsStatusPollRunning) {
+      return;
+    }
+    _windowsStatusPollRunning = true;
+    try {
+      while (_windowsStatusPollPending && !_windowsStatusObservationStopped) {
+        _windowsStatusPollPending = false;
+        final result = await AppHostApi().readVpnStatus();
+        if (result.state == NativeVpnCommandState.failed &&
+            !_windowsStatusWatcherFailed &&
+            !_windowsStatusObservationStopped) {
+          await Future.delayed(const Duration(seconds: 1));
+          _windowsStatusPollPending = true;
+        }
+      }
+    } finally {
+      _windowsStatusPollRunning = false;
     }
   }
 
@@ -359,6 +488,15 @@ final class VpnService {
           : await AppDatabase().coreConfigDao.searchRow(configId);
       if (routingMode != CoreRoutingMode.direct && outbound == null) {
         final message = appLocalizationsNoContext().vpnSelectOneConfig;
+        await _handlePreflightFailure(
+          message,
+          hadRunningCore: hadRunningCore,
+          generation: generation,
+        );
+        return _commandFailed(message);
+      }
+      if (AppPlatform.isWindows && !AppHostApi().windowsPackageAvailable) {
+        final message = appLocalizationsNoContext().vpnStartRequestFailed;
         await _handlePreflightFailure(
           message,
           hadRunningCore: hadRunningCore,
@@ -882,6 +1020,7 @@ final class VpnService {
     switch (runtime.mode) {
       case CoreRunMode.tun:
         return _makeVpnRequestAndStart(
+          config?.id ?? DBConstants.defaultId,
           runtime.coreInvokeText,
           runtime.ports,
           runtime.tunSettings,
@@ -903,6 +1042,7 @@ final class VpnService {
   ) async {
     final request = StartVpnRequest(
       null,
+      null,
       port.pingPort,
       port.pingAuth,
       port.metricsPort,
@@ -922,6 +1062,7 @@ final class VpnService {
   }
 
   Future<NativeVpnCommandResult> _makeVpnRequestAndStart(
+    int configId,
     String coreInvokeText,
     XrayPorts port,
     TunSettingsState tunSettingsState,
@@ -929,16 +1070,39 @@ final class VpnService {
   ) async {
     final request = StartVpnRequest(
       tunSettingsState.tunJson,
+      AppPlatform.isWindows ? port.socksPort : null,
       port.pingPort,
       port.pingAuth,
       port.metricsPort,
       coreInvokeText,
+      configId: configId,
     );
     await request.writeToStartFile();
 
     onStartInvoked();
-    final result = await AppHostApi().startVpn();
+    final result = await AppHostApi().startVpn(
+      windowsConfigYaml: AppPlatform.isWindows
+          ? buildWindowsTun2SocksConfig(
+              port.socksPort,
+              enableIPv6: tunSettingsState.enableIPv6,
+            )
+          : null,
+      windowsNetworkSettings: AppPlatform.isWindows
+          ? WindowsVpnNetworkSettings(
+              ipv4Address: tunSettingsState.tunIPv4,
+              ipv6Address: tunSettingsState.tunIPv6,
+              dnsIpv4Address: tunSettingsState.tunDnsIPv4,
+              dnsIpv6Address: tunSettingsState.tunDnsIPv6,
+            )
+          : null,
+    );
     _applyNativeCommandResult(result);
+    if (AppPlatform.isWindows &&
+        result.state == NativeVpnCommandState.success &&
+        AppHostApi().windowsSnapshotToken == null) {
+      await AppHostApi().stopVpn();
+      return _commandFailed(appLocalizationsNoContext().vpnStartRequestFailed);
+    }
     return result;
   }
 

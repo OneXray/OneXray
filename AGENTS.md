@@ -2,7 +2,7 @@
 
 OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux. Use “Multi-node Outbound（多节点出站）” for a runnable configuration source that groups multiple outbound nodes with its DNS and routing policy; avoid “Full Config”, “Multi Outbounds”, and “多出站配置”.
 
-The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use TUN mode; Proxy mode is an in-memory iOS Debug-only tool.
+The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use platform TUN on Android, Apple, and Linux. Packaged Windows builds use VCore's system VPN Provider and Session Host to feed a private loopback SOCKS inbound in OneXrayCore. Proxy mode is an in-memory iOS Debug-only tool.
 
 # Repository Layout
 
@@ -18,8 +18,8 @@ The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw J
 | `macos_se/` | Developer ID / System Extension macOS package project. |
 | `windows/` | Windows Runner, FFI / Core startup code, and packaging resources. |
 | `linux/` | Linux Runner, packaging configuration, and runtime resource installation logic. |
-| `build_scripts/` | App build scripts, platform packaging scripts, and libXray / Xray-core artifact copy logic. |
-| `c/include/` | libXray C headers used for Dart FFI binding generation. |
+| `build_scripts/` | App build scripts, platform packaging scripts, and libXray artifact build/copy logic. |
+| `c/include/` | Native C headers used for Dart FFI binding generation. |
 
 # Dart Architecture
 
@@ -35,9 +35,9 @@ The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw J
 
 After a node is selected on Home, `VpnService` reads the selected node, selected Xray Profile, and TUN Settings. Production builds and non-iOS platforms always resolve the runtime mode to TUN. iOS Debug builds may select Proxy mode for development, and that selection is not persisted.
 
-When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Multi-node Outbound, it overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but its user-defined inbounds are ignored. Runtime inbounds always come from the selected Xray Profile: TUN mode writes `tunIn`, Profile-owned additional SOCKS / HTTP / dokodemo-door inbounds, and `pingIn`; the iOS Debug-only Proxy mode writes only `pingIn`. Additional inbound routing is always user-authored; the runtime does not generate routing rules for dokodemo-door.
+When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Multi-node Outbound, it overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but its user-defined inbounds are ignored. Runtime inbounds always come from the selected Xray Profile: Android, Apple, and Linux write the TUN `tunIn`; Windows replaces it with a loopback SOCKS inbound that retains the `tunIn` tag; both also write Profile-owned additional inbounds and `pingIn`. The iOS Debug-only Proxy mode writes only `pingIn`. Additional inbound routing is always user-authored; the runtime does not generate routing rules for dokodemo-door.
 
-After the final runtime Xray JSON is written, TUN mode enters the platform VPN / TUN startup path. On iOS Debug builds only, Proxy mode starts local Xray core without the platform VPN; only the internal `pingIn` inbound is App-managed.
+After the final runtime Xray JSON is written, Android, Apple, and Linux enter the platform VPN / TUN startup path. Packaged Windows submits root-level `OneXrayCore.exe` and its `run -dns <IP:port> -interface <name> -config <xray.json>` argv through VCore bridge revision 2; the per-session VCore Session Host owns that process in its Job Object for the VPN lifetime. The backend contract supervises process liveness only and does not inspect the SOCKS5 port or readiness. On iOS Debug builds only, Proxy mode starts local Xray core without the platform VPN; only the internal `pingIn` inbound is App-managed.
 
 # Native Bridge
 
@@ -47,7 +47,7 @@ Shared Apple Swift models, logging, and utilities live in `swift/All`. The App b
 
 The Android native bridge and VPN service live under `android/app/src/main/kotlin/net/yuandev/onexray`.
 
-Windows and Linux desktop builds use Dart FFI, platform runners, and the packaged `OneXrayCore` binary to start core. Windows TUN mode requires elevated core startup.
+Windows and Linux desktop builds use Dart FFI, generated bindings, platform runners, and libXray's packaged `OneXrayCore` binary. Its process-wide Go resolver sends bootstrap DNS through the selected physical interface. Windows additionally calls revision-2 `VCoreWindowsVpnInvoke` from `vcore.dll`; this bridge requires MSIX package identity and owns the Windows VPN profile, Session Snapshot, optional session backend, and StartupTask. Linux retains App-owned process management and grants the capabilities required by TUN.
 
 # Generated Files
 

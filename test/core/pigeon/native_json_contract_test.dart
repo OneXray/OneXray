@@ -8,6 +8,8 @@ import 'package:onexray/service/xray/raw/fix.dart';
 void main() {
   test('TUN and start request JSON fields match the native contract', () {
     final tun = TunJson(
+      '192.168.3.1',
+      'fd00::2',
       '8.8.8.8',
       '2001:4860:4860::8888',
       true,
@@ -15,7 +17,7 @@ void main() {
       true,
       true,
       'OneXrayTun',
-      'auto',
+      'Ethernet',
       true,
       false,
       false,
@@ -31,13 +33,18 @@ void main() {
     );
     final request = StartVpnRequest(
       tun,
+      '11999',
       '12000',
       XrayInboundAccount('user', 'pass'),
       '12001',
       '{"apiVersion":2,"method":"runXray"}',
+      configId: 7,
+      snapshotToken: 'vcore-session-v2:${List.filled(64, 'a').join()}',
     );
 
     expect(tun.toJson().keys.toSet(), {
+      'tunIPv4',
+      'tunIPv6',
       'tunDnsIPv4',
       'tunDnsIPv6',
       'enableDot',
@@ -59,10 +66,13 @@ void main() {
     });
     expect(request.toJson().keys.toSet(), {
       'tun',
+      'socksPort',
       'pingPort',
       'pingAuth',
       'metricsPort',
       'coreInvokeText',
+      'configId',
+      'snapshotToken',
     });
   });
 

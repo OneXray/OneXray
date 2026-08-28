@@ -11,6 +11,7 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
       json['tun'] == null
           ? null
           : TunJson.fromJson(json['tun'] as Map<String, dynamic>),
+      json['socksPort'] as String?,
       json['pingPort'] as String?,
       json['pingAuth'] == null
           ? null
@@ -19,15 +20,20 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
             ),
       json['metricsPort'] as String?,
       json['coreInvokeText'] as String?,
+      configId: (json['configId'] as num?)?.toInt(),
+      snapshotToken: json['snapshotToken'] as String?,
     );
 
 Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
     <String, dynamic>{
       'tun': ?instance.tun?.toJson(),
+      'socksPort': ?instance.socksPort,
       'pingPort': ?instance.pingPort,
       'pingAuth': ?instance.pingAuth?.toJson(),
       'metricsPort': ?instance.metricsPort,
       'coreInvokeText': ?instance.coreInvokeText,
+      'configId': ?instance.configId,
+      'snapshotToken': ?instance.snapshotToken,
     };
 
 LibXrayInvokeResponse _$LibXrayInvokeResponseFromJson(

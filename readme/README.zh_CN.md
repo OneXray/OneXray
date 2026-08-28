@@ -39,7 +39,7 @@ OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服�
 
 ## 核心能力
 
-- **跨平台 TUN**：支持 iOS、macOS、Android、Windows 和 Linux。
+- **跨平台运行**：iOS、macOS、Android 和 Linux 使用 TUN，Windows 使用本地 SOCKS5。
 - **灵活配置**：提供简易配置、可复用 Xray 配置、多节点出站和 Raw JSON。
 - **路由控制**：可在 Home 切换规则、全局和直连模式。
 - **导入与管理**：通过二维码、图片、文件或剪贴板导入受支持的分享链接与 HTTPS 订阅。
@@ -73,9 +73,9 @@ onexray://onexray.com/dat/add?type=domain|ip&url=<经过百分号编码的-https
 订阅链接时，App 会生成一对新的本地密钥，首次下载只发送公钥，并在订阅成功
 导入后保存密钥对。
 
-Android、iOS 和已安装的 macOS App 会直接注册该协议。Windows 和 Linux
-请使用 EXE/winget 或 DEB 包；ZIP 包不会自动注册协议。Mac App Store 版本与
-OneXraySE 使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
+Android、iOS、已安装的 macOS App 和 Microsoft Store Windows App 会直接注册该协议。
+Linux 请使用 DEB 包；ZIP 包不会自动注册协议。Mac App Store 版本与 OneXraySE
+使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
 
 ## 下载
 
@@ -85,8 +85,8 @@ OneXraySE 使用相同协议，同时安装时 macOS 可能选择其中任意一
 | macOS（Mac App Store） | macOS 13.0 及以上，Apple silicon 或 Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS（商店外分发） | macOS 13.0 及以上，Apple silicon 或 Intel | Homebrew：`brew install --cask onexrayse`、[Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android | Android 10.0 及以上，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray)、[Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 或 Windows 11 | winget：`winget install --id YuanDevLLC.OneXray -e`、[EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.exe)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
-| Windows ARM64 | Windows 11 | winget：`winget install --id YuanDevLLC.OneXray -e`、[EXE](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.exe)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
+| Windows x86_64 | Windows 10 或 Windows 11 | Microsoft Store |
+| Windows ARM64 | Windows 11 | Microsoft Store |
 | Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -121,12 +121,7 @@ brew uninstall --cask onexrayse
 
 ### Windows
 
-Winget 会根据当前设备架构自动选择 x86_64 或 ARM64 安装包。
-
-```shell
-winget install --id YuanDevLLC.OneXray -e
-winget uninstall --id YuanDevLLC.OneXray -e
-```
+Microsoft Store 会根据当前设备架构选择 x86_64 或 ARM64 包并负责更新。Windows 运行本地 SOCKS5 代理，当前地址显示在 Core 设置中。
 
 ### Android
 
@@ -151,7 +146,7 @@ sudo apt remove onexray
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
-sudo setcap cap_net_admin,cap_net_raw+eip OneXray/bin/OneXrayCore
+sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
 GNOME 用户需要安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) 扩展。Linux arm64 当前会将 CJK 界面语言回退为英文。

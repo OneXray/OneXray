@@ -3,70 +3,68 @@ import platform
 import shutil
 import subprocess
 from pathlib import Path
-
-import requests
+from urllib.request import urlopen
 
 
 def is_linux() -> bool:
-    name = platform.system().lower()
-    return name == "linux"
+    return platform.system().lower() == "linux"
 
 
 def is_macos() -> bool:
-    name = platform.system().lower()
-    return name == "darwin"
+    return platform.system().lower() == "darwin"
 
 
 def is_windows() -> bool:
-    name = platform.system().lower()
-    return name == "windows"
+    return platform.system().lower() == "windows"
 
 
 def is_amd64() -> bool:
-    machine = platform.machine().lower()
-    return machine == "x86_64" or machine == "amd64"
+    return platform.machine().lower() in ("x86_64", "amd64")
 
 
 def is_arm64() -> bool:
-    machine = platform.machine().lower()
-    return machine == "aarch64" or machine == "arm64"
+    return platform.machine().lower() in ("aarch64", "arm64")
 
 
-def get_env() -> dict[str, str]:
-    my_env = os.environ.copy()
-    env_path = my_env["PATH"]
-    path_entries = []
+def get_env(overrides: dict[str, str] | None = None) -> dict[str, str]:
+    env = os.environ.copy()
     home_dir = str(Path.home())
-    flutter_root = my_env.get("FLUTTER_ROOT")
-    if flutter_root:
+    path_entries = []
+    if flutter_root := env.get("FLUTTER_ROOT"):
         path_entries.append(os.path.join(flutter_root, "bin"))
-    flutter_home = os.path.join(home_dir, "lib", "flutter", "bin")
-    go_home = os.path.join(home_dir, "go", "bin")
-    path_entries.extend([flutter_home, go_home])
+    path_entries.extend(
+        [
+            os.path.join(home_dir, "lib", "flutter", "bin"),
+            os.path.join(home_dir, "go", "bin"),
+        ]
+    )
     if is_macos():
         path_entries.insert(0, "/opt/homebrew/bin")
     if is_linux():
-        pub_cache = os.path.join(home_dir, ".pub-cache", "bin")
-        go_lib = os.path.join(home_dir, "lib", "go", "bin")
-        path_entries.extend([pub_cache, go_lib])
+        path_entries.extend(
+            [
+                os.path.join(home_dir, ".pub-cache", "bin"),
+                os.path.join(home_dir, "lib", "go", "bin"),
+            ]
+        )
     if is_windows():
-        pub_cache_root = my_env.get(
+        pub_cache_root = env.get(
             "PUB_CACHE",
             os.path.join(
-                my_env.get("LOCALAPPDATA", os.path.join(home_dir, "AppData", "Local")),
+                env.get("LOCALAPPDATA", os.path.join(home_dir, "AppData", "Local")),
                 "Pub",
                 "Cache",
             ),
         )
         path_entries.append(os.path.join(pub_cache_root, "bin"))
-    env_path = os.pathsep.join([*path_entries, env_path])
-    my_env["PATH"] = env_path
-    return my_env
+    env["PATH"] = os.pathsep.join([*path_entries, env.get("PATH", "")])
+    if overrides:
+        env.update(overrides)
+    return env
 
 
 def check_and_create_dir(work_dir: str):
-    if not os.path.exists(work_dir):
-        os.makedirs(work_dir)
+    os.makedirs(work_dir, exist_ok=True)
 
 
 def check_and_delete_dir(work_dir: str):
@@ -74,44 +72,27 @@ def check_and_delete_dir(work_dir: str):
         shutil.rmtree(work_dir)
 
 
-def check_and_delete_file(file_path: str):
-    if os.path.exists(file_path):
-        os.remove(file_path)
-
-
-def python_command() -> str:
-    if is_windows():
-        return "python"
-    else:
-        return "python3"
-
-
 def flutter_command() -> str:
-    if is_windows():
-        return "flutter.bat"
-    else:
-        return "flutter"
+    return "flutter.bat" if is_windows() else "flutter"
 
 
 def dart_command() -> str:
-    if is_windows():
-        return "dart.bat"
-    else:
-        return "dart"
+    return "dart.bat" if is_windows() else "dart"
 
 
 def fastforge_command() -> str:
-    if is_windows():
-        return "fastforge.bat"
-    else:
-        return "fastforge"
+    return "fastforge.bat" if is_windows() else "fastforge"
 
 
-def run_command(cmd: list[str]):
-    print(cmd)
-    p = subprocess.run(cmd, env=get_env())
-    if p.returncode != 0:
-        raise Exception(f"run {cmd} failed")
+def run_command(
+    cmd: list[str],
+    *,
+    cwd: str | None = None,
+    env: dict[str, str] | None = None,
+    redact: bool = False,
+):
+    print("[redacted command]" if redact else cmd, flush=True)
+    subprocess.run(cmd, cwd=cwd, env=get_env(env), check=True)
 
 
 def cp_dir_files(src_dir: str, dst_dir: str):
@@ -124,7 +105,5 @@ def cp_dir_files(src_dir: str, dst_dir: str):
 
 
 def download_file(file_url: str, save_path: str):
-    r = requests.get(file_url, stream=True)
-    with open(save_path, "wb") as fd:
-        for chunk in r.iter_content(chunk_size=128):
-            fd.write(chunk)
+    with urlopen(file_url, timeout=60) as response, open(save_path, "wb") as output:
+        shutil.copyfileobj(response, output)

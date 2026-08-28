@@ -4,42 +4,43 @@
 
 ## English
 
-The scripts in this directory build libXray against the local Xray-core
-checkout, generate the Flutter FFI bindings, build the OneXray app, and package
-the platform-specific outputs.
+The scripts in this directory run the standard libXray build, generate the
+Flutter FFI bindings, build the OneXray app, and package the platform-specific
+outputs. libXray resolves Xray-core from its Go module dependencies.
 
 ### Workspace layout
 
-The three repositories must be sibling directories. Build artifacts are written
-to the sibling `output` directory.
+OneXray and libXray must be sibling directories. Windows builds also require a VCore checkout; set `VCORE_DIR` when it is not at `workspace/VCore`. Build artifacts are written to the sibling `output` directory.
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
-├── Xray-core/
+├── VCore/         # Windows only
 └── output/        # created automatically
 ```
 
-The scripts use the currently checked-out libXray and Xray-core revisions. They
-do not clone or pin those repositories for a local build.
+The scripts use the currently checked-out libXray and VCore revisions. The
+Xray-core version is pinned by libXray's Go module; a sibling Xray-core checkout
+is not used.
 
 ### Prerequisites
 
-- Python 3.12 or newer with `pyyaml`, `requests`, and `typer`.
-- Flutter, Dart, and Go available on `PATH`.
+- Python 3.12 or newer and `uv`. The scripts use only the Python standard library.
+- Flutter, Dart, and Go available on `PATH`; Windows also requires Rust and the Windows SDK `makeappx`/`signtool` tools.
 - A toolchain for the target operating system. Apple targets require macOS,
   Xcode, CocoaPods, and Fastlane; Android requires a JDK, Android SDK/NDK, and
-  Fastlane; Windows and Linux packaging requires Fastforge.
+  Fastlane; Linux packaging requires Fastforge.
 - Signing credentials and platform configuration required by the selected
   Fastlane lane.
 - A positive integer in the `BUILD_NUMBER` environment variable. It is added to
   the configured `build_number.base` (currently `400`).
 
-Install the shared Python and desktop packaging dependencies when needed:
+Create the Python environment with `uv`. Fastforge is only needed for Linux
+packaging:
 
 ```bash
-python3 -m pip install pyyaml requests typer
+uv sync --project build_scripts
 dart pub global activate fastforge
 ```
 
@@ -54,18 +55,18 @@ Run the entry point from the OneXray repository root:
 
 ```bash
 export BUILD_NUMBER=1
-python3 build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
 Windows PowerShell:
 
 ```powershell
 $env:BUILD_NUMBER = "1"
-python build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
-Use `python3 build_scripts/main.py --help` (or `python` on Windows) to display
-the CLI syntax.
+Use `uv run --project build_scripts python build_scripts/main.py --help` to
+display the CLI syntax.
 
 ### Supported systems
 
@@ -75,12 +76,10 @@ the CLI syntax.
 | `macos` | macOS | Mac App Store build and upload. |
 | `macos_se` | macOS | Signed and notarized Developer ID universal ZIP. |
 | `android` | Android toolchain | Play internal AAB upload and universal APK. |
-| `windows` | Windows x64 or ARM64 | ZIP and EXE for selected architecture. |
+| `windows` | Windows x64 or ARM64 | Microsoft Store MSIX for the selected architecture. |
 | `linux` | Linux x64 or ARM64 | ZIP and DEB for the host architecture. |
 
-For Windows, the architecture is detected from the host. CI can set
-`ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching runner and CGo
-toolchain are already configured.
+For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching Flutter, Go, Rust, and MSVC toolchains are configured. See the [Windows build documentation](../docs/windows-build.md#本地签名包) for the local signing requirements.
 
 ### Important behavior
 
@@ -99,39 +98,40 @@ toolchain are already configured.
 
 ## 简体中文
 
-本目录中的脚本会使用本地 Xray-core 构建 libXray、生成 Flutter FFI
-绑定、构建 OneXray App，并生成各平台对应的安装包。
+本目录中的脚本会执行 libXray 标准构建、生成 Flutter FFI 绑定、构建
+OneXray App，并生成各平台对应的安装包。Xray-core 由 libXray 的 Go module
+依赖解析。
 
 ### 工作区结构
 
-三个仓库必须位于同一级目录。构建产物会写入同级的 `output` 目录。
+OneXray 和 libXray 必须位于同一级目录。Windows 构建还需要 VCore；不在 `workspace/VCore` 时通过 `VCORE_DIR` 指定。构建产物写入同级 `output` 目录。
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
-├── Xray-core/
+├── VCore/         # 仅 Windows
 └── output/        # 自动创建
 ```
 
-本地构建会直接使用 libXray 和 Xray-core 当前检出的版本，不会自动克隆或锁定
-这两个仓库的版本。
+本地构建直接使用 libXray 和 VCore 当前检出的版本。Xray-core 版本由
+libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
 
 ### 前置条件
 
-- Python 3.12 或更高版本，并安装 `pyyaml`、`requests` 和 `typer`。
-- `PATH` 中可以找到 Flutter、Dart 和 Go。
+- Python 3.12 或更高版本，并安装 `uv`。脚本仅使用 Python 标准库。
+- `PATH` 中可以找到 Flutter、Dart 和 Go；Windows 还需要 Rust 以及 Windows SDK 的 `makeappx`、`signtool`。
 - 安装目标系统所需的工具链。Apple 平台需要 macOS、Xcode、CocoaPods 和
-  Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Windows 和
-  Linux 打包需要 Fastforge。
+  Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Linux 打包需要
+  Fastforge。
 - 准备所选 Fastlane lane 需要的签名证书、凭据和平台配置。
 - 设置正整数环境变量 `BUILD_NUMBER`。脚本会将它加到配置中的
   `build_number.base`（当前为 `400`）上。
 
-按需安装通用 Python 依赖和桌面打包工具：
+使用 `uv` 创建 Python 环境。只有 Linux 打包需要 Fastforge：
 
 ```bash
-python3 -m pip install pyyaml requests typer
+uv sync --project build_scripts
 dart pub global activate fastforge
 ```
 
@@ -145,18 +145,18 @@ dart pub global activate fastforge
 
 ```bash
 export BUILD_NUMBER=1
-python3 build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
 Windows PowerShell：
 
 ```powershell
 $env:BUILD_NUMBER = "1"
-python build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
-可以运行 `python3 build_scripts/main.py --help` 查看命令格式；Windows 使用
-`python`。
+可以运行 `uv run --project build_scripts python build_scripts/main.py --help`
+查看命令格式。
 
 ### 支持的系统
 
@@ -166,11 +166,10 @@ python build_scripts/main.py OneXray <system>
 | `macos` | macOS | 构建并上传 Mac App Store 版本。 |
 | `macos_se` | macOS | 签名、公证并生成 Developer ID 通用 ZIP。 |
 | `android` | Android 工具链 | 上传 Play internal AAB 并获取 universal APK。 |
-| `windows` | Windows x64 或 ARM64 | 为所选架构生成 ZIP 和 EXE。 |
+| `windows` | Windows x64 或 ARM64 | 为所选架构生成 Microsoft Store MSIX。 |
 | `linux` | Linux x64 或 ARM64 | 为主机架构生成 ZIP 和 DEB。 |
 
-Windows 默认根据主机识别架构。CI 可以在已经配置好对应 runner 和 CGo
-工具链的前提下，将 `ONEXRAY_WINDOWS_ARCH` 设置为 `x64` 或 `arm64`。
+Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 和 MSVC 工具链就绪时设置 `ONEXRAY_WINDOWS_ARCH`。本地签名要求以 [Windows 构建文档](../docs/windows-build.md#本地签名包) 为准。
 
 ### 重要行为
 
@@ -187,42 +186,43 @@ Windows 默认根据主机识别架构。CI 可以在已经配置好对应 runne
 
 ## Русский
 
-Скрипты из этого каталога собирают libXray с использованием локальной копии
-Xray-core, генерируют FFI-привязки Flutter, собирают приложение OneXray и
-создают пакеты для выбранной платформы.
+Скрипты из этого каталога запускают стандартную сборку libXray, генерируют
+FFI-привязки Flutter, собирают приложение OneXray и создают пакеты для выбранной
+платформы. Версия Xray-core определяется зависимостями Go-модуля libXray.
 
 ### Структура рабочего каталога
 
-Три репозитория должны находиться в соседних каталогах. Результаты сборки
-записываются в соседний каталог `output`.
+OneXray и libXray должны находиться в соседних каталогах. Для Windows также нужен VCore; если он находится не в `workspace/VCore`, задайте `VCORE_DIR`. Результаты записываются в соседний каталог `output`.
 
 ```text
 workspace/
 ├── OneXray/
 ├── libXray/
-├── Xray-core/
+├── VCore/         # только Windows
 └── output/        # создаётся автоматически
 ```
 
-При локальной сборке используются текущие версии libXray и Xray-core. Скрипты
-не клонируют эти репозитории и не закрепляют их ревизии.
+При локальной сборке используются текущие версии libXray и VCore. Версия
+Xray-core закреплена Go-модулем libXray; соседний checkout Xray-core не
+используется.
 
 ### Требования
 
-- Python 3.12 или новее с пакетами `pyyaml`, `requests` и `typer`.
-- Flutter, Dart и Go, доступные через `PATH`.
+- Python 3.12 или новее и `uv`. Скрипты используют только стандартную библиотеку Python.
+- Flutter, Dart и Go через `PATH`; для Windows также нужны Rust и инструменты Windows SDK `makeappx`/`signtool`.
 - Инструменты для целевой системы. Для Apple требуются macOS, Xcode, CocoaPods
   и Fastlane; для Android — JDK, Android SDK/NDK и Fastlane; для упаковки под
-  Windows и Linux требуется Fastforge.
+  Linux требуется Fastforge.
 - Сертификаты, учётные данные и настройки платформы, необходимые выбранному
   lane Fastlane.
 - Положительное целое число в переменной окружения `BUILD_NUMBER`. Оно
   прибавляется к параметру `build_number.base` (сейчас `400`).
 
-При необходимости установите общие зависимости Python и инструмент упаковки:
+Создайте среду Python с помощью `uv`. Fastforge требуется только для упаковки
+Linux:
 
 ```bash
-python3 -m pip install pyyaml requests typer
+uv sync --project build_scripts
 dart pub global activate fastforge
 ```
 
@@ -237,18 +237,18 @@ dart pub global activate fastforge
 
 ```bash
 export BUILD_NUMBER=1
-python3 build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
 Windows PowerShell:
 
 ```powershell
 $env:BUILD_NUMBER = "1"
-python build_scripts/main.py OneXray <system>
+uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
-Команда `python3 build_scripts/main.py --help` выводит синтаксис CLI; в Windows
-используйте `python`.
+Команда `uv run --project build_scripts python build_scripts/main.py --help`
+выводит синтаксис CLI.
 
 ### Поддерживаемые системы
 
@@ -258,12 +258,10 @@ python build_scripts/main.py OneXray <system>
 | `macos` | macOS | Сборка и загрузка версии Mac App Store. |
 | `macos_se` | macOS | Подписанный и нотариализированный универсальный ZIP. |
 | `android` | Android toolchain | Загрузка AAB в Play internal; universal APK. |
-| `windows` | Windows x64 или ARM64 | ZIP и EXE для выбранной архитектуры. |
+| `windows` | Windows x64 или ARM64 | MSIX для Microsoft Store выбранной архитектуры. |
 | `linux` | Linux x64 или ARM64 | ZIP и DEB для архитектуры хоста. |
 
-В Windows архитектура по умолчанию определяется по системе. В CI переменную
-`ONEXRAY_WINDOWS_ARCH` можно установить в `x64` или `arm64`, если уже настроены
-соответствующий runner и CGo toolchain.
+В Windows архитектура определяется по системе. CI может задать `ONEXRAY_WINDOWS_ARCH`, когда настроены Flutter, Go, Rust и MSVC. Требования к локальной подписи см. в [документации по сборке Windows](../docs/windows-build.md#本地签名包).
 
 ### Важные особенности
 

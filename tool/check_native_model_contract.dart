@@ -12,6 +12,8 @@ const _contracts = [
   _Contract(
     'TunJson',
     {
+      'tunIPv4',
+      'tunIPv6',
       'tunDnsIPv4',
       'tunDnsIPv6',
       'enableDot',
@@ -32,6 +34,8 @@ const _contracts = [
       'disallowAppList',
     },
     {
+      'tunIPv4',
+      'tunIPv6',
       'tunDnsIPv4',
       'tunDnsIPv6',
       'enableDot',
@@ -54,8 +58,26 @@ const _contracts = [
   ),
   _Contract(
     'StartVpnRequest',
-    {'tun', 'pingPort', 'pingAuth', 'metricsPort', 'coreInvokeText'},
-    {'tun', 'pingPort', 'pingAuth', 'metricsPort', 'coreInvokeText'},
+    {
+      'tun',
+      'socksPort',
+      'pingPort',
+      'pingAuth',
+      'metricsPort',
+      'coreInvokeText',
+      'configId',
+      'snapshotToken',
+    },
+    {
+      'tun',
+      'socksPort',
+      'pingPort',
+      'pingAuth',
+      'metricsPort',
+      'coreInvokeText',
+      'configId',
+      'snapshotToken',
+    },
   ),
   _Contract(
     'XrayEnv',

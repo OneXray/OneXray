@@ -88,7 +88,9 @@ jobs:
           fi
 
           find artifacts -type f \
-            ! -path '*/release-metadata/*' | while IFS= read -r file; do
+            ! -path '*/release-metadata/*' \
+            ! -path '*/windows-store/*' \
+            ! -path '*/windows-store-*/*' | while IFS= read -r file; do
             asset="$(basename "$file")"
             echo "Deleting existing asset if present: $asset"
             gh release delete-asset "$RELEASE_TAG" "$asset" \
@@ -106,8 +108,6 @@ jobs:
             artifacts/ios/**/*
             artifacts/macos_se/**/*
             artifacts/android-universal/**/*
-            artifacts/windows-x64/**/*
-            artifacts/windows-arm64/**/*
             artifacts/linux-x64/**/*
             artifacts/linux-arm64/**/*
           fail_on_unmatched_files: false

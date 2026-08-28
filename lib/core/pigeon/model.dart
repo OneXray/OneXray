@@ -8,18 +8,24 @@ part 'model.g.dart';
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class StartVpnRequest {
   TunJson? tun;
+  String? socksPort;
   String? pingPort;
   XrayInboundAccount? pingAuth;
   String? metricsPort;
   String? coreInvokeText;
+  int? configId;
+  String? snapshotToken;
 
   StartVpnRequest(
     this.tun,
+    this.socksPort,
     this.pingPort,
     this.pingAuth,
     this.metricsPort,
-    this.coreInvokeText,
-  );
+    this.coreInvokeText, {
+    this.configId,
+    this.snapshotToken,
+  });
 
   factory StartVpnRequest.fromJson(Map<String, dynamic> json) =>
       _$StartVpnRequestFromJson(json);

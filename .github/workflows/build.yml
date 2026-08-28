@@ -33,13 +33,13 @@
 #     ANDROID_PLAY_SERVICE_JSON_BASE64  base64 of fastlane service account JSON
 #
 # Layout:
-#   build_scripts/app/builder.py#build_core expects XTLS/libXray and
-#   XTLS/Xray-core to live as siblings of this repo. Every job therefore checks
-#   out this repo to `OneXray/`, libXray to `libXray/`, and Xray-core to
-#   `Xray-core/` at the workspace root. libXray is built with local Xray-core,
-#   and Windows/Linux app packages compile OneXrayCore directly from that same
-#   sibling Xray-core checkout. fastforge/fastlane/flutter all produce their
-#   outputs under `<workspace>/output`.
+#   build_scripts/app/builder.py#build_core expects XTLS/libXray as a sibling
+#   of this repo. Every platform build job checks out this repo to `OneXray/`
+#   and libXray to `libXray/` at the workspace root. Windows also checks out
+#   VCore to `VCore/`.
+#   The standard libXray build provides the native library and the Windows/Linux
+#   OneXrayCore binary; Windows also builds architecture-matched VCore hosts.
+#   Outputs remain under `<workspace>/output`.
 
 name: Build
 run-name: Build ${{ inputs.target || 'all' }} · ${{ github.ref_name }}
@@ -70,8 +70,8 @@ concurrency:
 env:
   NDK_VERSION: r29
   LIBXRAY_REF: main
-  XRAY_CORE_REPOSITORY: XTLS/Xray-core
-  XRAY_CORE_REF: v26.7.28
+  VCORE_REPOSITORY: ${{ github.repository_owner }}/VCore
+  VCORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -90,7 +90,7 @@ jobs:
           echo "${GITHUB_REF_NAME}" > release-metadata/ref-name.txt
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
           echo "${LIBXRAY_REF}" > release-metadata/libxray-sha.txt
-          echo "${XRAY_CORE_REF}" > release-metadata/xray-core-sha.txt
+          echo "${VCORE_REF}" > release-metadata/vcore-sha.txt
           echo "${{ inputs.target || 'all' }}" > release-metadata/target.txt
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             echo "${GITHUB_REF_NAME}" > release-metadata/tag.txt
@@ -124,12 +124,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -145,11 +139,10 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore App Store Connect API key
         env:
@@ -171,7 +164,7 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-        run: python3 build_scripts/main.py OneXray ios
+        run: uv run --project build_scripts python build_scripts/main.py OneXray ios
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -201,12 +194,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -222,11 +209,10 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore App Store Connect API key
         env:
@@ -258,7 +244,7 @@ jobs:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
           FASTLANE_MAS_INSTALLER_CERT: ${{ secrets.FASTLANE_MAS_INSTALLER_CERT }}
-        run: python3 build_scripts/main.py OneXray macos
+        run: uv run --project build_scripts python build_scripts/main.py OneXray macos
 
   # =================================================================
   # macOS SE (Developer ID) — universal binary, Developer ID signed
@@ -282,12 +268,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -303,11 +283,10 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore App Store Connect API key
         env:
@@ -329,7 +308,7 @@ jobs:
         env:
           FASTLANE_ASC_KEY_ID: ${{ secrets.FASTLANE_ASC_KEY_ID }}
           FASTLANE_ASC_ISSUER_ID: ${{ secrets.FASTLANE_ASC_ISSUER_ID }}
-        run: python3 build_scripts/main.py OneXray macos_se
+        run: uv run --project build_scripts python build_scripts/main.py OneXray macos_se
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -359,12 +338,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -380,6 +353,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
 
@@ -390,9 +365,6 @@ jobs:
         with:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: true
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
 
       - name: Restore Play Store service account
         env:
@@ -419,7 +391,7 @@ jobs:
         run: sudo gem install fastlane --no-document
 
       - name: Build & upload
-        run: python3 build_scripts/main.py OneXray android
+        run: uv run --project build_scripts python build_scripts/main.py OneXray android
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -429,10 +401,10 @@ jobs:
           if-no-files-found: error
 
   # =================================================================
-  # Windows x64 and arm64 — fastforge .zip + .exe
+  # Windows x64 and arm64 — Microsoft Store .msix only
   #   x64 uses Windows Server 2025 with Visual Studio 2026; arm64 uses
-  #   GitHub's native Windows 11 arm64 runner so Flutter, libXray,
-  #   Xray-core, and Wintun all match the target architecture.
+  #   GitHub's native Windows 11 arm64 runner so Flutter, libXray, and VCore
+  #   all match the target architecture.
   # =================================================================
   windows:
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'windows'
@@ -442,10 +414,12 @@ jobs:
         include:
           - arch: x64
             goarch: amd64
+            rust_target: x86_64-pc-windows-msvc
             package_suffix: windows-amd64
             runner: windows-2025
           - arch: arm64
             goarch: arm64
+            rust_target: aarch64-pc-windows-msvc
             package_suffix: windows-arm64
             runner: windows-11-arm
     runs-on: ${{ matrix.runner }}
@@ -470,30 +444,32 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
+          repository: ${{ env.VCORE_REPOSITORY }}
+          ref: ${{ env.VCORE_REF }}
+          path: VCore
 
       - uses: actions/setup-go@v7
         with:
           go-version: stable
           check-latest: true
 
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: VCore
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           check-latest: true
 
+      - uses: astral-sh/setup-uv@v7
+
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
-
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
-
-      - name: Install fastforge
-        run: |
-          dart pub global activate fastforge
-          echo "$LOCALAPPDATA/Pub/Cache/bin" >> "$GITHUB_PATH"
 
       - name: Install LLVM-MinGW for Windows ARM64
         if: matrix.arch == 'arm64'
@@ -549,18 +525,16 @@ jobs:
           }
 
       - name: Build
-        run: python build_scripts/main.py OneXray windows
+        run: uv run --project build_scripts python build_scripts/main.py OneXray windows
 
       - name: Verify core CLI
         run: ./windows/app/OneXrayCore.exe -h
 
-      - name: Upload artifact
+      - name: Upload Microsoft Store artifact
         uses: actions/upload-artifact@v7
         with:
-          name: windows-${{ matrix.arch }}
-          path: |
-            output/OneXray-${{ matrix.package_suffix }}.zip
-            output/OneXray-${{ matrix.package_suffix }}.exe
+          name: windows-store-${{ matrix.arch }}
+          path: output/OneXray-${{ matrix.package_suffix }}.msix
           if-no-files-found: error
 
   # =================================================================
@@ -598,12 +572,6 @@ jobs:
           ref: ${{ env.LIBXRAY_REF }}
           path: libXray
 
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.XRAY_CORE_REPOSITORY }}
-          ref: ${{ env.XRAY_CORE_REF }}
-          path: Xray-core
-
       - uses: actions/setup-go@v7
         with:
           go-version: stable
@@ -613,6 +581,8 @@ jobs:
         with:
           python-version: "3.x"
           check-latest: true
+
+      - uses: astral-sh/setup-uv@v7
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -626,16 +596,13 @@ jobs:
             libayatana-appindicator3-dev \
             file lintian
 
-      - name: Install Python build deps
-        run: python -m pip install --upgrade pip pyyaml requests typer
-
       - name: Install fastforge
         run: |
           dart pub global activate fastforge
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
       - name: Build
-        run: python3 build_scripts/main.py OneXray linux
+        run: uv run --project build_scripts python build_scripts/main.py OneXray linux
 
       - name: Verify Debian package
         run: |
@@ -644,7 +611,7 @@ jobs:
           test -n "$deb_file"
           test "$(dpkg-deb --field "$deb_file" Package)" = "onexray"
           dpkg-deb --contents "$deb_file" > "$contents_file"
-          grep -q '/opt/OneXray/bin/OneXrayCore$' "$contents_file"
+          grep -q '/opt/OneXray/OneXrayCore$' "$contents_file"
           dpkg-deb --info "$deb_file"
           lintian "$deb_file" || {
             lintian_status=$?
