@@ -91,3 +91,17 @@ Choose validation commands based on the change scope. Changes touching Pigeon, J
 4. App bar visual styling must be defined by `AppTheme.appBarTheme`. Page-level `AppBar` instances should only declare semantic content such as `title`, `leading`, `actions`, and `bottom`, unless a behavior cannot be expressed by the shared theme.
 5. Flutter UI icons must use `LucideIcons`. Do not introduce Material `Icons` or `CupertinoIcons` constants.
 6. UI typography must use `ThemeData.textTheme` or semantic styles from `AppTypography`. Page and view files must not define numeric font sizes, font families, letter spacing, or line heights directly. Code, logs, metrics, and compact labels must use their corresponding `AppTypography` styles.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues for `OneXray/OneXray`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the five canonical triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repo. See `docs/agents/domain.md`.
