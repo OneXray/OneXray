@@ -5,6 +5,16 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 enum DataListRowTone { normal, selected, running }
 
+/// How the leading slot of a [DataListRow] is presented.
+///
+/// [symbol] is the default and renders a monochrome glyph on a tinted tile.
+/// [image] keeps the same footprint but drops the tile so full-color artwork,
+/// such as an Android launcher icon, is shown as-is.
+enum DataListRowLeadingStyle { symbol, image }
+
+const _leadingSize = 31.0;
+const _leadingSpacing = 11.0;
+
 class ListSearchField extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
@@ -187,6 +197,7 @@ class DataListRow extends StatelessWidget {
   final String? subtitle;
   final Widget? subtitleWidget;
   final Widget? leading;
+  final DataListRowLeadingStyle leadingStyle;
   final List<Widget> tags;
   final Widget? meta;
   final Widget? trailing;
@@ -206,6 +217,7 @@ class DataListRow extends StatelessWidget {
     this.subtitle,
     this.subtitleWidget,
     this.leading,
+    this.leadingStyle = DataListRowLeadingStyle.symbol,
     this.tags = const [],
     this.meta,
     this.trailing,
@@ -232,20 +244,8 @@ class DataListRow extends StatelessWidget {
         child: Row(
           children: [
             if (leading != null) ...[
-              Container(
-                width: 31,
-                height: 31,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: ColorManager.tagBackground(context),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: IconTheme.merge(
-                  data: _iconTheme(context),
-                  child: leading!,
-                ),
-              ),
-              const SizedBox(width: 11),
+              _leading(context),
+              const SizedBox(width: _leadingSpacing),
             ],
             Expanded(child: _mainContent(context)),
             if (trailing != null) ...[
@@ -290,6 +290,21 @@ class DataListRow extends StatelessWidget {
                 ),
         ],
       ),
+    );
+  }
+
+  Widget _leading(BuildContext context) {
+    return Container(
+      width: _leadingSize,
+      height: _leadingSize,
+      alignment: Alignment.center,
+      decoration: leadingStyle == DataListRowLeadingStyle.symbol
+          ? BoxDecoration(
+              color: ColorManager.tagBackground(context),
+              borderRadius: BorderRadius.circular(6),
+            )
+          : null,
+      child: IconTheme.merge(data: _iconTheme(context), child: leading!),
     );
   }
 

@@ -97,6 +97,10 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         completion(.success([]))
     }
 
+    func getAppIcon(packageName: String, completion: @escaping (Result<FlutterStandardTypedData?, any Error>) -> Void) {
+        completion(.success(nil))
+    }
+
     /// macOS
     func useSystemExtension(completion: @escaping (Result<Bool, any Error>) -> Void) {
         completion(.success(Constants.useSystemExtension))

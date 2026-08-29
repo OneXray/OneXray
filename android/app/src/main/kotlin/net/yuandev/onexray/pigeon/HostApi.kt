@@ -3,6 +3,8 @@ package net.yuandev.onexray.pigeon
 import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.VpnService
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import libXray.LibXray
 import net.yuandev.onexray.vpn.VpnController
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.seconds
 
@@ -191,6 +194,12 @@ class AppHostApi(
         }
     }
 
+    override fun getAppIcon(packageName: String, callback: (Result<ByteArray?>) -> Unit) {
+        scope.launch {
+            callback(Result.success(loadAppIconBytes(packageName)))
+        }
+    }
+
     private fun checkInstalledAppPermission(callback: (Boolean) -> Unit) {
         // android 11, level 30
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -204,6 +213,28 @@ class AppHostApi(
                 }
         } else {
             callback(true)
+        }
+    }
+
+    private fun loadAppIconBytes(packageName: String): ByteArray? {
+        return try {
+            val drawable = context.packageManager.getApplicationIcon(packageName)
+            val bitmap = Bitmap.createBitmap(ICON_SIZE_PX, ICON_SIZE_PX, Bitmap.Config.ARGB_8888)
+            try {
+                drawable.setBounds(0, 0, ICON_SIZE_PX, ICON_SIZE_PX)
+                drawable.draw(Canvas(bitmap))
+                val stream = ByteArrayOutputStream()
+                if (bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                    stream.toByteArray()
+                } else {
+                    null
+                }
+            } finally {
+                bitmap.recycle()
+            }
+        } catch (e: Exception) {
+            XLog.d("AppHostApi: getAppIcon failed for $packageName: $e")
+            null
         }
     }
 
@@ -292,4 +323,9 @@ class AppHostApi(
         permission,
         null,
     )
+
+    private companion object {
+        // The per-app list renders icons in a 31dp slot; 96px covers 3x density.
+        const val ICON_SIZE_PX = 96
+    }
 }

@@ -602,6 +602,25 @@ class BridgeHostApi {
     return (pigeonVar_replyValue! as List<Object?>).cast<AndroidAppInfo>();
   }
 
+  Future<Uint8List?> getAppIcon(String packageName) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.getAppIcon$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[packageName]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as Uint8List?;
+  }
+
   Future<bool> useSystemExtension() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.useSystemExtension$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(

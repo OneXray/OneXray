@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/tun/installed_app/controller.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
+import 'package:onexray/pages/widget/app_icon.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -90,8 +91,11 @@ class InstalledAppPage extends StatelessWidget {
                 final app = state.apps[index];
                 final selected = state.selections.contains(app.packageName);
                 return DataListRow(
+                  key: ValueKey(app.packageName),
                   title: app.name,
                   subtitle: app.packageName,
+                  leading: AppIconView(packageName: app.packageName),
+                  leadingStyle: DataListRowLeadingStyle.image,
                   onTap: () =>
                       controller.updateSelections(!selected, app.packageName),
                   trailing: Checkbox(

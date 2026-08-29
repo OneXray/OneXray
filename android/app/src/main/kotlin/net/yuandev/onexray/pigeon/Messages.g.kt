@@ -558,6 +558,7 @@ interface BridgeHostApi {
   fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
   fun requestPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
   fun getInstalledApps(callback: (Result<List<AndroidAppInfo>>) -> Unit)
+  fun getAppIcon(packageName: String, callback: (Result<ByteArray?>) -> Unit)
   fun useSystemExtension(callback: (Result<Boolean>) -> Unit)
   fun queryLaunchAtLogin(callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
   fun setLaunchAtLogin(enabled: Boolean, callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
@@ -707,6 +708,26 @@ interface BridgeHostApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.getInstalledApps{ result: Result<List<AndroidAppInfo>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.getAppIcon$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val packageNameArg = args[0] as String
+            api.getAppIcon(packageNameArg) { result: Result<ByteArray?> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

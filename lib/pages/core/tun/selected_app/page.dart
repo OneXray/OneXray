@@ -4,6 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/tun/selected_app/controller.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/widget/app_icon.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -96,8 +97,11 @@ class SelectedAppPage extends StatelessWidget {
               itemBuilder: (context, index) {
                 final app = state.apps[index];
                 return DataListRow(
+                  key: ValueKey(app.packageName),
                   title: app.name,
                   subtitle: app.packageName,
+                  leading: AppIconView(packageName: app.packageName),
+                  leadingStyle: DataListRowLeadingStyle.image,
                   trailing: IconButton(
                     tooltip: AppLocalizations.of(context)!.menuDelete,
                     onPressed: () => controller.removeApp(app),

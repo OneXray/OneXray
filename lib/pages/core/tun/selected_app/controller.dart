@@ -6,6 +6,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/service/app_icon/service.dart';
 
 class SelectedAppPageState {
   final List<AndroidAppInfo> apps;
@@ -27,6 +28,13 @@ class SelectedAppController extends PageCubit<SelectedAppPageState> {
 
   final _allApps = <AndroidAppInfo>[];
   final _selections = <String>{};
+
+  @override
+  Future<void> disposePageResources() async {
+    // This page owns the whole per-app VPN flow, so release the icon bytes
+    // once the user leaves it.
+    AppIconService().clear();
+  }
 
   void _initParams() {
     _selections.clear();
