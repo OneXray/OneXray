@@ -26,7 +26,6 @@ class OutboundState {
   late Map<String, dynamic> _outbound;
   final _initial = <String, Object?>{};
 
-  var name = '';
   var tag = '';
   var protocolName = '';
 
@@ -102,7 +101,6 @@ class OutboundState {
   Map<String, dynamic> materialize() {
     final outbound = copyOutboundMap(_outbound);
 
-    _patch(outbound, 'name', name, 'name');
     _patch(outbound, 'tag', tag, 'tag');
     _patchProtocolSettings(outbound);
     _patchNetworkSettings(outbound);
@@ -171,7 +169,6 @@ class OutboundState {
 
   void _project() {
     _resetForm();
-    name = outboundDisplayName(_outbound);
     tag = _string(_outbound, 'tag');
     protocolName = _string(_outbound, 'protocol');
 
@@ -544,7 +541,6 @@ class OutboundState {
     _initial
       ..clear()
       ..addAll({
-        'name': name,
         'tag': tag,
         'address': address,
         'port': port,
@@ -582,7 +578,6 @@ class OutboundState {
   }
 
   void _resetForm() {
-    name = '';
     tag = '';
     protocolName = '';
     address = '';

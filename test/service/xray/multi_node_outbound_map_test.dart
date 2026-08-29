@@ -31,6 +31,7 @@ void main() {
       },
       'outbounds': [
         {
+          'name': 'Legacy Proxy Name',
           'tag': 'proxy',
           'protocol': 'future-protocol',
           'future': {'keep': true},
@@ -46,11 +47,25 @@ void main() {
 
     expect(companion.name.value, '  Multi-node Outbound Name  ');
     expect(companion.type.value, CoreConfigType.multiNodeOutbound.name);
-    expect(
-      readMultiNodeOutboundFromText(JsonTool.encoder.convert(source)),
-      source,
+    final textDecoded = readMultiNodeOutboundFromText(
+      JsonTool.encoder.convert(source),
     );
-    expect(readMultiNodeOutboundFromDbData(stored), source);
+    final textOutbound =
+        (textDecoded['outbounds'] as List<dynamic>).single
+            as Map<String, dynamic>;
+    expect(textOutbound['tag'], 'proxy');
+    expect(textOutbound, isNot(contains('name')));
+    final storedOutbound =
+        (readMultiNodeOutboundFromDbData(stored)['outbounds'] as List<dynamic>)
+                .single
+            as Map<String, dynamic>;
+    expect(storedOutbound['tag'], 'proxy');
+    expect(storedOutbound, isNot(contains('name')));
+    expect(
+      ((source['outbounds'] as List<dynamic>).single
+          as Map<String, dynamic>)['name'],
+      'Legacy Proxy Name',
+    );
     expect(
       ((source['dns'] as Map<String, dynamic>)['servers'] as List<dynamic>),
       ['1.1.1.1'],
@@ -118,6 +133,22 @@ void main() {
     );
 
     expect(config['name'], 'Link Name');
+  });
+
+  test('nested legacy outbound names alias tags on read', () {
+    final config = readMultiNodeOutboundFromText(
+      JsonTool.encoder.convert({
+        'name': 'Multi-node Outbound',
+        'outbounds': [
+          {'name': 'proxy', 'protocol': 'vless'},
+        ],
+      }),
+    );
+    final outbound =
+        (config['outbounds'] as List<dynamic>).single as Map<String, dynamic>;
+
+    expect(outbound['tag'], 'proxy');
+    expect(outbound, isNot(contains('name')));
   });
 
   test('Multi-node Outbound rejects whitespace-only names', () {

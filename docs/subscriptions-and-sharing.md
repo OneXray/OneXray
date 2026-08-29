@@ -21,7 +21,9 @@ OneXray 有两类不同的交换边界：标准代理分享格式用于与其它
 - 标准分享链接和 Clash YAML 只能表达各自协议支持的字段。
 - 完整 Xray JSON 导入只返回其中的 outbounds，不会导入根级 DNS、routing 或其它配置。
 - App 直接保存 libXray 返回的 outbound 映射，不通过旧 DTO 重建。
-- 导入时把分享边界中的 `sendThrough` 提升为 OneXray 名称，然后从 outbound 删除。
+- libXray 和 App 都使用 outbound `tag` 传递并保存节点名称；无名称的单节点以协议名补齐 `tag`。
+- 历史 outbound 仅在 `tag` 不存在时把 `name` 作为别名迁移到 `tag`；已有 `tag` 优先。
+- `sendThrough` 保留 Xray 的本地绑定地址语义，不参与节点命名，也不会在导入时删除。
 - 不支持的节点或非规范值明确失败或跳过，不静默改写为新默认值。
 - KCP seed/header 和已废弃的 `allowInsecure` 不在当前分享合同中。
 

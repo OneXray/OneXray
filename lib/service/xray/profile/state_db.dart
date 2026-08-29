@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/service/xray/config_map.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
 import 'package:onexray/service/xray/profile/state_validator.dart';
 
@@ -31,9 +33,11 @@ Future<bool> updateProfile(
 );
 
 String _encodeProfile(Map<String, dynamic> profile) {
-  final validation = validateProfileFields(profile);
+  final normalized = copyXrayConfigMap(profile);
+  normalizeOutboundTags(normalized);
+  final validation = validateProfileFields(normalized);
   if (!validation.item1) {
     throw FormatException(validation.item2);
   }
-  return base64Encode(utf8.encode(encodeProfileMap(profile)));
+  return base64Encode(utf8.encode(encodeProfileMap(normalized)));
 }

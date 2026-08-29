@@ -12,7 +12,7 @@
 | 多节点出站 | `name`、`outbounds`、`dns`、`routing` | 覆盖当前 Profile 的三个 Xray 根字段 |
 | Raw JSON | 独立 Xray JSON 对象 | 作为运行主体，但仍接受 App 的 inbound 和运行时修补 |
 
-所有数据库内容继续使用现有 Base64 JSON 包装。`name` 是 OneXray 扩展字段：Profile 根节点、多节点出站根节点和 outbound 对象中的 `name` 都必须保留。
+所有数据库内容继续使用现有 Base64 JSON 包装。Profile 和多节点出站根节点继续使用 OneXray 扩展字段 `name`；单节点 outbound 只使用 Xray 原生 `tag` 作为节点名称，数据库显示列也由该 `tag` 派生。读取历史 outbound 时，仅在 `tag` 键不存在时把旧 `name` 作为别名写入 `tag`，随后移除 outbound 中的 `name`；已有 `tag` 始终优先。
 
 兼容值保持不变：Profile 的数据库类型仍为 `setting`；多节点出站的数据库类型和 App Link `type` 仍为 `full`；历史路由段仍为 `xray-full-config`。这些序列化值不用于用户可见名称。
 
@@ -164,10 +164,12 @@ Core 运行模式与路由模式是两个独立维度。正式版本和非 iOS �
 
 ## 分享与兼容
 
-- libXray Invoke API 保持 v2。完整 Xray JSON 导入只读取其中的 outbounds。
+- libXray Invoke API 为 v3。完整 Xray JSON 导入只读取其中的 outbounds。
 - 分享链接和 Clash YAML 导入直接保存 libXray 返回的 outbound 映射，不经过 App DTO 重建。
 - 标准协议分享使用 libXray 白名单投影，天然可能丢失协议无法表达的字段；OneXray App Link 保存完整持久映射。
-- `sendThrough` 只在标准分享边界充当名称载体，导入后提升为 OneXray `name` 并从 outbound 中移除。
+- 标准分享解析和生成都通过 outbound `tag` 读写节点名称；无名称的单节点导入以协议名补齐 `tag`。
+- `sendThrough` 保留 Xray 的本地绑定地址语义，不参与节点命名，也不会在导入时被删除。
+- 历史 OneXray outbound 的 `name` 只在 `tag` 不存在时作为兼容别名，规范持久数据不再包含该字段。
 - KCP 分享不支持 seed/header；`allowInsecure` 已移除。
 - Profile 和 Multi-node Outbound 不支持 `geodata` 根字段。GeoData 文件仍由 App 的独立数据功能管理，详见 [数据管理](data-management.md)。
 

@@ -239,7 +239,7 @@ class LibXrayInvokeRequest {
   LibXrayMethod? method;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 2;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 3;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);

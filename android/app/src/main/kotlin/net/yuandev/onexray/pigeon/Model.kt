@@ -111,7 +111,7 @@ data class XrayEnv(
 
 @Serializable
 data class LibXrayInvokeRequest(
-    val apiVersion: Int? = 2,
+    val apiVersion: Int? = 3,
     val method: LibXrayMethod? = null,
     val payload: RunXrayRequest? = null,
 )

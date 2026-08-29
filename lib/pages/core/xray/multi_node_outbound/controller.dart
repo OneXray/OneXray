@@ -184,8 +184,9 @@ class XrayMultiNodeOutboundController
   }
 
   void _updateDraft(Map<String, dynamic> next, {bool? loaded}) {
-    _draft = next;
-    nameController.text = multiNodeOutboundName(next);
+    _draft = copyXrayConfigMap(next);
+    normalizeOutboundTags(_draft);
+    nameController.text = multiNodeOutboundName(_draft);
     _notifyChanged(loaded: loaded);
   }
 
@@ -308,7 +309,7 @@ class XrayMultiNodeOutboundController
 
   Future<void> addCustomOutbound(BuildContext context) async {
     final outbound = newOutboundMap(tag: _nextCustomTag());
-    final edited = await _editOutbound(context, outbound, editableTag: true);
+    final edited = await _editOutbound(context, outbound);
     if (edited != null && context.mounted) {
       _appendCustomOutbound(context, edited);
     }
@@ -329,11 +330,7 @@ class XrayMultiNodeOutboundController
     BuildContext context,
     Map<String, dynamic> outbound,
   ) async {
-    final edited = await _editOutbound(
-      context,
-      copyOutboundMap(outbound),
-      editableTag: true,
-    );
+    final edited = await _editOutbound(context, copyOutboundMap(outbound));
     if (edited != null && context.mounted) {
       _replaceCustomOutbound(context, outbound, edited);
     }
@@ -365,14 +362,12 @@ class XrayMultiNodeOutboundController
     BuildContext context,
     Map<String, dynamic> outbound, {
     String fixedTag = '',
-    bool editableTag = false,
   }) {
     final params = OutboundUIParams(
       DBConstants.defaultId,
       outbound,
       saveToDb: false,
       fixedTag: fixedTag,
-      editableTag: editableTag,
     );
     return context.pushScoped<Map<String, dynamic>>(
       AppSecondaryDestination.outboundUI,
@@ -400,9 +395,6 @@ class XrayMultiNodeOutboundController
         );
       }
       return null;
-    }
-    if (outboundString(outbound, 'name')?.isNotEmpty != true) {
-      outbound['name'] = row.name;
     }
     return outbound;
   }

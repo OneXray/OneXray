@@ -45,7 +45,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
 
   CoreConfigData? _outboundData;
 
-  final nameController = TextEditingController();
   final addressController = TextEditingController();
   final portController = TextEditingController();
   final vlessIdController = TextEditingController();
@@ -80,7 +79,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   @override
   Future<void> disposePageResources() async {
     for (final controller in [
-      nameController,
       addressController,
       portController,
       vlessIdController,
@@ -134,13 +132,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
     }
     try {
       final outboundState = OutboundState(readOutboundFromDbData(outbound));
-      final databaseName = outboundDisplayName(
-        outboundState.materialize(),
-        fallback: outbound.name,
-      );
-      if (databaseName != outboundState.name) {
-        outboundState.name = databaseName;
-      }
       _outboundData = outbound;
       _updateState(outboundState);
     } on FormatException catch (error) {
@@ -157,7 +148,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   }
 
   void _initInputs(OutboundState outboundState) {
-    nameController.text = outboundState.name;
     addressController.text = outboundState.address;
     portController.text = outboundState.port;
     vlessIdController.text = outboundState.vlessId;
@@ -336,7 +326,6 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
   }
 
   void _readInputsIntoState(OutboundState outboundState) {
-    outboundState.name = nameController.text;
     outboundState.address = addressController.text;
     outboundState.port = portController.text;
     outboundState.vlessId = vlessIdController.text;
@@ -375,10 +364,7 @@ class OutboundUIController extends PageCubit<OutboundUIPageState> {
     BuildContext context,
     Map<String, dynamic> outbound,
   ) async {
-    final result = await validateOutbound(
-      outbound,
-      databaseName: _outboundData?.name,
-    );
+    final result = await validateOutbound(outbound);
     if (!context.mounted) {
       return false;
     }

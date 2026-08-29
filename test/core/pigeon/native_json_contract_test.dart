@@ -37,7 +37,7 @@ void main() {
       '12000',
       XrayInboundAccount('user', 'pass'),
       '12001',
-      '{"apiVersion":2,"method":"runXray"}',
+      '{"apiVersion":3,"method":"runXray"}',
       configId: 7,
       snapshotToken: 'vcore-session-v2:${List.filled(64, 'a').join()}',
     );
@@ -84,20 +84,20 @@ void main() {
     expect(env.keys.toSet(), {'xray.location.asset', 'xray.location.cert'});
   });
 
-  test('runXray request uses the v2 in-memory JSON contract', () {
+  test('runXray request uses the v3 in-memory JSON contract', () {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.runXray,
       payload: RunXrayRequest('{"outbounds":[]}').toJson(),
     );
 
     expect(request.toJson(), {
-      'apiVersion': 2,
+      'apiVersion': 3,
       'method': 'runXray',
       'payload': {'xrayJson': '{"outbounds":[]}'},
     });
   });
 
-  test('age subscription requests use the typed v2 contract', () {
+  test('age subscription requests use the typed v3 contract', () {
     final convert = LibXrayInvokeRequest(
       method: LibXrayMethod.convertShareLinksToXrayJson,
       payload: ConvertShareLinksToXrayJsonRequest(
@@ -115,7 +115,7 @@ void main() {
     );
 
     expect(convert.toJson(), {
-      'apiVersion': 2,
+      'apiVersion': 3,
       'method': 'convertShareLinksToXrayJson',
       'payload': {
         'text': 'encrypted text',
@@ -123,12 +123,12 @@ void main() {
       },
     });
     expect(generate.toJson(), {
-      'apiVersion': 2,
+      'apiVersion': 3,
       'method': 'generateAgeKeyPair',
       'payload': {'keyType': 'x25519'},
     });
     expect(generateHybrid.toJson(), {
-      'apiVersion': 2,
+      'apiVersion': 3,
       'method': 'generateAgeKeyPair',
       'payload': {'keyType': 'hybrid'},
     });

@@ -5,7 +5,6 @@ import 'package:onexray/service/xray/outbound/state.dart';
 void main() {
   test('no-op materialize preserves the complete outbound map', () {
     final outbound = <String, dynamic>{
-      'name': '  spaced name  ',
       'protocol': 'vless',
       'settings': {
         'address': ' example.com ',
@@ -43,7 +42,6 @@ void main() {
 
   test('editing one shallow leaf preserves every sibling', () {
     final outbound = <String, dynamic>{
-      'name': 'node',
       'protocol': 'vless',
       'settings': {
         'address': 'example.com',
@@ -188,7 +186,7 @@ void main() {
     'explicit protocol switch replaces settings and preserves root extras',
     () {
       final outbound = <String, dynamic>{
-        'name': 'node',
+        'tag': 'node',
         'protocol': 'vless',
         'settings': {'id': 'old', 'editorOnly': true},
         'streamSettings': {

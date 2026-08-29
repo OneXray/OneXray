@@ -9,11 +9,8 @@ import 'package:onexray/service/xray/profile/inbounds_state.dart';
 import 'package:onexray/service/xray/raw/fix.dart';
 import 'package:tuple/tuple.dart';
 
-Tuple2<bool, String> validateOutboundFields(
-  Map<String, dynamic> outbound, {
-  String? databaseName,
-}) {
-  if (outboundDisplayName(outbound, fallback: databaseName).isEmpty) {
+Tuple2<bool, String> validateOutboundFields(Map<String, dynamic> outbound) {
+  if (outboundString(outbound, 'tag')?.isNotEmpty != true) {
     return Tuple2(false, appLocalizationsNoContext().validationNameRequired);
   }
   try {
@@ -25,10 +22,9 @@ Tuple2<bool, String> validateOutboundFields(
 }
 
 Future<Tuple2<bool, String>> validateOutbound(
-  Map<String, dynamic> outbound, {
-  String? databaseName,
-}) async {
-  final fields = validateOutboundFields(outbound, databaseName: databaseName);
+  Map<String, dynamic> outbound,
+) async {
+  final fields = validateOutboundFields(outbound);
   if (!fields.item1) {
     return fields;
   }

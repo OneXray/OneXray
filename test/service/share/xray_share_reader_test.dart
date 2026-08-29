@@ -53,6 +53,8 @@ void main() {
       final stored =
           (wrapper['outbounds'] as List<dynamic>).single
               as Map<String, dynamic>;
+      expect(stored['tag'], 'Valid');
+      expect(stored, isNot(contains('name')));
       expect(stored['editorOnly'], {'keep': true});
       expect((stored['settings'] as Map<String, dynamic>)['advanced'], {
         'keep': true,
@@ -126,12 +128,13 @@ void main() {
     expect(rows.single.name.value, 'Canonical');
   });
 
-  test('moves libXray share name metadata into the App name field', () async {
+  test('uses libXray tag metadata without borrowing sendThrough', () async {
     final xrayJson = <String, dynamic>{
       'outbounds': [
         {
           'protocol': 'vless',
-          'sendThrough': 'Imported Node',
+          'tag': 'Imported Node',
+          'sendThrough': '127.0.0.1',
           'settings': {
             'address': 'example.com',
             'port': 443,
@@ -150,7 +153,33 @@ void main() {
     ) as Map<String, dynamic>;
     final stored =
         (wrapper['outbounds'] as List<dynamic>).single as Map<String, dynamic>;
-    expect(stored['name'], 'Imported Node');
-    expect(stored, isNot(contains('sendThrough')));
+    expect(stored['tag'], 'Imported Node');
+    expect(stored['sendThrough'], '127.0.0.1');
+    expect(stored, isNot(contains('name')));
+  });
+
+  test('uses protocol as the tag when a share has no node name', () async {
+    final rows = await XrayShareReader().readXrayJsonOutbounds({
+      'outbounds': [
+        {
+          'protocol': 'vless',
+          'settings': {
+            'address': 'example.com',
+            'port': 443,
+            'id': '00000000-0000-0000-0000-000000000000',
+            'encryption': 'none',
+          },
+        },
+      ],
+    });
+
+    expect(rows.single.name.value, 'vless');
+    final wrapper = jsonDecode(
+      utf8.decode(base64Decode(rows.single.data.value!)),
+    ) as Map<String, dynamic>;
+    final stored =
+        (wrapper['outbounds'] as List<dynamic>).single as Map<String, dynamic>;
+    expect(stored['tag'], 'vless');
+    expect(stored, isNot(contains('name')));
   });
 }

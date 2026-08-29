@@ -52,11 +52,6 @@ class XrayShareReader {
       final outbound = copyOutboundMap(value);
       try {
         requireCanonicalOutbound(outbound);
-        final name = outboundDisplayName(outbound, useSendThrough: true);
-        if (name.isNotEmpty) {
-          outbound['name'] = name;
-        }
-        outbound.remove('sendThrough');
         res.add(outboundCompanion(outbound));
       } catch (error, stackTrace) {
         ygLogger(

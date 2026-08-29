@@ -301,11 +301,9 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final primaryProxy = newOutboundMap(name: 'Singapore-Premium-Reality');
-    final customOutbound = newOutboundMap(
-      name: 'Seattle-Standard-XHTTP',
-      tag: 'custom1',
-    )..['appUnprojected'] = <String, dynamic>{'keep': true};
+    final primaryProxy = newOutboundMap(tag: 'Singapore-Premium-Reality');
+    final customOutbound = newOutboundMap(tag: 'Seattle-Standard-XHTTP')
+      ..['appUnprojected'] = <String, dynamic>{'keep': true};
     Map<String, dynamic>? editedOutbound;
     Map<String, dynamic>? deletedOutbound;
 
@@ -344,7 +342,7 @@ void main() {
       final paragraph = tester.renderObject<RenderParagraph>(find.text(name));
       expect(paragraph.didExceedMaxLines, isFalse, reason: name);
     }
-    expect(find.text('vless · xhttp · custom1'), findsOneWidget);
+    expect(find.text('vless · xhttp'), findsNWidgets(2));
     expect(find.byIcon(LucideIcons.pencil), findsNothing);
     expect(find.byIcon(LucideIcons.trash2), findsOneWidget);
 

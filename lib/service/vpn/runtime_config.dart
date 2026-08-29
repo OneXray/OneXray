@@ -249,9 +249,6 @@ final class XrayRuntimeConfigService {
         appLocalizationsNoContext().vpnFinalOutboundInvalid,
       );
     }
-    if (outboundString(outbound, 'name')?.isNotEmpty != true) {
-      outbound['name'] = row.name;
-    }
     setOutboundTag(outbound, RoutingOutboundTag.proxy.name);
     removeOutboundDialerProxy(outbound);
     return outbound;

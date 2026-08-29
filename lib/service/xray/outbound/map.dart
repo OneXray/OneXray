@@ -8,10 +8,8 @@ import 'package:uuid/uuid.dart';
 const _exampleRealityPassword = 'T25lWHJheS1YSFRUUC1leGFtcGxlLWtleS0wMDAwMDA';
 
 Map<String, dynamic> newOutboundMap({
-  String name = XrayStateConstants.defaultName,
-  String tag = 'proxy',
+  String tag = XrayStateConstants.defaultName,
 }) => <String, dynamic>{
-  'name': name,
   'protocol': 'vless',
   'settings': <String, dynamic>{
     'address': 'example.com',
@@ -37,10 +35,40 @@ Map<String, dynamic> newOutboundMap({
   },
 };
 
-Map<String, dynamic> copyOutboundMap(Map<String, dynamic> outbound) =>
-    jsonDecode(jsonEncode(outbound)) as Map<String, dynamic>;
+Map<String, dynamic> copyOutboundMap(
+  Map<String, dynamic> outbound, {
+  String? nameAlias,
+}) {
+  final copied = jsonDecode(jsonEncode(outbound)) as Map<String, dynamic>;
+  if (!copied.containsKey('tag')) {
+    final legacyName = outboundString(copied, 'name');
+    final fallbackTag = legacyName?.isNotEmpty == true
+        ? legacyName
+        : nameAlias?.isNotEmpty == true
+        ? nameAlias
+        : null;
+    if (fallbackTag != null && fallbackTag.isNotEmpty) {
+      copied['tag'] = fallbackTag;
+    }
+  }
+  copied.remove('name');
+  return copied;
+}
 
-Map<String, dynamic> decodeSingleOutbound(String text) {
+void normalizeOutboundTags(Map<String, dynamic> config) {
+  final outbounds = config['outbounds'];
+  if (outbounds is! List<dynamic>) {
+    return;
+  }
+  for (var index = 0; index < outbounds.length; index++) {
+    final outbound = outbounds[index];
+    if (outbound is Map<String, dynamic>) {
+      outbounds[index] = copyOutboundMap(outbound);
+    }
+  }
+}
+
+Map<String, dynamic> decodeSingleOutbound(String text, {String? nameAlias}) {
   final root = JsonTool.decoder.convert(text);
   if (root is! Map<String, dynamic>) {
     throw const FormatException('Xray JSON root must be an object');
@@ -53,7 +81,7 @@ Map<String, dynamic> decodeSingleOutbound(String text) {
   if (outbound is! Map<String, dynamic>) {
     throw const FormatException('Outbound must be an object');
   }
-  return copyOutboundMap(outbound);
+  return copyOutboundMap(outbound, nameAlias: nameAlias);
 }
 
 String encodeSingleOutbound(Map<String, dynamic> outbound) =>
@@ -80,18 +108,8 @@ String? outboundSecurity(Map<String, dynamic> outbound) {
       : null;
 }
 
-String outboundDisplayName(
-  Map<String, dynamic> outbound, {
-  String? fallback,
-  bool useSendThrough = false,
-}) {
-  final values = <Object?>[
-    outbound['name'],
-    if (useSendThrough) outbound['sendThrough'],
-    fallback,
-    outbound['tag'],
-    outbound['protocol'],
-  ];
+String outboundDisplayName(Map<String, dynamic> outbound) {
+  final values = <Object?>[outbound['tag'], outbound['protocol']];
   return values.whereType<String>().firstWhere(
     (value) => value.isNotEmpty,
     orElse: () => '',

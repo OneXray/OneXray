@@ -4,8 +4,10 @@ import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 
 CoreConfigCompanion multiNodeOutboundCompanion(Map<String, dynamic> config) =>
     CoreConfigCompanion.insert(
@@ -31,9 +33,11 @@ Future<bool> updateMultiNodeOutbound(
 );
 
 String _encodeMultiNodeOutbound(Map<String, dynamic> config) {
-  final validation = validateMultiNodeOutboundFields(config);
+  final normalized = copyXrayConfigMap(config);
+  normalizeOutboundTags(normalized);
+  final validation = validateMultiNodeOutboundFields(normalized);
   if (!validation.item1) {
     throw FormatException(validation.item2);
   }
-  return base64Encode(utf8.encode(encodeMultiNodeOutboundMap(config)));
+  return base64Encode(utf8.encode(encodeMultiNodeOutboundMap(normalized)));
 }

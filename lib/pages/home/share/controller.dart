@@ -218,11 +218,10 @@ class ShareController extends PageCubit<SharePageState> {
   Future<void> _parseXrayJson(CoreConfigData outbound) async {
     final outboundMap = readOutboundFromDbData(outbound);
     requireCanonicalOutbound(outboundMap);
-    final name = outboundDisplayName(outboundMap, fallback: outbound.name);
-    final exportMap = copyOutboundMap(outboundMap)..['sendThrough'] = name;
+    final name = outboundDisplayName(outboundMap);
     final url = await AppHostApi().convertXrayJsonToShareLinks(
       <String, dynamic>{
-        'outbounds': <dynamic>[exportMap],
+        'outbounds': <dynamic>[outboundMap],
       },
     );
     if (url.trim().isEmpty) {

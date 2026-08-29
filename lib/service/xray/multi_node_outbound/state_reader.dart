@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/xray/config_map.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 
 Map<String, dynamic> readMultiNodeOutboundFromDbData(CoreConfigData config) {
   final data = config.data;
@@ -25,6 +26,7 @@ Map<String, dynamic> readMultiNodeOutboundFromText(
     config['name'] = nameOverride;
   }
   validateMultiNodeOutboundMap(config);
+  normalizeOutboundTags(config);
   return config;
 }
 

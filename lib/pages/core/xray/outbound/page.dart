@@ -76,7 +76,6 @@ class OutboundUIPage extends StatelessWidget with OutboundSecuritySection {
             title: '',
             description: l10n.outboundUIPageRawJsonHint,
             children: [
-              _name(context, controller),
               _tag(context, controller, state),
               _protocol(context, controller, state),
               ..._protocolFields(context, controller, state),
@@ -101,21 +100,13 @@ class OutboundUIPage extends StatelessWidget with OutboundSecuritySection {
     );
   }
 
-  Widget _name(BuildContext context, OutboundUIController controller) {
-    return TextFieldSettingRow(
-      controller: controller.nameController,
-      label: AppLocalizations.of(context)!.outboundUIPageName,
-      hintText: AppLocalizations.of(context)!.outboundUIPageName,
-    );
-  }
-
   Widget _tag(
     BuildContext context,
     OutboundUIController controller,
     OutboundUIPageState state,
   ) {
     final title = AppLocalizations.of(context)!.outboundUIPageTag;
-    if (params.editableTag && params.fixedTag.isEmpty) {
+    if (params.fixedTag.isEmpty) {
       return TextFieldSettingRow(
         controller: controller.tagController,
         label: title,

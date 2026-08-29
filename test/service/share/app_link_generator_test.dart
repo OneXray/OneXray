@@ -21,7 +21,9 @@ void main() {
       CoreConfigType.raw: OneXrayConfigLinkType.raw,
     }.entries) {
       test('generates and parses ${entry.value.wireName}', () {
-        const xrayJson = '{"name":"Example"}';
+        final xrayJson = entry.key == CoreConfigType.outbound
+            ? '{"outbounds":[{"name":"Example","protocol":"vless"}]}'
+            : '{"name":"Example"}';
         final uri = OneXrayAppLinkGenerator.config(
           _config(
             type: entry.key.name,
@@ -35,7 +37,16 @@ void main() {
         final link =
             OneXrayAppLinkParser.parse(generatedUri)! as OneXrayConfigLink;
         expect(link.type, entry.value);
-        expect(link.xrayJson, xrayJson);
+        if (entry.key == CoreConfigType.outbound) {
+          final wrapper = jsonDecode(link.xrayJson) as Map<String, dynamic>;
+          final outbound =
+              (wrapper['outbounds'] as List<dynamic>).single
+                  as Map<String, dynamic>;
+          expect(outbound['tag'], 'Example');
+          expect(outbound, isNot(contains('name')));
+        } else {
+          expect(link.xrayJson, xrayJson);
+        }
         expect(link.name, 'Shared Config');
       });
     }

@@ -354,14 +354,14 @@ void main() {
       'custom',
     ]);
     final materializedFinal = outbounds[0] as Map<String, dynamic>;
-    expect(materializedFinal['name'], 'Final  name');
+    expect(materializedFinal, isNot(contains('name')));
     expect(
       ((materializedFinal['streamSettings'] as Map)['sockopt']
           as Map)['dialerProxy'],
       'chainProxy',
     );
     final materializedSelected = outbounds[1] as Map<String, dynamic>;
-    expect(materializedSelected['name'], 'Selected  name');
+    expect(materializedSelected, isNot(contains('name')));
     final selectedSockopt =
         (materializedSelected['streamSettings'] as Map)['sockopt'] as Map;
     expect(selectedSockopt, isNot(contains('dialerProxy')));

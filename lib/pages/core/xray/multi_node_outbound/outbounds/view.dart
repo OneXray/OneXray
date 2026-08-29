@@ -49,13 +49,22 @@ class XrayMultiNodeOutboundOutboundsView extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final compact = constraints.maxWidth < 520;
+                  final details = primaryProxy == null
+                      ? null
+                      : [
+                              outboundString(primaryProxy, 'protocol'),
+                              outboundNetwork(primaryProxy),
+                            ]
+                            .whereType<String>()
+                            .where((value) => value.isNotEmpty)
+                            .join(' · ');
                   return NavigationSettingRow(
                     leading: const Icon(LucideIcons.server),
                     title: primaryProxy == null
                         ? l10n.xrayMultiNodeOutboundProxyMissing
                         : outboundDisplayName(primaryProxy),
-                    value: compact ? null : "proxy",
-                    subtitle: compact ? "proxy" : null,
+                    value: compact ? null : details,
+                    subtitle: compact ? details : null,
                     onTap: onEditPrimaryProxy,
                   );
                 },
@@ -115,12 +124,11 @@ class XrayMultiNodeOutboundOutboundsView extends StatelessWidget {
           outboundString(outbound, 'protocol'),
           outboundNetwork(outbound),
         ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
-        final tag = outboundString(outbound, 'tag') ?? '';
         return SettingRow(
           leading: const Icon(LucideIcons.globe2),
           title: outboundDisplayName(outbound),
-          subtitle: compact ? "$details · $tag" : details,
-          value: compact ? null : tag,
+          subtitle: compact ? details : null,
+          value: compact ? null : details,
           onTap: () => onEditCustomOutbound(outbound),
           trailing: ActionCluster(
             children: [

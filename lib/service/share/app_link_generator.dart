@@ -7,6 +7,8 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/app_link_parser.dart';
 import 'package:onexray/service/subscription/model.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 
 enum _SubscriptionAgeMode { none, x25519, hybrid, invalid }
 
@@ -20,9 +22,18 @@ abstract final class OneXrayAppLinkGenerator {
       CoreConfigType.raw => OneXrayConfigLinkType.raw,
       null => null,
     };
-    final data = config.data?.trim();
+    var data = config.data?.trim();
     if (type == null || data == null || data.isEmpty) {
       return null;
+    }
+    if (type == OneXrayConfigLinkType.outbound) {
+      try {
+        data = base64Encode(
+          utf8.encode(encodeSingleOutbound(readOutboundFromDbData(config))),
+        );
+      } catch (_) {
+        return null;
+      }
     }
 
     return _verified(

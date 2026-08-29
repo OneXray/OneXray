@@ -15,6 +15,7 @@ import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/config_map.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/enum.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
@@ -660,6 +661,7 @@ class XrayProfileUIController extends PageCubit<XrayProfileUIPageState> {
 
   void _replaceDocument(Map<String, dynamic> next, {bool? loaded}) {
     _document = _copyDocument(next);
+    normalizeOutboundTags(_document);
     _syncingName = true;
     nameController.text = _document['name'] is String
         ? _document['name'] as String

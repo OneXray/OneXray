@@ -6,6 +6,7 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/tun_settings/state.dart';
 import 'package:onexray/service/xray/config_map.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/map.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/service/xray/profile/simple_state_writer.dart';
@@ -34,6 +35,7 @@ Map<String, dynamic> readProfileMapFromText(
     value['name'] = nameOverride;
   }
   validateXrayConfigMap(value);
+  normalizeOutboundTags(value);
   return value;
 }
 

@@ -13,7 +13,6 @@ import 'package:onexray/service/xray/multi_node_outbound/state_db.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:onexray/service/xray/outbound/state_validator.dart';
 import 'package:onexray/service/xray/profile/state_db.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
 import 'package:onexray/service/xray/raw/db.dart';
@@ -64,12 +63,12 @@ final class OneXrayAppLinkImporter {
   }
 
   CoreConfigCompanion? _readOutbound(OneXrayConfigLink link) {
-    final outbound = decodeSingleOutbound(link.xrayJson);
     final databaseName = link.name.isEmpty ? null : link.name;
-    if (!validateOutboundFields(outbound, databaseName: databaseName).item1) {
-      return null;
-    }
-    return outboundCompanion(outbound, databaseName: databaseName);
+    final outbound = decodeSingleOutbound(
+      link.xrayJson,
+      nameAlias: databaseName,
+    );
+    return outboundCompanion(outbound);
   }
 
   CoreConfigCompanion? _readProfile(OneXrayConfigLink link) {

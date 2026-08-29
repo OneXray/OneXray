@@ -163,7 +163,7 @@ struct LibXrayInvokeRequest: Codable, Hashable {
     var payload: RunXrayRequest?
 
     init(
-        apiVersion: Int? = 2,
+        apiVersion: Int? = 3,
         method: LibXrayMethod? = nil,
         payload: RunXrayRequest? = nil
     ) {

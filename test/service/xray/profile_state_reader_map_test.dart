@@ -92,7 +92,7 @@ void main() {
     expect(future['keep'], isTrue);
   });
 
-  test('Profile preserves App-unprojected user outbound Maps', () {
+  test('Profile normalizes outbound tags without projecting fields', () {
     final outbound = <String, dynamic>{
       'name': '  node  ',
       'tag': 'proxy',
@@ -114,7 +114,9 @@ void main() {
       }),
     );
 
-    expect(profile['outbounds'], [outbound]);
+    final expected = <String, dynamic>{...outbound}..remove('name');
+    expect(profile['outbounds'], [expected]);
+    expect(outbound['name'], '  node  ');
   });
 
   test(
@@ -169,6 +171,9 @@ void main() {
         'probeInterval': '30s',
         'future': {'keep': true},
       },
+      'outbounds': [
+        {'name': 'proxy', 'protocol': 'vless'},
+      ],
     };
 
     final companion = profileCompanion(source);
@@ -179,7 +184,13 @@ void main() {
     expect(companion.name.value, 'Stored Profile');
     expect(companion.type.value, CoreConfigType.profile.name);
     expect(companion.type.value, 'setting');
-    expect(stored, source);
+    final storedOutbound =
+        (stored['outbounds'] as List<dynamic>).single as Map<String, dynamic>;
+    expect(storedOutbound['tag'], 'proxy');
+    expect(storedOutbound, isNot(contains('name')));
+    expect(source['outbounds'], [
+      {'name': 'proxy', 'protocol': 'vless'},
+    ]);
   });
 
   test(
