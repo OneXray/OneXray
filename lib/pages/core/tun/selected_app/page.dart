@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/tun/app_icon/controller.dart';
+import 'package:onexray/pages/core/tun/app_icon/view.dart';
 import 'package:onexray/pages/core/tun/selected_app/controller.dart';
 import 'package:onexray/pages/core/tun/selected_app/params.dart';
 import 'package:onexray/pages/theme/font.dart';
-import 'package:onexray/pages/widget/app_icon.dart';
 import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -17,8 +18,11 @@ class SelectedAppPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => SelectedAppController(params),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => SelectedAppController(params)),
+        BlocProvider(create: (_) => TunAppIconController()),
+      ],
       child: BlocBuilder<SelectedAppController, SelectedAppPageState>(
         builder: (context, state) {
           final controller = context.read<SelectedAppController>();

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -24,7 +26,15 @@ class AppIconService {
   /// Resolved icons. A present key with a `null` value means the platform has
   /// no icon for that package, so it is never requested again.
   final _icons = <String, Uint8List?>{};
-  final _pending = <String, Future<Uint8List?>>{};
+  final _pending = <String, _IconRequest>{};
+
+  /// Bumped by [clear] so requests started for the previous flow can no longer
+  /// write into the cache once they complete.
+  var _generation = 0;
+
+  /// Snapshot of the resolved cache, so a caller can restore its own view of
+  /// the icons without re-crossing the bridge.
+  Map<String, Uint8List?> get resolvedIcons => Map.unmodifiable(_icons);
 
   bool isResolved(String packageName) => _icons.containsKey(packageName);
 
@@ -36,33 +46,50 @@ class AppIconService {
     }
     final pending = _pending[packageName];
     if (pending != null) {
-      return pending;
+      return pending.completer.future;
     }
-    final request = _load(packageName);
+    final request = _IconRequest(_generation);
     _pending[packageName] = request;
-    return request;
+    unawaited(_load(packageName, request));
+    return request.completer.future;
   }
 
-  Future<Uint8List?> _load(String packageName) async {
+  Future<void> _load(String packageName, _IconRequest request) async {
+    Uint8List? bytes;
     try {
       final icon = await _loader(packageName);
-      final resolved = icon != null && icon.isNotEmpty ? icon : null;
-      _icons[packageName] = resolved;
-      return resolved;
+      bytes = icon != null && icon.isNotEmpty ? icon : null;
+      if (request.generation == _generation) {
+        _icons[packageName] = bytes;
+      }
     } catch (error, stackTrace) {
       // Leave the package unresolved so a later rebuild can retry it.
+      bytes = null;
       ygLogger(
         'AppIconService.load failed for $packageName: '
         '$error\n$stackTrace',
       );
-      return null;
     } finally {
-      _pending.remove(packageName);
+      // A request started before [clear] must not drop the pending entry of
+      // the request that replaced it.
+      if (identical(_pending[packageName], request)) {
+        _pending.remove(packageName);
+      }
+      request.completer.complete(bytes);
     }
   }
 
   void clear() {
+    _generation += 1;
     _icons.clear();
     _pending.clear();
   }
+}
+
+/// One in-flight bridge call, tagged with the cache generation that started it.
+class _IconRequest {
+  _IconRequest(this.generation);
+
+  final int generation;
+  final completer = Completer<Uint8List?>();
 }

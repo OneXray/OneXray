@@ -92,4 +92,73 @@ void main() {
     expect(await service.load('a.b.c'), Uint8List.fromList([2]));
     expect(calls, 2);
   });
+
+  test('an in-flight load cannot repopulate the cache after clear', () async {
+    final completer = Completer<Uint8List?>();
+    final service = AppIconService.withLoader(
+      (packageName) => completer.future,
+    );
+
+    final request = service.load('a.b.c');
+    service.clear();
+    completer.complete(Uint8List.fromList([1]));
+    await request;
+
+    expect(service.isResolved('a.b.c'), isFalse);
+    expect(service.resolved('a.b.c'), isNull);
+    expect(service.resolvedIcons, isEmpty);
+  });
+
+  test(
+    'a stale load leaves the pending request of the new flow alone',
+    () async {
+      final completers = <Completer<Uint8List?>>[];
+      final service = AppIconService.withLoader((packageName) {
+        final completer = Completer<Uint8List?>();
+        completers.add(completer);
+        return completer.future;
+      });
+
+      final stale = service.load('a.b.c');
+      service.clear();
+      final fresh = service.load('a.b.c');
+      expect(completers, hasLength(2));
+
+      // The stale request finishing must not release the pending slot the new
+      // flow is waiting on, nor answer it with the previous flow's bytes.
+      completers.first.complete(Uint8List.fromList([1]));
+      expect(await stale, Uint8List.fromList([1]));
+      expect(service.isResolved('a.b.c'), isFalse);
+      // The new flow still owns the pending slot, so no third bridge call.
+      unawaited(service.load('a.b.c'));
+      expect(completers, hasLength(2));
+
+      completers.last.complete(Uint8List.fromList([2]));
+      expect(await fresh, Uint8List.fromList([2]));
+      expect(service.resolved('a.b.c'), Uint8List.fromList([2]));
+    },
+  );
+
+  test(
+    'a stale load does not overwrite an icon resolved after clear',
+    () async {
+      final completers = <Completer<Uint8List?>>[];
+      final service = AppIconService.withLoader((packageName) {
+        final completer = Completer<Uint8List?>();
+        completers.add(completer);
+        return completer.future;
+      });
+
+      final stale = service.load('a.b.c');
+      service.clear();
+      final fresh = service.load('a.b.c');
+
+      completers.last.complete(Uint8List.fromList([2]));
+      expect(await fresh, Uint8List.fromList([2]));
+
+      completers.first.complete(Uint8List.fromList([1]));
+      await stale;
+      expect(service.resolved('a.b.c'), Uint8List.fromList([2]));
+    },
+  );
 }
