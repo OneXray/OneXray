@@ -516,6 +516,7 @@ protocol BridgeHostApi {
   func queryPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
   func requestPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
   func getInstalledApps(completion: @escaping (Result<[AndroidAppInfo], Error>) -> Void)
+  func getAppIcon(packageName: String, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
   func useSystemExtension(completion: @escaping (Result<Bool, Error>) -> Void)
   func queryLaunchAtLogin(completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func setLaunchAtLogin(enabled: Bool, completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
@@ -651,6 +652,23 @@ class BridgeHostApiSetup {
       }
     } else {
       getInstalledAppsChannel.setMessageHandler(nil)
+    }
+    let getAppIconChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.getAppIcon\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getAppIconChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let packageNameArg = args[0] as! String
+        api.getAppIcon(packageName: packageNameArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getAppIconChannel.setMessageHandler(nil)
     }
     let useSystemExtensionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.useSystemExtension\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

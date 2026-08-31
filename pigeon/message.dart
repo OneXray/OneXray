@@ -41,6 +41,9 @@ abstract class BridgeHostApi {
   @asyncCallback
   List<AndroidAppInfo> getInstalledApps();
 
+  @asyncCallback
+  Uint8List? getAppIcon(String packageName);
+
   //macOS======================
   @asyncCallback
   bool useSystemExtension();
