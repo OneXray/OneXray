@@ -7,7 +7,12 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
 
-from app.windows import WindowsBuilder, _copy_vcore_artifacts
+from app.windows import (
+    WindowsBuilder,
+    _copy_vcore_artifacts,
+    _VCORE_ARTIFACTS,
+    _VCORE_IDENTITY,
+)
 from app.windows_msix import augment_manifest, package_with_vcore
 
 
@@ -336,16 +341,6 @@ class WindowsPackagingTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             augment_manifest(manifest)
-
-
-_VCORE_ARTIFACTS = (
-    "vcore.dll",
-    "vcore-windows-vpn-host.exe",
-    "vcore-windows-session-host.exe",
-)
-_VCORE_IDENTITY = (
-    "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;configVersion=13"
-)
 
 
 def _write_vcore_set(path):

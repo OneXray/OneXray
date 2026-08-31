@@ -4,7 +4,7 @@ Windows 构建以 [`.github/workflows/build.yml`](../.github/workflows/build.yml
 
 ## CI 构建
 
-Windows 的构建矩阵、runner 标签、工具链安装步骤和 artifact 名称直接查看 [Build workflow](../.github/workflows/build.yml)。x64 与 ARM64 job 都从 VCore 的 `main` 分支构建；Xray-core 版本由 libXray 的 Go module 锁定，最终只输出 Microsoft Store MSIX 分发包。
+Windows 的构建矩阵、依赖 revision、runner 标签、工具链安装步骤和 artifact 名称直接查看 [Build workflow](../.github/workflows/build.yml)。Xray-core 版本由 libXray 的 Go module 锁定，最终只输出 Microsoft Store MSIX 分发包。
 
 [`publish-microsoft-store.yml`](../.github/workflows/publish-microsoft-store.yml) 将两个架构的 MSIX 合并为 MSIX Bundle；release tag 构建会继续提交到 Microsoft Partner Center，手动构建只生成 Bundle。
 
@@ -38,7 +38,34 @@ Windows 的构建矩阵、runner 标签、工具链安装步骤和 artifact 名�
 
 ## 本地签名包
 
-本地测试继续走同一 `msix:create` 和 manifest 增强流程。设置 `ONEXRAY_DEV_SIGN=1`、`ONEXRAY_DEV_CERT_THUMBPRINT` 和与证书 Subject 一致的 `ONEXRAY_DEV_PUBLISHER` 后，构建脚本将开发包身份改为 `OneXray.Dev`，从 `Cert:\CurrentUser\My` 选择已安装私钥并调用 `signtool verify`。CI 仍可改用 `ONEXRAY_DEV_CERT_PATH` 与 `ONEXRAY_DEV_CERT_PASSWORD`。打包脚本不会生成、导入或删除证书。此工作区的固定本地证书由 `../references/windows-development-certificate/install.ps1` 一次性安装。
+本地测试继续走同一 `msix:create` 和 manifest 增强流程。使用带 Code Signing EKU（`1.3.6.1.5.5.7.3.3`）和私钥的开发证书，将 PFX 导入当前用户证书库：
+
+```powershell
+$pfxPath = "C:\path\development.pfx"
+$password = Read-Host "PFX password" -AsSecureString
+$certificate = Import-PfxCertificate `
+    -FilePath $pfxPath `
+    -Password $password `
+    -CertStoreLocation "Cert:\CurrentUser\My"
+```
+
+自签名证书还需仅在测试机上信任其公开 CER；第二条命令需要管理员 PowerShell：
+
+```powershell
+$cerPath = "C:\path\development.cer"
+Import-Certificate -FilePath $cerPath -CertStoreLocation "Cert:\CurrentUser\Root"
+Import-Certificate -FilePath $cerPath -CertStoreLocation "Cert:\LocalMachine\TrustedPeople"
+```
+
+在执行构建的 PowerShell 中选择该证书：
+
+```powershell
+$env:ONEXRAY_DEV_SIGN = "1"
+$env:ONEXRAY_DEV_CERT_THUMBPRINT = $certificate.Thumbprint
+$env:ONEXRAY_DEV_PUBLISHER = $certificate.Subject
+```
+
+构建脚本将开发包身份改为 `OneXray.Dev`，从 `Cert:\CurrentUser\My` 选择已安装私钥，并调用 `signtool verify`。CI 仍可改用 `ONEXRAY_DEV_CERT_PATH` 与 `ONEXRAY_DEV_CERT_PASSWORD`。打包脚本不会生成、导入或删除证书。
 
 开发阶段只验证目标版本清洁安装。测试前停止活动 VPN，卸载旧开发包并删除测试 profile、LocalState、Snapshot 和测试数据库；不执行原位升级、降级、旧数据保留或协议互通测试。脚本不包含旧 revision decoder、迁移或 fallback。
 
