@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 import shutil
 import struct
@@ -16,6 +18,9 @@ _VCORE_ARTIFACTS = (
     "vcore-windows-vpn-host.exe",
     "vcore-windows-session-host.exe",
 )
+_VCORE_IDENTITY = (
+    "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;configVersion=13"
+)
 
 
 class WindowsBuilder(Builder):
@@ -27,9 +32,7 @@ class WindowsBuilder(Builder):
     ):
         super().__init__(project, system, build_scripts_dir)
         self.target_architecture = self._target_architecture()
-        package_architecture = (
-            "amd64" if self.target_architecture == "x64" else "arm64"
-        )
+        package_architecture = "amd64" if self.target_architecture == "x64" else "arm64"
         self.package_suffix = f"windows-{package_architecture}"
 
     @staticmethod
@@ -78,19 +81,12 @@ class WindowsBuilder(Builder):
             cwd=vcore_dir,
         )
 
-        source = os.path.join(
-            vcore_dir, "dist", "windows", self.target_architecture
+        source = os.path.join(vcore_dir, "dist", "windows", self.target_architecture)
+        _copy_vcore_artifacts(
+            source,
+            os.path.join(self.project_dir, "app"),
+            self.target_architecture,
         )
-        destination = os.path.join(self.project_dir, "app")
-        os.makedirs(destination, exist_ok=True)
-        expected_machine = 0x8664 if self.target_architecture == "x64" else 0xAA64
-        for name in _VCORE_ARTIFACTS:
-            artifact = os.path.join(source, name)
-            if _pe_machine(artifact) != expected_machine:
-                raise ValueError(
-                    f"VCore artifact has the wrong architecture: {artifact}"
-                )
-            shutil.copy2(artifact, destination)
 
     def _vcore_dir(self) -> str:
         configured = os.environ.get("VCORE_DIR")
@@ -129,6 +125,7 @@ class WindowsBuilder(Builder):
         package_with_vcore(
             os.path.join(self.output_dir, f"{output_name}.msix"),
             local_development=local_development,
+            certificate_thumbprint=os.environ.get("ONEXRAY_DEV_CERT_THUMBPRINT"),
             certificate_path=os.environ.get("ONEXRAY_DEV_CERT_PATH"),
             certificate_password=os.environ.get("ONEXRAY_DEV_CERT_PASSWORD"),
             development_publisher=os.environ.get("ONEXRAY_DEV_PUBLISHER"),
@@ -147,8 +144,16 @@ class WindowsBuilder(Builder):
             raise FileNotFoundError(
                 f"Windows {self.target_architecture} release bundle not found: {source}"
             )
+        # ponytail: msix 3.18 resolves the architecture twice; remove this
+        # extra directory level when upstream stops doing that.
         destination = os.path.join(
-            self.root_dir, "build", "windows", "runner", "Release"
+            self.root_dir,
+            "build",
+            "windows",
+            self.target_architecture,
+            self.target_architecture,
+            "runner",
+            "Release",
         )
         shutil.rmtree(destination, ignore_errors=True)
         shutil.copytree(source, destination)
@@ -166,6 +171,43 @@ class WindowsBuilder(Builder):
         if values[0] == 0:
             raise ValueError("MSIX major version must be greater than 0")
         return ".".join(str(value) for value in values)
+
+
+def _copy_vcore_artifacts(source: str, destination: str, architecture: str) -> None:
+    manifest_path = os.path.join(source, "vcore-windows-artifacts.json")
+    try:
+        with open(manifest_path, encoding="utf-8") as manifest_file:
+            manifest = json.load(manifest_file)
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError("invalid VCore Windows artifact manifest") from error
+
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("formatVersion") != 1
+        or manifest.get("windowsPackageIntegrationRevision") != 2
+        or manifest.get("architecture") != architecture
+        or manifest.get("buildIdentity") != _VCORE_IDENTITY
+        or not isinstance(manifest.get("artifacts"), dict)
+        or set(manifest["artifacts"]) != set(_VCORE_ARTIFACTS)
+    ):
+        raise ValueError("incompatible VCore Windows artifact manifest")
+
+    expected_machine = 0x8664 if architecture == "x64" else 0xAA64
+    for name in _VCORE_ARTIFACTS:
+        artifact = os.path.join(source, name)
+        try:
+            with open(artifact, "rb") as contents:
+                digest = hashlib.file_digest(contents, "sha256").hexdigest()
+        except OSError as error:
+            raise ValueError(f"missing VCore artifact: {name}") from error
+        if digest != manifest["artifacts"][name]:
+            raise ValueError(f"VCore artifact hash mismatch: {name}")
+        if _pe_machine(artifact) != expected_machine:
+            raise ValueError(f"VCore artifact has the wrong architecture: {artifact}")
+
+    os.makedirs(destination, exist_ok=True)
+    for name in _VCORE_ARTIFACTS:
+        shutil.copy2(os.path.join(source, name), destination)
 
 
 def _pe_machine(path: str) -> int:

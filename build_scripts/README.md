@@ -20,7 +20,10 @@ workspace/
 └── output/        # created automatically
 ```
 
-The scripts use the currently checked-out libXray and VCore revisions. The
+The scripts use the currently checked-out libXray revision. Windows CI pins one
+immutable VCore commit for both architectures; local Windows builds must check
+out that same commit. VCore artifacts are copied only after their integration
+revision, architecture, identity, file set, and SHA-256 manifest pass. The
 Xray-core version is pinned by libXray's Go module; a sibling Xray-core checkout
 is not used.
 
@@ -114,8 +117,10 @@ workspace/
 └── output/        # 自动创建
 ```
 
-本地构建直接使用 libXray 和 VCore 当前检出的版本。Xray-core 版本由
-libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
+构建使用 libXray 当前检出的版本。Windows CI 为两种架构固定同一个不可变 VCore
+commit；本地 Windows 构建必须检出同一 commit。VCore 产物只有在 integration
+revision、架构、identity、文件集合和 SHA-256 manifest 全部通过后才复制。Xray-core
+版本由 libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
 
 ### 前置条件
 
@@ -202,7 +207,10 @@ workspace/
 └── output/        # создаётся автоматически
 ```
 
-При локальной сборке используются текущие версии libXray и VCore. Версия
+Сборка использует текущую версию libXray. Windows CI закрепляет один неизменяемый
+commit VCore для обеих архитектур; локальная Windows-сборка должна использовать
+тот же commit. Артефакты VCore копируются только после проверки integration
+revision, архитектуры, identity, набора файлов и SHA-256 manifest. Версия
 Xray-core закреплена Go-модулем libXray; соседний checkout Xray-core не
 используется.
 

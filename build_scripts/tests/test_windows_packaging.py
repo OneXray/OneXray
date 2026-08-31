@@ -1,10 +1,13 @@
+import hashlib
+import json
 import os
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from unittest.mock import patch
 
-from app.windows import WindowsBuilder
+from app.windows import WindowsBuilder, _copy_vcore_artifacts
 from app.windows_msix import augment_manifest, package_with_vcore
 
 
@@ -17,11 +20,7 @@ class WindowsPackagingTest(unittest.TestCase):
         os.makedirs(self.project_dir)
         self.pubspec_path = os.path.join(self.temp_dir.name, "pubspec.yaml")
         with open(self.pubspec_path, mode="wb") as f:
-            f.write(
-                b"name: OneXray\n"
-                b"description: Test fixture\n"
-                b"version: 26.7.3+412\n"
-            )
+            f.write(b"name: OneXray\ndescription: Test fixture\nversion: 26.7.3+412\n")
 
         self.builder = WindowsBuilder.__new__(WindowsBuilder)
         self.builder.project = "OneXray"
@@ -75,6 +74,7 @@ class WindowsPackagingTest(unittest.TestCase):
                 "OneXray-windows-amd64.msix",
             ),
             local_development=False,
+            certificate_thumbprint=None,
             certificate_path=None,
             certificate_password=None,
             development_publisher=None,
@@ -100,8 +100,7 @@ class WindowsPackagingTest(unittest.TestCase):
         with (
             patch.object(self.builder, "_vcore_dir", return_value=vcore_dir),
             patch("app.windows.run_command") as run_command,
-            patch("app.windows._pe_machine", return_value=0x8664),
-            patch("app.windows.shutil.copy2"),
+            patch("app.windows._copy_vcore_artifacts") as copy_vcore_artifacts,
         ):
             self.builder.build_vcore()
 
@@ -118,6 +117,42 @@ class WindowsPackagingTest(unittest.TestCase):
                 "windows",
             ],
         )
+        copy_vcore_artifacts.assert_called_once_with(
+            os.path.join(vcore_dir, "dist", "windows", "x64"),
+            os.path.join(self.project_dir, "app"),
+            "x64",
+        )
+
+    def test_prepare_msix_bundle_stages_path_resolved_by_msix_3_18(self):
+        self.builder.target_architecture = "arm64"
+        source = os.path.join(
+            self.temp_dir.name,
+            "build",
+            "windows",
+            "arm64",
+            "runner",
+            "Release",
+        )
+        os.makedirs(source)
+        with open(os.path.join(source, "OneXray.exe"), "wb") as executable:
+            executable.write(b"app")
+
+        WindowsBuilder._prepare_msix_bundle(self.builder)
+
+        self.assertTrue(
+            os.path.isfile(
+                os.path.join(
+                    self.temp_dir.name,
+                    "build",
+                    "windows",
+                    "arm64",
+                    "arm64",
+                    "runner",
+                    "Release",
+                    "OneXray.exe",
+                )
+            )
+        )
 
     def test_msix_rejects_versions_the_store_cannot_accept(self):
         versions = ("26.8", "dev.8.5", "26.70000.5", "0.8.5")
@@ -131,6 +166,20 @@ class WindowsPackagingTest(unittest.TestCase):
         with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):
             self.assertEqual(WindowsBuilder._target_architecture(), "arm64")
 
+    def test_windows_jobs_pin_and_record_one_vcore_commit(self):
+        workflow = (
+            Path(__file__).resolve().parents[2] / ".github/workflows/build.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "VCORE_REF: d9018a2dfb75ab1f55c593023cbaa60951165eb5",
+            workflow,
+        )
+        self.assertNotIn("VCORE_REF: main", workflow)
+        self.assertIn(
+            'echo "${VCORE_REF}" > release-metadata/vcore-sha.txt',
+            workflow,
+        )
+
     def test_local_signing_requires_certificate_and_publisher(self):
         with self.assertRaises(ValueError):
             package_with_vcore(
@@ -140,39 +189,213 @@ class WindowsPackagingTest(unittest.TestCase):
                 certificate_password="test",
                 development_publisher="CN=OneXray Development",
             )
+        with self.assertRaisesRegex(ValueError, "40 hexadecimal"):
+            package_with_vcore(
+                "missing.msix",
+                local_development=True,
+                certificate_thumbprint="invalid",
+                development_publisher="CN=OneXray Development",
+            )
 
-    def test_manifest_adds_vcore_hosts_and_activation(self):
+    def test_vcore_artifact_manifest_is_verified_before_copying(self):
+        source = os.path.join(self.temp_dir.name, "vcore")
+        destination = os.path.join(self.project_dir, "app")
+        _write_vcore_set(source)
+
+        _copy_vcore_artifacts(source, destination, "x64")
+
+        for name in _VCORE_ARTIFACTS:
+            self.assertTrue(os.path.isfile(os.path.join(destination, name)))
+
+    def test_vcore_artifact_manifest_rejects_incompatible_sets(self):
+        mutations = {
+            "revision": lambda manifest: manifest.update(
+                windowsPackageIntegrationRevision=1
+            ),
+            "architecture": lambda manifest: manifest.update(architecture="arm64"),
+            "identity": lambda manifest: manifest.update(buildIdentity="old"),
+            "file set": lambda manifest: manifest["artifacts"].pop(
+                "vcore-windows-session-host.exe"
+            ),
+            "hash": lambda manifest: manifest["artifacts"].update(
+                {"vcore.dll": "0" * 64}
+            ),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                source = os.path.join(self.temp_dir.name, name.replace(" ", "-"))
+                manifest = _write_vcore_set(source)
+                mutate(manifest)
+                _write_manifest(source, manifest)
+                with self.assertRaises(ValueError):
+                    _copy_vcore_artifacts(
+                        source,
+                        os.path.join(self.project_dir, "app"),
+                        "x64",
+                    )
+
+    def test_store_and_local_manifests_have_one_application_contract(self):
+        for local_development in (False, True):
+            with self.subTest(local_development=local_development):
+                manifest = os.path.join(
+                    self.temp_dir.name,
+                    f"AppxManifest-{local_development}.xml",
+                )
+                with open(manifest, "w", encoding="utf-8") as output:
+                    output.write(_MANIFEST_FIXTURE)
+
+                augment_manifest(
+                    manifest,
+                    local_development=local_development,
+                    development_publisher="CN=OneXray Development",
+                )
+
+                root = ET.parse(manifest).getroot()
+                ns = {
+                    "f": _FOUNDATION,
+                    "uap": _UAP,
+                    "uap10": _UAP10,
+                    "desktop": _DESKTOP,
+                }
+                identity = root.find("f:Identity", ns)
+                self.assertEqual(
+                    identity.attrib["Name"],
+                    "OneXray.Dev" if local_development else "YuanDevLLC.OneXray",
+                )
+                self.assertEqual(
+                    identity.attrib["Publisher"],
+                    "CN=OneXray Development" if local_development else "CN=Store",
+                )
+                ignorable = root.attrib["IgnorableNamespaces"].split()
+                self.assertIn("uap10", ignorable)
+                self.assertNotIn("uap3", ignorable)
+
+                applications = root.findall("f:Applications/f:Application", ns)
+                self.assertEqual(len(applications), 1)
+                application = applications[0]
+                self.assertEqual(application.attrib["Id"], "OneXray")
+                self.assertEqual(application.attrib["Executable"], "OneXray.exe")
+                self.assertFalse(
+                    any("AppListEntry" in element.attrib for element in root.iter())
+                )
+
+                session = application.find(
+                    "f:Extensions/desktop:Extension"
+                    "[@Category='windows.fullTrustProcess']",
+                    ns,
+                )
+                self.assertEqual(
+                    session.attrib["Executable"],
+                    "vcore-windows-session-host.exe",
+                )
+                self.assertIsNotNone(session.find("desktop:FullTrustProcess", ns))
+
+                provider = application.find(
+                    "f:Extensions/f:Extension[@Category='windows.backgroundTasks']",
+                    ns,
+                )
+                self.assertEqual(
+                    provider.attrib["Executable"],
+                    "vcore-windows-vpn-host.exe",
+                )
+                self.assertEqual(
+                    provider.attrib["EntryPoint"],
+                    "VCore.VpnBackgroundTask",
+                )
+                self.assertEqual(
+                    provider.attrib[f"{{{_UAP10}}}RuntimeBehavior"],
+                    "windowsApp",
+                )
+                self.assertEqual(
+                    provider.attrib[f"{{{_UAP10}}}TrustLevel"],
+                    "appContainer",
+                )
+                self.assertIsNotNone(
+                    provider.find("f:BackgroundTasks/uap:Task[@Type='vpnClient']", ns)
+                )
+                self.assertIsNotNone(
+                    application.find(
+                        "f:Extensions/uap:Extension[@Category='windows.protocol']"
+                        "/uap:Protocol[@Name='onexray']",
+                        ns,
+                    )
+                )
+                startup = application.find(
+                    "f:Extensions/desktop:Extension[@Category='windows.startupTask']"
+                    "/desktop:StartupTask",
+                    ns,
+                )
+                self.assertEqual(startup.attrib["TaskId"], "VCoreStartup")
+                self.assertEqual(startup.attrib["Enabled"], "false")
+                self.assertEqual(
+                    root.find(".//f:InProcessServer/f:Path", ns).text,
+                    "vcore.dll",
+                )
+
+    def test_manifest_rejects_duplicate_vcore_extensions(self):
         manifest = os.path.join(self.temp_dir.name, "AppxManifest.xml")
         with open(manifest, "w", encoding="utf-8") as output:
             output.write(_MANIFEST_FIXTURE)
+        augment_manifest(manifest)
 
-        augment_manifest(
-            manifest,
-            local_development=True,
-            development_publisher="CN=OneXray Development",
-        )
+        with self.assertRaises(ValueError):
+            augment_manifest(manifest)
 
-        root = ET.parse(manifest).getroot()
-        ns = {"f": _FOUNDATION}
-        identity = root.find("f:Identity", ns)
-        self.assertEqual(identity.attrib["Name"], "OneXray.Dev")
-        self.assertEqual(identity.attrib["Publisher"], "CN=OneXray Development")
-        self.assertIsNotNone(root.find(".//f:Application[@Id='SessionHost']", ns))
-        self.assertIsNotNone(root.find(".//f:Application[@Id='VpnProvider']", ns))
-        self.assertEqual(
-            root.find(".//f:InProcessServer/f:Path", ns).text,
-            "vcore.dll",
-        )
+
+_VCORE_ARTIFACTS = (
+    "vcore.dll",
+    "vcore-windows-vpn-host.exe",
+    "vcore-windows-session-host.exe",
+)
+_VCORE_IDENTITY = (
+    "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;configVersion=13"
+)
+
+
+def _write_vcore_set(path):
+    os.makedirs(path)
+    hashes = {}
+    for name in _VCORE_ARTIFACTS:
+        artifact = os.path.join(path, name)
+        contents = bytearray(0x86)
+        contents[:2] = b"MZ"
+        contents[0x3C:0x40] = (0x80).to_bytes(4, "little")
+        contents[0x80:0x84] = b"PE\0\0"
+        contents[0x84:0x86] = (0x8664).to_bytes(2, "little")
+        with open(artifact, "wb") as output:
+            output.write(contents)
+        hashes[name] = hashlib.sha256(contents).hexdigest()
+    manifest = {
+        "formatVersion": 1,
+        "windowsPackageIntegrationRevision": 2,
+        "architecture": "x64",
+        "buildIdentity": _VCORE_IDENTITY,
+        "artifacts": hashes,
+    }
+    _write_manifest(path, manifest)
+    return manifest
+
+
+def _write_manifest(path, manifest):
+    with open(
+        os.path.join(path, "vcore-windows-artifacts.json"),
+        "w",
+        encoding="utf-8",
+    ) as output:
+        json.dump(manifest, output)
 
 
 _FOUNDATION = "http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+_UAP = "http://schemas.microsoft.com/appx/manifest/uap/windows10"
+_UAP10 = "http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
 _DESKTOP = "http://schemas.microsoft.com/appx/manifest/desktop/windows10"
 _MANIFEST_FIXTURE = f'''<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="{_FOUNDATION}"
  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+ xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
  xmlns:desktop="{_DESKTOP}"
  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
- IgnorableNamespaces="uap desktop rescap">
+ IgnorableNamespaces="uap uap3 desktop rescap">
  <Identity Name="YuanDevLLC.OneXray" Publisher="CN=Store" Version="1.0.0.0" ProcessorArchitecture="x64" />
  <Capabilities>
   <Capability Name="internetClientServer" />
@@ -183,6 +406,9 @@ _MANIFEST_FIXTURE = f'''<?xml version="1.0" encoding="utf-8"?>
  <Applications>
   <Application Id="OneXray" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
    <Extensions>
+    <uap:Extension Category="windows.protocol">
+     <uap:Protocol Name="onexray" />
+    </uap:Extension>
     <desktop:Extension Category="windows.startupTask" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
      <desktop:StartupTask TaskId="VCoreStartup" Enabled="false" DisplayName="OneXray" />
     </desktop:Extension>
