@@ -166,15 +166,11 @@ class WindowsPackagingTest(unittest.TestCase):
         with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):
             self.assertEqual(WindowsBuilder._target_architecture(), "arm64")
 
-    def test_windows_jobs_pin_and_record_one_vcore_commit(self):
+    def test_windows_jobs_track_and_record_vcore_main(self):
         workflow = (
             Path(__file__).resolve().parents[2] / ".github/workflows/build.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn(
-            "VCORE_REF: d9018a2dfb75ab1f55c593023cbaa60951165eb5",
-            workflow,
-        )
-        self.assertNotIn("VCORE_REF: main", workflow)
+        self.assertIn("VCORE_REF: main", workflow)
         self.assertIn(
             'echo "${VCORE_REF}" > release-metadata/vcore-sha.txt',
             workflow,

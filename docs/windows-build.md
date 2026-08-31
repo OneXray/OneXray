@@ -4,7 +4,7 @@ Windows 构建以 [`.github/workflows/build.yml`](../.github/workflows/build.yml
 
 ## CI 构建
 
-Windows 的构建矩阵、runner 标签、工具链安装步骤和 artifact 名称直接查看 [Build workflow](../.github/workflows/build.yml)。x64 与 ARM64 job 使用同一个不可变 VCore commit，release metadata 记录该真实 SHA；Xray-core 版本由 libXray 的 Go module 锁定，最终只输出 Microsoft Store MSIX 分发包。
+Windows 的构建矩阵、runner 标签、工具链安装步骤和 artifact 名称直接查看 [Build workflow](../.github/workflows/build.yml)。x64 与 ARM64 job 都从 VCore 的 `main` 分支构建；Xray-core 版本由 libXray 的 Go module 锁定，最终只输出 Microsoft Store MSIX 分发包。
 
 [`publish-microsoft-store.yml`](../.github/workflows/publish-microsoft-store.yml) 将两个架构的 MSIX 合并为 MSIX Bundle；release tag 构建会继续提交到 Microsoft Partner Center，手动构建只生成 Bundle。
 
