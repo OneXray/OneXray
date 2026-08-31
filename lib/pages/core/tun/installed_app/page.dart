@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/core/tun/app_icon/controller.dart';
+import 'package:onexray/pages/core/tun/app_icon/view.dart';
 import 'package:onexray/pages/core/tun/installed_app/controller.dart';
 import 'package:onexray/pages/core/tun/installed_app/params.dart';
 import 'package:onexray/pages/widget/data_list.dart';
@@ -15,8 +17,11 @@ class InstalledAppPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => InstalledAppController(params),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => InstalledAppController(params)),
+        BlocProvider(create: (_) => TunAppIconController()),
+      ],
       child: BlocBuilder<InstalledAppController, InstalledAppPageState>(
         builder: (context, state) {
           final controller = context.read<InstalledAppController>();
@@ -90,8 +95,11 @@ class InstalledAppPage extends StatelessWidget {
                 final app = state.apps[index];
                 final selected = state.selections.contains(app.packageName);
                 return DataListRow(
+                  key: ValueKey(app.packageName),
                   title: app.name,
                   subtitle: app.packageName,
+                  leading: AppIconView(packageName: app.packageName),
+                  leadingStyle: DataListRowLeadingStyle.image,
                   onTap: () =>
                       controller.updateSelections(!selected, app.packageName),
                   trailing: Checkbox(

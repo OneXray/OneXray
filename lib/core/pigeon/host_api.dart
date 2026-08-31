@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
@@ -402,6 +404,17 @@ class AppHostApi {
       }
     }
     return [];
+  }
+
+  Future<Uint8List?> getAppIcon(String packageName) async {
+    if (AppPlatform.isAndroid) {
+      try {
+        return await _api.getAppIcon(packageName);
+      } catch (error, stackTrace) {
+        _reportUnexpected('getAppIcon', error, stackTrace);
+      }
+    }
+    return null;
   }
 
   // macOS
