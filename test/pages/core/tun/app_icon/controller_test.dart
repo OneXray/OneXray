@@ -18,10 +18,48 @@ final _pngBytes = img.encodePng(
   ),
 );
 
+/// Renders one row of a page driven by [controller].
+Future<void> _openPage(
+  WidgetTester tester,
+  TunAppIconController controller,
+) async {
+  await tester.pumpWidget(
+    BlocProvider.value(
+      value: controller,
+      child: const MaterialApp(
+        home: Scaffold(body: AppIconView(packageName: 'a.b.c')),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Unmounts the rows, which is what happens before a page controller closes.
+Future<void> _closeRows(WidgetTester tester) async {
+  await tester.pumpWidget(const MaterialApp(home: Scaffold()));
+}
+
+/// Decodes the rendered icon for real. The image codec completes through real
+/// async, which the fake async of pump does not drive, so the decoded frame is
+/// only accounted for in the image cache once it is precached here.
+Future<void> _decodeIcon(WidgetTester tester, ImageProvider icon) async {
+  final element = tester.element(find.byType(Image));
+  await tester.runAsync(() => precacheImage(icon, element));
+  await tester.pump();
+}
+
 void main() {
-  // Evicting decoded icons on teardown needs the painting binding, which the
-  // plain unit tests below also rely on.
+  // Releasing the icons evicts them from Flutter's global image cache, which
+  // needs the painting binding.
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // Every provider built from one byte buffer keys the same image cache entry,
+  // so the tests below share keys unless the cache starts empty.
+  setUp(() {
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
+  });
 
   test('icons already resolved by the flow are seeded on construction', () async {
     final service = AppIconService.withLoader((packageName) async {
@@ -34,8 +72,12 @@ void main() {
     addTearDown(controller.close);
 
     // A page reopened inside the same flow paints its icons on the first frame
-    // instead of flashing the fallback glyph.
-    expect(controller.state.icons['with.icon'], isA<MemoryImage>());
+    // instead of flashing the fallback glyph, and it paints them through the
+    // provider the flow already owns.
+    expect(
+      controller.state.icons['with.icon'],
+      same(service.resolved('with.icon')),
+    );
     expect(controller.state.icons.containsKey('without.icon'), isTrue);
     expect(controller.state.icons['without.icon'], isNull);
   });
@@ -138,7 +180,7 @@ void main() {
       controller.requestIcon('a.b.c');
       // The flow owner leaves the per-app VPN pages while the bridge call is
       // still running.
-      service.clear();
+      await service.clear();
       completers.first.complete(Uint8List.fromList([1]));
       await Future<void>.delayed(Duration.zero);
 
@@ -154,60 +196,94 @@ void main() {
     },
   );
 
-  testWidgets('closing the page evicts the decoded icons', (tester) async {
-    final controller = TunAppIconController.withService(
-      AppIconService.withLoader((_) async => _pngBytes),
-    );
+  testWidgets('leaving the flow evicts the decoded icons', (tester) async {
+    final service = AppIconService.withLoader((_) async => _pngBytes);
+    final controller = TunAppIconController.withService(service);
 
-    await tester.pumpWidget(
-      BlocProvider.value(
-        value: controller,
-        child: const MaterialApp(
-          home: Scaffold(body: AppIconView(packageName: 'a.b.c')),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _openPage(tester, controller);
 
     final icon = controller.state.icons['a.b.c']!;
     final cache = PaintingBinding.instance.imageCache;
+    await _decodeIcon(tester, icon);
+    expect(cache.containsKey(icon), isTrue);
+    expect(cache.currentSizeBytes, greaterThan(0));
+
+    // Closing one page of the flow keeps the icon: the pages that are still
+    // open, and the ones reopened later, paint from this entry.
+    await _closeRows(tester);
+    await controller.close();
     expect(cache.containsKey(icon), isTrue);
 
-    await tester.pumpWidget(const MaterialApp(home: Scaffold()));
-    await controller.close();
+    await service.clear();
 
     expect(cache.containsKey(icon), isFalse);
+    expect(cache.currentSizeBytes, 0);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a seeded icon is left to the page that decoded it', (
+  testWidgets('the pages of one flow share a single icon provider', (
     tester,
   ) async {
     final service = AppIconService.withLoader((_) async => _pngBytes);
     final owner = TunAppIconController.withService(service);
     addTearDown(owner.close);
 
-    await tester.pumpWidget(
-      BlocProvider.value(
-        value: owner,
-        child: const MaterialApp(
-          home: Scaffold(body: AppIconView(packageName: 'a.b.c')),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _openPage(tester, owner);
 
     final icon = owner.state.icons['a.b.c']!;
     final cache = PaintingBinding.instance.imageCache;
     expect(cache.containsKey(icon), isTrue);
 
-    // The next page of the flow seeds the same bytes, so its provider shares
-    // the cache entry the first page is still painting from.
+    // The next page of the flow seeds the provider the first one is painting
+    // from instead of building a second one over the same bytes, so closing it
+    // cannot release an entry another page is still using.
     final next = TunAppIconController.withService(service);
-    expect(next.state.icons['a.b.c'], isA<MemoryImage>());
+    expect(next.state.icons['a.b.c'], same(icon));
     await next.close();
 
     expect(cache.containsKey(icon), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a page closed, reopened and rendered leaves no icon behind', (
+    tester,
+  ) async {
+    final service = AppIconService.withLoader((_) async => _pngBytes);
+    final cache = PaintingBinding.instance.imageCache;
+
+    final first = TunAppIconController.withService(service);
+    await _openPage(tester, first);
+    final icon = first.state.icons['a.b.c']!;
+    await _decodeIcon(tester, icon);
+    final decodedBytes = cache.currentSizeBytes;
+    expect(cache.containsKey(icon), isTrue);
+    expect(decodedBytes, greaterThan(0));
+    expect(cache.currentSize, 1);
+
+    // The user leaves the page while the flow that owns the icons stays open.
+    await _closeRows(tester);
+    await first.close();
+
+    // Reopening seeds the provider the flow already owns, so rendering it
+    // again decodes into the entry that provider owns instead of adding an
+    // unowned one.
+    final reopened = TunAppIconController.withService(service);
+    expect(reopened.state.icons['a.b.c'], same(icon));
+    await _openPage(tester, reopened);
+    await _decodeIcon(tester, icon);
+    expect(cache.containsKey(icon), isTrue);
+    expect(cache.currentSizeBytes, decodedBytes);
+    expect(cache.currentSize, 1);
+
+    await _closeRows(tester);
+    await reopened.close();
+
+    // Leaving the flow releases what the reopened page painted from too.
+    await service.clear();
+
+    expect(cache.containsKey(icon), isFalse);
+    expect(cache.currentSizeBytes, 0);
+    expect(cache.currentSize, 0);
     expect(tester.takeException(), isNull);
   });
 }

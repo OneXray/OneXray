@@ -10,7 +10,7 @@ import 'package:onexray/pages/widget/data_list.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
-  testWidgets('every row resolves its icon through the page providers', (
+  testWidgets('every row resolves its icon through the flow providers', (
     tester,
   ) async {
     await tester.pumpWidget(

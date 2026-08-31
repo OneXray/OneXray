@@ -17,9 +17,14 @@ class AppIconViewState {
   }
 }
 
-/// Owns the launcher icons rendered by the per-app VPN lists: it asks
-/// [AppIconService] for the bytes of the packages the list actually shows, and
-/// keeps the image providers built from them until the page is closed.
+/// Tracks the launcher icons rendered by the per-app VPN lists: it asks
+/// [AppIconService] for the icons of the packages the list actually shows, and
+/// hands the rows the providers the service resolved.
+///
+/// The icons belong to the flow, not to this page: [AppIconService] creates one
+/// provider per package and releases it when the flow owner leaves the per-app
+/// VPN pages, so a page that is closed and reopened keeps painting from the
+/// same decoded entry instead of leaving a second one behind.
 class TunAppIconController extends PageCubit<AppIconViewState> {
   TunAppIconController() : this._(AppIconService());
 
@@ -27,43 +32,18 @@ class TunAppIconController extends PageCubit<AppIconViewState> {
   @visibleForTesting
   TunAppIconController.withService(AppIconService service) : this._(service);
 
+  /// Icons resolved earlier in the same flow are ready to paint on the first
+  /// frame, which keeps the next page of the flow from opening on the fallback
+  /// glyph.
   TunAppIconController._(AppIconService service)
     : _service = service,
-      super(AppIconViewState(icons: _seedFrom(service)));
+      super(AppIconViewState(icons: service.resolvedIcons));
 
   final AppIconService _service;
 
   /// Packages already handed to the service, so a rebuilt row does not queue a
   /// second bridge call while the first one is still running.
   final _requested = <String>{};
-
-  /// Providers built by this page, which are the only ones it may evict. A
-  /// seeded provider shares its cache entry with the page that decoded it, so
-  /// releasing it is that page's job.
-  final _created = <ImageProvider>[];
-
-  /// Icons resolved earlier in the same flow are ready to paint on the first
-  /// frame, which keeps the next page of the flow from opening on the fallback
-  /// glyph.
-  static Map<String, ImageProvider?> _seedFrom(AppIconService service) {
-    final icons = <String, ImageProvider?>{};
-    for (final entry in service.resolvedIcons.entries) {
-      final bytes = entry.value;
-      icons[entry.key] = bytes == null ? null : MemoryImage(bytes);
-    }
-    return icons;
-  }
-
-  @override
-  Future<void> disposePageResources() async {
-    // The bytes are dropped by the flow owner, but the frames Flutter decoded
-    // from them live in the global image cache and have to be evicted here.
-    // Rows are unmounted before this runs, so nothing is listening any more and
-    // the decoded frames are released with their cache entry.
-    for (final icon in _created) {
-      await icon.evict();
-    }
-  }
 
   void requestIcon(String packageName) {
     if (state.icons.containsKey(packageName) || !_requested.add(packageName)) {
@@ -84,14 +64,9 @@ class TunAppIconController extends PageCubit<AppIconViewState> {
       return;
     }
     // Read the cache instead of the reply, so a request that lost a race never
-    // paints bytes the service has already replaced.
-    final bytes = _service.resolved(packageName);
-    final icon = bytes == null ? null : MemoryImage(bytes);
-    if (icon != null) {
-      _created.add(icon);
-    }
+    // paints an icon the service has already replaced.
     final icons = Map<String, ImageProvider?>.of(state.icons);
-    icons[packageName] = icon;
+    icons[packageName] = _service.resolved(packageName);
     emit(state.copyWith(icons: icons));
   }
 }

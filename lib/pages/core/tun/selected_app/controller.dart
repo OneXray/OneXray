@@ -31,9 +31,10 @@ class SelectedAppController extends PageCubit<SelectedAppPageState> {
 
   @override
   Future<void> disposePageResources() async {
-    // This page owns the whole per-app VPN flow, so release the icon bytes
-    // once the user leaves it.
-    AppIconService().clear();
+    // This page owns the whole per-app VPN flow, so release the icons once the
+    // user leaves it: the cached bytes and the frames Flutter decoded from
+    // them.
+    await AppIconService().clear();
   }
 
   void _initParams() {

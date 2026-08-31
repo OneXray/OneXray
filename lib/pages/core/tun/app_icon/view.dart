@@ -6,8 +6,9 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 /// Shows the launcher icon of [packageName], falling back to a generic glyph
 /// while the icon is loading or when the platform has none.
 ///
-/// Must be built under a [TunAppIconController] provider, which owns the icons
-/// of the page this row belongs to.
+/// Must be built under a [TunAppIconController] provider, which resolves the
+/// icons of the page this row belongs to. The icons themselves belong to the
+/// per-app VPN flow, so they outlive this row and the page around it.
 class AppIconView extends StatefulWidget {
   final String packageName;
 
