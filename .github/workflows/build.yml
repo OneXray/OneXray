@@ -71,7 +71,7 @@ env:
   NDK_VERSION: r29
   LIBXRAY_REF: main
   VCORE_REPOSITORY: ${{ github.repository_owner }}/VCore
-  VCORE_REF: d9018a2dfb75ab1f55c593023cbaa60951165eb5
+  VCORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
