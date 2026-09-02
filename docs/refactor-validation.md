@@ -68,3 +68,35 @@ v2→v3、Age/ID/subId/base64 原值保留、4 份 Raw、新 Custom 写读、关
 所有检查通过；不读取开发者主数据库，不调用 VPN。v1 与错误注入在 Dart SQLite 测试覆盖。
 
 P1 不代表新连接/新 UI 已启用；后续按 P2→P9 继续。libXray 本阶段无源码改动。
+
+## P2：配置编译与节点解析
+
+- 新增不依赖 Profile 的值编译器：普通模式固定 `proxy` balancer / 完整 selector，
+  1–3 接入、逐接入最终出口副本、默认 loopback、双 Google DNS 和 App 运行字段。
+  Raw 原文不变，额外 inbound / 非统计 policy 保留；重复 tag/端口明确拒绝。
+- Custom 使用原生 JSON、1–3 个空白槽位、四条件 AND、ruleTag/数组顺序；导入清单与
+  持久正文分离，共享校验用于保存和备份。允许省略空 routing/rules 的核心原生默认值。
+- 直连地区映射由实际打包的 protobuf 生成，250 个 IP 地区、4 个域名地区；运行时再按
+  当前索引过滤。`CATEGORY-PT` 是 Private Tracker，不误当葡萄牙；来源与内容哈希随资产保存。
+- 复用串行测速队列，固定每批最多 5 个；逐批提交允许选够 N 个后继续连接，其他任务继续。
+  自动测速不受旧开关影响；编辑后的迟到结果、恢复前已排队的旧任务不能污染新数据。
+- libXray v3 增量提供 `checkRoute` 和 `testXray.buildOnly`。后者仅构建，不创建 TUN、
+  WireGuard 或其他实例；前者使用真实 Router，剥离监听/日志/Webhook 等检查副作用，
+  无法安全构造的 WireGuard/VLESS reverse 明确拒绝。同进程已有托管核心时拒绝临时检查。
+
+验证：81 项定向测试、全量 394 项通过，1 项 Windows 原生测试跳过；静态分析、原生
+模型与分层检查通过。锁定核心读取 9 份真实 Dart 产物，18 个场景、62 次 Invoke 检查通过。
+Android 独立 `p2-compiler-1788362045519363` 目录实际执行新接口，27 项检查通过；
+未打开主数据库、未启动 VPN。Android AAR 与 Apple 全部 Go slices 已重新构建并复制。
+完整 App macOS Debug 构建通过；没有启动 macOS VPN、截图或录屏。Windows/Linux
+原生构建与运行继续 NOT RUN，现有 Pigeon Swift Sendable 警告未当作运行验收通过。
+
+构建工具：Go 1.27.1；gomobile/gobind 为 Go 1.27.0 构建的
+`golang.org/x/mobile v0.0.0-20260821190718-4776eadac327`，未升级模块锁定版本。
+AAR SHA-256：`2f4c1d2522e24f269adeb2cffc347f3ce3f3ab39dd0d269c83c50b9f66e11b7e`；
+macOS archive：`88dba48b8246a5adca63985b9b89613e9d7a414485e89b5d84ce8379cd0036af`。
+
+当前约束：IPv6 关闭时，节点域名须由 P3 预启动解析提供 IPv4 引导地址；显式 IPv6
+目标拒绝。Raw 的 `+local` DNS 在要求物理网卡绑定时不允许绕过约束，关闭 IPv6 时
+不能验证为 IPv4 的本地 DNS 域名也拒绝；不能只改 queryStrategy 就宣称已强制所有物理出站。
+构建/路由检查会读取本地资源且影响核心进程全局值，不宣传为无 IO 或可与活动核心并发。

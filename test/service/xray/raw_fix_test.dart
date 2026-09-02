@@ -97,7 +97,7 @@ void main() {
     ) as Map<String, dynamic>;
     expect(normalized['name'], 'Imported');
     final inbounds = normalized['inbounds']! as List<dynamic>;
-    expect(inbounds.single, containsPair('tag', 'pingIn'));
+    expect(inbounds.single, containsPair('tag', 'tunIn'));
   });
 
   test(

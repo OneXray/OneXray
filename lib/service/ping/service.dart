@@ -21,41 +21,62 @@ class PingService {
 
   factory PingService() => _singleton;
 
-  PingService._internal();
+  PingService._internal() : _databaseOverride = null, _batchOverride = null;
+
+  PingService.forTesting({
+    required AppDatabase database,
+    required Future<List<PingBatchResult>> Function(
+      List<PingBatchSource>,
+      PingState,
+    )
+    runBatch,
+  }) : _databaseOverride = database,
+       _batchOverride = runBatch;
+
+  final AppDatabase? _databaseOverride;
+  final Future<List<PingBatchResult>> Function(
+    List<PingBatchSource>,
+    PingState,
+  )?
+  _batchOverride;
+
+  AppDatabase get _database => _databaseOverride ?? AppDatabase();
 
   Future<void> _scheduledPingQueue = Future.value();
   var _pingingTaskCount = 0;
 
-  Future<void> pingOutboundConfigs(int subId) async {
-    final db = AppDatabase();
+  Future<void> pingOutboundConfigs(int subId) => _enqueuePing(() async {
+    final db = _database;
     await _runPinging(() async {
       final rows = await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId);
       await _pingConfigs(db, rows);
     });
-  }
+  });
 
   Future<void> pingHomeNodeConfigs(int subId) async {
-    final db = AppDatabase();
-    await _runPinging(() async {
-      final rows = await db.coreConfigDao.allHomeNodeRowsWithDataBySubId(subId);
-      await _pingConfigs(db, rows);
-    });
+    await pingOutboundConfigs(subId);
   }
 
   void schedulePingConfigIds(List<int> ids) {
+    unawaited(pingConfigIds(ids));
+  }
+
+  /// Shares the existing serialized queue with automatic imports. Each batch
+  /// commits independently, so DB watchers may finish selecting before this does.
+  Future<void> pingConfigIds(List<int> ids) {
     final targetIds = ids
         .where((id) => id > DBConstants.defaultId)
         .toSet()
         .toList();
     if (targetIds.isEmpty) {
-      return;
+      return Future.value();
     }
-    _enqueueAutoPing(() async {
-      final db = AppDatabase();
+    return _enqueuePing(() async {
+      final db = _database;
       final rows = <CoreConfigData>[];
       for (final id in targetIds) {
         final row = await db.coreConfigDao.searchRow(id);
-        if (row != null && _isPingableConfig(row)) {
+        if (row != null && _isPingableConfig(row) && isUnmeasured(row)) {
           rows.add(row);
         }
       }
@@ -78,35 +99,43 @@ class PingService {
     if (targetSubIds.isEmpty) {
       return;
     }
-    _enqueueAutoPing(() async {
-      final db = AppDatabase();
-      final rows = <CoreConfigData>[];
-      for (final subId in targetSubIds) {
-        rows.addAll(
-          await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId),
-        );
-      }
-      if (rows.isEmpty) {
-        return;
-      }
-      await _runPinging(() => _pingConfigs(db, rows));
-    });
-  }
-
-  void _enqueueAutoPing(Future<void> Function() task) {
-    _scheduledPingQueue = _scheduledPingQueue.then((_) async {
-      try {
-        final pingState = PingState();
-        await pingState.readFromPreferences();
-        if (!pingState.autoPingNewConfigs) {
+    unawaited(
+      _enqueuePing(() async {
+        final db = _database;
+        final rows = <CoreConfigData>[];
+        for (final subId in targetSubIds) {
+          rows.addAll(
+            (await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId))
+                .where(isUnmeasured),
+          );
+        }
+        if (rows.isEmpty) {
           return;
         }
-        await DataMaintenance.run(task);
-      } catch (e, stackTrace) {
-        ygLogger("Auto ping failed: $e\n$stackTrace");
-      }
-    });
+        await _runPinging(() => _pingConfigs(db, rows));
+      }),
+    );
   }
+
+  Future<void> _enqueuePing(Future<void> Function() task) {
+    final previous = _scheduledPingQueue;
+    // Register while queued, not after waiting: restore must not finish and
+    // then receive a stale job against restored rows with the same IDs.
+    final next = DataMaintenance.run(() async {
+      await previous;
+      await task();
+    });
+    _scheduledPingQueue = next.catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
+    });
+    return next;
+  }
+
+  static bool isUnmeasured(CoreConfigData row) =>
+      row.lastMeasuredAt == null || row.delay == PingDelayConstants.unknown;
 
   Future<void> _runPinging(Future<void> Function() task) =>
       DataMaintenance.run(() async {
@@ -138,8 +167,8 @@ class PingService {
     return CoreConfigType.fromString(row.type) == CoreConfigType.outbound;
   }
 
-  Future<void> pingRawConfig(int id) async {
-    final db = AppDatabase();
+  Future<void> pingRawConfig(int id) => _enqueuePing(() async {
+    final db = _database;
     await _runPinging(() async {
       final row = await db.coreConfigDao.searchRow(id);
       if (row == null ||
@@ -148,7 +177,7 @@ class PingService {
       }
       await _pingConfigs(db, [row]);
     });
-  }
+  });
 
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
     final pingState = PingState();
@@ -164,10 +193,19 @@ class PingService {
           sources.add(source);
         }
       }
-      final results = await PingBatchRunner.run(sources, pingState);
+      final results = await (_batchOverride ?? PingBatchRunner.run)(
+        sources,
+        pingState,
+      );
       await db.transaction(() async {
         for (var index = 0; index < results.length; index++) {
-          await _updateRow(db, batchRows[index], results[index].delay);
+          final result = results[index];
+          final delay = result.success
+              ? result.delay
+              : result.delay == PingDelayConstants.timeout
+              ? PingDelayConstants.timeout
+              : PingDelayConstants.error;
+          await _updateRow(db, batchRows[index], delay);
         }
       });
     }
@@ -202,6 +240,7 @@ class PingService {
     await (db.update(db.coreConfig)..where(
           (table) =>
               table.id.equals(row.id) &
+              table.subId.equals(row.subId) &
               table.type.equals(row.type) &
               table.data.equals(row.data!),
         ))

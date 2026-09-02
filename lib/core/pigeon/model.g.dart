@@ -167,10 +167,56 @@ Map<String, dynamic> _$RunXrayRequestToJson(RunXrayRequest instance) =>
     <String, dynamic>{'xrayJson': ?instance.xrayJson};
 
 TestXrayRequest _$TestXrayRequestFromJson(Map<String, dynamic> json) =>
-    TestXrayRequest(json['xrayJson'] as String?);
+    TestXrayRequest(
+      json['xrayJson'] as String?,
+      buildOnly: json['buildOnly'] as bool?,
+    );
 
 Map<String, dynamic> _$TestXrayRequestToJson(TestXrayRequest instance) =>
-    <String, dynamic>{'xrayJson': ?instance.xrayJson};
+    <String, dynamic>{
+      'xrayJson': ?instance.xrayJson,
+      'buildOnly': ?instance.buildOnly,
+    };
+
+CheckRouteRequest _$CheckRouteRequestFromJson(Map<String, dynamic> json) =>
+    CheckRouteRequest(
+      xrayJson: json['xrayJson'] as String,
+      domain: json['domain'] as String?,
+      ip: json['ip'] as String?,
+      port: (json['port'] as num).toInt(),
+      network: json['network'] as String,
+      inboundTag: json['inboundTag'] as String? ?? 'tunIn',
+      timeout: (json['timeout'] as num?)?.toInt() ?? 5000,
+    );
+
+Map<String, dynamic> _$CheckRouteRequestToJson(CheckRouteRequest instance) =>
+    <String, dynamic>{
+      'xrayJson': instance.xrayJson,
+      'domain': ?instance.domain,
+      'ip': ?instance.ip,
+      'port': instance.port,
+      'network': instance.network,
+      'inboundTag': instance.inboundTag,
+      'timeout': instance.timeout,
+    };
+
+CheckRouteResponse _$CheckRouteResponseFromJson(Map<String, dynamic> json) =>
+    CheckRouteResponse(
+      matched: json['matched'] as bool,
+      ruleTag: json['ruleTag'] as String,
+      outboundTag: json['outboundTag'] as String,
+      balancerTag: json['balancerTag'] as String,
+      defaulted: json['defaulted'] as bool,
+    );
+
+Map<String, dynamic> _$CheckRouteResponseToJson(CheckRouteResponse instance) =>
+    <String, dynamic>{
+      'matched': instance.matched,
+      'ruleTag': instance.ruleTag,
+      'outboundTag': instance.outboundTag,
+      'balancerTag': instance.balancerTag,
+      'defaulted': instance.defaulted,
+    };
 
 LibXrayInvokeRequest _$LibXrayInvokeRequestFromJson(
   Map<String, dynamic> json,
@@ -195,6 +241,7 @@ const _$LibXrayMethodEnumMap = {
   LibXrayMethod.countGeoData: 'countGeoData',
   LibXrayMethod.pingBatch: 'pingBatch',
   LibXrayMethod.testXray: 'testXray',
+  LibXrayMethod.checkRoute: 'checkRoute',
   LibXrayMethod.runXray: 'runXray',
   LibXrayMethod.stopXray: 'stopXray',
   LibXrayMethod.xrayVersion: 'xrayVersion',

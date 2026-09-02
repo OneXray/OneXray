@@ -258,12 +258,15 @@ class AppHostApi {
     return null;
   }
 
-  Future<String> testXray(String xrayJson) async {
+  Future<String> testXray(String xrayJson, {bool buildOnly = false}) async {
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
-          payload: TestXrayRequest(xrayJson).toJson(),
+          payload: TestXrayRequest(
+            xrayJson,
+            buildOnly: buildOnly ? true : null,
+          ).toJson(),
         ),
       );
       final resp = LibXrayInvokeResponseParser.parse(res);
@@ -275,6 +278,20 @@ class AppHostApi {
       _reportUnexpected('testXray', error, stackTrace);
     }
     return _errorResult;
+  }
+
+  Future<CheckRouteResponse> checkRoute(CheckRouteRequest request) async {
+    final result = await _invoke(
+      LibXrayInvokeRequest(
+        method: LibXrayMethod.checkRoute,
+        payload: request.toJson(),
+      ),
+    );
+    final response = LibXrayInvokeResponseParser.parse(result);
+    if (!response.success || response.data == null) {
+      throw LibXrayInvokeException(response.error);
+    }
+    return CheckRouteResponse.fromJson(response.data!);
   }
 
   Future<String> runXray(String coreInvokeText) async {

@@ -166,10 +166,8 @@ class SubscriptionService {
         );
       }
     }
-    // A bulk import can contain thousands of nodes. Avoid monopolizing the
-    // serialized desktop libXray worker with an automatic ping queue.
-    if (entries.length == 1 && importedSubIds.isNotEmpty) {
-      _schedulePing(importedSubIds.single);
+    for (final subId in importedSubIds) {
+      _schedulePing(subId);
     }
     return imported;
   }

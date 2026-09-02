@@ -44,7 +44,8 @@ class PingState {
   var timeout = PingTimeout.defaultValue;
   var url = PingUrl.cloudflare;
   var customUrl = "";
-  var autoPingNewConfigs = false;
+  // Retained for the retiring settings UI. Scheduling no longer consults it.
+  var autoPingNewConfigs = true;
 
   String get realUrl => url == PingUrl.custom ? customUrl : url.url;
 

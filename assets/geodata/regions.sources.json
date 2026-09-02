@@ -1,0 +1,37 @@
+{
+  "bundleTimestamp": 1788002625,
+  "bundleTimestampUtc": "2026-08-29T11:23:45Z",
+  "domainPolicy": "Manually reviewed CN/CATEGORY-IR/CATEGORY-RU/CATEGORY-TM only; include only when present. Never infer country semantics from a two-letter geosite category or CATEGORY- prefix.",
+  "provenance": "Source URLs match App SystemGeoDatURL and libXray/download_geo. The download does not retain upstream release tags; file SHA256 is the verified content version. Bundle timestamp is local preparation time, not an upstream release version.",
+  "regionPolicy": "Actual non-empty two-letter geoip region categories, excluding ZZ (unknown). No new translated names; callers use existing localized names or the region code.",
+  "semanticSources": [
+    "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/cn",
+    "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/category-ir",
+    "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/category-ru",
+    "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/category-tm",
+    "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/category-pt"
+  ],
+  "sources": {
+    "geoip": {
+      "bytes": 23080744,
+      "categoryCount": 253,
+      "contentVersion": "sha256:c67bd077eb102cec74fab759b73d17f99275f56af10a87c14d9fd983508f5ce1",
+      "indexSha256": "94afca89c07adf3504bc31d7d7fb37b2a5d15ce456e2c11c98d5b76a42c7cd58",
+      "ruleCount": 1372267,
+      "sha256": "c67bd077eb102cec74fab759b73d17f99275f56af10a87c14d9fd983508f5ce1",
+      "sourceUrl": "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat",
+      "upstreamReleaseTag": null
+    },
+    "geosite": {
+      "bytes": 2283258,
+      "categoryCount": 1537,
+      "contentVersion": "sha256:ba1adf51d4d724abbc157c53234a02bda00c94cdb8211709682e51a6855520b7",
+      "indexSha256": "c1f421dfb7e671a48b5a9119967b3fb849706d1a672e267eaaf362bd6b6306d1",
+      "ruleCount": 109159,
+      "sha256": "ba1adf51d4d724abbc157c53234a02bda00c94cdb8211709682e51a6855520b7",
+      "sourceUrl": "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat",
+      "upstreamReleaseTag": null
+    }
+  },
+  "xrayCoreVersion": "v1.260327.1-0.20260728075948-5ca6f4b7d4dc"
+}

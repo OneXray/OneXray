@@ -1,10 +1,8 @@
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
-import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/service/xray/raw/fix.dart';
 
 class XrayRawValidationResult {
   final bool isValid;
@@ -32,14 +30,15 @@ class XrayRawValidator {
     String? nameOverride,
   }) {
     late final Map<String, dynamic> jsonMap;
+    final normalizedNameOverride = nameOverride?.trim();
+    final overrideName = normalizedNameOverride?.isNotEmpty == true;
     try {
       final decoded = JsonTool.decoder.convert(rawText);
       if (decoded is! Map<String, dynamic>) {
         throw const FormatException("Xray config root must be an object");
       }
       jsonMap = decoded;
-      final normalizedNameOverride = nameOverride?.trim();
-      if (normalizedNameOverride != null && normalizedNameOverride.isNotEmpty) {
+      if (overrideName) {
         jsonMap['name'] = normalizedNameOverride;
       }
     } catch (_) {
@@ -54,12 +53,18 @@ class XrayRawValidator {
       );
     }
 
-    XrayRawFix.keepOnlyPingInbound(jsonMap);
-    final normalizedText = JsonTool.encoder.convert(jsonMap);
+    // Saving is not runtime compilation. Keep the exact source, including all
+    // expert fields and formatting, unless the caller explicitly renames it.
+    final normalizedText = overrideName
+        ? JsonTool.encoder.convert(jsonMap)
+        : rawText;
     return XrayRawValidationResult.valid(normalizedText, name);
   }
 
-  static Future<XrayRawValidationResult> validate(String rawText) async {
+  static Future<XrayRawValidationResult> validate(
+    String rawText, {
+    Future<String> Function(String)? testXray,
+  }) async {
     final normalized = normalize(rawText);
     if (!normalized.isValid) {
       return normalized;
@@ -68,7 +73,10 @@ class XrayRawValidator {
     final jsonMap = JsonTool.decoder.convert(
       normalized.normalizedText!,
     ) as Map<String, dynamic>;
-    final res = await _test(jsonMap);
+    final res = await _test(
+      jsonMap,
+      testXray ?? (text) => AppHostApi().testXray(text, buildOnly: true),
+    );
     if (res.isNotEmpty) {
       return XrayRawValidationResult.invalid(res);
     }
@@ -76,12 +84,28 @@ class XrayRawValidator {
     return normalized;
   }
 
-  static Future<String> _test(Map<String, dynamic> jsonMap) async {
-    XrayRawFix.fixEnv(jsonMap);
-    XrayRawFix.fixMetrics(jsonMap);
-
-    await FileTool.checkDir(VpnConstants.runDir);
+  static Future<String> _test(
+    Map<String, dynamic> jsonMap,
+    Future<String> Function(String) testXray,
+  ) async {
+    // Build the complete configuration without constructing devices/listeners.
+    // Only this disposable copy gets App-owned resource paths and logging.
+    final env = jsonMap['env'];
+    if (env != null && env is! Map<String, dynamic>) {
+      return 'env must be an object';
+    }
+    jsonMap['env'] = <String, dynamic>{
+      if (env is Map<String, dynamic>) ...env,
+      'xray.location.asset': VpnConstants.datDir,
+      'xray.location.cert': VpnConstants.datDir,
+    };
+    jsonMap['log'] = <String, dynamic>{
+      'access': 'none',
+      'error': 'none',
+      'loglevel': 'none',
+      'dnsLog': false,
+    };
     final rawText = JsonTool.encoder.convert(jsonMap);
-    return AppHostApi().testXray(rawText);
+    return testXray(rawText);
   }
 }

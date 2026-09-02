@@ -124,6 +124,7 @@ enum LibXrayMethod: String, Codable {
     case countGeoData
     case pingBatch
     case testXray
+    case checkRoute
     case runXray
     case stopXray
     case xrayVersion

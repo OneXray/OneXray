@@ -81,6 +81,9 @@ enum class LibXrayMethod {
     @SerialName("testXray")
     TEST_XRAY,
 
+    @SerialName("checkRoute")
+    CHECK_ROUTE,
+
     @SerialName("runXray")
     RUN_XRAY,
 

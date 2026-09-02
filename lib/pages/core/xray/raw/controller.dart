@@ -173,7 +173,7 @@ class XrayRawController extends PageCubit<XrayRawPageState> {
   }
 
   Future<void> save(BuildContext context) async {
-    final rawText = controller.text.trim();
+    final rawText = controller.text;
     final check = await XrayRawValidator.validate(rawText);
     if (check.isValid) {
       await _updateDb(check.normalizedText!);

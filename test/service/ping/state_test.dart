@@ -62,7 +62,7 @@ void main() {
 
       expect(restored.url, PingUrl.custom);
       expect(restored.customUrl, 'https://legacy.example.com/ping');
-      expect(restored.autoPingNewConfigs, isFalse);
+      expect(restored.autoPingNewConfigs, isTrue);
     },
   );
 
@@ -83,7 +83,15 @@ void main() {
       expect(restored.url, PingUrl.cloudflare, reason: customUrl);
       expect(restored.customUrl, customUrl, reason: customUrl);
       expect(restored.realUrl, PingUrl.cloudflare.url, reason: customUrl);
-      expect(restored.autoPingNewConfigs, isFalse, reason: customUrl);
+      expect(restored.autoPingNewConfigs, isTrue, reason: customUrl);
     }
+  });
+
+  test('automatic probing defaults on while the retired preference remains readable', () async {
+    expect(PingState().autoPingNewConfigs, isTrue);
+    await PreferencesKey().savePingState({'autoPingNewConfigs': false});
+    final restored = PingState();
+    await restored.readFromPreferences();
+    expect(restored.autoPingNewConfigs, isFalse);
   });
 }

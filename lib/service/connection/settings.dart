@@ -1,0 +1,153 @@
+enum ConnectionPlatform { ios, macos, android, windows, linux }
+
+enum SelectionKind { automatic, region, source, server }
+
+enum TrafficMode { smart, allVpn, custom }
+
+class ServerSelection {
+  final SelectionKind kind;
+  final int? id;
+  final String? region;
+
+  const ServerSelection.automatic()
+    : kind = SelectionKind.automatic,
+      id = null,
+      region = null;
+  const ServerSelection.server(int this.id)
+    : kind = SelectionKind.server,
+      region = null;
+  const ServerSelection.source(int this.id)
+    : kind = SelectionKind.source,
+      region = null;
+  const ServerSelection.region(String this.region)
+    : kind = SelectionKind.region,
+      id = null;
+
+  factory ServerSelection.fromJson(Map<String, dynamic> value) {
+    final kind = SelectionKind.values.byName(value['kind'] as String);
+    return switch (kind) {
+      SelectionKind.automatic => const ServerSelection.automatic(),
+      SelectionKind.server => ServerSelection.server(value['id'] as int),
+      SelectionKind.source => ServerSelection.source(value['id'] as int),
+      SelectionKind.region => ServerSelection.region(value['region'] as String),
+    };
+  }
+
+  Map<String, dynamic> toJson() => {
+    'kind': kind.name,
+    if (id != null) 'id': id,
+    if (region != null) 'region': region,
+  };
+}
+
+class SmartRoutingSettings {
+  final int entryCount;
+  final int? finalExitId;
+  final List<String> directRegions;
+  final bool directPrivate;
+  final bool directApple;
+  final bool resolveIpOnNoMatch;
+  final bool directDns;
+  final bool blockAds;
+
+  SmartRoutingSettings({
+    this.entryCount = 1,
+    this.finalExitId,
+    Iterable<String> directRegions = const ['CN'],
+    this.directPrivate = true,
+    this.directApple = true,
+    this.resolveIpOnNoMatch = true,
+    this.directDns = true,
+    this.blockAds = false,
+  }) : directRegions = List.unmodifiable(directRegions) {
+    if (entryCount < 1 || entryCount > 3) {
+      throw const FormatException('Entry count must be 1–3');
+    }
+  }
+
+  factory SmartRoutingSettings.fromJson(Map<String, dynamic> value) =>
+      SmartRoutingSettings(
+        entryCount: value['entryCount'] as int? ?? 1,
+        finalExitId: value['finalExitId'] as int?,
+        directRegions:
+            (value['directRegions'] as List?)?.cast<String>() ?? ['CN'],
+        directPrivate: value['directPrivate'] as bool? ?? true,
+        directApple: value['directApple'] as bool? ?? true,
+        resolveIpOnNoMatch: value['resolveIpOnNoMatch'] as bool? ?? true,
+        directDns: value['directDns'] as bool? ?? true,
+        blockAds: value['blockAds'] as bool? ?? false,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'entryCount': entryCount,
+    'finalExitId': finalExitId,
+    'directRegions': directRegions,
+    'directPrivate': directPrivate,
+    'directApple': directApple,
+    'resolveIpOnNoMatch': resolveIpOnNoMatch,
+    'directDns': directDns,
+    'blockAds': blockAds,
+  };
+}
+
+/// Retains the normal selection while Raw is active. The coordinator stores
+/// this value together with tunnel/log settings in one database transaction.
+class ConnectionSettings {
+  final bool expert;
+  final int? rawId;
+  final ServerSelection selection;
+  final TrafficMode trafficMode;
+  final int? customId;
+  final SmartRoutingSettings smart;
+
+  ConnectionSettings({
+    this.expert = false,
+    this.rawId,
+    this.selection = const ServerSelection.automatic(),
+    this.trafficMode = TrafficMode.smart,
+    this.customId,
+    SmartRoutingSettings? smart,
+  }) : smart = smart ?? SmartRoutingSettings();
+
+  factory ConnectionSettings.fromJson(Map<String, dynamic> value) =>
+      ConnectionSettings(
+        expert: value['expert'] as bool? ?? false,
+        rawId: value['rawId'] as int?,
+        selection: ServerSelection.fromJson(
+          value['selection'] as Map<String, dynamic>? ?? {'kind': 'automatic'},
+        ),
+        trafficMode: TrafficMode.values.byName(
+          value['trafficMode'] as String? ?? 'smart',
+        ),
+        customId: value['customId'] as int?,
+        smart: SmartRoutingSettings.fromJson(
+          value['smart'] as Map<String, dynamic>? ?? {},
+        ),
+      );
+
+  Map<String, dynamic> toJson() => {
+    'expert': expert,
+    'rawId': rawId,
+    'selection': selection.toJson(),
+    'trafficMode': trafficMode.name,
+    'customId': customId,
+    'smart': smart.toJson(),
+  };
+
+  int requiredEntries({int? customEntryCount}) {
+    if (expert) return 0;
+    if (selection.kind == SelectionKind.server ||
+        trafficMode == TrafficMode.allVpn) {
+      return 1;
+    }
+    return switch (trafficMode) {
+      TrafficMode.smart => smart.entryCount,
+      TrafficMode.allVpn => 1,
+      TrafficMode.custom =>
+        customEntryCount ?? (throw StateError('Custom route is required')),
+    };
+  }
+
+  int? get finalExitId =>
+      !expert && trafficMode == TrafficMode.smart ? smart.finalExitId : null;
+}

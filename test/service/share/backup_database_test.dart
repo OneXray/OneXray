@@ -116,6 +116,31 @@ void main() {
   });
 
   test(
+    'restore rejects uneditable Custom fields without changing assets',
+    () async {
+      await _seedAssets(database);
+      final before = await BackupDatabaseContents.read(database);
+      final payload = BackupDatabaseContents(
+        version: 5,
+        coreConfigs: before.coreConfigs,
+        subscriptions: before.subscriptions,
+        geoDataList: before.geoDataList,
+        customRoutingProfiles: [
+          BackupCustomRoutingProfileJson(
+            8,
+            'Invalid',
+            base64Encode(
+              utf8.encode('{"outbounds":[{}],"dns":{"servers":["localhost"]}}'),
+            ),
+          ),
+        ],
+      );
+      await expectLater(payload.restore(database), throwsFormatException);
+      expect(_json(await BackupDatabaseContents.read(database)), _json(before));
+    },
+  );
+
+  test(
     'preserves legacy orphan outbound ID, subId, and encoded data',
     () async {
       await _seedAssets(database);
@@ -169,24 +194,33 @@ void main() {
     expect(incompleteAge.validate, throwsFormatException);
   });
 
-  test('still rejects a negative subId without changing current assets', () async {
-    await _seedAssets(database);
-    final before = await BackupDatabaseContents.read(database);
-    final invalid = BackupDatabaseContents(
-      version: 5,
-      coreConfigs: const [
-        BackupCoreConfigJson(
-          'Node', 'outbound', '', null,
-          id: 1, subId: -1, delay: 0, favorite: false,
-        ),
-      ],
-      subscriptions: const [],
-      geoDataList: const [],
-      customRoutingProfiles: const [],
-    );
-    await expectLater(invalid.restore(database), throwsFormatException);
-    expect(_json(await BackupDatabaseContents.read(database)), _json(before));
-  });
+  test(
+    'still rejects a negative subId without changing current assets',
+    () async {
+      await _seedAssets(database);
+      final before = await BackupDatabaseContents.read(database);
+      final invalid = BackupDatabaseContents(
+        version: 5,
+        coreConfigs: const [
+          BackupCoreConfigJson(
+            'Node',
+            'outbound',
+            '',
+            null,
+            id: 1,
+            subId: -1,
+            delay: 0,
+            favorite: false,
+          ),
+        ],
+        subscriptions: const [],
+        geoDataList: const [],
+        customRoutingProfiles: const [],
+      );
+      await expectLater(invalid.restore(database), throwsFormatException);
+      expect(_json(await BackupDatabaseContents.read(database)), _json(before));
+    },
+  );
 
   test(
     'restore failure rolls all tables back after replacement starts',
