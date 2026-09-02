@@ -264,6 +264,64 @@ class SubscriptionService {
     bool showLoading = true,
   }) => DataMaintenance.run(() => _saveSubscription(id, input, showLoading));
 
+  /// Editing a source changes future downloads, not its current node assets.
+  Future<SubscriptionUpdateResult> saveSubscriptionInput(
+    int id,
+    SubscriptionInput input,
+  ) => DataMaintenance.run(() async {
+    final uri = Uri.tryParse(input.url);
+    if (input.name.trim().isEmpty ||
+        uri == null ||
+        !NetClient.isHttpsDownloadUri(uri)) {
+      return SubscriptionUpdateResult.invalidContent;
+    }
+    if (input.hasIncompleteAgeKeyPair) {
+      return SubscriptionUpdateResult.invalidAgeSecretKey;
+    }
+    _refreshes.remove(id);
+    final generation = _beginUpdate(id);
+    try {
+      return await _database.transaction(() async {
+        final row = await _database.subscriptionDao.searchRow(id);
+        _ensureCurrent(id, generation);
+        if (row == null) return SubscriptionUpdateResult.notFound;
+        if (await _database.subscriptionDao.urlExists(
+          input.url,
+          excludingId: id,
+        )) {
+          return SubscriptionUpdateResult.invalidContent;
+        }
+        final updated = await _database.subscriptionDao.updateRow(
+          row.copyWith(
+            name: input.name,
+            url: input.url,
+            ageSecretKey: Value(input.normalizedAgeSecretKey),
+            agePublicKey: Value(input.normalizedAgePublicKey),
+          ),
+        );
+        _ensureCurrent(id, generation);
+        return updated
+            ? SubscriptionUpdateResult.success
+            : SubscriptionUpdateResult.writeFailed;
+      });
+    } catch (_) {
+      return SubscriptionUpdateResult.writeFailed;
+    } finally {
+      _finishUpdate(id, generation);
+    }
+  });
+
+  Future<void> setAutomaticUpdates(int id, bool enabled) =>
+      DataMaintenance.run(() async {
+        await _database.transaction(() async {
+          final row = await _database.subscriptionDao.searchRow(id);
+          if (row == null) throw StateError('Subscription no longer exists');
+          await _database.subscriptionDao.updateRow(
+            row.copyWith(autoUpdate: enabled),
+          );
+        });
+      });
+
   Future<SubscriptionUpdateResult> _saveSubscription(
     int id,
     SubscriptionInput input,
@@ -553,24 +611,6 @@ class SubscriptionService {
       current.ageSecretKey == expected.ageSecretKey &&
       current.agePublicKey == expected.agePublicKey;
 
-  Future<List<CoreConfigCompanion>> _readConfigs(
-    String text, {
-    String? ageSecretKey,
-  }) async {
-    final url = text.trim();
-    final rows = await XrayShareReader().parseOutboundShareText(
-      url,
-      ageSecretKey: ageSecretKey,
-    );
-    return rows
-        .where(
-          (row) =>
-              row.type.present &&
-              row.type.value == CoreConfigType.outbound.name,
-        )
-        .toList();
-  }
-
   Future<SubscriptionLoadResult> _loadRows(SubscriptionInput input) async {
     if (input.hasIncompleteAgeKeyPair) {
       return const SubscriptionLoadResult(
@@ -597,17 +637,16 @@ class SubscriptionService {
     }
 
     try {
-      final rows = await _readConfigs(
+      final report = await XrayShareReader().parseShareTextReport(
         text,
         ageSecretKey: ageContext?.secretKey,
       );
-      // ponytail: the current libXray converter omits rejected-item counts.
-      // P5 must provide exact statistics; null is not an observed zero failures.
       return SubscriptionLoadResult(
-        status: rows.isEmpty
+        status: report.rows.isEmpty
             ? SubscriptionUpdateResult.invalidContent
             : SubscriptionUpdateResult.success,
-        rows: rows,
+        rows: report.rows,
+        parseFailureCount: report.failureCount,
       );
     } on LibXrayInvokeException catch (error) {
       return SubscriptionLoadResult(status: _ageErrorStatus(error.message));
@@ -678,7 +717,8 @@ class SubscriptionService {
       final subs = await _database.subscriptionDao.allRows;
       final now = DateTime.now();
       for (final sub in subs) {
-        if (now.difference(sub.timestamp).inHours >= interval) {
+        if (sub.autoUpdate &&
+            now.difference(sub.timestamp).inHours >= interval) {
           await _refreshSubscriptionResult(sub, false);
         }
       }

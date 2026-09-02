@@ -181,6 +181,7 @@ void main() {
     tester,
   ) async {
     final subscription = SubscriptionData(
+      autoUpdate: true,
       id: 2,
       name: 'Premium Network',
       url: 'https://example.com/sub.txt',

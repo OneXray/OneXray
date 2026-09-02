@@ -1,4 +1,5 @@
 import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/ping/state.dart';
@@ -14,8 +15,16 @@ class PingBatchResult {
   final bool success;
   final int delay;
   final String error;
+  final String? countryCode;
+  final String? locationError;
 
-  const PingBatchResult(this.success, this.delay, this.error);
+  const PingBatchResult(
+    this.success,
+    this.delay,
+    this.error, {
+    this.countryCode,
+    this.locationError,
+  });
 
   factory PingBatchResult.failed([String error = ""]) =>
       PingBatchResult(false, PingDelayConstants.error, error);
@@ -50,6 +59,7 @@ class PingBatchRunner {
           .toList(growable: false),
       pingState.timeout.toInt(),
       pingState.realUrl,
+      locationUrl: NetClient.geoIPUrl,
     );
     final response = await AppHostApi().pingBatch(request);
     final responseResults = response?.results;
@@ -69,6 +79,8 @@ class PingBatchRunner {
                   result.success ?? false,
                   result.delay!,
                   result.error ?? "",
+                  countryCode: result.location?.countryCode,
+                  locationError: result.locationError,
                 ),
         )
         .toList(growable: false);

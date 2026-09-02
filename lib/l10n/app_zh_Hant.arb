@@ -1306,5 +1306,19 @@
   "prototypeRawDeleteNotice": "此設定將從本機移除。",
   "prototypeDeleteAndReconnect": "刪除並重新連線",
   "prototypeDeleteAndDisconnect": "刪除並中斷連線",
-  "prototypeRawDeleteDisconnectNotice": "尚未設定一般伺服器，刪除目前設定後會中斷 VPN 連線。"
+  "prototypeRawDeleteDisconnectNotice": "尚未設定一般伺服器，刪除目前設定後會中斷 VPN 連線。",
+  "prototypeTestServers": "測速",
+  "prototypeTestAgain": "重新測速",
+  "prototypeRetestHint": "更新可用性與延遲，不改變目前連線",
+  "prototypeSaveAsLocalServer": "另存為本機節點",
+  "prototypeLocalCopyHint": "保留獨立副本，不受訂閱更新影響",
+  "prototypeLocalCopy": "本機副本",
+  "prototypeLocalCopySaved": "已另存為本機節點，不受訂閱更新影響。",
+  "prototypeUpdatesAndSources": "更新與來源",
+  "prototypeManageSources": "管理更新與來源",
+  "prototypeAutomaticChecks": "自動檢查",
+  "prototypeSourceUpdateGuard": "更新時辨識到至少 1 個可用節點才會覆蓋，否則保留原節點。",
+  "prototypeSourceUpdateHint": "下載並直接匯入可用節點",
+  "prototypeNameRemoved": "{name} 已移除",
+  "prototypeDeletedServerSelectionNotice": "如果該節點是目前位置或 VPN 最終出口，OneXray 將回退到自動選擇。"
 }

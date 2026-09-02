@@ -3408,5 +3408,66 @@
   "prototypeRawDeleteDisconnectNotice": "No ordinary servers are configured. Deleting this active configuration disconnects the VPN.",
   "@prototypeRawDeleteDisconnectNotice": {
     "description": "Approved prototype copy: No ordinary servers are configured. Deleting this active configuration disconnects the VPN."
+  },
+  "prototypeTestServers": "Test servers",
+  "@prototypeTestServers": {
+    "description": "Approved prototype copy: Test servers"
+  },
+  "prototypeTestAgain": "Test again",
+  "@prototypeTestAgain": {
+    "description": "Approved prototype copy: Test again"
+  },
+  "prototypeRetestHint": "Refresh availability and latency without changing the connection",
+  "@prototypeRetestHint": {
+    "description": "Approved prototype copy: Refresh availability and latency without changing the connection"
+  },
+  "prototypeSaveAsLocalServer": "Save as a local server",
+  "@prototypeSaveAsLocalServer": {
+    "description": "Approved prototype copy: Save as a local server"
+  },
+  "prototypeLocalCopyHint": "Keep a separate copy that subscription updates cannot replace",
+  "@prototypeLocalCopyHint": {
+    "description": "Approved prototype copy: Keep a separate copy that subscription updates cannot replace"
+  },
+  "prototypeLocalCopy": "Local copy",
+  "@prototypeLocalCopy": {
+    "description": "Approved prototype copy: Local copy"
+  },
+  "prototypeLocalCopySaved": "Saved as a local server. Subscription updates will not replace it.",
+  "@prototypeLocalCopySaved": {
+    "description": "Approved prototype copy: Saved as a local server. Subscription updates will not replace it."
+  },
+  "prototypeUpdatesAndSources": "Updates and sources",
+  "@prototypeUpdatesAndSources": {
+    "description": "Approved prototype copy: Updates and sources"
+  },
+  "prototypeManageSources": "Manage updates and sources",
+  "@prototypeManageSources": {
+    "description": "Approved prototype copy: Manage updates and sources"
+  },
+  "prototypeAutomaticChecks": "Automatic checks",
+  "@prototypeAutomaticChecks": {
+    "description": "Approved prototype copy: Automatic checks"
+  },
+  "prototypeSourceUpdateGuard": "Updates replace the subscription only when at least one usable node is recognized.",
+  "@prototypeSourceUpdateGuard": {
+    "description": "Approved prototype copy: Updates replace the subscription only when at least one usable node is recognized."
+  },
+  "prototypeSourceUpdateHint": "Download and import usable nodes directly",
+  "@prototypeSourceUpdateHint": {
+    "description": "Approved prototype copy: Download and import usable nodes directly"
+  },
+  "prototypeNameRemoved": "{name} was removed",
+  "@prototypeNameRemoved": {
+    "description": "Approved prototype copy: {name} was removed",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeDeletedServerSelectionNotice": "If this server is currently selected or used as the VPN final exit, OneXray will return to Automatic selection.",
+  "@prototypeDeletedServerSelectionNotice": {
+    "description": "Approved prototype copy: If this server is currently selected or used as the VPN final exit, OneXray will return to Automatic selection."
   }
 }

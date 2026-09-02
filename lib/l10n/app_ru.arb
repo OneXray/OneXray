@@ -1306,5 +1306,19 @@
   "prototypeRawDeleteNotice": "Эта конфигурация будет удалена с устройства.",
   "prototypeDeleteAndReconnect": "Удалить и переподключить",
   "prototypeDeleteAndDisconnect": "Удалить и отключить",
-  "prototypeRawDeleteDisconnectNotice": "Обычные серверы не настроены. Удаление активной конфигурации отключит VPN."
+  "prototypeRawDeleteDisconnectNotice": "Обычные серверы не настроены. Удаление активной конфигурации отключит VPN.",
+  "prototypeTestServers": "Проверить задержку",
+  "prototypeTestAgain": "Проверить ещё раз",
+  "prototypeRetestHint": "Обновить доступность и задержку, не меняя подключение",
+  "prototypeSaveAsLocalServer": "Сохранить локальную копию",
+  "prototypeLocalCopyHint": "Создать отдельную копию, которую не заменят обновления подписки",
+  "prototypeLocalCopy": "Локальная копия",
+  "prototypeLocalCopySaved": "Сохранена локальная копия сервера. Обновления подписки её не заменят.",
+  "prototypeUpdatesAndSources": "Обновления и источники",
+  "prototypeManageSources": "Обновления и источники",
+  "prototypeAutomaticChecks": "Автоматические проверки",
+  "prototypeSourceUpdateGuard": "Подписка заменяется при обновлении, только если распознан хотя бы один пригодный узел.",
+  "prototypeSourceUpdateHint": "Загрузить и сразу импортировать пригодные узлы",
+  "prototypeNameRemoved": "Удалено: {name}",
+  "prototypeDeletedServerSelectionNotice": "Если этот сервер выбран для подключения или конечного выхода VPN, OneXray вернётся к автовыбору."
 }

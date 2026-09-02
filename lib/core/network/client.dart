@@ -146,11 +146,11 @@ class NetClient {
     return null;
   }
 
-  final _geoIPUrl = "https://ip-check-perf.radar.cloudflare.com/";
+  static const geoIPUrl = "https://ip-check-perf.radar.cloudflare.com/";
 
   Future<GeoLocation?> _geoLocation() async {
     try {
-      final res = await _proxyClient.get<Map<String, dynamic>>(_geoIPUrl);
+      final res = await _proxyClient.get<Map<String, dynamic>>(geoIPUrl);
       if (res.statusCode == 200 && res.data != null) {
         final location = GeoLocation.fromJson(res.data!);
         return location;

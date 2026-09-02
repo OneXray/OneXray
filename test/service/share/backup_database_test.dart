@@ -48,6 +48,7 @@ void main() {
       expect(subscription.id, 7);
       expect(subscription.count, 1);
       expect(subscription.parseFailureCount, 2);
+      expect(subscription.autoUpdate, isFalse);
       expect(subscription.ageSecretKey, 'AGE-SECRET-KEY-TEST');
       expect(subscription.agePublicKey, 'age1test');
       expect((await database.customRoutingProfilesDao.allRows).single.id, 8);
@@ -299,6 +300,7 @@ Future<void> _seedAssets(AppDatabase database) async {
       count: 1,
       expanded: true,
       parseFailureCount: const Value(2),
+      autoUpdate: const Value(false),
     ),
   );
   for (final id in [1, 2, 30, 31, 32, 33, 99]) {

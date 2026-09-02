@@ -71,6 +71,7 @@ final class BackupDatabaseContents {
                 id: row.id,
                 count: row.count,
                 parseFailureCount: row.parseFailureCount,
+                autoUpdate: row.autoUpdate,
               ),
           ],
           geoDataList: [
@@ -202,6 +203,7 @@ final class BackupDatabaseContents {
             count: _isCurrent ? row.count! : 0,
             expanded: row.expanded!,
             parseFailureCount: Value(_isCurrent ? row.parseFailureCount! : 0),
+            autoUpdate: Value(row.autoUpdate ?? true),
           ),
         );
       }

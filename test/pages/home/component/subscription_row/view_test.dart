@@ -94,6 +94,7 @@ void main() {
 
 SubscriptionItem _subscriptionItem() {
   final data = SubscriptionData(
+    autoUpdate: true,
     id: 2,
     name: 'Premium Network',
     url: 'https://example.com/sub.txt',

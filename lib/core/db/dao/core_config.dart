@@ -209,6 +209,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
   Future<SubscriptionData> _readLocalSubscription() async {
     final expanded = await PreferencesKey().readLocalSubscriptionExpanded();
     final subData = SubscriptionData(
+      autoUpdate: false,
       id: DBConstants.defaultId,
       name: "Local",
       url: "",

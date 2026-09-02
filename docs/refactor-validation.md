@@ -139,3 +139,21 @@ Android 独立 `references/p4-ui/db.sqlite` 实测：初始化准备不启动 VP
 检查通过。静态分析、分层、原生模型检查和完整 macOS Debug 构建通过。无 macOS
 VPN/截图，Windows/Linux 原生构建与运行 NOT RUN；相机/文件/系统分享完整验收留
 相应后续阶段及手测，不以本阶段代表平台可发布。libXray 本阶段无改动。
+
+## P5 — 服务器管理与导入分享（2026-09-03）
+
+位置/订阅共用浏览与节点行、Mobile 独立组详情、当前接入高亮、组使用数量、JSON
+节点编辑/收藏/重测/另存/分享/删除、订阅 Name/URL/Age 编辑及来源管理已接入。
+订阅新增/更新只在可用节点非空时写入；混合导入先处理订阅，其余资产预览确认，
+取消不撤销已成功订阅。schema 5 仅增加来源自动更新字段，旧数据/base64/Raw 保留。
+
+libXray API 3 增加可选解析数量和逐节点位置结果，旧响应兼容。自动/手动测速共用队列，
+延迟与位置独立，资产回写核对原内容并保持冻结运行计划。Go 全量与 race 通过；Android
+及 Apple Go 产物重建复制，VCore 无改动。
+
+Flutter 全量 500 项通过、Windows 原生 1 项跳过。Android 独立入口原生 10 项检查通过；
+真实新 UI 实测分组选择并连接、高亮、JSON 编辑取消、连接中测速会话不变、订阅改名
+与 Age 完整表单、敏感分享确认。VPN 已正常停止。完整 macOS Debug 构建通过；无
+macOS VPN/截图，Windows/Linux 原生 NOT RUN。详细日志和证据见工作空间
+`references/onexray-refactor-validation/p5-results.md`。Custom 分享依赖、全站系统外入口
+与发行渠道收尾仍由 P6–P9 完成，不能用本阶段代表整站重构已完成。

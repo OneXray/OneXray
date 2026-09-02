@@ -170,7 +170,9 @@ class ServerImportFormPage extends StatelessWidget {
           appBar: AppBar(
             title: Text(
               subscription
-                  ? l10n.prototypeAddSubscription
+                  ? controller.editingSubscription
+                        ? l10n.prototypeEditSubscription
+                        : l10n.prototypeAddSubscription
                   : manual
                   ? l10n.prototypeXrayNodeJson
                   : l10n.prototypePasteLink,
@@ -192,7 +194,10 @@ class ServerImportFormPage extends StatelessWidget {
               children: [
                 Expanded(
                   child: subscription
-                      ? _subscription(context)
+                      ? IgnorePointer(
+                          ignoring: controller.busy || controller.loadFailed,
+                          child: _subscription(context),
+                        )
                       : Padding(
                           padding: const EdgeInsets.all(16),
                           child: ResponsiveContent(
@@ -203,8 +208,14 @@ class ServerImportFormPage extends StatelessWidget {
                                 Text(
                                   manual
                                       ? l10n.prototypeNodeJsonHint
-                                      : l10n.prototypePasteLink,
+                                      : l10n.prototypeImportLinksHint,
                                 ),
+                                if (!manual) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    l10n.prototypeSubscriptionDirectImportNotice,
+                                  ),
+                                ],
                                 const SizedBox(height: 8),
                                 Text(
                                   l10n.prototypeLocalInputPrivacy,
@@ -255,14 +266,16 @@ class ServerImportFormPage extends StatelessWidget {
                 child: Text(l10n.prototypeCancel),
               ),
               ShadButton(
-                onPressed: controller.busy
+                onPressed: controller.busy || controller.loadFailed
                     ? null
                     : () => subscription
                           ? controller.subscribe(context)
                           : controller.detect(context, action),
                 child: Text(
                   subscription
-                      ? l10n.prototypeAddSubscription
+                      ? controller.editingSubscription
+                            ? l10n.prototypeSave
+                            : l10n.prototypeAddSubscription
                       : l10n.prototypeDetect,
                 ),
               ),
@@ -276,7 +289,9 @@ class ServerImportFormPage extends StatelessWidget {
   Widget _subscription(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return SubscriptionFormView(
-      supportText: l10n.prototypeSubscriptionDescription,
+      supportText: controller.editingSubscription
+          ? l10n.prototypeChangesApplyToFutureUpdates
+          : l10n.prototypeSubscriptionDescription,
       nameLabel: l10n.prototypeSubscriptionName,
       nameController: controller.name,
       urlLabel: l10n.prototypeSubscriptionLink,
@@ -344,6 +359,34 @@ class ServerImportPreviewPage extends StatelessWidget {
                         l10n.prototypeUsableNodes(preview.count),
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
+                      if (controller.committedResult != null &&
+                          preview.count > 0)
+                        Text(l10n.prototypeServersAdded),
+                      for (final raw in preview.rows.where(
+                        (row) => row.type.value == 'raw',
+                      ))
+                        ListTile(
+                          leading: const Icon(LucideIcons.fileJson),
+                          title: Text(raw.name.value),
+                          subtitle: Text(
+                            controller.committedResult == null
+                                ? l10n.xrayRawPageTitle
+                                : l10n.prototypeNameSaved(raw.name.value),
+                          ),
+                        ),
+                      for (final source in preview.geoData)
+                        ListTile(
+                          leading: const Icon(LucideIcons.database),
+                          title: Text(source.name),
+                          subtitle: Text(
+                            controller.committedResult == null
+                                ? l10n.prototypeDataSource
+                                : controller.committedResult!.failedGeoData
+                                      .contains(source)
+                                ? l10n.prototypeCannotReadContent
+                                : l10n.prototypeGeodataAdded,
+                          ),
+                        ),
                       if (preview.failureCount != null) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -353,6 +396,8 @@ class ServerImportPreviewPage extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 20),
+                      if (!preview.hasItems)
+                        Text(l10n.prototypeNoSupportedLinks),
                       Text(l10n.prototypeLocalInputPrivacy),
                       _ImportFeedback(controller: controller),
                     ],
@@ -367,13 +412,21 @@ class ServerImportPreviewPage extends StatelessWidget {
                 onPressed: controller.busy
                     ? null
                     : () => controller.closePage(context),
-                child: Text(l10n.prototypeCancel),
+                child: Text(
+                  controller.committedResult == null
+                      ? l10n.prototypeCancel
+                      : l10n.prototypeClose,
+                ),
               ),
               ShadButton(
-                onPressed: controller.busy
+                onPressed: controller.busy || !preview.hasItems
                     ? null
                     : () => controller.confirm(context, preview),
-                child: Text(l10n.prototypeConfirmAdd),
+                child: Text(
+                  controller.committedResult == null
+                      ? l10n.prototypeConfirmAdd
+                      : l10n.prototypeDone,
+                ),
               ),
             ],
           ),
@@ -385,11 +438,23 @@ class ServerImportPreviewPage extends StatelessWidget {
 
 class ServerImportScannerPage extends StatelessWidget {
   final void Function(BarcodeCapture) onDetect;
-  const ServerImportScannerPage({super.key, required this.onDetect});
+  final VoidCallback onPickImage;
+  const ServerImportScannerPage({
+    super.key,
+    required this.onDetect,
+    required this.onPickImage,
+  });
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(AppLocalizations.of(context)!.prototypeScanQrCode),
+      actions: [
+        IconButton(
+          tooltip: AppLocalizations.of(context)!.menuPickImage,
+          onPressed: onPickImage,
+          icon: const Icon(LucideIcons.image),
+        ),
+      ],
     ),
     body: SafeArea(child: MobileScanner(onDetect: onDetect)),
   );
@@ -401,19 +466,45 @@ class _ImportFeedback extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(12),
-    child: Column(
-      children: [
-        if (controller.busy) const LinearProgressIndicator(),
-        if (controller.error != null)
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              controller.error!,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-      ],
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.25,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            if (controller.busy) const LinearProgressIndicator(),
+            if (controller.importedSubscriptionCount > 0)
+              Text(
+                AppLocalizations.of(context)!.prototypeSubscriptionsImported(
+                  controller.importedSubscriptionCount,
+                ),
+              ),
+            for (final item in controller.subscriptionImports)
+              Text(
+                item.result.success
+                    ? item.result.parseFailureCount == null
+                          ? '${item.name}: ${AppLocalizations.of(context)!.prototypeUsableNodes(item.result.count)}'
+                          : AppLocalizations.of(context)!
+                                .prototypeSubscriptionImportResult(
+                                  item.name,
+                                  item.result.count,
+                                  item.result.parseFailureCount!,
+                                )
+                    : '${item.name}: ${ServerImportController.subscriptionError(AppLocalizations.of(context)!, item.result.status)}',
+              ),
+            if (controller.error != null)
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  controller.error!,
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
+        ),
+      ),
     ),
   );
 }

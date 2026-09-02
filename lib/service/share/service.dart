@@ -122,7 +122,7 @@ final class ShareService {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      final text = await _readImageFile(image.path);
+      final text = await readImageFile(image.path);
       await readShareText(text);
     } else {
       ToastService().showToast(
@@ -131,7 +131,11 @@ final class ShareService {
     }
   }
 
-  Future<String?> _readImageFile(String path) async {
+  /// Decode only; callers own preview and explicit import confirmation.
+  Future<String?> readImageFile(String path) async {
+    if (await File(path).length() > 16 * 1024 * 1024) {
+      throw const FormatException('Image is too large');
+    }
     if (AppPlatform.isIOS || AppPlatform.isMacOS || AppPlatform.isAndroid) {
       return _readImageFileByMobileScanner(path);
     }
@@ -140,18 +144,12 @@ final class ShareService {
 
   Future<String?> _readImageFileByMobileScanner(String path) async {
     final controller = MobileScannerController();
-    final capture = await controller.analyzeImage(path);
-    if (capture != null) {
-      if (capture.barcodes.isNotEmpty) {
-        final code = capture.barcodes.first;
-        if (code.rawValue != null) {
-          await controller.dispose();
-          return code.rawValue;
-        }
-      }
+    try {
+      final capture = await controller.analyzeImage(path);
+      return capture?.barcodes.firstOrNull?.rawValue;
+    } finally {
+      await controller.dispose();
     }
-    await controller.dispose();
-    return null;
   }
 
   Future<String?> _readImageFileByZxing(String path) async {
@@ -205,7 +203,7 @@ final class ShareService {
         .toLowerCase()
         .replaceFirst('.', '');
     if (imageFiles.contains(extension)) {
-      final text = await _readImageFile(path);
+      final text = await readImageFile(path);
       await readShareText(text);
     } else {
       final pFile = File(path);

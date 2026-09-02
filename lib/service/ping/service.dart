@@ -63,7 +63,7 @@ class PingService {
 
   /// Shares the existing serialized queue with automatic imports. Each batch
   /// commits independently, so DB watchers may finish selecting before this does.
-  Future<void> pingConfigIds(List<int> ids) {
+  Future<void> pingConfigIds(List<int> ids, {bool force = false}) {
     final targetIds = ids
         .where((id) => id > DBConstants.defaultId)
         .toSet()
@@ -76,7 +76,9 @@ class PingService {
       final rows = <CoreConfigData>[];
       for (final id in targetIds) {
         final row = await db.coreConfigDao.searchRow(id);
-        if (row != null && _isPingableConfig(row) && isUnmeasured(row)) {
+        if (row != null &&
+            _isPingableConfig(row) &&
+            (force || isUnmeasured(row))) {
           rows.add(row);
         }
       }
@@ -205,7 +207,7 @@ class PingService {
               : result.delay == PingDelayConstants.timeout
               ? PingDelayConstants.timeout
               : PingDelayConstants.error;
-          await _updateRow(db, batchRows[index], delay);
+          await _updateRow(db, batchRows[index], delay, result.countryCode);
         }
       });
     }
@@ -234,8 +236,17 @@ class PingService {
     }
   }
 
-  Future<void> _updateRow(AppDatabase db, CoreConfigData row, int delay) async {
+  Future<void> _updateRow(
+    AppDatabase db,
+    CoreConfigData row,
+    int delay,
+    String? countryCode,
+  ) async {
     if (delay == PingDelayConstants.unknown || row.data == null) return;
+    final country =
+        countryCode != null && RegExp(r'^[A-Z]{2}$').hasMatch(countryCode)
+        ? countryCode
+        : null;
     // A slow result must not overwrite an edit, favorite, or restored asset.
     await (db.update(db.coreConfig)..where(
           (table) =>
@@ -247,6 +258,8 @@ class PingService {
         .write(
           CoreConfigCompanion(
             delay: Value(delay),
+            countryCode: Value(country),
+            locationSource: Value(country == null ? null : 'pingBatch'),
             lastMeasuredAt: Value(DateTime.now()),
           ),
         );

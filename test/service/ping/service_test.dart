@@ -30,6 +30,42 @@ void main() {
     addTearDown(db.close);
   });
 
+  test('manual retest refreshes location per node and keeps delay on location failure', () async {
+    final first = await db.coreConfigDao.insertRow(_node('First'));
+    final second = await db.coreConfigDao.insertRow(_node('Second'));
+    var run = 0;
+    final service = PingService.forTesting(
+      database: db,
+      runBatch: (_, _) async {
+        run++;
+        return run == 1
+            ? const [
+                PingBatchResult(true, 0, '', countryCode: 'US'),
+                PingBatchResult(true, 20, '', countryCode: 'JP'),
+              ]
+            : const [
+                PingBatchResult(true, 12, '', locationError: 'unavailable'),
+                PingBatchResult(true, 15, '', countryCode: 'SG'),
+              ];
+      },
+    );
+    await service.pingConfigIds([first, second]);
+    expect((await db.coreConfigDao.searchRow(first))!.countryCode, 'US');
+    expect((await db.coreConfigDao.searchRow(second))!.countryCode, 'JP');
+    await service.pingConfigIds([first, second]);
+    expect(run, 1);
+    await service.pingConfigIds([first, second], force: true);
+    final row = (await db.coreConfigDao.searchRow(first))!;
+    expect(row.delay, 12);
+    expect(row.countryCode, isNull);
+    expect(row.locationSource, isNull);
+    expect((await db.coreConfigDao.searchRow(second))!.countryCode, 'SG');
+    expect(
+      (await db.coreConfigDao.searchRow(second))!.locationSource,
+      'pingBatch',
+    );
+  });
+
   test(
     'legacy auto=false cannot disable imported-node or subscription queues',
     () async {

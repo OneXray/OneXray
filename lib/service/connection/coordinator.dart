@@ -104,7 +104,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         ((configuration, cancelled) => ConnectionPreparation(db: db).prepare(
           configuration,
           cancelled: cancelled,
-          onResolved: (ids) => _preparingNodeIds = ids,
+          onResolved: reportResolvedNodes,
         ));
   }
 
@@ -113,6 +113,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         jsonDecode((await db.connectionStateDao.read()).settingsJson)
             as Map<String, dynamic>,
       );
+
+  /// Custom preparation (node/route drafts) shares the same temporary reference
+  /// protection as the default path. apply clears it on success and failure.
+  void reportResolvedNodes(Set<int> ids) {
+    _preparingNodeIds = Set.of(ids);
+  }
 
   Future<void> initialize({bool poll = true, bool registerReferences = true}) {
     return _initializing ??= _commands

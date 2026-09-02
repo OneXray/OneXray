@@ -1306,5 +1306,19 @@
     "prototypeRawDeleteNotice": "این پیکربندی از این دستگاه حذف می‌شود.",
     "prototypeDeleteAndReconnect": "حذف و اتصال دوباره",
     "prototypeDeleteAndDisconnect": "حذف و قطع اتصال",
-    "prototypeRawDeleteDisconnectNotice": "هیچ سرور عادی پیکربندی نشده است. حذف این پیکربندی فعال، VPN را قطع می‌کند."
+    "prototypeRawDeleteDisconnectNotice": "هیچ سرور عادی پیکربندی نشده است. حذف این پیکربندی فعال، VPN را قطع می‌کند.",
+    "prototypeTestServers": "آزمایش سرورها",
+    "prototypeTestAgain": "آزمایش دوباره",
+    "prototypeRetestHint": "به‌روزرسانی دسترس‌پذیری و تأخیر، بدون تغییر اتصال",
+    "prototypeSaveAsLocalServer": "ذخیره به‌عنوان سرور محلی",
+    "prototypeLocalCopyHint": "نگه‌داشتن یک نسخهٔ مستقل که به‌روزرسانی اشتراک آن را جایگزین نمی‌کند",
+    "prototypeLocalCopy": "نسخهٔ محلی",
+    "prototypeLocalCopySaved": "به‌عنوان سرور محلی ذخیره شد. به‌روزرسانی اشتراک آن را جایگزین نمی‌کند.",
+    "prototypeUpdatesAndSources": "به‌روزرسانی‌ها و منابع",
+    "prototypeManageSources": "مدیریت به‌روزرسانی‌ها و منابع",
+    "prototypeAutomaticChecks": "بررسی‌های خودکار",
+    "prototypeSourceUpdateGuard": "به‌روزرسانی فقط وقتی اشتراک را جایگزین می‌کند که حداقل یک گره قابل استفاده شناسایی شود.",
+    "prototypeSourceUpdateHint": "دانلود و وارد کردن مستقیم گره‌های قابل استفاده",
+    "prototypeNameRemoved": "{name} حذف شد",
+    "prototypeDeletedServerSelectionNotice": "اگر این سرور اکنون انتخاب شده باشد یا به‌عنوان خروجی نهایی VPN استفاده شود، OneXray به انتخاب خودکار برمی‌گردد."
 }

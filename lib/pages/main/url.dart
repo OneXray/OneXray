@@ -49,6 +49,10 @@ import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/servers/page.dart';
+import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/servers/editor/page.dart';
+import 'package:onexray/pages/servers/sources.dart';
+import 'package:onexray/pages/servers/import/subscription_editor.dart';
 import 'package:onexray/pages/connect/raw_editor/page.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
@@ -61,7 +65,6 @@ import 'package:onexray/pages/settings/language/page.dart';
 import 'package:onexray/pages/settings/main/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
 import 'package:onexray/pages/subscriptions/add/page.dart';
-import 'package:onexray/pages/subscriptions/edit/page.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
 import 'package:onexray/pages/subscriptions/list/page.dart';
 import 'package:onexray/pages/subscriptions/nodes/page.dart';
@@ -193,6 +196,34 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     (_, _) => const ServersPage(picker: true),
   ),
   _route(
+    AppSecondaryDestination.serverGroup,
+    (_, state) => _withExtra<ServerGroupParams>(
+      state,
+      AppSecondaryDestination.serverGroup,
+      (params) => ServerGroupPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.serverEditor,
+    (_, state) => _withExtra<int>(
+      state,
+      AppSecondaryDestination.serverEditor,
+      (id) => ServerEditorPage(serverId: id),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.serverSources,
+    (_, _) => const ServerSourcesPage(),
+  ),
+  _route(
+    AppSecondaryDestination.serverFinalExitPicker,
+    (_, state) => _withExtra<ServerExitPickerParams>(
+      state,
+      AppSecondaryDestination.serverFinalExitPicker,
+      (params) => ServersPage(exitPicker: params),
+    ),
+  ),
+  _route(
     AppSecondaryDestination.rawEditor,
     (_, state) => RawEditorPage(rawId: state.extra as int?),
   ),
@@ -243,7 +274,7 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     (_, state) => _withExtra<SubscriptionEditParams>(
       state,
       AppSecondaryDestination.subscriptionEdit,
-      (params) => SubscriptionEditPage(params: params),
+      (params) => SubscriptionEditorPage(subscriptionId: params.id),
     ),
   ),
   _route(AppSecondaryDestination.tun, (_, _) => const TunSettingsPage()),

@@ -187,6 +187,48 @@ class AppHostApi {
     throw LibXrayInvokeException(resp.error);
   }
 
+  Future<ConvertShareLinksReport> convertShareLinksToXrayJsonReport(
+    String text, {
+    String? ageSecretKey,
+  }) async {
+    final key = ageSecretKey?.trim();
+    final response = LibXrayInvokeResponseParser.parse(
+      await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.convertShareLinksToXrayJson,
+          payload: ConvertShareLinksToXrayJsonRequest(
+            text,
+            age: key == null || key.isEmpty ? null : AgeDecryptConfig(key),
+            includeStats: true,
+          ).toJson(),
+        ),
+      ),
+    );
+    final data = response.data;
+    if (data != null && data['config'] is Map<String, dynamic>) {
+      // An identified document may report zero usable items as a structured
+      // failure. It is useful feedback, never permission to overwrite assets.
+      final report = ConvertShareLinksReport.fromJson(data);
+      final outbounds = report.config['outbounds'];
+      if (report.usableCount == null ||
+          report.failedCount == null ||
+          report.usableCount! < 0 ||
+          report.failedCount! < 0 ||
+          outbounds is! List ||
+          outbounds.length != report.usableCount ||
+          (!response.success && report.usableCount != 0)) {
+        throw const FormatException('Invalid import statistics');
+      }
+      return report;
+    }
+    if (response.success && data != null && data['outbounds'] is List) {
+      return ConvertShareLinksReport(
+        data,
+      ); // Older native library: count unknown.
+    }
+    throw LibXrayInvokeException(response.error);
+  }
+
   Future<GenerateAgeKeyPairResponse> generateAgeKeyPair({
     AgeKeyType keyType = AgeKeyType.x25519,
   }) async {

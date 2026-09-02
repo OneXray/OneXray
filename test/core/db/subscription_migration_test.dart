@@ -91,7 +91,7 @@ void main() {
       expect(_snapshotFile(file, hasAgeKeys: false), before);
       expect(
         file.parent.listSync().where(
-          (entry) => entry.path.contains('.pre-v4-'),
+          (entry) => entry.path.contains('.pre-v5-'),
         ),
         isEmpty,
       );
@@ -99,7 +99,7 @@ void main() {
   );
 
   test(
-    'new installation creates schema 4 with empty assets and default state',
+    'new installation creates schema 5 with empty assets and default state',
     () async {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -111,7 +111,7 @@ void main() {
       expect(
         (await database.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        4,
+        5,
       );
     },
   );
@@ -128,6 +128,7 @@ void main() {
           final subscriptions = await database.subscriptionDao.allRows;
           expect(subscriptions.single.id, 7);
           expect(subscriptions.single.parseFailureCount, 0);
+          expect(subscriptions.single.autoUpdate, isTrue);
           expect(
             subscriptions.single.ageSecretKey,
             version == 2 ? 'AGE-SECRET-KEY-TEST' : null,
@@ -155,7 +156,7 @@ void main() {
           expect(
             (await reopened.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version'),
-            4,
+            5,
           );
         } finally {
           await reopened.close();
@@ -227,7 +228,7 @@ void main() {
     await interrupted.close();
 
     final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 4);
+    expect(check.userVersion, 5);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
     expect(
       _columnNames(check, 'connection_state'),
@@ -265,6 +266,38 @@ void main() {
     },
   );
 
+  test(
+    'schema 4 adds automatic updates without rebuilding connection state',
+    () async {
+      final file = await _legacyDatabase(3);
+      final legacy = sqlite.sqlite3.open(file.path);
+      legacy.execute(
+        'CREATE TABLE connection_state (id INTEGER PRIMARY KEY NOT NULL, revision INTEGER NOT NULL DEFAULT 0, settings_json TEXT NOT NULL DEFAULT \'{}\', confirmed_snapshot_json TEXT, pending_apply_json TEXT)',
+      );
+      legacy.execute(
+        "INSERT INTO connection_state(id, revision, settings_json, confirmed_snapshot_json) VALUES(1, 17, '{}', 'frozen-plan')",
+      );
+      legacy.userVersion = 4;
+      legacy.close();
+      final before = _versionThreeSnapshot(file);
+      final snapshot = await prepareUpgradeSnapshot(
+        file,
+        stopRunning: () async {},
+      );
+      expect(snapshot, isNotNull);
+      final db = AppDatabase.forTesting(NativeDatabase(file));
+      try {
+        final state = await db.connectionStateDao.read();
+        expect(state.revision, 17);
+        expect(state.confirmedSnapshotJson, 'frozen-plan');
+        expect((await db.subscriptionDao.allRows).single.autoUpdate, isTrue);
+      } finally {
+        await db.close();
+      }
+      expect(_versionThreeSnapshot(file), before);
+    },
+  );
+
   test('schema 3 snapshot and upgrade retain all existing metadata and Custom data', () async {
     final file = await _legacyDatabase(3);
     final before = _versionThreeSnapshot(file);
@@ -276,7 +309,7 @@ void main() {
       },
     );
     expect(stopped, isTrue);
-    expect(snapshot!.path, contains('.pre-v4-'));
+    expect(snapshot!.path, contains('.pre-v5-'));
     expect(_versionThreeSnapshot(snapshot), before);
     final database = AppDatabase.forTesting(NativeDatabase(file));
     try {
@@ -306,7 +339,7 @@ void main() {
       expect(
         (await reopened.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        4,
+        5,
       );
     } finally {
       await reopened.close();
@@ -512,7 +545,9 @@ Map<String, List<List<Object?>>> _versionThreeSnapshot(File file) {
         'custom_routing_profiles',
       ])
         table: database
-            .select('SELECT * FROM $table ORDER BY id')
+            .select(
+              'SELECT ${table == 'subscription' ? 'id, name, url, timestamp, count, expanded, age_secret_key, age_public_key, parse_failure_count' : '*'} FROM $table ORDER BY id',
+            )
             .map((row) => row.values.toList())
             .toList(),
     };

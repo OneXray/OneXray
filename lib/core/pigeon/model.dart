@@ -110,13 +110,31 @@ class PingBatchItemResponse {
   bool? success;
   int? delay;
   String? error;
+  PingLocationResponse? location;
+  String? locationError;
 
-  PingBatchItemResponse(this.success, this.delay, this.error);
+  PingBatchItemResponse(
+    this.success,
+    this.delay,
+    this.error, {
+    this.location,
+    this.locationError,
+  });
 
   factory PingBatchItemResponse.fromJson(Map<String, dynamic> json) =>
       _$PingBatchItemResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$PingBatchItemResponseToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class PingLocationResponse {
+  final String? ip;
+  final String? countryCode;
+  const PingLocationResponse({this.ip, this.countryCode});
+  factory PingLocationResponse.fromJson(Map<String, dynamic> json) =>
+      _$PingLocationResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$PingLocationResponseToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -162,8 +180,9 @@ class PingBatchRequest {
   List<PingBatchItemRequest>? configs;
   int? timeout;
   String? url;
+  String? locationUrl;
 
-  PingBatchRequest(this.configs, this.timeout, this.url);
+  PingBatchRequest(this.configs, this.timeout, this.url, {this.locationUrl});
 
   factory PingBatchRequest.fromJson(Map<String, dynamic> json) =>
       _$PingBatchRequestFromJson(json);
@@ -331,8 +350,9 @@ class GetFreePortsRequest {
 class ConvertShareLinksToXrayJsonRequest {
   String? text;
   AgeDecryptConfig? age;
+  bool? includeStats;
 
-  ConvertShareLinksToXrayJsonRequest(this.text, {this.age});
+  ConvertShareLinksToXrayJsonRequest(this.text, {this.age, this.includeStats});
 
   factory ConvertShareLinksToXrayJsonRequest.fromJson(
     Map<String, dynamic> json,
@@ -340,6 +360,21 @@ class ConvertShareLinksToXrayJsonRequest {
 
   Map<String, dynamic> toJson() =>
       _$ConvertShareLinksToXrayJsonRequestToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class ConvertShareLinksReport {
+  final Map<String, dynamic> config;
+  final int? usableCount;
+  final int? failedCount;
+  const ConvertShareLinksReport(
+    this.config, {
+    this.usableCount,
+    this.failedCount,
+  });
+  factory ConvertShareLinksReport.fromJson(Map<String, dynamic> json) =>
+      _$ConvertShareLinksReportFromJson(json);
+  Map<String, dynamic> toJson() => _$ConvertShareLinksReportToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

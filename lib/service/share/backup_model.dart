@@ -63,6 +63,7 @@ class BackupSubscriptionJson {
   final bool? expanded;
   final int? count;
   final int? parseFailureCount;
+  final bool? autoUpdate;
 
   const BackupSubscriptionJson(
     this.name,
@@ -74,6 +75,7 @@ class BackupSubscriptionJson {
     this.id,
     this.count,
     this.parseFailureCount,
+    this.autoUpdate,
   });
 
   factory BackupSubscriptionJson.fromJson(Map<String, dynamic> json) =>

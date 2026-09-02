@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/service/auto_update/state.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
@@ -15,6 +16,91 @@ void main() {
   setUp(() {
     database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
+  });
+
+  test('source form edits and automatic switches persist without downloading or rewriting nodes', () async {
+    final source = await _source(database);
+    final nodeId = await database.coreConfigDao.insertRow(
+      _node('Existing', subId: source.id),
+    );
+    final original = await database.coreConfigDao.searchRow(nodeId);
+    var downloads = 0;
+    final service = _service(database, (input) async {
+      downloads++;
+      expect(input.url, 'https://example.com/new');
+      expect(input.ageSecretKey, 'new-secret');
+      return SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [_node('Refreshed')],
+      );
+    });
+    expect(
+      await service.saveSubscriptionInput(
+        source.id,
+        const SubscriptionInput(
+          name: 'Renamed',
+          url: 'https://example.com/new',
+          ageSecretKey: 'new-secret',
+          agePublicKey: 'new-public',
+        ),
+      ),
+      SubscriptionUpdateResult.success,
+    );
+    expect(downloads, 0);
+    expect(await database.coreConfigDao.searchRow(nodeId), original);
+    final saved = (await database.subscriptionDao.searchRow(source.id))!;
+    expect(saved.timestamp, source.timestamp);
+    expect(saved.autoUpdate, isTrue);
+    await service.setAutomaticUpdates(source.id, false);
+    await service.refreshOutdatedSubscription(
+      autoUpdateState: AutoUpdateState(),
+      updateDownloading: false,
+    );
+    expect(downloads, 0);
+    expect(
+      (await database.subscriptionDao.searchRow(source.id))!.autoUpdate,
+      isFalse,
+    );
+    final result = await service.refreshSubscriptionResult(saved, false);
+    expect(
+      result.success,
+      isTrue,
+    ); // Manual refresh is independent of automatic opt-out.
+    expect(downloads, 1);
+    expect(
+      (await database.subscriptionDao.searchRow(source.id))!.autoUpdate,
+      isFalse,
+    );
+  });
+
+  test('saving source form invalidates an earlier in-flight refresh', () async {
+    final source = await _source(database);
+    final started = Completer<void>();
+    final release = Completer<void>();
+    final service = _service(database, (_) async {
+      started.complete();
+      await release.future;
+      return SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [_node('Obsolete')],
+      );
+    });
+    final refresh = service.refreshSubscriptionResult(source, false);
+    await started.future;
+    expect(
+      await service.saveSubscriptionInput(
+        source.id,
+        const SubscriptionInput(name: 'New', url: 'https://example.com/new'),
+      ),
+      SubscriptionUpdateResult.success,
+    );
+    release.complete();
+    expect((await refresh).superseded, isTrue);
+    expect((await database.subscriptionDao.searchRow(source.id))!.name, 'New');
+    expect(
+      await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id),
+      isEmpty,
+    );
   });
 
   test(
@@ -391,6 +477,13 @@ void main() {
     'explicit source deletion removes referenced rows without orphaning them',
     () async {
       final source = await _source(database);
+      final rawId = await database.coreConfigDao.insertRow(
+        _node(
+          'Legacy Raw',
+          subId: source.id,
+        ).copyWith(type: const Value('raw')),
+      );
+      final originalRaw = await database.coreConfigDao.searchRow(rawId);
       await database.coreConfigDao.insertRow(
         _node(
           'Favorite',
@@ -429,6 +522,7 @@ void main() {
         isEmpty,
       );
       expect(await database.coreConfigDao.searchRow(localId), isNotNull);
+      expect(await database.coreConfigDao.searchRow(rawId), originalRaw);
     },
   );
 }

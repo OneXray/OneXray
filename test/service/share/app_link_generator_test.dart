@@ -282,6 +282,7 @@ SubscriptionData _subscription({
   String? agePublicKey,
 }) {
   return SubscriptionData(
+    autoUpdate: true,
     id: 2,
     name: 'Provider',
     url: url,

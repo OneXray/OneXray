@@ -57,7 +57,10 @@ class SubscriptionDao extends DatabaseAccessor<AppDatabase>
       subscription,
     )..where((table) => table.id.equals(id))).go();
     if (result > 0) {
-      await (delete(coreConfig)..where((table) => table.subId.equals(id))).go();
+      await (delete(coreConfig)
+            ..where((table) => table.subId.equals(id))
+            ..where((table) => table.type.equals(CoreConfigType.outbound.name)))
+          .go();
       notifyUpdates({
         TableUpdate.onTable(coreConfig, kind: UpdateKind.delete),
         TableUpdate.onTable(subscription, kind: UpdateKind.delete),

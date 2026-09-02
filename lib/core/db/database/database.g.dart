@@ -765,6 +765,21 @@ class $SubscriptionTable extends Subscription
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _autoUpdateMeta = const VerificationMeta(
+    'autoUpdate',
+  );
+  @override
+  late final GeneratedColumn<bool> autoUpdate = GeneratedColumn<bool>(
+    'auto_update',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_update" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -776,6 +791,7 @@ class $SubscriptionTable extends Subscription
     count,
     expanded,
     parseFailureCount,
+    autoUpdate,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -859,6 +875,12 @@ class $SubscriptionTable extends Subscription
         ),
       );
     }
+    if (data.containsKey('auto_update')) {
+      context.handle(
+        _autoUpdateMeta,
+        autoUpdate.isAcceptableOrUnknown(data['auto_update']!, _autoUpdateMeta),
+      );
+    }
     return context;
   }
 
@@ -904,6 +926,10 @@ class $SubscriptionTable extends Subscription
         DriftSqlType.int,
         data['${effectivePrefix}parse_failure_count'],
       )!,
+      autoUpdate: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_update'],
+      )!,
     );
   }
 
@@ -924,6 +950,7 @@ class SubscriptionData extends DataClass
   final int count;
   final bool expanded;
   final int parseFailureCount;
+  final bool autoUpdate;
   const SubscriptionData({
     required this.id,
     required this.name,
@@ -934,6 +961,7 @@ class SubscriptionData extends DataClass
     required this.count,
     required this.expanded,
     required this.parseFailureCount,
+    required this.autoUpdate,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -951,6 +979,7 @@ class SubscriptionData extends DataClass
     map['count'] = Variable<int>(count);
     map['expanded'] = Variable<bool>(expanded);
     map['parse_failure_count'] = Variable<int>(parseFailureCount);
+    map['auto_update'] = Variable<bool>(autoUpdate);
     return map;
   }
 
@@ -969,6 +998,7 @@ class SubscriptionData extends DataClass
       count: Value(count),
       expanded: Value(expanded),
       parseFailureCount: Value(parseFailureCount),
+      autoUpdate: Value(autoUpdate),
     );
   }
 
@@ -987,6 +1017,7 @@ class SubscriptionData extends DataClass
       count: serializer.fromJson<int>(json['count']),
       expanded: serializer.fromJson<bool>(json['expanded']),
       parseFailureCount: serializer.fromJson<int>(json['parseFailureCount']),
+      autoUpdate: serializer.fromJson<bool>(json['autoUpdate']),
     );
   }
   @override
@@ -1002,6 +1033,7 @@ class SubscriptionData extends DataClass
       'count': serializer.toJson<int>(count),
       'expanded': serializer.toJson<bool>(expanded),
       'parseFailureCount': serializer.toJson<int>(parseFailureCount),
+      'autoUpdate': serializer.toJson<bool>(autoUpdate),
     };
   }
 
@@ -1015,6 +1047,7 @@ class SubscriptionData extends DataClass
     int? count,
     bool? expanded,
     int? parseFailureCount,
+    bool? autoUpdate,
   }) => SubscriptionData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1025,6 +1058,7 @@ class SubscriptionData extends DataClass
     count: count ?? this.count,
     expanded: expanded ?? this.expanded,
     parseFailureCount: parseFailureCount ?? this.parseFailureCount,
+    autoUpdate: autoUpdate ?? this.autoUpdate,
   );
   SubscriptionData copyWithCompanion(SubscriptionCompanion data) {
     return SubscriptionData(
@@ -1043,6 +1077,9 @@ class SubscriptionData extends DataClass
       parseFailureCount: data.parseFailureCount.present
           ? data.parseFailureCount.value
           : this.parseFailureCount,
+      autoUpdate: data.autoUpdate.present
+          ? data.autoUpdate.value
+          : this.autoUpdate,
     );
   }
 
@@ -1057,7 +1094,8 @@ class SubscriptionData extends DataClass
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
           ..write('expanded: $expanded, ')
-          ..write('parseFailureCount: $parseFailureCount')
+          ..write('parseFailureCount: $parseFailureCount, ')
+          ..write('autoUpdate: $autoUpdate')
           ..write(')'))
         .toString();
   }
@@ -1073,6 +1111,7 @@ class SubscriptionData extends DataClass
     count,
     expanded,
     parseFailureCount,
+    autoUpdate,
   );
   @override
   bool operator ==(Object other) =>
@@ -1086,7 +1125,8 @@ class SubscriptionData extends DataClass
           other.timestamp == this.timestamp &&
           other.count == this.count &&
           other.expanded == this.expanded &&
-          other.parseFailureCount == this.parseFailureCount);
+          other.parseFailureCount == this.parseFailureCount &&
+          other.autoUpdate == this.autoUpdate);
 }
 
 class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
@@ -1099,6 +1139,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
   final Value<int> count;
   final Value<bool> expanded;
   final Value<int> parseFailureCount;
+  final Value<bool> autoUpdate;
   const SubscriptionCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -1109,6 +1150,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.count = const Value.absent(),
     this.expanded = const Value.absent(),
     this.parseFailureCount = const Value.absent(),
+    this.autoUpdate = const Value.absent(),
   });
   SubscriptionCompanion.insert({
     this.id = const Value.absent(),
@@ -1120,6 +1162,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     required int count,
     required bool expanded,
     this.parseFailureCount = const Value.absent(),
+    this.autoUpdate = const Value.absent(),
   }) : name = Value(name),
        url = Value(url),
        timestamp = Value(timestamp),
@@ -1135,6 +1178,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Expression<int>? count,
     Expression<bool>? expanded,
     Expression<int>? parseFailureCount,
+    Expression<bool>? autoUpdate,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1146,6 +1190,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       if (count != null) 'count': count,
       if (expanded != null) 'expanded': expanded,
       if (parseFailureCount != null) 'parse_failure_count': parseFailureCount,
+      if (autoUpdate != null) 'auto_update': autoUpdate,
     });
   }
 
@@ -1159,6 +1204,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Value<int>? count,
     Value<bool>? expanded,
     Value<int>? parseFailureCount,
+    Value<bool>? autoUpdate,
   }) {
     return SubscriptionCompanion(
       id: id ?? this.id,
@@ -1170,6 +1216,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       count: count ?? this.count,
       expanded: expanded ?? this.expanded,
       parseFailureCount: parseFailureCount ?? this.parseFailureCount,
+      autoUpdate: autoUpdate ?? this.autoUpdate,
     );
   }
 
@@ -1203,6 +1250,9 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     if (parseFailureCount.present) {
       map['parse_failure_count'] = Variable<int>(parseFailureCount.value);
     }
+    if (autoUpdate.present) {
+      map['auto_update'] = Variable<bool>(autoUpdate.value);
+    }
     return map;
   }
 
@@ -1217,7 +1267,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
           ..write('expanded: $expanded, ')
-          ..write('parseFailureCount: $parseFailureCount')
+          ..write('parseFailureCount: $parseFailureCount, ')
+          ..write('autoUpdate: $autoUpdate')
           ..write(')'))
         .toString();
   }
@@ -2661,6 +2712,7 @@ typedef $$SubscriptionTableCreateCompanionBuilder =
       required int count,
       required bool expanded,
       Value<int> parseFailureCount,
+      Value<bool> autoUpdate,
     });
 typedef $$SubscriptionTableUpdateCompanionBuilder =
     SubscriptionCompanion Function({
@@ -2673,6 +2725,7 @@ typedef $$SubscriptionTableUpdateCompanionBuilder =
       Value<int> count,
       Value<bool> expanded,
       Value<int> parseFailureCount,
+      Value<bool> autoUpdate,
     });
 
 class $$SubscriptionTableFilterComposer
@@ -2726,6 +2779,11 @@ class $$SubscriptionTableFilterComposer
 
   ColumnFilters<int> get parseFailureCount => $composableBuilder(
     column: $table.parseFailureCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoUpdate => $composableBuilder(
+    column: $table.autoUpdate,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2783,6 +2841,11 @@ class $$SubscriptionTableOrderingComposer
     column: $table.parseFailureCount,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get autoUpdate => $composableBuilder(
+    column: $table.autoUpdate,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SubscriptionTableAnnotationComposer
@@ -2824,6 +2887,11 @@ class $$SubscriptionTableAnnotationComposer
 
   GeneratedColumn<int> get parseFailureCount => $composableBuilder(
     column: $table.parseFailureCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoUpdate => $composableBuilder(
+    column: $table.autoUpdate,
     builder: (column) => column,
   );
 }
@@ -2868,6 +2936,7 @@ class $$SubscriptionTableTableManager
                 Value<int> count = const Value.absent(),
                 Value<bool> expanded = const Value.absent(),
                 Value<int> parseFailureCount = const Value.absent(),
+                Value<bool> autoUpdate = const Value.absent(),
               }) => SubscriptionCompanion(
                 id: id,
                 name: name,
@@ -2878,6 +2947,7 @@ class $$SubscriptionTableTableManager
                 count: count,
                 expanded: expanded,
                 parseFailureCount: parseFailureCount,
+                autoUpdate: autoUpdate,
               ),
           createCompanionCallback:
               ({
@@ -2890,6 +2960,7 @@ class $$SubscriptionTableTableManager
                 required int count,
                 required bool expanded,
                 Value<int> parseFailureCount = const Value.absent(),
+                Value<bool> autoUpdate = const Value.absent(),
               }) => SubscriptionCompanion.insert(
                 id: id,
                 name: name,
@@ -2900,6 +2971,7 @@ class $$SubscriptionTableTableManager
                 count: count,
                 expanded: expanded,
                 parseFailureCount: parseFailureCount,
+                autoUpdate: autoUpdate,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

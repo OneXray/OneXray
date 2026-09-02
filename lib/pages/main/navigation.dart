@@ -30,6 +30,10 @@ enum AppPrimaryRoute {
 enum AppSecondaryDestination {
   serversImport("servers-import"),
   serverPicker("server-picker"),
+  serverGroup("server-group"),
+  serverEditor("server-editor"),
+  serverSources("server-sources"),
+  serverFinalExitPicker("server-final-exit-picker"),
   rawEditor("raw-editor"),
   overview("overview"),
   nodeInfo("node-info"),
