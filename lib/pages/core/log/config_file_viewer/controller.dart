@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/share.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -43,44 +44,27 @@ class ConfigFileViewerController extends PageCubit<ConfigFileViewerPageState> {
   }
 
   Future<void> shareFile(BuildContext context) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
+    final sharePositionOrigin = ContextShare.positionOrigin(context);
 
     final file = File(params.path);
     if (await file.exists()) {
-      final name = this.params.title;
-      final params = ShareParams(
-        files: [XFile(file.path)],
-        fileNameOverrides: [name],
-        sharePositionOrigin: sharePositionOrigin,
+      final outcome = await ContextShare.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          fileNameOverrides: [params.title],
+          sharePositionOrigin: sharePositionOrigin,
+        ),
       );
-      final result = await SharePlus.instance.share(params);
-
-      if (result.status == ShareResultStatus.success) {
-        if (context.mounted) {
-          ContextAlert.showToast(
-            context,
-            AppLocalizations.of(context)!.actionResult(
-              AppLocalizations.of(context)!.configFileViewerPageShare,
-              AppLocalizations.of(context)!.resultSuccess,
-            ),
-          );
-        }
-      } else {
-        if (context.mounted) {
-          ContextAlert.showToast(
-            context,
-            AppLocalizations.of(context)!.actionResult(
-              AppLocalizations.of(context)!.configFileViewerPageShare,
-              AppLocalizations.of(context)!.resultFailed,
-            ),
-          );
-        }
+      if (context.mounted && outcome != ShareOutcome.unconfirmed) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.actionResult(
+            AppLocalizations.of(context)!.configFileViewerPageShare,
+            outcome == ShareOutcome.success
+                ? AppLocalizations.of(context)!.resultSuccess
+                : AppLocalizations.of(context)!.resultFailed,
+          ),
+        );
       }
     } else {
       if (context.mounted) {

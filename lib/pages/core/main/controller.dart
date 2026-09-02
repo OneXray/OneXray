@@ -9,6 +9,7 @@ import 'package:onexray/pages/core/geo_data/list/params.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/mixin/share.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/core_run_mode/state.dart';
 import 'package:onexray/service/vpn/service.dart';
@@ -94,14 +95,8 @@ class CoreRootController extends PageCubit<CorePageState> {
   }
 
   Future<void> _shareFile(BuildContext context, String path) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
-    await SharePlus.instance.share(
+    final sharePositionOrigin = ContextShare.positionOrigin(context);
+    await ContextShare.share(
       ShareParams(
         files: [XFile(path)],
         fileNameOverrides: [p.basename(path)],
