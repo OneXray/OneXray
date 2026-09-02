@@ -83,9 +83,18 @@ class AppHostApi {
   Future<NativeVpnCommandResult> startVpn({
     String? windowsConfigYaml,
     WindowsVpnNetworkSettings? windowsNetworkSettings,
+    WindowsVpnPolicy windowsPolicy = const WindowsVpnPolicy(
+      alwaysOn: false,
+      allowLocalNetwork: true,
+      excludedCidrs: [],
+    ),
   }) async {
     try {
-      return await _startVpn(windowsConfigYaml, windowsNetworkSettings);
+      return await _startVpn(
+        windowsConfigYaml,
+        windowsNetworkSettings,
+        windowsPolicy,
+      );
     } catch (error, stackTrace) {
       _reportUnexpected('startVpn', error, stackTrace);
       return _commandFailed(error.toString());
@@ -95,6 +104,7 @@ class AppHostApi {
   Future<NativeVpnCommandResult> _startVpn(
     String? windowsConfigYaml,
     WindowsVpnNetworkSettings? windowsNetworkSettings,
+    WindowsVpnPolicy windowsPolicy,
   ) async {
     if (AppPlatform.isLinux) {
       return LinuxFfiApi().startVpn();
@@ -105,6 +115,7 @@ class AppHostApi {
       return WindowsFfiApi().startVpn(
         configYaml: windowsConfigYaml,
         networkSettings: windowsNetworkSettings,
+        policy: windowsPolicy,
       );
     } else {
       return _api.startVpn();
@@ -312,6 +323,14 @@ class AppHostApi {
     return _errorResult;
   }
 
+  /// Reads fixed System Extension session files and removes settled archives.
+  Future<String?> readRuntimeState({List<String> removeSessionIds = const []}) {
+    if (!AppPlatform.isMacOS) {
+      throw UnsupportedError('runtimeStateRequiresSystemExtension');
+    }
+    return _api.readRuntimeState(removeSessionIds);
+  }
+
   Future<String> stopXray() async {
     if (!AppPlatform.isIOS) {
       return _errorResult;
@@ -380,9 +399,7 @@ class AppHostApi {
     LibXrayInvokeLimits.validate(responseJson, "response");
     final response = LibXrayInvokeResponseParser.parse(responseJson);
     if (!response.success) {
-      ygLogger(
-        "libXray ${request.method?.name ?? 'unknown'} failed: ${response.error}",
-      );
+      ygLogger("libXray ${request.method?.name ?? 'unknown'} failed");
     }
     return responseJson;
   }
@@ -493,6 +510,9 @@ class AppHostApi {
     Object error,
     StackTrace stackTrace,
   ) {
-    ygLogger('AppHostApi.$operation failed: $error\n$stackTrace');
+    // Native parser errors can contain the offending JSON or credentials.
+    ygLogger(
+      'AppHostApi.$operation failed (${error.runtimeType})\n$stackTrace',
+    );
   }
 }

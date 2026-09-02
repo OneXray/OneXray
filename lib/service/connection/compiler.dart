@@ -422,10 +422,10 @@ class ConnectionCompiler {
       if (inbound['protocol'] == 'tun') {
         throw const FormatException('Use the App-managed tunIn tunnel');
       }
-      if (_portIncludes(inbound['port'], options.pingPort) ||
-          _portIncludes(inbound['port'], options.metricsPort) ||
+      if (portIncludes(inbound['port'], options.pingPort) ||
+          portIncludes(inbound['port'], options.metricsPort) ||
           (options.platform == ConnectionPlatform.windows &&
-              _portIncludes(inbound['port'], options.socksPort))) {
+              portIncludes(inbound['port'], options.socksPort))) {
         throw const FormatException(
           'Raw inbound conflicts with an App-managed port',
         );
@@ -579,7 +579,7 @@ class ConnectionCompiler {
     config['outbounds'] = outbounds;
   }
 
-  static bool _portIncludes(Object? value, int port) {
+  static bool portIncludes(Object? value, int port) {
     if (value == null) return false;
     for (final part in '$value'.split(',')) {
       final ends = part.trim().split('-');

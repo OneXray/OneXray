@@ -136,6 +136,10 @@ class AppHostApi(
         }
     }
 
+    override fun readRuntimeState(removeSessionIds: List<String>, callback: (Result<String?>) -> Unit) {
+        callback(Result.failure(UnsupportedOperationException("runtimeStateRequiresSystemExtension")))
+    }
+
     override fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit) {
         scope.launch {
             callback(Result.success(queryPermissionNow()))

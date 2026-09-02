@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show protected;
 import 'package:isolate_manager/isolate_manager.dart';
@@ -19,8 +21,12 @@ List<String> desktopCoreRunArguments({
   required String dns,
   required String interfaceName,
   required String configPath,
+  String? runtimePath,
 }) {
-  if (dns.isEmpty || interfaceName.isEmpty || configPath.isEmpty) {
+  if (dns.isEmpty ||
+      interfaceName.isEmpty ||
+      configPath.isEmpty ||
+      runtimePath?.isEmpty == true) {
     throw const FormatException(
       'Desktop Core DNS, interface, or config path is missing',
     );
@@ -33,6 +39,7 @@ List<String> desktopCoreRunArguments({
     interfaceName,
     '-config',
     configPath,
+    if (runtimePath != null) ...['-runtime', runtimePath],
   ];
 }
 
@@ -94,23 +101,65 @@ abstract class BaseFfiApi {
     return true;
   }
 
-  Future<String?> materializeRunXrayConfig(LibXrayRunConfig request) async {
+  Future<({String configPath, String? runtimePath})?> materializeRunXrayConfig(
+    LibXrayRunConfig request,
+  ) async {
     final xrayJson = request.request.xrayJson;
     if (xrayJson == null || xrayJson.isEmpty) {
       return null;
     }
 
-    final runDir = Directory(p.join(await getTunFilesDir(), "run"));
-    await runDir.create(recursive: true);
-    final configPath = p.join(runDir.path, "xray.json");
-    final temporary = File("$configPath.tmp");
-    await temporary.writeAsString(xrayJson, flush: true);
-    final config = File(configPath);
-    if (Platform.isWindows && await config.exists()) {
-      await config.delete();
+    final runtime = request.request.runtime;
+    if (runtime != null &&
+        !RegExp(r'^[a-f0-9]{32}$').hasMatch(runtime.planId)) {
+      throw const FormatException('Invalid desktop runtime plan ID');
     }
-    await temporary.rename(configPath);
-    return configPath;
+    final runPath = p.join(await getTunFilesDir(), 'run');
+    // Reuse the coordinator's frozen plan directory. Legacy inputs remain
+    // content-addressed too, so publishing cannot mutate another running plan.
+    final directory = Directory(
+      runtime == null
+          ? p.join(
+              runPath,
+              'core-inputs',
+              sha256.convert(utf8.encode(xrayJson)).toString(),
+            )
+          : p.join(runPath, 'plans', runtime.planId),
+    );
+    await directory.create(recursive: true);
+    final config = File(p.join(directory.path, 'xray.json'));
+    await _writeImmutable(config, xrayJson);
+    String? runtimePath;
+    if (runtime != null) {
+      runtimePath = p.join(directory.path, 'runtime-config.json');
+      // This is CLI metadata only. Xray JSON remains in the separate -config file.
+      await _writeImmutable(File(runtimePath), jsonEncode(runtime.toJson()));
+    }
+    return (configPath: config.path, runtimePath: runtimePath);
+  }
+
+  Future<void> _writeImmutable(File target, String text) async {
+    if (await target.exists()) {
+      if (await target.readAsString() != text) {
+        throw const FormatException(
+          'Desktop runtime input differs from its saved plan',
+        );
+      }
+      return;
+    }
+    final staging = File('${target.path}.$pid.staging');
+    try {
+      await staging.writeAsString(text, flush: true);
+      try {
+        await staging.rename(target.path);
+      } on FileSystemException {
+        if (!await target.exists() || await target.readAsString() != text) {
+          rethrow;
+        }
+      }
+    } finally {
+      if (await staging.exists()) await staging.delete();
+    }
   }
 
   Future<bool> stopCore() async => true;

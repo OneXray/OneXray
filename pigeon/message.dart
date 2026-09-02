@@ -48,6 +48,10 @@ abstract class BridgeHostApi {
   @asyncCallback
   bool useSystemExtension();
 
+  // System Extension-owned session files only; removal IDs are already settled.
+  @asyncCallback
+  String? readRuntimeState(List<String> removeSessionIds);
+
   @asyncCallback
   NativeLaunchAtLoginResult queryLaunchAtLogin();
 

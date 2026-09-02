@@ -43,6 +43,7 @@ enum JsonTool {
 enum OnDemandRuleMode: String, Codable {
     case connect
     case disconnect
+    case ignore
 }
 
 enum OnDemandRuleInterfaceType: String, Codable {
@@ -133,6 +134,13 @@ enum LibXrayMethod: String, Codable {
 
 struct RunXrayRequest: Codable, Hashable {
     var xrayJson: String?
+    var runtime: ManagedRuntimeRequest?
+}
+
+struct ManagedRuntimeRequest: Codable, Hashable {
+    var statePath: String
+    var planId: String
+    var inboundTag: String
 }
 
 struct XrayEnv: Codable, Hashable {
@@ -214,7 +222,75 @@ struct LibXrayInvokeResponse: Codable, Hashable {
     )
 }
 
-// MARK: - System extension XPC protocol (app ↔ tunnel)
+enum RuntimeStateError: String, Error {
+    case unsupported = "runtimeStateUnsupported"
+    case unavailable = "runtimeStateUnavailable"
+    case invalid = "runtimeStateInvalid"
+    case inUse = "runtimeStateInUse"
+    case timeout = "runtimeStateTimeout"
+}
+
+// Decode/re-encode only the public fields; never forward arbitrary file content.
+struct RuntimeStateSnapshot: Codable {
+    struct Session: Codable {
+        let id: String
+        let planId: String
+        let startedAtMs: Int64
+        let endedAtMs: Int64
+        let uplink: Int64
+        let downlink: Int64
+    }
+
+    let version: Int
+    let session: Session
+    let available: Bool
+    let sampledAtMs: Int64
+    let savedAtMs: Int64
+    let error: String
+
+    func validate() throws {
+        let counters = [session.startedAtMs, session.endedAtMs, session.uplink,
+                        session.downlink, sampledAtMs, savedAtMs]
+        guard version == 1, Self.isSessionId(session.id),
+              !session.planId.isEmpty, session.planId.utf8.count <= 256,
+              counters.allSatisfy({ $0 >= 0 }),
+              ["", "counters_unavailable", "state_write_failed"].contains(error) else {
+            throw RuntimeStateError.invalid
+        }
+    }
+
+    static func isSessionId(_ value: String) -> Bool {
+        value.utf8.count == 32 && value.utf8.allSatisfy {
+            (48...57).contains($0) || (97...102).contains($0)
+        }
+    }
+}
+
+struct RuntimeStateFiles: Codable {
+    static let maximumBytes = 16 * 1024 * 1024
+    let current: RuntimeStateSnapshot?
+    let archived: [RuntimeStateSnapshot]
+
+    func validatedText() throws -> String {
+        try current?.validate()
+        for snapshot in archived { try snapshot.validate() }
+        let data = try JSONEncoder().encode(self)
+        guard data.count <= Self.maximumBytes, let text = String(data: data, encoding: .utf8) else {
+            throw RuntimeStateError.invalid
+        }
+        return text
+    }
+
+    // Keep the empty current explicitly null in the app-provider envelope.
+    enum CodingKeys: String, CodingKey { case current, archived }
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(current, forKey: .current)
+        try container.encode(archived, forKey: .archived)
+    }
+}
+
+// MARK: - System extension app-provider messages (app ↔ tunnel)
 
 enum TunnelRequest: Codable {
     case listDat
@@ -222,11 +298,13 @@ enum TunnelRequest: Codable {
     case putDat(name: String, content: Data, mtimeMs: Int64)
     case commitDat
     case startXray
+    case readRuntime(removeSessionIds: [String])
 }
 
 enum TunnelResponse: Codable {
     case ok
     case datManifest([String: Int64])
+    case runtimeState(String?)
     case error(String)
 }
 

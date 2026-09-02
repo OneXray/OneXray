@@ -19,6 +19,12 @@ void main() {
     'v5 round trips retained assets, IDs, metadata, and encoded data',
     () async {
       await _seedAssets(database);
+      await database.connectionStateDao.commit(
+        baseRevision: 0,
+        settingsJson: '{"connection":{"rawId":30}}',
+        confirmedSnapshotJson: '{"sessionId":"old"}',
+      );
+      await database.connectionStateDao.beginApply(1, '{"attemptId":"old"}');
       final before = await BackupDatabaseContents.read(database);
       final payload = _roundTrip(before);
 
@@ -46,6 +52,11 @@ void main() {
       expect(subscription.agePublicKey, 'age1test');
       expect((await database.customRoutingProfilesDao.allRows).single.id, 8);
       expect(await database.coreConfigDao.searchRow(99), isNull);
+      final reset = await database.connectionStateDao.read();
+      expect(reset.revision, 0);
+      expect(reset.settingsJson, '{}');
+      expect(reset.confirmedSnapshotJson, isNull);
+      expect(reset.pendingApplyJson, isNull);
     },
   );
 
@@ -226,6 +237,13 @@ void main() {
     'restore failure rolls all tables back after replacement starts',
     () async {
       await _seedAssets(database);
+      await database.connectionStateDao.commit(
+        baseRevision: 0,
+        settingsJson: '{"old":true}',
+        confirmedSnapshotJson: '{"sessionId":"old"}',
+      );
+      await database.connectionStateDao.beginApply(1, '{"attemptId":"old"}');
+      final stateBefore = await database.connectionStateDao.read();
       final before = await BackupDatabaseContents.read(database);
       await database.customStatement('''
       CREATE TRIGGER fail_custom_restore BEFORE INSERT ON custom_routing_profiles
@@ -235,6 +253,7 @@ void main() {
       await expectLater(before.restore(database), throwsA(isA<Exception>()));
       expect(_json(await BackupDatabaseContents.read(database)), _json(before));
       expect(await database.coreConfigDao.searchRow(99), isNotNull);
+      expect(await database.connectionStateDao.read(), stateBefore);
     },
   );
 

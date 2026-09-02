@@ -1,7 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:crypto/crypto.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/native_api.dart';
@@ -10,7 +6,6 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:path/path.dart' as p;
 
 class WindowsFfiApi extends BaseFfiApi {
   static final WindowsFfiApi _singleton = WindowsFfiApi._internal();
@@ -82,7 +77,8 @@ class WindowsFfiApi extends BaseFfiApi {
             arguments: desktopCoreRunArguments(
               dns: networkSettings.dnsIpv4Address,
               interfaceName: request.tun?.autoOutboundsInterface ?? '',
-              configPath: coreConfig,
+              configPath: coreConfig.configPath,
+              runtimePath: coreConfig.runtimePath,
             ),
           ),
         ],
@@ -159,52 +155,12 @@ class WindowsFfiApi extends BaseFfiApi {
     }
   }
 
-  Future<String> _publishCoreConfig(LibXrayRunConfig request) async {
-    final xrayJson = request.request.xrayJson;
-    if (xrayJson == null || xrayJson.isEmpty) {
-      throw const FormatException('xrayJson is empty');
-    }
-    try {
-      final bytes = utf8.encode(xrayJson);
-      final digest = sha256.convert(bytes).toString();
-      // ponytail: retain content-addressed inputs; add current+previous pruning
-      // only if real configuration churn makes this directory material.
-      final directory = Directory(
-        p.join(await getTunFilesDir(), 'run', 'windows-session-backend'),
-      );
-      await directory.create(recursive: true);
-      final target = File(p.join(directory.path, '$digest.json'));
-      if (await target.exists()) {
-        if (sha256.convert(await target.readAsBytes()).toString() != digest) {
-          throw const FormatException('Windows Core config digest mismatch');
-        }
-        return target.path;
-      }
-
-      final staging = File('${target.path}.$pid.staging');
-      if (await staging.exists()) {
-        await staging.delete();
-      }
-      try {
-        await staging.writeAsBytes(bytes, flush: true);
-        await staging.rename(target.path);
-      } on FileSystemException {
-        if (!await target.exists() ||
-            sha256.convert(await target.readAsBytes()).toString() != digest) {
-          rethrow;
-        }
-      } finally {
-        if (await staging.exists()) {
-          await staging.delete();
-        }
-      }
-      return target.path;
-    } catch (error) {
-      if (error is FormatException) {
-        rethrow;
-      }
-      throw const FormatException('Unable to publish Windows Core config');
-    }
+  Future<({String configPath, String? runtimePath})> _publishCoreConfig(
+    LibXrayRunConfig request,
+  ) async {
+    final paths = await materializeRunXrayConfig(request);
+    if (paths == null) throw const FormatException('xrayJson is empty');
+    return paths;
   }
 
   Future<void> _emitWindowsStatus(WindowsVpnStatus status) {

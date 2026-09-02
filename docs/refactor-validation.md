@@ -100,3 +100,25 @@ macOS archive：`88dba48b8246a5adca63985b9b89613e9d7a414485e89b5d84ce8379cd0036a
 目标拒绝。Raw 的 `+local` DNS 在要求物理网卡绑定时不允许绕过约束，关闭 IPv6 时
 不能验证为 IPv4 的本地 DNS 域名也拒绝；不能只改 queryStrategy 就宣称已强制所有物理出站。
 构建/路由检查会读取本地资源且影响核心进程全局值，不宣传为无 IO 或可与活动核心并发。
+
+## P3：运行协调与平台准备
+
+运行协调器、同库提交与补偿、平台 policy 和宿主统计已实现并验证。App 前台通过
+Xray 原生 metrics 读取实时计数；libXray 只定期保存本次连接快照。设备累计、按会话
+去重及清零属于 App；同进程的临时核心操作不能干扰已运行的托管核心。
+停止或恢复失败保留提交 journal 并呈现可重试状态，不提交未确认方案或伪报已断开。
+
+Windows 系统停止直接终止 Job 时，允许丢失最后成功保存后的尾部统计；无需为统计修改
+VCore。macOS SE 通过固定 provider 消息读取会话快照和清理已结算归档，App 不直接访问
+root 文件。实际离线消息投递和归档清理待手动验证。Windows/Linux 原生验证及 macOS
+VPN 验证的禁止边界保持不变。
+
+简化方案重新验证：全量 Flutter 445 项通过、1 项 Windows 原生测试跳过；静态分析、
+模型契约及分层检查通过；Go 全量及 race 通过。Android/Apple Go 产物已重新构建复制，
+完整 macOS Debug 构建成功。保留已存在的 Swift Sendable / Android 插件 KGP 构建警告。
+
+Android 私有 fixture 实测连接、清零、双节点切换、真实启动失败恢复及正常停止通过。
+仅终止 UI 后，原生进程继续转发并独立更新 session 文件，App ledger 不变；重开先合并
+文件再使用 metrics，恢复同一 session，最终累计只增加该 session 未结算差值。
+原始日志与演练结果位于工作空间 `references/onexray-refactor-validation/runtime-results.md`。
+主数据库未被验证入口读取；VCore 无改动。P3 完成不代表 P4 新 UI 已切换或全部平台可发布。

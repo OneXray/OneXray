@@ -169,7 +169,12 @@ class OneVpnService : VpnService() {
         val runPath = File(this.filesDir.path, "run")
         val file = File(runPath.path, "start.json")
         val data = file.readText()
-        return JsonTool.json.decodeFromString<StartVpnRequest>(data)
+        return try {
+            JsonTool.json.decodeFromString<StartVpnRequest>(data)
+        } catch (_: IllegalArgumentException) {
+            // Decoder errors may contain the input, including runtime credentials.
+            throw IllegalStateException("invalid VPN start request")
+        }
     }
 
     private fun stopTun() {
@@ -333,7 +338,7 @@ class OneVpnService : VpnService() {
     }
 
     private fun setIPAndDns(tun: TunJson, builder: Builder) {
-        builder.addAddress(IPV4_ADDRESS, 32)
+        builder.addAddress(IPV4_ADDRESS, 15)
             .addRoute("0.0.0.0", 0)
             .setMtu(tunMtu)
         tun.tunDnsIPv4?.let {
@@ -342,7 +347,7 @@ class OneVpnService : VpnService() {
 
         tun.enableIPv6?.let {
             if (it) {
-                builder.addAddress(IPV6_ADDRESS, 128)
+                builder.addAddress(IPV6_ADDRESS, 64)
                     .addRoute("::", 0)
                 tun.tunDnsIPv6?.let { dnsIPv6 ->
                     builder.addDnsServer(dnsIPv6)
@@ -417,7 +422,7 @@ class OneVpnService : VpnService() {
                     }
                     return@launch
                 }
-                XLog.d("TProxyStartService: runXray result=$result")
+                XLog.d("OneVpnService: Xray started")
                 running = true
                 sendStatusBroadcast(true)
             } catch (e: Exception) {
@@ -439,30 +444,42 @@ class OneVpnService : VpnService() {
     }
 
     private fun patchRuntimeEnv(requestJson: String, fd: Int): String {
-        val request = JsonTool.json.decodeFromString<LibXrayInvokeRequest>(requestJson)
-        val payload = request.payload
-            ?: throw IllegalStateException("runXray payload is empty")
-        val xrayJson = payload.xrayJson
-            ?: throw IllegalStateException("xrayJson is empty")
-        if (xrayJson.isEmpty()) {
-            throw IllegalStateException("xrayJson is empty")
-        }
-        val root = JsonTool.json.parseToJsonElement(xrayJson).jsonObject
-        val currentEnv = root["env"]?.let {
-            JsonTool.json.decodeFromJsonElement<XrayEnv>(it)
-        } ?: XrayEnv()
-        val env = currentEnv.copy(tunFd = fd.toString())
-        val updated = buildJsonObject {
-            root.forEach { (key, value) ->
-                if (key != "env") {
-                    put(key, value)
-                }
+        try {
+            val request = JsonTool.json.decodeFromString<LibXrayInvokeRequest>(requestJson)
+            val payload = request.payload
+                ?: throw IllegalStateException("runXray payload is empty")
+            val xrayJson = payload.xrayJson
+                ?: throw IllegalStateException("xrayJson is empty")
+            if (xrayJson.isEmpty()) {
+                throw IllegalStateException("xrayJson is empty")
             }
-            put("env", JsonTool.json.encodeToJsonElement(env))
+            val root = JsonTool.json.parseToJsonElement(xrayJson).jsonObject
+            val currentEnv = root["env"]?.let {
+                JsonTool.json.decodeFromJsonElement<XrayEnv>(it)
+            } ?: XrayEnv()
+            val env = currentEnv.copy(tunFd = fd.toString())
+            val updated = buildJsonObject {
+                root.forEach { (key, value) ->
+                    if (key != "env") {
+                        put(key, value)
+                    }
+                }
+                put("env", JsonTool.json.encodeToJsonElement(env))
+            }
+            val runtime = payload.runtime?.let {
+                val runDirectory = File(filesDir, "run")
+                check(runDirectory.isDirectory || runDirectory.mkdirs()) {
+                    "unable to prepare private runtime directory"
+                }
+                it.copy(statePath = File(runDirectory, "runtime.json").absolutePath)
+            }
+            val updatedPayload = payload.copy(
+                xrayJson = JsonTool.json.encodeToString(updated),
+                runtime = runtime,
+            )
+            return JsonTool.json.encodeToString(request.copy(payload = updatedPayload))
+        } catch (_: IllegalArgumentException) {
+            throw IllegalStateException("invalid Xray run request")
         }
-        val updatedPayload = payload.copy(
-            xrayJson = JsonTool.json.encodeToString(updated),
-        )
-        return JsonTool.json.encodeToString(request.copy(payload = updatedPayload))
     }
 }

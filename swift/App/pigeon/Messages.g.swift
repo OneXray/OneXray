@@ -519,6 +519,7 @@ protocol BridgeHostApi {
   func getInstalledApps(completion: @escaping (Result<[AndroidAppInfo], Error>) -> Void)
   func getAppIcon(packageName: String, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
   func useSystemExtension(completion: @escaping (Result<Bool, Error>) -> Void)
+  func readRuntimeState(removeSessionIds: [String], completion: @escaping (Result<String?, Error>) -> Void)
   func queryLaunchAtLogin(completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func setLaunchAtLogin(enabled: Bool, completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func openLaunchAtLoginSettings(completion: @escaping (Result<Bool, Error>) -> Void)
@@ -685,6 +686,23 @@ class BridgeHostApiSetup {
       }
     } else {
       useSystemExtensionChannel.setMessageHandler(nil)
+    }
+    let readRuntimeStateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      readRuntimeStateChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let removeSessionIdsArg = args[0] as! [String]
+        api.readRuntimeState(removeSessionIds: removeSessionIdsArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      readRuntimeStateChannel.setMessageHandler(nil)
     }
     let queryLaunchAtLoginChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.queryLaunchAtLogin\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

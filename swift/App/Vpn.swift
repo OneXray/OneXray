@@ -362,29 +362,24 @@ class VPNManager {
     }
 
     private func convertRule(_ rule: OnDemandRule) -> NEOnDemandRule? {
-        if let mode = rule.mode {
-            switch mode {
-            case .connect:
-                let onDemandRule = NEOnDemandRuleConnect()
-                if fillOnDemandRule(onDemandRule, rule) {
-                    return onDemandRule
-                }
-
-            case .disconnect:
-                let onDemandRule = NEOnDemandRuleDisconnect()
-                if fillOnDemandRule(onDemandRule, rule) {
-                    return onDemandRule
-                }
-            }
+        guard let mode = rule.mode else { return nil }
+        let onDemandRule: NEOnDemandRule
+        switch mode {
+        case .connect:
+            onDemandRule = NEOnDemandRuleConnect()
+        case .disconnect:
+            onDemandRule = NEOnDemandRuleDisconnect()
+        case .ignore:
+            onDemandRule = NEOnDemandRuleIgnore()
         }
-        return nil
+        return fillOnDemandRule(onDemandRule, rule) ? onDemandRule : nil
     }
 
     private func fillOnDemandRule(_ onDemandRule: NEOnDemandRule, _ rule: OnDemandRule) -> Bool {
-        guard let interfaceType = rule.interfaceType else {
+        guard let interfaceType = rule.interfaceType,
+              let interfaceTypeMatch = convertInterfaceType(interfaceType) else {
             return false
         }
-        let interfaceTypeMatch = convertInterfaceType(interfaceType)
         onDemandRule.interfaceTypeMatch = interfaceTypeMatch
         if interfaceTypeMatch == .wiFi {
             if let ssid = rule.ssid, !ssid.isEmpty {
@@ -394,7 +389,7 @@ class VPNManager {
         return true
     }
 
-    private func convertInterfaceType(_ interfaceType: OnDemandRuleInterfaceType) -> NEOnDemandRuleInterfaceType {
+    private func convertInterfaceType(_ interfaceType: OnDemandRuleInterfaceType) -> NEOnDemandRuleInterfaceType? {
         switch interfaceType {
         case .any:
             return .any
@@ -404,17 +399,46 @@ class VPNManager {
         case .ethernet:
             return .ethernet
         case .cellular:
-            return .any
+            return nil
         #else
         case .cellular:
             return .cellular
         case .ethernet:
-            return .any
+            return nil
         #endif
         }
     }
 
     // MARK: - System Extension path rewriting + XPC dat sync
+
+    func readRuntimeState(removeSessionIds: [String]) async throws -> String? {
+        guard Constants.useSystemExtension else { throw RuntimeStateError.unsupported }
+        guard removeSessionIds.allSatisfy(RuntimeStateSnapshot.isSessionId) else {
+            throw RuntimeStateError.invalid
+        }
+        guard let manager = try await findVpn(),
+              let session = manager.connection as? NETunnelProviderSession else {
+            throw RuntimeStateError.unavailable
+        }
+        // NE may launch the provider just to handle a message. Do not start a
+        // tunnel or require connected status; offline SE delivery remains NOT RUN.
+        let response = try await sendTunnelRequest(
+            session: session,
+            .readRuntime(removeSessionIds: removeSessionIds),
+            timeoutSeconds: 5
+        )
+        switch response {
+        case let .runtimeState(text):
+            guard let text, text.utf8.count <= RuntimeStateFiles.maximumBytes else {
+                throw RuntimeStateError.invalid
+            }
+            return try JSONDecoder().decode(RuntimeStateFiles.self, from: Data(text.utf8)).validatedText()
+        case let .error(code):
+            throw RuntimeStateError(rawValue: code) ?? .unavailable
+        default:
+            throw RuntimeStateError.invalid
+        }
+    }
 
     private func pathMapping() -> (user: String, ext: String)? {
         guard let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()),
@@ -494,24 +518,47 @@ class VPNManager {
         throw VPNError.sessionNotReady
     }
 
-    private func sendTunnelRequest(session: NETunnelProviderSession, _ request: TunnelRequest) async throws -> TunnelResponse {
+    private func sendTunnelRequest(
+        session: NETunnelProviderSession,
+        _ request: TunnelRequest,
+        timeoutSeconds: UInt64? = nil
+    ) async throws -> TunnelResponse {
         let data = try TunnelMessageCoder.encode(request)
+        if timeoutSeconds != nil && data.count > RuntimeStateFiles.maximumBytes {
+            throw RuntimeStateError.invalid
+        }
         return try await withCheckedThrowingContinuation { continuation in
+            let pending = PendingTunnelResponse(continuation)
+            let timeout = timeoutSeconds.map { seconds in
+                Task { @MainActor in
+                    do { try await Task.sleep(nanoseconds: seconds * 1_000_000_000) }
+                    catch { return }
+                    pending.resolve(.failure(RuntimeStateError.timeout))
+                }
+            }
             do {
                 try session.sendProviderMessage(data) { response in
-                    guard let response else {
-                        continuation.resume(returning: .ok)
-                        return
-                    }
-                    do {
-                        let decoded = try TunnelMessageCoder.decode(TunnelResponse.self, from: response)
-                        continuation.resume(returning: decoded)
-                    } catch {
-                        continuation.resume(throwing: error)
+                    Task { @MainActor in
+                        timeout?.cancel()
+                        guard let response else {
+                            pending.resolve(.failure(RuntimeStateError.unavailable))
+                            return
+                        }
+                        if timeoutSeconds != nil && response.count > RuntimeStateFiles.maximumBytes {
+                            pending.resolve(.failure(RuntimeStateError.invalid))
+                            return
+                        }
+                        do {
+                            let decoded = try TunnelMessageCoder.decode(TunnelResponse.self, from: response)
+                            pending.resolve(.success(decoded))
+                        } catch {
+                            pending.resolve(.failure(RuntimeStateError.invalid))
+                        }
                     }
                 }
             } catch {
-                continuation.resume(throwing: error)
+                timeout?.cancel()
+                pending.resolve(.failure(RuntimeStateError.unavailable))
             }
         }
     }
@@ -549,5 +596,20 @@ class VPNManager {
             if abs(localMtime - remoteMtime) > 1000 { return true }
         }
         return false
+    }
+}
+
+@MainActor
+private final class PendingTunnelResponse {
+    private var continuation: CheckedContinuation<TunnelResponse, Error>?
+
+    init(_ continuation: CheckedContinuation<TunnelResponse, Error>) {
+        self.continuation = continuation
+    }
+
+    func resolve(_ result: Result<TunnelResponse, Error>) {
+        let pending = continuation
+        continuation = nil
+        pending?.resume(with: result)
     }
 }

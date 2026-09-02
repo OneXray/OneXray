@@ -1922,6 +1922,388 @@ class CustomRoutingProfilesCompanion
   }
 }
 
+class $ConnectionStateTable extends ConnectionState
+    with TableInfo<$ConnectionStateTable, ConnectionStateData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ConnectionStateTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _settingsJsonMeta = const VerificationMeta(
+    'settingsJson',
+  );
+  @override
+  late final GeneratedColumn<String> settingsJson = GeneratedColumn<String>(
+    'settings_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _confirmedSnapshotJsonMeta =
+      const VerificationMeta('confirmedSnapshotJson');
+  @override
+  late final GeneratedColumn<String> confirmedSnapshotJson =
+      GeneratedColumn<String>(
+        'confirmed_snapshot_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _pendingApplyJsonMeta = const VerificationMeta(
+    'pendingApplyJson',
+  );
+  @override
+  late final GeneratedColumn<String> pendingApplyJson = GeneratedColumn<String>(
+    'pending_apply_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    revision,
+    settingsJson,
+    confirmedSnapshotJson,
+    pendingApplyJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'connection_state';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ConnectionStateData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('settings_json')) {
+      context.handle(
+        _settingsJsonMeta,
+        settingsJson.isAcceptableOrUnknown(
+          data['settings_json']!,
+          _settingsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('confirmed_snapshot_json')) {
+      context.handle(
+        _confirmedSnapshotJsonMeta,
+        confirmedSnapshotJson.isAcceptableOrUnknown(
+          data['confirmed_snapshot_json']!,
+          _confirmedSnapshotJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pending_apply_json')) {
+      context.handle(
+        _pendingApplyJsonMeta,
+        pendingApplyJson.isAcceptableOrUnknown(
+          data['pending_apply_json']!,
+          _pendingApplyJsonMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ConnectionStateData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ConnectionStateData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      settingsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}settings_json'],
+      )!,
+      confirmedSnapshotJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}confirmed_snapshot_json'],
+      ),
+      pendingApplyJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pending_apply_json'],
+      ),
+    );
+  }
+
+  @override
+  $ConnectionStateTable createAlias(String alias) {
+    return $ConnectionStateTable(attachedDatabase, alias);
+  }
+}
+
+class ConnectionStateData extends DataClass
+    implements Insertable<ConnectionStateData> {
+  final int id;
+  final int revision;
+  final String settingsJson;
+  final String? confirmedSnapshotJson;
+  final String? pendingApplyJson;
+  const ConnectionStateData({
+    required this.id,
+    required this.revision,
+    required this.settingsJson,
+    this.confirmedSnapshotJson,
+    this.pendingApplyJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['revision'] = Variable<int>(revision);
+    map['settings_json'] = Variable<String>(settingsJson);
+    if (!nullToAbsent || confirmedSnapshotJson != null) {
+      map['confirmed_snapshot_json'] = Variable<String>(confirmedSnapshotJson);
+    }
+    if (!nullToAbsent || pendingApplyJson != null) {
+      map['pending_apply_json'] = Variable<String>(pendingApplyJson);
+    }
+    return map;
+  }
+
+  ConnectionStateCompanion toCompanion(bool nullToAbsent) {
+    return ConnectionStateCompanion(
+      id: Value(id),
+      revision: Value(revision),
+      settingsJson: Value(settingsJson),
+      confirmedSnapshotJson: confirmedSnapshotJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(confirmedSnapshotJson),
+      pendingApplyJson: pendingApplyJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pendingApplyJson),
+    );
+  }
+
+  factory ConnectionStateData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ConnectionStateData(
+      id: serializer.fromJson<int>(json['id']),
+      revision: serializer.fromJson<int>(json['revision']),
+      settingsJson: serializer.fromJson<String>(json['settingsJson']),
+      confirmedSnapshotJson: serializer.fromJson<String?>(
+        json['confirmedSnapshotJson'],
+      ),
+      pendingApplyJson: serializer.fromJson<String?>(json['pendingApplyJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'revision': serializer.toJson<int>(revision),
+      'settingsJson': serializer.toJson<String>(settingsJson),
+      'confirmedSnapshotJson': serializer.toJson<String?>(
+        confirmedSnapshotJson,
+      ),
+      'pendingApplyJson': serializer.toJson<String?>(pendingApplyJson),
+    };
+  }
+
+  ConnectionStateData copyWith({
+    int? id,
+    int? revision,
+    String? settingsJson,
+    Value<String?> confirmedSnapshotJson = const Value.absent(),
+    Value<String?> pendingApplyJson = const Value.absent(),
+  }) => ConnectionStateData(
+    id: id ?? this.id,
+    revision: revision ?? this.revision,
+    settingsJson: settingsJson ?? this.settingsJson,
+    confirmedSnapshotJson: confirmedSnapshotJson.present
+        ? confirmedSnapshotJson.value
+        : this.confirmedSnapshotJson,
+    pendingApplyJson: pendingApplyJson.present
+        ? pendingApplyJson.value
+        : this.pendingApplyJson,
+  );
+  ConnectionStateData copyWithCompanion(ConnectionStateCompanion data) {
+    return ConnectionStateData(
+      id: data.id.present ? data.id.value : this.id,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      settingsJson: data.settingsJson.present
+          ? data.settingsJson.value
+          : this.settingsJson,
+      confirmedSnapshotJson: data.confirmedSnapshotJson.present
+          ? data.confirmedSnapshotJson.value
+          : this.confirmedSnapshotJson,
+      pendingApplyJson: data.pendingApplyJson.present
+          ? data.pendingApplyJson.value
+          : this.pendingApplyJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectionStateData(')
+          ..write('id: $id, ')
+          ..write('revision: $revision, ')
+          ..write('settingsJson: $settingsJson, ')
+          ..write('confirmedSnapshotJson: $confirmedSnapshotJson, ')
+          ..write('pendingApplyJson: $pendingApplyJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    revision,
+    settingsJson,
+    confirmedSnapshotJson,
+    pendingApplyJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConnectionStateData &&
+          other.id == this.id &&
+          other.revision == this.revision &&
+          other.settingsJson == this.settingsJson &&
+          other.confirmedSnapshotJson == this.confirmedSnapshotJson &&
+          other.pendingApplyJson == this.pendingApplyJson);
+}
+
+class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
+  final Value<int> id;
+  final Value<int> revision;
+  final Value<String> settingsJson;
+  final Value<String?> confirmedSnapshotJson;
+  final Value<String?> pendingApplyJson;
+  const ConnectionStateCompanion({
+    this.id = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.settingsJson = const Value.absent(),
+    this.confirmedSnapshotJson = const Value.absent(),
+    this.pendingApplyJson = const Value.absent(),
+  });
+  ConnectionStateCompanion.insert({
+    this.id = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.settingsJson = const Value.absent(),
+    this.confirmedSnapshotJson = const Value.absent(),
+    this.pendingApplyJson = const Value.absent(),
+  });
+  static Insertable<ConnectionStateData> custom({
+    Expression<int>? id,
+    Expression<int>? revision,
+    Expression<String>? settingsJson,
+    Expression<String>? confirmedSnapshotJson,
+    Expression<String>? pendingApplyJson,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (revision != null) 'revision': revision,
+      if (settingsJson != null) 'settings_json': settingsJson,
+      if (confirmedSnapshotJson != null)
+        'confirmed_snapshot_json': confirmedSnapshotJson,
+      if (pendingApplyJson != null) 'pending_apply_json': pendingApplyJson,
+    });
+  }
+
+  ConnectionStateCompanion copyWith({
+    Value<int>? id,
+    Value<int>? revision,
+    Value<String>? settingsJson,
+    Value<String?>? confirmedSnapshotJson,
+    Value<String?>? pendingApplyJson,
+  }) {
+    return ConnectionStateCompanion(
+      id: id ?? this.id,
+      revision: revision ?? this.revision,
+      settingsJson: settingsJson ?? this.settingsJson,
+      confirmedSnapshotJson:
+          confirmedSnapshotJson ?? this.confirmedSnapshotJson,
+      pendingApplyJson: pendingApplyJson ?? this.pendingApplyJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (settingsJson.present) {
+      map['settings_json'] = Variable<String>(settingsJson.value);
+    }
+    if (confirmedSnapshotJson.present) {
+      map['confirmed_snapshot_json'] = Variable<String>(
+        confirmedSnapshotJson.value,
+      );
+    }
+    if (pendingApplyJson.present) {
+      map['pending_apply_json'] = Variable<String>(pendingApplyJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectionStateCompanion(')
+          ..write('id: $id, ')
+          ..write('revision: $revision, ')
+          ..write('settingsJson: $settingsJson, ')
+          ..write('confirmedSnapshotJson: $confirmedSnapshotJson, ')
+          ..write('pendingApplyJson: $pendingApplyJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1930,6 +2312,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GeoDataTable geoData = $GeoDataTable(this);
   late final $CustomRoutingProfilesTable customRoutingProfiles =
       $CustomRoutingProfilesTable(this);
+  late final $ConnectionStateTable connectionState = $ConnectionStateTable(
+    this,
+  );
   late final CoreConfigDao coreConfigDao = CoreConfigDao(this as AppDatabase);
   late final SubscriptionDao subscriptionDao = SubscriptionDao(
     this as AppDatabase,
@@ -1937,6 +2322,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final GeoDataDao geoDataDao = GeoDataDao(this as AppDatabase);
   late final CustomRoutingProfilesDao customRoutingProfilesDao =
       CustomRoutingProfilesDao(this as AppDatabase);
+  late final ConnectionStateDao connectionStateDao = ConnectionStateDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1946,6 +2334,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     subscription,
     geoData,
     customRoutingProfiles,
+    connectionState,
   ];
 }
 
@@ -2936,6 +3325,216 @@ typedef $$CustomRoutingProfilesTableProcessedTableManager =
       CustomRoutingProfileData,
       PrefetchHooks Function()
     >;
+typedef $$ConnectionStateTableCreateCompanionBuilder =
+    ConnectionStateCompanion Function({
+      Value<int> id,
+      Value<int> revision,
+      Value<String> settingsJson,
+      Value<String?> confirmedSnapshotJson,
+      Value<String?> pendingApplyJson,
+    });
+typedef $$ConnectionStateTableUpdateCompanionBuilder =
+    ConnectionStateCompanion Function({
+      Value<int> id,
+      Value<int> revision,
+      Value<String> settingsJson,
+      Value<String?> confirmedSnapshotJson,
+      Value<String?> pendingApplyJson,
+    });
+
+class $$ConnectionStateTableFilterComposer
+    extends Composer<_$AppDatabase, $ConnectionStateTable> {
+  $$ConnectionStateTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get settingsJson => $composableBuilder(
+    column: $table.settingsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get confirmedSnapshotJson => $composableBuilder(
+    column: $table.confirmedSnapshotJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pendingApplyJson => $composableBuilder(
+    column: $table.pendingApplyJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ConnectionStateTableOrderingComposer
+    extends Composer<_$AppDatabase, $ConnectionStateTable> {
+  $$ConnectionStateTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get settingsJson => $composableBuilder(
+    column: $table.settingsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get confirmedSnapshotJson => $composableBuilder(
+    column: $table.confirmedSnapshotJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pendingApplyJson => $composableBuilder(
+    column: $table.pendingApplyJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ConnectionStateTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ConnectionStateTable> {
+  $$ConnectionStateTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<String> get settingsJson => $composableBuilder(
+    column: $table.settingsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get confirmedSnapshotJson => $composableBuilder(
+    column: $table.confirmedSnapshotJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get pendingApplyJson => $composableBuilder(
+    column: $table.pendingApplyJson,
+    builder: (column) => column,
+  );
+}
+
+class $$ConnectionStateTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ConnectionStateTable,
+          ConnectionStateData,
+          $$ConnectionStateTableFilterComposer,
+          $$ConnectionStateTableOrderingComposer,
+          $$ConnectionStateTableAnnotationComposer,
+          $$ConnectionStateTableCreateCompanionBuilder,
+          $$ConnectionStateTableUpdateCompanionBuilder,
+          (
+            ConnectionStateData,
+            BaseReferences<
+              _$AppDatabase,
+              $ConnectionStateTable,
+              ConnectionStateData
+            >,
+          ),
+          ConnectionStateData,
+          PrefetchHooks Function()
+        > {
+  $$ConnectionStateTableTableManager(
+    _$AppDatabase db,
+    $ConnectionStateTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ConnectionStateTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ConnectionStateTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ConnectionStateTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<String> settingsJson = const Value.absent(),
+                Value<String?> confirmedSnapshotJson = const Value.absent(),
+                Value<String?> pendingApplyJson = const Value.absent(),
+              }) => ConnectionStateCompanion(
+                id: id,
+                revision: revision,
+                settingsJson: settingsJson,
+                confirmedSnapshotJson: confirmedSnapshotJson,
+                pendingApplyJson: pendingApplyJson,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<String> settingsJson = const Value.absent(),
+                Value<String?> confirmedSnapshotJson = const Value.absent(),
+                Value<String?> pendingApplyJson = const Value.absent(),
+              }) => ConnectionStateCompanion.insert(
+                id: id,
+                revision: revision,
+                settingsJson: settingsJson,
+                confirmedSnapshotJson: confirmedSnapshotJson,
+                pendingApplyJson: pendingApplyJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ConnectionStateTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ConnectionStateTable,
+      ConnectionStateData,
+      $$ConnectionStateTableFilterComposer,
+      $$ConnectionStateTableOrderingComposer,
+      $$ConnectionStateTableAnnotationComposer,
+      $$ConnectionStateTableCreateCompanionBuilder,
+      $$ConnectionStateTableUpdateCompanionBuilder,
+      (
+        ConnectionStateData,
+        BaseReferences<
+          _$AppDatabase,
+          $ConnectionStateTable,
+          ConnectionStateData
+        >,
+      ),
+      ConnectionStateData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2948,4 +3547,6 @@ class $AppDatabaseManager {
       $$GeoDataTableTableManager(_db, _db.geoData);
   $$CustomRoutingProfilesTableTableManager get customRoutingProfiles =>
       $$CustomRoutingProfilesTableTableManager(_db, _db.customRoutingProfiles);
+  $$ConnectionStateTableTableManager get connectionState =>
+      $$ConnectionStateTableTableManager(_db, _db.connectionState);
 }

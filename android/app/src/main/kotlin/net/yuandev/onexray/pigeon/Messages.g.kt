@@ -561,6 +561,7 @@ interface BridgeHostApi {
   fun getInstalledApps(callback: (Result<List<AndroidAppInfo>>) -> Unit)
   fun getAppIcon(packageName: String, callback: (Result<ByteArray?>) -> Unit)
   fun useSystemExtension(callback: (Result<Boolean>) -> Unit)
+  fun readRuntimeState(removeSessionIds: List<String>, callback: (Result<String?>) -> Unit)
   fun queryLaunchAtLogin(callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
   fun setLaunchAtLogin(enabled: Boolean, callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
   fun openLaunchAtLoginSettings(callback: (Result<Boolean>) -> Unit)
@@ -747,6 +748,26 @@ interface BridgeHostApi {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.useSystemExtension{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val removeSessionIdsArg = args[0] as List<String>
+            api.readRuntimeState(removeSessionIdsArg) { result: Result<String?> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

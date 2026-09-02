@@ -187,13 +187,32 @@ class PingBatchItemRequest {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class RunXrayRequest {
   String? xrayJson;
+  ManagedRuntimeRequest? runtime;
 
-  RunXrayRequest(this.xrayJson);
+  RunXrayRequest(this.xrayJson, {this.runtime});
 
   factory RunXrayRequest.fromJson(Map<String, dynamic> json) =>
       _$RunXrayRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$RunXrayRequestToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
+class ManagedRuntimeRequest {
+  final String statePath;
+  final String planId;
+  final String inboundTag;
+
+  const ManagedRuntimeRequest({
+    required this.statePath,
+    required this.planId,
+    this.inboundTag = 'tunIn',
+  });
+
+  factory ManagedRuntimeRequest.fromJson(Map<String, dynamic> json) =>
+      _$ManagedRuntimeRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ManagedRuntimeRequestToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

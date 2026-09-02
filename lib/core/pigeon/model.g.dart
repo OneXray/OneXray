@@ -161,10 +161,36 @@ Map<String, dynamic> _$PingBatchItemRequestToJson(
 };
 
 RunXrayRequest _$RunXrayRequestFromJson(Map<String, dynamic> json) =>
-    RunXrayRequest(json['xrayJson'] as String?);
+    RunXrayRequest(
+      json['xrayJson'] as String?,
+      runtime: json['runtime'] == null
+          ? null
+          : ManagedRuntimeRequest.fromJson(
+              json['runtime'] as Map<String, dynamic>,
+            ),
+    );
 
 Map<String, dynamic> _$RunXrayRequestToJson(RunXrayRequest instance) =>
-    <String, dynamic>{'xrayJson': ?instance.xrayJson};
+    <String, dynamic>{
+      'xrayJson': ?instance.xrayJson,
+      'runtime': ?instance.runtime?.toJson(),
+    };
+
+ManagedRuntimeRequest _$ManagedRuntimeRequestFromJson(
+  Map<String, dynamic> json,
+) => ManagedRuntimeRequest(
+  statePath: json['statePath'] as String,
+  planId: json['planId'] as String,
+  inboundTag: json['inboundTag'] as String? ?? 'tunIn',
+);
+
+Map<String, dynamic> _$ManagedRuntimeRequestToJson(
+  ManagedRuntimeRequest instance,
+) => <String, dynamic>{
+  'statePath': instance.statePath,
+  'planId': instance.planId,
+  'inboundTag': instance.inboundTag,
+};
 
 TestXrayRequest _$TestXrayRequestFromJson(Map<String, dynamic> json) =>
     TestXrayRequest(

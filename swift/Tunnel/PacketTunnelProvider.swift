@@ -124,7 +124,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     }
 
     private func buildSettings(request: StartVpnRequest) -> NEPacketTunnelNetworkSettings {
-        let ipv4 = NEIPv4Settings(addresses: ["192.168.20.2"], subnetMasks: ["255.255.255.0"])
+        let ipv4 = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.254.0.0"])
         ipv4.includedRoutes = [NEIPv4Route.default()]
 
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: ProxyHost)
@@ -136,7 +136,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
                 servers.append(tunDnsIPv4)
             }
             if let enableIPv6 = tun.enableIPv6, enableIPv6 {
-                let ipv6 = NEIPv6Settings(addresses: ["FC00::0001"], networkPrefixLengths: [7])
+                let ipv6 = NEIPv6Settings(addresses: ["fc00::1"], networkPrefixLengths: [64])
                 ipv6.includedRoutes = [NEIPv6Route.default()]
                 settings.ipv6Settings = ipv6
                 if let tunDnsIPv6 = tun.tunDnsIPv6 {
@@ -221,8 +221,91 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         case .startXray:
             fulfillStartSignal()
             response = .ok
+        case let .readRuntime(removeSessionIds):
+            do {
+                guard data.count <= RuntimeStateFiles.maximumBytes else { throw RuntimeStateError.invalid }
+                response = .runtimeState(try readRuntimeState(removeSessionIds: removeSessionIds))
+            } catch {
+                response = .error((error as? RuntimeStateError ?? .unavailable).rawValue)
+            }
         }
-        return try? TunnelMessageCoder.encode(response)
+        guard let encoded = try? TunnelMessageCoder.encode(response) else { return nil }
+        if case .readRuntime = request, encoded.count > RuntimeStateFiles.maximumBytes {
+            return try? TunnelMessageCoder.encode(TunnelResponse.error(RuntimeStateError.invalid.rawValue))
+        }
+        return encoded
+    }
+
+    private func readRuntimeState(removeSessionIds: [String]) throws -> String {
+        guard Constants.useSystemExtension, let container = extensionGroupContainerURL() else {
+            throw RuntimeStateError.unsupported
+        }
+        guard removeSessionIds.allSatisfy(RuntimeStateSnapshot.isSessionId) else {
+            throw RuntimeStateError.invalid
+        }
+        let runDirectory = container.adaptedAppendPath(path: "run")
+        guard try runtimeDirectoryExists(runDirectory) else {
+            return try RuntimeStateFiles(current: nil, archived: []).validatedText()
+        }
+        let current = try readRuntimeSnapshot(runDirectory.adaptedAppendPath(path: "runtime.json"))
+        guard !removeSessionIds.contains(where: { $0 == current?.session.id }) else {
+            throw RuntimeStateError.inUse
+        }
+        let archives = runDirectory.adaptedAppendPath(path: "runtime-sessions")
+        guard try runtimeDirectoryExists(archives) else {
+            return try RuntimeStateFiles(current: current, archived: []).validatedText()
+        }
+        let manager = FileManager.default
+        // Only IDs already settled by the App may be removed; never touch runtime.json.
+        for id in Set(removeSessionIds) {
+            let file = archives.adaptedAppendPath(path: "\(id).json")
+            if let snapshot = try readRuntimeSnapshot(file) {
+                guard snapshot.session.id == id else { throw RuntimeStateError.invalid }
+                try manager.removeItem(at: file)
+            }
+        }
+        var archived: [RuntimeStateSnapshot] = []
+        var totalBytes = 0
+        for file in try manager.contentsOfDirectory(at: archives, includingPropertiesForKeys: nil) {
+            let id = file.deletingPathExtension().lastPathComponent
+            guard file.pathExtension == "json", RuntimeStateSnapshot.isSessionId(id) else { continue }
+            guard let snapshot = try readRuntimeSnapshot(file) else { continue }
+            guard snapshot.session.id == id else { throw RuntimeStateError.invalid }
+            totalBytes += try JSONEncoder().encode(snapshot).count + 1
+            guard totalBytes <= RuntimeStateFiles.maximumBytes else { throw RuntimeStateError.invalid }
+            archived.append(snapshot)
+        }
+        return try RuntimeStateFiles(current: current, archived: archived).validatedText()
+    }
+
+    private func runtimeDirectoryExists(_ directory: URL) throws -> Bool {
+        do {
+            let values = try directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            guard values.isDirectory == true, values.isSymbolicLink != true else {
+                throw RuntimeStateError.invalid
+            }
+            return true
+        } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
+            return false
+        }
+    }
+
+    private func readRuntimeSnapshot(_ file: URL) throws -> RuntimeStateSnapshot? {
+        do {
+            let values = try file.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            guard values.isRegularFile == true, values.isSymbolicLink != true else {
+                throw RuntimeStateError.invalid
+            }
+            let handle = try FileHandle(forReadingFrom: file)
+            defer { try? handle.close() }
+            let data = try handle.read(upToCount: 65537) ?? Data()
+            guard data.count <= 65536 else { throw RuntimeStateError.invalid }
+            let snapshot = try JSONDecoder().decode(RuntimeStateSnapshot.self, from: data)
+            try snapshot.validate()
+            return snapshot
+        } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
+            return nil
+        }
     }
 
     // MARK: - dat staging operations
@@ -365,6 +448,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
                 throw TunnelError.noGroupContainer
             }
             let datPath = dat.adaptedPath()
+            // ponytail: SE still syncs one dat directory; pin per-plan generations in P7.
             env.assetLocation = datPath
             env.certLocation = datPath
         }
@@ -376,6 +460,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         var updatedRequest = request
         var payload = request.payload ?? RunXrayRequest(xrayJson: nil)
         payload.xrayJson = updatedJson
+        if var runtime = payload.runtime {
+            guard let container = extensionGroupContainerURL() else {
+                throw TunnelError.noGroupContainer
+            }
+            let runDirectory = container.adaptedAppendPath(path: "run")
+            try FileManager.default.createDirectory(
+                at: runDirectory,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            runtime.statePath = runDirectory.adaptedAppendPath(path: "runtime.json").adaptedPath()
+            payload.runtime = runtime
+        }
         updatedRequest.payload = payload
         return updatedRequest
     }

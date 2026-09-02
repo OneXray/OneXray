@@ -641,6 +641,25 @@ class BridgeHostApi {
     return pigeonVar_replyValue! as bool;
   }
 
+  Future<String?> readRuntimeState(List<String> removeSessionIds) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[removeSessionIds]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as String?;
+  }
+
   Future<NativeLaunchAtLoginResult> queryLaunchAtLogin() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.queryLaunchAtLogin$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(

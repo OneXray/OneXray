@@ -84,7 +84,12 @@ const _contracts = [
     {'assetLocation', 'certLocation', 'tunFd'},
     {'assetLocation', 'certLocation', 'tunFd'},
   ),
-  _Contract('RunXrayRequest', {'xrayJson'}, {'xrayJson'}),
+  _Contract('RunXrayRequest', {'xrayJson', 'runtime'}, {'xrayJson', 'runtime'}),
+  _Contract(
+    'ManagedRuntimeRequest',
+    {'statePath', 'planId', 'inboundTag'},
+    {'statePath', 'planId', 'inboundTag'},
+  ),
   _Contract(
     'LibXrayInvokeRequest',
     {'apiVersion', 'method', 'payload'},

@@ -17,15 +17,37 @@ class LinuxFfiApi extends BaseFfiApi {
 
   factory LinuxFfiApi() => _singleton;
 
-  LinuxFfiApi._internal();
+  LinuxFfiApi._internal()
+    : _filesDirectory = null,
+      _executablePath = null,
+      _procDirectory = '/proc',
+      _signalProcess = Process.killPid,
+      _processStore = DesktopCoreProcessStore();
+
+  @visibleForTesting
+  LinuxFfiApi.forTesting({
+    required String filesDirectory,
+    required String this._executablePath,
+    required this._procDirectory,
+    required this._signalProcess,
+  }) : _filesDirectory = filesDirectory,
+       _processStore = DesktopCoreProcessStore(directory: filesDirectory);
 
   //===================================
   static const _coreBin = "OneXrayCore";
   final _processManager = LocalProcessManager();
-  final _processStore = DesktopCoreProcessStore();
-  Future<String?>? _effectiveUserIdFuture;
+  final DesktopCoreProcessStore _processStore;
+  final String? _filesDirectory;
+  final String? _executablePath;
+  final String _procDirectory;
+  final bool Function(int, ProcessSignal) _signalProcess;
   Process? _coreProcess;
+  DesktopCoreProcessRecord? _currentRecord;
   bool _stopping = false;
+
+  @override
+  Future<String> getTunFilesDir() async =>
+      _filesDirectory ?? await super.getTunFilesDir();
 
   @override
   Future<bool> startCore(LibXrayRunConfig request, TunJson? tun) async {
@@ -35,8 +57,8 @@ class LinuxFfiApi extends BaseFfiApi {
         return false;
       }
 
-      final configPath = await materializeRunXrayConfig(request);
-      if (configPath == null) {
+      final inputs = await materializeRunXrayConfig(request);
+      if (inputs == null) {
         ygLogger("start core failed: xrayJson is empty");
         return false;
       }
@@ -46,17 +68,33 @@ class LinuxFfiApi extends BaseFfiApi {
         ...desktopCoreRunArguments(
           dns: tun?.tunDnsIPv4 ?? '',
           interfaceName: tun?.autoOutboundsInterface ?? '',
-          configPath: configPath,
+          configPath: inputs.configPath,
+          runtimePath: inputs.runtimePath,
         ),
       ];
-      ygLogger("Running command: ${command.join(" ")}");
       final process = await _processManager.start(command);
       _bindProcess(process);
       _coreProcess = process;
       _trackProcess(process);
-      await _processStore.write(DesktopCoreProcessRecord(pid: process.pid));
+      final identity = await _readStat(process.pid);
+      if (identity == null || identity.stopped) {
+        throw StateError(
+          'Desktop Core exited before its identity was recorded',
+        );
+      }
+      final record = DesktopCoreProcessRecord(
+        pid: process.pid,
+        configPath: inputs.configPath,
+        runtimePath: inputs.runtimePath,
+        startTicks: identity.startTicks,
+      );
+      _currentRecord = record;
+      if (await _coreProcessIsRunning(record) != true) {
+        throw StateError('Desktop Core process identity could not be verified');
+      }
+      await _processStore.write(record);
     } catch (e) {
-      ygLogger("start core failed: $e");
+      ygLogger('start core failed (${e.runtimeType})');
       await _stopCoreProcess();
       return false;
     }
@@ -67,41 +105,66 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   Future<bool> cleanupStaleCore() async {
-    if (_coreProcess != null) {
-      return true;
+    try {
+      final record = _currentRecord ?? await _processStore.read();
+      if (record == null) return _coreProcess == null;
+      // A managed session belongs to the restored coordinator, not stale cleanup.
+      if (record.runtimePath != null &&
+          await _coreProcessIsRunning(record) == true) {
+        return true;
+      }
+      return await _stopRecordedCore(record);
+    } catch (_) {
+      return false;
     }
-    return _stopCoreProcessesByName();
   }
 
   @override
   Future<bool> stopCore() => _stopCoreProcess();
 
   Future<bool> _stopCoreProcess() async {
-    final process = _coreProcess;
-    if (process != null) {
-      return _stopCurrentCore(process);
+    try {
+      final record = _currentRecord ?? await _processStore.read();
+      if (record == null) return _coreProcess == null;
+      return await _stopRecordedCore(record);
+    } catch (error) {
+      ygLogger(
+        'stop desktop Core identity check failed (${error.runtimeType})',
+      );
+      return false;
     }
-    return _stopCoreProcessesByName();
   }
 
-  Future<bool> _stopCurrentCore(Process process) async {
+  Future<bool> _stopRecordedCore(DesktopCoreProcessRecord record) async {
+    final running = await _coreProcessIsRunning(record);
+    if (running == null) return false;
+    if (!running) {
+      if (_coreProcess?.pid == record.pid) _coreProcess = null;
+      if (_currentRecord?.pid == record.pid) _currentRecord = null;
+      await _processStore.clear(pid: record.pid);
+      return true;
+    }
     _stopping = true;
     try {
-      process.kill(ProcessSignal.sigterm);
-      try {
-        await process.exitCode.timeout(Duration(seconds: 3));
-      } on TimeoutException {
-        if (!process.kill(ProcessSignal.sigkill)) {
+      if (!_signalProcess(record.pid, ProcessSignal.sigterm) &&
+          await _coreProcessIsRunning(record) != false) {
+        return false;
+      }
+      if (!await _waitForCoreExit(record, const Duration(seconds: 3))) {
+        // Re-check the complete identity before escalating; never signal a PID
+        // which was reused while waiting for the previous process to terminate.
+        if (await _coreProcessIsRunning(record) != true) return false;
+        if (!_signalProcess(record.pid, ProcessSignal.sigkill) &&
+            await _coreProcessIsRunning(record) != false) {
           return false;
         }
-        try {
-          await process.exitCode.timeout(Duration(seconds: 2));
-        } on TimeoutException {
+        if (!await _waitForCoreExit(record, const Duration(seconds: 2))) {
           return false;
         }
       }
-      _coreProcess = null;
-      await _processStore.clear(pid: process.pid);
+      if (_coreProcess?.pid == record.pid) _coreProcess = null;
+      if (_currentRecord?.pid == record.pid) _currentRecord = null;
+      await _processStore.clear(pid: record.pid);
       return true;
     } finally {
       _stopping = false;
@@ -110,126 +173,123 @@ class LinuxFfiApi extends BaseFfiApi {
 
   @override
   Future<bool?> queryCoreRunning() async {
-    final process = _coreProcess;
-    if (process == null) {
-      return false;
-    }
-    final record = await _processStore.read();
-    return record != null &&
-        record.pid == process.pid &&
-        await _coreProcessIsRunning(process.pid);
-  }
-
-  Future<bool> _coreProcessIsRunning(int pid) async {
     try {
-      final name = await File('/proc/$pid/comm').readAsString();
-      return name.trim() == _coreBin;
+      final record = _currentRecord ?? await _processStore.read();
+      if (record == null) return _coreProcess == null ? false : null;
+      return await _coreProcessIsRunning(record);
     } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> _stopCoreProcessesByName() async {
-    var processIds = await _coreProcessIds();
-    if (processIds == null) {
-      return false;
-    }
-    if (processIds.isEmpty) {
-      await _processStore.clear();
-      return true;
-    }
-
-    for (final pid in processIds) {
-      Process.killPid(pid, ProcessSignal.sigterm);
-    }
-    if (!await _waitForCoreProcessesExit(Duration(seconds: 3))) {
-      processIds = await _coreProcessIds();
-      if (processIds == null) {
-        return false;
-      }
-      for (final pid in processIds) {
-        Process.killPid(pid, ProcessSignal.sigkill);
-      }
-      if (!await _waitForCoreProcessesExit(Duration(seconds: 2))) {
-        return false;
-      }
-    }
-
-    await _processStore.clear();
-    return true;
-  }
-
-  Future<List<int>?> _coreProcessIds() async {
-    final effectiveUserId = await (_effectiveUserIdFuture ??=
-        _readEffectiveUserId());
-    if (effectiveUserId == null) {
       return null;
     }
+  }
+
+  /// false means exited; null means ownership is unknown and must not be killed.
+  Future<bool?> _coreProcessIsRunning(DesktopCoreProcessRecord record) async {
+    if (record.pid <= 0) return null;
+    final processDirectory = Directory(p.join(_procDirectory, '${record.pid}'));
+    if (!await processDirectory.exists()) return false;
+    final configPath = record.configPath;
+    if (configPath == null || record.startTicks == null) return null;
     try {
-      final result = await _processManager.run(<String>[
-        'pgrep',
-        '-x',
-        '-u',
-        effectiveUserId,
-        _coreBin,
-      ]);
-      if (result.exitCode == 1) {
-        return <int>[];
-      }
-      if (result.exitCode != 0) {
-        ygLogger(
-          'find core processes failed. exitCode=${result.exitCode} '
-          'stderr=${result.stderr}',
-        );
+      final identity = await _readStat(record.pid);
+      if (identity == null || identity.startTicks != record.startTicks) {
         return null;
       }
-      return result.stdout
-          .toString()
-          .split('\n')
-          .map((value) => int.tryParse(value.trim()))
-          .whereType<int>()
-          .toList(growable: false);
-    } catch (error) {
-      ygLogger('find core processes failed: $error');
+      if (identity.stopped) return false;
+      final actualExecutable = await File(p.join(processDirectory.path, 'exe'))
+          .resolveSymbolicLinks();
+      final expectedExecutable = await File(corePath).resolveSymbolicLinks();
+      if (actualExecutable != expectedExecutable) return null;
+
+      final runDirectory = await Directory(
+        p.join(await getTunFilesDir(), 'run'),
+      ).resolveSymbolicLinks();
+      final resolvedConfig = await File(configPath).resolveSymbolicLinks();
+      if (!p.isAbsolute(configPath) ||
+          !p.isWithin(runDirectory, resolvedConfig)) {
+        return null;
+      }
+      final runtimePath = record.runtimePath;
+      if (runtimePath != null) {
+        final resolvedRuntime = await File(runtimePath).resolveSymbolicLinks();
+        if (!p.isWithin(runDirectory, resolvedRuntime) ||
+            p.dirname(resolvedRuntime) != p.dirname(resolvedConfig)) {
+          return null;
+        }
+      }
+      final arguments = utf8
+          .decode(
+            await File(p.join(processDirectory.path, 'cmdline')).readAsBytes(),
+          )
+          .split('\x00');
+      if (arguments.length < 2 ||
+          arguments[1] != 'run' ||
+          !_matchesArgument(arguments, '-config', configPath) ||
+          !_matchesArgument(arguments, '-runtime', runtimePath)) {
+        return null;
+      }
+      // stat is re-read after the other /proc reads to catch an intervening reuse.
+      final current = await _readStat(record.pid);
+      if (current == null || current.startTicks != record.startTicks) {
+        return null;
+      }
+      return !current.stopped;
+    } catch (_) {
+      return await processDirectory.exists() ? null : false;
+    }
+  }
+
+  static bool _matchesArgument(
+    List<String> arguments,
+    String flag,
+    String? expected,
+  ) {
+    final positions = [
+      for (var i = 0; i < arguments.length; i++)
+        if (arguments[i] == flag) i,
+    ];
+    if (expected == null) return positions.isEmpty;
+    return positions.length == 1 &&
+        positions.single + 1 < arguments.length &&
+        arguments[positions.single + 1] == expected;
+  }
+
+  Future<({int startTicks, bool stopped})?> _readStat(int pid) async {
+    try {
+      final text = await File(p.join(_procDirectory, '$pid', 'stat'))
+          .readAsString();
+      final opening = text.indexOf('(');
+      final closing = text.lastIndexOf(')');
+      if (opening < 0 ||
+          closing < opening ||
+          int.tryParse(text.substring(0, opening).trim()) != pid) {
+        return null;
+      }
+      final fields = text.substring(closing + 1).trim().split(RegExp(r'\s+'));
+      if (fields.length < 20) return null;
+      final ticks = int.tryParse(fields[19]); // Linux proc_pid_stat field 22.
+      return ticks == null
+          ? null
+          : (startTicks: ticks, stopped: fields[0] == 'Z' || fields[0] == 'X');
+    } catch (_) {
       return null;
     }
   }
 
-  Future<String?> _readEffectiveUserId() async {
-    try {
-      final result = await _processManager.run(<String>['id', '-u']);
-      final value = result.stdout.toString().trim();
-      if (result.exitCode == 0 && int.tryParse(value) != null) {
-        return value;
-      }
-      ygLogger(
-        'read effective user id failed. exitCode=${result.exitCode} '
-        'stderr=${result.stderr}',
-      );
-    } catch (error) {
-      ygLogger('read effective user id failed: $error');
-    }
-    return null;
-  }
-
-  Future<bool> _waitForCoreProcessesExit(Duration timeout) async {
+  Future<bool> _waitForCoreExit(
+    DesktopCoreProcessRecord record,
+    Duration timeout,
+  ) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
-      final processIds = await _coreProcessIds();
-      if (processIds == null) {
-        return false;
-      }
-      if (processIds.isEmpty) {
-        return true;
-      }
-      if (DateTime.now().isAfter(deadline)) {
-        return false;
-      }
-      await Future.delayed(Duration(milliseconds: 100));
+      final running = await _coreProcessIsRunning(record);
+      if (running == false) return true;
+      if (running == null || DateTime.now().isAfter(deadline)) return false;
+      await Future.delayed(const Duration(milliseconds: 100));
     }
   }
 
   String get corePath {
+    if (_executablePath != null) return _executablePath;
     if (kReleaseMode) {
       final bundleDir = p.dirname(Platform.resolvedExecutable);
       final corePath = p.join(bundleDir, _coreBin);
@@ -260,7 +320,9 @@ class LinuxFfiApi extends BaseFfiApi {
     process.exitCode.then((_) {
       if (identical(_coreProcess, process)) {
         _coreProcess = null;
-        unawaited(_processStore.clear(pid: process.pid));
+        _currentRecord = null;
+        // Leave the exited identity until the next verified stop/start. An async
+        // exit callback must not erase a newer process record after PID reuse.
         if (!_stopping) {
           unawaited(updateVpnStatus(VpnStatus.disconnected));
         }

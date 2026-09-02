@@ -100,6 +100,14 @@ enum class LibXrayMethod {
 @Serializable
 data class RunXrayRequest(
     val xrayJson: String? = null,
+    val runtime: ManagedRuntimeRequest? = null,
+)
+
+@Serializable
+data class ManagedRuntimeRequest(
+    val statePath: String,
+    val planId: String,
+    val inboundTag: String,
 )
 
 @Serializable
