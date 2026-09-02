@@ -611,6 +611,67 @@ void main() {
     expect((await db.connectionStateDao.read()).toJson(), before.toJson());
   });
 
+  test('repeated Start does not reconnect an already running host', () async {
+    final plan = _plan('a');
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => HostConnection(VpnStatus.connected, plan: plan),
+        start: (_) async => throw StateError('Start must be idempotent'),
+        prepare: (_, _) async => throw StateError('Do not prepare again'),
+        resetTraffic: _noReset,
+      ),
+    );
+    await Future.wait([coordinator.connect(), coordinator.connect()]);
+    expect(coordinator.state.value.plan?.id, plan.id);
+    expect((await db.connectionStateDao.read()).revision, 0);
+  });
+
+  test(
+    'permission failure survives polling and clears after a successful retry',
+    () async {
+      final plan = _plan('b');
+      var host = const HostConnection(VpnStatus.disconnected);
+      var granted = false;
+      final permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.androidVpn,
+        state: PlatformPermissionState.denied,
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          prepare: (_, _) async => plan,
+          inspect: (_) async => host,
+          start: (_) async {
+            if (!granted) {
+              throw ConnectionHostException(
+                'permissionRequired',
+                permission: permission,
+              );
+            }
+            return host = HostConnection(VpnStatus.connected, plan: plan);
+          },
+          stop: (_) async =>
+              host = const HostConnection(VpnStatus.disconnected),
+          resetTraffic: _noReset,
+        ),
+      );
+      await expectLater(
+        coordinator.connect(),
+        throwsA(isA<ConnectionHostException>()),
+      );
+      await coordinator.refresh();
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.failed, isTrue);
+      expect(coordinator.state.value.permission, permission);
+      granted = true;
+      await coordinator.connect();
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.issue, isNull);
+      expect(coordinator.state.value.permission, isNull);
+    },
+  );
+
   test('background pauses metrics polling and foreground can resume', () async {
     var reads = 0;
     final coordinator = await _initialize(

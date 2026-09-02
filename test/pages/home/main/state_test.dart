@@ -226,7 +226,7 @@ void main() {
       matching: find.byType(InkWell),
     );
     expect(tester.getSize(profileRow.first).height, greaterThanOrEqualTo(40));
-    for (final label in ['Rule', 'Global', 'Direct']) {
+    for (final label in CoreRoutingMode.values.map((mode) => mode.title)) {
       final modeButton = find.ancestor(
         of: find.text(label),
         matching: find.byType(InkWell),

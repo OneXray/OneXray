@@ -33,7 +33,7 @@ import 'package:onexray/pages/core/xray/profile/simple/page.dart';
 import 'package:onexray/pages/core/xray/profile/ui/page.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/core/xray/profile_list/page.dart';
-import 'package:onexray/pages/home/main/page.dart';
+import 'package:onexray/pages/connect/page.dart';
 import 'package:onexray/pages/home/node_info/page.dart';
 import 'package:onexray/pages/home/node_info/params.dart';
 import 'package:onexray/pages/home/outbound_select/page.dart';
@@ -41,12 +41,15 @@ import 'package:onexray/pages/home/outbound_select/params.dart';
 import 'package:onexray/pages/home/qrcode/page.dart';
 import 'package:onexray/pages/home/share/page.dart';
 import 'package:onexray/pages/home/share/params.dart';
-import 'package:onexray/pages/launch/first_run/page.dart';
-import 'package:onexray/pages/launch/privacy/page.dart';
 import 'package:onexray/pages/launch/splash/page.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/launch/setup/page.dart';
+import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/servers/import/page.dart';
+import 'package:onexray/pages/servers/page.dart';
+import 'package:onexray/pages/connect/raw_editor/page.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
@@ -72,6 +75,7 @@ abstract final class RouterPath {
   static const splash = "/splash";
   static const privacy = "/privacy";
   static const firstRun = "/firstRun";
+  static const setup = "/setup";
   static const home = "/home";
   static const subscriptions = "/subscriptions";
   static const core = "/core";
@@ -83,11 +87,34 @@ abstract final class RouterPath {
     debugLogDiagnostics: true,
     routes: [
       GoRoute(path: RouterPath.splash, builder: (_, _) => const SplashPage()),
-      GoRoute(path: RouterPath.privacy, builder: (_, _) => const PrivacyPage()),
       GoRoute(
-        path: RouterPath.firstRun,
-        builder: (_, _) => const FirstRunPage(),
+        path: RouterPath.setup,
+        builder: (_, _) => SetupPage(
+          addServers: (context) async {
+            await context.push('/setup/servers');
+          },
+        ),
       ),
+      GoRoute(
+        path: '/setup/servers',
+        builder: (_, _) => const ServersImportPage(setup: true),
+      ),
+      GoRoute(
+        path: '/setup/interface',
+        redirect: (_, state) =>
+            state.extra is SetupInterfaceParams ? null : RouterPath.setup,
+        builder: (_, state) =>
+            SetupInterfacePage(params: state.extra as SetupInterfaceParams),
+      ),
+      GoRoute(
+        path: '/setup/region',
+        redirect: (_, state) =>
+            state.extra is SetupRegionParams ? null : RouterPath.setup,
+        builder: (_, state) =>
+            SetupRegionPage(params: state.extra as SetupRegionParams),
+      ),
+      GoRoute(path: RouterPath.privacy, redirect: (_, _) => RouterPath.setup),
+      GoRoute(path: RouterPath.firstRun, redirect: (_, _) => RouterPath.setup),
       GoRoute(
         path: AppDialogRoutePath.appUpdate,
         pageBuilder: (_, state) => AppDialogPage<void>(
@@ -157,7 +184,19 @@ _SharedSecondaryRoute _route(
 }
 
 final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
-  _route(AppSecondaryDestination.overview, (_, _) => const HomePage()),
+  _route(
+    AppSecondaryDestination.serversImport,
+    (_, state) => ServersImportPage(initialText: state.extra as String?),
+  ),
+  _route(
+    AppSecondaryDestination.serverPicker,
+    (_, _) => const ServersPage(picker: true),
+  ),
+  _route(
+    AppSecondaryDestination.rawEditor,
+    (_, state) => RawEditorPage(rawId: state.extra as int?),
+  ),
+  _route(AppSecondaryDestination.overview, (_, _) => const ConnectPage()),
   _route(
     AppSecondaryDestination.nodeInfo,
     (_, state) => _withExtra<NodeInfoPageParams>(

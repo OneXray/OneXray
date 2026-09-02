@@ -19,8 +19,6 @@ class LaunchBootstrapService {
   }
 
   Future<LaunchDestination> resolveAcceptedDestination() async {
-    await StoragePreparation.ensureReady();
-    await _initState();
     final firstRun = await PreferencesKey().readFirstRun();
     if (firstRun) {
       final appStartup = AppStartupService();
@@ -28,14 +26,11 @@ class LaunchBootstrapService {
       await appStartup.showMainWindow();
       return LaunchDestination.firstRun;
     }
+    await StoragePreparation.ensureReady();
     return LaunchDestination.home;
   }
 
   Future<void> _initTheme() async {
     await AppEventBus.instance.asyncInitTheme();
-  }
-
-  Future<void> _initState() async {
-    await AppEventBus.instance.asyncInitState();
   }
 }

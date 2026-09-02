@@ -3,11 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/home/main/page.dart';
-import 'package:onexray/pages/core/main/page.dart';
+import 'package:onexray/pages/connect/page.dart';
+import 'package:onexray/pages/advanced/page.dart';
 import 'package:onexray/pages/main/navigation.dart';
-import 'package:onexray/pages/settings/main/page.dart';
-import 'package:onexray/pages/subscriptions/list/page.dart';
+import 'package:onexray/pages/preferences/page.dart';
+import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/app_update/service.dart';
@@ -43,24 +43,34 @@ class AdaptiveMainShell extends StatelessWidget {
   ) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) =>
-            context.goPrimary(navigationShell, AppPrimaryRoute.values[index]),
-        destinations: AppPrimaryRoute.values
-            .map(
-              (primary) => NavigationDestination(
-                icon: _navigationIcon(context, primary, appUpdateAvailable),
-                selectedIcon: _navigationIcon(
-                  context,
-                  primary,
-                  appUpdateAvailable,
-                ),
-                label: _label(context, primary),
+      bottomNavigationBar:
+          GoRouterState.of(context).uri.path !=
+              AppPrimaryRoute.values[navigationShell.currentIndex].rootPath
+          ? null
+          : NavigationBar(
+              selectedIndex: navigationShell.currentIndex,
+              onDestinationSelected: (index) => context.goPrimary(
+                navigationShell,
+                AppPrimaryRoute.values[index],
               ),
-            )
-            .toList(),
-      ),
+              destinations: AppPrimaryRoute.values
+                  .map(
+                    (primary) => NavigationDestination(
+                      icon: _navigationIcon(
+                        context,
+                        primary,
+                        appUpdateAvailable,
+                      ),
+                      selectedIcon: _navigationIcon(
+                        context,
+                        primary,
+                        appUpdateAvailable,
+                      ),
+                      label: _label(context, primary),
+                    ),
+                  )
+                  .toList(),
+            ),
     );
   }
 
@@ -142,7 +152,7 @@ class AdaptiveMainShell extends StatelessWidget {
 
   IconData _icon(AppPrimaryRoute primary) {
     return switch (primary) {
-      AppPrimaryRoute.home => LucideIcons.house,
+      AppPrimaryRoute.home => LucideIcons.link,
       AppPrimaryRoute.subscriptions => LucideIcons.layers3,
       AppPrimaryRoute.core => LucideIcons.slidersHorizontal,
       AppPrimaryRoute.settings => LucideIcons.settings,
@@ -152,10 +162,10 @@ class AdaptiveMainShell extends StatelessWidget {
   String _label(BuildContext context, AppPrimaryRoute primary) {
     final localizations = AppLocalizations.of(context)!;
     return switch (primary) {
-      AppPrimaryRoute.home => localizations.homePageTitle,
-      AppPrimaryRoute.subscriptions => localizations.subscriptionListPageTitle,
-      AppPrimaryRoute.core => localizations.mainNavigationCore,
-      AppPrimaryRoute.settings => localizations.settingsPageTitle,
+      AppPrimaryRoute.home => localizations.prototypeConnect,
+      AppPrimaryRoute.subscriptions => localizations.prototypeServers,
+      AppPrimaryRoute.core => localizations.prototypeAdvanced,
+      AppPrimaryRoute.settings => localizations.prototypeSettings,
     };
   }
 }
@@ -243,10 +253,10 @@ class PrimaryRootContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (primary) {
-      AppPrimaryRoute.home => const HomePage(),
-      AppPrimaryRoute.subscriptions => const SubscriptionListPage(),
-      AppPrimaryRoute.core => const CorePage(),
-      AppPrimaryRoute.settings => const SettingsPage(),
+      AppPrimaryRoute.home => const ConnectPage(),
+      AppPrimaryRoute.subscriptions => const ServersPage(),
+      AppPrimaryRoute.core => const AdvancedPage(),
+      AppPrimaryRoute.settings => const PreferencesPage(),
     };
   }
 }

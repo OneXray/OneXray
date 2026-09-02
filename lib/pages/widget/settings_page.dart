@@ -451,6 +451,7 @@ class _SettingsJsonEditorState extends State<SettingsJsonEditor> {
               minLines: null,
               maxLines: null,
               expands: true,
+              textAlignVertical: TextAlignVertical.top,
             ),
           ),
         ],
@@ -626,7 +627,12 @@ class _SettingsJsonEditorFrame extends StatelessWidget {
             ),
           ),
           Divider(height: 1, color: ColorManager.border(context)),
-          Expanded(child: editor),
+          Expanded(
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: editor,
+            ),
+          ),
           Divider(height: 1, color: ColorManager.border(context)),
           Container(
             constraints: const BoxConstraints(minHeight: 31),

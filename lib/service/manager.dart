@@ -12,6 +12,7 @@ import 'package:onexray/service/notification/service.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/connection/coordinator.dart';
 
 abstract final class ServiceManager {
   static Future<void>? _initFuture;
@@ -26,15 +27,21 @@ abstract final class ServiceManager {
       return initFuture;
     }
 
-    final nextInitFuture = _serviceInit(context);
+    final nextInitFuture = _serviceInit(context)
+        .catchError((Object error, StackTrace stack) {
+          _initFuture = null;
+          Error.throwWithStackTrace(error, stack);
+        });
     _initFuture = nextInitFuture;
     return nextInitFuture;
   }
 
   static Future<void> _serviceInit(BuildContext context) async {
     await _runInit("NetClient", () => NetClient().asyncInit());
+    // Recovery must succeed before external commands or automatic connection
+    // are enabled. The legacy Profile runtime must not initialize alongside it.
+    await ConnectionCoordinator.instance.initialize();
     await _runInit("TrayService", () => TrayService().init());
-    await _runInit("VpnService", () => VpnService().asyncInit());
     await _runInit(
       "NotificationService",
       () => NotificationService().asyncInit(),

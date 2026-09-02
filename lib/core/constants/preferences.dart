@@ -45,6 +45,13 @@ class PreferencesKey {
     await _prefs.setBool(_firstRun, value);
   }
 
+  static const _setupStep = "${_namespace}setupStep";
+
+  Future<String?> readSetupStep() => _prefs.getString(_setupStep);
+
+  Future<void> saveSetupStep(String value) =>
+      _prefs.setString(_setupStep, value);
+
   static const _localSubscriptionExpanded =
       "${_namespace}localSubscriptionExpanded";
 

@@ -1,2 +1,5 @@
 output-dir: lib/l10n/localizations
+# Approved Persian text contains intentional Unicode direction isolates. Preserve
+# the source text; only the generated translation literals need this exemption.
+header: '// ignore_for_file: text_direction_code_point_in_literal'
 untranslated-messages-file: desiredFileName.txt

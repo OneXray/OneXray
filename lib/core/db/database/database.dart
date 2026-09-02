@@ -37,6 +37,17 @@ part 'database.g.dart';
 )
 class AppDatabase extends _$AppDatabase {
   static AppDatabase? _singleton;
+  static Directory? _validationDirectory;
+
+  /// Debug device demos use an isolated directory, including upgrade snapshots.
+  /// Call before any service obtains the singleton; release builds reject this.
+  @visibleForTesting
+  static void useValidationDirectory(Directory directory) {
+    if (!kDebugMode || _singleton != null) {
+      throw StateError('Validation database must be configured before startup');
+    }
+    _validationDirectory = directory;
+  }
 
   factory AppDatabase() => _singleton ??= AppDatabase._internal();
 
@@ -172,8 +183,9 @@ class AppDatabase extends _$AppDatabase {
     }),
   );
 
-  static Future<Directory> _databaseDirectory() =>
-      AppPlatform.isLinux || AppPlatform.isWindows
+  static Future<Directory> _databaseDirectory() => _validationDirectory != null
+      ? Future.value(_validationDirectory)
+      : AppPlatform.isLinux || AppPlatform.isWindows
       ? getApplicationSupportDirectory()
       : getApplicationDocumentsDirectory();
 

@@ -5,6 +5,7 @@ import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
+import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/localizations/locale.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -32,13 +33,17 @@ class GoRouteApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       routerConfig: RouterPath.router,
-      locale: state.languageCode.locale,
+      locale: state.languageCode == LanguageCode.system
+          ? null
+          : state.languageCode.locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: supportedLocales,
       localeResolutionCallback: AppLocalePolicy.resolve,
       builder: (context, child) {
         final routedChild = Directionality(
-          textDirection: state.languageCode.textDirection,
+          textDirection: Localizations.localeOf(context).languageCode == 'fa'
+              ? TextDirection.rtl
+              : TextDirection.ltr,
           child: child ?? const SizedBox.shrink(),
         );
         final brightness = Theme.of(context).brightness;

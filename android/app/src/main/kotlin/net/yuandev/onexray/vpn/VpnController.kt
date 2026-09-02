@@ -12,6 +12,7 @@ import java.io.File
 import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.SocketException
+import org.json.JSONObject
 
 object VpnController {
     private const val startSnapshotRelativePath = "run/start.json"
@@ -52,8 +53,23 @@ object VpnController {
         return false
     }
 
-    fun hasStartSnapshot(context: Context): Boolean =
-        File(context.filesDir, startSnapshotRelativePath).isFile
+    fun hasStartSnapshot(context: Context): Boolean = try {
+        val file = File(context.filesDir, startSnapshotRelativePath)
+        if (!file.isFile || file.length() > 16 * 1024 * 1024) {
+            false
+        } else {
+            // Old Profile snapshots cannot bypass the new setup flow. A tile
+            // may replay only a managed plan produced by the new coordinator.
+            val start = JSONObject(file.readText())
+            val invoke = JSONObject(start.getString("coreInvokeText"))
+            val planId = invoke.getJSONObject("payload")
+                .getJSONObject("runtime").getString("planId")
+            planId.matches(Regex("^[a-f0-9]{32}$")) &&
+                File(context.filesDir, "run/plans/$planId/plan.json").isFile
+        }
+    } catch (_: Exception) {
+        false
+    }
 
     fun buildStartIntent(context: Context): Intent =
         Intent(context, OneVpnService::class.java).apply {

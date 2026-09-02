@@ -28,6 +28,9 @@ enum AppPrimaryRoute {
 }
 
 enum AppSecondaryDestination {
+  serversImport("servers-import"),
+  serverPicker("server-picker"),
+  rawEditor("raw-editor"),
   overview("overview"),
   nodeInfo("node-info"),
   qrcode("qrcode"),

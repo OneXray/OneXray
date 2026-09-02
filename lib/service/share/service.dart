@@ -38,6 +38,7 @@ final class ShareService {
   StreamSubscription<Uri>? _appLinkSubscription;
   var _appLinksReady = false;
   var _processingAppLinks = false;
+  Future<void> Function(String)? onIncomingShare;
 
   void startAppLinks() {
     if (_appLinkSubscription != null) {
@@ -56,12 +57,13 @@ final class ShareService {
 
   Future<void> init() async {
     startAppLinks();
-    _appLinksReady = true;
+    _appLinksReady = onIncomingShare != null;
     await _processAppLinks();
   }
 
   void dispose() {
     _appLinksReady = false;
+    onIncomingShare = null;
     _pendingAppLinks.clear();
     final subscription = _appLinkSubscription;
     _appLinkSubscription = null;
@@ -78,13 +80,9 @@ final class ShareService {
     try {
       while (_appLinksReady && _pendingAppLinks.isNotEmpty) {
         final uri = _pendingAppLinks.removeFirst();
-        final link = OneXrayAppLinkParser.parse(uri);
-        final success = link != null && await _appLinkImporter.importLink(link);
-        ToastService().showToast(
-          success
-              ? appLocalizationsNoContext().homeOutboundViewImportSuccess
-              : appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-        );
+        // All external imports go through the same user-visible preview/add
+        // flow as clipboard input. Setup leaves this queue paused.
+        await onIncomingShare?.call(uri.toString());
       }
     } finally {
       _processingAppLinks = false;

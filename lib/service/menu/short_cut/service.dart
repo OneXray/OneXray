@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/connection/coordinator.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
 
@@ -53,10 +53,10 @@ final class ShortCutService {
 
     switch (key) {
       case _ShortCutKey.startVpn:
-        await VpnService().startDefaultVpn();
+        await ConnectionCoordinator.instance.connect();
         break;
       case _ShortCutKey.stopVpn:
-        await VpnService().stopDefaultVpn();
+        await ConnectionCoordinator.instance.disconnect();
         break;
     }
   }

@@ -1,8 +1,10 @@
 # Project Overview
 
-OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux. Use “Multi-node Outbound（多节点出站）” for a runnable configuration source that groups multiple outbound nodes with its DNS and routing policy; avoid “Full Config”, “Multi Outbounds”, and “多出站配置”.
+OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux.
 
-The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use platform TUN on Android, Apple, and Linux. Packaged Windows declares one manifest Application while retaining VCore's AppContainer VPN Provider and full-trust Session Host to feed a private loopback SOCKS inbound in OneXrayCore. Proxy mode is an in-memory iOS Debug-only tool.
+The app manages servers, subscriptions, Smart / Custom routing, Raw Json configs, and GeoData. The four root destinations are Connect, Servers, Advanced, and Settings. Profile and Multi-node Outbound code remains temporarily for staged removal; new product flows use neither. Production builds use platform TUN on Android, Apple, and Linux. Packaged Windows retains VCore's AppContainer VPN Provider and full-trust Session Host to feed a private loopback SOCKS inbound in OneXrayCore. Proxy mode is an independent in-memory iOS Debug-only tool.
+
+For refactor scope, phase gates, and platform verification limits, read `../references/onexray-app-prototype/APP-REFACTOR-PLAN.md` and `DEVELOPMENT.md`; for approved UI behavior and copy, read `PRODUCT-MODEL.md` and the prototype. Execution evidence lives in `../references/onexray-refactor-validation/PROGRESS.md`.
 
 # Repository Layout
 
@@ -33,11 +35,11 @@ The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw J
 
 # Runtime Flow
 
-After a node is selected on Home, `VpnService` reads the selected node, selected Xray Profile, and TUN Settings. Production builds and non-iOS platforms always resolve the runtime mode to TUN. iOS Debug builds may select Proxy mode for development, and that selection is not persisted.
+`SetupService` prepares storage, VPN authorization and required platform settings before Home; optional region and server steps never start VPN. `ServiceManager` initializes `ConnectionCoordinator`, not the legacy `VpnService`.
 
-When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Multi-node Outbound, it overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but its user-defined inbounds are ignored. Runtime inbounds always come from the selected Xray Profile: Android, Apple, and Linux write the TUN `tunIn`; Windows replaces it with a loopback SOCKS inbound that retains the `tunIn` tag; both also write Profile-owned additional inbounds and `pingIn`. The iOS Debug-only Proxy mode writes only `pingIn`. Additional inbound routing is always user-authored; the runtime does not generate routing rules for dokodemo-door.
+`lib/service/connection/` owns preparation, immutable plans, serialization, cancellation, commit and recovery. Normal mode always uses the `proxy` balancer with complete node tags, including a single node. Raw retains its source text and extra inbounds; App-managed runtime fields are applied by `ConnectionCompiler`. New page actions, shortcuts and tray actions must use the coordinator, not compose runtime JSON themselves.
 
-After the final runtime Xray JSON is written, Android, Apple, and Linux enter the platform VPN / TUN startup path. Packaged Windows submits root-level `OneXrayCore.exe` and its `run -dns <IP:port> -interface <name> -config <xray.json>` argv through VCore bridge revision 3; the per-session VCore Session Host owns that process in its Job Object for the VPN lifetime. The backend contract supervises process liveness only and does not inspect the SOCKS5 port or readiness. On iOS Debug builds only, Proxy mode starts local Xray core without the platform VPN; only the internal `pingIn` inbound is App-managed.
+The native host reports VPN state. Foreground traffic reads native Xray metrics; libXray periodically saves only the current session, while App owns cumulative totals and reset watermarks. Metrics failure is not proof of disconnection. Packaged Windows uses VCore bridge revision 3 and its Session Host Job Object; statistics require no VCore changes. Preserve iOS Debug-only local proxy isolation from normal UI and business state.
 
 # Native Bridge
 

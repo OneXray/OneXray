@@ -46,6 +46,14 @@ class ConnectionView {
       phase != ConnectionPhase.connected &&
       phase != ConnectionPhase.disconnected &&
       phase != ConnectionPhase.failed;
+  bool get failed =>
+      phase == ConnectionPhase.failed ||
+      (issue != null &&
+          !const {
+            'cancelled',
+            'selectionReset',
+            'previousSettingsRestored',
+          }.contains(issue));
 }
 
 typedef PrepareConnection = Future<ConnectionPlan> Function(
@@ -66,6 +74,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   final _commands = CommandSerialExecutor();
   final state = ValueNotifier(const ConnectionView());
   Future<void>? _initializing;
+  Future<void>? _connectRequested;
   Timer? _poll;
   bool _polling = false;
   bool _commandActive = false;
@@ -235,7 +244,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         final row = await db.connectionStateDao.read();
         if (row.pendingApplyJson != null) return;
         final current = await _inspect(_known(row));
-        if (!_commandActive && !_closed) _publish(current);
+        if (!_commandActive && !_closed) _publish(current, keepResult: true);
       });
     } catch (_) {
       if (!_commandActive && !_closed) {
@@ -244,7 +253,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           phase: old.phase,
           plan: old.plan,
           traffic: old.traffic,
-          issue: 'runtimeUnavailable',
+          issue: old.issue ?? 'runtimeUnavailable',
+          permission: old.permission,
         );
       }
     } finally {
@@ -252,7 +262,17 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     }
   }
 
-  Future<void> connect() async => apply(await configuration, connect: true);
+  Future<void> connect() => _connectRequested ??= _connectOnce().whenComplete(
+    () => _connectRequested = null,
+  );
+
+  Future<void> _connectOnce() async {
+    await initialize();
+    if (state.value.phase == ConnectionPhase.connected || state.value.busy) {
+      return;
+    }
+    await apply(await configuration, connect: true);
+  }
 
   /// UI has already confirmed a disruptive change before calling this method.
   /// Metadata/unselected-asset edits use affectsRuntime:false and still commit
@@ -366,6 +386,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           recovered,
           issue: restoreFailed
               ? 'restoreFailed'
+              : cancellation.isCompleted
+              ? 'cancelled'
               : error is ConnectionHostException
               ? error.reason
               : 'changeFailed',
@@ -495,7 +517,17 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     HostConnection current, {
     String? issue,
     PlatformPermissionResult? permission,
+    bool keepResult = false,
   }) {
+    final old = state.value;
+    if (keepResult) {
+      // Polling updates native state/metrics, not the last command's result.
+      // A newly successful system connection resolves an old disconnected error.
+      if (!(current.connected && old.phase != ConnectionPhase.connected)) {
+        if (old.issue != 'runtimeUnavailable') issue ??= old.issue;
+        permission ??= old.permission;
+      }
+    }
     final previous = state.value.traffic;
     final next = current.traffic;
     int upload = 0, download = 0;

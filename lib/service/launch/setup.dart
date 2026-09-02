@@ -1,0 +1,328 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:drift/drift.dart';
+import 'package:flutter/services.dart';
+import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/ffi/linux_ffi_api.dart';
+import 'package:onexray/core/pigeon/constants.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/platform_policy.dart';
+import 'package:onexray/service/connection/preparation.dart';
+import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/geo_data/system_dat_service.dart';
+import 'package:onexray/service/launch/storage_preparation.dart';
+import 'package:onexray/service/routing/region_catalog.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
+import 'package:path/path.dart' as p;
+
+enum SetupStep { welcome, system, region, servers, complete }
+
+class SetupFailure implements Exception {
+  final String component;
+  final PlatformPermissionResult? permission;
+  const SetupFailure(this.component, {this.permission});
+}
+
+class SetupInterface {
+  final String name;
+  final List<String> addresses;
+  final bool currentInternet;
+  const SetupInterface(this.name, this.addresses, this.currentInternet);
+}
+
+/// Setup prepares existing infrastructure. It never compiles a connection,
+/// waits for probes, or invokes a platform VPN start command.
+class SetupService {
+  final AppDatabase? _database;
+  final Future<void> Function()? _prepareLocal;
+  final Future<PlatformPermissionResult> Function(bool request)? _permission;
+  final Future<void> Function(ConnectionConfiguration)? _saveConfiguration;
+  final Future<List<String>> Function()? _readRegionCodes;
+  final PreferencesKey _preferences = PreferencesKey();
+  final ConnectionPlatform platform;
+
+  SetupService({
+    this._database,
+    this._prepareLocal,
+    this._permission,
+    this._saveConfiguration,
+    this._readRegionCodes,
+    ConnectionPlatform? platform,
+  }) : platform = platform ?? connectionPlatform;
+
+  AppDatabase get _db => _database ?? AppDatabase();
+  bool get requiresInterface =>
+      platform == ConnectionPlatform.windows ||
+      platform == ConnectionPlatform.linux;
+
+  Future<SetupStep> currentStep() async {
+    if (!await _preferences.readPrivacyAccepted()) return SetupStep.welcome;
+    if (!await _preferences.readFirstRun()) return SetupStep.complete;
+    return switch (await _preferences.readSetupStep()) {
+      'region' => SetupStep.region,
+      'servers' => SetupStep.servers,
+      _ => SetupStep.system,
+    };
+  }
+
+  Future<void> acceptPrivacy() async {
+    await _preferences.savePrivacyAccepted(true);
+    // A crash between these writes still resumes at System, never at Home.
+    await _preferences.saveSetupStep(SetupStep.system.name);
+  }
+
+  Future<void> prepareLocal() async {
+    if (!await _preferences.readPrivacyAccepted()) {
+      throw const SetupFailure('privacy');
+    }
+    final prepare = _prepareLocal;
+    if (prepare != null) return prepare();
+    await StoragePreparation.ensureReady();
+    await SystemGeoDatService().checkAssets();
+    for (final name in [
+      'geoip.dat',
+      'geosite.dat',
+      'geoip.json',
+      'geosite.json',
+    ]) {
+      final file = File(p.join(VpnConstants.datDir, name));
+      if (!await file.exists() || await file.length() == 0) {
+        // A timestamp by itself is not proof that all bundled files survived.
+        await SystemGeoDatService().copyAssetsTo(VpnConstants.datDir);
+        break;
+      }
+    }
+    await regionCodes();
+  }
+
+  Future<ConnectionConfiguration> configuration() async =>
+      ConnectionConfiguration.fromJson(
+        jsonDecode((await _db.connectionStateDao.read()).settingsJson)
+            as Map<String, dynamic>,
+      );
+
+  Future<void> _save(ConnectionConfiguration value) async {
+    final save = _saveConfiguration;
+    if (save != null) return save(value);
+    await ConnectionCoordinator.instance.apply(value, affectsRuntime: false);
+  }
+
+  Future<PlatformPermissionResult> checkPermission({
+    bool request = false,
+  }) async {
+    final permission = _permission;
+    if (permission != null) return permission(request);
+    await _checkDesktopComponents();
+    final host = AppHostApi();
+    final current = await host.queryPlatformPermission();
+    if (!request || permissionReady(current)) return current;
+    return host.requestPlatformPermission();
+  }
+
+  static bool permissionReady(PlatformPermissionResult value) =>
+      value.state == PlatformPermissionState.granted ||
+      value.state == PlatformPermissionState.notRequired;
+
+  Future<void> continueSystem(String interfaceName) async {
+    await prepareLocal();
+    final permission = await checkPermission();
+    if (!permissionReady(permission)) {
+      throw SetupFailure('permission', permission: permission);
+    }
+    if (requiresInterface &&
+        !(await interfaces()).any((item) => item.name == interfaceName)) {
+      throw const SetupFailure('interface');
+    }
+    final previous = await configuration();
+    final policy = previous.policy.toJson();
+    if (requiresInterface) policy['xrayOutboundInterfaceName'] = interfaceName;
+    await _save(
+      ConnectionConfiguration(
+        connection: previous.connection,
+        policy: PlatformPolicy.fromJson(policy),
+      ),
+    );
+    await _preferences.saveSetupStep(SetupStep.region.name);
+  }
+
+  Future<void> continueRegion(String? region) async {
+    if (region != null) {
+      if (!(await regionCodes()).contains(region)) {
+        throw const SetupFailure('region');
+      }
+      final previous = await configuration();
+      final connection = previous.connection.toJson();
+      connection['smart'] = {
+        ...previous.connection.smart.toJson(),
+        'directRegions': [region],
+      };
+      await _save(
+        ConnectionConfiguration(
+          connection: ConnectionSettings.fromJson(connection),
+          policy: previous.policy,
+        ),
+      );
+    }
+    // Save after configuration commits: retry is idempotent, Skip writes none.
+    await _preferences.saveSetupStep(SetupStep.servers.name);
+  }
+
+  Future<bool> hasServers() async =>
+      (await (_db.select(_db.coreConfig)
+                ..where(
+                  (row) => row.type.equals('outbound') & row.data.isNotNull(),
+                )
+                ..limit(1))
+              .get())
+          .isNotEmpty;
+
+  Future<void> finish() async {
+    if (await currentStep() != SetupStep.servers) {
+      throw const SetupFailure('setup');
+    }
+    final permission = await checkPermission();
+    if (!permissionReady(permission)) {
+      await _preferences.saveSetupStep(SetupStep.system.name);
+      throw SetupFailure('permission', permission: permission);
+    }
+    // Reuse the committed policy; never activate a Raw item or connect here.
+    final settings = await configuration();
+    if (requiresInterface &&
+        settings.policy.xrayOutboundInterfaceName.isEmpty) {
+      await _preferences.saveSetupStep(SetupStep.system.name);
+      throw const SetupFailure('interface');
+    }
+    await _preferences.saveFirstRun(false);
+  }
+
+  Future<List<String>> regionCodes() async {
+    final read = _readRegionCodes;
+    if (read != null) return read();
+    Future<Map<String, dynamic>> index(String name) async => jsonDecode(
+      await File(p.join(VpnConstants.datDir, '$name.json')).readAsString(),
+    ) as Map<String, dynamic>;
+    final catalog = RegionCatalog.fromJson(
+      jsonDecode(await rootBundle.loadString(RegionCatalog.assetPath))
+          as Map<String, dynamic>,
+      geositeCodes: RegionCatalog.codesFromIndex(await index('geosite')),
+      geoipCodes: RegionCatalog.codesFromIndex(await index('geoip')),
+    );
+    if (catalog.regionCodes.isEmpty) throw const SetupFailure('Geodata');
+    return catalog.regionCodes;
+  }
+
+  /// An explicit suggestion request only. Do not persist the IP or response,
+  /// send app identifiers, or use the VPN's proxy/metrics endpoint.
+  Future<String?> suggestRegion() async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 5)
+      ..findProxy = (_) => 'DIRECT';
+    try {
+      final request = await client.getUrl(
+        Uri.https('ip-check-perf.radar.cloudflare.com', '/'),
+      );
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
+      if (response.statusCode != HttpStatus.ok) return null;
+      final bytes = <int>[];
+      await for (final chunk in response.timeout(const Duration(seconds: 5))) {
+        bytes.addAll(chunk);
+        if (bytes.length > 65536) return null;
+      }
+      final decoded = jsonDecode(utf8.decode(bytes));
+      final code = decoded is Map ? decoded['country'] : null;
+      return code is String ? code.toUpperCase() : null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<List<SetupInterface>> interfaces() async {
+    if (!requiresInterface) return const [];
+    final rows = await queryInterfaceList();
+    final current = await _currentInternetInterface();
+    return [
+      for (final row in rows)
+        if (row.name != 'OneXrayTun' &&
+            !row.addresses.any(
+              (address) =>
+                  address.address == PlatformPolicy.tunIpv4Address ||
+                  address.address == PlatformPolicy.tunIpv6Address,
+            ))
+          SetupInterface(
+            row.name,
+            row.addresses.map((address) => address.address).toList(),
+            row.name == current,
+          ),
+    ];
+  }
+
+  Future<String?> _currentInternetInterface() async {
+    try {
+      if (Platform.isLinux) {
+        final routes =
+            (await File('/proc/net/route').readAsLines())
+                .skip(1)
+                .map((line) => line.trim().split(RegExp(r'\s+')))
+                .where((parts) => parts.length > 7 && parts[1] == '00000000')
+                .toList()
+              ..sort(
+                (a, b) => (int.tryParse(a[6]) ?? 0).compareTo(
+                  int.tryParse(b[6]) ?? 0,
+                ),
+              );
+        return routes.isEmpty ? null : routes.first.first;
+      }
+      if (Platform.isWindows) {
+        final result = await Process.run('powershell.exe', [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          '(Get-NetRoute -DestinationPrefix "0.0.0.0/0" | Sort-Object RouteMetric | Select-Object -First 1).InterfaceAlias',
+        ]).timeout(const Duration(seconds: 5));
+        return result.exitCode == 0 ? '${result.stdout}'.trim() : null;
+      }
+    } on Exception {
+      // The hint is optional; it never selects the first interface for the user.
+    }
+    return null;
+  }
+
+  Future<void> _checkDesktopComponents() async {
+    if (platform == ConnectionPlatform.windows) {
+      if (!AppHostApi().windowsPackageAvailable ||
+          !await File(
+            p.join(p.dirname(Platform.resolvedExecutable), 'OneXrayCore.exe'),
+          ).exists()) {
+        throw const SetupFailure('OneXrayCore / VCore');
+      }
+    } else if (platform == ConnectionPlatform.linux) {
+      final file = File(LinuxFfiApi().corePath);
+      if (!await file.exists() ||
+          ((await file.stat()).mode & 0x49) == 0 ||
+          !await File('/dev/net/tun').exists()) {
+        throw const SetupFailure('OneXrayCore / TUN');
+      }
+      final status = await File('/proc/self/status').readAsString();
+      if (RegExp(r'^Uid:\s+0\s+0\s+0\s+0$', multiLine: true).hasMatch(status)) {
+        return;
+      }
+      final result = await Process.run('getcap', [
+        file.path,
+      ]).timeout(const Duration(seconds: 5));
+      final capabilities = '${result.stdout}';
+      if (result.exitCode != 0 ||
+          !capabilities.contains('cap_net_admin') ||
+          !capabilities.contains('cap_net_raw') ||
+          !RegExp(r'=[eip]*e[eip]*\s*$').hasMatch(capabilities)) {
+        throw const SetupFailure('cap_net_admin / cap_net_raw');
+      }
+    }
+  }
+}

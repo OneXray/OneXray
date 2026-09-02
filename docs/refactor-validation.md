@@ -122,3 +122,20 @@ Android 私有 fixture 实测连接、清零、双节点切换、真实启动失
 文件再使用 metrics，恢复同一 session，最终累计只增加该 session 未结算差值。
 原始日志与演练结果位于工作空间 `references/onexray-refactor-validation/runtime-results.md`。
 主数据库未被验证入口读取；VCore 无改动。P3 完成不代表 P4 新 UI 已切换或全部平台可发布。
+
+## P4：新外壳与首条完整流程
+
+四根 Tab、独立子路由、固定操作栏和初始化已接入；新首页使用 ConnectionCoordinator，
+不初始化旧 Profile/VpnService。普通模式显示冻结的实际路径，专家模式完整替换选择区域；
+Raw 保存不自动启用，当前资产变更复用协调器提交与恢复。高级和设置为新根入口，完整
+服务器管理、路由编辑及平台详情由 P5–P7 接续，不将最小入口当作全部功能完成。
+
+Android 独立 `references/p4-ui/db.sqlite` 实测：初始化准备不启动 VPN、本地 JSON
+检测确认、首页连接、真实速率、累计清零不影响本次、专家视图不切换运行、Raw 保存不
+启用、选择取消/确认、无普通节点 Raw 连接、删除当前 Raw 后断开并回空状态。最后已
+正常停止 VPN；未读取开发者主库。证据见工作空间 `p4-ui-results.md`。
+
+全量 Flutter 481 项通过、1 项 Windows 原生跳过；五语 622 条原型文本逐值与占位符
+检查通过。静态分析、分层、原生模型检查和完整 macOS Debug 构建通过。无 macOS
+VPN/截图，Windows/Linux 原生构建与运行 NOT RUN；相机/文件/系统分享完整验收留
+相应后续阶段及手测，不以本阶段代表平台可发布。libXray 本阶段无改动。

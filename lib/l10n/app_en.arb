@@ -698,5 +698,2715 @@
   "languagePageRussian": "Русский",
   "languagePagePersian": "فارسی",
   "languagePageChinese": "简体中文",
-  "languagePageTraditionalChinese": "繁體中文"
+  "languagePageTraditionalChinese": "繁體中文",
+  "prototypeConnect": "Connect",
+  "@prototypeConnect": {
+    "description": "Approved prototype copy: Connect"
+  },
+  "prototypeServers": "Servers",
+  "@prototypeServers": {
+    "description": "Approved prototype copy: Servers"
+  },
+  "prototypeAdvanced": "Advanced",
+  "@prototypeAdvanced": {
+    "description": "Approved prototype copy: Advanced"
+  },
+  "prototypeSettings": "Settings",
+  "@prototypeSettings": {
+    "description": "Approved prototype copy: Settings"
+  },
+  "prototypePrimaryNavigation": "Primary navigation",
+  "@prototypePrimaryNavigation": {
+    "description": "Approved prototype copy: Primary navigation"
+  },
+  "prototypeBack": "Back",
+  "@prototypeBack": {
+    "description": "Approved prototype copy: Back"
+  },
+  "prototypeCancel": "Cancel",
+  "@prototypeCancel": {
+    "description": "Approved prototype copy: Cancel"
+  },
+  "prototypeClose": "Close",
+  "@prototypeClose": {
+    "description": "Approved prototype copy: Close"
+  },
+  "prototypeDone": "Done",
+  "@prototypeDone": {
+    "description": "Approved prototype copy: Done"
+  },
+  "prototypeSave": "Save",
+  "@prototypeSave": {
+    "description": "Approved prototype copy: Save"
+  },
+  "prototypeAdd": "Add",
+  "@prototypeAdd": {
+    "description": "Approved prototype copy: Add"
+  },
+  "prototypeEdit": "Edit",
+  "@prototypeEdit": {
+    "description": "Approved prototype copy: Edit"
+  },
+  "prototypeDelete": "Delete",
+  "@prototypeDelete": {
+    "description": "Approved prototype copy: Delete"
+  },
+  "prototypeShare": "Share",
+  "@prototypeShare": {
+    "description": "Approved prototype copy: Share"
+  },
+  "prototypeContinue": "Continue",
+  "@prototypeContinue": {
+    "description": "Approved prototype copy: Continue"
+  },
+  "prototypeRetry": "Retry",
+  "@prototypeRetry": {
+    "description": "Approved prototype copy: Retry"
+  },
+  "prototypeTryAgain": "Try again",
+  "@prototypeTryAgain": {
+    "description": "Approved prototype copy: Try again"
+  },
+  "prototypePleaseWait": "Please wait",
+  "@prototypePleaseWait": {
+    "description": "Approved prototype copy: Please wait"
+  },
+  "prototypeSelected": "Selected",
+  "@prototypeSelected": {
+    "description": "Approved prototype copy: Selected"
+  },
+  "prototypeNotSelected": "Not selected",
+  "@prototypeNotSelected": {
+    "description": "Approved prototype copy: Not selected"
+  },
+  "prototypeRecommended": "Recommended",
+  "@prototypeRecommended": {
+    "description": "Approved prototype copy: Recommended"
+  },
+  "prototypeMoreActions": "More actions",
+  "@prototypeMoreActions": {
+    "description": "Approved prototype copy: More actions"
+  },
+  "prototypeSelectName": "Select {name}",
+  "@prototypeSelectName": {
+    "description": "Approved prototype copy: Select {name}",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeNameSaved": "{name} was saved",
+  "@prototypeNameSaved": {
+    "description": "Approved prototype copy: {name} was saved",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeApplyChange": "Apply this change?",
+  "@prototypeApplyChange": {
+    "description": "Approved prototype copy: Apply this change?"
+  },
+  "prototypeReconnectNotice": "The VPN will briefly disconnect and reconnect. This usually takes only a few seconds.",
+  "@prototypeReconnectNotice": {
+    "description": "Approved prototype copy: The VPN will briefly disconnect and reconnect. This usually takes only a few seconds."
+  },
+  "prototypeApplyAndReconnect": "Apply and reconnect",
+  "@prototypeApplyAndReconnect": {
+    "description": "Approved prototype copy: Apply and reconnect"
+  },
+  "prototypeNameActive": "{name} is now active",
+  "@prototypeNameActive": {
+    "description": "Approved prototype copy: {name} is now active",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeFirstTimeSetup": "First-time setup",
+  "@prototypeFirstTimeSetup": {
+    "description": "Approved prototype copy: First-time setup"
+  },
+  "prototypeSetupProgress": "Setup progress",
+  "@prototypeSetupProgress": {
+    "description": "Approved prototype copy: Setup progress"
+  },
+  "prototypeWelcomePrivacy": "Welcome & privacy",
+  "@prototypeWelcomePrivacy": {
+    "description": "Approved prototype copy: Welcome & privacy"
+  },
+  "prototypeSystemSetup": "System setup",
+  "@prototypeSystemSetup": {
+    "description": "Approved prototype copy: System setup"
+  },
+  "prototypeYourRegion": "Your region",
+  "@prototypeYourRegion": {
+    "description": "Approved prototype copy: Your region"
+  },
+  "prototypeWelcome": "Welcome to OneXray",
+  "@prototypeWelcome": {
+    "description": "Approved prototype copy: Welcome to OneXray"
+  },
+  "prototypeWelcomeSubtitle": "Your servers. A simpler connection.",
+  "@prototypeWelcomeSubtitle": {
+    "description": "Approved prototype copy: Your servers. A simpler connection."
+  },
+  "prototypeNoDataCollection": "OneXray does not collect usage or browsing data.",
+  "@prototypeNoDataCollection": {
+    "description": "Approved prototype copy: OneXray does not collect usage or browsing data."
+  },
+  "prototypeBringOwnServers": "You need to provide your own servers or subscriptions.",
+  "@prototypeBringOwnServers": {
+    "description": "Approved prototype copy: You need to provide your own servers or subscriptions."
+  },
+  "prototypePrivacyPolicy": "Privacy policy",
+  "@prototypePrivacyPolicy": {
+    "description": "Approved prototype copy: Privacy policy"
+  },
+  "prototypeNoDataUpload": "OneXray does not collect or upload usage, browsing, or analytics data.",
+  "@prototypeNoDataUpload": {
+    "description": "Approved prototype copy: OneXray does not collect or upload usage, browsing, or analytics data."
+  },
+  "prototypeConfiguredSourcesNotice": "You provide your own servers and subscriptions. Connections and data updates contact the sources you configure.",
+  "@prototypeConfiguredSourcesNotice": {
+    "description": "Approved prototype copy: You provide your own servers and subscriptions. Connections and data updates contact the sources you configure."
+  },
+  "prototypeRegionPrivacyNotice": "Region detection only suggests a direct region. No location permission is needed; you can choose manually or skip.",
+  "@prototypeRegionPrivacyNotice": {
+    "description": "Approved prototype copy: Region detection only suggests a direct region. No location permission is needed; you can choose manually or skip."
+  },
+  "prototypeReadFullPrivacyPolicy": "Read the full privacy policy",
+  "@prototypeReadFullPrivacyPolicy": {
+    "description": "Approved prototype copy: Read the full privacy policy"
+  },
+  "prototypeAgreeAndContinue": "Agree and continue",
+  "@prototypeAgreeAndContinue": {
+    "description": "Approved prototype copy: Agree and continue"
+  },
+  "prototypeGetReadyToConnect": "Get ready to connect",
+  "@prototypeGetReadyToConnect": {
+    "description": "Approved prototype copy: Get ready to connect"
+  },
+  "prototypeSetupOnce": "Set up once, then connect from Home.",
+  "@prototypeSetupOnce": {
+    "description": "Approved prototype copy: Set up once, then connect from Home."
+  },
+  "prototypeLocalConfigurationReady": "Local configuration and routing data are ready",
+  "@prototypeLocalConfigurationReady": {
+    "description": "Approved prototype copy: Local configuration and routing data are ready"
+  },
+  "prototypeVpnPermission": "VPN permission",
+  "@prototypeVpnPermission": {
+    "description": "Approved prototype copy: VPN permission"
+  },
+  "prototypeAllowConfigureSystemVpn": "Allow OneXray to configure the system VPN",
+  "@prototypeAllowConfigureSystemVpn": {
+    "description": "Approved prototype copy: Allow OneXray to configure the system VPN"
+  },
+  "prototypeAllowAddVpn": "Allow OneXray to add a VPN configuration.",
+  "@prototypeAllowAddVpn": {
+    "description": "Approved prototype copy: Allow OneXray to add a VPN configuration."
+  },
+  "prototypeAuthorized": "Authorized",
+  "@prototypeAuthorized": {
+    "description": "Approved prototype copy: Authorized"
+  },
+  "prototypeSetUpVpn": "Set up VPN",
+  "@prototypeSetUpVpn": {
+    "description": "Approved prototype copy: Set up VPN"
+  },
+  "prototypePermissionNotGranted": "Permission not granted",
+  "@prototypePermissionNotGranted": {
+    "description": "Approved prototype copy: Permission not granted"
+  },
+  "prototypeAwaitingPermission": "Awaiting permission",
+  "@prototypeAwaitingPermission": {
+    "description": "Approved prototype copy: Awaiting permission"
+  },
+  "prototypeVpnPermissionRequired": "VPN permission is required. Please retry to continue.",
+  "@prototypeVpnPermissionRequired": {
+    "description": "Approved prototype copy: VPN permission is required. Please retry to continue."
+  },
+  "prototypeSetupDoesNotStartVpn": "This process will not start the VPN.",
+  "@prototypeSetupDoesNotStartVpn": {
+    "description": "Approved prototype copy: This process will not start the VPN."
+  },
+  "prototypeXrayOutboundInterface": "Xray outbound interface",
+  "@prototypeXrayOutboundInterface": {
+    "description": "Approved prototype copy: Xray outbound interface"
+  },
+  "prototypeCurrentInternetInterface": "Current internet interface",
+  "@prototypeCurrentInternetInterface": {
+    "description": "Approved prototype copy: Current internet interface"
+  },
+  "prototypeChooseInterfaceNotice": "Choose the interface used to access the network. Required on Windows / Linux only.",
+  "@prototypeChooseInterfaceNotice": {
+    "description": "Approved prototype copy: Choose the interface used to access the network. Required on Windows / Linux only."
+  },
+  "prototypeInterfaceSelectionNotice": "Select the network interface Xray uses to connect. Only the interface name is saved.",
+  "@prototypeInterfaceSelectionNotice": {
+    "description": "Approved prototype copy: Select the network interface Xray uses to connect. Only the interface name is saved."
+  },
+  "prototypeWhereWillYouUse": "Where will you use OneXray?",
+  "@prototypeWhereWillYouUse": {
+    "description": "Approved prototype copy: Where will you use OneXray?"
+  },
+  "prototypeChooseCountryRegion": "Choose your country or region",
+  "@prototypeChooseCountryRegion": {
+    "description": "Approved prototype copy: Choose your country or region"
+  },
+  "prototypeCountryRegion": "Country or region",
+  "@prototypeCountryRegion": {
+    "description": "Approved prototype copy: Country or region"
+  },
+  "prototypeRegionSearch": "Search by region name or code",
+  "@prototypeRegionSearch": {
+    "description": "Approved prototype copy: Search by region name or code"
+  },
+  "prototypeNoRegionsFound": "No regions match your search.",
+  "@prototypeNoRegionsFound": {
+    "description": "Approved prototype copy: No regions match your search."
+  },
+  "prototypeRegionPurpose": "Used to set the direct region in Smart Routing.",
+  "@prototypeRegionPurpose": {
+    "description": "Approved prototype copy: Used to set the direct region in Smart Routing."
+  },
+  "prototypeRegionSuggested": "Suggested from the current network. Please confirm.",
+  "@prototypeRegionSuggested": {
+    "description": "Approved prototype copy: Suggested from the current network. Please confirm."
+  },
+  "prototypeRegionSelectedManually": "Selected manually. Confirm to use it in Smart Routing.",
+  "@prototypeRegionSelectedManually": {
+    "description": "Approved prototype copy: Selected manually. Confirm to use it in Smart Routing."
+  },
+  "prototypeRegionSkipNotice": "Skipping keeps existing settings; new installs default to Mainland China.",
+  "@prototypeRegionSkipNotice": {
+    "description": "Approved prototype copy: Skipping keeps existing settings; new installs default to Mainland China."
+  },
+  "prototypeSkip": "Skip",
+  "@prototypeSkip": {
+    "description": "Approved prototype copy: Skip"
+  },
+  "prototypeConfirmAndContinue": "Confirm and continue",
+  "@prototypeConfirmAndContinue": {
+    "description": "Approved prototype copy: Confirm and continue"
+  },
+  "prototypeAddServers": "Add servers",
+  "@prototypeAddServers": {
+    "description": "Approved prototype copy: Add servers"
+  },
+  "prototypeImportServersSubtitle": "Import your servers or subscription.",
+  "@prototypeImportServersSubtitle": {
+    "description": "Approved prototype copy: Import your servers or subscription."
+  },
+  "prototypeServersReadyForHome": "Servers added. You are ready to go to Home.",
+  "@prototypeServersReadyForHome": {
+    "description": "Approved prototype copy: Servers added. You are ready to go to Home."
+  },
+  "prototypeExistingServersSkip": "This step is skipped when servers are already configured.",
+  "@prototypeExistingServersSkip": {
+    "description": "Approved prototype copy: This step is skipped when servers are already configured."
+  },
+  "prototypeAddLater": "Add later",
+  "@prototypeAddLater": {
+    "description": "Approved prototype copy: Add later"
+  },
+  "prototypeGoToHome": "Go to Home",
+  "@prototypeGoToHome": {
+    "description": "Approved prototype copy: Go to Home"
+  },
+  "prototypeStartUsingOneXray": "Start using OneXray",
+  "@prototypeStartUsingOneXray": {
+    "description": "Approved prototype copy: Start using OneXray"
+  },
+  "prototypeFirstConnectionHint": "Add a subscription or import a server to make your first connection.",
+  "@prototypeFirstConnectionHint": {
+    "description": "Approved prototype copy: Add a subscription or import a server to make your first connection."
+  },
+  "prototypeUseCompleteRawJson": "Use a complete Raw JSON configuration",
+  "@prototypeUseCompleteRawJson": {
+    "description": "Approved prototype copy: Use a complete Raw JSON configuration"
+  },
+  "prototypeDisconnected": "Disconnected",
+  "@prototypeDisconnected": {
+    "description": "Approved prototype copy: Disconnected"
+  },
+  "prototypeConnecting": "Connecting…",
+  "@prototypeConnecting": {
+    "description": "Approved prototype copy: Connecting…"
+  },
+  "prototypeConnected": "Connected",
+  "@prototypeConnected": {
+    "description": "Approved prototype copy: Connected"
+  },
+  "prototypeReconnecting": "Reconnecting…",
+  "@prototypeReconnecting": {
+    "description": "Approved prototype copy: Reconnecting…"
+  },
+  "prototypeDisconnecting": "Disconnecting…",
+  "@prototypeDisconnecting": {
+    "description": "Approved prototype copy: Disconnecting…"
+  },
+  "prototypeConnectionFailed": "Connection failed",
+  "@prototypeConnectionFailed": {
+    "description": "Approved prototype copy: Connection failed"
+  },
+  "prototypeDisconnect": "Disconnect",
+  "@prototypeDisconnect": {
+    "description": "Approved prototype copy: Disconnect"
+  },
+  "prototypeReadyToProtectConnection": "Ready to protect your connection",
+  "@prototypeReadyToProtectConnection": {
+    "description": "Approved prototype copy: Ready to protect your connection"
+  },
+  "prototypePreparingSecureConnection": "Preparing a secure connection",
+  "@prototypePreparingSecureConnection": {
+    "description": "Approved prototype copy: Preparing a secure connection"
+  },
+  "prototypeApplyingConnectionSettings": "Applying the new connection settings",
+  "@prototypeApplyingConnectionSettings": {
+    "description": "Approved prototype copy: Applying the new connection settings"
+  },
+  "prototypeFinishingConnection": "Finishing the current connection",
+  "@prototypeFinishingConnection": {
+    "description": "Approved prototype copy: Finishing the current connection"
+  },
+  "prototypeCheckNetwork": "Check your network, then try again.",
+  "@prototypeCheckNetwork": {
+    "description": "Approved prototype copy: Check your network, then try again."
+  },
+  "prototypeJustConnected": "Just connected",
+  "@prototypeJustConnected": {
+    "description": "Approved prototype copy: Just connected"
+  },
+  "prototypeProtectedMinutes": "Protected for {minutes} min",
+  "@prototypeProtectedMinutes": {
+    "description": "Approved prototype copy: Protected for {minutes} min",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeProtectedHoursMinutes": "Protected for {hours} h {minutes} min",
+  "@prototypeProtectedHoursMinutes": {
+    "description": "Approved prototype copy: Protected for {hours} h {minutes} min",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeConnectionLocation": "Connection location",
+  "@prototypeConnectionLocation": {
+    "description": "Approved prototype copy: Connection location"
+  },
+  "prototypeAutomaticSelection": "Automatic selection",
+  "@prototypeAutomaticSelection": {
+    "description": "Approved prototype copy: Automatic selection"
+  },
+  "prototypeAutomaticOneEntry": "Automatic selection · 1 entry node",
+  "@prototypeAutomaticOneEntry": {
+    "description": "Approved prototype copy: Automatic selection · 1 entry node"
+  },
+  "prototypeAutomaticEntries": "Automatic selection · {count} entry nodes",
+  "@prototypeAutomaticEntries": {
+    "description": "Approved prototype copy: Automatic selection · {count} entry nodes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeChooseBySpeedAvailability": "Choose by speed and availability",
+  "@prototypeChooseBySpeedAvailability": {
+    "description": "Approved prototype copy: Choose by speed and availability"
+  },
+  "prototypeAvailableLatency": "Available · {latency} ms",
+  "@prototypeAvailableLatency": {
+    "description": "Approved prototype copy: Available · {latency} ms",
+    "placeholders": {
+      "latency": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeSlowLatency": "Slow · {latency} ms",
+  "@prototypeSlowLatency": {
+    "description": "Approved prototype copy: Slow · {latency} ms",
+    "placeholders": {
+      "latency": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeTemporarilyUnavailable": "Temporarily unavailable",
+  "@prototypeTemporarilyUnavailable": {
+    "description": "Approved prototype copy: Temporarily unavailable"
+  },
+  "prototypeTrafficMethod": "Traffic method",
+  "@prototypeTrafficMethod": {
+    "description": "Approved prototype copy: Traffic method"
+  },
+  "prototypeSmartRouting": "Smart Routing",
+  "@prototypeSmartRouting": {
+    "description": "Approved prototype copy: Smart Routing"
+  },
+  "prototypeSmartRoutingRecommended": "Smart Routing (recommended)",
+  "@prototypeSmartRoutingRecommended": {
+    "description": "Approved prototype copy: Smart Routing (recommended)"
+  },
+  "prototypeSmartRoutingDescription": "Keep the local network and directly reachable sites direct. Send other traffic through the VPN.",
+  "@prototypeSmartRoutingDescription": {
+    "description": "Approved prototype copy: Keep the local network and directly reachable sites direct. Send other traffic through the VPN."
+  },
+  "prototypeAllViaVpn": "All via VPN",
+  "@prototypeAllViaVpn": {
+    "description": "Approved prototype copy: All via VPN"
+  },
+  "prototypeAllViaVpnDescription": "Send all internet traffic through the selected server, except system-required traffic.",
+  "@prototypeAllViaVpnDescription": {
+    "description": "Approved prototype copy: Send all internet traffic through the selected server, except system-required traffic."
+  },
+  "prototypeCustomRouting": "Custom Routing",
+  "@prototypeCustomRouting": {
+    "description": "Approved prototype copy: Custom Routing"
+  },
+  "prototypeCustomRoutingDescription": "Handle traffic using your ordered rules.",
+  "@prototypeCustomRoutingDescription": {
+    "description": "Approved prototype copy: Handle traffic using your ordered rules."
+  },
+  "prototypeCustomRuleCount": "Custom Routing · {count} rules",
+  "@prototypeCustomRuleCount": {
+    "description": "Approved prototype copy: Custom Routing · {count} rules",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeExpertMode": "Expert mode",
+  "@prototypeExpertMode": {
+    "description": "Approved prototype copy: Expert mode"
+  },
+  "prototypeWhyThisConnection": "Why this connection?",
+  "@prototypeWhyThisConnection": {
+    "description": "Approved prototype copy: Why this connection?"
+  },
+  "prototypeTraffic": "Traffic",
+  "@prototypeTraffic": {
+    "description": "Approved prototype copy: Traffic"
+  },
+  "prototypeCurrentSpeed": "Current speed",
+  "@prototypeCurrentSpeed": {
+    "description": "Approved prototype copy: Current speed"
+  },
+  "prototypeThisConnection": "This connection",
+  "@prototypeThisConnection": {
+    "description": "Approved prototype copy: This connection"
+  },
+  "prototypeLastConnection": "Last connection",
+  "@prototypeLastConnection": {
+    "description": "Approved prototype copy: Last connection"
+  },
+  "prototypeTotalTraffic": "Total traffic",
+  "@prototypeTotalTraffic": {
+    "description": "Approved prototype copy: Total traffic"
+  },
+  "prototypeDownload": "Download",
+  "@prototypeDownload": {
+    "description": "Approved prototype copy: Download"
+  },
+  "prototypeUpload": "Upload",
+  "@prototypeUpload": {
+    "description": "Approved prototype copy: Upload"
+  },
+  "prototypeResetTotals": "Reset totals",
+  "@prototypeResetTotals": {
+    "description": "Approved prototype copy: Reset totals"
+  },
+  "prototypeTrafficTotalsReset": "Traffic totals were reset",
+  "@prototypeTrafficTotalsReset": {
+    "description": "Approved prototype copy: Traffic totals were reset"
+  },
+  "prototypeResetTrafficNotice": "This connection stays active. Only the device total is cleared.",
+  "@prototypeResetTrafficNotice": {
+    "description": "Approved prototype copy: This connection stays active. Only the device total is cleared."
+  },
+  "prototypeOrdinaryConnectionRunning": "The ordinary connection is still running. Select a configuration to switch.",
+  "@prototypeOrdinaryConnectionRunning": {
+    "description": "Approved prototype copy: The ordinary connection is still running. Select a configuration to switch."
+  },
+  "prototypeNoRawJson": "No Raw JSON configurations yet",
+  "@prototypeNoRawJson": {
+    "description": "Approved prototype copy: No Raw JSON configurations yet"
+  },
+  "prototypeAddRawJsonHint": "Add a complete Xray configuration, then select it here to connect.",
+  "@prototypeAddRawJsonHint": {
+    "description": "Approved prototype copy: Add a complete Xray configuration, then select it here to connect."
+  },
+  "prototypeAddRawJson": "Add Raw JSON",
+  "@prototypeAddRawJson": {
+    "description": "Approved prototype copy: Add Raw JSON"
+  },
+  "prototypeEditRawJson": "Edit Raw JSON",
+  "@prototypeEditRawJson": {
+    "description": "Approved prototype copy: Edit Raw JSON"
+  },
+  "prototypeRawJsonEditorDescription": "Create or edit a complete Xray configuration.",
+  "@prototypeRawJsonEditorDescription": {
+    "description": "Approved prototype copy: Create or edit a complete Xray configuration."
+  },
+  "prototypeConfigurationName": "Configuration name",
+  "@prototypeConfigurationName": {
+    "description": "Approved prototype copy: Configuration name"
+  },
+  "prototypeTestConfiguration": "Test configuration",
+  "@prototypeTestConfiguration": {
+    "description": "Approved prototype copy: Test configuration"
+  },
+  "prototypeSeconds": "{count} seconds",
+  "@prototypeSeconds": {
+    "description": "Approved prototype copy: {count} seconds",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeRawManagedSettingsNotice": "This complete configuration controls servers, routing, and Xray DNS when selected. TUN, interface, and logging remain managed by OneXray.",
+  "@prototypeRawManagedSettingsNotice": {
+    "description": "Approved prototype copy: This complete configuration controls servers, routing, and Xray DNS when selected. TUN, interface, and logging remain managed by OneXray."
+  },
+  "prototypeRawAdditionalSettingsNotice": "Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and pingIn entries and other App-managed runtime settings cannot be overridden.",
+  "@prototypeRawAdditionalSettingsNotice": {
+    "description": "Approved prototype copy: Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and pingIn entries and other App-managed runtime settings cannot be overridden."
+  },
+  "prototypeRawJsonLimit": "You can save up to 3 Raw JSON configurations",
+  "@prototypeRawJsonLimit": {
+    "description": "Approved prototype copy: You can save up to 3 Raw JSON configurations"
+  },
+  "prototypeReplaceEditorJson": "Replace the JSON currently in the editor?",
+  "@prototypeReplaceEditorJson": {
+    "description": "Approved prototype copy: Replace the JSON currently in the editor?"
+  },
+  "prototypeJsonImportedIntoEditor": "JSON imported into the editor. Save to keep it.",
+  "@prototypeJsonImportedIntoEditor": {
+    "description": "Approved prototype copy: JSON imported into the editor. Save to keep it."
+  },
+  "prototypeCannotReadContent": "Could not read the content. Check the file or clipboard and try again.",
+  "@prototypeCannotReadContent": {
+    "description": "Approved prototype copy: Could not read the content. Check the file or clipboard and try again."
+  },
+  "prototypeRawJsonShareWarning": "The original JSON may contain server credentials. Share or export it only to a trusted destination.",
+  "@prototypeRawJsonShareWarning": {
+    "description": "Approved prototype copy: The original JSON may contain server credentials. Share or export it only to a trusted destination."
+  },
+  "prototypeReadClipboard": "Read clipboard",
+  "@prototypeReadClipboard": {
+    "description": "Approved prototype copy: Read clipboard"
+  },
+  "prototypeExportJson": "Export JSON",
+  "@prototypeExportJson": {
+    "description": "Approved prototype copy: Export JSON"
+  },
+  "prototypeShareSheetOpened": "Share sheet opened",
+  "@prototypeShareSheetOpened": {
+    "description": "Approved prototype copy: Share sheet opened"
+  },
+  "prototypeConfigurationLinksCopied": "Configuration share links copied",
+  "@prototypeConfigurationLinksCopied": {
+    "description": "Approved prototype copy: Configuration share links copied"
+  },
+  "prototypeOriginalJsonExported": "Original JSON exported",
+  "@prototypeOriginalJsonExported": {
+    "description": "Approved prototype copy: Original JSON exported"
+  },
+  "prototypeCannotShareConfiguration": "Could not share or export this configuration.",
+  "@prototypeCannotShareConfiguration": {
+    "description": "Approved prototype copy: Could not share or export this configuration."
+  },
+  "prototypeSharingDataSourceLinks": "Sharing includes {count} routing data source links, not the data files.",
+  "@prototypeSharingDataSourceLinks": {
+    "description": "Approved prototype copy: Sharing includes {count} routing data source links, not the data files.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeActiveConfiguration": "Active configuration",
+  "@prototypeActiveConfiguration": {
+    "description": "Approved prototype copy: Active configuration"
+  },
+  "prototypeCompleteXrayConfiguration": "Complete Xray configuration",
+  "@prototypeCompleteXrayConfiguration": {
+    "description": "Approved prototype copy: Complete Xray configuration"
+  },
+  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, pingIn, IPv6, and related runtime features in Raw JSON do not take effect.",
+  "@prototypeRawRuntimeOverrideNotice": {
+    "description": "Approved prototype copy: A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, pingIn, IPv6, and related runtime features in Raw JSON do not take effect."
+  },
+  "prototypeAddServersToOneXray": "Add servers to OneXray",
+  "@prototypeAddServersToOneXray": {
+    "description": "Approved prototype copy: Add servers to OneXray"
+  },
+  "prototypeChooseAddMethod": "Choose how you want to add servers.",
+  "@prototypeChooseAddMethod": {
+    "description": "Approved prototype copy: Choose how you want to add servers."
+  },
+  "prototypeScanQrCode": "Scan QR code",
+  "@prototypeScanQrCode": {
+    "description": "Approved prototype copy: Scan QR code"
+  },
+  "prototypePasteLink": "Paste link",
+  "@prototypePasteLink": {
+    "description": "Approved prototype copy: Paste link"
+  },
+  "prototypeAddSubscription": "Add subscription",
+  "@prototypeAddSubscription": {
+    "description": "Approved prototype copy: Add subscription"
+  },
+  "prototypeImportFile": "Import file",
+  "@prototypeImportFile": {
+    "description": "Approved prototype copy: Import file"
+  },
+  "prototypeAddManually": "Add manually",
+  "@prototypeAddManually": {
+    "description": "Approved prototype copy: Add manually"
+  },
+  "prototypeAddJsonManually": "Add JSON manually",
+  "@prototypeAddJsonManually": {
+    "description": "Approved prototype copy: Add JSON manually"
+  },
+  "prototypePointCameraAtQr": "Point the camera at a server QR code",
+  "@prototypePointCameraAtQr": {
+    "description": "Approved prototype copy: Point the camera at a server QR code"
+  },
+  "prototypeChooseFromPhotos": "Choose from photos",
+  "@prototypeChooseFromPhotos": {
+    "description": "Approved prototype copy: Choose from photos"
+  },
+  "prototypeImportLinks": "Import links",
+  "@prototypeImportLinks": {
+    "description": "Approved prototype copy: Import links"
+  },
+  "prototypeImportLinksHint": "One link per line. Supports servers, subscriptions, and OneXray import links.",
+  "@prototypeImportLinksHint": {
+    "description": "Approved prototype copy: One link per line. Supports servers, subscriptions, and OneXray import links."
+  },
+  "prototypeSubscriptionDirectImportNotice": "Subscriptions import directly; local servers and configurations are previewed first.",
+  "@prototypeSubscriptionDirectImportNotice": {
+    "description": "Approved prototype copy: Subscriptions import directly; local servers and configurations are previewed first."
+  },
+  "prototypeNoSupportedLinks": "No supported links were recognized. Check the input and try again.",
+  "@prototypeNoSupportedLinks": {
+    "description": "Approved prototype copy: No supported links were recognized. Check the input and try again."
+  },
+  "prototypeSubscriptionName": "Subscription name",
+  "@prototypeSubscriptionName": {
+    "description": "Approved prototype copy: Subscription name"
+  },
+  "prototypeSubscriptionLink": "Subscription link",
+  "@prototypeSubscriptionLink": {
+    "description": "Approved prototype copy: Subscription link"
+  },
+  "prototypeSubscriptionDescription": "A subscription is a server list supplied by your provider. OneXray can check it for updates later.",
+  "@prototypeSubscriptionDescription": {
+    "description": "Approved prototype copy: A subscription is a server list supplied by your provider. OneXray can check it for updates later."
+  },
+  "prototypeAgeEncryption": "Age encryption",
+  "@prototypeAgeEncryption": {
+    "description": "Approved prototype copy: Age encryption"
+  },
+  "prototypeAgeOptional": "Optional · requires provider support",
+  "@prototypeAgeOptional": {
+    "description": "Approved prototype copy: Optional · requires provider support"
+  },
+  "prototypeAgeSupportNotice": "Enter Age keys only when your subscription provider supports encrypted subscriptions. Age does not replace HTTPS.",
+  "@prototypeAgeSupportNotice": {
+    "description": "Approved prototype copy: Enter Age keys only when your subscription provider supports encrypted subscriptions. Age does not replace HTTPS."
+  },
+  "prototypeAgeSecretKey": "Age Secret Key",
+  "@prototypeAgeSecretKey": {
+    "description": "Approved prototype copy: Age Secret Key"
+  },
+  "prototypeAgePublicKey": "Age Public Key",
+  "@prototypeAgePublicKey": {
+    "description": "Approved prototype copy: Age Public Key"
+  },
+  "prototypeRevealKey": "Reveal key",
+  "@prototypeRevealKey": {
+    "description": "Approved prototype copy: Reveal key"
+  },
+  "prototypeHideKey": "Hide key",
+  "@prototypeHideKey": {
+    "description": "Approved prototype copy: Hide key"
+  },
+  "prototypeAgeBothKeysRequired": "Enter both Age keys or leave both empty.",
+  "@prototypeAgeBothKeysRequired": {
+    "description": "Approved prototype copy: Enter both Age keys or leave both empty."
+  },
+  "prototypeReplaceAgeKeys": "Replace the existing Age keys?",
+  "@prototypeReplaceAgeKeys": {
+    "description": "Approved prototype copy: Replace the existing Age keys?"
+  },
+  "prototypeAgeHybrid": "Hybrid (ML-KEM-768 + X25519)",
+  "@prototypeAgeHybrid": {
+    "description": "Approved prototype copy: Hybrid (ML-KEM-768 + X25519)"
+  },
+  "prototypeClear": "Clear",
+  "@prototypeClear": {
+    "description": "Approved prototype copy: Clear"
+  },
+  "prototypeXrayNodeJson": "Xray node JSON",
+  "@prototypeXrayNodeJson": {
+    "description": "Approved prototype copy: Xray node JSON"
+  },
+  "prototypeNodeJsonHint": "The root object must contain a non-empty outbounds array. Every outbound needs a unique tag and protocol.",
+  "@prototypeNodeJsonHint": {
+    "description": "Approved prototype copy: The root object must contain a non-empty outbounds array. Every outbound needs a unique tag and protocol."
+  },
+  "prototypeLocalInputPrivacy": "Input is processed on this device and is never sent to OneXray.",
+  "@prototypeLocalInputPrivacy": {
+    "description": "Approved prototype copy: Input is processed on this device and is never sent to OneXray."
+  },
+  "prototypeDetect": "Detect",
+  "@prototypeDetect": {
+    "description": "Approved prototype copy: Detect"
+  },
+  "prototypeImportPreview": "Import preview",
+  "@prototypeImportPreview": {
+    "description": "Approved prototype copy: Import preview"
+  },
+  "prototypeConfirmAdd": "Confirm add",
+  "@prototypeConfirmAdd": {
+    "description": "Approved prototype copy: Confirm add"
+  },
+  "prototypeUsableNodes": "Usable nodes: {count}",
+  "@prototypeUsableNodes": {
+    "description": "Approved prototype copy: Usable nodes: {count}",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeUnrecognizedNodes": "Unrecognized nodes: {count}",
+  "@prototypeUnrecognizedNodes": {
+    "description": "Approved prototype copy: Unrecognized nodes: {count}",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeServersAdded": "Servers added",
+  "@prototypeServersAdded": {
+    "description": "Approved prototype copy: Servers added"
+  },
+  "prototypeSubscriptionNotAdded": "No usable nodes were recognized. The subscription was not added.",
+  "@prototypeSubscriptionNotAdded": {
+    "description": "Approved prototype copy: No usable nodes were recognized. The subscription was not added."
+  },
+  "prototypeSubscriptionExistingNodesKept": "No usable nodes were recognized. Existing nodes were kept.",
+  "@prototypeSubscriptionExistingNodesKept": {
+    "description": "Approved prototype copy: No usable nodes were recognized. Existing nodes were kept."
+  },
+  "prototypeSubscriptionImportResult": "{name}: imported {count} nodes; {failed} could not be recognized",
+  "@prototypeSubscriptionImportResult": {
+    "description": "Approved prototype copy: {name}: imported {count} nodes; {failed} could not be recognized",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeSubscriptionsImported": "{count} subscriptions imported. Only the remaining local items need confirmation.",
+  "@prototypeSubscriptionsImported": {
+    "description": "Approved prototype copy: {count} subscriptions imported. Only the remaining local items need confirmation.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeFollowSystem": "Follow system",
+  "@prototypeFollowSystem": {
+    "description": "Approved prototype copy: Follow system"
+  },
+  "prototypeSimplifiedChinese": "Simplified Chinese",
+  "@prototypeSimplifiedChinese": {
+    "description": "Approved prototype copy: Simplified Chinese"
+  },
+  "prototypeTraditionalChinese": "Traditional Chinese",
+  "@prototypeTraditionalChinese": {
+    "description": "Approved prototype copy: Traditional Chinese"
+  },
+  "prototypeEnglish": "English",
+  "@prototypeEnglish": {
+    "description": "Approved prototype copy: English"
+  },
+  "prototypeRussian": "Russian",
+  "@prototypeRussian": {
+    "description": "Approved prototype copy: Russian"
+  },
+  "prototypePersian": "Persian",
+  "@prototypePersian": {
+    "description": "Approved prototype copy: Persian"
+  },
+  "prototypeMainlandChina": "Mainland China",
+  "@prototypeMainlandChina": {
+    "description": "Approved prototype copy: Mainland China"
+  },
+  "prototypeRussia": "Russia",
+  "@prototypeRussia": {
+    "description": "Approved prototype copy: Russia"
+  },
+  "prototypeIran": "Iran",
+  "@prototypeIran": {
+    "description": "Approved prototype copy: Iran"
+  },
+  "prototypeHongKong": "Hong Kong",
+  "@prototypeHongKong": {
+    "description": "Approved prototype copy: Hong Kong"
+  },
+  "prototypeJapan": "Japan",
+  "@prototypeJapan": {
+    "description": "Approved prototype copy: Japan"
+  },
+  "prototypeSingapore": "Singapore",
+  "@prototypeSingapore": {
+    "description": "Approved prototype copy: Singapore"
+  },
+  "prototypeSouthKorea": "South Korea",
+  "@prototypeSouthKorea": {
+    "description": "Approved prototype copy: South Korea"
+  },
+  "prototypeUnitedStates": "United States",
+  "@prototypeUnitedStates": {
+    "description": "Approved prototype copy: United States"
+  },
+  "prototypeCanada": "Canada",
+  "@prototypeCanada": {
+    "description": "Approved prototype copy: Canada"
+  },
+  "prototypeGermany": "Germany",
+  "@prototypeGermany": {
+    "description": "Approved prototype copy: Germany"
+  },
+  "prototypeUnitedKingdom": "United Kingdom",
+  "@prototypeUnitedKingdom": {
+    "description": "Approved prototype copy: United Kingdom"
+  },
+  "prototypeFrance": "France",
+  "@prototypeFrance": {
+    "description": "Approved prototype copy: France"
+  },
+  "prototypeIndia": "India",
+  "@prototypeIndia": {
+    "description": "Approved prototype copy: India"
+  },
+  "prototypeAustralia": "Australia",
+  "@prototypeAustralia": {
+    "description": "Approved prototype copy: Australia"
+  },
+  "prototypeBrazil": "Brazil",
+  "@prototypeBrazil": {
+    "description": "Approved prototype copy: Brazil"
+  },
+  "prototypeTurkey": "Turkey",
+  "@prototypeTurkey": {
+    "description": "Approved prototype copy: Turkey"
+  },
+  "prototypeChooseConnectionLocation": "Choose a connection location",
+  "@prototypeChooseConnectionLocation": {
+    "description": "Approved prototype copy: Choose a connection location"
+  },
+  "prototypeChooseLocationHint": "Select Automatic, a region, or one specific server.",
+  "@prototypeChooseLocationHint": {
+    "description": "Approved prototype copy: Select Automatic, a region, or one specific server."
+  },
+  "prototypeAddServer": "Add server",
+  "@prototypeAddServer": {
+    "description": "Approved prototype copy: Add server"
+  },
+  "prototypeAutomaticRecommended": "Automatic (recommended)",
+  "@prototypeAutomaticRecommended": {
+    "description": "Approved prototype copy: Automatic (recommended)"
+  },
+  "prototypeCurrentServerLatency": "Current: {name} · {latency} ms",
+  "@prototypeCurrentServerLatency": {
+    "description": "Approved prototype copy: Current: {name} · {latency} ms",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "latency": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeFavorites": "Favorites",
+  "@prototypeFavorites": {
+    "description": "Approved prototype copy: Favorites"
+  },
+  "prototypeGroupServers": "Group servers",
+  "@prototypeGroupServers": {
+    "description": "Approved prototype copy: Group servers"
+  },
+  "prototypeByNodeLocation": "By node location",
+  "@prototypeByNodeLocation": {
+    "description": "Approved prototype copy: By node location"
+  },
+  "prototypeBySubscription": "By subscription",
+  "@prototypeBySubscription": {
+    "description": "Approved prototype copy: By subscription"
+  },
+  "prototypeSubscriptions": "Subscriptions",
+  "@prototypeSubscriptions": {
+    "description": "Approved prototype copy: Subscriptions"
+  },
+  "prototypeAllLocations": "All locations",
+  "@prototypeAllLocations": {
+    "description": "Approved prototype copy: All locations"
+  },
+  "prototypeSearchLocationsServers": "Search locations or servers",
+  "@prototypeSearchLocationsServers": {
+    "description": "Approved prototype copy: Search locations or servers"
+  },
+  "prototypeSearchSubscriptionsServers": "Search subscriptions, locations, or servers",
+  "@prototypeSearchSubscriptionsServers": {
+    "description": "Approved prototype copy: Search subscriptions, locations, or servers"
+  },
+  "prototypeGroupAvailability": "{available}/{total} available · best {latency} ms",
+  "@prototypeGroupAvailability": {
+    "description": "Approved prototype copy: {available}/{total} available · best {latency} ms",
+    "placeholders": {
+      "available": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "latency": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeUse": "Use",
+  "@prototypeUse": {
+    "description": "Approved prototype copy: Use"
+  },
+  "prototypeUseEntryServers": "Use {count} entry servers",
+  "@prototypeUseEntryServers": {
+    "description": "Approved prototype copy: Use {count} entry servers",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeProtocol": "Protocol",
+  "@prototypeProtocol": {
+    "description": "Approved prototype copy: Protocol"
+  },
+  "prototypeRegion": "Region",
+  "@prototypeRegion": {
+    "description": "Approved prototype copy: Region"
+  },
+  "prototypeSource": "Source",
+  "@prototypeSource": {
+    "description": "Approved prototype copy: Source"
+  },
+  "prototypeNotTested": "Not tested",
+  "@prototypeNotTested": {
+    "description": "Approved prototype copy: Not tested"
+  },
+  "prototypeNoMatchingLocations": "No matching locations",
+  "@prototypeNoMatchingLocations": {
+    "description": "Approved prototype copy: No matching locations"
+  },
+  "prototypeNoMatchingSubscriptions": "No matching subscriptions",
+  "@prototypeNoMatchingSubscriptions": {
+    "description": "Approved prototype copy: No matching subscriptions"
+  },
+  "prototypeCurrentSelection": "Current selection",
+  "@prototypeCurrentSelection": {
+    "description": "Approved prototype copy: Current selection"
+  },
+  "prototypeAutomaticWithinRegion": "Automatic within region",
+  "@prototypeAutomaticWithinRegion": {
+    "description": "Approved prototype copy: Automatic within region"
+  },
+  "prototypeNoServersYet": "No servers yet",
+  "@prototypeNoServersYet": {
+    "description": "Approved prototype copy: No servers yet"
+  },
+  "prototypeAddProviderSubscriptionHint": "Add a provider subscription or import a server configuration to begin.",
+  "@prototypeAddProviderSubscriptionHint": {
+    "description": "Approved prototype copy: Add a provider subscription or import a server configuration to begin."
+  },
+  "prototypeHowGetServers": "How do I get servers?",
+  "@prototypeHowGetServers": {
+    "description": "Approved prototype copy: How do I get servers?"
+  },
+  "prototypeRemoveFavorite": "Remove favorite",
+  "@prototypeRemoveFavorite": {
+    "description": "Approved prototype copy: Remove favorite"
+  },
+  "prototypeAddFavorite": "Add favorite",
+  "@prototypeAddFavorite": {
+    "description": "Approved prototype copy: Add favorite"
+  },
+  "prototypeServerCount": "{count} servers",
+  "@prototypeServerCount": {
+    "description": "Approved prototype copy: {count} servers",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeManualAdditions": "Manual additions",
+  "@prototypeManualAdditions": {
+    "description": "Approved prototype copy: Manual additions"
+  },
+  "prototypeNotEnoughServers": "Not enough available servers",
+  "@prototypeNotEnoughServers": {
+    "description": "Approved prototype copy: Not enough available servers"
+  },
+  "prototypeNoAvailableEntries": "No available entry servers",
+  "@prototypeNoAvailableEntries": {
+    "description": "Approved prototype copy: No available entry servers"
+  },
+  "prototypeFinalExitEntryConflict": "The final exit cannot also be the entry server",
+  "@prototypeFinalExitEntryConflict": {
+    "description": "Approved prototype copy: The final exit cannot also be the entry server"
+  },
+  "prototypeChooseTrafficMethod": "Choose a traffic method",
+  "@prototypeChooseTrafficMethod": {
+    "description": "Approved prototype copy: Choose a traffic method"
+  },
+  "prototypeTrafficMethodQuestion": "Which traffic should use the VPN?",
+  "@prototypeTrafficMethodQuestion": {
+    "description": "Approved prototype copy: Which traffic should use the VPN?"
+  },
+  "prototypeChooseNamedRoute": "Choose one named route",
+  "@prototypeChooseNamedRoute": {
+    "description": "Approved prototype copy: Choose one named route"
+  },
+  "prototypeNoCustomRoutes": "No custom routes yet",
+  "@prototypeNoCustomRoutes": {
+    "description": "Approved prototype copy: No custom routes yet"
+  },
+  "prototypeNewCustomRoute": "New custom route",
+  "@prototypeNewCustomRoute": {
+    "description": "Approved prototype copy: New custom route"
+  },
+  "prototypeCustomRouteLimit": "You can save up to 3 custom routes",
+  "@prototypeCustomRouteLimit": {
+    "description": "Approved prototype copy: You can save up to 3 custom routes"
+  },
+  "prototypeRuleCount": "{count} rules",
+  "@prototypeRuleCount": {
+    "description": "Approved prototype copy: {count} rules",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeWillUseName": "Will use: {name}",
+  "@prototypeWillUseName": {
+    "description": "Approved prototype copy: Will use: {name}",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeCannotUndo": "This change cannot be undone.",
+  "@prototypeCannotUndo": {
+    "description": "Approved prototype copy: This change cannot be undone."
+  },
+  "prototypeWhyConnectionTitle": "Why OneXray chose this connection",
+  "@prototypeWhyConnectionTitle": {
+    "description": "Approved prototype copy: Why OneXray chose this connection"
+  },
+  "prototypeSmartConnectionChainReason": "Smart Routing keeps the selected regions direct. VPN traffic enters through {entries}, then exits through {exit}.",
+  "@prototypeSmartConnectionChainReason": {
+    "description": "Approved prototype copy: Smart Routing keeps the selected regions direct. VPN traffic enters through {entries}, then exits through {exit}.",
+    "placeholders": {
+      "entries": {
+        "type": "String"
+      },
+      "exit": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeSmartConnectionReason": "Smart Routing keeps the selected regions direct. VPN traffic uses {entries}.",
+  "@prototypeSmartConnectionReason": {
+    "description": "Approved prototype copy: Smart Routing keeps the selected regions direct. VPN traffic uses {entries}.",
+    "placeholders": {
+      "entries": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeAllVpnConnectionReason": "All internet traffic uses {server}, except system-required traffic.",
+  "@prototypeAllVpnConnectionReason": {
+    "description": "Approved prototype copy: All internet traffic uses {server}, except system-required traffic.",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeCustomConnectionReason": "Your custom rules decide which traffic uses the VPN, stays direct, or is blocked. Rules do not store server choices.",
+  "@prototypeCustomConnectionReason": {
+    "description": "Approved prototype copy: Your custom rules decide which traffic uses the VPN, stays direct, or is blocked. Rules do not store server choices."
+  },
+  "prototypeNamedCustomConnectionReason": "{name} decides which traffic uses the VPN, stays direct, or is blocked. Rules do not store server choices.",
+  "@prototypeNamedCustomConnectionReason": {
+    "description": "Approved prototype copy: {name} decides which traffic uses the VPN, stays direct, or is blocked. Rules do not store server choices.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeRunningEntriesReason": "This connection selected {entries}. Retesting does not change the current connection.",
+  "@prototypeRunningEntriesReason": {
+    "description": "Approved prototype copy: This connection selected {entries}. Retesting does not change the current connection.",
+    "placeholders": {
+      "entries": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeMultipleEntriesReason": "OneXray selected {count} entry servers with the best speed and availability. New connections are distributed between them.",
+  "@prototypeMultipleEntriesReason": {
+    "description": "Approved prototype copy: OneXray selected {count} entry servers with the best speed and availability. New connections are distributed between them.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeFixedEntryReason": "You selected {server} directly.",
+  "@prototypeFixedEntryReason": {
+    "description": "Approved prototype copy: You selected {server} directly.",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeRegionEntryReason": "OneXray selected {server} as the fastest available server in {region}.",
+  "@prototypeRegionEntryReason": {
+    "description": "Approved prototype copy: OneXray selected {server} as the fastest available server in {region}.",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "region": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeAutomaticEntryReason": "{server} had the best recent speed and availability among eligible servers.",
+  "@prototypeAutomaticEntryReason": {
+    "description": "Approved prototype copy: {server} had the best recent speed and availability among eligible servers.",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeNoAnalyticsLocalLogs": "OneXray does not collect or upload analytics. Optional logs stay on this device.",
+  "@prototypeNoAnalyticsLocalLogs": {
+    "description": "Approved prototype copy: OneXray does not collect or upload analytics. Optional logs stay on this device."
+  },
+  "prototypeEditSubscription": "Edit subscription",
+  "@prototypeEditSubscription": {
+    "description": "Approved prototype copy: Edit subscription"
+  },
+  "prototypeEditServer": "Edit server",
+  "@prototypeEditServer": {
+    "description": "Approved prototype copy: Edit server"
+  },
+  "prototypeShareSubscription": "Share subscription",
+  "@prototypeShareSubscription": {
+    "description": "Approved prototype copy: Share subscription"
+  },
+  "prototypeShareServer": "Share server",
+  "@prototypeShareServer": {
+    "description": "Approved prototype copy: Share server"
+  },
+  "prototypeXrayOutboundJson": "Xray outbound JSON",
+  "@prototypeXrayOutboundJson": {
+    "description": "Approved prototype copy: Xray outbound JSON"
+  },
+  "prototypeOutboundJsonHint": "The outbound must contain a tag and protocol.",
+  "@prototypeOutboundJsonHint": {
+    "description": "Approved prototype copy: The outbound must contain a tag and protocol."
+  },
+  "prototypeSubscriptionOutboundHint": "The outbound must contain a tag and protocol. Subscription updates may replace local changes.",
+  "@prototypeSubscriptionOutboundHint": {
+    "description": "Approved prototype copy: The outbound must contain a tag and protocol. Subscription updates may replace local changes."
+  },
+  "prototypeSubscriptionShareWarning": "Anyone with this link may access the subscription. Age secret keys are never included.",
+  "@prototypeSubscriptionShareWarning": {
+    "description": "Approved prototype copy: Anyone with this link may access the subscription. Age secret keys are never included."
+  },
+  "prototypeServerShareWarning": "This link may contain server credentials. Share it only with people you trust.",
+  "@prototypeServerShareWarning": {
+    "description": "Approved prototype copy: This link may contain server credentials. Share it only with people you trust."
+  },
+  "prototypeCopyShareLink": "Copy share link",
+  "@prototypeCopyShareLink": {
+    "description": "Approved prototype copy: Copy share link"
+  },
+  "prototypeShareLinkCopied": "Share link copied",
+  "@prototypeShareLinkCopied": {
+    "description": "Approved prototype copy: Share link copied"
+  },
+  "prototypeCannotShareLink": "Could not share this link",
+  "@prototypeCannotShareLink": {
+    "description": "Approved prototype copy: Could not share this link"
+  },
+  "prototypeDeleteServer": "Delete this server?",
+  "@prototypeDeleteServer": {
+    "description": "Approved prototype copy: Delete this server?"
+  },
+  "prototypeDeleteSource": "Delete this source?",
+  "@prototypeDeleteSource": {
+    "description": "Approved prototype copy: Delete this source?"
+  },
+  "prototypeCheckForUpdates": "Check for updates",
+  "@prototypeCheckForUpdates": {
+    "description": "Approved prototype copy: Check for updates"
+  },
+  "prototypeSubscriptionUpdateFailed": "Subscription update failed",
+  "@prototypeSubscriptionUpdateFailed": {
+    "description": "Approved prototype copy: Subscription update failed"
+  },
+  "prototypeSubscriptionSaved": "Subscription saved",
+  "@prototypeSubscriptionSaved": {
+    "description": "Approved prototype copy: Subscription saved"
+  },
+  "prototypeChangesApplyToFutureUpdates": "Changes apply to future updates, not the running connection.",
+  "@prototypeChangesApplyToFutureUpdates": {
+    "description": "Approved prototype copy: Changes apply to future updates, not the running connection."
+  },
+  "prototypeSmartRoutingSettings": "Smart Routing settings",
+  "@prototypeSmartRoutingSettings": {
+    "description": "Approved prototype copy: Smart Routing settings"
+  },
+  "prototypeDirectPrivateAddresses": "Direct local network and private addresses",
+  "@prototypeDirectPrivateAddresses": {
+    "description": "Approved prototype copy: Direct local network and private addresses"
+  },
+  "prototypeDirectPrivateAddressesHint": "Reach routers, NAS devices, and private addresses without using the VPN.",
+  "@prototypeDirectPrivateAddressesHint": {
+    "description": "Approved prototype copy: Reach routers, NAS devices, and private addresses without using the VPN."
+  },
+  "prototypeDirectAppleServices": "Direct Apple services",
+  "@prototypeDirectAppleServices": {
+    "description": "Approved prototype copy: Direct Apple services"
+  },
+  "prototypeDirectAppleServicesHint": "Keep App Store, iCloud, and other Apple services on the local connection.",
+  "@prototypeDirectAppleServicesHint": {
+    "description": "Approved prototype copy: Keep App Store, iCloud, and other Apple services on the local connection."
+  },
+  "prototypeResolveUnmatchedDomains": "Resolve unmatched domains for IP rules",
+  "@prototypeResolveUnmatchedDomains": {
+    "description": "Approved prototype copy: Resolve unmatched domains for IP rules"
+  },
+  "prototypeResolveUnmatchedDomainsHint": "When enabled, if no rule matches a domain request, resolve the domain to IP addresses and retry. When disabled, match the available domain or IP without extra DNS resolution for routing.",
+  "@prototypeResolveUnmatchedDomainsHint": {
+    "description": "Approved prototype copy: When enabled, if no rule matches a domain request, resolve the domain to IP addresses and retry. When disabled, match the available domain or IP without extra DNS resolution for routing."
+  },
+  "prototypeBlockAdDomains": "Block common ad domains",
+  "@prototypeBlockAdDomains": {
+    "description": "Approved prototype copy: Block common ad domains"
+  },
+  "prototypeBlockAdDomainsHint": "Use the built-in ad domain list. A few sites may be affected.",
+  "@prototypeBlockAdDomainsHint": {
+    "description": "Approved prototype copy: Use the built-in ad domain list. A few sites may be affected."
+  },
+  "prototypeDirectRegions": "Direct regions",
+  "@prototypeDirectRegions": {
+    "description": "Approved prototype copy: Direct regions"
+  },
+  "prototypeDirectRegionsHint": "Sites and IP addresses in the selected regions stay direct.",
+  "@prototypeDirectRegionsHint": {
+    "description": "Approved prototype copy: Sites and IP addresses in the selected regions stay direct."
+  },
+  "prototypeChooseDirectRegions": "Choose the regions whose sites and IP addresses should stay direct.",
+  "@prototypeChooseDirectRegions": {
+    "description": "Approved prototype copy: Choose the regions whose sites and IP addresses should stay direct."
+  },
+  "prototypeSearchDirectRegions": "Search direct regions",
+  "@prototypeSearchDirectRegions": {
+    "description": "Approved prototype copy: Search direct regions"
+  },
+  "prototypeSelectedCount": "{count} selected",
+  "@prototypeSelectedCount": {
+    "description": "Approved prototype copy: {count} selected",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeClearAll": "Clear all",
+  "@prototypeClearAll": {
+    "description": "Approved prototype copy: Clear all"
+  },
+  "prototypeSupportedRegions": "Supported regions",
+  "@prototypeSupportedRegions": {
+    "description": "Approved prototype copy: Supported regions"
+  },
+  "prototypeInstalledRegionsOnly": "Only regions supported by the installed routing data are listed.",
+  "@prototypeInstalledRegionsOnly": {
+    "description": "Approved prototype copy: Only regions supported by the installed routing data are listed."
+  },
+  "prototypeNoDirectRegions": "No direct regions",
+  "@prototypeNoDirectRegions": {
+    "description": "Approved prototype copy: No direct regions"
+  },
+  "prototypeMoreRegions": "{name} and {count} more",
+  "@prototypeMoreRegions": {
+    "description": "Approved prototype copy: {name} and {count} more",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeAutomaticEntryServers": "Automatic entry servers",
+  "@prototypeAutomaticEntryServers": {
+    "description": "Approved prototype copy: Automatic entry servers"
+  },
+  "prototypeAutomaticEntryServersHint": "Use the best available servers and distribute new connections when more than one is selected.",
+  "@prototypeAutomaticEntryServersHint": {
+    "description": "Approved prototype copy: Use the best available servers and distribute new connections when more than one is selected."
+  },
+  "prototypeVpnFinalExit": "VPN final exit",
+  "@prototypeVpnFinalExit": {
+    "description": "Approved prototype copy: VPN final exit"
+  },
+  "prototypeVpnFinalExitHint": "Optional. VPN traffic reaches the Internet through this fixed server.",
+  "@prototypeVpnFinalExitHint": {
+    "description": "Approved prototype copy: Optional. VPN traffic reaches the Internet through this fixed server."
+  },
+  "prototypeNotSet": "Not set",
+  "@prototypeNotSet": {
+    "description": "Approved prototype copy: Not set"
+  },
+  "prototypeDistributedEntries": "New connections are distributed across {count} entry servers.",
+  "@prototypeDistributedEntries": {
+    "description": "Approved prototype copy: New connections are distributed across {count} entry servers.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeChooseFinalExit": "Choose one fixed server that VPN traffic uses before reaching the Internet.",
+  "@prototypeChooseFinalExit": {
+    "description": "Approved prototype copy: Choose one fixed server that VPN traffic uses before reaching the Internet."
+  },
+  "prototypeNoAdditionalExit": "No additional exit (recommended)",
+  "@prototypeNoAdditionalExit": {
+    "description": "Approved prototype copy: No additional exit (recommended)"
+  },
+  "prototypeEntryConnectsDirectly": "The selected entry server connects directly to the Internet.",
+  "@prototypeEntryConnectsDirectly": {
+    "description": "Approved prototype copy: The selected entry server connects directly to the Internet."
+  },
+  "prototypeRouteName": "Route name",
+  "@prototypeRouteName": {
+    "description": "Approved prototype copy: Route name"
+  },
+  "prototypeRouteNameRequired": "Route name is required",
+  "@prototypeRouteNameRequired": {
+    "description": "Approved prototype copy: Route name is required"
+  },
+  "prototypeRouteNameUnique": "Route names must be unique",
+  "@prototypeRouteNameUnique": {
+    "description": "Approved prototype copy: Route names must be unique"
+  },
+  "prototypeRuleList": "Rule list",
+  "@prototypeRuleList": {
+    "description": "Approved prototype copy: Rule list"
+  },
+  "prototypeRulesMatchInOrder": "Rules match from top to bottom and stop after the first match.",
+  "@prototypeRulesMatchInOrder": {
+    "description": "Approved prototype copy: Rules match from top to bottom and stop after the first match."
+  },
+  "prototypeRuleName": "Rule name",
+  "@prototypeRuleName": {
+    "description": "Approved prototype copy: Rule name"
+  },
+  "prototypeAddRule": "Add rule",
+  "@prototypeAddRule": {
+    "description": "Approved prototype copy: Add rule"
+  },
+  "prototypeEditRule": "Edit rule",
+  "@prototypeEditRule": {
+    "description": "Approved prototype copy: Edit rule"
+  },
+  "prototypeRuleEditHint": "Choose what this rule matches and what happens next.",
+  "@prototypeRuleEditHint": {
+    "description": "Approved prototype copy: Choose what this rule matches and what happens next."
+  },
+  "prototypeRuleConditionsHint": "We recommend setting one condition type only. If you set more than one, every type must match. Multiple values within one type match any one.",
+  "@prototypeRuleConditionsHint": {
+    "description": "Approved prototype copy: We recommend setting one condition type only. If you set more than one, every type must match. Multiple values within one type match any one."
+  },
+  "prototypeMatchWhen": "Match when",
+  "@prototypeMatchWhen": {
+    "description": "Approved prototype copy: Match when"
+  },
+  "prototypeWebsitesDomains": "Websites and domains",
+  "@prototypeWebsitesDomains": {
+    "description": "Approved prototype copy: Websites and domains"
+  },
+  "prototypeDomainGeositeRule": "Domain or geosite rule",
+  "@prototypeDomainGeositeRule": {
+    "description": "Approved prototype copy: Domain or geosite rule"
+  },
+  "prototypeIpAddressesRanges": "IP addresses or ranges",
+  "@prototypeIpAddressesRanges": {
+    "description": "Approved prototype copy: IP addresses or ranges"
+  },
+  "prototypeIpCidrGeoipRule": "IP, CIDR, or geoip rule",
+  "@prototypeIpCidrGeoipRule": {
+    "description": "Approved prototype copy: IP, CIDR, or geoip rule"
+  },
+  "prototypeAddAnother": "Add another",
+  "@prototypeAddAnother": {
+    "description": "Approved prototype copy: Add another"
+  },
+  "prototypeRemoveEntry": "Remove this entry",
+  "@prototypeRemoveEntry": {
+    "description": "Approved prototype copy: Remove this entry"
+  },
+  "prototypeTargetPort": "Target port",
+  "@prototypeTargetPort": {
+    "description": "Approved prototype copy: Target port"
+  },
+  "prototypeNetworkType": "Network type",
+  "@prototypeNetworkType": {
+    "description": "Approved prototype copy: Network type"
+  },
+  "prototypeAny": "Any",
+  "@prototypeAny": {
+    "description": "Approved prototype copy: Any"
+  },
+  "prototypeThen": "Then",
+  "@prototypeThen": {
+    "description": "Approved prototype copy: Then"
+  },
+  "prototypeUseVpn": "Use VPN",
+  "@prototypeUseVpn": {
+    "description": "Approved prototype copy: Use VPN"
+  },
+  "prototypeDirect": "Direct",
+  "@prototypeDirect": {
+    "description": "Approved prototype copy: Direct"
+  },
+  "prototypeBlock": "Block",
+  "@prototypeBlock": {
+    "description": "Approved prototype copy: Block"
+  },
+  "prototypeWhenNoRuleMatches": "When no rule matches",
+  "@prototypeWhenNoRuleMatches": {
+    "description": "Approved prototype copy: When no rule matches"
+  },
+  "prototypeNoMatchConditions": "No match conditions yet",
+  "@prototypeNoMatchConditions": {
+    "description": "Approved prototype copy: No match conditions yet"
+  },
+  "prototypeVpnRuleHint": "Uses the current VPN connection without saving a server in this rule.",
+  "@prototypeVpnRuleHint": {
+    "description": "Approved prototype copy: Uses the current VPN connection without saving a server in this rule."
+  },
+  "prototypeCheckWebsite": "Check a website",
+  "@prototypeCheckWebsite": {
+    "description": "Approved prototype copy: Check a website"
+  },
+  "prototypeCheck": "Check",
+  "@prototypeCheck": {
+    "description": "Approved prototype copy: Check"
+  },
+  "prototypeMatchedRule": "Matched rule",
+  "@prototypeMatchedRule": {
+    "description": "Approved prototype copy: Matched rule"
+  },
+  "prototypeNoneDefault": "None (default)",
+  "@prototypeNoneDefault": {
+    "description": "Approved prototype copy: None (default)"
+  },
+  "prototypeDeleteRoute": "Delete route",
+  "@prototypeDeleteRoute": {
+    "description": "Approved prototype copy: Delete route"
+  },
+  "prototypeDeleteName": "Delete {name}?",
+  "@prototypeDeleteName": {
+    "description": "Approved prototype copy: Delete {name}?",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeRemoveRouteNotice": "This route and all of its rules will be removed.",
+  "@prototypeRemoveRouteNotice": {
+    "description": "Approved prototype copy: This route and all of its rules will be removed."
+  },
+  "prototypeCustomImportHint": "Import into the editor, then save. Sharing does not include selected servers.",
+  "@prototypeCustomImportHint": {
+    "description": "Approved prototype copy: Import into the editor, then save. Sharing does not include selected servers."
+  },
+  "prototypeReplaceCustomRoute": "Replace the custom route currently in the editor?",
+  "@prototypeReplaceCustomRoute": {
+    "description": "Approved prototype copy: Replace the custom route currently in the editor?"
+  },
+  "prototypeCustomImportedIntoEditor": "Custom route imported into the editor. Save to keep it.",
+  "@prototypeCustomImportedIntoEditor": {
+    "description": "Approved prototype copy: Custom route imported into the editor. Save to keep it."
+  },
+  "prototypeCannotReadCustomRoute": "Could not read this custom route. Use a custom routing JSON template.",
+  "@prototypeCannotReadCustomRoute": {
+    "description": "Approved prototype copy: Could not read this custom route. Use a custom routing JSON template."
+  },
+  "prototypeGeodataFilenameConflict": "A routing data filename already exists. Nothing was imported.",
+  "@prototypeGeodataFilenameConflict": {
+    "description": "Approved prototype copy: A routing data filename already exists. Nothing was imported."
+  },
+  "prototypeCustomShareWarning": "This routing template includes your rules and data source URLs, but no selected servers. Share it only with people you trust.",
+  "@prototypeCustomShareWarning": {
+    "description": "Approved prototype copy: This routing template includes your rules and data source URLs, but no selected servers. Share it only with people you trust."
+  },
+  "prototypeCustomJsonExported": "Custom routing JSON exported",
+  "@prototypeCustomJsonExported": {
+    "description": "Approved prototype copy: Custom routing JSON exported"
+  },
+  "prototypeAppearance": "Appearance",
+  "@prototypeAppearance": {
+    "description": "Approved prototype copy: Appearance"
+  },
+  "prototypeAppearanceStartupDescription": "Adjust OneXray appearance and startup behavior",
+  "@prototypeAppearanceStartupDescription": {
+    "description": "Approved prototype copy: Adjust OneXray appearance and startup behavior"
+  },
+  "prototypeSystem": "System",
+  "@prototypeSystem": {
+    "description": "Approved prototype copy: System"
+  },
+  "prototypeLight": "Light",
+  "@prototypeLight": {
+    "description": "Approved prototype copy: Light"
+  },
+  "prototypeDark": "Dark",
+  "@prototypeDark": {
+    "description": "Approved prototype copy: Dark"
+  },
+  "prototypeAppIcon": "App icon",
+  "@prototypeAppIcon": {
+    "description": "Approved prototype copy: App icon"
+  },
+  "prototypeLanguage": "Language",
+  "@prototypeLanguage": {
+    "description": "Approved prototype copy: Language"
+  },
+  "prototypeInterfaceLanguage": "Interface language",
+  "@prototypeInterfaceLanguage": {
+    "description": "Approved prototype copy: Interface language"
+  },
+  "prototypeChooseLanguage": "Choose the language used throughout OneXray.",
+  "@prototypeChooseLanguage": {
+    "description": "Approved prototype copy: Choose the language used throughout OneXray."
+  },
+  "prototypeLanguageSavedNotice": "Saving updates the language on every page. Server and subscription names stay as entered.",
+  "@prototypeLanguageSavedNotice": {
+    "description": "Approved prototype copy: Saving updates the language on every page. Server and subscription names stay as entered."
+  },
+  "prototypeStartup": "Startup",
+  "@prototypeStartup": {
+    "description": "Approved prototype copy: Startup"
+  },
+  "prototypeConnectAfterAppLaunch": "Connect after app launch",
+  "@prototypeConnectAfterAppLaunch": {
+    "description": "Approved prototype copy: Connect after app launch"
+  },
+  "prototypeConnectAfterAppLaunchHint": "Connect to the last used server after opening the app",
+  "@prototypeConnectAfterAppLaunchHint": {
+    "description": "Approved prototype copy: Connect to the last used server after opening the app"
+  },
+  "prototypeLaunchAtLogin": "Launch at login",
+  "@prototypeLaunchAtLogin": {
+    "description": "Approved prototype copy: Launch at login"
+  },
+  "prototypeLaunchAtLoginHint": "Start OneXray when you sign in",
+  "@prototypeLaunchAtLoginHint": {
+    "description": "Approved prototype copy: Start OneXray when you sign in"
+  },
+  "prototypeStartHidden": "Start hidden",
+  "@prototypeStartHidden": {
+    "description": "Approved prototype copy: Start hidden"
+  },
+  "prototypeStartHiddenHint": "Open without showing the main window",
+  "@prototypeStartHiddenHint": {
+    "description": "Approved prototype copy: Open without showing the main window"
+  },
+  "prototypeHideDockIcon": "Hide Dock icon",
+  "@prototypeHideDockIcon": {
+    "description": "Approved prototype copy: Hide Dock icon"
+  },
+  "prototypeHideDockIconHint": "Hide OneXray from the Dock",
+  "@prototypeHideDockIconHint": {
+    "description": "Approved prototype copy: Hide OneXray from the Dock"
+  },
+  "prototypeBackupRestore": "Backup and restore",
+  "@prototypeBackupRestore": {
+    "description": "Approved prototype copy: Backup and restore"
+  },
+  "prototypeBackupRestoreHint": "Keep a copy of your configuration or restore from a backup.",
+  "@prototypeBackupRestoreHint": {
+    "description": "Approved prototype copy: Keep a copy of your configuration or restore from a backup."
+  },
+  "prototypeBackupContents": "Backup contents",
+  "@prototypeBackupContents": {
+    "description": "Approved prototype copy: Backup contents"
+  },
+  "prototypeBackupAssets": "User servers, subscriptions, Age keys, and custom routing configurations.",
+  "@prototypeBackupAssets": {
+    "description": "Approved prototype copy: User servers, subscriptions, Age keys, and custom routing configurations."
+  },
+  "prototypeBackupNoPreferences": "Appearance, language, and other app preferences are not included.",
+  "@prototypeBackupNoPreferences": {
+    "description": "Approved prototype copy: Appearance, language, and other app preferences are not included."
+  },
+  "prototypeBackupSecurityWarning": "Backup files are not encrypted and may contain server credentials, subscription URLs, and Age private keys. Keep them in a trusted location.",
+  "@prototypeBackupSecurityWarning": {
+    "description": "Approved prototype copy: Backup files are not encrypted and may contain server credentials, subscription URLs, and Age private keys. Keep them in a trusted location."
+  },
+  "prototypeBackupFiles": "Backup files",
+  "@prototypeBackupFiles": {
+    "description": "Approved prototype copy: Backup files"
+  },
+  "prototypeCreateBackup": "Create backup",
+  "@prototypeCreateBackup": {
+    "description": "Approved prototype copy: Create backup"
+  },
+  "prototypeImportBackup": "Import backup",
+  "@prototypeImportBackup": {
+    "description": "Approved prototype copy: Import backup"
+  },
+  "prototypeNoBackups": "No backups yet",
+  "@prototypeNoBackups": {
+    "description": "Approved prototype copy: No backups yet"
+  },
+  "prototypeRestoreSelectedBackup": "Restore selected backup",
+  "@prototypeRestoreSelectedBackup": {
+    "description": "Approved prototype copy: Restore selected backup"
+  },
+  "prototypeRestoreBackupQuestion": "Restore this backup?",
+  "@prototypeRestoreBackupQuestion": {
+    "description": "Approved prototype copy: Restore this backup?"
+  },
+  "prototypeRestoreBackupWarning": "Restoring replaces user servers, subscriptions, Age keys, and custom routing configurations. Save a backup of your current data first.",
+  "@prototypeRestoreBackupWarning": {
+    "description": "Approved prototype copy: Restoring replaces user servers, subscriptions, Age keys, and custom routing configurations. Save a backup of your current data first."
+  },
+  "prototypeConfirmRestore": "Confirm restore",
+  "@prototypeConfirmRestore": {
+    "description": "Approved prototype copy: Confirm restore"
+  },
+  "prototypeClearData": "Clear data",
+  "@prototypeClearData": {
+    "description": "Approved prototype copy: Clear data"
+  },
+  "prototypeAbout": "About",
+  "@prototypeAbout": {
+    "description": "Approved prototype copy: About"
+  },
+  "prototypeAboutOneXray": "About OneXray",
+  "@prototypeAboutOneXray": {
+    "description": "Approved prototype copy: About OneXray"
+  },
+  "prototypeAppInformation": "App information, documentation, and support.",
+  "@prototypeAppInformation": {
+    "description": "Approved prototype copy: App information, documentation, and support."
+  },
+  "prototypeCrossPlatformXrayClient": "A cross-platform Xray client",
+  "@prototypeCrossPlatformXrayClient": {
+    "description": "Approved prototype copy: A cross-platform Xray client"
+  },
+  "prototypeAppVersion": "App version",
+  "@prototypeAppVersion": {
+    "description": "Approved prototype copy: App version"
+  },
+  "prototypeCheckAppUpdates": "Check for app updates",
+  "@prototypeCheckAppUpdates": {
+    "description": "Approved prototype copy: Check for app updates"
+  },
+  "prototypeUpdateAvailable": "Update available",
+  "@prototypeUpdateAvailable": {
+    "description": "Approved prototype copy: Update available"
+  },
+  "prototypeSettingsUpdateAvailable": "Settings — update available",
+  "@prototypeSettingsUpdateAvailable": {
+    "description": "Approved prototype copy: Settings — update available"
+  },
+  "prototypeAboutUpdateAvailable": "About OneXray — update available",
+  "@prototypeAboutUpdateAvailable": {
+    "description": "Approved prototype copy: About OneXray — update available"
+  },
+  "prototypeNewVersionAvailable": "New version available",
+  "@prototypeNewVersionAvailable": {
+    "description": "Approved prototype copy: New version available"
+  },
+  "prototypeCurrentVersion": "Current version",
+  "@prototypeCurrentVersion": {
+    "description": "Approved prototype copy: Current version"
+  },
+  "prototypeLatestVersion": "Latest version",
+  "@prototypeLatestVersion": {
+    "description": "Approved prototype copy: Latest version"
+  },
+  "prototypeVersionAvailable": "Version {version} is available",
+  "@prototypeVersionAvailable": {
+    "description": "Approved prototype copy: Version {version} is available",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeCheckNewVersions": "Check for new OneXray versions",
+  "@prototypeCheckNewVersions": {
+    "description": "Approved prototype copy: Check for new OneXray versions"
+  },
+  "prototypeReleaseNotes": "Release notes",
+  "@prototypeReleaseNotes": {
+    "description": "Approved prototype copy: Release notes"
+  },
+  "prototypeLater": "Later",
+  "@prototypeLater": {
+    "description": "Approved prototype copy: Later"
+  },
+  "prototypeSkipVersion": "Skip this version",
+  "@prototypeSkipVersion": {
+    "description": "Approved prototype copy: Skip this version"
+  },
+  "prototypeGoToUpdate": "Go to update",
+  "@prototypeGoToUpdate": {
+    "description": "Approved prototype copy: Go to update"
+  },
+  "prototypeAlreadyUpToDate": "Already up to date",
+  "@prototypeAlreadyUpToDate": {
+    "description": "Approved prototype copy: Already up to date"
+  },
+  "prototypeHelpCommunity": "Help and community",
+  "@prototypeHelpCommunity": {
+    "description": "Approved prototype copy: Help and community"
+  },
+  "prototypeDocumentation": "Documentation",
+  "@prototypeDocumentation": {
+    "description": "Approved prototype copy: Documentation"
+  },
+  "prototypeCommunity": "Community",
+  "@prototypeCommunity": {
+    "description": "Approved prototype copy: Community"
+  },
+  "prototypeSendFeedback": "Send feedback",
+  "@prototypeSendFeedback": {
+    "description": "Approved prototype copy: Send feedback"
+  },
+  "prototypeSourceCode": "Source code",
+  "@prototypeSourceCode": {
+    "description": "Approved prototype copy: Source code"
+  },
+  "prototypeAcknowledgements": "Acknowledgements",
+  "@prototypeAcknowledgements": {
+    "description": "Approved prototype copy: Acknowledgements"
+  },
+  "prototypeData": "Data",
+  "@prototypeData": {
+    "description": "Approved prototype copy: Data"
+  },
+  "prototypeDataUpdates": "Data updates",
+  "@prototypeDataUpdates": {
+    "description": "Approved prototype copy: Data updates"
+  },
+  "prototypeDataUpdateIntervals": "Subscription and Geodata update intervals",
+  "@prototypeDataUpdateIntervals": {
+    "description": "Approved prototype copy: Subscription and Geodata update intervals"
+  },
+  "prototypeDataUpdateIntervalsHint": "Set separate automatic update intervals for subscriptions and Geodata.",
+  "@prototypeDataUpdateIntervalsHint": {
+    "description": "Approved prototype copy: Set separate automatic update intervals for subscriptions and Geodata."
+  },
+  "prototypeAutomaticUpdates": "Automatic updates",
+  "@prototypeAutomaticUpdates": {
+    "description": "Approved prototype copy: Automatic updates"
+  },
+  "prototypeUpdateInterval": "Update interval",
+  "@prototypeUpdateInterval": {
+    "description": "Approved prototype copy: Update interval"
+  },
+  "prototypeEveryDay": "Every day",
+  "@prototypeEveryDay": {
+    "description": "Approved prototype copy: Every day"
+  },
+  "prototypeEveryThreeDays": "Every 3 days",
+  "@prototypeEveryThreeDays": {
+    "description": "Approved prototype copy: Every 3 days"
+  },
+  "prototypeEveryWeek": "Every week",
+  "@prototypeEveryWeek": {
+    "description": "Approved prototype copy: Every week"
+  },
+  "prototypeSubscriptionAutomaticUpdates": "Subscriptions automatic updates",
+  "@prototypeSubscriptionAutomaticUpdates": {
+    "description": "Approved prototype copy: Subscriptions automatic updates"
+  },
+  "prototypeSubscriptionUpdateInterval": "Subscriptions update interval",
+  "@prototypeSubscriptionUpdateInterval": {
+    "description": "Approved prototype copy: Subscriptions update interval"
+  },
+  "prototypeGeodataAutomaticUpdates": "Routing data (Geodata) automatic updates",
+  "@prototypeGeodataAutomaticUpdates": {
+    "description": "Approved prototype copy: Routing data (Geodata) automatic updates"
+  },
+  "prototypeGeodataUpdateInterval": "Routing data (Geodata) update interval",
+  "@prototypeGeodataUpdateInterval": {
+    "description": "Approved prototype copy: Routing data (Geodata) update interval"
+  },
+  "prototypeSubscriptionUpdateGuard": "Updates replace subscription nodes only when at least one usable node is recognized. Otherwise, an error is reported and existing nodes are kept. Your current connection is not changed.",
+  "@prototypeSubscriptionUpdateGuard": {
+    "description": "Approved prototype copy: Updates replace subscription nodes only when at least one usable node is recognized. Otherwise, an error is reported and existing nodes are kept. Your current connection is not changed."
+  },
+  "prototypeGeodataUpdatesTogether": "Applies to default and custom routing data. Default geoip.dat and geosite.dat always update together.",
+  "@prototypeGeodataUpdatesTogether": {
+    "description": "Approved prototype copy: Applies to default and custom routing data. Default geoip.dat and geosite.dat always update together."
+  },
+  "prototypeUpdateTimingNotice": "Updates are checked when the interval has elapsed and the app can run. Exact background timing is not guaranteed. Turning automatic updates off does not disable manual updates.",
+  "@prototypeUpdateTimingNotice": {
+    "description": "Approved prototype copy: Updates are checked when the interval has elapsed and the app can run. Exact background timing is not guaranteed. Turning automatic updates off does not disable manual updates."
+  },
+  "prototypeSpeedTest": "Speed test",
+  "@prototypeSpeedTest": {
+    "description": "Approved prototype copy: Speed test"
+  },
+  "prototypeSpeedTestSummary": "Timeout and speed test URL",
+  "@prototypeSpeedTestSummary": {
+    "description": "Approved prototype copy: Timeout and speed test URL"
+  },
+  "prototypeSpeedTestHint": "Configure the timeout and URL used to test servers.",
+  "@prototypeSpeedTestHint": {
+    "description": "Approved prototype copy: Configure the timeout and URL used to test servers."
+  },
+  "prototypeTimeout": "Timeout",
+  "@prototypeTimeout": {
+    "description": "Approved prototype copy: Timeout"
+  },
+  "prototypeTimeoutHint": "A server is marked as timed out when its test exceeds this limit.",
+  "@prototypeTimeoutHint": {
+    "description": "Approved prototype copy: A server is marked as timed out when its test exceeds this limit."
+  },
+  "prototypeSpeedTestUrl": "Speed test URL",
+  "@prototypeSpeedTestUrl": {
+    "description": "Approved prototype copy: Speed test URL"
+  },
+  "prototypeSpeedTestUrlHint": "Choose a preset or enter an HTTP or HTTPS URL.",
+  "@prototypeSpeedTestUrlHint": {
+    "description": "Approved prototype copy: Choose a preset or enter an HTTP or HTTPS URL."
+  },
+  "prototypeCustomUrl": "Custom URL",
+  "@prototypeCustomUrl": {
+    "description": "Approved prototype copy: Custom URL"
+  },
+  "prototypeEnterHttpUrl": "Enter an HTTP or HTTPS URL.",
+  "@prototypeEnterHttpUrl": {
+    "description": "Approved prototype copy: Enter an HTTP or HTTPS URL."
+  },
+  "prototypeSpeedTestSavedNotice": "Changes apply to future speed tests without reconnecting the VPN.",
+  "@prototypeSpeedTestSavedNotice": {
+    "description": "Approved prototype copy: Changes apply to future speed tests without reconnecting the VPN."
+  },
+  "prototypeSettingsSaved": "Settings saved",
+  "@prototypeSettingsSaved": {
+    "description": "Approved prototype copy: Settings saved"
+  },
+  "prototypeVpnTunnel": "VPN tunnel",
+  "@prototypeVpnTunnel": {
+    "description": "Approved prototype copy: VPN tunnel"
+  },
+  "prototypeXrayRuntimeDiagnostics": "Xray runtime and diagnostics",
+  "@prototypeXrayRuntimeDiagnostics": {
+    "description": "Approved prototype copy: Xray runtime and diagnostics"
+  },
+  "prototypeSystemVpn": "System VPN",
+  "@prototypeSystemVpn": {
+    "description": "Approved prototype copy: System VPN"
+  },
+  "prototypeConnectionStatus": "Connection status",
+  "@prototypeConnectionStatus": {
+    "description": "Approved prototype copy: Connection status"
+  },
+  "prototypeRuntimeStatus": "Runtime status",
+  "@prototypeRuntimeStatus": {
+    "description": "Approved prototype copy: Runtime status"
+  },
+  "prototypeIpv4TunAddress": "IPv4 TUN address",
+  "@prototypeIpv4TunAddress": {
+    "description": "Approved prototype copy: IPv4 TUN address"
+  },
+  "prototypeIpv6TunAddress": "IPv6 TUN address",
+  "@prototypeIpv6TunAddress": {
+    "description": "Approved prototype copy: IPv6 TUN address"
+  },
+  "prototypeUseIpv6": "Use IPv6",
+  "@prototypeUseIpv6": {
+    "description": "Approved prototype copy: Use IPv6"
+  },
+  "prototypeTunnelDns": "Tunnel DNS",
+  "@prototypeTunnelDns": {
+    "description": "Approved prototype copy: Tunnel DNS"
+  },
+  "prototypeIpv4Dns": "IPv4 DNS",
+  "@prototypeIpv4Dns": {
+    "description": "Approved prototype copy: IPv4 DNS"
+  },
+  "prototypeIpv6Dns": "IPv6 DNS",
+  "@prototypeIpv6Dns": {
+    "description": "Approved prototype copy: IPv6 DNS"
+  },
+  "prototypeDomain": "Domain",
+  "@prototypeDomain": {
+    "description": "Approved prototype copy: Domain"
+  },
+  "prototypeChooseInterface": "Choose an interface",
+  "@prototypeChooseInterface": {
+    "description": "Approved prototype copy: Choose an interface"
+  },
+  "prototypeChooseXrayInterface": "Choose the network interface used by Xray",
+  "@prototypeChooseXrayInterface": {
+    "description": "Approved prototype copy: Choose the network interface used by Xray"
+  },
+  "prototypeChooseInterfaceBeforeConnecting": "Choose an Xray outbound interface before connecting",
+  "@prototypeChooseInterfaceBeforeConnecting": {
+    "description": "Approved prototype copy: Choose an Xray outbound interface before connecting"
+  },
+  "prototypeManagedInterfaceNotice": "Selected during initial setup. OneXray manages this setting. Raw JSON cannot override it.",
+  "@prototypeManagedInterfaceNotice": {
+    "description": "Approved prototype copy: Selected during initial setup. OneXray manages this setting. Raw JSON cannot override it."
+  },
+  "prototypeManagedTunNotice": "OneXray manages TUN settings. Raw JSON cannot override them.",
+  "@prototypeManagedTunNotice": {
+    "description": "Approved prototype copy: OneXray manages TUN settings. Raw JSON cannot override them."
+  },
+  "prototypeNotConnected": "Not connected",
+  "@prototypeNotConnected": {
+    "description": "Approved prototype copy: Not connected"
+  },
+  "prototypeRestoreDefaults": "Restore default settings",
+  "@prototypeRestoreDefaults": {
+    "description": "Approved prototype copy: Restore default settings"
+  },
+  "prototypeSaveAndReconnect": "Save and reconnect",
+  "@prototypeSaveAndReconnect": {
+    "description": "Approved prototype copy: Save and reconnect"
+  },
+  "prototypeAdvancedSettingsSaved": "Advanced settings saved",
+  "@prototypeAdvancedSettingsSaved": {
+    "description": "Approved prototype copy: Advanced settings saved"
+  },
+  "prototypeXrayCore": "Xray core",
+  "@prototypeXrayCore": {
+    "description": "Approved prototype copy: Xray core"
+  },
+  "prototypeRunningNormally": "Running normally",
+  "@prototypeRunningNormally": {
+    "description": "Approved prototype copy: Running normally"
+  },
+  "prototypeVersion": "Version",
+  "@prototypeVersion": {
+    "description": "Approved prototype copy: Version"
+  },
+  "prototypeUptime": "Uptime",
+  "@prototypeUptime": {
+    "description": "Approved prototype copy: Uptime"
+  },
+  "prototypeRoutingData": "Routing data (Geodata)",
+  "@prototypeRoutingData": {
+    "description": "Approved prototype copy: Routing data (Geodata)"
+  },
+  "prototypeRoutingDataHint": "Manage data sources for geoip / geosite routing rules.",
+  "@prototypeRoutingDataHint": {
+    "description": "Approved prototype copy: Manage data sources for geoip / geosite routing rules."
+  },
+  "prototypeRoutingDataSummary": "View, add, and update local routing data files",
+  "@prototypeRoutingDataSummary": {
+    "description": "Approved prototype copy: View, add, and update local routing data files"
+  },
+  "prototypeAddGeodata": "Add Geodata",
+  "@prototypeAddGeodata": {
+    "description": "Approved prototype copy: Add Geodata"
+  },
+  "prototypeAddDataSource": "Add data source",
+  "@prototypeAddDataSource": {
+    "description": "Approved prototype copy: Add data source"
+  },
+  "prototypeUpdateAll": "Update all",
+  "@prototypeUpdateAll": {
+    "description": "Approved prototype copy: Update all"
+  },
+  "prototypeHttpsOnly": "HTTPS download URLs only",
+  "@prototypeHttpsOnly": {
+    "description": "Approved prototype copy: HTTPS download URLs only"
+  },
+  "prototypeDataType": "Data type",
+  "@prototypeDataType": {
+    "description": "Approved prototype copy: Data type"
+  },
+  "prototypeSavedFileName": "Name (saved file name)",
+  "@prototypeSavedFileName": {
+    "description": "Approved prototype copy: Name (saved file name)"
+  },
+  "prototypeEnterFileName": "Enter a file name.",
+  "@prototypeEnterFileName": {
+    "description": "Approved prototype copy: Enter a file name."
+  },
+  "prototypeHttpsDownloadAddress": "HTTPS download address",
+  "@prototypeHttpsDownloadAddress": {
+    "description": "Approved prototype copy: HTTPS download address"
+  },
+  "prototypeEnterHttpsUrl": "Enter an HTTPS download URL.",
+  "@prototypeEnterHttpsUrl": {
+    "description": "Approved prototype copy: Enter an HTTPS download URL."
+  },
+  "prototypeFileName": "File name",
+  "@prototypeFileName": {
+    "description": "Approved prototype copy: File name"
+  },
+  "prototypeSize": "Size",
+  "@prototypeSize": {
+    "description": "Approved prototype copy: Size"
+  },
+  "prototypeLastSuccessfulUpdate": "Last successful update",
+  "@prototypeLastSuccessfulUpdate": {
+    "description": "Approved prototype copy: Last successful update"
+  },
+  "prototypeIpRuleData": "IP rule data",
+  "@prototypeIpRuleData": {
+    "description": "Approved prototype copy: IP rule data"
+  },
+  "prototypeDomainRuleData": "Domain rule data",
+  "@prototypeDomainRuleData": {
+    "description": "Approved prototype copy: Domain rule data"
+  },
+  "prototypeDefaultRoutingData": "Default routing data",
+  "@prototypeDefaultRoutingData": {
+    "description": "Approved prototype copy: Default routing data"
+  },
+  "prototypeCustomRoutingData": "Custom routing data",
+  "@prototypeCustomRoutingData": {
+    "description": "Approved prototype copy: Custom routing data"
+  },
+  "prototypeCustomRuleDataset": "Custom rule dataset {count}",
+  "@prototypeCustomRuleDataset": {
+    "description": "Approved prototype copy: Custom rule dataset {count}",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeUpdatedTogether": "Updated together",
+  "@prototypeUpdatedTogether": {
+    "description": "Approved prototype copy: Updated together"
+  },
+  "prototypeNoCustomRoutingData": "No custom routing data yet.",
+  "@prototypeNoCustomRoutingData": {
+    "description": "Approved prototype copy: No custom routing data yet."
+  },
+  "prototypeDeleteCustomDataset": "Delete custom dataset",
+  "@prototypeDeleteCustomDataset": {
+    "description": "Approved prototype copy: Delete custom dataset"
+  },
+  "prototypeDeleteCustomDatasetQuestion": "Delete this custom routing dataset?",
+  "@prototypeDeleteCustomDatasetQuestion": {
+    "description": "Approved prototype copy: Delete this custom routing dataset?"
+  },
+  "prototypeDeleteDatasetWarning": "Rules using this dataset may no longer match after deletion.",
+  "@prototypeDeleteDatasetWarning": {
+    "description": "Approved prototype copy: Rules using this dataset may no longer match after deletion."
+  },
+  "prototypeJustNow": "Just now",
+  "@prototypeJustNow": {
+    "description": "Approved prototype copy: Just now"
+  },
+  "prototypeUpdate": "Update",
+  "@prototypeUpdate": {
+    "description": "Approved prototype copy: Update"
+  },
+  "prototypeUpdateDefaultRoutingData": "Update default routing data",
+  "@prototypeUpdateDefaultRoutingData": {
+    "description": "Approved prototype copy: Update default routing data"
+  },
+  "prototypeGeodataAdded": "Geodata added",
+  "@prototypeGeodataAdded": {
+    "description": "Approved prototype copy: Geodata added"
+  },
+  "prototypeGeodataUpdated": "Geodata updated",
+  "@prototypeGeodataUpdated": {
+    "description": "Approved prototype copy: Geodata updated"
+  },
+  "prototypeLogs": "Logs",
+  "@prototypeLogs": {
+    "description": "Approved prototype copy: Logs"
+  },
+  "prototypeRuntimeConfiguration": "Runtime configuration",
+  "@prototypeRuntimeConfiguration": {
+    "description": "Approved prototype copy: Runtime configuration"
+  },
+  "prototypeRecordXrayLogs": "Record Xray logs",
+  "@prototypeRecordXrayLogs": {
+    "description": "Approved prototype copy: Record Xray logs"
+  },
+  "prototypeErrorLogLevel": "Error log level",
+  "@prototypeErrorLogLevel": {
+    "description": "Approved prototype copy: Error log level"
+  },
+  "prototypeWarning": "Warning",
+  "@prototypeWarning": {
+    "description": "Approved prototype copy: Warning"
+  },
+  "prototypeRecordDnsQueries": "Record DNS queries",
+  "@prototypeRecordDnsQueries": {
+    "description": "Approved prototype copy: Record DNS queries"
+  },
+  "prototypeHideLogIpAddresses": "Hide IP addresses in logs",
+  "@prototypeHideLogIpAddresses": {
+    "description": "Approved prototype copy: Hide IP addresses in logs"
+  },
+  "prototypeAccessLog": "Access log",
+  "@prototypeAccessLog": {
+    "description": "Approved prototype copy: Access log"
+  },
+  "prototypeErrorLog": "Error log",
+  "@prototypeErrorLog": {
+    "description": "Approved prototype copy: Error log"
+  },
+  "prototypeAccessLogHint": "Accepted connections and optional DNS queries",
+  "@prototypeAccessLogHint": {
+    "description": "Approved prototype copy: Accepted connections and optional DNS queries"
+  },
+  "prototypeErrorLogHint": "Core diagnostics and runtime errors",
+  "@prototypeErrorLogHint": {
+    "description": "Approved prototype copy: Core diagnostics and runtime errors"
+  },
+  "prototypeRecentXrayConfiguration": "Recently generated Xray configuration",
+  "@prototypeRecentXrayConfiguration": {
+    "description": "Approved prototype copy: Recently generated Xray configuration"
+  },
+  "prototypeReadOnlyRuntimeConfiguration": "Read-only runtime configuration",
+  "@prototypeReadOnlyRuntimeConfiguration": {
+    "description": "Approved prototype copy: Read-only runtime configuration"
+  },
+  "prototypeManagedLogNotice": "OneXray manages both Xray log files. log settings in Raw JSON do not apply.",
+  "@prototypeManagedLogNotice": {
+    "description": "Approved prototype copy: OneXray manages both Xray log files. log settings in Raw JSON do not apply."
+  },
+  "prototypeFollowing": "Following",
+  "@prototypeFollowing": {
+    "description": "Approved prototype copy: Following"
+  },
+  "prototypeLocalLogNotice": "This log remains on this device unless you export it.",
+  "@prototypeLocalLogNotice": {
+    "description": "Approved prototype copy: This log remains on this device unless you export it."
+  },
+  "prototypeReadOnly": "Read only",
+  "@prototypeReadOnly": {
+    "description": "Approved prototype copy: Read only"
+  },
+  "prototypeExportOriginalConfiguration": "Export original configuration",
+  "@prototypeExportOriginalConfiguration": {
+    "description": "Approved prototype copy: Export original configuration"
+  },
+  "prototypeExportOriginalConfigurationQuestion": "Confirm export of the original configuration",
+  "@prototypeExportOriginalConfigurationQuestion": {
+    "description": "Approved prototype copy: Confirm export of the original configuration"
+  },
+  "prototypeExportOriginalConfigurationWarning": "The original configuration may contain sensitive data. Confirm before exporting.",
+  "@prototypeExportOriginalConfigurationWarning": {
+    "description": "Approved prototype copy: The original configuration may contain sensitive data. Confirm before exporting."
+  },
+  "prototypeExport": "Export",
+  "@prototypeExport": {
+    "description": "Approved prototype copy: Export"
+  },
+  "prototypeCustom": "Custom",
+  "@prototypeCustom": {
+    "description": "Approved prototype copy: Custom"
+  },
+  "prototypeErrorsOnly": "Errors only",
+  "@prototypeErrorsOnly": {
+    "description": "Approved prototype copy: Errors only"
+  },
+  "prototypeDownloadCompatibility": "Download compatibility",
+  "@prototypeDownloadCompatibility": {
+    "description": "Approved prototype copy: Download compatibility"
+  },
+  "prototypeDownloadCompatibilityHint": "Choose the User-Agent sent when downloading subscriptions and routing data.",
+  "@prototypeDownloadCompatibilityHint": {
+    "description": "Approved prototype copy: Choose the User-Agent sent when downloading subscriptions and routing data."
+  },
+  "prototypeSystemBrowser": "System browser",
+  "@prototypeSystemBrowser": {
+    "description": "Approved prototype copy: System browser"
+  },
+  "prototypeDueUpdatesRetryNotice": "Failed updates keep the current data and remain due. After the VPN connects, due automatic updates are retried; there is no separate retry switch.",
+  "@prototypeDueUpdatesRetryNotice": {
+    "description": "Approved prototype copy: Failed updates keep the current data and remain due. After the VPN connects, due automatic updates are retried; there is no separate retry switch."
+  },
+  "prototypeDataSource": "Data source",
+  "@prototypeDataSource": {
+    "description": "Approved prototype copy: Data source"
+  },
+  "prototypeSourceUrl": "Source URL",
+  "@prototypeSourceUrl": {
+    "description": "Approved prototype copy: Source URL"
+  },
+  "prototypeCopySourceUrl": "Copy source URL",
+  "@prototypeCopySourceUrl": {
+    "description": "Approved prototype copy: Copy source URL"
+  },
+  "prototypeSourceUrlCopied": "Source URL copied",
+  "@prototypeSourceUrlCopied": {
+    "description": "Approved prototype copy: Source URL copied"
+  },
+  "prototypeCategories": "Categories",
+  "@prototypeCategories": {
+    "description": "Approved prototype copy: Categories"
+  },
+  "prototypeSearchCategories": "Search categories",
+  "@prototypeSearchCategories": {
+    "description": "Approved prototype copy: Search categories"
+  },
+  "prototypeCopyRuleReference": "Copy rule reference",
+  "@prototypeCopyRuleReference": {
+    "description": "Approved prototype copy: Copy rule reference"
+  },
+  "prototypeRuleReferenceCopied": "Rule reference copied",
+  "@prototypeRuleReferenceCopied": {
+    "description": "Approved prototype copy: Rule reference copied"
+  },
+  "prototypeNoMatchingCategories": "No matching categories",
+  "@prototypeNoMatchingCategories": {
+    "description": "Approved prototype copy: No matching categories"
+  },
+  "prototypeDataFileMissing": "This routing data file is no longer available.",
+  "@prototypeDataFileMissing": {
+    "description": "Approved prototype copy: This routing data file is no longer available."
+  },
+  "prototypeAndroidSystemVpn": "Android system VPN",
+  "@prototypeAndroidSystemVpn": {
+    "description": "Approved prototype copy: Android system VPN"
+  },
+  "prototypeAndroidVpnDescription": "VpnService and app routing settings",
+  "@prototypeAndroidVpnDescription": {
+    "description": "Approved prototype copy: VpnService and app routing settings"
+  },
+  "prototypeVpnAppScope": "VPN app scope",
+  "@prototypeVpnAppScope": {
+    "description": "Approved prototype copy: VPN app scope"
+  },
+  "prototypeChooseAndroidApps": "Choose which Android apps use the VPN",
+  "@prototypeChooseAndroidApps": {
+    "description": "Approved prototype copy: Choose which Android apps use the VPN"
+  },
+  "prototypeAllApps": "All apps",
+  "@prototypeAllApps": {
+    "description": "Approved prototype copy: All apps"
+  },
+  "prototypeOnlySelectedApps": "Only selected apps",
+  "@prototypeOnlySelectedApps": {
+    "description": "Approved prototype copy: Only selected apps"
+  },
+  "prototypeAllExceptSelectedApps": "All except selected apps",
+  "@prototypeAllExceptSelectedApps": {
+    "description": "Approved prototype copy: All except selected apps"
+  },
+  "prototypeAllAppsUseVpn": "All installed apps use the VPN.",
+  "@prototypeAllAppsUseVpn": {
+    "description": "Approved prototype copy: All installed apps use the VPN."
+  },
+  "prototypeOnlySelectedAppsUseVpn": "Only the selected apps use the VPN.",
+  "@prototypeOnlySelectedAppsUseVpn": {
+    "description": "Approved prototype copy: Only the selected apps use the VPN."
+  },
+  "prototypeSelectedAppsBypassVpn": "Selected apps bypass the VPN.",
+  "@prototypeSelectedAppsBypassVpn": {
+    "description": "Approved prototype copy: Selected apps bypass the VPN."
+  },
+  "prototypeAppsUsingVpn": "Apps using the VPN",
+  "@prototypeAppsUsingVpn": {
+    "description": "Approved prototype copy: Apps using the VPN"
+  },
+  "prototypeAppsBypassingVpn": "Apps bypassing the VPN",
+  "@prototypeAppsBypassingVpn": {
+    "description": "Approved prototype copy: Apps bypassing the VPN"
+  },
+  "prototypeNoAppsSelected": "No apps selected",
+  "@prototypeNoAppsSelected": {
+    "description": "Approved prototype copy: No apps selected"
+  },
+  "prototypeSelectApps": "Select apps",
+  "@prototypeSelectApps": {
+    "description": "Approved prototype copy: Select apps"
+  },
+  "prototypeChooseAppsUseVpn": "Choose apps that use the VPN",
+  "@prototypeChooseAppsUseVpn": {
+    "description": "Approved prototype copy: Choose apps that use the VPN"
+  },
+  "prototypeChooseAppsBypassVpn": "Choose apps that bypass the VPN",
+  "@prototypeChooseAppsBypassVpn": {
+    "description": "Approved prototype copy: Choose apps that bypass the VPN"
+  },
+  "prototypeSeparateAppListsNotice": "The two app lists are saved separately when you switch modes.",
+  "@prototypeSeparateAppListsNotice": {
+    "description": "Approved prototype copy: The two app lists are saved separately when you switch modes."
+  },
+  "prototypeSearchInstalledApps": "Search installed apps",
+  "@prototypeSearchInstalledApps": {
+    "description": "Approved prototype copy: Search installed apps"
+  },
+  "prototypeAppsSelectedCount": "{count} apps selected",
+  "@prototypeAppsSelectedCount": {
+    "description": "Approved prototype copy: {count} apps selected",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeInstalledApps": "Installed apps",
+  "@prototypeInstalledApps": {
+    "description": "Approved prototype copy: Installed apps"
+  },
+  "prototypeNoMatchingApps": "No installed apps match your search.",
+  "@prototypeNoMatchingApps": {
+    "description": "Approved prototype copy: No installed apps match your search."
+  },
+  "prototypeWindowsSystemVpn": "Windows system VPN",
+  "@prototypeWindowsSystemVpn": {
+    "description": "Approved prototype copy: Windows system VPN"
+  },
+  "prototypeWindowsVpnDescription": "Automatic connection and network bypass",
+  "@prototypeWindowsVpnDescription": {
+    "description": "Approved prototype copy: Automatic connection and network bypass"
+  },
+  "prototypeSystemVpnPolicy": "System VPN policy",
+  "@prototypeSystemVpnPolicy": {
+    "description": "Approved prototype copy: System VPN policy"
+  },
+  "prototypeWindowsBypassNotice": "Applies to all apps. Bypassed traffic never enters Xray routing. Raw JSON cannot override these settings.",
+  "@prototypeWindowsBypassNotice": {
+    "description": "Approved prototype copy: Applies to all apps. Bypassed traffic never enters Xray routing. Raw JSON cannot override these settings."
+  },
+  "prototypeWindowsAutoConnectNotice": "Allow Windows to connect automatically. This depends on Windows settings and the active VPN profile; it does not guarantee an uninterrupted connection.",
+  "@prototypeWindowsAutoConnectNotice": {
+    "description": "Approved prototype copy: Allow Windows to connect automatically. This depends on Windows settings and the active VPN profile; it does not guarantee an uninterrupted connection."
+  },
+  "prototypeBypassLocalSubnets": "Bypass local subnets",
+  "@prototypeBypassLocalSubnets": {
+    "description": "Approved prototype copy: Bypass local subnets"
+  },
+  "prototypeBypassLocalSubnetsHint": "Access devices on directly connected local subnets without the VPN. When off, that traffic enters Xray routing, except for the networks listed below.",
+  "@prototypeBypassLocalSubnetsHint": {
+    "description": "Approved prototype copy: Access devices on directly connected local subnets without the VPN. When off, that traffic enters Xray routing, except for the networks listed below."
+  },
+  "prototypeBypassNetworks": "Networks bypassing the VPN",
+  "@prototypeBypassNetworks": {
+    "description": "Approved prototype copy: Networks bypassing the VPN"
+  },
+  "prototypeBypassNetworksHint": "These networks always bypass the VPN, even when local subnet bypass is off.",
+  "@prototypeBypassNetworksHint": {
+    "description": "Approved prototype copy: These networks always bypass the VPN, even when local subnet bypass is off."
+  },
+  "prototypeBypassNetworkNumber": "Bypass network {number}",
+  "@prototypeBypassNetworkNumber": {
+    "description": "Approved prototype copy: Bypass network {number}",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeRemoveBypassNetworkNumber": "Remove bypass network {number}",
+  "@prototypeRemoveBypassNetworkNumber": {
+    "description": "Approved prototype copy: Remove bypass network {number}",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeNoBypassNetworks": "No bypass networks added.",
+  "@prototypeNoBypassNetworks": {
+    "description": "Approved prototype copy: No bypass networks added."
+  },
+  "prototypeAddNetwork": "Add network",
+  "@prototypeAddNetwork": {
+    "description": "Approved prototype copy: Add network"
+  },
+  "prototypeBypassNetworkInputHint": "One IPv4 or IPv6 CIDR per field, up to 64. Use /32 or /128 for one address. Duplicate entries, /0, and networks containing tunnel DNS are not supported.",
+  "@prototypeBypassNetworkInputHint": {
+    "description": "Approved prototype copy: One IPv4 or IPv6 CIDR per field, up to 64. Use /32 or /128 for one address. Duplicate entries, /0, and networks containing tunnel DNS are not supported."
+  },
+  "prototypeEnableIpv6ForBypass": "IPv6 is off. Enable it in VPN tunnel before adding IPv6 networks.",
+  "@prototypeEnableIpv6ForBypass": {
+    "description": "Approved prototype copy: IPv6 is off. Enable it in VPN tunnel before adding IPv6 networks."
+  },
+  "prototypeIpv6BypassConflict": "Enable IPv6 or remove IPv6 entries in Windows system VPN before saving.",
+  "@prototypeIpv6BypassConflict": {
+    "description": "Approved prototype copy: Enable IPv6 or remove IPv6 entries in Windows system VPN before saving."
+  },
+  "prototypeChooseInterfaceBeforeSaving": "Choose an Xray outbound interface before saving.",
+  "@prototypeChooseInterfaceBeforeSaving": {
+    "description": "Approved prototype copy: Choose an Xray outbound interface before saving."
+  },
+  "prototypeAppleSystemVpn": "Apple system VPN",
+  "@prototypeAppleSystemVpn": {
+    "description": "Approved prototype copy: Apple system VPN"
+  },
+  "prototypeAppleVpnDescription": "Network Extension settings",
+  "@prototypeAppleVpnDescription": {
+    "description": "Approved prototype copy: Network Extension settings"
+  },
+  "prototypeCaptureAllTraffic": "Capture all traffic",
+  "@prototypeCaptureAllTraffic": {
+    "description": "Approved prototype copy: Capture all traffic"
+  },
+  "prototypeCaptureAllTrafficHint": "Send all device network traffic through the VPN.",
+  "@prototypeCaptureAllTrafficHint": {
+    "description": "Approved prototype copy: Send all device network traffic through the VPN."
+  },
+  "prototypeAllowLocalNetwork": "Allow local network",
+  "@prototypeAllowLocalNetwork": {
+    "description": "Approved prototype copy: Allow local network"
+  },
+  "prototypeAllowLocalNetworkHint": "Allow access to devices and services on the local network.",
+  "@prototypeAllowLocalNetworkHint": {
+    "description": "Approved prototype copy: Allow access to devices and services on the local network."
+  },
+  "prototypeBypassCellularServices": "Bypass cellular services",
+  "@prototypeBypassCellularServices": {
+    "description": "Approved prototype copy: Bypass cellular services"
+  },
+  "prototypeBypassCellularServicesHint": "Access carrier-provided cellular services without the VPN.",
+  "@prototypeBypassCellularServicesHint": {
+    "description": "Approved prototype copy: Access carrier-provided cellular services without the VPN."
+  },
+  "prototypeBypassApplePush": "Bypass Apple Push Notification service",
+  "@prototypeBypassApplePush": {
+    "description": "Approved prototype copy: Bypass Apple Push Notification service"
+  },
+  "prototypeBypassApplePushHint": "Access Apple Push Notification service without the VPN.",
+  "@prototypeBypassApplePushHint": {
+    "description": "Approved prototype copy: Access Apple Push Notification service without the VPN."
+  },
+  "prototypeAllowDeviceCommunication": "Allow device communication",
+  "@prototypeAllowDeviceCommunication": {
+    "description": "Approved prototype copy: Allow device communication"
+  },
+  "prototypeAllowDeviceCommunicationHint": "Allow communication between this device and nearby devices.",
+  "@prototypeAllowDeviceCommunicationHint": {
+    "description": "Approved prototype copy: Allow communication between this device and nearby devices."
+  },
+  "prototypeUseDnsOverTls": "Use DNS over TLS",
+  "@prototypeUseDnsOverTls": {
+    "description": "Approved prototype copy: Use DNS over TLS"
+  },
+  "prototypeUseDnsOverTlsHint": "Use encrypted DNS for better privacy.",
+  "@prototypeUseDnsOverTlsHint": {
+    "description": "Approved prototype copy: Use encrypted DNS for better privacy."
+  },
+  "prototypeAutomaticConnection": "Automatic connection",
+  "@prototypeAutomaticConnection": {
+    "description": "Approved prototype copy: Automatic connection"
+  },
+  "prototypeAutomaticConnectionDisconnection": "Automatic connection and disconnection",
+  "@prototypeAutomaticConnectionDisconnection": {
+    "description": "Approved prototype copy: Automatic connection and disconnection"
+  },
+  "prototypeAlwaysOn": "Always on",
+  "@prototypeAlwaysOn": {
+    "description": "Approved prototype copy: Always on"
+  },
+  "prototypeAlwaysOnHint": "Automatically connect the VPN when network activity occurs on any network.",
+  "@prototypeAlwaysOnHint": {
+    "description": "Approved prototype copy: Automatically connect the VPN when network activity occurs on any network."
+  },
+  "prototypeConnectOnDemand": "Connect on demand",
+  "@prototypeConnectOnDemand": {
+    "description": "Approved prototype copy: Connect on demand"
+  },
+  "prototypeConnectOnDemandHint": "Connect or disconnect the VPN automatically based on the current network.",
+  "@prototypeConnectOnDemandHint": {
+    "description": "Approved prototype copy: Connect or disconnect the VPN automatically based on the current network."
+  },
+  "prototypeConnectTo": "Connect to",
+  "@prototypeConnectTo": {
+    "description": "Approved prototype copy: Connect to"
+  },
+  "prototypeThenConnectVpn": "then automatically connect the VPN.",
+  "@prototypeThenConnectVpn": {
+    "description": "Approved prototype copy: then automatically connect the VPN."
+  },
+  "prototypeThenDisconnectVpn": "then disconnect the VPN.",
+  "@prototypeThenDisconnectVpn": {
+    "description": "Approved prototype copy: then disconnect the VPN."
+  },
+  "prototypeOtherWifiNetworks": "On other Wi-Fi networks",
+  "@prototypeOtherWifiNetworks": {
+    "description": "Approved prototype copy: On other Wi-Fi networks"
+  },
+  "prototypeKeepCurrentConnection": "Keep current connection",
+  "@prototypeKeepCurrentConnection": {
+    "description": "Approved prototype copy: Keep current connection"
+  },
+  "prototypeKeepCurrentConnectionHint": "Do not connect automatically or disconnect an existing connection.",
+  "@prototypeKeepCurrentConnectionHint": {
+    "description": "Approved prototype copy: Do not connect automatically or disconnect an existing connection."
+  },
+  "prototypeEditWifi": "Edit Wi-Fi",
+  "@prototypeEditWifi": {
+    "description": "Approved prototype copy: Edit Wi-Fi"
+  },
+  "prototypeEditWifiRules": "Edit Wi-Fi rules",
+  "@prototypeEditWifiRules": {
+    "description": "Approved prototype copy: Edit Wi-Fi rules"
+  },
+  "prototypeWifiRules": "Wi-Fi rules",
+  "@prototypeWifiRules": {
+    "description": "Approved prototype copy: Wi-Fi rules"
+  },
+  "prototypeWifiRulesHint": "Choose when Wi-Fi connects or disconnects the VPN",
+  "@prototypeWifiRulesHint": {
+    "description": "Approved prototype copy: Choose when Wi-Fi connects or disconnects the VPN"
+  },
+  "prototypeWifiConnectNetworks": "Wi-Fi networks that connect the VPN",
+  "@prototypeWifiConnectNetworks": {
+    "description": "Approved prototype copy: Wi-Fi networks that connect the VPN"
+  },
+  "prototypeWifiConnectNetworksHint": "Connect to these Wi-Fi networks to automatically connect the VPN.",
+  "@prototypeWifiConnectNetworksHint": {
+    "description": "Approved prototype copy: Connect to these Wi-Fi networks to automatically connect the VPN."
+  },
+  "prototypeWifiDisconnectNetworks": "Wi-Fi networks that disconnect the VPN",
+  "@prototypeWifiDisconnectNetworks": {
+    "description": "Approved prototype copy: Wi-Fi networks that disconnect the VPN"
+  },
+  "prototypeWifiDisconnectNetworksHint": "Connect to these Wi-Fi networks to disconnect the VPN.",
+  "@prototypeWifiDisconnectNetworksHint": {
+    "description": "Approved prototype copy: Connect to these Wi-Fi networks to disconnect the VPN."
+  },
+  "prototypeWifiInputHint": "Enter one complete Wi-Fi name in each field.",
+  "@prototypeWifiInputHint": {
+    "description": "Approved prototype copy: Enter one complete Wi-Fi name in each field."
+  },
+  "prototypeAddWifi": "Add Wi-Fi",
+  "@prototypeAddWifi": {
+    "description": "Approved prototype copy: Add Wi-Fi"
+  },
+  "prototypeWifiExactMatchNotice": "Wi-Fi names must match exactly and cannot appear in both groups.",
+  "@prototypeWifiExactMatchNotice": {
+    "description": "Approved prototype copy: Wi-Fi names must match exactly and cannot appear in both groups."
+  },
+  "prototypeRemoveWifi": "Remove Wi-Fi",
+  "@prototypeRemoveWifi": {
+    "description": "Approved prototype copy: Remove Wi-Fi"
+  },
+  "prototypeNoWifiRules": "No Wi-Fi rules added.",
+  "@prototypeNoWifiRules": {
+    "description": "Approved prototype copy: No Wi-Fi rules added."
+  },
+  "prototypeOtherNetworkRulesApply": "Cellular or Ethernet rules still apply when configured.",
+  "@prototypeOtherNetworkRulesApply": {
+    "description": "Approved prototype copy: Cellular or Ethernet rules still apply when configured."
+  },
+  "prototypeCellularNetwork": "Cellular network",
+  "@prototypeCellularNetwork": {
+    "description": "Approved prototype copy: Cellular network"
+  },
+  "prototypeWhenUsingCellular": "When using cellular data",
+  "@prototypeWhenUsingCellular": {
+    "description": "Approved prototype copy: When using cellular data"
+  },
+  "prototypeEthernet": "Ethernet",
+  "@prototypeEthernet": {
+    "description": "Approved prototype copy: Ethernet"
+  },
+  "prototypeWhenUsingEthernet": "When using a wired network",
+  "@prototypeWhenUsingEthernet": {
+    "description": "Approved prototype copy: When using a wired network"
+  },
+  "prototypeConnectAutomatically": "Connect automatically",
+  "@prototypeConnectAutomatically": {
+    "description": "Approved prototype copy: Connect automatically"
+  },
+  "prototypeDisconnectVpn": "Disconnect VPN",
+  "@prototypeDisconnectVpn": {
+    "description": "Approved prototype copy: Disconnect VPN"
+  },
+  "prototypeDeleteRawQuestion": "Delete this Raw JSON configuration?",
+  "@prototypeDeleteRawQuestion": {
+    "description": "Approved prototype copy: Delete this Raw JSON configuration?"
+  },
+  "prototypeActiveRawDeleteNotice": "Deleting the active configuration returns to your previous ordinary connection selection.",
+  "@prototypeActiveRawDeleteNotice": {
+    "description": "Approved prototype copy: Deleting the active configuration returns to your previous ordinary connection selection."
+  },
+  "prototypeRawDeleteNotice": "This configuration will be removed from this device.",
+  "@prototypeRawDeleteNotice": {
+    "description": "Approved prototype copy: This configuration will be removed from this device."
+  },
+  "prototypeDeleteAndReconnect": "Delete and reconnect",
+  "@prototypeDeleteAndReconnect": {
+    "description": "Approved prototype copy: Delete and reconnect"
+  },
+  "prototypeDeleteAndDisconnect": "Delete and disconnect",
+  "@prototypeDeleteAndDisconnect": {
+    "description": "Approved prototype copy: Delete and disconnect"
+  },
+  "prototypeRawDeleteDisconnectNotice": "No ordinary servers are configured. Deleting this active configuration disconnects the VPN.",
+  "@prototypeRawDeleteDisconnectNotice": {
+    "description": "Approved prototype copy: No ordinary servers are configured. Deleting this active configuration disconnects the VPN."
+  }
 }

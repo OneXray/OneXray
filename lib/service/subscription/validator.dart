@@ -1,4 +1,5 @@
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:tuple/tuple.dart';
 
@@ -15,7 +16,7 @@ class SubscriptionValidator {
       return Tuple2(false, appLocalizationsNoContext().validationUrlRequired);
     }
     final uri = Uri.tryParse(url);
-    if (uri == null) {
+    if (uri == null || !NetClient.isHttpsDownloadUri(uri)) {
       return Tuple2(false, appLocalizationsNoContext().validationUrlInvalid);
     }
     final db = AppDatabase();

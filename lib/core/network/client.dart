@@ -163,13 +163,24 @@ class NetClient {
 
   static const _maxDownloadRedirects = 8;
 
+  static bool isHttpsDownloadUri(Uri uri) =>
+      uri.scheme == 'https' &&
+      uri.host.isNotEmpty &&
+      uri.userInfo.isEmpty &&
+      uri.port > 0 &&
+      uri.port <= 65535;
+
   Future<String?> getText(
     String url, {
     DownloadRequestHeaders? requestHeaders,
+    bool httpsOnly = false,
   }) async {
     try {
-      await asyncInit();
       var uri = Uri.parse(url);
+      if (httpsOnly && !isHttpsDownloadUri(uri)) {
+        return null;
+      }
+      await asyncInit();
       final headers = requestHeaders?.toHttpHeaders();
       for (
         var redirectCount = 0;
@@ -197,10 +208,14 @@ class NetClient {
           return null;
         }
         uri = uri.resolve(location);
+        if (httpsOnly && !isHttpsDownloadUri(uri)) {
+          return null;
+        }
       }
       return null;
     } catch (e) {
-      ygLogger("$e");
+      // Subscription URLs can contain credentials; never log the request URI.
+      ygLogger('text download failed (${e.runtimeType})');
       return null;
     }
   }

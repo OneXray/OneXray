@@ -1,0 +1,252 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/service/doc/helper.dart';
+import 'package:onexray/service/launch/setup.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class SetupPageState {
+  final SetupStep step;
+  final bool busy;
+  final bool localReady;
+  final bool hasServers;
+  final PlatformPermissionResult? permission;
+  final String interfaceName;
+  final String region;
+  final bool regionSuggested;
+  final List<String> regionCodes;
+  final SetupFailure? failure;
+
+  const SetupPageState({
+    this.step = SetupStep.welcome,
+    this.busy = true,
+    this.localReady = false,
+    this.hasServers = false,
+    this.permission,
+    this.interfaceName = '',
+    this.region = 'CN',
+    this.regionSuggested = false,
+    this.regionCodes = const [],
+    this.failure,
+  });
+
+  bool get authorized =>
+      permission != null && SetupService.permissionReady(permission!);
+
+  SetupPageState copyWith({
+    SetupStep? step,
+    bool? busy,
+    bool? localReady,
+    bool? hasServers,
+    PlatformPermissionResult? permission,
+    String? interfaceName,
+    String? region,
+    bool? regionSuggested,
+    List<String>? regionCodes,
+    SetupFailure? failure,
+    bool clearFailure = false,
+  }) => SetupPageState(
+    step: step ?? this.step,
+    busy: busy ?? this.busy,
+    localReady: localReady ?? this.localReady,
+    hasServers: hasServers ?? this.hasServers,
+    permission: permission ?? this.permission,
+    interfaceName: interfaceName ?? this.interfaceName,
+    region: region ?? this.region,
+    regionSuggested: regionSuggested ?? this.regionSuggested,
+    regionCodes: regionCodes ?? this.regionCodes,
+    failure: clearFailure ? null : failure ?? this.failure,
+  );
+}
+
+class SetupController extends PageCubit<SetupPageState>
+    with WidgetsBindingObserver {
+  final SetupService service;
+
+  SetupController({SetupService? service})
+    : service = service ?? SetupService(),
+      super(const SetupPageState()) {
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_perform(_load, initial: true));
+  }
+
+  bool get ready =>
+      state.localReady &&
+      state.authorized &&
+      (!service.requiresInterface || state.interfaceName.isNotEmpty);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        this.state.step == SetupStep.system &&
+        !this.state.busy) {
+      unawaited(retry());
+    }
+  }
+
+  Future<void> _load() async {
+    final step = await service.currentStep();
+    emit(state.copyWith(step: step));
+    if (step == SetupStep.welcome || step == SetupStep.complete) return;
+    try {
+      await service.prepareLocal();
+    } catch (_) {
+      throw const SetupFailure('local');
+    }
+    final configuration = await service.configuration();
+    final codes = await service.regionCodes();
+    emit(
+      state.copyWith(
+        localReady: true,
+        interfaceName: configuration.policy.xrayOutboundInterfaceName,
+        region:
+            configuration.connection.smart.directRegions.firstOrNull ?? 'CN',
+        regionCodes: codes,
+      ),
+    );
+    final permission = await service.checkPermission();
+    emit(state.copyWith(permission: permission));
+    if (!state.authorized ||
+        (service.requiresInterface && state.interfaceName.isEmpty)) {
+      emit(state.copyWith(step: SetupStep.system));
+      return;
+    }
+    if (step == SetupStep.servers) {
+      final hasServers = await service.hasServers();
+      emit(state.copyWith(hasServers: hasServers));
+      if (hasServers) await _finish();
+    }
+  }
+
+  Future<void> retry() => _perform(_load);
+
+  void showWelcome() =>
+      emit(state.copyWith(step: SetupStep.welcome, clearFailure: true));
+
+  Future<void> acceptPrivacy() => _perform(() async {
+    await service.acceptPrivacy();
+    await _load();
+  });
+
+  Future<void> requestPermission() => _perform(() async {
+    await service.prepareLocal();
+    emit(state.copyWith(localReady: true));
+    final permission = await service.checkPermission(request: true);
+    emit(state.copyWith(permission: permission));
+    if (!SetupService.permissionReady(permission)) {
+      throw SetupFailure('permission', permission: permission);
+    }
+  });
+
+  Future<void> continueSystem() => _perform(() async {
+    await service.continueSystem(state.interfaceName);
+    await _load();
+  });
+
+  Future<void> continueRegion({required bool confirm}) => _perform(() async {
+    await service.continueRegion(confirm ? state.region : null);
+    emit(state.copyWith(step: SetupStep.servers));
+    final existing = await service.hasServers();
+    emit(state.copyWith(hasServers: existing));
+    if (existing) await _finish();
+  });
+
+  Future<void> detectRegion() => _perform(() async {
+    final suggested = await service.suggestRegion();
+    if (suggested == null || !state.regionCodes.contains(suggested)) {
+      throw const SetupFailure('region');
+    }
+    emit(state.copyWith(region: suggested, regionSuggested: true));
+  });
+
+  Future<void> chooseInterface(BuildContext context) => _perform(() async {
+    final options = await service.interfaces();
+    if (!context.mounted) return;
+    final name = await context.push<String>(
+      '${RouterPath.setup}/interface',
+      extra: SetupInterfaceParams(options, state.interfaceName),
+    );
+    if (name != null) emit(state.copyWith(interfaceName: name));
+  });
+
+  Future<void> chooseRegion(BuildContext context) => _perform(() async {
+    final code = await context.push<String>(
+      '${RouterPath.setup}/region',
+      extra: SetupRegionParams(state.regionCodes, state.region),
+    );
+    if (code != null) {
+      emit(state.copyWith(region: code, regionSuggested: false));
+    }
+  });
+
+  Future<void> addServers(
+    BuildContext context,
+    Future<void> Function(BuildContext) open,
+  ) => _perform(() async {
+    await open(context);
+    emit(state.copyWith(hasServers: await service.hasServers()));
+  });
+
+  Future<void> finish() => _perform(_finish);
+
+  Future<void> _finish() async {
+    await service.finish();
+    emit(state.copyWith(step: SetupStep.complete));
+  }
+
+  Future<void> openPrivacy() => _perform(() async {
+    if (!await launchUrl(DocURLHelper.privacyUri())) {
+      throw const SetupFailure('privacy');
+    }
+  });
+
+  void goHome(BuildContext context) => context.go(RouterPath.home);
+
+  String failureText(AppLocalizations l10n) =>
+      switch (state.failure?.component) {
+        'permission' => l10n.prototypeVpnPermissionRequired,
+        'interface' => l10n.prototypeChooseInterfaceNotice,
+        'region' => l10n.prototypeCheckNetwork,
+        _ => l10n.prototypeTemporarilyUnavailable,
+      };
+
+  Future<void> _perform(
+    Future<void> Function() action, {
+    bool initial = false,
+  }) async {
+    if (state.busy && !initial) return;
+    emit(state.copyWith(busy: true, clearFailure: true));
+    try {
+      await action();
+    } catch (error) {
+      final failure = error is SetupFailure
+          ? error
+          : const SetupFailure('system');
+      final step = await service.currentStep();
+      emit(
+        state.copyWith(
+          failure: failure,
+          permission: failure.permission,
+          step: failure.component == 'local' || failure.component == 'system'
+              ? SetupStep.system
+              : step == SetupStep.complete
+              ? state.step
+              : step,
+        ),
+      );
+    } finally {
+      emit(state.copyWith(busy: false));
+    }
+  }
+
+  @override
+  void disposePageResources() {
+    WidgetsBinding.instance.removeObserver(this);
+  }
+}

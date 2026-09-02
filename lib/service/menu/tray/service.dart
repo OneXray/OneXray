@@ -1,9 +1,10 @@
 import 'dart:ui';
+import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/gen/assets.gen.dart';
-import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/connection/coordinator.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -18,6 +19,7 @@ final class TrayService with TrayListener {
 
   //==========================
   var _initialized = false;
+  ConnectionPhase? _lastPhase;
 
   void init() {
     if (!AppPlatform.isDesktop || _initialized) {
@@ -25,6 +27,7 @@ final class TrayService with TrayListener {
     }
 
     trayManager.addListener(this);
+    ConnectionCoordinator.instance.state.addListener(_connectionChanged);
     _initialized = true;
   }
 
@@ -33,7 +36,16 @@ final class TrayService with TrayListener {
       return;
     }
     trayManager.removeListener(this);
+    ConnectionCoordinator.instance.state.removeListener(_connectionChanged);
+    _lastPhase = null;
     _initialized = false;
+  }
+
+  void _connectionChanged() {
+    final phase = ConnectionCoordinator.instance.state.value.phase;
+    if (_lastPhase == phase) return;
+    _lastPhase = phase;
+    unawaited(refreshTrayManager());
   }
 
   Future<void> refreshTrayManager() async {
@@ -41,7 +53,8 @@ final class TrayService with TrayListener {
       return;
     }
 
-    final running = VpnService().vpnRunning;
+    final view = ConnectionCoordinator.instance.state.value;
+    final running = view.phase == ConnectionPhase.connected || view.busy;
     await _setTrayIcon(running);
 
     final items = <MenuItem>[];
@@ -128,10 +141,10 @@ final class TrayService with TrayListener {
 
     switch (key) {
       case _TrayMenuKey.startVpn:
-        await VpnService().startDefaultVpn();
+        await ConnectionCoordinator.instance.connect();
         break;
       case _TrayMenuKey.stopVpn:
-        await VpnService().stopDefaultVpn();
+        await ConnectionCoordinator.instance.disconnect();
         break;
       case _TrayMenuKey.showApp:
         await windowManager.show();
@@ -139,12 +152,12 @@ final class TrayService with TrayListener {
         break;
       case _TrayMenuKey.quitApp:
         if (AppPlatform.isLinux || AppPlatform.isWindows) {
-          await VpnService().stopDefaultVpn();
+          await ConnectionCoordinator.instance.disconnect();
         }
         ServicesBinding.instance.exitApplication(AppExitType.cancelable);
         break;
       case _TrayMenuKey.quitAndStopVpn:
-        await VpnService().stopDefaultVpn();
+        await ConnectionCoordinator.instance.disconnect();
         ServicesBinding.instance.exitApplication(AppExitType.cancelable);
         break;
     }

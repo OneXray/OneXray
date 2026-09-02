@@ -133,6 +133,21 @@ class CompiledConnection {
 /// Pure value compilation. Never opens a database, edits an asset, allocates a
 /// port or starts Xray. Runtime files and successful commits belong to P3.
 class ConnectionCompiler {
+  /// Compare editor drafts through the same runtime overrides as real Raw plans.
+  /// The caller supplies identical options for both drafts; no files are written.
+  static Map<String, dynamic> rawSemanticJson(
+    String text,
+    RuntimeOptions options,
+  ) {
+    final value = jsonDecode(text);
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Raw configuration must be an object');
+    }
+    value.remove('name');
+    _runtime(value, options, raw: true);
+    return value;
+  }
+
   static const defaultOutbound = 'app-default';
   static const defaultInbound = 'app-default-vpn';
   static const dnsProxy = 'app-dns-proxy';

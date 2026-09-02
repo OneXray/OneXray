@@ -1,8 +1,6 @@
-import 'dart:ffi';
-
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/localizations/locale.dart';
 import 'package:onexray/service/localizations/service.dart';
 
@@ -68,23 +66,23 @@ enum LanguageCode {
   String toString() {
     switch (this) {
       case LanguageCode.system:
-        return appLocalizationsNoContext().languagePageSystem;
+        return appLocalizationsNoContext().prototypeFollowSystem;
       case LanguageCode.en:
-        return appLocalizationsNoContext().languagePageEnglish;
+        return appLocalizationsNoContext().prototypeEnglish;
       case LanguageCode.ru:
-        return appLocalizationsNoContext().languagePageRussian;
+        return appLocalizationsNoContext().prototypeRussian;
       case LanguageCode.fa:
-        return appLocalizationsNoContext().languagePagePersian;
+        return appLocalizationsNoContext().prototypePersian;
       case LanguageCode.zh:
-        return appLocalizationsNoContext().languagePageChinese;
+        return appLocalizationsNoContext().prototypeSimplifiedChinese;
       case LanguageCode.zhHant:
-        return appLocalizationsNoContext().languagePageTraditionalChinese;
+        return appLocalizationsNoContext().prototypeTraditionalChinese;
     }
   }
 
   static LanguageCode fromString(String? name) {
     if (name == null) {
-      return LanguageCode.system;
+      return LanguageCode.zh;
     }
     final value = LanguageCode.values.firstWhereOrNull(
       (value) => value.name == name,
@@ -92,7 +90,7 @@ enum LanguageCode {
     if (value != null) {
       return value;
     }
-    return LanguageCode.system;
+    return LanguageCode.zh;
   }
 
   Locale get locale {
@@ -110,44 +108,14 @@ enum LanguageCode {
         };
         break;
     }
-    return _checkCJKLocale(current);
+    return AppLocalePolicy.resolve(
+      current,
+      AppLocalePolicy.normalizeSupportedLocales(
+        AppLocalizations.supportedLocales,
+      ),
+    );
   }
 
-  Locale _checkCJKLocale(Locale locale) {
-    if (locale.languageCode == "zh" ||
-        locale.languageCode == "ja" ||
-        locale.languageCode == "ko") {
-      if (AppPlatform.isLinux && Abi.current() == Abi.linuxArm64) {
-        return Locale(LanguageCode.en.name);
-      }
-    }
-    return locale;
-  }
-
-  TextDirection get textDirection {
-    switch (this) {
-      case LanguageCode.ru:
-        return TextDirection.ltr;
-      case LanguageCode.en:
-        return TextDirection.ltr;
-      case LanguageCode.fa:
-        return TextDirection.rtl;
-      case LanguageCode.zh:
-        return TextDirection.ltr;
-      case LanguageCode.zhHant:
-        return TextDirection.ltr;
-      case LanguageCode.system:
-        final locale = WidgetsBinding.instance.platformDispatcher.locale;
-        final rtlLanguages = <String>[
-          'ar', // Arabic
-          'fa', // Persian
-          'he', // Hebrew
-          'ur', // Urdu
-        ];
-        if (rtlLanguages.contains(locale.languageCode.toLowerCase())) {
-          return TextDirection.rtl;
-        }
-        return TextDirection.ltr;
-    }
-  }
+  TextDirection get textDirection =>
+      locale.languageCode == "fa" ? TextDirection.rtl : TextDirection.ltr;
 }

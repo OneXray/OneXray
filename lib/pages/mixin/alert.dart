@@ -31,6 +31,7 @@ class ContextAlert {
         descriptionTextAlign: TextAlign.start,
         scrollable: false,
         useSafeArea: false,
+        actionsAxis: Axis.vertical,
         actions: [
           ShadButton.outline(
             child: Text(AppLocalizations.of(ctx)!.buttonCancel),
@@ -80,6 +81,7 @@ class ContextAlert {
         descriptionTextAlign: TextAlign.start,
         scrollable: false,
         useSafeArea: false,
+        actionsAxis: Axis.vertical,
         actions: [
           ShadButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -112,6 +114,7 @@ class ContextAlert {
         descriptionTextAlign: TextAlign.start,
         scrollable: false,
         useSafeArea: false,
+        actionsAxis: Axis.vertical,
         actions: [
           ShadButton.outline(
             child: Text(AppLocalizations.of(ctx)!.buttonCancel),

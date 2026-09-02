@@ -585,6 +585,7 @@ class SubscriptionService {
 
     final text = await NetClient().getText(
       input.url,
+      httpsOnly: true,
       requestHeaders: DownloadRequestHeaders(
         agePublicKey: ageContext?.publicKey,
       ),
