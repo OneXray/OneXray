@@ -248,6 +248,14 @@ class AppHostApi(
     }
 
     // macOS
+    override fun appleVpnCapabilities(callback: (Result<AppleVpnCapabilities>) -> Unit) {
+        callback(Result.success(AppleVpnCapabilities(false, false)))
+    }
+
+    override fun readLog(planId: String, access: Boolean, offset: Long, limit: Long, callback: (Result<NativeLogChunk?>) -> Unit) {
+        callback(Result.failure(UnsupportedOperationException("System Extension logs are Apple-only")))
+    }
+
     override fun useSystemExtension(callback: (Result<Boolean>) -> Unit) {
         callback(Result.success(false))
     }

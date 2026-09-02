@@ -232,6 +232,96 @@ enum NativeLaunchAtLoginState: Int, CaseIterable {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
+struct AppleVpnCapabilities: Hashable, CustomStringConvertible {
+  var serviceExclusions: Bool
+  var deviceCommunication: Bool
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> AppleVpnCapabilities? {
+    let serviceExclusions = pigeonVar_list[0] as! Bool
+    let deviceCommunication = pigeonVar_list[1] as! Bool
+
+    return AppleVpnCapabilities(
+      serviceExclusions: serviceExclusions,
+      deviceCommunication: deviceCommunication
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      serviceExclusions,
+      deviceCommunication,
+    ]
+  }
+  static func == (lhs: AppleVpnCapabilities, rhs: AppleVpnCapabilities) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.serviceExclusions, rhs.serviceExclusions) && MessagesPigeonInternal.deepEquals(lhs.deviceCommunication, rhs.deviceCommunication)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("AppleVpnCapabilities")
+    MessagesPigeonInternal.deepHash(value: serviceExclusions, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: deviceCommunication, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "AppleVpnCapabilities(serviceExclusions: \(String(describing: serviceExclusions)), deviceCommunication: \(String(describing: deviceCommunication)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
+struct NativeLogChunk: Hashable, CustomStringConvertible {
+  var data: FlutterStandardTypedData
+  var offset: Int64
+  var size: Int64
+  var fileId: String
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> NativeLogChunk? {
+    let data = pigeonVar_list[0] as! FlutterStandardTypedData
+    let offset = pigeonVar_list[1] as! Int64
+    let size = pigeonVar_list[2] as! Int64
+    let fileId = pigeonVar_list[3] as! String
+
+    return NativeLogChunk(
+      data: data,
+      offset: offset,
+      size: size,
+      fileId: fileId
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      data,
+      offset,
+      size,
+      fileId,
+    ]
+  }
+  static func == (lhs: NativeLogChunk, rhs: NativeLogChunk) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.data, rhs.data) && MessagesPigeonInternal.deepEquals(lhs.offset, rhs.offset) && MessagesPigeonInternal.deepEquals(lhs.size, rhs.size) && MessagesPigeonInternal.deepEquals(lhs.fileId, rhs.fileId)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("NativeLogChunk")
+    MessagesPigeonInternal.deepHash(value: data, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: offset, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: size, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: fileId, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "NativeLogChunk(data: \(String(describing: data)), offset: \(String(describing: offset)), size: \(String(describing: size)), fileId: \(String(describing: fileId)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
 struct NativeLaunchAtLoginResult: Hashable, CustomStringConvertible {
   var state: NativeLaunchAtLoginState
   var message: String? = nil
@@ -441,12 +531,16 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
       }
       return nil
     case 135:
-      return NativeLaunchAtLoginResult.fromList(self.readValue() as! [Any?])
+      return AppleVpnCapabilities.fromList(self.readValue() as! [Any?])
     case 136:
-      return PlatformPermissionResult.fromList(self.readValue() as! [Any?])
+      return NativeLogChunk.fromList(self.readValue() as! [Any?])
     case 137:
-      return NativeVpnCommandResult.fromList(self.readValue() as! [Any?])
+      return NativeLaunchAtLoginResult.fromList(self.readValue() as! [Any?])
     case 138:
+      return PlatformPermissionResult.fromList(self.readValue() as! [Any?])
+    case 139:
+      return NativeVpnCommandResult.fromList(self.readValue() as! [Any?])
+    case 140:
       return AndroidAppInfo.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -474,17 +568,23 @@ private class MessagesPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? NativeLaunchAtLoginState {
       super.writeByte(134)
       super.writeValue(value.rawValue)
-    } else if let value = value as? NativeLaunchAtLoginResult {
+    } else if let value = value as? AppleVpnCapabilities {
       super.writeByte(135)
       super.writeValue(value.toList())
-    } else if let value = value as? PlatformPermissionResult {
+    } else if let value = value as? NativeLogChunk {
       super.writeByte(136)
       super.writeValue(value.toList())
-    } else if let value = value as? NativeVpnCommandResult {
+    } else if let value = value as? NativeLaunchAtLoginResult {
       super.writeByte(137)
       super.writeValue(value.toList())
-    } else if let value = value as? AndroidAppInfo {
+    } else if let value = value as? PlatformPermissionResult {
       super.writeByte(138)
+      super.writeValue(value.toList())
+    } else if let value = value as? NativeVpnCommandResult {
+      super.writeByte(139)
+      super.writeValue(value.toList())
+    } else if let value = value as? AndroidAppInfo {
+      super.writeByte(140)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -519,7 +619,9 @@ protocol BridgeHostApi {
   func getInstalledApps(completion: @escaping (Result<[AndroidAppInfo], Error>) -> Void)
   func getAppIcon(packageName: String, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
   func useSystemExtension(completion: @escaping (Result<Bool, Error>) -> Void)
+  func appleVpnCapabilities(completion: @escaping (Result<AppleVpnCapabilities, Error>) -> Void)
   func readRuntimeState(removeSessionIds: [String], completion: @escaping (Result<String?, Error>) -> Void)
+  func readLog(planId: String, access: Bool, offset: Int64, limit: Int64, completion: @escaping (Result<NativeLogChunk?, Error>) -> Void)
   func queryLaunchAtLogin(completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func setLaunchAtLogin(enabled: Bool, completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func openLaunchAtLoginSettings(completion: @escaping (Result<Bool, Error>) -> Void)
@@ -687,6 +789,21 @@ class BridgeHostApiSetup {
     } else {
       useSystemExtensionChannel.setMessageHandler(nil)
     }
+    let appleVpnCapabilitiesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.appleVpnCapabilities\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      appleVpnCapabilitiesChannel.setMessageHandler { _, reply in
+        api.appleVpnCapabilities { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      appleVpnCapabilitiesChannel.setMessageHandler(nil)
+    }
     let readRuntimeStateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       readRuntimeStateChannel.setMessageHandler { message, reply in
@@ -703,6 +820,26 @@ class BridgeHostApiSetup {
       }
     } else {
       readRuntimeStateChannel.setMessageHandler(nil)
+    }
+    let readLogChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.readLog\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      readLogChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let planIdArg = args[0] as! String
+        let accessArg = args[1] as! Bool
+        let offsetArg = args[2] as! Int64
+        let limitArg = args[3] as! Int64
+        api.readLog(planId: planIdArg, access: accessArg, offset: offsetArg, limit: limitArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      readLogChannel.setMessageHandler(nil)
     }
     let queryLaunchAtLoginChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.queryLaunchAtLogin\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

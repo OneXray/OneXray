@@ -19,7 +19,8 @@ class CustomRoutingService {
     required String name,
     required String text,
   }) => DataMaintenance.run(() async {
-    if (name.trim().isEmpty || name.runes.length > 32) {
+    name = name.trim();
+    if (name.isEmpty || name.runes.length > 32) {
       throw const FormatException(
         'Custom route name must contain 1–32 characters',
       );
@@ -30,6 +31,12 @@ class CustomRoutingService {
     }
     final data = base64Encode(utf8.encode(template.encode()));
     return database.transaction(() async {
+      if ((await database.customRoutingProfilesDao.allRows).any(
+        (row) =>
+            row.id != id && row.name.trim().toLowerCase() == name.toLowerCase(),
+      )) {
+        throw const FormatException('Custom route names must be unique');
+      }
       if (id == null) {
         return database.customRoutingProfilesDao.insertRow(
           CustomRoutingProfilesCompanion.insert(name: name, data: data),

@@ -374,6 +374,23 @@ class ServerImportPreviewPage extends StatelessWidget {
                                 : l10n.prototypeNameSaved(raw.name.value),
                           ),
                         ),
+                      for (final route in preview.customRoutes)
+                        ListTile(
+                          leading: const Icon(LucideIcons.route),
+                          title: Text(route.name),
+                          subtitle: Text(
+                            controller.committedResult == null
+                                ? l10n.prototypeCustomRouting
+                                : l10n.prototypeNameSaved(route.name),
+                          ),
+                        ),
+                      for (final dependency
+                          in preview.dependencies?.inputs ?? const [])
+                        ListTile(
+                          leading: const Icon(LucideIcons.database),
+                          title: Text(dependency.fileName),
+                          subtitle: Text(l10n.prototypeDataSource),
+                        ),
                       for (final source in preview.geoData)
                         ListTile(
                           leading: const Icon(LucideIcons.database),

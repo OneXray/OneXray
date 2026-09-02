@@ -9,17 +9,32 @@ part 'geo_data.g.dart';
 class GeoDataDao extends DatabaseAccessor<AppDatabase> with _$GeoDataDaoMixin {
   GeoDataDao(super.db);
 
-  Stream<List<GeoDataData>> get allRowsStream => select(geoData).watch();
+  // These legacy queries are also the portable backup/custom-source boundary.
+  Stream<List<GeoDataData>> get allRowsStream =>
+      (select(geoData)..where((row) => row.id.isBiggerThanValue(0))).watch();
 
-  Future<List<GeoDataData>> get allRows async => select(geoData).get();
+  Future<List<GeoDataData>> get allRows async =>
+      (select(geoData)..where((row) => row.id.isBiggerThanValue(0))).get();
 
-  Stream<List<GeoDataData>> get allDomainRowsStream => (select(
-    geoData,
-  )..where((tbl) => tbl.type.equals(GeoDataType.domain.name))).watch();
+  Stream<List<GeoDataData>> get publishedRowsStream => select(geoData).watch();
 
-  Stream<List<GeoDataData>> get allIpRowsStream => (select(
-    geoData,
-  )..where((tbl) => tbl.type.equals(GeoDataType.ip.name))).watch();
+  Future<List<GeoDataData>> get publishedRows async => select(geoData).get();
+
+  Stream<List<GeoDataData>> get allDomainRowsStream =>
+      (select(geoData)..where(
+            (tbl) =>
+                tbl.id.isBiggerThanValue(0) &
+                tbl.type.equals(GeoDataType.domain.name),
+          ))
+          .watch();
+
+  Stream<List<GeoDataData>> get allIpRowsStream =>
+      (select(geoData)..where(
+            (tbl) =>
+                tbl.id.isBiggerThanValue(0) &
+                tbl.type.equals(GeoDataType.ip.name),
+          ))
+          .watch();
 
   Future<GeoDataData?> searchRow(int id) async {
     return (select(

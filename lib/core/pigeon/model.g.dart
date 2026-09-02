@@ -218,12 +218,18 @@ TestXrayRequest _$TestXrayRequestFromJson(Map<String, dynamic> json) =>
     TestXrayRequest(
       json['xrayJson'] as String?,
       buildOnly: json['buildOnly'] as bool?,
+      url: json['url'] as String?,
+      timeout: (json['timeout'] as num?)?.toInt(),
+      inboundTag: json['inboundTag'] as String?,
     );
 
 Map<String, dynamic> _$TestXrayRequestToJson(TestXrayRequest instance) =>
     <String, dynamic>{
       'xrayJson': ?instance.xrayJson,
       'buildOnly': ?instance.buildOnly,
+      'url': ?instance.url,
+      'timeout': ?instance.timeout,
+      'inboundTag': ?instance.inboundTag,
     };
 
 CheckRouteRequest _$CheckRouteRequestFromJson(Map<String, dynamic> json) =>

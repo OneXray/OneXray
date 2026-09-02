@@ -82,7 +82,7 @@ class SectionView extends StatelessWidget {
             padding: EdgeInsets.zero,
             radius: const BorderRadius.all(Radius.circular(8)),
             clipBehavior: Clip.antiAlias,
-            child: child,
+            child: Material(type: MaterialType.transparency, child: child),
           ),
         ],
       ),

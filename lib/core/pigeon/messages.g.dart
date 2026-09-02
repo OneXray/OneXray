@@ -150,6 +150,116 @@ enum NativeLaunchAtLoginState {
   error,
 }
 
+class AppleVpnCapabilities {
+  AppleVpnCapabilities({
+    required this.serviceExclusions,
+    required this.deviceCommunication,
+  });
+
+  bool serviceExclusions;
+
+  bool deviceCommunication;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      serviceExclusions,
+      deviceCommunication,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static AppleVpnCapabilities decode(Object result) {
+    result as List<Object?>;
+    return AppleVpnCapabilities(
+      serviceExclusions: result[0]! as bool,
+      deviceCommunication: result[1]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! AppleVpnCapabilities || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(serviceExclusions, other.serviceExclusions) && _deepEquals(deviceCommunication, other.deviceCommunication);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'AppleVpnCapabilities(serviceExclusions: $serviceExclusions, deviceCommunication: $deviceCommunication)';
+  }
+}
+
+class NativeLogChunk {
+  NativeLogChunk({
+    required this.data,
+    required this.offset,
+    required this.size,
+    required this.fileId,
+  });
+
+  Uint8List data;
+
+  int offset;
+
+  int size;
+
+  String fileId;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      data,
+      offset,
+      size,
+      fileId,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static NativeLogChunk decode(Object result) {
+    result as List<Object?>;
+    return NativeLogChunk(
+      data: result[0]! as Uint8List,
+      offset: result[1]! as int,
+      size: result[2]! as int,
+      fileId: result[3]! as String,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! NativeLogChunk || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(data, other.data) && _deepEquals(offset, other.offset) && _deepEquals(size, other.size) && _deepEquals(fileId, other.fileId);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'NativeLogChunk(data: $data, offset: $offset, size: $size, fileId: $fileId)';
+  }
+}
+
 class NativeLaunchAtLoginResult {
   NativeLaunchAtLoginResult({
     required this.state,
@@ -386,17 +496,23 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is NativeLaunchAtLoginState) {
       buffer.putUint8(134);
       writeValue(buffer, value.index);
-    }    else if (value is NativeLaunchAtLoginResult) {
+    }    else if (value is AppleVpnCapabilities) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    }    else if (value is PlatformPermissionResult) {
+    }    else if (value is NativeLogChunk) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    }    else if (value is NativeVpnCommandResult) {
+    }    else if (value is NativeLaunchAtLoginResult) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    }    else if (value is AndroidAppInfo) {
+    }    else if (value is PlatformPermissionResult) {
       buffer.putUint8(138);
+      writeValue(buffer, value.encode());
+    }    else if (value is NativeVpnCommandResult) {
+      buffer.putUint8(139);
+      writeValue(buffer, value.encode());
+    }    else if (value is AndroidAppInfo) {
+      buffer.putUint8(140);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -425,12 +541,16 @@ class _PigeonCodec extends StandardMessageCodec {
         final value = readValue(buffer) as int?;
         return value == null ? null : NativeLaunchAtLoginState.values[value];
       case 135:
-        return NativeLaunchAtLoginResult.decode(readValue(buffer)!);
+        return AppleVpnCapabilities.decode(readValue(buffer)!);
       case 136:
-        return PlatformPermissionResult.decode(readValue(buffer)!);
+        return NativeLogChunk.decode(readValue(buffer)!);
       case 137:
-        return NativeVpnCommandResult.decode(readValue(buffer)!);
+        return NativeLaunchAtLoginResult.decode(readValue(buffer)!);
       case 138:
+        return PlatformPermissionResult.decode(readValue(buffer)!);
+      case 139:
+        return NativeVpnCommandResult.decode(readValue(buffer)!);
+      case 140:
         return AndroidAppInfo.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -641,6 +761,25 @@ class BridgeHostApi {
     return pigeonVar_replyValue! as bool;
   }
 
+  Future<AppleVpnCapabilities> appleVpnCapabilities() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.appleVpnCapabilities$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as AppleVpnCapabilities;
+  }
+
   Future<String?> readRuntimeState(List<String> removeSessionIds) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -658,6 +797,25 @@ class BridgeHostApi {
     )
     ;
     return pigeonVar_replyValue as String?;
+  }
+
+  Future<NativeLogChunk?> readLog(String planId, bool access, int offset, int limit) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.readLog$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[planId, access, offset, limit]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as NativeLogChunk?;
   }
 
   Future<NativeLaunchAtLoginResult> queryLaunchAtLogin() async {

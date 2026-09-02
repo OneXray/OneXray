@@ -18,7 +18,9 @@ import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/manager.dart';
+import 'package:onexray/service/menu/short_cut/service.dart';
 import 'package:onexray/service/share/service.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class ConnectController extends ChangeNotifier {
   ConnectController({AppDatabase? database, ConnectionCoordinator? coordinator})
@@ -44,6 +46,9 @@ class ConnectController extends ChangeNotifier {
     _notify();
     try {
       if (services) {
+        ShortCutService().onConnectionFailure = () {
+          if (context.mounted) context.goPrimaryRoot(AppPrimaryRoute.home);
+        };
         ShareService().onIncomingShare = (text) async {
           if (context.mounted) {
             await context.pushScoped(
@@ -236,7 +241,9 @@ class ConnectController extends ChangeNotifier {
     );
     if (next.encode() == current.encode() && writeAssets == null) return true;
     if (!context.mounted) return false;
-    if (coordinator.state.value.phase == ConnectionPhase.connected &&
+    final reconnect =
+        coordinator.state.value.phase == ConnectionPhase.connected;
+    if (reconnect &&
         !await ContextAlert.showConfirmDialog(
           context,
           title: l10n.prototypeApplyChange,
@@ -248,7 +255,12 @@ class ConnectController extends ChangeNotifier {
     if (!context.mounted) return false;
     var success = false;
     await run(context, () async {
-      await coordinator.apply(next, writeAssets: writeAssets);
+      await coordinator.apply(
+        next,
+        writeAssets: writeAssets,
+        expectedConfiguration: current.encode(),
+        allowReconnect: reconnect,
+      );
       // Failed applies rethrow, including after restoration. A successful plan
       // may legitimately commit Automatic instead of an unavailable selection.
       success = true;
@@ -262,10 +274,12 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> deleteRaw(BuildContext context, CoreConfigData row) async {
+    if (coordinator.state.value.busy) return;
+    final expected = await coordinator.configuration;
+    if (!context.mounted) return;
     final l10n = AppLocalizations.of(context)!;
     final active =
-        configuration.connection.expert &&
-        configuration.connection.rawId == row.id;
+        expected.connection.expert && expected.connection.rawId == row.id;
     final connected =
         coordinator.state.value.phase == ConnectionPhase.connected;
     final disconnect = active && connected && servers.isEmpty;
@@ -287,13 +301,9 @@ class ConnectController extends ChangeNotifier {
         !context.mounted) {
       return;
     }
-    if (disconnect) {
-      await run(context, coordinator.disconnect);
-      if (coordinator.state.value.phase != ConnectionPhase.disconnected) return;
-    }
     if (!context.mounted) return;
     await run(context, () async {
-      final current = await coordinator.configuration;
+      final current = expected;
       await coordinator.apply(
         ConnectionConfiguration(
           connection: ConnectionSettings.fromJson({
@@ -306,7 +316,16 @@ class ConnectController extends ChangeNotifier {
           policy: current.policy,
         ),
         affectsRuntime: active && !disconnect,
+        disconnect: disconnect,
+        allowReconnect: connected,
+        expectedConfiguration: expected.encode(),
         writeAssets: () async {
+          final latest = await db.coreConfigDao.searchRow(row.id);
+          if (latest == null ||
+              latest.type != row.type ||
+              latest.data != row.data) {
+            throw StateError('Raw configuration changed before deletion');
+          }
           await db.coreConfigDao.deleteRow(row);
         },
       );
@@ -351,63 +370,106 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> chooseTrafficMethod(BuildContext context) async {
-    final selected = await showChoiceDialog<({TrafficMode mode, int? id})>(
-      context,
-      (context) {
-        final l = AppLocalizations.of(context)!;
-        final current = configuration.connection;
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l.prototypeTrafficMethod,
-                  style: Theme.of(context).textTheme.titleLarge,
+    final selected =
+        await showChoiceDialog<({TrafficMode mode, int? id, bool edit})>(
+          context,
+          (context) {
+            final l = AppLocalizations.of(context)!;
+            final current = configuration.connection;
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l.prototypeTrafficMethod,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      title: Text(l.prototypeSmartRoutingRecommended),
+                      subtitle: Text(l.prototypeSmartRoutingDescription),
+                      selected: current.trafficMode == TrafficMode.smart,
+                      trailing: IconButton(
+                        tooltip: l.prototypeEdit,
+                        icon: const Icon(LucideIcons.pencil),
+                        onPressed: () => Navigator.pop(context, (
+                          mode: TrafficMode.smart,
+                          id: null,
+                          edit: true,
+                        )),
+                      ),
+                      onTap: () => Navigator.pop(context, (
+                        mode: TrafficMode.smart,
+                        id: null,
+                        edit: false,
+                      )),
+                    ),
+                    ListTile(
+                      title: Text(l.prototypeAllViaVpn),
+                      subtitle: Text(l.prototypeAllViaVpnDescription),
+                      selected: current.trafficMode == TrafficMode.allVpn,
+                      onTap: () => Navigator.pop(context, (
+                        mode: TrafficMode.allVpn,
+                        id: null,
+                        edit: false,
+                      )),
+                    ),
+                    for (final row in customRoutes)
+                      ListTile(
+                        title: Text(row.name),
+                        subtitle: Text(l.prototypeCustomRoutingDescription),
+                        selected:
+                            current.trafficMode == TrafficMode.custom &&
+                            current.customId == row.id,
+                        trailing: IconButton(
+                          tooltip: l.prototypeEdit,
+                          icon: const Icon(LucideIcons.pencil),
+                          onPressed: () => Navigator.pop(context, (
+                            mode: TrafficMode.custom,
+                            id: row.id,
+                            edit: true,
+                          )),
+                        ),
+                        onTap: () => Navigator.pop(context, (
+                          mode: TrafficMode.custom,
+                          id: row.id,
+                          edit: false,
+                        )),
+                      ),
+                    if (customRoutes.length < 3)
+                      ListTile(
+                        leading: const Icon(LucideIcons.plus),
+                        title: Text(l.prototypeAdd),
+                        subtitle: Text(l.prototypeCustomRouting),
+                        onTap: () => Navigator.pop(context, (
+                          mode: TrafficMode.custom,
+                          id: null,
+                          edit: true,
+                        )),
+                      ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(l.prototypeCancel),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: Text(l.prototypeSmartRoutingRecommended),
-                  subtitle: Text(l.prototypeSmartRoutingDescription),
-                  selected: current.trafficMode == TrafficMode.smart,
-                  onTap: () => Navigator.pop(context, (
-                    mode: TrafficMode.smart,
-                    id: null,
-                  )),
-                ),
-                ListTile(
-                  title: Text(l.prototypeAllViaVpn),
-                  subtitle: Text(l.prototypeAllViaVpnDescription),
-                  selected: current.trafficMode == TrafficMode.allVpn,
-                  onTap: () => Navigator.pop(context, (
-                    mode: TrafficMode.allVpn,
-                    id: null,
-                  )),
-                ),
-                for (final row in customRoutes)
-                  ListTile(
-                    title: Text(row.name),
-                    subtitle: Text(l.prototypeCustomRoutingDescription),
-                    selected:
-                        current.trafficMode == TrafficMode.custom &&
-                        current.customId == row.id,
-                    onTap: () => Navigator.pop(context, (
-                      mode: TrafficMode.custom,
-                      id: row.id,
-                    )),
-                  ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(l.prototypeCancel),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
-      },
-    );
     if (selected != null && context.mounted) {
+      if (selected.edit) {
+        await context.pushScoped(
+          selected.mode == TrafficMode.smart
+              ? AppSecondaryDestination.smartRouting
+              : AppSecondaryDestination.customRouting,
+          extra: selected.id,
+        );
+        if (context.mounted) await chooseTrafficMethod(context);
+        return;
+      }
       await change(context, {
         'trafficMode': selected.mode.name,
         'customId': selected.id,

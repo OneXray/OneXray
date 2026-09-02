@@ -1,6 +1,6 @@
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/service/geo_data/system_state.dart';
+import 'package:onexray/service/geo_data/model.dart';
 import 'package:tuple/tuple.dart';
 
 class GeoDataValidator {
@@ -11,17 +11,21 @@ class GeoDataValidator {
     if (url.isEmpty) {
       return Tuple2(false, appLocalizationsNoContext().validationUrlRequired);
     }
-    final uri = Uri.tryParse(url);
-    if (uri == null) {
+    try {
+      GeoDataInput.httpsUri(url.trim());
+    } catch (_) {
       return Tuple2(false, appLocalizationsNoContext().validationUrlInvalid);
     }
-    if (name == SystemGeoDatName.geoSite.name ||
-        name == SystemGeoDatName.geoIp.name) {
-      return Tuple2(false, appLocalizationsNoContext().validationNameDuplicate);
+    String fileName;
+    try {
+      fileName = GeoDataInput.canonicalFileName(name);
+    } catch (_) {
+      return Tuple2(false, appLocalizationsNoContext().prototypeEnterFileName);
     }
-    final db = AppDatabase();
-    final nameExists = await db.geoDataDao.nameExists(name);
-    if (nameExists) {
+    final rows = await AppDatabase().geoDataDao.publishedRows;
+    if (rows.any(
+      (row) => '${row.name}.dat'.toLowerCase() == fileName.toLowerCase(),
+    )) {
       return Tuple2(false, appLocalizationsNoContext().validationNameDuplicate);
     }
     return Tuple2(true, "");

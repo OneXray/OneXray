@@ -60,6 +60,22 @@ void main() {
       );
       expect(RegionCatalog.codesFromIndex({}), isEmpty);
       expect(RegionCatalog.suggestions('cn', domain: true, files: {}), isEmpty);
+      expect(
+        RegionCatalog.suggestions(
+          'cn',
+          domain: true,
+          files: {
+            'geosite.dat': ['ACER@cn', 'CN', 'CN-EXTRA'],
+            'other.dat': ['CN'],
+          },
+        ),
+        [
+          'ext:other.dat:CN',
+          'geosite:CN',
+          'geosite:CN-EXTRA',
+          'geosite:ACER@cn',
+        ],
+      );
     },
   );
 

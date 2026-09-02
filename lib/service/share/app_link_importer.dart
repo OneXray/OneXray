@@ -55,6 +55,8 @@ final class OneXrayAppLinkImporter {
         OneXrayConfigLinkType.profile => _readProfile(link),
         OneXrayConfigLinkType.multiNodeOutbound => _readMultiNodeOutbound(link),
         OneXrayConfigLinkType.raw => _readRawConfig(link),
+        // Custom assets require the preview + atomic dependency transaction.
+        OneXrayConfigLinkType.custom => null,
       };
     } catch (error, stackTrace) {
       ygLogger('parse onexray config failed: $error\n$stackTrace');

@@ -91,7 +91,7 @@ void main() {
       expect(_snapshotFile(file, hasAgeKeys: false), before);
       expect(
         file.parent.listSync().where(
-          (entry) => entry.path.contains('.pre-v5-'),
+          (entry) => entry.path.contains('.pre-v6-'),
         ),
         isEmpty,
       );
@@ -99,7 +99,7 @@ void main() {
   );
 
   test(
-    'new installation creates schema 5 with empty assets and default state',
+    'new installation creates schema 6 with empty assets and default state',
     () async {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -111,7 +111,7 @@ void main() {
       expect(
         (await database.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        5,
+        6,
       );
     },
   );
@@ -156,7 +156,7 @@ void main() {
           expect(
             (await reopened.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version'),
-            5,
+            6,
           );
         } finally {
           await reopened.close();
@@ -228,7 +228,7 @@ void main() {
     await interrupted.close();
 
     final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 5);
+    expect(check.userVersion, 6);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
     expect(
       _columnNames(check, 'connection_state'),
@@ -298,6 +298,43 @@ void main() {
     },
   );
 
+  test('schema 5 adds nullable generation without replacing data or default registration', () async {
+    final file = await _legacyDatabase(3);
+    final legacy = sqlite.sqlite3.open(file.path);
+    legacy.execute(
+      "CREATE TABLE connection_state (id INTEGER PRIMARY KEY NOT NULL, revision INTEGER NOT NULL DEFAULT 0, settings_json TEXT NOT NULL DEFAULT '{}', confirmed_snapshot_json TEXT, pending_apply_json TEXT)",
+    );
+    legacy.execute(
+      'ALTER TABLE subscription ADD COLUMN auto_update INTEGER NOT NULL DEFAULT 1',
+    );
+    legacy.execute('UPDATE subscription SET auto_update = 0');
+    legacy.userVersion = 5;
+    legacy.close();
+    final before = _versionThreeSnapshot(file);
+    final snapshot = await prepareUpgradeSnapshot(
+      file,
+      stopRunning: () async {},
+    );
+    expect(snapshot, isNotNull);
+    final db = AppDatabase.forTesting(NativeDatabase(file));
+    try {
+      final rows = await db.geoDataDao.publishedRows;
+      expect(rows, hasLength(1));
+      expect(rows.single.id, 5);
+      expect(rows.single.generation, isNull);
+      expect((await db.subscriptionDao.allRows).single.autoUpdate, isFalse);
+      expect(
+        (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
+          'user_version',
+        ),
+        6,
+      );
+    } finally {
+      await db.close();
+    }
+    expect(_versionThreeSnapshot(file), before);
+  });
+
   test('schema 3 snapshot and upgrade retain all existing metadata and Custom data', () async {
     final file = await _legacyDatabase(3);
     final before = _versionThreeSnapshot(file);
@@ -309,7 +346,7 @@ void main() {
       },
     );
     expect(stopped, isTrue);
-    expect(snapshot!.path, contains('.pre-v5-'));
+    expect(snapshot!.path, contains('.pre-v6-'));
     expect(_versionThreeSnapshot(snapshot), before);
     final database = AppDatabase.forTesting(NativeDatabase(file));
     try {
@@ -339,7 +376,7 @@ void main() {
       expect(
         (await reopened.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        5,
+        6,
       );
     } finally {
       await reopened.close();
@@ -546,7 +583,11 @@ Map<String, List<List<Object?>>> _versionThreeSnapshot(File file) {
       ])
         table: database
             .select(
-              'SELECT ${table == 'subscription' ? 'id, name, url, timestamp, count, expanded, age_secret_key, age_public_key, parse_failure_count' : '*'} FROM $table ORDER BY id',
+              'SELECT ${switch (table) {
+                'subscription' => 'id, name, url, timestamp, count, expanded, age_secret_key, age_public_key, parse_failure_count',
+                'geo_data' => 'id, name, type, url, timestamp, category_count, rule_count',
+                _ => '*',
+              }} FROM $table ORDER BY id',
             )
             .map((row) => row.values.toList())
             .toList(),

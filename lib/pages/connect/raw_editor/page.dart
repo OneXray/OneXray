@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/raw_editor/controller.dart';
+import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -49,7 +50,7 @@ class _RawEditorPageState extends State<RawEditorPage> {
     builder: (context, _) {
       final l10n = AppLocalizations.of(context)!;
       return PopScope(
-        canPop: !controller.busy,
+        canPop: !controller.working,
         child: Scaffold(
           appBar: AppBar(
             title: Text(
@@ -58,22 +59,6 @@ class _RawEditorPageState extends State<RawEditorPage> {
                   : l10n.prototypeEditRawJson,
             ),
             leading: BackButton(onPressed: () => controller.closePage(context)),
-            actions: [
-              IconButton(
-                tooltip: l10n.prototypeReadClipboard,
-                onPressed: controller.busy
-                    ? null
-                    : () => controller.importText(context, clipboard: true),
-                icon: const Icon(LucideIcons.clipboardPaste),
-              ),
-              IconButton(
-                tooltip: l10n.prototypeImportFile,
-                onPressed: controller.busy
-                    ? null
-                    : () => controller.importText(context, clipboard: false),
-                icon: const Icon(LucideIcons.fileInput),
-              ),
-            ],
           ),
           body: SafeArea(
             child: Padding(
@@ -83,6 +68,31 @@ class _RawEditorPageState extends State<RawEditorPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    ConfigurationTransferTools(
+                      controller: controller.transfers,
+                      disabled: controller.busy || !controller.loaded,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: controller.working || !controller.loaded
+                              ? null
+                              : () => controller.test(context),
+                          icon: const Icon(LucideIcons.zap, size: 16),
+                          label: Text(l10n.prototypeTestConfiguration),
+                        ),
+                      ],
+                    ),
+                    if (controller.testResult case final result?)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            '${result.delay} ms · ${result.url} · ${l10n.prototypeSeconds(result.timeout)}',
+                            textDirection: TextDirection.ltr,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
                     Text(
                       l10n.prototypeRawManagedSettingsNotice,
                       style: Theme.of(context).textTheme.bodySmall,
@@ -91,7 +101,7 @@ class _RawEditorPageState extends State<RawEditorPage> {
                     TextField(
                       controller: controller.name,
                       maxLength: 32,
-                      enabled: !controller.busy && controller.loaded,
+                      enabled: !controller.working && controller.loaded,
                       decoration: InputDecoration(
                         labelText: l10n.prototypeConfigurationName,
                       ),
@@ -99,7 +109,7 @@ class _RawEditorPageState extends State<RawEditorPage> {
                     const SizedBox(height: 12),
                     Expanded(
                       child: AbsorbPointer(
-                        absorbing: controller.busy || !controller.loaded,
+                        absorbing: controller.working || !controller.loaded,
                         child: SettingsJsonEditor(
                           controller: controller.text,
                           lineCount: controller.lineCount,
@@ -112,7 +122,7 @@ class _RawEditorPageState extends State<RawEditorPage> {
                         ),
                       ),
                     ),
-                    if (controller.busy) const LinearProgressIndicator(),
+                    if (controller.working) const LinearProgressIndicator(),
                     if (controller.error != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
@@ -135,13 +145,13 @@ class _RawEditorPageState extends State<RawEditorPage> {
           bottomNavigationBar: PageActionBar(
             children: [
               ShadButton.outline(
-                onPressed: controller.busy
+                onPressed: controller.working
                     ? null
                     : () => controller.closePage(context),
                 child: Text(l10n.prototypeCancel),
               ),
               ShadButton(
-                onPressed: controller.busy || !controller.loaded
+                onPressed: controller.working || !controller.loaded
                     ? null
                     : () => controller.save(context),
                 child: Text(l10n.prototypeSave),

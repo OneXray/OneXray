@@ -123,7 +123,7 @@ void main() {
       confirmReconnect: () async => throw StateError('Rename must not confirm'),
     );
     expect(calls, isEmpty);
-    expect((await db.coreConfigDao.searchRow(rawId))!.name, ' renamed ');
+    expect((await db.coreConfigDao.searchRow(rawId))!.name, 'renamed');
     final renamed = await service.load(rawId);
     final changed = RawEditorDraft(
       original: renamed.original,

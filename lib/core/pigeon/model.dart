@@ -238,8 +238,17 @@ class ManagedRuntimeRequest {
 class TestXrayRequest {
   String? xrayJson;
   bool? buildOnly;
+  String? url;
+  int? timeout;
+  String? inboundTag;
 
-  TestXrayRequest(this.xrayJson, {this.buildOnly});
+  TestXrayRequest(
+    this.xrayJson, {
+    this.buildOnly,
+    this.url,
+    this.timeout,
+    this.inboundTag,
+  });
 
   factory TestXrayRequest.fromJson(Map<String, dynamic> json) =>
       _$TestXrayRequestFromJson(json);

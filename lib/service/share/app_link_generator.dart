@@ -13,6 +13,21 @@ import 'package:onexray/service/xray/outbound/state_db.dart';
 enum _SubscriptionAgeMode { none, x25519, hybrid, invalid }
 
 abstract final class OneXrayAppLinkGenerator {
+  static Uri configurationText(
+    OneXrayConfigLinkType type,
+    String name,
+    String text,
+  ) => Uri(
+    scheme: OneXrayAppLinkParser.scheme,
+    host: OneXrayAppLinkParser.host,
+    path: OneXrayAppLinkParser.configPath,
+    queryParameters: {
+      'type': type.wireName,
+      'data': base64Encode(utf8.encode(text)),
+    },
+    fragment: name,
+  );
+
   static Uri? config(CoreConfigData config) {
     final type = switch (CoreConfigType.fromString(config.type)) {
       CoreConfigType.outbound => OneXrayConfigLinkType.outbound,

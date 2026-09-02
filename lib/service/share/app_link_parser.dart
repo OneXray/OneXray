@@ -60,6 +60,7 @@ abstract final class OneXrayAppLinkParser {
     final type = switch (typeText) {
       'outbound' => OneXrayConfigLinkType.outbound,
       'raw' => OneXrayConfigLinkType.raw,
+      'custom' => OneXrayConfigLinkType.custom,
       _ => null,
     };
     if (type == null) {

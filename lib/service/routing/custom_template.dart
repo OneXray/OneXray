@@ -24,7 +24,9 @@ final class CustomRoutingTemplate {
     }, 'template');
     if (document.containsKey('name')) {
       final name = document['name'];
-      if (name is! String || name.trim().isEmpty || name.trim().length > 32) {
+      if (name is! String ||
+          name.trim().isEmpty ||
+          name.trim().runes.length > 32) {
         throw const FormatException('name must contain 1–32 characters');
       }
     }

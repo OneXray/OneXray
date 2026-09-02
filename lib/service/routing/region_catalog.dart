@@ -70,7 +70,7 @@ final class RegionCatalog {
     final defaultFile = domain ? 'geosite.dat' : 'geoip.dat';
     final prefix = domain ? 'geosite' : 'geoip';
     final search = query.trim().toLowerCase();
-    return {
+    final results = {
       for (final file in files.entries)
         for (final code in file.value)
           if ((file.key == defaultFile
@@ -79,6 +79,18 @@ final class RegionCatalog {
               .toLowerCase()
               .contains(search))
             file.key == defaultFile ? '$prefix:$code' : 'ext:${file.key}:$code',
-    }.toList()..sort();
+    }.toList();
+    // A region code must not disappear behind hundreds of brand@region hits.
+    int rank(String value) {
+      final lower = value.toLowerCase();
+      final code = lower.split(':').last;
+      if (lower == search || code == search) return 0;
+      return code.startsWith(search) ? 1 : 2;
+    }
+
+    return results..sort((a, b) {
+      final order = rank(a).compareTo(rank(b));
+      return order == 0 ? a.compareTo(b) : order;
+    });
   }
 }

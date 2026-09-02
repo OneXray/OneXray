@@ -10,6 +10,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/debug_proxy.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/traffic_accounting.dart';
@@ -17,6 +18,8 @@ import 'package:onexray/service/xray/metrics/model.dart';
 import 'package:path/path.dart' as p;
 
 export 'traffic_accounting.dart' show RuntimeSnapshot;
+
+typedef RestoreReplay = Future<void> Function();
 
 class HostConnection {
   final VpnStatus status;
@@ -72,6 +75,7 @@ class ConnectionRuntimeHost {
     if (readStatus != null) {
       return readStatus();
     }
+    if (IOSDebugProxy().running) return VpnStatus.connected;
     final event = AppFlutterApi().vpnStatusController.stream.first.timeout(
       const Duration(seconds: 5),
     );
@@ -169,6 +173,64 @@ class ConnectionRuntimeHost {
   }
 
   Future<RuntimeSnapshot?> readSavedTraffic() => _accounting.read();
+
+  /// Revoke only Windows CLI input, never the plan, data or shared start file.
+  /// This protects later reads after normal cleanup, not a Core that already
+  /// read the file or an App killed before cleanup.
+  Future<RestoreReplay?> revokeReplay(ConnectionPlan? plan) async {
+    if (plan == null || plan.platform != ConnectionPlatform.windows) {
+      return null;
+    }
+    if (!_safeId.hasMatch(plan.id)) {
+      throw const FormatException('Invalid replay plan');
+    }
+    final plans = p.join(_directory, 'plans');
+    final directory = p.join(plans, plan.id);
+    for (final path in [_directory, plans, directory]) {
+      final type = await FileSystemEntity.type(path, followLinks: false);
+      if (type == FileSystemEntityType.notFound) return null;
+      if (type != FileSystemEntityType.directory) {
+        throw const FormatException('Invalid replay directory');
+      }
+    }
+    final file = File(p.join(directory, 'runtime-config.json'));
+    final type = await FileSystemEntity.type(file.path, followLinks: false);
+    if (type == FileSystemEntityType.notFound) return null;
+    if (type != FileSystemEntityType.file || await file.length() > 65536) {
+      throw const FormatException('Invalid replay metadata');
+    }
+    final text = await file.readAsString();
+    final metadata = _jsonObject(text);
+    final runtime = plan.runtime;
+    if (metadata['planId'] != plan.id ||
+        metadata['statePath'] != runtime.statePath ||
+        metadata['inboundTag'] != runtime.inboundTag) {
+      throw const FormatException('Replay metadata differs from its plan');
+    }
+    if (await _status() != VpnStatus.disconnected) {
+      throw const ConnectionHostException('replayPlanStillRunning');
+    }
+    await file.delete();
+    return () async {
+      final type = await FileSystemEntity.type(file.path, followLinks: false);
+      if (type != FileSystemEntityType.notFound) {
+        if (type != FileSystemEntityType.file ||
+            await file.readAsString() != text) {
+          throw const FormatException(
+            'Replay metadata changed during rollback',
+          );
+        }
+        return;
+      }
+      final staging = File('${file.path}.$pid.restore');
+      try {
+        await staging.writeAsString(text, flush: true);
+        await staging.rename(file.path);
+      } finally {
+        if (await staging.exists()) await staging.delete();
+      }
+    };
+  }
 
   Future<RuntimeSnapshot?> resetTraffic([ConnectionPlan? plan]) async {
     if (plan != null) {
@@ -305,6 +367,7 @@ class ConnectionRuntimeHost {
     if (startVpn != null) {
       return startVpn(plan);
     }
+    if (IOSDebugProxy().enabled) return IOSDebugProxy().start(plan);
     await plan.request.writeToStartFile();
     final policy = plan.configuration.policy;
     final windows = plan.platform == ConnectionPlatform.windows;
@@ -368,7 +431,11 @@ class ConnectionRuntimeHost {
   }
 
   Future<HostConnection> stop(ConnectionPlan? plan) async {
-    final result = await (_stopVpn?.call() ?? _host.stopVpn());
+    final result =
+        await (_stopVpn?.call() ??
+            (IOSDebugProxy().running
+                ? IOSDebugProxy().stop()
+                : _host.stopVpn()));
     if (result.state != NativeVpnCommandState.success) {
       throw const ConnectionHostException('stopFailed');
     }

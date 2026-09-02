@@ -292,6 +292,28 @@ struct RuntimeStateFiles: Codable {
 
 // MARK: - System extension app-provider messages (app ↔ tunnel)
 
+struct TunnelLogChunk: Codable {
+    static let maximumBytes = 1024 * 1024
+    static let maximumMessageBytes = maximumBytes + 4096
+    let data: Data
+    let offset: Int64
+    let size: Int64
+    let fileId: String
+
+    static func validateRequest(planId: String, offset: Int64, limit: Int64) throws {
+        guard RuntimeStateSnapshot.isSessionId(planId), offset >= -1,
+              limit > 0, limit <= Int64(maximumBytes) else { throw RuntimeStateError.invalid }
+    }
+
+    func validate(limit: Int64) throws {
+        guard offset >= 0, size >= offset, Int64(data.count) <= limit,
+              Int64(data.count) <= size - offset,
+              !fileId.isEmpty, fileId.utf8.count <= 128 else {
+            throw RuntimeStateError.invalid
+        }
+    }
+}
+
 enum TunnelRequest: Codable {
     case listDat
     case clearDat
@@ -299,12 +321,14 @@ enum TunnelRequest: Codable {
     case commitDat
     case startXray
     case readRuntime(removeSessionIds: [String])
+    case readLog(planId: String, access: Bool, offset: Int64, limit: Int64)
 }
 
 enum TunnelResponse: Codable {
     case ok
     case datManifest([String: Int64])
     case runtimeState(String?)
+    case logChunk(TunnelLogChunk?)
     case error(String)
 }
 

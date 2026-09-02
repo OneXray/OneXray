@@ -13,6 +13,8 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 
 class AppHostApi {
+  Future<AppleVpnCapabilities> appleVpnCapabilities() =>
+      _api.appleVpnCapabilities();
   final _api = BridgeHostApi();
   final _windows = WindowsNativeApi();
 
@@ -347,6 +349,31 @@ class AppHostApi {
     return CheckRouteResponse.fromJson(response.data!);
   }
 
+  Future<int> probeXray(
+    String xrayJson, {
+    required String url,
+    required int timeout,
+    String inboundTag = 'tunIn',
+  }) async {
+    final result = await _invoke(
+      LibXrayInvokeRequest(
+        method: LibXrayMethod.testXray,
+        payload: TestXrayRequest(
+          xrayJson,
+          url: url,
+          timeout: timeout,
+          inboundTag: inboundTag,
+        ).toJson(),
+      ),
+    );
+    final response = LibXrayInvokeResponseParser.parse(result);
+    final delay = response.data?['delay'];
+    if (!response.success || delay is! int || delay < 0) {
+      throw const FormatException('Configuration URL probe failed');
+    }
+    return delay;
+  }
+
   Future<String> runXray(String coreInvokeText) async {
     if (!AppPlatform.isIOS) {
       return _errorResult;
@@ -371,6 +398,36 @@ class AppHostApi {
       throw UnsupportedError('runtimeStateRequiresSystemExtension');
     }
     return _api.readRuntimeState(removeSessionIds);
+  }
+
+  /// Reads only the two fixed logs inside a System Extension plan directory.
+  Future<NativeLogChunk?> readLog({
+    required String planId,
+    required bool access,
+    required int offset,
+    required int limit,
+  }) async {
+    if (!RegExp(r'^[0-9a-f]{32}$').hasMatch(planId) ||
+        offset < -1 || limit <= 0 || limit > 1024 * 1024) {
+      throw const FormatException('Invalid log request');
+    }
+    if (!AppPlatform.isMacOS) {
+      throw UnsupportedError('logRequiresSystemExtension');
+    }
+    final chunk = await _api.readLog(planId, access, offset, limit)
+        .timeout(const Duration(seconds: 8));
+    if (chunk != null && (chunk.offset < 0 || chunk.size < chunk.offset ||
+        chunk.data.length > limit || chunk.data.length > chunk.size - chunk.offset ||
+        chunk.fileId.isEmpty || chunk.fileId.length > 128)) {
+      throw const FormatException('Invalid log response');
+    }
+    if (chunk != null) {
+      final expectedOffset = offset == -1
+          ? (chunk.size > limit ? chunk.size - limit : 0)
+          : (offset > chunk.size ? chunk.size : offset);
+      if (chunk.offset != expectedOffset) throw const FormatException('Invalid log response');
+    }
+    return chunk;
   }
 
   Future<String> stopXray() async {

@@ -23,6 +23,379 @@ void main() {
     addTearDown(db.close);
   });
 
+  for (final fail in [false, true]) {
+    test(
+      'offline runtime save revokes replay and restores it only on rollback; fail=$fail',
+      () async {
+        final old = _plan('a', platform: ConnectionPlatform.windows);
+        await _seed(db, old);
+        final before = await db.connectionStateDao.read();
+        var replayAllowed = true;
+        var revokes = 0;
+        var restores = 0;
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+            revokeReplay: (plan) async {
+              expect(plan!.id, old.id);
+              revokes++;
+              replayAllowed = false;
+              return () async {
+                restores++;
+                replayAllowed = true;
+              };
+            },
+            resetTraffic: _noReset,
+          ),
+        );
+        final next = ConnectionConfiguration(
+          connection: ConnectionSettings(expert: true),
+        );
+        final operation = coordinator.apply(
+          next,
+          writeAssets: () async {
+            expect(replayAllowed, false);
+            await _writeAsset(db);
+            if (fail) throw StateError('Asset write failed');
+          },
+        );
+        if (fail) {
+          await expectLater(operation, throwsStateError);
+          expect(
+            (await db.connectionStateDao.read()).toJson(),
+            before.toJson(),
+          );
+          expect(await db.select(db.coreConfig).get(), isEmpty);
+        } else {
+          await operation;
+          expect((await coordinator.configuration).encode(), next.encode());
+          expect(await db.select(db.coreConfig).get(), hasLength(1));
+        }
+        expect(revokes, 1);
+        expect(restores, fail ? 1 : 0);
+        expect(replayAllowed, fail);
+      },
+    );
+  }
+
+  test(
+    'unchanged and non-runtime saves do not revoke a confirmed plan',
+    () async {
+      final old = _plan('a', platform: ConnectionPlatform.windows);
+      await _seed(db, old);
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          revokeReplay: (_) async =>
+              throw StateError('Unexpected replay revocation'),
+          resetTraffic: _noReset,
+        ),
+      );
+      await coordinator.apply(old.configuration);
+      await coordinator.apply(
+        old.configuration,
+        affectsRuntime: false,
+        writeAssets: () => _writeAsset(db),
+      );
+      expect(await db.select(db.coreConfig).get(), hasLength(1));
+    },
+  );
+
+  for (final failAtStart in [false, true]) {
+    test(
+      'a failed attempt without an old running plan revokes only that stopped attempt; start=$failAtStart',
+      () async {
+        final old = _plan('a', platform: ConnectionPlatform.windows);
+        final next = _plan(
+          'b',
+          platform: ConnectionPlatform.windows,
+          entryIds: [2],
+        );
+        await _seed(db, old);
+        final before = await db.connectionStateDao.read();
+        var host = const HostConnection(VpnStatus.disconnected);
+        final calls = <String>[];
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            prepare: (_, _) async => next,
+            inspect: (_) async => host,
+            start: (plan) async {
+              calls.add('start:${plan.id}');
+              host = HostConnection(VpnStatus.connected, plan: plan);
+              if (failAtStart) throw StateError('Start failed');
+              return host;
+            },
+            stop: (_) async {
+              calls.add('stop');
+              return host = const HostConnection(VpnStatus.disconnected);
+            },
+            revokeReplay: (plan) async {
+              expect(host.status, VpnStatus.disconnected);
+              calls.add('revoke:${plan!.id}');
+              return null;
+            },
+            resetTraffic: _noReset,
+          ),
+        );
+        await expectLater(
+          coordinator.apply(
+            next.configuration,
+            connect: true,
+            writeAssets: () async {
+              throw StateError('Commit failed');
+            },
+          ),
+          throwsStateError,
+        );
+        expect(calls, ['start:${next.id}', 'stop', 'revoke:${next.id}']);
+        expect((await db.connectionStateDao.read()).toJson(), before.toJson());
+        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      },
+    );
+  }
+
+  test(
+    'failure restores an old running plan without revoking its replay',
+    () async {
+      final old = _plan('a', platform: ConnectionPlatform.windows);
+      final next = _plan(
+        'b',
+        platform: ConnectionPlatform.windows,
+        entryIds: [2],
+      );
+      await _seed(db, old);
+      var host = HostConnection(VpnStatus.connected, plan: old);
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          prepare: (_, _) async => next,
+          inspect: (_) async => host,
+          start: (plan) async =>
+              host = HostConnection(VpnStatus.connected, plan: plan),
+          stop: (_) async =>
+              host = const HostConnection(VpnStatus.disconnected),
+          revokeReplay: (_) async =>
+              throw StateError('Unexpected replay revocation'),
+          resetTraffic: _noReset,
+        ),
+      );
+      await expectLater(
+        coordinator.apply(
+          next.configuration,
+          writeAssets: () async {
+            throw StateError('Commit failed');
+          },
+        ),
+        throwsStateError,
+      );
+      expect(host.plan!.id, old.id);
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+    },
+  );
+
+  test(
+    'reopen cleans a stopped uncommitted plan when there is no old session',
+    () async {
+      final next = _plan('b', platform: ConnectionPlatform.windows);
+      await db.connectionStateDao.beginApply(
+        0,
+        jsonEncode({'attemptId': next.id, 'old': null, 'next': next.encode()}),
+      );
+      final revoked = <String>[];
+      await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          revokeReplay: (plan) async {
+            revoked.add(plan!.id);
+            return null;
+          },
+          resetTraffic: _noReset,
+        ),
+      );
+      expect(revoked, [next.id]);
+      expect((await db.connectionStateDao.read()).pendingApplyJson, isNull);
+    },
+  );
+
+  test(
+    'failed replay cleanup retains the pending journal for a later retry',
+    () async {
+      final next = _plan('b', platform: ConnectionPlatform.windows);
+      final pending = jsonEncode({
+        'attemptId': next.id,
+        'old': null,
+        'next': next.encode(),
+      });
+      await db.connectionStateDao.beginApply(0, pending);
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        revokeReplay: (_) async =>
+            throw StateError('Replay file is unavailable'),
+        resetTraffic: _noReset,
+      );
+      addTearDown(coordinator.dispose);
+      await expectLater(
+        coordinator.initialize(poll: false, registerReferences: false),
+        throwsStateError,
+      );
+      expect((await db.connectionStateDao.read()).pendingApplyJson, pending);
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect(coordinator.state.value.issue, 'restoreFailed');
+    },
+  );
+
+  test('a queued draft cannot reconnect without prior authorization', () async {
+    final ready = Completer<void>();
+    final release = Completer<void>();
+    final plan = _plan('a');
+    var host = const HostConnection(VpnStatus.disconnected);
+    var prepared = 0;
+    var writes = 0;
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        prepare: (_, _) async {
+          prepared++;
+          return plan;
+        },
+        start: (_) async {
+          ready.complete();
+          await release.future;
+          return host = HostConnection(VpnStatus.connected, plan: plan);
+        },
+        stop: (_) async => throw StateError('Must not stop the active plan'),
+        inspect: (_) async => host,
+        resetTraffic: _noReset,
+      ),
+    );
+    final connect = coordinator.apply(plan.configuration, connect: true);
+    await ready.future;
+    final queued = expectLater(
+      coordinator.apply(
+        plan.configuration,
+        allowReconnect: false,
+        writeAssets: () async {
+          writes++;
+        },
+      ),
+      throwsA(
+        isA<ConnectionHostException>().having(
+          (error) => error.reason,
+          'reason',
+          'reconnectRequired',
+        ),
+      ),
+    );
+    release.complete();
+    await connect;
+    await queued;
+    expect(prepared, 1);
+    expect(writes, 0);
+    expect(coordinator.state.value.plan!.id, plan.id);
+  });
+
+  test('a stale editor cannot overwrite newer saved configuration', () async {
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        resetTraffic: _noReset,
+      ),
+    );
+    final old = (await coordinator.configuration).encode();
+    final next = ConnectionConfiguration(
+      connection: ConnectionSettings(expert: true),
+    );
+    await coordinator.apply(next, affectsRuntime: false);
+    await expectLater(
+      coordinator.apply(
+        ConnectionConfiguration(),
+        affectsRuntime: false,
+        expectedConfiguration: old,
+      ),
+      throwsA(
+        isA<ConnectionHostException>().having(
+          (error) => error.reason,
+          'reason',
+          'configurationChanged',
+        ),
+      ),
+    );
+    expect((await coordinator.configuration).encode(), next.encode());
+  });
+
+  for (final fail in [false, true]) {
+    test(
+      'stop-only apply commits safely or restores the old session; fail=$fail',
+      () async {
+        final plan = _plan('old', platform: ConnectionPlatform.windows);
+        await _seed(db, plan);
+        var host = HostConnection(VpnStatus.connected, plan: plan);
+        var starts = 0;
+        var replayAllowed = true;
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            prepare: (_, _) async =>
+                throw StateError('Stop-only must not prepare'),
+            start: (old) async {
+              expect(replayAllowed, true);
+              starts++;
+              return host = HostConnection(VpnStatus.connected, plan: old);
+            },
+            stop: (_) async =>
+                host = const HostConnection(VpnStatus.disconnected),
+            inspect: (_) async => host,
+            revokeReplay: (old) async {
+              expect(old!.id, plan.id);
+              expect(host.status, VpnStatus.disconnected);
+              replayAllowed = false;
+              return () async {
+                replayAllowed = true;
+              };
+            },
+            resetTraffic: _noReset,
+          ),
+        );
+        final next = ConnectionConfiguration(
+          connection: ConnectionSettings(expert: true),
+        );
+        final operation = coordinator.apply(
+          next,
+          disconnect: true,
+          affectsRuntime: false,
+          writeAssets: () async {
+            expect(replayAllowed, false);
+            await _writeAsset(db);
+            if (fail) throw StateError('Disk write failed');
+          },
+        );
+        if (fail) {
+          await expectLater(operation, throwsStateError);
+          expect(host.plan!.id, plan.id);
+          expect(
+            (await coordinator.configuration).encode(),
+            plan.configuration.encode(),
+          );
+          expect(await db.select(db.coreConfig).get(), isEmpty);
+        } else {
+          await operation;
+          expect(host.status, VpnStatus.disconnected);
+          expect((await coordinator.configuration).encode(), next.encode());
+          expect(await db.select(db.coreConfig).get(), hasLength(1));
+        }
+        expect(starts, fail ? 1 : 0);
+        expect(replayAllowed, fail);
+        expect((await db.connectionStateDao.read()).pendingApplyJson, isNull);
+      },
+    );
+  }
+
   test(
     'settings and assets commit once, only after the host confirms the plan',
     () async {
@@ -736,6 +1109,7 @@ ConnectionPlan _plan(
   String digit, {
   List<int> entryIds = const [1],
   int? exitId,
+  ConnectionPlatform platform = ConnectionPlatform.android,
 }) {
   final id = List.filled(32, digit).join();
   final configuration = ConnectionConfiguration(
@@ -787,7 +1161,7 @@ ConnectionPlan _plan(
     id: id,
     configuration: configuration,
     compiled: compiled,
-    platform: ConnectionPlatform.android,
+    platform: platform,
     request: StartVpnRequest(
       configuration.policy.toTun(ConnectionPlatform.android),
       null,

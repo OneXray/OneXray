@@ -157,3 +157,26 @@ Flutter 全量 500 项通过、Windows 原生 1 项跳过。Android 独立入口
 macOS VPN/截图，Windows/Linux 原生 NOT RUN。详细日志和证据见工作空间
 `references/onexray-refactor-validation/p5-results.md`。Custom 分享依赖、全站系统外入口
 与发行渠道收尾仍由 P6–P9 完成，不能用本阶段代表整站重构已完成。
+
+## P6 — 路由与专家编辑（2026-09-03）
+
+流量弹窗、Smart/真实直连地区/独立最终出口、Custom 四条件规则与自动补全、Raw
+编辑/原生网络测试、Custom/Raw 导入分享已接入。草稿保存、取消、未选中编辑与已连接
+重连共用协调器；排队后的配置变化与未经确认重连会被拒绝。Custom 仅使用 Xray 字段，
+无停用字段；导出根部允许 name，导入 assets 仅用于下载，存储时移除。
+
+共享基础同时落地 schema 6 的 Geodata 不可变代次、默认双文件共同发布、资产/备份
+事务、固定计划副本和原生只读日志桥接；P7 再接入管理页面。未发布且未启动的草稿会
+清理，曾尝试启动/发布的旧代保留，尚未实现自动 GC，不宣称磁盘占用已经长期有界。
+
+Android 真实操作覆盖 Smart 2 接入/CN+RU/最终出口草稿、Custom 域名+端口规则及
+双节点连接。Raw 临时测试返回 119 ms，前后 session
+`17aa18ae52bec32d9b554778b5b46526`、plan `8766e60447929e57b5e6200a91d5404f`
+不变。独立原生配置测试 5 项通过，验证 DNS/路由/阻断、额外监听不绑定及无托管实例发布。
+libXray 的 testXray 可选 URL 探测已重建 Android/Apple Go 并复制，Go 全量与根包/xray
+race 检查通过；完整 macOS Debug 构建通过，不启动 macOS VPN，不截图。
+
+P6/P7 联合回归、真实页面与受限项详见工作空间
+`references/onexray-refactor-validation/{p6-results,p7-results}.md`。
+Windows 仅源码/纯 Dart 契约检查；正常离线修改和已确认失败可撤销旧 CLI 输入，事务
+失败可恢复，不引入 VCore 新协议，不承诺任意强杀点的跨进程原子启动保证。VCore 未改。

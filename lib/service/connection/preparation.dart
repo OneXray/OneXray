@@ -14,6 +14,7 @@ import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/custom_template.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
+import 'package:onexray/service/geo_data/service.dart';
 import 'package:path/path.dart' as p;
 
 ConnectionPlatform get connectionPlatform => switch (Platform.operatingSystem) {
@@ -58,6 +59,7 @@ class ConnectionPreparation {
     CustomRoutingTemplate? customDraft,
     Map<int, ServerSnapshot> serverDrafts = const {},
     void Function(Set<int>)? onResolved,
+    Future<void> Function(String datDirectory)? prepareAssets,
   }) async {
     var configuration = input;
     var settings = input.connection;
@@ -133,149 +135,158 @@ class ConnectionPreparation {
     final id = newPlanId();
     final directory = Directory(p.join(VpnConstants.runDir, 'plans', id));
     await directory.create(recursive: true);
-    // ponytail: freeze legacy dat files per plan until P7 publishes shared,
-    // immutable generations; no running plan may observe an in-place update.
-    final assets = Directory(p.join(directory.path, 'dat'));
-    await assets.create();
-    await for (final file in Directory(
-      VpnConstants.datDir,
-    ).list(followLinks: false)) {
-      if (file is File && {'.dat', '.json'}.contains(p.extension(file.path))) {
-        await file.copy(p.join(assets.path, p.basename(file.path)));
-      }
-    }
-    for (final name in ['geosite', 'geoip']) {
-      if (!await File(p.join(assets.path, '$name.dat')).exists()) {
-        throw const FormatException('Default routing data is missing');
-      }
-    }
-    Future<Map<String, dynamic>> readIndex(String name) async =>
-        jsonDecode(await File(p.join(assets.path, '$name.json')).readAsString())
-            as Map<String, dynamic>;
-    final regions = RegionCatalog.fromJson(
-      jsonDecode(await rootBundle.loadString(RegionCatalog.assetPath))
-          as Map<String, dynamic>,
-      geositeCodes: RegionCatalog.codesFromIndex(await readIndex('geosite')),
-      geoipCodes: RegionCatalog.codesFromIndex(await readIndex('geoip')),
-    );
-    final rawObject = raw == null
-        ? null
-        : jsonDecode(raw) as Map<String, dynamic>;
-    final rawInbounds = rawObject?['inbounds'] as List<dynamic>? ?? [];
-    List<int>? ports;
-    for (var attempt = 0; attempt < 5; attempt++) {
-      final candidates = await AppHostApi().getFreePorts(3);
-      if (candidates.length == 3 &&
-          candidates.toSet().length == 3 &&
-          !rawInbounds.any(
-            (entry) =>
-                entry is Map &&
-                candidates.any(
-                  (port) =>
-                      ConnectionCompiler.portIncludes(entry['port'], port),
-                ),
-          )) {
-        ports = candidates;
-        break;
-      }
-    }
-    if (ports == null) {
-      throw const FormatException('Runtime ports are unavailable');
-    }
-    final bootstrap = <String, List<String>>{};
-    if (!policy.ipv6Enabled) {
-      final outbounds = rawObject == null
-          ? [
-              ...entries.map((entry) => entry.outbound),
-              if (finalExit != null) finalExit.outbound,
-            ]
-          : (rawObject['outbounds'] as List).cast<Map<String, dynamic>>();
-      for (final address in outbounds.expand(outboundAddresses).toSet()) {
-        if (InternetAddress.tryParse(address) != null) continue;
-        final addresses = await InternetAddress.lookup(
-          address,
-          type: InternetAddressType.IPv4,
-        ).timeout(const Duration(seconds: 10));
-        if (addresses.isEmpty) {
-          throw const FormatException('No IPv4 bootstrap address');
+    try {
+      // Freeze one published row snapshot. Default files always share a generation.
+      final assets = Directory(p.join(directory.path, 'dat'));
+      await assets.create();
+      await GeoDataService().copyPublishedTo(assets.path);
+      for (final name in ['geosite', 'geoip']) {
+        if (!await File(p.join(assets.path, '$name.dat')).exists()) {
+          throw const FormatException('Default routing data is missing');
         }
-        bootstrap[address] = addresses.map((ip) => ip.address).toSet().toList();
       }
-    }
-    final auth = XrayInboundAccountFactory.random();
-    final compiled = ConnectionCompiler.compile(
-      settings: settings,
-      entries: entries,
-      finalExit: finalExit,
-      rawText: raw,
-      custom: custom,
-      regions: regions,
-      options: RuntimeOptions(
+      await prepareAssets?.call(assets.path);
+      Future<Map<String, dynamic>> readIndex(String name) async => jsonDecode(
+        await File(p.join(assets.path, '$name.json')).readAsString(),
+      ) as Map<String, dynamic>;
+      final regions = RegionCatalog.fromJson(
+        jsonDecode(await rootBundle.loadString(RegionCatalog.assetPath))
+            as Map<String, dynamic>,
+        geositeCodes: RegionCatalog.codesFromIndex(await readIndex('geosite')),
+        geoipCodes: RegionCatalog.codesFromIndex(await readIndex('geoip')),
+      );
+      final rawObject = raw == null
+          ? null
+          : jsonDecode(raw) as Map<String, dynamic>;
+      final rawInbounds = rawObject?['inbounds'] as List<dynamic>? ?? [];
+      List<int>? ports;
+      for (var attempt = 0; attempt < 5; attempt++) {
+        final candidates = await AppHostApi().getFreePorts(3);
+        if (candidates.length == 3 &&
+            candidates.toSet().length == 3 &&
+            !rawInbounds.any(
+              (entry) =>
+                  entry is Map &&
+                  candidates.any(
+                    (port) =>
+                        ConnectionCompiler.portIncludes(entry['port'], port),
+                  ),
+            )) {
+          ports = candidates;
+          break;
+        }
+      }
+      if (ports == null) {
+        throw const FormatException('Runtime ports are unavailable');
+      }
+      final bootstrap = <String, List<String>>{};
+      if (!policy.ipv6Enabled) {
+        final outbounds = rawObject == null
+            ? [
+                ...entries.map((entry) => entry.outbound),
+                if (finalExit != null) finalExit.outbound,
+              ]
+            : (rawObject['outbounds'] as List).cast<Map<String, dynamic>>();
+        for (final address in outbounds.expand(outboundAddresses).toSet()) {
+          if (InternetAddress.tryParse(address) != null) continue;
+          final addresses = await InternetAddress.lookup(
+            address,
+            type: InternetAddressType.IPv4,
+          ).timeout(const Duration(seconds: 10));
+          if (addresses.isEmpty) {
+            throw const FormatException('No IPv4 bootstrap address');
+          }
+          bootstrap[address] = addresses
+              .map((ip) => ip.address)
+              .toSet()
+              .toList();
+        }
+      }
+      final auth = XrayInboundAccountFactory.random();
+      final compiled = ConnectionCompiler.compile(
+        settings: settings,
+        entries: entries,
+        finalExit: finalExit,
+        rawText: raw,
+        custom: custom,
+        regions: regions,
+        options: RuntimeOptions(
+          platform: platform,
+          assetDirectory: assets.path,
+          sessionDirectory: directory.path,
+          socksPort: ports[0],
+          pingPort: ports[1],
+          metricsPort: ports[2],
+          pingAuth: auth,
+          ipv6: policy.ipv6Enabled,
+          interfaceName: policy.xrayOutboundInterfaceName,
+          logEnabled: policy.logEnabled,
+          logLevel: policy.logLevel,
+          dnsLog: policy.recordDns,
+          maskAddress: policy.maskAddress,
+          bootstrapAddresses: bootstrap,
+        ),
+      );
+      final validation = await AppHostApi().testXray(
+        compiled.xrayJson,
+        buildOnly: true,
+      );
+      if (validation.isNotEmpty) {
+        throw const FormatException('Xray configuration validation failed');
+      }
+      for (final snapshot in [...entries, ?finalExit]) {
+        final row = await db.coreConfigDao.searchRow(snapshot.id);
+        if (row == null ||
+            row.type != 'outbound' ||
+            (!serverDrafts.containsKey(row.id) &&
+                ServerSnapshot.fromRow(row).outboundJson !=
+                    snapshot.outboundJson)) {
+          throw const FormatException(
+            'A selected server changed during preparation',
+          );
+        }
+      }
+      final runtime = ManagedRuntimeRequest(
+        statePath: p.join(VpnConstants.runDir, 'runtime.json'),
+        planId: id,
+      );
+      final request = StartVpnRequest(
+        tun,
+        platform == ConnectionPlatform.windows ||
+                platform == ConnectionPlatform.ios
+            ? '${ports[0]}'
+            : null,
+        '${ports[1]}',
+        auth,
+        '${ports[2]}',
+        jsonEncode(
+          LibXrayInvokeRequest(
+            method: LibXrayMethod.runXray,
+            payload: RunXrayRequest(
+              compiled.xrayJson,
+              runtime: runtime,
+            ).toJson(),
+          ).toJson(),
+        ),
+      );
+      final plan = ConnectionPlan.create(
+        id: id,
+        configuration: configuration,
+        compiled: compiled,
         platform: platform,
-        assetDirectory: assets.path,
-        sessionDirectory: directory.path,
-        socksPort: ports[0],
-        pingPort: ports[1],
-        metricsPort: ports[2],
-        pingAuth: auth,
-        ipv6: policy.ipv6Enabled,
-        interfaceName: policy.xrayOutboundInterfaceName,
-        logEnabled: policy.logEnabled,
-        logLevel: policy.logLevel,
-        logFilesSupported: !await AppHostApi().useSystemExtension(),
-        dnsLog: policy.recordDns,
-        maskAddress: policy.maskAddress,
-        bootstrapAddresses: bootstrap,
-      ),
-    );
-    final validation = await AppHostApi().testXray(
-      compiled.xrayJson,
-      buildOnly: true,
-    );
-    if (validation.isNotEmpty) {
-      throw const FormatException('Xray configuration validation failed');
+        request: request,
+        notice: notice,
+      );
+      await File(p.join(directory.path, 'plan.json'))
+          .writeAsString(plan.encode(), flush: true);
+      await File(p.join(directory.path, 'xray.json'))
+          .writeAsString(compiled.xrayJson, flush: true);
+      return plan;
+    } catch (_) {
+      // This plan has not been returned or published. Remove only its own
+      // generated directory on preparation/validation failure.
+      if (await directory.exists()) await directory.delete(recursive: true);
+      rethrow;
     }
-    for (final snapshot in [...entries, ?finalExit]) {
-      final row = await db.coreConfigDao.searchRow(snapshot.id);
-      if (row == null ||
-          row.type != 'outbound' ||
-          (!serverDrafts.containsKey(row.id) &&
-              ServerSnapshot.fromRow(row).outboundJson !=
-                  snapshot.outboundJson)) {
-        throw const FormatException(
-          'A selected server changed during preparation',
-        );
-      }
-    }
-    final runtime = ManagedRuntimeRequest(
-      statePath: p.join(VpnConstants.runDir, 'runtime.json'),
-      planId: id,
-    );
-    final request = StartVpnRequest(
-      tun,
-      platform == ConnectionPlatform.windows ? '${ports[0]}' : null,
-      '${ports[1]}',
-      auth,
-      '${ports[2]}',
-      jsonEncode(
-        LibXrayInvokeRequest(
-          method: LibXrayMethod.runXray,
-          payload: RunXrayRequest(compiled.xrayJson, runtime: runtime).toJson(),
-        ).toJson(),
-      ),
-    );
-    final plan = ConnectionPlan.create(
-      id: id,
-      configuration: configuration,
-      compiled: compiled,
-      platform: platform,
-      request: request,
-      notice: notice,
-    );
-    await File(p.join(directory.path, 'plan.json'))
-        .writeAsString(plan.encode(), flush: true);
-    await File(p.join(directory.path, 'xray.json'))
-        .writeAsString(compiled.xrayJson, flush: true);
-    return plan;
   }
 }

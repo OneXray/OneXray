@@ -2,11 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
-import 'package:flutter/services.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -14,9 +12,9 @@ import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/preparation.dart';
 import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/geo_data/system_dat_service.dart';
+import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/launch/storage_preparation.dart';
-import 'package:onexray/service/routing/region_catalog.dart';
+import 'package:onexray/service/routing/geodata_suggestions.dart';
 import 'package:onexray/service/tun_settings/interface.dart';
 import 'package:path/path.dart' as p;
 
@@ -83,20 +81,7 @@ class SetupService {
     final prepare = _prepareLocal;
     if (prepare != null) return prepare();
     await StoragePreparation.ensureReady();
-    await SystemGeoDatService().checkAssets();
-    for (final name in [
-      'geoip.dat',
-      'geosite.dat',
-      'geoip.json',
-      'geosite.json',
-    ]) {
-      final file = File(p.join(VpnConstants.datDir, name));
-      if (!await file.exists() || await file.length() == 0) {
-        // A timestamp by itself is not proof that all bundled files survived.
-        await SystemGeoDatService().copyAssetsTo(VpnConstants.datDir);
-        break;
-      }
-    }
+    await GeoDataService().ensureInstalled();
     await regionCodes();
   }
 
@@ -203,15 +188,7 @@ class SetupService {
   Future<List<String>> regionCodes() async {
     final read = _readRegionCodes;
     if (read != null) return read();
-    Future<Map<String, dynamic>> index(String name) async => jsonDecode(
-      await File(p.join(VpnConstants.datDir, '$name.json')).readAsString(),
-    ) as Map<String, dynamic>;
-    final catalog = RegionCatalog.fromJson(
-      jsonDecode(await rootBundle.loadString(RegionCatalog.assetPath))
-          as Map<String, dynamic>,
-      geositeCodes: RegionCatalog.codesFromIndex(await index('geosite')),
-      geoipCodes: RegionCatalog.codesFromIndex(await index('geoip')),
-    );
+    final catalog = await (await RoutingGeodataIndex.load()).regionCatalog();
     if (catalog.regionCodes.isEmpty) throw const SetupFailure('Geodata');
     return catalog.regionCodes;
   }

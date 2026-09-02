@@ -275,6 +275,96 @@ enum class NativeLaunchAtLoginState(val raw: Int) {
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
+data class AppleVpnCapabilities (
+  val serviceExclusions: Boolean,
+  val deviceCommunication: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): AppleVpnCapabilities {
+      val serviceExclusions = pigeonVar_list[0] as Boolean
+      val deviceCommunication = pigeonVar_list[1] as Boolean
+      return AppleVpnCapabilities(serviceExclusions, deviceCommunication)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      serviceExclusions,
+      deviceCommunication,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as AppleVpnCapabilities
+    return MessagesPigeonUtils.deepEquals(this.serviceExclusions, other.serviceExclusions) && MessagesPigeonUtils.deepEquals(this.deviceCommunication, other.deviceCommunication)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.serviceExclusions)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.deviceCommunication)
+    return result
+  }
+  override fun toString(): String {
+    return "AppleVpnCapabilities(serviceExclusions=$serviceExclusions, deviceCommunication=$deviceCommunication)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class NativeLogChunk (
+  val data: ByteArray,
+  val offset: Long,
+  val size: Long,
+  val fileId: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): NativeLogChunk {
+      val data = pigeonVar_list[0] as ByteArray
+      val offset = pigeonVar_list[1] as Long
+      val size = pigeonVar_list[2] as Long
+      val fileId = pigeonVar_list[3] as String
+      return NativeLogChunk(data, offset, size, fileId)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      data,
+      offset,
+      size,
+      fileId,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as NativeLogChunk
+    return MessagesPigeonUtils.deepEquals(this.data, other.data) && MessagesPigeonUtils.deepEquals(this.offset, other.offset) && MessagesPigeonUtils.deepEquals(this.size, other.size) && MessagesPigeonUtils.deepEquals(this.fileId, other.fileId)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.data)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.offset)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.size)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.fileId)
+    return result
+  }
+  override fun toString(): String {
+    return "NativeLogChunk(data=${data.contentToString()}, offset=$offset, size=$size, fileId=$fileId)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
 data class NativeLaunchAtLoginResult (
   val state: NativeLaunchAtLoginState,
   val message: String? = null
@@ -480,20 +570,30 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
       }
       135.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          NativeLaunchAtLoginResult.fromList(it)
+          AppleVpnCapabilities.fromList(it)
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PlatformPermissionResult.fromList(it)
+          NativeLogChunk.fromList(it)
         }
       }
       137.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          NativeVpnCommandResult.fromList(it)
+          NativeLaunchAtLoginResult.fromList(it)
         }
       }
       138.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PlatformPermissionResult.fromList(it)
+        }
+      }
+      139.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          NativeVpnCommandResult.fromList(it)
+        }
+      }
+      140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           AndroidAppInfo.fromList(it)
         }
@@ -527,20 +627,28 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(134)
         writeValue(stream, value.raw.toLong())
       }
-      is NativeLaunchAtLoginResult -> {
+      is AppleVpnCapabilities -> {
         stream.write(135)
         writeValue(stream, value.toList())
       }
-      is PlatformPermissionResult -> {
+      is NativeLogChunk -> {
         stream.write(136)
         writeValue(stream, value.toList())
       }
-      is NativeVpnCommandResult -> {
+      is NativeLaunchAtLoginResult -> {
         stream.write(137)
         writeValue(stream, value.toList())
       }
-      is AndroidAppInfo -> {
+      is PlatformPermissionResult -> {
         stream.write(138)
+        writeValue(stream, value.toList())
+      }
+      is NativeVpnCommandResult -> {
+        stream.write(139)
+        writeValue(stream, value.toList())
+      }
+      is AndroidAppInfo -> {
+        stream.write(140)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -561,7 +669,9 @@ interface BridgeHostApi {
   fun getInstalledApps(callback: (Result<List<AndroidAppInfo>>) -> Unit)
   fun getAppIcon(packageName: String, callback: (Result<ByteArray?>) -> Unit)
   fun useSystemExtension(callback: (Result<Boolean>) -> Unit)
+  fun appleVpnCapabilities(callback: (Result<AppleVpnCapabilities>) -> Unit)
   fun readRuntimeState(removeSessionIds: List<String>, callback: (Result<String?>) -> Unit)
+  fun readLog(planId: String, access: Boolean, offset: Long, limit: Long, callback: (Result<NativeLogChunk?>) -> Unit)
   fun queryLaunchAtLogin(callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
   fun setLaunchAtLogin(enabled: Boolean, callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
   fun openLaunchAtLoginSettings(callback: (Result<Boolean>) -> Unit)
@@ -762,12 +872,53 @@ interface BridgeHostApi {
         }
       }
       run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.appleVpnCapabilities$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.appleVpnCapabilities{ result: Result<AppleVpnCapabilities> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val removeSessionIdsArg = args[0] as List<String>
             api.readRuntimeState(removeSessionIdsArg) { result: Result<String?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.readLog$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val planIdArg = args[0] as String
+            val accessArg = args[1] as Boolean
+            val offsetArg = args[2] as Long
+            val limitArg = args[3] as Long
+            api.readLog(planIdArg, accessArg, offsetArg, limitArg) { result: Result<NativeLogChunk?> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

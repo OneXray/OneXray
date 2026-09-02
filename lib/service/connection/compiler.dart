@@ -155,6 +155,49 @@ class ConnectionCompiler {
   static const dnsOutbound = 'app-dns';
   static const ipv6Block = 'app-ipv6-block';
 
+  /// The editor and runtime share these exact built-in rules and their order.
+  static List<Map<String, dynamic>> smartRules(
+    SmartRoutingSettings smart,
+    RegionCatalog regions,
+  ) {
+    final rules = <Map<String, dynamic>>[];
+    void add(String reason, Map<String, dynamic> fields) {
+      rules.add({'type': 'field', 'ruleTag': 'app-smart-$reason', ...fields});
+    }
+
+    if (smart.blockAds) {
+      add('ads', {
+        'domain': ['geosite:CATEGORY-ADS-ALL'],
+        'outboundTag': 'block',
+      });
+    }
+    if (smart.directPrivate) {
+      add('private-domain', {
+        'domain': ['geosite:PRIVATE'],
+        'outboundTag': 'direct',
+      });
+      add('private-ip', {
+        'ip': ['geoip:PRIVATE'],
+        'outboundTag': 'direct',
+      });
+    }
+    if (smart.directApple) {
+      add('apple', {
+        'domain': ['geosite:APPLE'],
+        'outboundTag': 'direct',
+      });
+    }
+    final domains = regions.domainRules(smart.directRegions);
+    final ips = regions.ipRules(smart.directRegions);
+    if (domains.isNotEmpty) {
+      add('regions-domain', {'domain': domains, 'outboundTag': 'direct'});
+    }
+    if (ips.isNotEmpty) {
+      add('regions-ip', {'ip': ips, 'outboundTag': 'direct'});
+    }
+    return rules;
+  }
+
   static CompiledConnection compile({
     required ConnectionSettings settings,
     required List<ServerSnapshot> entries,
@@ -198,48 +241,17 @@ class ConnectionCompiler {
         throw const FormatException('Custom route is required');
       }
       final rules = <Map<String, dynamic>>[];
-      void addSmart(String reason, Map<String, dynamic> fields) {
-        final tag = 'app-smart-$reason';
-        ruleTags[tag] = (index: null, name: reason);
-        rules.add({'type': 'field', 'ruleTag': tag, ...fields});
-      }
-
       var domainStrategy = 'AsIs';
       if (settings.trafficMode == TrafficMode.smart) {
         final smart = settings.smart;
         domainStrategy = smart.resolveIpOnNoMatch ? 'IPIfNonMatch' : 'AsIs';
-        if (smart.blockAds) {
-          addSmart('ads', {
-            'domain': ['geosite:CATEGORY-ADS-ALL'],
-            'outboundTag': 'block',
-          });
-        }
-        if (smart.directPrivate) {
-          addSmart('private-domain', {
-            'domain': ['geosite:PRIVATE'],
-            'outboundTag': 'direct',
-          });
-          addSmart('private-ip', {
-            'ip': ['geoip:PRIVATE'],
-            'outboundTag': 'direct',
-          });
-        }
-        if (smart.directApple) {
-          addSmart('apple', {
-            'domain': ['geosite:APPLE'],
-            'outboundTag': 'direct',
-          });
-        }
-        final domains = regions.domainRules(smart.directRegions);
-        final ips = regions.ipRules(smart.directRegions);
-        if (domains.isNotEmpty) {
-          addSmart('regions-domain', {
-            'domain': domains,
-            'outboundTag': 'direct',
-          });
-        }
-        if (ips.isNotEmpty) {
-          addSmart('regions-ip', {'ip': ips, 'outboundTag': 'direct'});
+        for (final rule in smartRules(smart, regions)) {
+          final tag = rule['ruleTag'] as String;
+          ruleTags[tag] = (
+            index: null,
+            name: tag.substring('app-smart-'.length),
+          );
+          rules.add(rule);
         }
       } else if (settings.trafficMode == TrafficMode.custom) {
         domainStrategy = custom!.domainStrategy;

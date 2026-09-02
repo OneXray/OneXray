@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/app_startup/service.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -139,27 +140,32 @@ final class TrayService with TrayListener {
       return;
     }
 
-    switch (key) {
-      case _TrayMenuKey.startVpn:
-        await ConnectionCoordinator.instance.connect();
-        break;
-      case _TrayMenuKey.stopVpn:
-        await ConnectionCoordinator.instance.disconnect();
-        break;
-      case _TrayMenuKey.showApp:
-        await windowManager.show();
-        await windowManager.focus();
-        break;
-      case _TrayMenuKey.quitApp:
-        if (AppPlatform.isLinux || AppPlatform.isWindows) {
+    try {
+      switch (key) {
+        case _TrayMenuKey.startVpn:
+          await ConnectionCoordinator.instance.connect();
+          break;
+        case _TrayMenuKey.stopVpn:
           await ConnectionCoordinator.instance.disconnect();
-        }
-        ServicesBinding.instance.exitApplication(AppExitType.cancelable);
-        break;
-      case _TrayMenuKey.quitAndStopVpn:
-        await ConnectionCoordinator.instance.disconnect();
-        ServicesBinding.instance.exitApplication(AppExitType.cancelable);
-        break;
+          break;
+        case _TrayMenuKey.showApp:
+          await windowManager.show();
+          await windowManager.focus();
+          break;
+        case _TrayMenuKey.quitApp:
+          if (AppPlatform.isLinux || AppPlatform.isWindows) {
+            await ConnectionCoordinator.instance.disconnect();
+          }
+          ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+          break;
+        case _TrayMenuKey.quitAndStopVpn:
+          await ConnectionCoordinator.instance.disconnect();
+          ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+          break;
+      }
+    } catch (_) {
+      // Keep the coordinator's failure/permission state for the normal UI retry.
+      await AppStartupService().showMainWindow();
     }
   }
 }

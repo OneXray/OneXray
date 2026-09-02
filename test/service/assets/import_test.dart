@@ -18,6 +18,7 @@ void main() {
     addTearDown(db.close);
     final queued = <int>[];
     final service = ServerImportService(
+      database: db,
       validate: (_) async => '',
       write: (rows) => ConfigWriter.writeRowsInTransaction(db, rows, null),
       schedule: queued.addAll,

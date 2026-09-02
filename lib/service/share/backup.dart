@@ -6,7 +6,6 @@ import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -14,7 +13,8 @@ import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/share/backup_archive.dart';
-import 'package:onexray/service/share/backup_dat_stager.dart';
+import 'package:onexray/service/geo_data/model.dart';
+import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/share/backup_database.dart';
 import 'package:onexray/service/share/backup_model.dart';
 import 'package:onexray/service/subscription/service.dart';
@@ -147,7 +147,7 @@ class BackupService {
       eventBus.updateDownloading(true);
 
       final cacheDir = await FileTool.makeCacheDir();
-      _DatRestoreSwap? datRestore;
+      GeoDataRestoreDraft? datRestore;
       try {
         final payload = await _readBackupPayload(zipPath, cacheDir);
         if (payload == null) {
@@ -159,10 +159,15 @@ class BackupService {
           return false;
         }
 
-        datRestore = await _DatRestoreSwap.prepare(payload.rootDir);
-        await datRestore.activate();
-        final subscriptions = await payload.contents.restore(AppDatabase());
-        await datRestore.commit();
+        final datDirectory = p.join(payload.rootDir, _datDir);
+        await Directory(datDirectory).create(recursive: true);
+        datRestore = await GeoDataService().prepareRestore(datDirectory);
+        final database = AppDatabase();
+        final subscriptions = await database.transaction(() async {
+          final rows = await payload.contents.restore(database);
+          await datRestore!.commit();
+          return rows;
+        });
         await cleanupService.finishBackupRestore();
         if (payload.contents.version < _backupVersion) {
           legacySubscriptions = subscriptions;
@@ -176,10 +181,10 @@ class BackupService {
         }
         return true;
       } catch (e, stackTrace) {
-        await datRestore?.rollback();
         ygLogger("restore backup error (${e.runtimeType})\n$stackTrace");
         return false;
       } finally {
+        await datRestore?.dispose();
         await FileTool.deleteDirIfExists(cacheDir);
         eventBus.updateDownloading(false);
       }
@@ -366,23 +371,14 @@ class BackupService {
   ) async {
     final datDir = p.join(zipDir, _datDir);
     await FileTool.checkDir(datDir);
+    final files = await GeoDataService().publishedFiles();
     for (final geoData in rows) {
-      await _copyDat(geoData.name!, VpnConstants.datDir, datDir);
+      final file = files.singleWhere((file) => file.row.name == geoData.name);
+      await file.data.copy(p.join(datDir, file.fileName));
+      await file.indexFile.copy(p.join(datDir, '${file.row.name}.json'));
     }
     final geoDataPath = p.join(zipDir, _geoDataFile);
     await _writeJsonToFile(rows, geoDataPath);
-  }
-
-  Future<void> _copyDat(String name, String srcDir, String dstDir) async {
-    final datName = "$name.dat";
-    final datSrcPath = p.join(srcDir, datName);
-    final datDstPath = p.join(dstDir, datName);
-    await File(datSrcPath).copy(datDstPath);
-
-    final jsonName = "$name.json";
-    final jsonSrcPath = p.join(srcDir, jsonName);
-    final jsonDstPath = p.join(dstDir, jsonName);
-    await File(jsonSrcPath).copy(jsonDstPath);
   }
 
   Future<void> _writeJsonToFile(Object? data, String path) async {
@@ -410,93 +406,6 @@ class BackupService {
         );
       }
     }
-  }
-}
-
-final class _DatRestoreSwap {
-  final Directory staged;
-  final Directory destination;
-  final Directory previous;
-
-  var _active = false;
-  var _committed = false;
-
-  _DatRestoreSwap({
-    required this.staged,
-    required this.destination,
-    required this.previous,
-  });
-
-  static Future<_DatRestoreSwap> prepare(String backupRoot) async {
-    final source = p.join(backupRoot, BackupService._datDir);
-    final destination = Directory(VpnConstants.datDir);
-    final parent = await Directory(p.dirname(destination.path))
-        .create(recursive: true);
-    final staged = await parent.createTemp('.onexray-dat-restore-');
-    try {
-      await BackupDatStager().stage(
-        backupDatDir: source,
-        destination: staged.path,
-      );
-    } catch (_) {
-      await staged.delete(recursive: true);
-      rethrow;
-    }
-    final previous = Directory(
-      p.join(
-        parent.path,
-        '.onexray-dat-previous-${DateTime.now().microsecondsSinceEpoch}',
-      ),
-    );
-    return _DatRestoreSwap(
-      staged: staged,
-      destination: destination,
-      previous: previous,
-    );
-  }
-
-  Future<void> activate() async {
-    var movedPrevious = false;
-    try {
-      if (await destination.exists()) {
-        await destination.rename(previous.path);
-        movedPrevious = true;
-      }
-      await staged.rename(destination.path);
-      _active = true;
-    } catch (_) {
-      if (movedPrevious && !await destination.exists()) {
-        await previous.rename(destination.path);
-      }
-      rethrow;
-    }
-  }
-
-  Future<void> commit() async {
-    _committed = true;
-    try {
-      if (await previous.exists()) {
-        await previous.delete(recursive: true);
-      }
-    } catch (e) {
-      ygLogger('delete previous dat directory failed: $e');
-    }
-  }
-
-  Future<void> rollback() async {
-    if (_committed) {
-      return;
-    }
-    if (_active && await destination.exists()) {
-      await destination.delete(recursive: true);
-    }
-    if (await previous.exists()) {
-      await previous.rename(destination.path);
-    }
-    if (await staged.exists()) {
-      await staged.delete(recursive: true);
-    }
-    _active = false;
   }
 }
 

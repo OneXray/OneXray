@@ -13,6 +13,7 @@ import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/vpn/service.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/geo_data/service.dart';
 
 abstract final class ServiceManager {
   static Future<void>? _initFuture;
@@ -38,6 +39,9 @@ abstract final class ServiceManager {
 
   static Future<void> _serviceInit(BuildContext context) async {
     await _runInit("NetClient", () => NetClient().asyncInit());
+    // Existing installations can already have completed setup before the
+    // generation column was added. Register their local pair without a download.
+    await GeoDataService().ensureInstalled();
     // Recovery must succeed before external commands or automatic connection
     // are enabled. The legacy Profile runtime must not initialize alongside it.
     await ConnectionCoordinator.instance.initialize();

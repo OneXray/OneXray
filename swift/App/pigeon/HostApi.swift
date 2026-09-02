@@ -118,10 +118,46 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         completion(.success(Constants.useSystemExtension))
     }
 
+    func appleVpnCapabilities(completion: @escaping (Result<AppleVpnCapabilities, any Error>) -> Void) {
+        let serviceExclusions: Bool
+        let deviceCommunication: Bool
+        if #available(iOS 16.4, macOS 13.3, *) {
+            serviceExclusions = true
+        } else {
+            serviceExclusions = false
+        }
+        if #available(iOS 17.4, macOS 14.4, *) {
+            deviceCommunication = true
+        } else {
+            deviceCommunication = false
+        }
+        completion(.success(AppleVpnCapabilities(
+            serviceExclusions: serviceExclusions,
+            deviceCommunication: deviceCommunication
+        )))
+    }
+
     func readRuntimeState(removeSessionIds: [String], completion: @escaping (Result<String?, any Error>) -> Void) {
         Task {
             do {
                 completion(.success(try await VPNManager.shared.readRuntimeState(removeSessionIds: removeSessionIds)))
+            } catch {
+                completion(.failure(error as? RuntimeStateError ?? RuntimeStateError.unavailable))
+            }
+        }
+    }
+
+    func readLog(planId: String, access: Bool, offset: Int64, limit: Int64,
+                 completion: @escaping (Result<NativeLogChunk?, any Error>) -> Void) {
+        Task {
+            do {
+                let chunk = try await VPNManager.shared.readLog(
+                    planId: planId, access: access, offset: offset, limit: limit
+                )
+                completion(.success(chunk.map {
+                    NativeLogChunk(data: FlutterStandardTypedData(bytes: $0.data),
+                                   offset: $0.offset, size: $0.size, fileId: $0.fileId)
+                }))
             } catch {
                 completion(.failure(error as? RuntimeStateError ?? RuntimeStateError.unavailable))
             }

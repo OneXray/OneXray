@@ -2400,9 +2400,9 @@
   "@prototypeBackupContents": {
     "description": "Approved prototype copy: Backup contents"
   },
-  "prototypeBackupAssets": "User servers, subscriptions, Age keys, and custom routing configurations.",
+  "prototypeBackupAssets": "User servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata.",
   "@prototypeBackupAssets": {
-    "description": "Approved prototype copy: User servers, subscriptions, Age keys, and custom routing configurations."
+    "description": "Approved prototype copy: User servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata."
   },
   "prototypeBackupNoPreferences": "Appearance, language, and other app preferences are not included.",
   "@prototypeBackupNoPreferences": {
@@ -2436,9 +2436,9 @@
   "@prototypeRestoreBackupQuestion": {
     "description": "Approved prototype copy: Restore this backup?"
   },
-  "prototypeRestoreBackupWarning": "Restoring replaces user servers, subscriptions, Age keys, and custom routing configurations. Save a backup of your current data first.",
+  "prototypeRestoreBackupWarning": "Restoring replaces user servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata. Save a backup of your current data first.",
   "@prototypeRestoreBackupWarning": {
-    "description": "Approved prototype copy: Restoring replaces user servers, subscriptions, Age keys, and custom routing configurations. Save a backup of your current data first."
+    "description": "Approved prototype copy: Restoring replaces user servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata. Save a backup of your current data first."
   },
   "prototypeConfirmRestore": "Confirm restore",
   "@prototypeConfirmRestore": {
@@ -3469,5 +3469,162 @@
   "prototypeDeletedServerSelectionNotice": "If this server is currently selected or used as the VPN final exit, OneXray will return to Automatic selection.",
   "@prototypeDeletedServerSelectionNotice": {
     "description": "Approved prototype copy: If this server is currently selected or used as the VPN final exit, OneXray will return to Automatic selection."
+  },
+  "prototypeDeletedRouteSmartNotice": "Smart Routing will be selected after this route is deleted.",
+  "@prototypeDeletedRouteSmartNotice": {
+    "description": "Approved prototype copy: Smart Routing will be selected after this route is deleted."
+  },
+  "prototypeSwitchAndReconnect": "Switch and reconnect",
+  "@prototypeSwitchAndReconnect": {
+    "description": "Approved prototype copy: Switch and reconnect"
+  },
+  "prototypeNewRule": "New rule",
+  "@prototypeNewRule": {
+    "description": "Approved prototype copy: New rule"
+  },
+  "prototypeChangeRulePosition": "Change position of {name}",
+  "@prototypeChangeRulePosition": {
+    "description": "Approved prototype copy: Change position of {name}",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "prototypeDeletingRouteReconnectNotice": "Deleting this route will briefly disconnect the VPN and reconnect using Smart Routing.",
+  "@prototypeDeletingRouteReconnectNotice": {
+    "description": "Approved prototype copy: Deleting this route will briefly disconnect the VPN and reconnect using Smart Routing."
+  },
+  "prototypeDeleteAndUseSmartRouting": "Delete and use Smart Routing",
+  "@prototypeDeleteAndUseSmartRouting": {
+    "description": "Approved prototype copy: Delete and use Smart Routing"
+  },
+  "prototypeRoutingFileUnavailable": "This routing data file is no longer available.",
+  "@prototypeRoutingFileUnavailable": {
+    "description": "Approved prototype copy: This routing data file is no longer available."
+  },
+  "prototypeAllGeodataUpdated": "All Geodata updated",
+  "@prototypeAllGeodataUpdated": {
+    "description": "Approved prototype copy: All Geodata updated"
+  },
+  "prototypeCopyFailed": "Could not copy. Select the text and copy it manually.",
+  "@prototypeCopyFailed": {
+    "description": "Approved prototype copy: Could not copy. Select the text and copy it manually."
+  },
+  "prototypeSmartRulesMaintained": "OneXray maintains the built-in rules and their order.",
+  "@prototypeSmartRulesMaintained": {
+    "description": "Approved prototype copy: OneXray maintains the built-in rules and their order."
+  },
+  "prototypeDirectDns": "Use local DNS for direct traffic",
+  "@prototypeDirectDns": {
+    "description": "Approved prototype copy: Use local DNS for direct traffic"
+  },
+  "prototypeDirectDnsHint": "Resolve direct sites locally while other requests continue through the VPN.",
+  "@prototypeDirectDnsHint": {
+    "description": "Approved prototype copy: Resolve direct sites locally while other requests continue through the VPN."
+  },
+  "prototypeRoutingPreview": "Routing result preview",
+  "@prototypeRoutingPreview": {
+    "description": "Approved prototype copy: Routing result preview"
+  },
+  "prototypeRoutingPreviewHint": "With the current settings, traffic is handled like this.",
+  "@prototypeRoutingPreviewHint": {
+    "description": "Approved prototype copy: With the current settings, traffic is handled like this."
+  },
+  "prototypeRuleOrderMaintained": "Rule order is maintained by OneXray",
+  "@prototypeRuleOrderMaintained": {
+    "description": "Approved prototype copy: Rule order is maintained by OneXray"
+  },
+  "prototypeCommonAdDomains": "Common ad domains",
+  "@prototypeCommonAdDomains": {
+    "description": "Approved prototype copy: Common ad domains"
+  },
+  "prototypeNone": "None",
+  "@prototypeNone": {
+    "description": "Approved prototype copy: None"
+  },
+  "prototypeIconBlue": "Blue",
+  "@prototypeIconBlue": {
+    "description": "Approved prototype copy: Blue"
+  },
+  "prototypeIconBlack": "Black",
+  "@prototypeIconBlack": {
+    "description": "Approved prototype copy: Black"
+  },
+  "prototypeIconGreen": "Green",
+  "@prototypeIconGreen": {
+    "description": "Approved prototype copy: Green"
+  },
+  "prototypeIconOrange": "Orange",
+  "@prototypeIconOrange": {
+    "description": "Approved prototype copy: Orange"
+  },
+  "prototypeIconPurple": "Purple",
+  "@prototypeIconPurple": {
+    "description": "Approved prototype copy: Purple"
+  },
+  "prototypeIconRed": "Red",
+  "@prototypeIconRed": {
+    "description": "Approved prototype copy: Red"
+  },
+  "prototypeHomeScreenIconHint": "Choose the OneXray icon shown on the Home Screen.",
+  "@prototypeHomeScreenIconHint": {
+    "description": "Approved prototype copy: Choose the OneXray icon shown on the Home Screen."
+  },
+  "prototypeDockIconHint": "Choose the OneXray icon shown in the Dock.",
+  "@prototypeDockIconHint": {
+    "description": "Approved prototype copy: Choose the OneXray icon shown in the Dock."
+  },
+  "prototypeHomeScreenPreview": "Home Screen preview",
+  "@prototypeHomeScreenPreview": {
+    "description": "Approved prototype copy: Home Screen preview"
+  },
+  "prototypeDockPreview": "Dock preview",
+  "@prototypeDockPreview": {
+    "description": "Approved prototype copy: Dock preview"
+  },
+  "prototypeClearAllDataQuestion": "Clear all app data?",
+  "@prototypeClearAllDataQuestion": {
+    "description": "Approved prototype copy: Clear all app data?"
+  },
+  "prototypeClearAllDataWarning": "This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences. Back up your data first.",
+  "@prototypeClearAllDataWarning": {
+    "description": "Approved prototype copy: This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences. Back up your data first."
+  },
+  "prototypeConfirmClearData": "Confirm clear data",
+  "@prototypeConfirmClearData": {
+    "description": "Approved prototype copy: Confirm clear data"
+  },
+  "prototypeDeleteBackupQuestion": "Delete backup?",
+  "@prototypeDeleteBackupQuestion": {
+    "description": "Approved prototype copy: Delete backup?"
+  },
+  "prototypeDeleteBackupWarning": "Remove this backup file? Your current app configuration is not affected.",
+  "@prototypeDeleteBackupWarning": {
+    "description": "Approved prototype copy: Remove this backup file? Your current app configuration is not affected."
+  },
+  "prototypeBackupTransferWarning": "This unencrypted backup can contain credentials and Age private keys. Only save or share it with a trusted destination.",
+  "@prototypeBackupTransferWarning": {
+    "description": "Approved prototype copy: This unencrypted backup can contain credentials and Age private keys. Only save or share it with a trusted destination."
+  },
+  "prototypeSystemApprovalRequired": "System approval required",
+  "@prototypeSystemApprovalRequired": {
+    "description": "Approved prototype copy: System approval required"
+  },
+  "prototypeOpenSystemSettings": "Open system settings",
+  "@prototypeOpenSystemSettings": {
+    "description": "Approved prototype copy: Open system settings"
+  },
+  "prototypeCancelRequest": "Cancel request",
+  "@prototypeCancelRequest": {
+    "description": "Approved prototype copy: Cancel request"
+  },
+  "prototypeWifiActionConflict": "Choose one action for each Wi-Fi name. The same name cannot appear in both groups.",
+  "@prototypeWifiActionConflict": {
+    "description": "Approved prototype copy: Choose one action for each Wi-Fi name. The same name cannot appear in both groups."
+  },
+  "prototypeTunAddress": "TUN address",
+  "@prototypeTunAddress": {
+    "description": "Approved prototype copy: TUN address"
   }
 }

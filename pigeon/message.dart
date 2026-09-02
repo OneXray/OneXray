@@ -48,9 +48,16 @@ abstract class BridgeHostApi {
   @asyncCallback
   bool useSystemExtension();
 
+  @asyncCallback
+  AppleVpnCapabilities appleVpnCapabilities();
+
   // System Extension-owned session files only; removal IDs are already settled.
   @asyncCallback
   String? readRuntimeState(List<String> removeSessionIds);
+
+  // Fixed System Extension plan logs. Offset -1 reads the bounded file tail.
+  @asyncCallback
+  NativeLogChunk? readLog(String planId, bool access, int offset, int limit);
 
   @asyncCallback
   NativeLaunchAtLoginResult queryLaunchAtLogin();
@@ -70,6 +77,29 @@ abstract class BridgeHostApi {
 }
 
 enum VpnStatus { disconnecting, disconnected, connecting, connected }
+
+class AppleVpnCapabilities {
+  AppleVpnCapabilities({
+    required this.serviceExclusions,
+    required this.deviceCommunication,
+  });
+  final bool serviceExclusions;
+  final bool deviceCommunication;
+}
+
+class NativeLogChunk {
+  NativeLogChunk({
+    required this.data,
+    required this.offset,
+    required this.size,
+    required this.fileId,
+  });
+
+  final Uint8List data;
+  final int offset;
+  final int size;
+  final String fileId;
+}
 
 // Apple VPN profile and System Extension readiness.
 enum RefreshVpnResult { installed, notInstalled, waitForApproval }

@@ -4,8 +4,39 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/routing/custom_service.dart';
+import 'package:onexray/service/routing/custom_template.dart';
 
 void main() {
+  test(
+    'names use Unicode characters and trimmed case-insensitive uniqueness',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      final service = CustomRoutingService(database);
+      const text = '{"outbounds":[{}],"routing":{"rules":[]}}';
+      final id = await service.save(name: ' Route ', text: text);
+      expect(
+        (await database.customRoutingProfilesDao.searchRow(id))!.name,
+        'Route',
+      );
+      await expectLater(
+        service.save(name: 'route', text: text),
+        throwsFormatException,
+      );
+      final name = List.filled(32, '🌐').join();
+      final unicode = CustomRoutingTemplate.parse(
+        jsonEncode({
+          'name': name,
+          'outbounds': [{}],
+        }),
+      );
+      await service.save(id: id, name: name, text: unicode.encode());
+      expect(
+        (await database.customRoutingProfilesDao.searchRow(id))!.name,
+        name,
+      );
+    },
+  );
   test(
     'custom saves share one strict limit/encoding boundary; edits stay allowed',
     () async {

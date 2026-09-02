@@ -27,12 +27,14 @@ class ServerRemoval {
   final Set<int> ids;
   final int? sourceId;
   final ConnectionConfiguration configuration;
+  final String expectedConfiguration;
   final bool affectsRuntime;
   final bool disconnect;
   const ServerRemoval({
     required this.ids,
     this.sourceId,
     required this.configuration,
+    required this.expectedConfiguration,
     required this.affectsRuntime,
     required this.disconnect,
   });
@@ -144,6 +146,7 @@ class ServerAssetService {
     }
     await coordinator.initialize();
     await coordinator.refresh();
+    final configuration = await coordinator.configuration;
     final original = draft.original;
     var semanticChange = true;
     try {
@@ -157,12 +160,14 @@ class ServerAssetService {
     final active =
         coordinator.state.value.plan?.nodeIds.contains(original.id) == true;
     final reconnect = active && semanticChange;
+    final affectsRuntime =
+        semanticChange && (active || await _lastPlanUses({original.id}));
+    var allowReconnect = false;
     if (reconnect &&
-        coordinator.state.value.phase == ConnectionPhase.connected &&
-        !await confirmReconnect()) {
-      return false;
+        coordinator.state.value.phase == ConnectionPhase.connected) {
+      allowReconnect = await confirmReconnect();
+      if (!allowReconnect) return false;
     }
-    final configuration = await coordinator.configuration;
     final companion = outboundCompanion(outbound);
     final snapshots = {
       original.id: ServerSnapshot(
@@ -173,11 +178,19 @@ class ServerAssetService {
     };
     await coordinator.apply(
       configuration,
-      affectsRuntime: reconnect,
+      expectedConfiguration: configuration.encode(),
+      allowReconnect: allowReconnect,
+      affectsRuntime: affectsRuntime,
       prepare: reconnect
           ? (next, cancelled) => _prepare(next, cancelled, snapshots, const {})
           : null,
       writeAssets: () async {
+        if (semanticChange &&
+            !reconnect &&
+            coordinator.state.value.plan?.nodeIds.contains(original.id) ==
+                true) {
+          throw const FormatException('Server became active while editing');
+        }
         final current = await db.coreConfigDao.searchRow(original.id);
         if (current == null ||
             current.type != 'outbound' ||
@@ -279,6 +292,7 @@ class ServerAssetService {
       ids: Set.unmodifiable(removed),
       sourceId: sourceId,
       configuration: next,
+      expectedConfiguration: current.encode(),
       affectsRuntime: active,
       disconnect:
           active &&
@@ -297,19 +311,29 @@ class ServerAssetService {
     );
     if (!const SetEquality<int>().equals(preview.ids, refreshed.ids) ||
         refreshed.configuration.encode() != preview.configuration.encode() ||
+        refreshed.expectedConfiguration != preview.expectedConfiguration ||
         refreshed.affectsRuntime != preview.affectsRuntime ||
         refreshed.disconnect != preview.disconnect) {
       throw const FormatException('Deletion preview changed');
     }
-    if (preview.disconnect) await coordinator.disconnect();
+    final affectsRuntime =
+        preview.affectsRuntime || await _lastPlanUses(preview.ids);
     await coordinator.apply(
       preview.configuration,
-      affectsRuntime: preview.affectsRuntime && !preview.disconnect,
+      expectedConfiguration: preview.expectedConfiguration,
+      disconnect: preview.disconnect,
+      allowReconnect: preview.affectsRuntime,
+      affectsRuntime: affectsRuntime && !preview.disconnect,
       prepare: preview.affectsRuntime && !preview.disconnect
           ? (next, cancelled) =>
                 _prepare(next, cancelled, const {}, preview.ids)
           : null,
       writeAssets: () async {
+        if (!preview.affectsRuntime &&
+            coordinator.state.value.plan?.nodeIds.any(preview.ids.contains) ==
+                true) {
+          throw const FormatException('Server became active before deletion');
+        }
         if (preview.sourceId case final id?) {
           final currentIds = (await rows())
               .where((row) => row.subId == id)
@@ -330,6 +354,17 @@ class ServerAssetService {
         }
       },
     );
+  }
+
+  // A disconnected native profile can still reference its last frozen inputs.
+  // This affects offline invalidation, not the UI's reconnect confirmation.
+  Future<bool> _lastPlanUses(Set<int> ids) async {
+    if (coordinator.state.value.phase != ConnectionPhase.disconnected) {
+      return false;
+    }
+    final snapshot = (await db.connectionStateDao.read()).confirmedSnapshotJson;
+    return snapshot != null &&
+        ConnectionPlan.decode(snapshot).nodeIds.any(ids.contains);
   }
 
   Future<ConnectionPlan> _prepare(

@@ -71,6 +71,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   late final Future<HostConnection> Function(ConnectionPlan?) _stop;
   late final Future<HostConnection> Function(Iterable<ConnectionPlan>) _inspect;
   late final Future<RuntimeSnapshot?> Function(ConnectionPlan?) _resetTraffic;
+  late final Future<RestoreReplay?> Function(ConnectionPlan?) _revokeReplay;
   final _commands = CommandSerialExecutor();
   final state = ValueNotifier(const ConnectionView());
   Future<void>? _initializing;
@@ -93,12 +94,14 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     Future<HostConnection> Function(ConnectionPlan?)? stop,
     Future<HostConnection> Function(Iterable<ConnectionPlan>)? inspect,
     Future<RuntimeSnapshot?> Function(ConnectionPlan?)? resetTraffic,
+    Future<RestoreReplay?> Function(ConnectionPlan?)? revokeReplay,
   }) : db = database ?? AppDatabase() {
     final host = ConnectionRuntimeHost();
     _start = start ?? host.start;
     _stop = stop ?? host.stop;
     _inspect = inspect ?? host.inspect;
     _resetTraffic = resetTraffic ?? host.resetTraffic;
+    _revokeReplay = revokeReplay ?? host.revokeReplay;
     _prepare =
         prepare ??
         ((configuration, cancelled) => ConnectionPreparation(db: db).prepare(
@@ -230,6 +233,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           return;
         }
       }
+      if (old == null && recovered.status == VpnStatus.disconnected) {
+        final next = record['next'] as String?;
+        if (next != null) await _revokeReplay(ConnectionPlan.decode(next));
+      }
       await db.connectionStateDao.clearPending(pending);
       _publish(recovered, issue: 'previousSettingsRestored');
     } catch (error) {
@@ -286,20 +293,52 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   Future<void> apply(
     ConnectionConfiguration next, {
     bool connect = false,
+    bool disconnect = false,
     bool affectsRuntime = true,
+    bool allowReconnect = true,
+    String? expectedConfiguration,
     Future<void> Function()? writeAssets,
     PrepareConnection? prepare,
   }) => _run(() async {
+    if (connect && disconnect) {
+      throw ArgumentError('Conflicting connection action');
+    }
     final row = await db.connectionStateDao.read();
+    if (expectedConfiguration != null &&
+        (await configuration).encode() != expectedConfiguration) {
+      throw const ConnectionHostException('configurationChanged');
+    }
     final current = await _inspect(_known(row));
-    final shouldStart = connect || (affectsRuntime && current.connected);
-    if (!shouldStart) {
-      await db.connectionStateDao.commit(
-        baseRevision: row.revision,
-        settingsJson: next.encode(),
-        confirmedSnapshotJson: row.confirmedSnapshotJson,
-        writeAssets: writeAssets,
-      );
+    final shouldStart =
+        !disconnect && (connect || (affectsRuntime && current.connected));
+    final shouldStop = disconnect && current.status != VpnStatus.disconnected;
+    // Recheck after preceding commands finish: a disconnected editor may have
+    // queued behind Connect without ever asking the user to reconnect.
+    if ((shouldStart || shouldStop) && current.connected && !allowReconnect) {
+      throw const ConnectionHostException('reconnectRequired');
+    }
+    if (!shouldStart && !shouldStop) {
+      RestoreReplay? restoreReplay;
+      if ((affectsRuntime || disconnect) &&
+          current.status == VpnStatus.disconnected &&
+          row.confirmedSnapshotJson != null &&
+          (writeAssets != null ||
+              next.encode() != (await configuration).encode())) {
+        restoreReplay = await _revokeReplay(
+          ConnectionPlan.decode(row.confirmedSnapshotJson!),
+        );
+      }
+      try {
+        await db.connectionStateDao.commit(
+          baseRevision: row.revision,
+          settingsJson: next.encode(),
+          confirmedSnapshotJson: row.confirmedSnapshotJson,
+          writeAssets: writeAssets,
+        );
+      } catch (_) {
+        await restoreReplay?.call();
+        rethrow;
+      }
       _publish(current);
       return;
     }
@@ -316,17 +355,21 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     );
     String? pending;
     bool touchedHost = false;
+    RestoreReplay? restoreReplay;
     try {
-      final plan = await (prepare ?? _prepare)(next, cancellation.future);
+      final plan = disconnect
+          ? null
+          : await (prepare ?? _prepare)(next, cancellation.future);
       _checkCancelled(cancellation);
       _pendingPlan = plan;
       pending = jsonEncode({
-        'attemptId': plan.id,
+        'attemptId': plan?.id ?? newPlanId(),
         'old': old?.encode(),
-        'next': plan.encode(),
+        'next': plan?.encode(),
       });
       await db.connectionStateDao.beginApply(row.revision, pending);
       _checkCancelled(cancellation);
+      var running = current;
       if (current.status != VpnStatus.disconnected) {
         touchedHost = true;
         state.value = ConnectionView(
@@ -334,35 +377,44 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           plan: old,
           traffic: current.traffic,
         );
-        await _stop(old);
+        running = await _stop(old);
+        if (running.status != VpnStatus.disconnected) {
+          throw const ConnectionHostException('stopNotConfirmed');
+        }
       }
       _checkCancelled(cancellation);
-      touchedHost = true;
-      state.value = ConnectionView(
-        phase: ConnectionPhase.connecting,
-        traffic: current.traffic,
-      );
-      final running = await _start(plan);
-      _checkCancelled(cancellation);
-      if (!running.connected || running.plan?.id != plan.id) {
-        throw const ConnectionHostException('startNotConfirmed');
+      if (plan != null) {
+        touchedHost = true;
+        state.value = ConnectionView(
+          phase: ConnectionPhase.connecting,
+          traffic: current.traffic,
+        );
+        running = await _start(plan);
+        _checkCancelled(cancellation);
+        if (!running.connected || running.plan?.id != plan.id) {
+          throw const ConnectionHostException('startNotConfirmed');
+        }
+      }
+      if (disconnect) {
+        restoreReplay = await _revokeReplay(old);
       }
       await db.connectionStateDao.commit(
         baseRevision: row.revision,
-        settingsJson: plan.configuration.encode(),
-        confirmedSnapshotJson: plan.encode(),
+        settingsJson: (plan?.configuration ?? next).encode(),
+        confirmedSnapshotJson: plan?.encode() ?? row.confirmedSnapshotJson,
         writeAssets: () async {
           await writeAssets?.call();
           _checkCancelled(cancellation);
         },
       );
       pending = null;
-      _publish(running, issue: plan.notice);
+      _publish(running, issue: plan?.notice);
     } catch (error) {
       var permission = error is ConnectionHostException
           ? error.permission
           : null;
       try {
+        await restoreReplay?.call();
         var recovered = current;
         var restoreFailed = false;
         if (touchedHost) {
@@ -385,6 +437,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
               recovered = await _stop(old);
               restoreFailed = true;
             }
+          } else if (recovered.status == VpnStatus.disconnected) {
+            await _revokeReplay(_pendingPlan);
           }
         }
         if (pending != null) await db.connectionStateDao.clearPending(pending);

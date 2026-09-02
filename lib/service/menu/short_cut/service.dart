@@ -14,6 +14,7 @@ final class ShortCutService {
 
   //==========================
   final quickActions = const QuickActions();
+  VoidCallback? onConnectionFailure;
 
   Future<void> asyncInit(BuildContext context) async {
     if (!AppPlatform.isMobile) {
@@ -43,7 +44,9 @@ final class ShortCutService {
     ]);
   }
 
-  void dispose() {}
+  void dispose() {
+    onConnectionFailure = null;
+  }
 
   Future<void> _onShortCutClick(String action) async {
     final key = _ShortCutKey.fromString(action);
@@ -51,13 +54,18 @@ final class ShortCutService {
       return;
     }
 
-    switch (key) {
-      case _ShortCutKey.startVpn:
-        await ConnectionCoordinator.instance.connect();
-        break;
-      case _ShortCutKey.stopVpn:
-        await ConnectionCoordinator.instance.disconnect();
-        break;
+    try {
+      switch (key) {
+        case _ShortCutKey.startVpn:
+          await ConnectionCoordinator.instance.connect();
+          break;
+        case _ShortCutKey.stopVpn:
+          await ConnectionCoordinator.instance.disconnect();
+          break;
+      }
+    } catch (_) {
+      // The shortcut already opened the App; let its UI show the failed action.
+      onConnectionFailure?.call();
     }
   }
 }

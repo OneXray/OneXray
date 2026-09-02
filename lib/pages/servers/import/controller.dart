@@ -220,6 +220,7 @@ class ServerImportController extends ChangeNotifier {
     final result = ServerImportResult(
       count: importedSubscriptionNodes + (local?.count ?? 0),
       rawCount: local?.rawCount ?? 0,
+      customCount: local?.customCount ?? 0,
       geoDataCount: local?.geoDataCount ?? 0,
       subscriptionCount: importedSubscriptionCount,
       failureCount: local?.failureCount,
@@ -335,14 +336,22 @@ class ServerImportController extends ChangeNotifier {
       busy = false;
       _changed();
     }
-    if (preview == null || !context.mounted) return null;
+    if (preview == null) return null;
+    if (!context.mounted) {
+      await preview.dispose();
+      return null;
+    }
     final ready = preview;
-    return Navigator.of(context).push<ServerImportResult>(
-      MaterialPageRoute(
-        builder: (_) =>
-            ServerImportPreviewPage(controller: this, preview: ready),
-      ),
-    );
+    try {
+      return await Navigator.of(context).push<ServerImportResult>(
+        MaterialPageRoute(
+          builder: (_) =>
+              ServerImportPreviewPage(controller: this, preview: ready),
+        ),
+      );
+    } finally {
+      await ready.dispose();
+    }
   }
 
   Future<void> confirm(
@@ -375,6 +384,10 @@ class ServerImportController extends ChangeNotifier {
                       .where((row) => row.type.value == 'raw')
                       .map((row) => row.name.value)
                       .join(', '),
+                )
+              : result.customCount > 0
+              ? l10n.prototypeNameSaved(
+                  preview.customRoutes.map((route) => route.name).join(', '),
                 )
               : l10n.prototypeGeodataAdded,
         );

@@ -54,6 +54,10 @@ import 'package:onexray/pages/servers/editor/page.dart';
 import 'package:onexray/pages/servers/sources.dart';
 import 'package:onexray/pages/servers/import/subscription_editor.dart';
 import 'package:onexray/pages/connect/raw_editor/page.dart';
+import 'package:onexray/pages/routing/smart/page.dart';
+import 'package:onexray/pages/routing/smart/regions.dart';
+import 'package:onexray/pages/routing/custom/page.dart';
+import 'package:onexray/pages/routing/custom/rule_page.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
@@ -226,6 +230,40 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   _route(
     AppSecondaryDestination.rawEditor,
     (_, state) => RawEditorPage(rawId: state.extra as int?),
+  ),
+  _route(
+    AppSecondaryDestination.smartRouting,
+    (_, _) => SmartRoutingEditorPage(
+      openRegions: (context, selected) => context.pushScoped<List<String>>(
+        AppSecondaryDestination.directRegions,
+        extra: selected,
+      ),
+      openFinalExit: (context, params) => context.pushScoped<ServerExitChoice>(
+        AppSecondaryDestination.serverFinalExitPicker,
+        extra: params,
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.directRegions,
+    (_, state) => DirectRegionsPage(
+      selectedCodes: (state.extra as List?)?.cast<String>() ?? [],
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.customRouting,
+    (_, state) => CustomRoutingEditorPage(
+      profileId: state.extra as int?,
+      openRule: (context, rule) => context.pushScoped<Map<String, dynamic>>(
+        AppSecondaryDestination.customRule,
+        extra: rule,
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.customRule,
+    (_, state) =>
+        CustomRoutingRulePage(rule: state.extra as Map<String, dynamic>?),
   ),
   _route(AppSecondaryDestination.overview, (_, _) => const ConnectPage()),
   _route(

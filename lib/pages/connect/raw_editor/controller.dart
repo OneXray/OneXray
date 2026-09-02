@@ -3,8 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/service/assets/import.dart';
+import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/assets/raw_editor.dart';
+import 'package:onexray/service/share/configuration_transfer.dart';
 
 class RawEditorController extends ChangeNotifier {
   final RawEditorService service;
@@ -18,6 +19,7 @@ class RawEditorController extends ChangeNotifier {
     RawEditorService? service,
   }) : service = service ?? RawEditorService() {
     text.addListener(_changed);
+    transfers.addListener(_notify);
   }
   final name = TextEditingController();
   final text = TextEditingController();
@@ -25,6 +27,19 @@ class RawEditorController extends ChangeNotifier {
   bool busy = true;
   String? error;
   bool _disposed = false;
+  RawTestResult? testResult;
+  late final transfers = ConfigurationTransferController(
+    kind: ConfigurationKind.raw,
+    readText: () => text.text,
+    readName: () => name.text,
+    onImport: (draft) {
+      text.text = draft.text;
+      if (draft.name.isNotEmpty) name.text = draft.name;
+      error = null;
+    },
+  );
+
+  bool get working => busy || transfers.busy;
 
   bool get loaded => _draft != null;
   int get lineCount => '\n'.allMatches(text.text).length + 1;
@@ -37,11 +52,16 @@ class RawEditorController extends ChangeNotifier {
   }
 
   void _changed() {
+    testResult = null;
+    _notify();
+  }
+
+  void _notify() {
     if (!_disposed) notifyListeners();
   }
 
   void closePage(BuildContext context) {
-    if (!busy) Navigator.of(context).pop();
+    if (!working) Navigator.of(context).pop();
   }
 
   Future<void> load(BuildContext context) async {
@@ -73,55 +93,40 @@ class RawEditorController extends ChangeNotifier {
     }
   }
 
-  Future<void> importText(
-    BuildContext context, {
-    required bool clipboard,
-  }) async {
-    if (busy || !loaded) return;
-    final l10n = AppLocalizations.of(context)!;
+  RawEditorDraft get draft => RawEditorDraft(
+    original: _draft!.original,
+    name: name.text,
+    text: text.text,
+  );
+
+  Future<void> test(BuildContext context) async {
+    if (working || !loaded) return;
+    busy = true;
+    error = null;
+    testResult = null;
+    _notify();
     try {
-      final input = clipboard
-          ? await ServerImportService.readClipboard()
-          : await ServerImportService.pickTextFile(jsonOnly: true);
-      if (input == null || !context.mounted) return;
-      final json = jsonDecode(input);
-      if (json is! Map<String, dynamic>) {
-        throw const FormatException('Invalid JSON');
-      }
-      if (_draft!.original != null || text.text != _draft!.text) {
-        if (!await ContextAlert.showConfirmDialog(
-              context,
-              title: l10n.prototypeReplaceEditorJson,
-              content: l10n.prototypeJsonImportedIntoEditor,
-              confirmLabel: l10n.prototypeImportFile,
-            ) ||
-            !context.mounted) {
-          return;
-        }
-      }
-      text.text = input;
-      if (json['name'] is String) name.text = json['name'] as String;
-      error = null;
-      _changed();
+      testResult = await service.test(draft, geodata: transfers.pending);
     } catch (_) {
-      error = l10n.prototypeCannotReadContent;
-      _changed();
+      if (context.mounted) {
+        error = AppLocalizations.of(context)!.prototypeCheckNetwork;
+      }
+    } finally {
+      busy = false;
+      _notify();
     }
   }
 
   Future<void> save(BuildContext context) async {
-    if (busy || !loaded) return;
+    if (working || !loaded) return;
     busy = true;
     error = null;
     _changed();
     final l10n = AppLocalizations.of(context)!;
     try {
       final id = await service.save(
-        RawEditorDraft(
-          original: _draft!.original,
-          name: name.text,
-          text: text.text,
-        ),
+        draft,
+        geodata: transfers.pending,
         confirmReconnect: () => context.mounted
             ? ContextAlert.showConfirmDialog(
                 context,
@@ -152,6 +157,7 @@ class RawEditorController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    transfers.dispose();
     name.dispose();
     text.dispose();
     super.dispose();

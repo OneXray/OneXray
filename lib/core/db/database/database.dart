@@ -72,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA user_version = $schemaVersion');
     }),
     onUpgrade: (migrator, from, to) => transaction(() async {
-      if (from < 1 || from > 4 || to != 5) {
+      if (from < 1 || from > 5 || to != 6) {
         throw StateError('Unsupported database schema upgrade');
       }
 
@@ -161,7 +161,15 @@ class AppDatabase extends _$AppDatabase {
       }
 
       if (from < 4) await migrator.createTable(connectionState);
-      await migrator.addColumn(subscription, subscription.autoUpdate);
+      if (from < 5) {
+        await migrator.addColumn(subscription, subscription.autoUpdate);
+      }
+      await migrator.addColumn(geoData, geoData.generation);
+      final geoColumns = await customSelect('PRAGMA table_info(geo_data)')
+          .get();
+      if (!geoColumns.any((row) => row.read<String>('name') == 'generation')) {
+        throw StateError('Geodata schema upgrade validation failed');
+      }
       final stateColumns = await customSelect(
         'PRAGMA table_info(connection_state)',
       ).get();

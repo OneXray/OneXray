@@ -19,6 +19,95 @@ void main() {
     addTearDown(() => directory.delete(recursive: true));
   });
 
+  test('Windows replay revocation preserves other files and restores exact metadata', () async {
+    final plan = _plan(platform: 'windows');
+    final planDirectory = Directory(p.join(directory.path, 'plans', plan.id));
+    await planDirectory.create(recursive: true);
+    final file = File(p.join(planDirectory.path, 'runtime-config.json'));
+    final text = '  ${jsonEncode(plan.runtime.toJson())}\n';
+    await file.writeAsString(text);
+    final preserved = [
+      File(p.join(planDirectory.path, 'xray.json')),
+      File(p.join(planDirectory.path, 'plan.json')),
+      File(p.join(directory.path, 'start.json')),
+      File(p.join(directory.path, 'runtime.json')),
+    ];
+    for (final other in preserved) {
+      await other.writeAsString('unchanged');
+    }
+    final host = ConnectionRuntimeHost(
+      runDirectory: directory.path,
+      readStatus: () async => VpnStatus.disconnected,
+    );
+    final restore = await host.revokeReplay(plan);
+    expect(restore, isNotNull);
+    expect(await file.exists(), false);
+    expect(await host.revokeReplay(plan), isNull);
+    for (final other in preserved) {
+      expect(await other.readAsString(), 'unchanged');
+    }
+    final rollback = restore!;
+    await rollback();
+    expect(await file.readAsString(), text);
+    await rollback();
+    expect(await file.readAsString(), text);
+  });
+
+  test('replay revocation does not touch other platforms or an active Windows plan', () async {
+    final file = File(
+      p.join(directory.path, 'plans', _id('f'), 'runtime-config.json'),
+    );
+    await file.parent.create(recursive: true);
+    for (final platform in ['ios', 'macos', 'android', 'linux']) {
+      final plan = _plan(platform: platform);
+      final text = jsonEncode(plan.runtime.toJson());
+      await file.writeAsString(text);
+      final host = ConnectionRuntimeHost(
+        runDirectory: directory.path,
+        readStatus: () async => throw StateError('Not a Windows operation'),
+      );
+      expect(await host.revokeReplay(plan), isNull);
+      expect(await file.readAsString(), text);
+    }
+    final host = ConnectionRuntimeHost(
+      runDirectory: directory.path,
+      readStatus: () async => VpnStatus.connected,
+    );
+    await expectLater(
+      host.revokeReplay(_plan(platform: 'windows')),
+      throwsA(_reason('replayPlanStillRunning')),
+    );
+    expect(await file.exists(), true);
+  });
+
+  test('replay revocation rejects metadata for another plan', () async {
+    final plan = _plan(platform: 'windows');
+    final file = File(
+      p.join(directory.path, 'plans', plan.id, 'runtime-config.json'),
+    );
+    await file.parent.create(recursive: true);
+    final text = jsonEncode({...plan.runtime.toJson(), 'planId': _id('b')});
+    await file.writeAsString(text);
+    final host = ConnectionRuntimeHost(runDirectory: directory.path);
+    await expectLater(host.revokeReplay(plan), throwsFormatException);
+    expect(await file.readAsString(), text);
+  });
+
+  test('replay revocation rejects a linked plan directory', () async {
+    final plan = _plan(platform: 'windows');
+    final outside = Directory(p.join(directory.path, 'outside'));
+    await outside.create();
+    final file = File(p.join(outside.path, 'runtime-config.json'));
+    final text = jsonEncode(plan.runtime.toJson());
+    await file.writeAsString(text);
+    final plans = Directory(p.join(directory.path, 'plans'));
+    await plans.create();
+    await Link(p.join(plans.path, plan.id)).create(outside.path);
+    final host = ConnectionRuntimeHost(runDirectory: directory.path);
+    await expectLater(host.revokeReplay(plan), throwsFormatException);
+    expect(await file.readAsString(), text);
+  }, skip: Platform.isWindows);
+
   test('native metrics uses GET debug vars and App reset never changes session counters', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));
@@ -314,7 +403,7 @@ Map<String, dynamic> _snapshotJson(String digit, int up, int down) => {
 
 String _id(String digit) => List.filled(32, digit).join();
 
-ConnectionPlan _plan({int port = 18003}) {
+ConnectionPlan _plan({int port = 18003, String platform = 'android'}) {
   final id = _id('f');
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
@@ -330,7 +419,7 @@ ConnectionPlan _plan({int port = 18003}) {
     jsonEncode({
       'version': 1,
       'id': id,
-      'platform': 'android',
+      'platform': platform,
       'configuration': ConnectionConfiguration().toJson(),
       'request': StartVpnRequest(
         null,

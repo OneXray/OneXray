@@ -125,7 +125,10 @@ class _Coordinator extends ConnectionCoordinator {
   Future<void> apply(
     ConnectionConfiguration next, {
     bool connect = false,
+    bool disconnect = false,
     bool affectsRuntime = true,
+    bool allowReconnect = true,
+    String? expectedConfiguration,
     Future<void> Function()? writeAssets,
     PrepareConnection? prepare,
   }) async {

@@ -7,6 +7,7 @@ typealias VPNStatusCallback = @MainActor () -> Void
 enum VPNError: Error {
     case sessionNotReady
     case noGroupContainer
+    case routingDataSyncFailed
 }
 
 @MainActor
@@ -242,7 +243,7 @@ class VPNManager {
                 if let session = vpn.connection as? NETunnelProviderSession {
                     if Constants.useSystemExtension {
                         try session.startTunnel(options: ["source": "app" as NSString])
-                        try await syncDatAndStart(session: session)
+                        try await syncDatAndStart(session: session, request: request)
                     } else {
                         try session.startTunnel()
                     }
@@ -440,6 +441,33 @@ class VPNManager {
         }
     }
 
+    func readLog(planId: String, access: Bool, offset: Int64, limit: Int64) async throws -> TunnelLogChunk? {
+        guard Constants.useSystemExtension else { throw RuntimeStateError.unsupported }
+        try TunnelLogChunk.validateRequest(planId: planId, offset: offset, limit: limit)
+        guard let manager = try await findVpn(),
+              let session = manager.connection as? NETunnelProviderSession else {
+            throw RuntimeStateError.unavailable
+        }
+        // Reuse the read-only provider channel, including when disconnected.
+        // A failed offline delivery is unavailable, never a cached success.
+        let response = try await sendTunnelRequest(session: session,
+            .readLog(planId: planId, access: access, offset: offset, limit: limit),
+            timeoutSeconds: 5)
+        switch response {
+        case let .logChunk(chunk):
+            try chunk?.validate(limit: limit)
+            if let chunk {
+                let expectedOffset = offset == -1 ? max(0, chunk.size - limit) : min(offset, chunk.size)
+                guard chunk.offset == expectedOffset else { throw RuntimeStateError.invalid }
+            }
+            return chunk
+        case let .error(code):
+            throw RuntimeStateError(rawValue: code) ?? .unavailable
+        default:
+            throw RuntimeStateError.invalid
+        }
+    }
+
     private func pathMapping() -> (user: String, ext: String)? {
         guard let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()),
               let extGroup = extensionGroupContainerURL()
@@ -477,31 +505,46 @@ class VPNManager {
         return newRequest
     }
 
-    private func syncDatAndStart(session: NETunnelProviderSession) async throws {
+    private func syncDatAndStart(session: NETunnelProviderSession, request: StartVpnRequest) async throws {
+        guard let text = request.coreInvokeText,
+              let planId = try LibXrayInvokeRequest.fromText(text).payload?.runtime?.planId,
+              RuntimeStateSnapshot.isSessionId(planId),
+              let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
+            throw VPNError.routingDataSyncFailed
+        }
+        let directory = userGroup.adaptedAppendPath(path: "run/plans/\(planId)/dat")
+        let local = try buildLocalDatManifest(directory: directory)
         try await waitSessionMessageable(session: session)
 
         let remote: [String: Int64]
-        let listResp = try await sendTunnelRequest(session: session, .listDat)
+        let listResp = try await sendTunnelRequest(session: session, .listDat, timeoutSeconds: 10)
         if case let .datManifest(m) = listResp {
             remote = m
         } else {
-            remote = [:]
+            throw VPNError.routingDataSyncFailed
         }
 
-        let local = buildLocalDatManifest()
         if needsDatSync(local: local, remote: remote) {
             YGLog("dat manifest mismatch, syncing \(local.count) files")
-            _ = try await sendTunnelRequest(session: session, .clearDat)
-            for (name, mtime) in local {
-                guard let content = try? readLocalDatFile(name: name) else { continue }
-                _ = try await sendTunnelRequest(session: session, .putDat(name: name, content: content, mtimeMs: mtime))
+            guard case .ok = try await sendTunnelRequest(session: session, .clearDat, timeoutSeconds: 10) else {
+                throw VPNError.routingDataSyncFailed
             }
-            _ = try await sendTunnelRequest(session: session, .commitDat)
+            for (name, mtime) in local {
+                let content = try Data(contentsOf: directory.adaptedAppendPath(path: name))
+                guard case .ok = try await sendTunnelRequest(session: session, .putDat(name: name, content: content, mtimeMs: mtime), timeoutSeconds: 10) else {
+                    throw VPNError.routingDataSyncFailed
+                }
+            }
+            guard case .ok = try await sendTunnelRequest(session: session, .commitDat, timeoutSeconds: 10) else {
+                throw VPNError.routingDataSyncFailed
+            }
         } else {
             YGLog("dat manifest in sync")
         }
 
-        _ = try await sendTunnelRequest(session: session, .startXray)
+        guard case .ok = try await sendTunnelRequest(session: session, .startXray, timeoutSeconds: 10) else {
+            throw VPNError.routingDataSyncFailed
+        }
     }
 
     private func waitSessionMessageable(session: NETunnelProviderSession, timeout: TimeInterval = 10) async throws {
@@ -524,7 +567,13 @@ class VPNManager {
         timeoutSeconds: UInt64? = nil
     ) async throws -> TunnelResponse {
         let data = try TunnelMessageCoder.encode(request)
-        if timeoutSeconds != nil && data.count > RuntimeStateFiles.maximumBytes {
+        let maximumResponseBytes: Int?
+        switch request {
+        case .readRuntime: maximumResponseBytes = RuntimeStateFiles.maximumBytes
+        case .readLog: maximumResponseBytes = TunnelLogChunk.maximumMessageBytes
+        default: maximumResponseBytes = nil
+        }
+        if let maximumResponseBytes, data.count > maximumResponseBytes {
             throw RuntimeStateError.invalid
         }
         return try await withCheckedThrowingContinuation { continuation in
@@ -544,7 +593,7 @@ class VPNManager {
                             pending.resolve(.failure(RuntimeStateError.unavailable))
                             return
                         }
-                        if timeoutSeconds != nil && response.count > RuntimeStateFiles.maximumBytes {
+                        if let maximumResponseBytes, response.count > maximumResponseBytes {
                             pending.resolve(.failure(RuntimeStateError.invalid))
                             return
                         }
@@ -563,30 +612,26 @@ class VPNManager {
         }
     }
 
-    private func buildLocalDatManifest() -> [String: Int64] {
+    private func buildLocalDatManifest(directory: URL) throws -> [String: Int64] {
         let fm = FileManager.default
-        guard let userGroup = fm.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
-            return [:]
+        let directoryValues = try directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard directoryValues.isDirectory == true, directoryValues.isSymbolicLink != true else {
+            throw VPNError.routingDataSyncFailed
         }
-        let datDir = userGroup.adaptedAppendPath(path: "dat")
-        guard let entries = try? fm.contentsOfDirectory(at: datDir, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey]) else {
-            return [:]
-        }
+        let keys: Set<URLResourceKey> = [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey]
+        let entries = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(keys))
         var result: [String: Int64] = [:]
         for url in entries {
-            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
-            guard values?.isRegularFile == true, let mtime = values?.contentModificationDate else { continue }
+            let values = try url.resourceValues(forKeys: keys)
+            guard values.isRegularFile == true, values.isSymbolicLink != true, let mtime = values.contentModificationDate else {
+                throw VPNError.routingDataSyncFailed
+            }
             result[url.lastPathComponent] = Int64(mtime.timeIntervalSince1970 * 1000)
         }
-        return result
-    }
-
-    private func readLocalDatFile(name: String) throws -> Data {
-        guard let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
-            throw VPNError.noGroupContainer
+        guard result["geosite.dat"] != nil, result["geoip.dat"] != nil else {
+            throw VPNError.routingDataSyncFailed
         }
-        let url = userGroup.adaptedAppendPath(path: "dat").adaptedAppendPath(path: name)
-        return try Data(contentsOf: url)
+        return result
     }
 
     private func needsDatSync(local: [String: Int64], remote: [String: Int64]) -> Bool {
