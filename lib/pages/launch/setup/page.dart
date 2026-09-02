@@ -166,7 +166,7 @@ class SetupPage extends StatelessWidget {
             ),
             trailing: state.authorized
                 ? const Icon(LucideIcons.circleCheck)
-                : const Icon(LucideIcons.chevronRight),
+                : const Icon(LucideIcons.chevronRightDir),
             onTap: state.busy || state.authorized
                 ? null
                 : controller.requestPermission,
@@ -180,7 +180,7 @@ class SetupPage extends StatelessWidget {
                     ? l10n.prototypeNotSelected
                     : state.interfaceName,
               ),
-              trailing: const Icon(LucideIcons.chevronRight),
+              trailing: const Icon(LucideIcons.chevronRightDir),
               onTap: state.busy
                   ? null
                   : () => controller.chooseInterface(context),
@@ -200,7 +200,7 @@ class SetupPage extends StatelessWidget {
             leading: const Icon(LucideIcons.globe2),
             title: Text(setupRegionLabel(l10n, state.region)),
             subtitle: Text(state.region),
-            trailing: const Icon(LucideIcons.chevronRight),
+            trailing: const Icon(LucideIcons.chevronRightDir),
             onTap: state.busy ? null : () => controller.chooseRegion(context),
           ),
           Text(
@@ -234,7 +234,7 @@ class SetupPage extends StatelessWidget {
             leading: const Icon(LucideIcons.plus),
             title: Text(l10n.prototypeAddServers),
             subtitle: Text(l10n.prototypeChooseAddMethod),
-            trailing: const Icon(LucideIcons.chevronRight),
+            trailing: const Icon(LucideIcons.chevronRightDir),
             onTap: state.busy
                 ? null
                 : () => controller.addServers(context, addServers),

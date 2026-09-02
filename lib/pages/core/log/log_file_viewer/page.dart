@@ -50,7 +50,18 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
       builder: (context, state) {
         final controller = context.read<LogFileViewerController>();
         return Scaffold(
-          appBar: AppBar(title: Text(state.title)),
+          appBar: AppBar(
+            title: Text(state.title),
+            actions: [
+              IconButton(
+                tooltip: AppLocalizations.of(context)!.prototypeExport,
+                onPressed: state.exporting || !state.fileExists
+                    ? null
+                    : () => controller.export(context),
+                icon: const Icon(LucideIcons.download),
+              ),
+            ],
+          ),
           body: SafeArea(
             child: Stack(
               children: [
@@ -81,8 +92,7 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
                         size: 16,
                       ),
                       child: Text(
-                        AppLocalizations.of(context)!
-                            .logFileViewerContinueFollowing,
+                        AppLocalizations.of(context)!.prototypeFollowing,
                       ),
                     ),
                   ),
@@ -109,7 +119,7 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
               ),
               const SizedBox(height: 12),
               Text(
-                AppLocalizations.of(context)!.logFileViewerFileNotExist,
+                AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
                 textAlign: TextAlign.center,
                 style: AppTypography.supporting.copyWith(
                   color: ColorManager.secondaryText(context),
@@ -131,6 +141,7 @@ class _LogFileViewerScaffoldState extends State<_LogFileViewerScaffold> {
         final lineIndex = state.truncated ? index - 1 : index;
         return Text(
           state.lines[lineIndex],
+          textDirection: TextDirection.ltr,
           style: AppTypography.code.copyWith(
             color: ColorManager.primaryText(context),
           ),

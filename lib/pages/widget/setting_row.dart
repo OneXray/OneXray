@@ -154,7 +154,7 @@ class SettingRow extends StatelessWidget {
               const SizedBox(width: 7),
               IconTheme.merge(
                 data: _iconTheme(context),
-                child: const Icon(LucideIcons.chevronRight),
+                child: const Icon(LucideIcons.chevronRightDir),
               ),
             ],
           ],

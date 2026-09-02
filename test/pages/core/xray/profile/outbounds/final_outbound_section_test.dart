@@ -46,7 +46,7 @@ void main() {
     expect(find.text('Denver-XHTTP'), findsOneWidget);
     expect(find.text('Delete Final Outbound'), findsNothing);
     expect(find.byIcon(LucideIcons.trash2), findsOneWidget);
-    expect(find.byIcon(LucideIcons.chevronRight), findsNothing);
+    expect(find.byIcon(LucideIcons.chevronRightDir), findsNothing);
 
     await tester.tap(find.byIcon(LucideIcons.trash2));
     await tester.pump();
@@ -66,7 +66,7 @@ void main() {
     await tester.pumpWidget(buildSubject(onSelect: () {}));
 
     expect(find.text('Disabled'), findsOneWidget);
-    expect(find.byIcon(LucideIcons.chevronRight), findsOneWidget);
+    expect(find.byIcon(LucideIcons.chevronRightDir), findsOneWidget);
     expect(find.byIcon(LucideIcons.trash2), findsNothing);
   });
 }

@@ -69,11 +69,21 @@ enum AppIcon {
 
 class AppIconPageState {
   final AppIcon appIcon;
+  final bool loading;
+  final bool saving;
 
-  const AppIconPageState({this.appIcon = AppIcon.primary});
+  const AppIconPageState({
+    this.appIcon = AppIcon.primary,
+    this.loading = true,
+    this.saving = false,
+  });
 
-  AppIconPageState copyWith({AppIcon? appIcon}) {
-    return AppIconPageState(appIcon: appIcon ?? this.appIcon);
+  AppIconPageState copyWith({AppIcon? appIcon, bool? loading, bool? saving}) {
+    return AppIconPageState(
+      appIcon: appIcon ?? this.appIcon,
+      loading: loading ?? this.loading,
+      saving: saving ?? this.saving,
+    );
   }
 }
 
@@ -83,34 +93,50 @@ class AppIconController extends PageCubit<AppIconPageState> {
   }
 
   Future<void> _readCurrentIcon() async {
-    final currentIcon = await AppHostApi().getCurrentAppIcon();
-    if (currentIcon.isNotEmpty) {
-      final appIcon = AppIcon.fromString(currentIcon);
-      if (appIcon != null) {
-        emit(state.copyWith(appIcon: appIcon));
-      }
+    try {
+      final currentIcon = await AppHostApi().getCurrentAppIcon();
+      emit(
+        state.copyWith(
+          appIcon: AppIcon.fromString(currentIcon) ?? AppIcon.primary,
+        ),
+      );
+    } catch (_) {
+      // Keep the default preview if the optional native icon query fails.
+    } finally {
+      emit(state.copyWith(loading: false));
     }
   }
 
   void updateIcon(AppIcon value) {
+    if (state.loading || state.saving) return;
     emit(state.copyWith(appIcon: value));
   }
 
   Future<void> save(BuildContext context) async {
+    if (state.loading || state.saving) return;
+    emit(state.copyWith(saving: true));
     var name = state.appIcon.name;
     if (state.appIcon == AppIcon.primary) {
       name = "";
     }
-    final res = await AppHostApi().setAppIcon(name);
-    if (context.mounted) {
-      if (res) {
-        context.pop();
-      } else {
+    try {
+      if (!await AppHostApi().setAppIcon(name)) {
+        throw StateError('Icon update failed');
+      }
+      if (context.mounted) context.pop();
+    } catch (_) {
+      if (context.mounted) {
         ContextAlert.showToast(
           context,
           AppLocalizations.of(context)!.appIconPageSetFailed,
         );
       }
+    } finally {
+      emit(state.copyWith(saving: false));
     }
+  }
+
+  void cancel(BuildContext context) {
+    if (!state.saving) context.pop();
   }
 }

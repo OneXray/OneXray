@@ -180,3 +180,23 @@ P6/P7 联合回归、真实页面与受限项详见工作空间
 `references/onexray-refactor-validation/{p6-results,p7-results}.md`。
 Windows 仅源码/纯 Dart 契约检查；正常离线修改和已确认失败可撤销旧 CLI 输入，事务
 失败可恢复，不引入 VCore 新协议，不承诺任意强杀点的跨进程原子启动保证。VCore 未改。
+
+P6 提交：OneXray `f08193c`、libXray `0fe8f5b`。
+
+## P7 — 高级与设置（2026-09-03）
+
+高级接入 VPN 隧道与 Xray 运行两页；只读双栈 TUN/Google DNS、独立 IPv6、平台
+详情和 Win/Linux 网卡按能力展示。应用范围两套列表、Apple SSID 及条件开关、Windows
+CIDR、保存取消与重连确认共用策略草稿。日志共用开关，DNS 默认开启，access/error
+分别查看；数据更新/测速/Geodata/运行配置独立导航。设置补齐图标/语言/备份/启动/关于。
+
+Android 实测真实 App 图标、包含/排除列表独立存储及重开；日志保存后重连，access
+可见 DNS 和双接入；Geodata 真实 1539 个分类，自定义 eview.dat HTTPS 下载、索引、
+展示及确认删除，默认文件不变。VPN 正常停止。共享卡片 Material ink 断言经红/绿测试
+修复，复跑无 Flutter 异常；重复 connected 只在新连接边沿触发一次到期重试。
+
+联合最终 Flutter 579 项通过、1 Windows 原生跳过；分析零问题，模型/分层检查通过，
+674 条五语文案逐值与原型一致；完整 macOS Debug 构建通过。SE 固定计划的 Geodata
+同步和只读日志桥接已编译/契约检查，实际消息/按需/批准/离线导出留手测。未运行 macOS
+VPN/截图或 Windows/Linux 原生构建；外部文件/分享/扫码未冒充实机通过。详情见
+`references/onexray-refactor-validation/p7-results.md`。本阶段 libXray 无新增改动。

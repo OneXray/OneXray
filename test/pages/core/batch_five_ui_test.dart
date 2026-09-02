@@ -9,6 +9,7 @@ import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 import 'package:onexray/pages/core/main/controller.dart';
 import 'package:onexray/pages/core/main/page.dart';
 import 'package:onexray/pages/core/ping/page.dart';
+import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/state.dart';
@@ -80,8 +81,10 @@ void main() {
     await tester.pumpWidget(app(const PingPage()));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Resolved URL'), findsOneWidget);
-    expect(find.text('Auto ping new nodes'), findsOneWidget);
+    expect(find.text('Speed test URL'), findsWidgets);
+    expect(find.text('Auto ping new nodes'), findsNothing);
+    expect(find.byType(PageActionBar), findsOneWidget);
+    expect(find.byType(Slider), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsWidgets);
     expect(tester.takeException(), isNull);
   });
@@ -95,7 +98,7 @@ void main() {
     await tester.pumpWidget(app(const PingPage()));
     await tester.pump(const Duration(milliseconds: 100));
 
-    final input = tester.widget<ShadInput>(find.byType(ShadInput));
+    final input = tester.widget<TextField>(find.byType(TextField));
     expect(input.controller?.text, 'https://example.com/ping');
     expect(find.text('Resolved URL'), findsNothing);
     expect(tester.takeException(), isNull);

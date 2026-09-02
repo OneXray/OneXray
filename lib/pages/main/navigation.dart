@@ -39,6 +39,14 @@ enum AppSecondaryDestination {
   directRegions("direct-regions"),
   customRouting("custom-routing"),
   customRule("custom-rule"),
+  appleVpn("apple-vpn"),
+  appleWifi("apple-wifi"),
+  androidVpn("android-vpn"),
+  androidApps("android-apps"),
+  windowsVpn("windows-vpn"),
+  outboundInterface("outbound-interface"),
+  routingData("routing-data"),
+  routingDataFile("routing-data-file"),
   overview("overview"),
   nodeInfo("node-info"),
   qrcode("qrcode"),
@@ -75,6 +83,7 @@ enum AppSecondaryDestination {
   appIcon("app-icon"),
   theme("theme"),
   language("language"),
+  aboutOneXray("about-onexray"),
   support("support");
 
   final String segment;

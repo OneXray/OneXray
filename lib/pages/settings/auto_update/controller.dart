@@ -1,59 +1,107 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/network/user_agent.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/auto_update/state.dart';
 
 class AutoUpdatePageState {
   final AutoUpdateState autoUpdateState;
+  final DownloadUserAgentMode userAgent;
+  final bool loading;
+  final bool loaded;
+  final bool saving;
+  final bool failed;
+  AutoUpdatePageState({
+    AutoUpdateState? autoUpdateState,
+    this.userAgent = DownloadUserAgentMode.oneXray,
+    this.loading = true,
+    this.saving = false,
+    this.failed = false,
+    this.loaded = false,
+  }) : autoUpdateState = autoUpdateState ?? AutoUpdateState();
 
-  AutoUpdatePageState({AutoUpdateState? autoUpdateState})
-    : autoUpdateState = autoUpdateState ?? AutoUpdateState();
-
-  AutoUpdatePageState _copy() {
-    return AutoUpdatePageState(autoUpdateState: autoUpdateState);
-  }
+  AutoUpdatePageState copyWith({
+    DownloadUserAgentMode? userAgent,
+    bool? loading,
+    bool? loaded,
+    bool? saving,
+    bool? failed,
+  }) => AutoUpdatePageState(
+    autoUpdateState: autoUpdateState,
+    userAgent: userAgent ?? this.userAgent,
+    loading: loading ?? this.loading,
+    saving: saving ?? this.saving,
+    failed: failed ?? this.failed,
+    loaded: loaded ?? this.loaded,
+  );
 }
 
 class AutoUpdateController extends PageCubit<AutoUpdatePageState> {
   AutoUpdateController() : super(AutoUpdatePageState()) {
-    _readAutoUpdateState();
+    load();
   }
 
-  Future<void> _readAutoUpdateState() async {
-    final autoUpdateState = AutoUpdateState();
-    await autoUpdateState.readFromPreferences();
-    emit(AutoUpdatePageState(autoUpdateState: autoUpdateState));
+  Future<void> load() async {
+    emit(state.copyWith(loading: true, failed: false));
+    try {
+      final value = AutoUpdateState();
+      await value.readFromPreferences();
+      final mode = await PreferencesKey().readDownloadUserAgentMode();
+      emit(
+        AutoUpdatePageState(
+          autoUpdateState: value,
+          userAgent: mode,
+          loading: false,
+          loaded: true,
+        ),
+      );
+    } catch (_) {
+      emit(state.copyWith(loading: false, failed: true));
+    }
   }
 
   void updateSubscriptionEnabled(bool value) {
     state.autoUpdateState.subscriptionEnabled = value;
-    emit(state._copy());
+    emit(state.copyWith());
   }
 
-  void updateSubscriptionInterval(AutoUpdateInterval value) {
+  void updateSubscriptionInterval(AutoUpdateInterval? value) {
+    if (value == null) return;
     state.autoUpdateState.subscriptionInterval = value;
-    emit(state._copy());
+    emit(state.copyWith());
   }
 
   void updateGeoDataEnable(bool value) {
     state.autoUpdateState.geoDataEnable = value;
-    emit(state._copy());
+    emit(state.copyWith());
   }
 
-  void updateGeoDataInterval(AutoUpdateInterval value) {
+  void updateGeoDataInterval(AutoUpdateInterval? value) {
+    if (value == null) return;
     state.autoUpdateState.geoDataInterval = value;
-    emit(state._copy());
+    emit(state.copyWith());
   }
 
-  void updateGeoDataUpdateAfterVpnConnected(bool value) {
-    state.autoUpdateState.geoDataUpdateAfterVpnConnected = value;
-    emit(state._copy());
+  void updateUserAgent(DownloadUserAgentMode? value) {
+    if (value != null) emit(state.copyWith(userAgent: value));
   }
+
+  void cancel(BuildContext context) => context.pop();
 
   Future<void> save(BuildContext context) async {
-    await state.autoUpdateState.saveToPreferences();
-    if (context.mounted) {
-      context.pop();
+    if (!state.loaded || state.saving) return;
+    emit(state.copyWith(saving: true, failed: false));
+    try {
+      await state.autoUpdateState.saveToPreferences();
+      await PreferencesKey().saveDownloadUserAgentMode(state.userAgent);
+      await NetClient().updateUserAgentMode(state.userAgent);
+      if (context.mounted) context.pop();
+    } catch (_) {
+      emit(state.copyWith(failed: true));
+    } finally {
+      emit(state.copyWith(saving: false));
     }
   }
 }

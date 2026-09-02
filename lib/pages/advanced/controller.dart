@@ -26,7 +26,7 @@ class AdvancedPageState {
   });
 }
 
-/// P4 reads the new connection value only. Platform editing follows in P7.
+/// Runtime facts shared by the Advanced tabs; platform edits use their own draft.
 class AdvancedController extends PageCubit<AdvancedPageState> {
   final ConnectionCoordinator coordinator;
   StreamSubscription<ConnectionStateData>? _subscription;

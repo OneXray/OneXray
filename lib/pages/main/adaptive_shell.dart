@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/page.dart';
-import 'package:onexray/pages/advanced/page.dart';
+import 'package:onexray/pages/main/advanced.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/preferences/page.dart';
 import 'package:onexray/pages/servers/page.dart';
@@ -255,7 +255,7 @@ class PrimaryRootContent extends StatelessWidget {
     return switch (primary) {
       AppPrimaryRoute.home => const ConnectPage(),
       AppPrimaryRoute.subscriptions => const ServersPage(),
-      AppPrimaryRoute.core => const AdvancedPage(),
+      AppPrimaryRoute.core => const AdvancedRootPage(),
       AppPrimaryRoute.settings => const PreferencesPage(),
     };
   }

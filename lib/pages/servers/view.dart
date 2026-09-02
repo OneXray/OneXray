@@ -122,7 +122,7 @@ class ServerBrowser extends StatelessWidget {
                         ),
                         title: Text(group.name),
                         subtitle: Text(controller.summary(l, group)),
-                        trailing: const Icon(LucideIcons.chevronRight),
+                        trailing: const Icon(LucideIcons.chevronRightDir),
                         onTap: () => controller.browse(
                           context,
                           group,

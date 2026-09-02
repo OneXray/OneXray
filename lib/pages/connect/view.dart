@@ -132,7 +132,7 @@ class ConnectView extends StatelessWidget {
                           ListTile(
                             leading: const Icon(LucideIcons.circleHelp),
                             title: Text(l.prototypeWhyThisConnection),
-                            trailing: const Icon(LucideIcons.chevronRight),
+                            trailing: const Icon(LucideIcons.chevronRightDir),
                             onTap: onWhy,
                           ),
                         ],
@@ -150,7 +150,7 @@ class ConnectView extends StatelessWidget {
                       l.prototypeTraffic,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    trailing: const Icon(LucideIcons.chevronRight),
+                    trailing: const Icon(LucideIcons.chevronRightDir),
                     onTap: onTraffic,
                   ),
                   TrafficReadout(view: view),
@@ -317,7 +317,7 @@ class ConnectView extends StatelessWidget {
           Text(detail, style: Theme.of(context).textTheme.bodyMedium),
       ],
     ),
-    trailing: const Icon(LucideIcons.chevronRight),
+    trailing: const Icon(LucideIcons.chevronRightDir),
     onTap: onTap,
   );
 

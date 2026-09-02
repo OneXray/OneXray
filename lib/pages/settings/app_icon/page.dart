@@ -6,6 +6,8 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/app_icon/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/pages/widget/page_action_bar.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AppIconPage extends StatelessWidget {
   const AppIconPage({super.key});
@@ -19,19 +21,44 @@ class AppIconPage extends StatelessWidget {
           final controller = context.read<AppIconController>();
           final l10n = AppLocalizations.of(context)!;
           final useDockIconLabel = AppPlatform.isMacOS;
-          return SettingsPageScaffold(
-            title: useDockIconLabel
-                ? l10n.dockIconPageTitle
-                : l10n.appIconPageTitle,
-            onSave: () => controller.save(context),
-            saveLabel: l10n.buttonSave,
-            body: AppIconChoiceView(
-              selected: state.appIcon,
-              useDockIconAssets: useDockIconLabel,
-              description: useDockIconLabel
-                  ? l10n.dockIconPageDescription
-                  : l10n.appIconPageDescription,
-              onSelected: controller.updateIcon,
+          return PopScope(
+            canPop: !state.saving,
+            child: Scaffold(
+              appBar: AppBar(
+                title: Text(l10n.prototypeAppIcon),
+                leading: BackButton(
+                  onPressed: () => controller.cancel(context),
+                ),
+              ),
+              body: SafeArea(
+                child: AbsorbPointer(
+                  absorbing: state.loading || state.saving,
+                  child: AppIconChoiceView(
+                    selected: state.appIcon,
+                    useDockIconAssets: useDockIconLabel,
+                    description: useDockIconLabel
+                        ? l10n.prototypeDockIconHint
+                        : l10n.prototypeHomeScreenIconHint,
+                    onSelected: controller.updateIcon,
+                  ),
+                ),
+              ),
+              bottomNavigationBar: PageActionBar(
+                children: [
+                  ShadButton.outline(
+                    onPressed: state.saving
+                        ? null
+                        : () => controller.cancel(context),
+                    child: Text(l10n.prototypeCancel),
+                  ),
+                  ShadButton(
+                    onPressed: state.loading || state.saving
+                        ? null
+                        : () => controller.save(context),
+                    child: Text(l10n.prototypeSave),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -62,7 +89,9 @@ class AppIconChoiceView extends StatelessWidget {
       child: Column(
         children: [
           SettingsPageIntro(
-            title: l10n.appIconPageSelect,
+            title: useDockIconAssets
+                ? l10n.prototypeDockPreview
+                : l10n.prototypeHomeScreenPreview,
             description: description,
             trailing: _iconImage(_imageFor(selected), 76),
           ),
@@ -84,7 +113,7 @@ class AppIconChoiceView extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final icon = AppIcon.values[index];
                     return _AppIconOption(
-                      label: _label(l10n, icon),
+                      label: appIconLabel(l10n, icon),
                       image: _imageFor(icon),
                       selected: selected == icon,
                       onTap: () => onSelected(icon),
@@ -103,17 +132,6 @@ class AppIconChoiceView extends StatelessWidget {
     return useDockIconAssets ? icon.dockAssetImage : icon.assetImage;
   }
 
-  String _label(AppLocalizations l10n, AppIcon icon) {
-    return switch (icon) {
-      AppIcon.primary => l10n.appIconPageBlue,
-      AppIcon.black => l10n.appIconPageBlack,
-      AppIcon.green => l10n.appIconPageGreen,
-      AppIcon.orange => l10n.appIconPageOrange,
-      AppIcon.purple => l10n.appIconPagePurple,
-      AppIcon.red => l10n.appIconPageRed,
-    };
-  }
-
   static Widget _iconImage(AssetGenImage image, double size) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(size * 0.22),
@@ -121,6 +139,15 @@ class AppIconChoiceView extends StatelessWidget {
     );
   }
 }
+
+String appIconLabel(AppLocalizations l10n, AppIcon icon) => switch (icon) {
+  AppIcon.primary => l10n.prototypeIconBlue,
+  AppIcon.black => l10n.prototypeIconBlack,
+  AppIcon.green => l10n.prototypeIconGreen,
+  AppIcon.orange => l10n.prototypeIconOrange,
+  AppIcon.purple => l10n.prototypeIconPurple,
+  AppIcon.red => l10n.prototypeIconRed,
+};
 
 class _AppIconOption extends StatelessWidget {
   final String label;
@@ -138,47 +165,51 @@ class _AppIconOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.all(13),
-          decoration: BoxDecoration(
-            color: selected
-                ? ColorManager.selected(context)
-                : ColorManager.surface(context),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? primary : ColorManager.border(context),
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: selected
+                  ? ColorManager.selected(context)
+                  : ColorManager.surface(context),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? primary : ColorManager.border(context),
+              ),
             ),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AppIconChoiceView._iconImage(image, 72),
-                    const SizedBox(height: 10),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ],
+            child: Stack(
+              children: [
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppIconChoiceView._iconImage(image, 72),
+                      const SizedBox(height: 10),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              PositionedDirectional(
-                top: 0,
-                end: 0,
-                child: SettingsChoiceIndicator(selected: selected),
-              ),
-            ],
+                PositionedDirectional(
+                  top: 0,
+                  end: 0,
+                  child: SettingsChoiceIndicator(selected: selected),
+                ),
+              ],
+            ),
           ),
         ),
       ),

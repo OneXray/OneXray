@@ -34,6 +34,15 @@ import 'package:onexray/pages/core/xray/profile/ui/page.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/core/xray/profile_list/page.dart';
 import 'package:onexray/pages/connect/page.dart';
+import 'package:onexray/pages/preferences/page.dart';
+import 'package:onexray/pages/advanced/tunnel/apple.dart';
+import 'package:onexray/pages/advanced/tunnel/android.dart';
+import 'package:onexray/pages/advanced/tunnel/apps.dart';
+import 'package:onexray/pages/advanced/tunnel/windows.dart';
+import 'package:onexray/pages/advanced/tunnel/interface.dart';
+import 'package:onexray/pages/advanced/geodata/page.dart';
+import 'package:onexray/pages/advanced/geodata/detail.dart';
+import 'package:onexray/service/connection/policy_editor.dart';
 import 'package:onexray/pages/home/node_info/page.dart';
 import 'package:onexray/pages/home/node_info/params.dart';
 import 'package:onexray/pages/home/outbound_select/page.dart';
@@ -191,6 +200,89 @@ _SharedSecondaryRoute _route(
 }
 
 final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
+  _route(
+    AppSecondaryDestination.appleVpn,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      AppSecondaryDestination.appleVpn,
+      (draft) => AppleVpnPage(
+        draft: draft,
+        openWifi: (context, draft) => context.pushScoped<bool>(
+          AppSecondaryDestination.appleWifi,
+          extra: draft,
+        ),
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.appleWifi,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      AppSecondaryDestination.appleWifi,
+      (draft) => AppleWifiPage(draft: draft),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.androidVpn,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      AppSecondaryDestination.androidVpn,
+      (draft) => AndroidVpnPage(
+        draft: draft,
+        openApps: (context, mode, selected) => context.pushScoped<List<String>>(
+          AppSecondaryDestination.androidApps,
+          extra: (mode, selected),
+        ),
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.androidApps,
+    (_, state) => _withExtra<(String, List<String>)>(
+      state,
+      AppSecondaryDestination.androidApps,
+      (params) => AndroidAppsPage(mode: params.$1, selected: params.$2),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.windowsVpn,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      AppSecondaryDestination.windowsVpn,
+      (draft) => WindowsVpnPage(
+        draft: draft,
+        openInterface: (context, draft) => context.pushScoped<bool>(
+          AppSecondaryDestination.outboundInterface,
+          extra: draft,
+        ),
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.outboundInterface,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      AppSecondaryDestination.outboundInterface,
+      (draft) => OutboundInterfacePage(draft: draft),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.routingData,
+    (_, _) => GeoDataPage(
+      openFile: (context, id) => context.pushScoped(
+        AppSecondaryDestination.routingDataFile,
+        extra: id,
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.routingDataFile,
+    (_, state) => _withExtra<int>(
+      state,
+      AppSecondaryDestination.routingDataFile,
+      (id) => GeoDataFilePage(fileId: id),
+    ),
+  ),
   _route(
     AppSecondaryDestination.serversImport,
     (_, state) => ServersImportPage(initialText: state.extra as String?),
@@ -448,6 +540,10 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   _route(AppSecondaryDestination.appIcon, (_, _) => const AppIconPage()),
   _route(AppSecondaryDestination.theme, (_, _) => const ThemePage()),
   _route(AppSecondaryDestination.language, (_, _) => const LanguagePage()),
+  _route(
+    AppSecondaryDestination.aboutOneXray,
+    (_, _) => const AboutOneXrayPage(),
+  ),
   _route(AppSecondaryDestination.support, (_, _) => const SettingsPage()),
 ];
 
