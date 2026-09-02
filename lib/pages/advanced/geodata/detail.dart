@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/geodata/controller.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/service/geo_data/model.dart';
 
 class GeoDataFilePage extends StatefulWidget {
   const GeoDataFilePage({super.key, required this.fileId});
@@ -153,49 +155,14 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                         else
                           SliverPadding(
                             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                            sliver: SliverList.builder(
-                              itemCount: codes.length,
-                              itemBuilder: (context, index) {
-                                final code = codes[index];
-                                return Column(
-                                  children: [
-                                    ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text(
-                                        code.code!,
-                                        textDirection: TextDirection.ltr,
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            file.reference(code.code!),
-                                            textDirection: TextDirection.ltr,
-                                            style: AppTypography.code,
-                                          ),
-                                          Text(
-                                            l.prototypeRuleCount(
-                                              code.ruleCount!,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      trailing: IconButton(
-                                        tooltip:
-                                            '${l.prototypeCopyRuleReference}: ${file.reference(code.code!)}',
-                                        onPressed: () => controller.copy(
-                                          context,
-                                          file.reference(code.code!),
-                                          l.prototypeRuleReferenceCopied,
-                                        ),
-                                        icon: const Icon(LucideIcons.copy),
-                                      ),
-                                    ),
-                                    const Divider(height: 1),
-                                  ],
-                                );
-                              },
+                            sliver: GeoDataCategorySliver(
+                              file: file,
+                              codes: codes,
+                              onCopy: (reference) => controller.copy(
+                                context,
+                                reference,
+                                l.prototypeRuleReferenceCopied,
+                              ),
                             ),
                           ),
                       ],
@@ -206,4 +173,66 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
       );
     },
   );
+}
+
+class GeoDataCategorySliver extends StatelessWidget {
+  const GeoDataCategorySliver({
+    super.key,
+    required this.file,
+    required this.codes,
+    required this.onCopy,
+  });
+
+  final PublishedGeoData file;
+  final List<XrayGeoListCodes> codes;
+  final ValueChanged<String> onCopy;
+
+  @override
+  Widget build(BuildContext context) => SliverPrototypeExtentList.builder(
+    prototypeItem: _row(context, 0),
+    itemCount: codes.length,
+    itemBuilder: _row,
+  );
+
+  Widget _row(BuildContext context, int index) {
+    final l = AppLocalizations.of(context)!;
+    final code = codes[index];
+    final reference = file.reference(code.code!);
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            code.code!,
+            textDirection: TextDirection.ltr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                reference,
+                textDirection: TextDirection.ltr,
+                style: AppTypography.code,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                l.prototypeRuleCount(code.ruleCount!),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          trailing: IconButton(
+            tooltip: '${l.prototypeCopyRuleReference}: $reference',
+            onPressed: () => onCopy(reference),
+            icon: const Icon(LucideIcons.copy),
+          ),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
 }

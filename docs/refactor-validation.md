@@ -200,3 +200,19 @@ Android 实测真实 App 图标、包含/排除列表独立存储及重开；日
 同步和只读日志桥接已编译/契约检查，实际消息/按需/批准/离线导出留手测。未运行 macOS
 VPN/截图或 Windows/Linux 原生构建；外部文件/分享/扫码未冒充实机通过。详情见
 `references/onexray-refactor-validation/p7-results.md`。本阶段 libXray 无新增改动。
+
+## P8 — 五语逐页与系统入口（2026-09-03）
+
+真实 App Debug 页面矩阵：macOS Desktop 35 页、Android Mobile 33 页，各五语检查首尾，
+标题、文本、RTL、加载状态和 Flutter 异常均已核对。使用隔离私有库，页面矩阵屏蔽系统写入，
+不把该结果当作 VPN/权限验收。macOS 首轮 Geosite 长列表跳尾超时，经红绿测试改为原型等高
+Sliver 后五语复测通过；完整引用仍可复制，390 宽/1.5 字号的英文及波斯语测试通过。
+
+无效路由回退复用原型批准文案；674 条五语逐值检查通过，26 项首页/RTL/缩放/底栏/导航检查
+通过。Android 波斯语深色规则页和软键盘实测：域名 LTR，输入与保存/取消可见，无异常。
+Android 系统磁贴真实启停新协调器、VIEW 链接进入预览后取消通过，最终 VPN 关闭。
+
+macOS Debug 构建及非 VPN 检查、Android Debug 构建通过；没有 macOS VPN/截图。
+Windows/Linux 原生、Apple 真机/SE 按需消息、最终签名包、完整读屏/主题/键盘及系统导入导出
+仍为 NOT RUN 或部分验证，不能宣布目标可发布。完整边界及逐页证据见工作空间
+`references/onexray-refactor-validation/p8-results.md`。继续 P9 源码清理和发布收尾。

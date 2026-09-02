@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/geo_data/add/page.dart';
 import 'package:onexray/pages/core/geo_data/list/page.dart';
 import 'package:onexray/pages/core/geo_data/list/params.dart';
@@ -583,14 +584,17 @@ class _InvalidRoutePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Invalid route")),
+      appBar: AppBar(
+        title: Text(
+          AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              "Missing or invalid route parameters for "
-              "${destination.segment}. Expected $expectedType.",
+              AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
               textAlign: TextAlign.center,
             ),
           ),
@@ -608,14 +612,16 @@ class _InvalidRouteDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Invalid route"),
+      title: Text(
+        AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+      ),
       content: Text(
-        "Missing or invalid route parameters. Expected $expectedType.",
+        AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text("Close"),
+          child: Text(AppLocalizations.of(context)!.prototypeClose),
         ),
       ],
     );
