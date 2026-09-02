@@ -67,10 +67,10 @@ abstract class BridgeHostApi {
 
 enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
-// macOS only
+// Apple VPN profile and System Extension readiness.
 enum RefreshVpnResult { installed, notInstalled, waitForApproval }
 
-enum PlatformPermissionKind { none, androidVpn, macosSystemExtension }
+enum PlatformPermissionKind { none, androidVpn, macosSystemExtension, appleVpn }
 
 enum PlatformPermissionState {
   notRequired,

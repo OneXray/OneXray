@@ -124,6 +124,7 @@ enum PlatformPermissionKind {
   none,
   androidVpn,
   macosSystemExtension,
+  appleVpn,
 }
 
 enum PlatformPermissionState {

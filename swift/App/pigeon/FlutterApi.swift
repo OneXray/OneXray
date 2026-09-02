@@ -32,7 +32,7 @@ class AppFlutterApi {
                 vpnStatus = .disconnecting
             case .disconnected, .invalid:
                 vpnStatus = .disconnected
-            case .connecting:
+            case .connecting, .reasserting:
                 vpnStatus = .connecting
             case .connected:
                 vpnStatus = .connected

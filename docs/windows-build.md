@@ -17,6 +17,7 @@ Windows 的构建矩阵、依赖 revision、runner 标签、工具链安装步�
 - Flutter、Go、libXray 生成的 `OneXrayCore.exe` 和三个 VCore 产物的架构必须与矩阵项一致。
 - MSIX 最低系统版本为 Windows 10 20H2（build 19042），只声明一个主 Application，但保留完全信任前台、AppContainer VPN Provider 和 full-trust Session Host 三个进程。
 - Provider 通过无参数 `FullTrustProcessLauncher` 启动 Session Host。VCore Provider 将系统 IP 包交给 Session Host；Session Host 用 kill-on-close Job Object 启动并监督普通权限 `OneXrayCore.exe`，VCore 再通过动态 loopback SOCKS5 转发。`sessionBackend` 只管理进程存活，不检查端口或 readiness；该 SOCKS5 仅监听 `127.0.0.1`，不是用户代理入口。
+- App 源码使用 Windows bridge revision 3，`startVpn` 每次必须完整发送 `policy.alwaysOn`、`policy.allowLocalNetwork` 和 `policy.excludedCidrs`。设置接线前 App 显式发送初始值 `false`、`true`、`[]`，VCore 不补默认值；CIDR 与 IPv6 / DNS 冲突由 VCore 校验。Session Snapshot token 仍为 `vcore-session-v2:<sha256>`，与 bridge revision 独立。打包的 `vcore.dll` 必须匹配 revision 3；源码契约测试不代表打包 DLL 或 Windows 实机验证通过。
 - MSIX 声明 `networkingVpnProvider`、网络和 `runFullTrust` 能力，注册 `VCore.VpnBackgroundTask` 及默认关闭的 `VCoreStartup`。Provider extension 显式保持 `windowsApp` / `appContainer`，Session Host extension 保持 `packagedClassicApp` / `mediumIL`。Core 不使用 `allowElevation`。
 - `msix:create` 生成基础包后，`build_scripts/app/windows_msix.py` 把两个 VCore extension 放入现有主 Application，并补充 package-level in-process server，再由 `makeappx` 原路径重打包。已有 VCore extension 或 Application 数量不为一时直接失败。
 - VCore 构建输出必须附带 artifact manifest；复制前校验 package integration revision 2、架构、config schema revision 13、三项文件集合和全部 SHA-256。任一不匹配都在打包前失败。

@@ -16,6 +16,7 @@ enum AppHostApiError: Error {
 @MainActor
 final class AppHostApi: @preconcurrency BridgeHostApi {
     private let flutterApi: AppFlutterApi
+    private nonisolated static let invokeLock = NSLock()
     init(flutterApi: AppFlutterApi) {
         self.flutterApi = flutterApi
     }
@@ -35,7 +36,15 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             let permission = await VPNManager.shared.queryPlatformPermission()
             flutterApi.refreshVpn(result: installed)
             flutterApi.vpnStatusChanged()
-            completion(.success(commandSuccess(permission: permission)))
+            if permission.state == .failed {
+                completion(.success(NativeVpnCommandResult(
+                    state: .failed,
+                    permission: permission,
+                    message: permission.message
+                )))
+            } else {
+                completion(.success(commandSuccess(permission: permission)))
+            }
         }
     }
     
@@ -67,6 +76,9 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
     }
 
     private nonisolated static func invoke(_ requestJson: String) -> Result<String, any Error> {
+        // Temporary cores share process-global Xray state; the VPN uses its extension.
+        invokeLock.lock()
+        defer { invokeLock.unlock() }
         let res = requestJson.withCString { p in
             let p0 = UnsafeMutablePointer(mutating: p)
             return CGoInvoke(p0)

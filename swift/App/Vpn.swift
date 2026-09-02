@@ -72,54 +72,80 @@ class VPNManager {
     }
 
     func refreshVpn() async -> RefreshVpnResult {
-        #if os(macOS)
-        if Constants.useSystemExtension {
-            let installed = await querySystemExtensionIfNeeded()
-            YGLog("querySystemExtensionIfNeeded \(installed)")
-            if installed != .installed {
-                return installed
-            }
-        }
-        #endif
-        do {
-            if let vpn = try await findVpn() {
-                self.vpn = vpn
-            } else {
-                vpn = newVpn()
-                await saveVpn(vpn: vpn!, tun: TunJson())
-            }
+        let permission = await queryPlatformPermission()
+        switch permission.state {
+        case .granted:
             return .installed
-        } catch {
-            YGLog(error.localizedDescription)
+        case .awaitingUserApproval:
+            return .waitForApproval
+        default:
             return .notInstalled
         }
     }
 
-    #if os(macOS)
     func queryPlatformPermission() async -> PlatformPermissionResult {
+        #if os(macOS)
         if Constants.useSystemExtension {
             let state = await querySystemExtensionIfNeeded()
-            return platformPermissionResult(from: state)
+            if state != .installed {
+                return platformPermissionResult(from: state)
+            }
         }
-        return PlatformPermissionResult(
-            kind: .none,
-            state: .notRequired,
-            message: nil
-        )
+        #endif
+        do {
+            vpn = try await findVpn()
+            return PlatformPermissionResult(
+                kind: .appleVpn,
+                state: vpn == nil ? .notDetermined : .granted,
+                message: nil
+            )
+        } catch {
+            YGLog(error.localizedDescription)
+            return PlatformPermissionResult(
+                kind: .appleVpn,
+                state: .failed,
+                message: error.localizedDescription
+            )
+        }
     }
 
     func requestPlatformPermission() async -> PlatformPermissionResult {
+        #if os(macOS)
         if Constants.useSystemExtension {
-            let state = await requestSystemExtensionIfNeeded()
-            return platformPermissionResult(from: state, requested: true)
+            var state = await querySystemExtensionIfNeeded()
+            if state != .installed {
+                state = await requestSystemExtensionIfNeeded()
+            }
+            if state != .installed {
+                return platformPermissionResult(from: state, requested: true)
+            }
         }
-        return PlatformPermissionResult(
-            kind: .none,
-            state: .notRequired,
-            message: nil
-        )
+        #endif
+        do {
+            if let existing = try await findVpn() {
+                vpn = existing
+            } else {
+                let manager = newVpn()
+                // Prepare authorization only; the initial profile has no On Demand rules.
+                try await saveVpn(vpn: manager, tun: TunJson())
+                vpn = manager
+            }
+            return PlatformPermissionResult(
+                kind: .appleVpn,
+                state: .granted,
+                message: nil
+            )
+        } catch {
+            YGLog(error.localizedDescription)
+            return PlatformPermissionResult(
+                kind: .appleVpn,
+                state: .failed,
+                message: error.localizedDescription
+            )
+        }
     }
 
+    #if os(macOS)
     private func platformPermissionResult(
         from state: RefreshVpnResult,
         requested: Bool = false
@@ -193,24 +219,6 @@ class VPNManager {
     }
     #endif
 
-    #if !os(macOS)
-    func queryPlatformPermission() async -> PlatformPermissionResult {
-        PlatformPermissionResult(
-            kind: .none,
-            state: .notRequired,
-            message: nil
-        )
-    }
-
-    func requestPlatformPermission() async -> PlatformPermissionResult {
-        PlatformPermissionResult(
-            kind: .none,
-            state: .notRequired,
-            message: nil
-        )
-    }
-    #endif
-
     func readStatus() -> NEVPNStatus? {
         return VPNManager.shared.vpn?.connection.status
     }
@@ -227,9 +235,9 @@ class VPNManager {
             }
             if let vpn = vpn {
                 if let tun = request.tun {
-                    await saveVpn(vpn: vpn, tun: tun, request: request)
+                    try await saveVpn(vpn: vpn, tun: tun, request: request)
                 } else {
-                    await saveVpn(vpn: vpn, tun: TunJson(), request: request)
+                    try await saveVpn(vpn: vpn, tun: TunJson(), request: request)
                 }
                 if let session = vpn.connection as? NETunnelProviderSession {
                     if Constants.useSystemExtension {
@@ -272,7 +280,12 @@ class VPNManager {
         guard let vpn = vpn else {
             return .notInstalled
         }
-        await saveVpn(vpn: vpn, tun: TunJson())
+        do {
+            try await saveVpn(vpn: vpn, tun: TunJson())
+        } catch {
+            YGLog(error.localizedDescription)
+            return .notInstalled
+        }
         switch vpn.connection.status {
         case .connected, .connecting, .reasserting:
             if let session = vpn.connection as? NETunnelProviderSession {
@@ -286,25 +299,21 @@ class VPNManager {
         return .installed
     }
 
-    private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async {
+    private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async throws {
         vpn.isEnabled = true
         if let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {
             applyAppleNetworkRouting(conf, tun: tun)
             if let request {
-                do {
-                    var providerConfig = conf.providerConfiguration ?? [:]
-                    let encodedRequest: Data
-                    if Constants.useSystemExtension {
-                        let rewritten = rewriteRequestForExtension(request)
-                        encodedRequest = try JsonTool.encode(rewritten)
-                    } else {
-                        encodedRequest = try JsonTool.encode(request)
-                    }
-                    providerConfig["request"] = encodedRequest
-                    conf.providerConfiguration = providerConfig
-                } catch {
-                    YGLog(error.localizedDescription)
+                var providerConfig = conf.providerConfiguration ?? [:]
+                let encodedRequest: Data
+                if Constants.useSystemExtension {
+                    let rewritten = rewriteRequestForExtension(request)
+                    encodedRequest = try JsonTool.encode(rewritten)
+                } else {
+                    encodedRequest = try JsonTool.encode(request)
                 }
+                providerConfig["request"] = encodedRequest
+                conf.providerConfiguration = providerConfig
             }
         }
         if let onDemandEnabled = tun.onDemandEnabled, onDemandEnabled {
@@ -326,12 +335,8 @@ class VPNManager {
             vpn.onDemandRules = nil
         }
         vpn.protocolConfiguration?.disconnectOnSleep = false
-        do {
-            try await vpn.saveToPreferences()
-            try await vpn.loadFromPreferences()
-        } catch {
-            YGLog(error.localizedDescription)
-        }
+        try await vpn.saveToPreferences()
+        try await vpn.loadFromPreferences()
     }
 
     private func applyAppleNetworkRouting(_ conf: NETunnelProviderProtocol, tun: TunJson) {

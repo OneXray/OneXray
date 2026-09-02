@@ -18,6 +18,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import libXray.LibXray
 import net.yuandev.onexray.vpn.VpnController
 import java.io.ByteArrayOutputStream
@@ -71,6 +73,7 @@ class AppHostApi(
     private var permissionCallback: ((PlatformPermissionResult) -> Unit)? = null
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val invokeMutex = Mutex()
 
     override fun getTunFilesDir(callback: (Result<String>) -> Unit) {
         val dirPath = context.filesDir.path
@@ -126,8 +129,10 @@ class AppHostApi(
 
     override fun invoke(requestJson: String, callback: (Result<String>) -> Unit) {
         scope.launch {
-            val res = LibXray.invoke(requestJson)
-            callback(Result.success(res))
+            // Temporary cores share process-global Xray state. The VPN runs in :native.
+            invokeMutex.withLock {
+                callback(runCatching { LibXray.invoke(requestJson) })
+            }
         }
     }
 

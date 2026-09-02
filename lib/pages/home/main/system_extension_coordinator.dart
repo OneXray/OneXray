@@ -32,18 +32,19 @@ final class HomeSystemExtensionCoordinator {
       return;
     }
     _subscription = AppFlutterApi().refreshVpnController.stream.listen(
-      (result) => unawaited(_handleRefresh(result)),
+      (_) => unawaited(_handleRefresh()),
     );
     final pending = AppFlutterApi().consumeRefreshVpnResult();
     if (pending != null) {
-      unawaited(_handleRefresh(pending));
+      unawaited(_handleRefresh());
     }
   }
 
   Future<bool> handleStartPermission(
     PlatformPermissionResult? permission,
   ) async {
-    if (permission?.kind != PlatformPermissionKind.macosSystemExtension) {
+    if (permission?.kind != PlatformPermissionKind.macosSystemExtension ||
+        permission?.state != PlatformPermissionState.awaitingUserApproval) {
       return false;
     }
     _startApprovalPolling();
@@ -52,7 +53,7 @@ final class HomeSystemExtensionCoordinator {
     return true;
   }
 
-  Future<void> _handleRefresh(RefreshVpnResult result) async {
+  Future<void> _handleRefresh() async {
     try {
       final useSystemExtension = await AppHostApi().useSystemExtension();
       if (_closed ||
@@ -62,9 +63,14 @@ final class HomeSystemExtensionCoordinator {
         return;
       }
 
+      final permission = await AppHostApi().queryPlatformPermission();
+      if (_closed || !context.mounted) {
+        return;
+      }
       final eventBus = context.read<AppEventBus>();
-      eventBus.updatePlatformPermission(_permissionFromRefresh(result));
-      if (result != RefreshVpnResult.waitForApproval) {
+      eventBus.updatePlatformPermission(permission);
+      if (permission.kind != PlatformPermissionKind.macosSystemExtension ||
+          permission.state != PlatformPermissionState.awaitingUserApproval) {
         _stopApprovalPolling();
         _approvalShown = false;
         if (eventBus.state.vpnActionState ==
@@ -113,19 +119,6 @@ final class HomeSystemExtensionCoordinator {
   void _stopApprovalPolling() {
     _approvalPollTimer?.cancel();
     _approvalPollTimer = null;
-  }
-
-  PlatformPermissionResult _permissionFromRefresh(RefreshVpnResult result) {
-    final state = switch (result) {
-      RefreshVpnResult.installed => PlatformPermissionState.granted,
-      RefreshVpnResult.waitForApproval =>
-        PlatformPermissionState.awaitingUserApproval,
-      RefreshVpnResult.notInstalled => PlatformPermissionState.notDetermined,
-    };
-    return PlatformPermissionResult(
-      kind: PlatformPermissionKind.macosSystemExtension,
-      state: state,
-    );
   }
 
   Future<void> _showApprovalDialog() async {

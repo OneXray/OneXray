@@ -56,6 +56,7 @@ final class WindowsNativeApi {
   Future<WindowsVpnProfileState> startVpn(
     String configYaml,
     WindowsVpnNetworkSettings networkSettings, {
+    required WindowsVpnPolicy policy,
     WindowsSessionBackend? sessionBackend,
   }) async => _vpnState(
     await _invokeHost(
@@ -63,6 +64,7 @@ final class WindowsNativeApi {
       WindowsStartVpnPayload(
         configYaml: configYaml,
         networkSettings: networkSettings,
+        policy: policy,
         sessionBackend: sessionBackend,
       ).toJson(),
     ),

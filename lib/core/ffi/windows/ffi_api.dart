@@ -60,6 +60,11 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<NativeVpnCommandResult> startVpn({
     String? configYaml,
     WindowsVpnNetworkSettings? networkSettings,
+    WindowsVpnPolicy policy = const WindowsVpnPolicy(
+      alwaysOn: false,
+      allowLocalNetwork: true,
+      excludedCidrs: [],
+    ),
   }) async {
     if (configYaml == null || configYaml.isEmpty || networkSettings == null) {
       return commandFailed('Windows VPN settings are missing');
@@ -88,6 +93,7 @@ class WindowsFfiApi extends BaseFfiApi {
       final state = await _native.startVpn(
         configYaml,
         networkSettings,
+        policy: policy,
         sessionBackend: backend,
       );
       final token = state.snapshotToken;

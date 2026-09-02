@@ -361,17 +361,17 @@ class OneVpnService : VpnService() {
     }
 
     private fun addAllowedApplication(appList: List<String>?, builder: Builder) {
-        appList?.let {
-            if (it.isNotEmpty()) {
-                for (appPackage in it) {
-                    try {
-                        packageManager.getPackageInfo(appPackage, 0)
-                        builder.addAllowedApplication(appPackage)
-                    } catch (_: PackageManager.NameNotFoundException) {
-                    }
-                }
+        var allowed = 0
+        for (appPackage in appList.orEmpty().distinct()) {
+            try {
+                packageManager.getPackageInfo(appPackage, 0)
+                builder.addAllowedApplication(appPackage)
+                allowed++
+            } catch (_: PackageManager.NameNotFoundException) {
             }
         }
+        // No addAllowedApplication calls would otherwise mean every installed app.
+        require(allowed > 0) { "Select at least one installed app before connecting" }
     }
 
     private fun addDisallowedApplication(appList: List<String>?, builder: Builder) {
