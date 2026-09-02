@@ -45,10 +45,8 @@ class PrivacyController extends PageCubit<PrivacyPageState> {
   }
 
   Future<void> accept(BuildContext context) async {
-    var accepted = false;
     try {
       await PreferencesKey().savePrivacyAccepted(true);
-      accepted = true;
       final destination = await LaunchBootstrapService()
           .resolveAcceptedDestination();
       if (context.mounted) {
@@ -56,8 +54,8 @@ class PrivacyController extends PageCubit<PrivacyPageState> {
       }
     } catch (e, stackTrace) {
       ygLogger("privacy accept error: $e\n$stackTrace");
-      if (accepted && context.mounted) {
-        context.go(RouterPath.home);
+      if (context.mounted) {
+        context.go(RouterPath.splash);
       }
     }
   }

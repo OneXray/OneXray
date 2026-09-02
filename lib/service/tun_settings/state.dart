@@ -26,7 +26,7 @@ class TunSettingsState {
   var excludeDeviceCommunication = true;
   var onDemandEnabled = false;
   var onDemandRules = <OnDemandRuleState>[];
-  var perAppVPNMode = PerAppVPNMode.allow;
+  var perAppVPNMode = PerAppVPNMode.disallow;
   var allowAppList = <String>{};
   var disallowAppList = <String>{};
 

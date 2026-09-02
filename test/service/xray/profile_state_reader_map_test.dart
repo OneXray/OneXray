@@ -75,6 +75,7 @@ void main() {
       data: base64Encode(utf8.encode(JsonTool.encoder.convert(source))),
       delay: -1,
       subId: -1,
+      favorite: false,
     );
 
     final first = readProfileMapFromDbData(row);

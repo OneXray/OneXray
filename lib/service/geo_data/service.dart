@@ -9,6 +9,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:path/path.dart' as p;
@@ -39,6 +40,22 @@ class GeoDataService {
     String url, {
     bool showLoading = true,
     bool needDownload = true,
+  }) => DataMaintenance.run(
+    () => _insertGeoDat(
+      name,
+      type,
+      url,
+      showLoading: showLoading,
+      needDownload: needDownload,
+    ),
+  );
+
+  Future<bool> _insertGeoDat(
+    String name,
+    GeoDataType type,
+    String url, {
+    required bool showLoading,
+    required bool needDownload,
   }) async {
     final eventBus = AppEventBus.instance;
     if (showLoading) {
@@ -85,6 +102,13 @@ class GeoDataService {
   Future<bool> updateGeoDat(
     GeoDataData geoDat, {
     bool updateDownloading = true,
+  }) => DataMaintenance.run(
+    () => _updateGeoDat(geoDat, updateDownloading: updateDownloading),
+  );
+
+  Future<bool> _updateGeoDat(
+    GeoDataData geoDat, {
+    required bool updateDownloading,
   }) async {
     final eventBus = AppEventBus.instance;
     if (updateDownloading) {
@@ -125,6 +149,13 @@ class GeoDataService {
   Future<void> refreshSystemGeoDat(
     List<GeoDataData> systemGeo, {
     bool updateDownloading = true,
+  }) => DataMaintenance.run(
+    () => _refreshSystemGeoDat(systemGeo, updateDownloading: updateDownloading),
+  );
+
+  Future<void> _refreshSystemGeoDat(
+    List<GeoDataData> systemGeo, {
+    required bool updateDownloading,
   }) async {
     final eventBus = AppEventBus.instance;
     if (updateDownloading) {
@@ -170,7 +201,10 @@ class GeoDataService {
     return err.isEmpty;
   }
 
-  Future<void> deleteGeoDat(GeoDataData geoDat) async {
+  Future<void> deleteGeoDat(GeoDataData geoDat) =>
+      DataMaintenance.run(() => _deleteGeoDat(geoDat));
+
+  Future<void> _deleteGeoDat(GeoDataData geoDat) async {
     final db = AppDatabase();
     await db.geoDataDao.deleteRow(geoDat.id);
 

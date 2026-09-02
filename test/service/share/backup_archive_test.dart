@@ -11,6 +11,7 @@ void main() {
     'core_configs.json',
     'subscriptions.json',
     'geo_data.json',
+    'custom_routing_profiles.json',
   };
 
   late Directory tempDir;
@@ -35,7 +36,32 @@ void main() {
     ).extract(archivePath, output);
 
     expect(await File(p.join(output, 'manifest.json')).exists(), isTrue);
+    expect(
+      await File(p.join(output, 'custom_routing_profiles.json')).exists(),
+      isTrue,
+    );
     expect(await File(p.join(output, 'dat', 'geoip.dat')).exists(), isTrue);
+  });
+
+  test('also accepts legacy archives without the Custom file', () async {
+    final source = await _makeBackupSource(
+      tempDir,
+      rootFiles.difference({'custom_routing_profiles.json'}),
+    );
+    final archivePath = p.join(tempDir.path, 'legacy.zip');
+    await _zipDirectory(source, archivePath);
+    final output = p.join(tempDir.path, 'legacy-output');
+
+    await const BackupArchiveExtractor(
+      rootFiles: rootFiles,
+      dataDirectory: 'dat',
+    ).extract(archivePath, output);
+
+    expect(await File(p.join(output, 'core_configs.json')).exists(), isTrue);
+    expect(
+      await File(p.join(output, 'custom_routing_profiles.json')).exists(),
+      isFalse,
+    );
   });
 
   test('preserves an empty data directory', () async {

@@ -16,9 +16,7 @@ abstract final class OneXrayAppLinkGenerator {
   static Uri? config(CoreConfigData config) {
     final type = switch (CoreConfigType.fromString(config.type)) {
       CoreConfigType.outbound => OneXrayConfigLinkType.outbound,
-      CoreConfigType.profile => OneXrayConfigLinkType.profile,
-      CoreConfigType.multiNodeOutbound =>
-        OneXrayConfigLinkType.multiNodeOutbound,
+      CoreConfigType.profile || CoreConfigType.multiNodeOutbound => null,
       CoreConfigType.raw => OneXrayConfigLinkType.raw,
       null => null,
     };

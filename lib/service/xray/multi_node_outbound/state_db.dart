@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
 import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
@@ -20,12 +21,12 @@ CoreConfigCompanion multiNodeOutboundCompanion(Map<String, dynamic> config) =>
     );
 
 Future<int> insertMultiNodeOutbound(Map<String, dynamic> config) =>
-    AppDatabase().coreConfigDao.insertRow(multiNodeOutboundCompanion(config));
+    ConfigWriter.insertRow(multiNodeOutboundCompanion(config));
 
 Future<bool> updateMultiNodeOutbound(
   Map<String, dynamic> config,
   CoreConfigData existing,
-) => AppDatabase().coreConfigDao.updateRow(
+) => ConfigWriter.updateRow(
   existing.copyWith(
     name: multiNodeOutboundName(config),
     data: Value<String>(_encodeMultiNodeOutbound(config)),

@@ -59,8 +59,6 @@ abstract final class OneXrayAppLinkParser {
     }
     final type = switch (typeText) {
       'outbound' => OneXrayConfigLinkType.outbound,
-      'profile' => OneXrayConfigLinkType.profile,
-      'full' => OneXrayConfigLinkType.multiNodeOutbound,
       'raw' => OneXrayConfigLinkType.raw,
       _ => null,
     };

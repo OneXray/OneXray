@@ -187,6 +187,7 @@ void main() {
       timestamp: DateTime(2026),
       count: 7,
       expanded: true,
+      parseFailureCount: 0,
     );
     final item = SubscriptionItem(subscription, ConfigQueryRowType.subscription)
       ..count = 7;

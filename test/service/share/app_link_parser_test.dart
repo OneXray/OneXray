@@ -10,8 +10,6 @@ void main() {
   group('config links', () {
     for (final entry in const <String, OneXrayConfigLinkType>{
       'outbound': OneXrayConfigLinkType.outbound,
-      'profile': OneXrayConfigLinkType.profile,
-      'full': OneXrayConfigLinkType.multiNodeOutbound,
       'raw': OneXrayConfigLinkType.raw,
     }.entries) {
       test('parses ${entry.key}', () {
@@ -37,11 +35,11 @@ void main() {
       });
     }
 
-    test('does not accept the legacy setting type', () {
-      final uri = _configUri(type: 'setting');
-
-      expect(OneXrayAppLinkParser.parse(uri), isNull);
-    });
+    for (final type in ['setting', 'profile', 'full', 'unknown']) {
+      test('rejects retired or unsupported config type $type', () {
+        expect(OneXrayAppLinkParser.parse(_configUri(type: type)), isNull);
+      });
+    }
 
     test('rejects duplicate and unknown query parameters', () {
       final data = Uri.encodeQueryComponent(
@@ -143,9 +141,10 @@ void main() {
   test('parses supported links from multi-line share text', () {
     final raw = _configUri(type: 'raw').toString();
     final geoData = _geoDataUri(type: 'domain').toString();
+    final retired = _configUri(type: 'full').toString();
 
     final links = OneXrayAppLinkParser.parseText(
-      '$raw\r\nnot-a-link\n$geoData\n',
+      '$raw\r\nnot-a-link\n$retired\n$geoData\n',
     );
 
     expect(links, hasLength(2));

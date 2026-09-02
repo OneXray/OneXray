@@ -318,4 +318,5 @@ CoreConfigData _row(String data) => CoreConfigData(
   data: data,
   delay: 0,
   subId: 0,
+  favorite: false,
 );

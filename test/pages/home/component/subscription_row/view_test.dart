@@ -100,6 +100,7 @@ SubscriptionItem _subscriptionItem() {
     timestamp: DateTime(2026),
     count: 7,
     expanded: true,
+    parseFailureCount: 0,
   );
   return SubscriptionItem(data, ConfigQueryRowType.subscription)..count = 7;
 }

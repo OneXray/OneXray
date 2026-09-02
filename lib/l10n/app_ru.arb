@@ -1,5 +1,6 @@
 {
   "@@locale": "ru",
+  "buttonRetry": "Повторить",
   "validationNameRequired": "Имя?",
   "validationNameDuplicate": "Дубликат имени",
   "validationPriorityRequired": "Приоритет?",

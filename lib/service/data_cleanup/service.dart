@@ -11,6 +11,7 @@ import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/vpn/service.dart';
 import 'package:onexray/service/xray/metrics/service.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
@@ -24,13 +25,13 @@ final class AppDataCleanupService {
 
   AppDataCleanupService._internal();
 
-  Future<bool> clearFromSettings() async {
-    return _clear(
+  Future<bool> clearFromSettings() => DataMaintenance.exclusive(
+    () => _clear(
       targetXrayProfileId: XrayProfileSimple.simpleId,
       clearUserDataPreferences: true,
       clearCache: true,
-    );
-  }
+    ),
+  );
 
   Future<bool> prepareForBackupRestore() async {
     try {
@@ -125,6 +126,7 @@ final class AppDataCleanupService {
     await db.geoDataDao.clear();
     await db.coreConfigDao.clear();
     await db.subscriptionDao.clear();
+    await db.customRoutingProfilesDao.clear();
   }
 
   Future<void> _clearRuntimeFiles() async {

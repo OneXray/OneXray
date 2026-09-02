@@ -5,6 +5,7 @@ import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/ping/service.dart';
 
 enum HomeNodeQueryType { homeNodes, outboundOnly }
@@ -67,7 +68,7 @@ class HomeNodeController extends PageCubit<HomeNodeViewState> {
     }
   }
 
-  Future<void> cleanUnreachable(int subId) async {
+  Future<void> cleanUnreachable(int subId) => DataMaintenance.run(() async {
     final db = AppDatabase();
     switch (queryType) {
       case HomeNodeQueryType.homeNodes:
@@ -77,7 +78,7 @@ class HomeNodeController extends PageCubit<HomeNodeViewState> {
         await db.coreConfigDao.deleteUnreachableOutboundRows(subId);
         break;
     }
-  }
+  });
 
   Future<void> refreshData() async {
     final db = AppDatabase();

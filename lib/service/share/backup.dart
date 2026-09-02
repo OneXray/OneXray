@@ -3,10 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/tools/file.dart';
@@ -14,8 +12,10 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/share/backup_archive.dart';
 import 'package:onexray/service/share/backup_dat_stager.dart';
+import 'package:onexray/service/share/backup_database.dart';
 import 'package:onexray/service/share/backup_model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:path/path.dart' as p;
@@ -27,6 +27,7 @@ import 'package:path_provider/path_provider.dart';
 // -- core_configs.json
 // -- subscriptions.json
 // -- geo_data.json
+// -- custom_routing_profiles.json
 // -- dat
 //    -- geo.dat
 //    -- geo.json
@@ -38,13 +39,17 @@ class BackupService {
 
   BackupService._internal();
 
-  static const _backupVersion = 4;
-  static const _supportedBackupVersions = {3, _backupVersion};
+  static const _backupVersion = BackupManifestJson.currentVersion;
   static const _datDir = "dat";
   static const _manifestFile = "manifest.json";
   static const _coreConfigsFile = "core_configs.json";
   static const _subscriptionsFile = "subscriptions.json";
   static const _geoDataFile = "geo_data.json";
+  static const _customRoutingProfilesFile = "custom_routing_profiles.json";
+
+  int _lastRestoreSkippedCoreConfigCount = 0;
+  int get lastRestoreSkippedCoreConfigCount =>
+      _lastRestoreSkippedCoreConfigCount;
 
   static const _zipFilePrefix = "OneXray";
 
@@ -56,6 +61,7 @@ class BackupService {
       _coreConfigsFile,
       _subscriptionsFile,
       _geoDataFile,
+      _customRoutingProfilesFile,
     },
     dataDirectory: _datDir,
   );
@@ -93,7 +99,9 @@ class BackupService {
     }
   }
 
-  Future<void> backup() async {
+  Future<void> backup() => DataMaintenance.exclusive(_backup);
+
+  Future<void> _backup() async {
     final eventBus = AppEventBus.instance;
     eventBus.updateDownloading(true);
 
@@ -101,17 +109,29 @@ class BackupService {
     final stagingDir = p.join(cacheDir, "staging");
     final createdAt = DateTime.now();
     try {
+      final contents = await BackupDatabaseContents.read(AppDatabase());
+      contents.validate();
       await FileTool.checkDir(stagingDir);
       await _writeManifest(stagingDir, createdAt);
-      await _backupGeoData(stagingDir);
-      await _backupLocalConfigs(stagingDir);
-      await _backupSubscriptions(stagingDir);
+      await _backupGeoData(stagingDir, contents.geoDataList);
+      await _writeJsonToFile(
+        contents.coreConfigs,
+        p.join(stagingDir, _coreConfigsFile),
+      );
+      await _writeJsonToFile(
+        contents.subscriptions,
+        p.join(stagingDir, _subscriptionsFile),
+      );
+      await _writeJsonToFile(
+        contents.customRoutingProfiles,
+        p.join(stagingDir, _customRoutingProfilesFile),
+      );
 
       final zipSrcPath = p.join(cacheDir, "$_zipFilePrefix.zip");
       await _archiveDirToZipFile(stagingDir, zipSrcPath);
       await _saveBackupFile(zipSrcPath, createdAt);
     } catch (e, stackTrace) {
-      ygLogger("backup error: $e\n$stackTrace");
+      ygLogger("backup error (${e.runtimeType})\n$stackTrace");
       rethrow;
     } finally {
       await FileTool.deleteDirIfExists(cacheDir);
@@ -120,37 +140,56 @@ class BackupService {
   }
 
   Future<bool> restore(String zipPath) async {
-    final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
+    List<SubscriptionData> legacySubscriptions = const [];
+    final success = await DataMaintenance.exclusive(() async {
+      _lastRestoreSkippedCoreConfigCount = 0;
+      final eventBus = AppEventBus.instance;
+      eventBus.updateDownloading(true);
 
-    final cacheDir = await FileTool.makeCacheDir();
-    _DatRestoreSwap? datRestore;
-    try {
-      final payload = await _readBackupPayload(zipPath, cacheDir);
-      if (payload == null) {
+      final cacheDir = await FileTool.makeCacheDir();
+      _DatRestoreSwap? datRestore;
+      try {
+        final payload = await _readBackupPayload(zipPath, cacheDir);
+        if (payload == null) {
+          return false;
+        }
+
+        final cleanupService = AppDataCleanupService();
+        if (!await cleanupService.prepareForBackupRestore()) {
+          return false;
+        }
+
+        datRestore = await _DatRestoreSwap.prepare(payload.rootDir);
+        await datRestore.activate();
+        final subscriptions = await payload.contents.restore(AppDatabase());
+        await datRestore.commit();
+        await cleanupService.finishBackupRestore();
+        if (payload.contents.version < _backupVersion) {
+          legacySubscriptions = subscriptions;
+        }
+        _lastRestoreSkippedCoreConfigCount =
+            payload.contents.skippedCoreConfigCount;
+        if (_lastRestoreSkippedCoreConfigCount > 0) {
+          ygLogger(
+            'backup restore skipped $_lastRestoreSkippedCoreConfigCount retired configs',
+          );
+        }
+        return true;
+      } catch (e, stackTrace) {
+        await datRestore?.rollback();
+        ygLogger("restore backup error (${e.runtimeType})\n$stackTrace");
         return false;
+      } finally {
+        await FileTool.deleteDirIfExists(cacheDir);
+        eventBus.updateDownloading(false);
       }
-
-      final cleanupService = AppDataCleanupService();
-      if (!await cleanupService.prepareForBackupRestore()) {
-        return false;
-      }
-
-      datRestore = await _DatRestoreSwap.prepare(payload.rootDir);
-      await datRestore.activate();
-      final subscriptions = await _restoreDatabase(payload);
-      await datRestore.commit();
-      await cleanupService.finishBackupRestore();
-      await _refreshRestoredSubscriptions(subscriptions);
-      return true;
-    } catch (e, stackTrace) {
-      await datRestore?.rollback();
-      ygLogger("restore backup error: $e\n$stackTrace");
-      return false;
-    } finally {
-      await FileTool.deleteDirIfExists(cacheDir);
-      eventBus.updateDownloading(false);
+    });
+    // Legacy ZIPs have no subscription cache. Refresh only after maintenance
+    // releases its gate, so ordinary subscription writes do not re-enter it.
+    if (success && legacySubscriptions.isNotEmpty) {
+      await _refreshRestoredSubscriptions(legacySubscriptions);
     }
+    return success;
   }
 
   Future<_BackupPayload?> _readBackupPayload(
@@ -161,7 +200,7 @@ class BackupService {
       await _archiveExtractor.extract(zipPath, cacheDir);
       return await _readBackupDir(cacheDir);
     } catch (e, stackTrace) {
-      ygLogger("read backup error: $e\n$stackTrace");
+      ygLogger("read backup error (${e.runtimeType})\n$stackTrace");
       return null;
     }
   }
@@ -184,22 +223,38 @@ class BackupService {
       p.join(backupRoot, _geoDataFile),
       BackupGeoDataJson.fromJson,
     );
-    if (coreConfigs == null || subscriptions == null || geoDataList == null) {
+    final customFile = p.join(backupRoot, _customRoutingProfilesFile);
+    final customRoutingProfiles = manifest.version == _backupVersion
+        ? await _readJsonList(
+            customFile,
+            BackupCustomRoutingProfileJson.fromJson,
+          )
+        : <BackupCustomRoutingProfileJson>[];
+    if (coreConfigs == null ||
+        subscriptions == null ||
+        geoDataList == null ||
+        customRoutingProfiles == null ||
+        (manifest.version != _backupVersion &&
+            await File(customFile).exists())) {
       return null;
     }
 
-    if (!_validateCoreConfigs(coreConfigs) ||
-        !_validateSubscriptions(subscriptions) ||
-        !await _validateGeoDataList(backupRoot, geoDataList)) {
+    final contents = BackupDatabaseContents(
+      version: manifest.version!,
+      coreConfigs: coreConfigs,
+      subscriptions: subscriptions,
+      geoDataList: geoDataList,
+      customRoutingProfiles: customRoutingProfiles,
+    );
+    contents.validate();
+    if (!await _validateGeoDataList(backupRoot, geoDataList)) {
       return null;
     }
 
     return _BackupPayload(
       rootDir: backupRoot,
       createdAt: DateTime.fromMillisecondsSinceEpoch(manifest.createdAt!),
-      coreConfigs: coreConfigs,
-      subscriptions: subscriptions,
-      geoDataList: geoDataList,
+      contents: contents,
     );
   }
 
@@ -214,7 +269,7 @@ class BackupService {
       BackupManifestJson.fromJson,
     );
     if (manifest == null ||
-        !_supportedBackupVersions.contains(manifest.version) ||
+        !BackupManifestJson.supportedVersions.contains(manifest.version) ||
         manifest.createdAt == null) {
       return null;
     }
@@ -267,45 +322,13 @@ class BackupService {
     }
   }
 
-  bool _validateCoreConfigs(List<BackupCoreConfigJson> configs) {
-    for (final config in configs) {
-      if (config.name == null || config.type == null || config.tags == null) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool _validateSubscriptions(List<BackupSubscriptionJson> subscriptions) {
-    for (final subscription in subscriptions) {
-      if (subscription.name == null ||
-          subscription.url == null ||
-          subscription.timestamp == null ||
-          subscription.expanded == null ||
-          ((subscription.ageSecretKey == null) !=
-              (subscription.agePublicKey == null))) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   Future<bool> _validateGeoDataList(
     String backupRoot,
     List<BackupGeoDataJson> geoDataList,
   ) async {
     final datDir = p.join(backupRoot, _datDir);
     for (final geoData in geoDataList) {
-      final name = geoData.name;
-      if (name == null ||
-          geoData.type == null ||
-          geoData.url == null ||
-          geoData.timestamp == null ||
-          geoData.categoryCount == null ||
-          geoData.ruleCount == null) {
-        return false;
-      }
-
+      final name = geoData.name!;
       final datFile = File(p.join(datDir, "$name.dat"));
       final jsonFile = File(p.join(datDir, "$name.json"));
       if (!await datFile.exists() || !await jsonFile.exists()) {
@@ -337,24 +360,14 @@ class BackupService {
     await zipEncoder.close();
   }
 
-  Future<void> _backupGeoData(String zipDir) async {
+  Future<void> _backupGeoData(
+    String zipDir,
+    List<BackupGeoDataJson> rows,
+  ) async {
     final datDir = p.join(zipDir, _datDir);
     await FileTool.checkDir(datDir);
-    final db = AppDatabase();
-    final geoList = await db.geoDataDao.allRows;
-    final rows = <BackupGeoDataJson>[];
-    for (final geoData in geoList) {
-      rows.add(
-        BackupGeoDataJson(
-          geoData.name,
-          geoData.type,
-          geoData.url,
-          geoData.timestamp.millisecondsSinceEpoch,
-          geoData.categoryCount,
-          geoData.ruleCount,
-        ),
-      );
-      await _copyDat(geoData.name, VpnConstants.datDir, datDir);
+    for (final geoData in rows) {
+      await _copyDat(geoData.name!, VpnConstants.datDir, datDir);
     }
     final geoDataPath = p.join(zipDir, _geoDataFile);
     await _writeJsonToFile(rows, geoDataPath);
@@ -372,126 +385,17 @@ class BackupService {
     await File(jsonSrcPath).copy(jsonDstPath);
   }
 
-  Future<void> _backupLocalConfigs(String zipDir) async {
-    final db = AppDatabase();
-    final configs = await db.coreConfigDao.allLocalRowsWithData;
-    final rows = configs
-        .map(
-          (config) => BackupCoreConfigJson(
-            config.name,
-            config.type,
-            config.tags,
-            config.data,
-          ),
-        )
-        .toList();
-    final configsPath = p.join(zipDir, _coreConfigsFile);
-    await _writeJsonToFile(rows, configsPath);
-  }
-
-  Future<void> _backupSubscriptions(String zipDir) async {
-    final db = AppDatabase();
-    final subscriptions = await db.subscriptionDao.allRows;
-    final rows = subscriptions
-        .map(
-          (subscription) => BackupSubscriptionJson(
-            subscription.name,
-            subscription.url,
-            subscription.ageSecretKey,
-            subscription.agePublicKey,
-            subscription.timestamp.millisecondsSinceEpoch,
-            subscription.expanded,
-          ),
-        )
-        .toList();
-    final subscriptionsPath = p.join(zipDir, _subscriptionsFile);
-    await _writeJsonToFile(rows, subscriptionsPath);
-  }
-
   Future<void> _writeJsonToFile(Object? data, String path) async {
     final json = switch (data) {
       BackupManifestJson() => data.toJson(),
       List<BackupCoreConfigJson>() => data.map((e) => e.toJson()).toList(),
       List<BackupSubscriptionJson>() => data.map((e) => e.toJson()).toList(),
       List<BackupGeoDataJson>() => data.map((e) => e.toJson()).toList(),
+      List<BackupCustomRoutingProfileJson>() =>
+        data.map((e) => e.toJson()).toList(),
       _ => data,
     };
     await File(path).writeAsString(JsonTool.encoder.convert(json));
-  }
-
-  Future<List<SubscriptionData>> _restoreDatabase(
-    _BackupPayload payload,
-  ) async {
-    final db = AppDatabase();
-    return db.transaction(() async {
-      await db.coreConfigDao.clear();
-      await db.subscriptionDao.clear();
-      await db.geoDataDao.clear();
-
-      for (final geoData in payload.geoDataList) {
-        final id = await db.geoDataDao.insertRow(
-          GeoDataCompanion.insert(
-            name: geoData.name!,
-            type: geoData.type!,
-            url: geoData.url!,
-            timestamp: _readTimestamp(geoData.timestamp),
-            categoryCount: geoData.categoryCount!,
-            ruleCount: geoData.ruleCount!,
-          ),
-        );
-        if (id <= DBConstants.defaultId) {
-          throw StateError('restore GeoData failed');
-        }
-      }
-
-      for (final config in payload.coreConfigs) {
-        final id = await db.coreConfigDao.insertRow(
-          CoreConfigCompanion.insert(
-            name: config.name!,
-            type: config.type!,
-            tags: config.tags!,
-            data: Value<String?>(config.data),
-            delay: PingDelayConstants.unknown,
-            subId: DBConstants.defaultId,
-          ),
-        );
-        if (id <= DBConstants.defaultId) {
-          throw StateError('restore core config failed');
-        }
-      }
-
-      final subscriptions = <SubscriptionData>[];
-      for (final row in payload.subscriptions) {
-        final timestamp = _readTimestamp(row.timestamp);
-        final subId = await db.subscriptionDao.insertRow(
-          SubscriptionCompanion.insert(
-            name: row.name!,
-            url: row.url!,
-            ageSecretKey: Value(row.ageSecretKey),
-            agePublicKey: Value(row.agePublicKey),
-            timestamp: timestamp,
-            count: 0,
-            expanded: row.expanded!,
-          ),
-        );
-        if (subId <= DBConstants.defaultId) {
-          throw StateError('restore subscription failed');
-        }
-        subscriptions.add(
-          SubscriptionData(
-            id: subId,
-            name: row.name!,
-            url: row.url!,
-            ageSecretKey: row.ageSecretKey,
-            agePublicKey: row.agePublicKey,
-            timestamp: timestamp,
-            count: 0,
-            expanded: row.expanded!,
-          ),
-        );
-      }
-      return subscriptions;
-    });
   }
 
   Future<void> _refreshRestoredSubscriptions(
@@ -501,16 +405,11 @@ class BackupService {
       try {
         await SubscriptionService().refreshSubscription(subscription, false);
       } catch (e, stackTrace) {
-        ygLogger("refresh restored subscription error: $e\n$stackTrace");
+        ygLogger(
+          "refresh restored subscription error (${e.runtimeType})\n$stackTrace",
+        );
       }
     }
-  }
-
-  DateTime _readTimestamp(dynamic value) {
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
-    }
-    return DateTime.now();
   }
 }
 
@@ -604,15 +503,11 @@ final class _DatRestoreSwap {
 class _BackupPayload {
   final String rootDir;
   final DateTime createdAt;
-  final List<BackupCoreConfigJson> coreConfigs;
-  final List<BackupSubscriptionJson> subscriptions;
-  final List<BackupGeoDataJson> geoDataList;
+  final BackupDatabaseContents contents;
 
   const _BackupPayload({
     required this.rootDir,
     required this.createdAt,
-    required this.coreConfigs,
-    required this.subscriptions,
-    required this.geoDataList,
+    required this.contents,
   });
 }

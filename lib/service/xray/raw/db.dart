@@ -5,6 +5,7 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/tools/empty.dart';
+import 'package:onexray/service/db/config_writer.dart';
 
 class XrayRawDb {
   static String readFromDbData(CoreConfigData config) {
@@ -31,9 +32,8 @@ class XrayRawDb {
   }
 
   static Future<int> insertToDb(String name, String rawText) async {
-    final db = AppDatabase();
     final newRow = configCompanion(name, rawText);
-    final res = await db.coreConfigDao.insertRow(newRow);
+    final res = await ConfigWriter.insertRow(newRow);
     return res;
   }
 
@@ -48,8 +48,7 @@ class XrayRawDb {
       name: name,
       data: Value<String>(base64Data),
     );
-    final db = AppDatabase();
-    final res = await db.coreConfigDao.updateRow(row);
+    final res = await ConfigWriter.updateRow(row);
     return res;
   }
 }

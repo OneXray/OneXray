@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/xray/config_map.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/state_reader.dart';
@@ -20,12 +21,12 @@ CoreConfigCompanion profileCompanion(Map<String, dynamic> profile) =>
     );
 
 Future<int> insertProfile(Map<String, dynamic> profile) =>
-    AppDatabase().coreConfigDao.insertRow(profileCompanion(profile));
+    ConfigWriter.insertRow(profileCompanion(profile));
 
 Future<bool> updateProfile(
   Map<String, dynamic> profile,
   CoreConfigData existing,
-) => AppDatabase().coreConfigDao.updateRow(
+) => ConfigWriter.updateRow(
   existing.copyWith(
     name: profileName(profile),
     data: Value<String>(_encodeProfile(profile)),

@@ -73,6 +73,11 @@ final class XrayRuntimeConfigService {
     CoreConfigData? config,
     CoreRunMode mode,
   ) async {
+    if (config != null &&
+        config.type != CoreConfigType.outbound.name &&
+        config.type != CoreConfigType.raw.name) {
+      throw const XrayRuntimeConfigException('Unsupported configuration type');
+    }
     final routingMode = await PreferencesKey().readCoreRoutingMode();
     final runDir = VpnConstants.runDir;
     await FileTool.checkDir(runDir);

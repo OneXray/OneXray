@@ -41,3 +41,30 @@ Windows、Linux 原生构建和运行均 **NOT RUN**，纯共享 Dart 测试不�
 
 P0 关闭的是可行性调查阶段，不代表 G0–G9 的完整产品交付。未完成项已对应到后续阶段，
 最终全站/平台矩阵不得将它们预先标记为通过。libXray 本阶段无源码改动。
+
+## P1：存储与资产基础
+
+- 在原路径将 schema v1/v2 原位升级到 v3。升级前暂停业务、停止旧运行并以 SQLite
+  backup 保存包含 WAL 的一致性快照；DDL、保留列核对和版本号在同一事务提交。
+  失败关闭连接、保留原库并提供重试，不清库或自动进入首页。
+- 保留 CoreConfig / Subscription / GeoData 的原行与 base64，追加节点探测元数据、
+  收藏和订阅失败数，新建 CustomRoutingProfiles。旧 Raw 超额完整保留；普通资产新增
+  在事务内限制数量；退休类型退出查询、测速、分享、写入与运行入口。
+- Preferences 使用新的 app2 命名空间。资产写入、订阅、测速落库、Geodata 和清理
+  纳入维护门，覆盖恢复等待已有写任务结束并拒绝迟到写入。
+- 订阅只以非空有效结果覆盖，保护运行/固定/最终出口引用与收藏的原行，保留行不计入
+  本次导入数；并行编辑/更新使用来源代次检查。完整运行快照的引用接线在 P3，准确的
+  解析失败计数由 P5 的 libXray 扩展提供，当前未知结果不伪造数量。
+- ZIP 写 v5、读 v3/v4/v5；保留 Age、ID、全部 Raw 与新增资产/元数据，旧退休类型跳过。
+  文件暂存、数据库事务及回滚已有定向验证；Geodata generation 的生产发布在 P7 完成。
+
+验证结果：97 项存储/订阅/维护/分享定向测试通过；全量 342 项通过、1 项 Windows
+原生测试跳过。最终补充的退休运行入口和订阅行 UI 回归也通过。静态分析、原生模型契约、
+分层检查、完整 App 的 macOS Debug 构建通过；没有启动 macOS VPN 或截图。
+
+Android 运行 `references/onexray-refactor-validation/android-storage.dart`：只打开应用
+私有 `p1-storage-1788359907872720/legacy-v2.sqlite` 固定测试库，实际验证 WAL 快照、
+v2→v3、Age/ID/subId/base64 原值保留、4 份 Raw、新 Custom 写读、关闭重开和 quick_check。
+所有检查通过；不读取开发者主数据库，不调用 VPN。v1 与错误注入在 Dart SQLite 测试覆盖。
+
+P1 不代表新连接/新 UI 已启用；后续按 P2→P9 继续。libXray 本阶段无源码改动。

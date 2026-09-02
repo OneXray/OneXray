@@ -14,4 +14,12 @@ class CoreConfig extends Table {
   IntColumn get delay => integer()();
 
   IntColumn get subId => integer()();
+
+  TextColumn get countryCode => text().nullable()();
+
+  TextColumn get locationSource => text().nullable()();
+
+  DateTimeColumn get lastMeasuredAt => dateTime().nullable()();
+
+  BoolColumn get favorite => boolean().withDefault(const Constant(false))();
 }

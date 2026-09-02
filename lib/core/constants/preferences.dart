@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesKey {
   final _prefs = SharedPreferencesAsync();
+  // New product settings deliberately do not inherit the retired UI's choices.
+  // System VPN authorization is maintained by the platform, not these keys.
+  static const _namespace = 'app2.';
   static const _defaultXrayProfileId = -1;
 
   static final PreferencesKey _singleton = PreferencesKey._internal();
@@ -14,7 +17,7 @@ class PreferencesKey {
 
   PreferencesKey._internal();
 
-  static const _privacyAccepted = "privacyAccepted04";
+  static const _privacyAccepted = "${_namespace}privacyAccepted";
 
   Future<bool> readPrivacyAccepted() async {
     final value = await _prefs.getBool(_privacyAccepted);
@@ -28,7 +31,7 @@ class PreferencesKey {
     await _prefs.setBool(_privacyAccepted, value);
   }
 
-  static const _firstRun = "firstRun03";
+  static const _firstRun = "${_namespace}firstRun";
 
   Future<bool> readFirstRun() async {
     final value = await _prefs.getBool(_firstRun);
@@ -42,7 +45,8 @@ class PreferencesKey {
     await _prefs.setBool(_firstRun, value);
   }
 
-  static const _localSubscriptionExpanded = "localSubscriptionExpanded";
+  static const _localSubscriptionExpanded =
+      "${_namespace}localSubscriptionExpanded";
 
   Future<bool> readLocalSubscriptionExpanded() async {
     final value = await _prefs.getBool(_localSubscriptionExpanded);
@@ -56,7 +60,7 @@ class PreferencesKey {
     await _prefs.setBool(_localSubscriptionExpanded, value);
   }
 
-  static const _runningConfigId = "runningConfigId";
+  static const _runningConfigId = "${_namespace}runningConfigId";
 
   Future<int> readRunningConfigId() async {
     final value = await _prefs.getInt(_runningConfigId);
@@ -70,7 +74,7 @@ class PreferencesKey {
     await _prefs.setInt(_runningConfigId, value);
   }
 
-  static const _lastConfigId = "lastConfigId";
+  static const _lastConfigId = "${_namespace}lastConfigId";
 
   Future<int> readLastConfigId() async {
     final value = await _prefs.getInt(_lastConfigId);
@@ -84,7 +88,7 @@ class PreferencesKey {
     await _prefs.setInt(_lastConfigId, value);
   }
 
-  static const _vpnStartTimestamp = "vpnStartTimestamp";
+  static const _vpnStartTimestamp = "${_namespace}vpnStartTimestamp";
 
   Future<DateTime> readVpnStartTimestamp() async {
     final value = await _prefs.getInt(_vpnStartTimestamp);
@@ -99,7 +103,8 @@ class PreferencesKey {
     await _prefs.setInt(_vpnStartTimestamp, timestamp);
   }
 
-  static const _appUpdateLastCheckTimestamp = "appUpdateLastCheckTimestamp";
+  static const _appUpdateLastCheckTimestamp =
+      "${_namespace}appUpdateLastCheckTimestamp";
 
   Future<DateTime?> readAppUpdateLastCheckTimestamp() async {
     final value = await _prefs.getInt(_appUpdateLastCheckTimestamp);
@@ -114,7 +119,8 @@ class PreferencesKey {
     await _prefs.setInt(_appUpdateLastCheckTimestamp, timestamp);
   }
 
-  static const _appUpdateSkippedVersion = "appUpdateSkippedVersion";
+  static const _appUpdateSkippedVersion =
+      "${_namespace}appUpdateSkippedVersion";
 
   Future<String?> readAppUpdateSkippedVersion() async {
     return _prefs.getString(_appUpdateSkippedVersion);
@@ -124,7 +130,7 @@ class PreferencesKey {
     await _prefs.setString(_appUpdateSkippedVersion, value);
   }
 
-  static const _pingState = "pingState";
+  static const _pingState = "${_namespace}pingState";
 
   Future<Map<String, dynamic>?> readPingState() async {
     final value = await _prefs.getString(_pingState);
@@ -139,8 +145,7 @@ class PreferencesKey {
     await _prefs.setString(_pingState, text);
   }
 
-  // Legacy storage key. Keep the original value to avoid migrating preferences.
-  static const _xrayProfileId = "xraySettingId";
+  static const _xrayProfileId = "${_namespace}xraySettingId";
 
   Future<int> readXrayProfileId() async {
     final value = await _prefs.getInt(_xrayProfileId);
@@ -160,7 +165,7 @@ class PreferencesKey {
     await _prefs.setInt(_xrayProfileId, nextValue);
   }
 
-  static const _coreRoutingMode = "coreRoutingMode";
+  static const _coreRoutingMode = "${_namespace}coreRoutingMode";
 
   Future<CoreRoutingMode> readCoreRoutingMode() async {
     final value = await _prefs.getString(_coreRoutingMode);
@@ -171,8 +176,7 @@ class PreferencesKey {
     await _prefs.setString(_coreRoutingMode, value.name);
   }
 
-  // Legacy storage key. Keep the original value to avoid migrating preferences.
-  static const _xrayProfileSimple = "xraySettingSimple";
+  static const _xrayProfileSimple = "${_namespace}xraySettingSimple";
 
   Future<Map<String, dynamic>?> readXrayProfileSimple() async {
     final value = await _prefs.getString(_xrayProfileSimple);
@@ -187,8 +191,7 @@ class PreferencesKey {
     await _prefs.setString(_xrayProfileSimple, text);
   }
 
-  // Legacy storage key. Keep the original value to avoid migrating preferences.
-  static const _tunSettings = "tunSetting";
+  static const _tunSettings = "${_namespace}tunSetting";
 
   Future<Map<String, dynamic>?> readTunSettings() async {
     final value = await _prefs.getString(_tunSettings);
@@ -203,7 +206,8 @@ class PreferencesKey {
     await _prefs.setString(_tunSettings, text);
   }
 
-  static const _queryAllPackagesAccepted = "queryAllPackagesAccepted";
+  static const _queryAllPackagesAccepted =
+      "${_namespace}queryAllPackagesAccepted";
 
   Future<bool> readQueryAllPackagesAccepted() async {
     final value = await _prefs.getBool(_queryAllPackagesAccepted);
@@ -217,7 +221,7 @@ class PreferencesKey {
     await _prefs.setBool(_queryAllPackagesAccepted, value);
   }
 
-  static const _hideDockIcon = "hideIconInDock";
+  static const _hideDockIcon = "${_namespace}hideIconInDock";
 
   Future<bool> readHideDockIcon() async {
     final value = await _prefs.getBool(_hideDockIcon);
@@ -231,7 +235,7 @@ class PreferencesKey {
     await _prefs.setBool(_hideDockIcon, value);
   }
 
-  static const _desktopStartHidden = "desktopStartHidden";
+  static const _desktopStartHidden = "${_namespace}desktopStartHidden";
 
   Future<bool> readDesktopStartHidden() async {
     return await _prefs.getBool(_desktopStartHidden) ?? false;
@@ -241,7 +245,7 @@ class PreferencesKey {
     await _prefs.setBool(_desktopStartHidden, value);
   }
 
-  static const _connectOnAppLaunch = "connectOnAppLaunch";
+  static const _connectOnAppLaunch = "${_namespace}connectOnAppLaunch";
 
   Future<bool> readConnectOnAppLaunch() async {
     return await _prefs.getBool(_connectOnAppLaunch) ?? false;
@@ -251,7 +255,7 @@ class PreferencesKey {
     await _prefs.setBool(_connectOnAppLaunch, value);
   }
 
-  static const _downloadUserAgentMode = "downloadUserAgentMode";
+  static const _downloadUserAgentMode = "${_namespace}downloadUserAgentMode";
 
   Future<DownloadUserAgentMode> readDownloadUserAgentMode() async {
     final value = await _prefs.getString(_downloadUserAgentMode);
@@ -262,7 +266,7 @@ class PreferencesKey {
     await _prefs.setString(_downloadUserAgentMode, value.name);
   }
 
-  static const _autoUpdate = "autoUpdate";
+  static const _autoUpdate = "${_namespace}autoUpdate";
 
   Future<Map<String, dynamic>?> readAutoUpdate() async {
     final value = await _prefs.getString(_autoUpdate);
@@ -277,7 +281,7 @@ class PreferencesKey {
     await _prefs.setString(_autoUpdate, text);
   }
 
-  static const _themeCode = "themeCode";
+  static const _themeCode = "${_namespace}themeCode";
 
   Future<String?> readThemeCode() async {
     return _prefs.getString(_themeCode);
@@ -287,7 +291,7 @@ class PreferencesKey {
     await _prefs.setString(_themeCode, value);
   }
 
-  static const _languageCode = "languageCode";
+  static const _languageCode = "${_namespace}languageCode";
 
   Future<String?> readLanguageCode() async {
     return _prefs.getString(_languageCode);

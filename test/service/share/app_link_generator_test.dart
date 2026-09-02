@@ -9,15 +9,11 @@ import 'package:onexray/service/share/app_link_generator.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/app_link_parser.dart';
 import 'package:onexray/service/share/app_link_share_service.dart';
-import 'package:onexray/service/xray/profile/state_db.dart';
-import 'package:onexray/service/xray/profile/state_reader.dart';
 
 void main() {
   group('config links', () {
     for (final entry in const <CoreConfigType, OneXrayConfigLinkType>{
       CoreConfigType.outbound: OneXrayConfigLinkType.outbound,
-      CoreConfigType.profile: OneXrayConfigLinkType.profile,
-      CoreConfigType.multiNodeOutbound: OneXrayConfigLinkType.multiNodeOutbound,
       CoreConfigType.raw: OneXrayConfigLinkType.raw,
     }.entries) {
       test('generates and parses ${entry.value.wireName}', () {
@@ -51,16 +47,24 @@ void main() {
       });
     }
 
-    test('keeps Multi-node Outbound legacy wire values', () {
+    test('keeps retired storage values without allowing sharing', () {
       expect(CoreConfigType.multiNodeOutbound.name, 'full');
       expect(
         CoreConfigType.fromString('full'),
         CoreConfigType.multiNodeOutbound,
       );
       expect(OneXrayConfigLinkType.multiNodeOutbound.wireName, 'full');
+      for (final type in [
+        CoreConfigType.profile,
+        CoreConfigType.multiNodeOutbound,
+      ]) {
+        final config = _config(type: type.name);
+        expect(OneXrayAppLinkGenerator.config(config), isNull);
+        expect(config.data, 'e30=');
+      }
     });
 
-    test('Profile Map link payload preserves unprojected fields', () {
+    test('Raw link preserves unprojected fields and original JSON text', () {
       final source = <String, dynamic>{
         'name': 'Payload Profile',
         'dns': {
@@ -73,27 +77,19 @@ void main() {
           'future': {'keep': true},
         },
       };
+      final text = '  \n${jsonEncode(source)}\n';
       final uri = OneXrayAppLinkGenerator.config(
         _config(
-          type: CoreConfigType.profile.name,
-          data: base64Encode(utf8.encode(jsonEncode(source))),
+          type: CoreConfigType.raw.name,
+          data: base64Encode(utf8.encode(text)),
         ),
       );
       final link = OneXrayAppLinkParser.parse(uri!)! as OneXrayConfigLink;
 
-      final profile = readProfileMapFromText(
-        link.xrayJson,
-        nameOverride: link.name,
-      );
-      final companion = profileCompanion(profile);
-      final stored = jsonDecode(
-        utf8.decode(base64Decode(companion.data.value!)),
-      ) as Map<String, dynamic>;
-
-      expect(stored['name'], 'Shared Config');
-      expect(stored['dns'], source['dns']);
-      expect(stored['observatory'], source['observatory']);
-      expect(companion.type.value, 'setting');
+      expect(link.type, OneXrayConfigLinkType.raw);
+      expect(link.name, 'Shared Config');
+      expect(link.xrayJson, text);
+      expect(jsonDecode(link.xrayJson), source);
     });
 
     test('rejects unsupported types and invalid data', () {
@@ -139,7 +135,7 @@ void main() {
       );
 
       final names = OneXrayAppLinkGenerator.referencedGeoDataNames(
-        _config(type: CoreConfigType.profile.name, data: data),
+        _config(type: CoreConfigType.raw.name, data: data),
       );
 
       expect(names, {'community-domain', 'community-ip', 'dns-ip'});
@@ -168,7 +164,7 @@ void main() {
       );
 
       final text = await service.config(
-        _config(type: CoreConfigType.profile.name, data: data),
+        _config(type: CoreConfigType.raw.name, data: data),
       );
 
       expect(text, isNotNull);
@@ -276,6 +272,7 @@ CoreConfigData _config({required String type, String data = 'e30='}) {
     data: data,
     delay: 0,
     subId: 0,
+    favorite: false,
   );
 }
 
@@ -293,5 +290,6 @@ SubscriptionData _subscription({
     timestamp: DateTime(2026),
     count: 1,
     expanded: true,
+    parseFailureCount: 0,
   );
 }

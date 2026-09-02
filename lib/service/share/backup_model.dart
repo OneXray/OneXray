@@ -4,6 +4,9 @@ part 'backup_model.g.dart';
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class BackupManifestJson {
+  static const currentVersion = 5;
+  static const supportedVersions = {3, 4, currentVersion};
+
   final int? version;
   final int? createdAt;
 
@@ -17,12 +20,31 @@ class BackupManifestJson {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class BackupCoreConfigJson {
+  final int? id;
   final String? name;
   final String? type;
   final String? tags;
   final String? data;
+  final int? subId;
+  final int? delay;
+  final String? countryCode;
+  final String? locationSource;
+  final int? lastMeasuredAt;
+  final bool? favorite;
 
-  const BackupCoreConfigJson(this.name, this.type, this.tags, this.data);
+  const BackupCoreConfigJson(
+    this.name,
+    this.type,
+    this.tags,
+    this.data, {
+    this.id,
+    this.subId,
+    this.delay,
+    this.countryCode,
+    this.locationSource,
+    this.lastMeasuredAt,
+    this.favorite,
+  });
 
   factory BackupCoreConfigJson.fromJson(Map<String, dynamic> json) =>
       _$BackupCoreConfigJsonFromJson(json);
@@ -32,12 +54,15 @@ class BackupCoreConfigJson {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class BackupSubscriptionJson {
+  final int? id;
   final String? name;
   final String? url;
   final String? ageSecretKey;
   final String? agePublicKey;
   final int? timestamp;
   final bool? expanded;
+  final int? count;
+  final int? parseFailureCount;
 
   const BackupSubscriptionJson(
     this.name,
@@ -45,8 +70,11 @@ class BackupSubscriptionJson {
     this.ageSecretKey,
     this.agePublicKey,
     this.timestamp,
-    this.expanded,
-  );
+    this.expanded, {
+    this.id,
+    this.count,
+    this.parseFailureCount,
+  });
 
   factory BackupSubscriptionJson.fromJson(Map<String, dynamic> json) =>
       _$BackupSubscriptionJsonFromJson(json);
@@ -56,6 +84,7 @@ class BackupSubscriptionJson {
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class BackupGeoDataJson {
+  final int? id;
   final String? name;
   final String? type;
   final String? url;
@@ -69,11 +98,26 @@ class BackupGeoDataJson {
     this.url,
     this.timestamp,
     this.categoryCount,
-    this.ruleCount,
-  );
+    this.ruleCount, {
+    this.id,
+  });
 
   factory BackupGeoDataJson.fromJson(Map<String, dynamic> json) =>
       _$BackupGeoDataJsonFromJson(json);
 
   Map<String, dynamic> toJson() => _$BackupGeoDataJsonToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class BackupCustomRoutingProfileJson {
+  final int? id;
+  final String? name;
+  final String? data;
+
+  const BackupCustomRoutingProfileJson(this.id, this.name, this.data);
+
+  factory BackupCustomRoutingProfileJson.fromJson(Map<String, dynamic> json) =>
+      _$BackupCustomRoutingProfileJsonFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BackupCustomRoutingProfileJsonToJson(this);
 }

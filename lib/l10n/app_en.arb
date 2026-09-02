@@ -1,5 +1,6 @@
 {
   "@@locale": "en",
+  "buttonRetry": "Retry",
   "validationNameRequired": "name required",
   "validationNameDuplicate": "name has existed",
   "validationPriorityRequired": "priority required",

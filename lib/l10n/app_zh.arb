@@ -1,5 +1,6 @@
 {
   "@@locale": "zh",
+  "buttonRetry": "重试",
   "validationNameRequired": "请输入名称",
   "validationNameDuplicate": "名称重复",
   "validationPriorityRequired": "请输入优先级",

@@ -31,6 +31,10 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       tags: tags ?? "",
       delay: delay ?? PingDelayConstants.unknown,
       subId: subId ?? DBConstants.defaultId,
+      countryCode: row.read(coreConfig.countryCode),
+      locationSource: row.read(coreConfig.locationSource),
+      lastMeasuredAt: row.read(coreConfig.lastMeasuredAt),
+      favorite: row.read(coreConfig.favorite) ?? false,
     );
     return data;
   }
@@ -115,55 +119,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<List<ConfigQueryRow>> _convertHomeNodeQueryRows(
-    List<TypedResult> rows,
-  ) {
-    return _convertGroupedQueryRows(
-      rows,
-      resolveSubId: (data, type) => switch (type) {
-        CoreConfigType.raw => DBConstants.defaultId,
-        CoreConfigType.multiNodeOutbound => DBConstants.defaultId,
-        CoreConfigType.outbound => data.subId,
-        _ => null,
-      },
-      normalizeData: (data, type) {
-        if (type == CoreConfigType.raw ||
-            type == CoreConfigType.multiNodeOutbound) {
-          return data.copyWith(subId: DBConstants.defaultId);
-        }
-        return data;
-      },
-    );
-  }
-
-  List<ConfigQueryRow> _convertSettingQueryRows(List<TypedResult> rows) {
-    if (rows.isEmpty) {
-      return [];
-    }
-
-    final localSub = SubscriptionData(
-      id: DBConstants.defaultId,
-      name: "Local",
-      url: "",
-      timestamp: DateTime.now(),
-      count: rows.length,
-      expanded: true,
-    );
-    final localItem = SubscriptionItem(
-      localSub,
-      ConfigQueryRowType.subscription,
-    )..count = rows.length;
-
-    return [
-      localItem,
-      ...rows.map((row) {
-        final data = _convertRowToCoreConfigData(row)
-            .copyWith(subId: DBConstants.defaultId);
-        return ConfigItem(data, ConfigQueryRowType.config);
-      }),
-    ];
-  }
-
   JoinedSelectStatement<$CoreConfigTable, CoreConfigData>
   get _allConfigRowsQuery {
     final query = selectOnly(coreConfig)
@@ -175,6 +130,10 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
         coreConfig.tags,
         coreConfig.delay,
         coreConfig.subId,
+        coreConfig.countryCode,
+        coreConfig.locationSource,
+        coreConfig.lastMeasuredAt,
+        coreConfig.favorite,
       ]);
     return query;
   }
@@ -196,49 +155,27 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return _convertOutboundQueryRows(rows);
   }
 
-  Stream<List<ConfigQueryRow>> allHomeNodeRowsStream() async* {
-    final query = _allConfigRowsQuery
-      ..where(
-        coreConfig.type.equals(CoreConfigType.outbound.name) |
-            coreConfig.type.equals(CoreConfigType.raw.name) |
-            coreConfig.type.equals(CoreConfigType.multiNodeOutbound.name),
-      );
-    final queryStream = query.watch();
-    await for (final rows in queryStream) {
-      final results = await _convertHomeNodeQueryRows(rows);
-      yield results;
-    }
-  }
+  Stream<List<ConfigQueryRow>> allHomeNodeRowsStream() =>
+      allOutboundRowsStream();
 
-  Future<List<ConfigQueryRow>> get allHomeNodeRows async {
-    final query = _allConfigRowsQuery
-      ..where(
-        coreConfig.type.equals(CoreConfigType.outbound.name) |
-            coreConfig.type.equals(CoreConfigType.raw.name) |
-            coreConfig.type.equals(CoreConfigType.multiNodeOutbound.name),
-      );
-    final rows = await query.get();
-    final results = await _convertHomeNodeQueryRows(rows);
-    return results;
-  }
+  Future<List<ConfigQueryRow>> get allHomeNodeRows => allOutboundRows;
 
-  Stream<List<ConfigQueryRow>> allSettingRowsStream() async* {
-    final query = _allConfigRowsQuery
-      ..where(coreConfig.type.equals(CoreConfigType.profile.name));
-    final queryStream = query.watch();
-    await for (final rows in queryStream) {
-      final results = _convertSettingQueryRows(rows);
-      yield results;
-    }
-  }
+  // Compatibility for the retiring Profile page; legacy rows stay in storage.
+  Stream<List<ConfigQueryRow>> allSettingRowsStream() => Stream.value([]);
 
-  Future<List<ConfigQueryRow>> get allSettingRows async {
-    final query = _allConfigRowsQuery
-      ..where(coreConfig.type.equals(CoreConfigType.profile.name));
-    final rows = await query.get();
-    final results = _convertSettingQueryRows(rows);
-    return results;
-  }
+  Future<List<ConfigQueryRow>> get allSettingRows async => [];
+
+  Future<List<CoreConfigData>> get allRawRowsWithData =>
+      (select(coreConfig)
+            ..where((table) => table.type.equals(CoreConfigType.raw.name))
+            ..orderBy([(table) => OrderingTerm.asc(table.id)]))
+          .get();
+
+  Stream<List<CoreConfigData>> get allRawRowsWithDataStream =>
+      (select(coreConfig)
+            ..where((table) => table.type.equals(CoreConfigType.raw.name))
+            ..orderBy([(table) => OrderingTerm.asc(table.id)]))
+          .watch();
 
   Future<List<CoreConfigData>> allOutboundRowsWithDataBySubId(
     int subId,
@@ -257,25 +194,17 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
-  Future<List<CoreConfigData>> allHomeNodeRowsWithDataBySubId(int subId) async {
-    if (subId == DBConstants.defaultId) {
-      return (select(coreConfig)
-            ..where(
-              (tbl) =>
-                  (tbl.type.equals(CoreConfigType.outbound.name) &
-                      tbl.subId.equals(DBConstants.defaultId)) |
-                  tbl.type.equals(CoreConfigType.raw.name) |
-                  tbl.type.equals(CoreConfigType.multiNodeOutbound.name),
-            )
-            ..orderBy([(tbl) => OrderingTerm.asc(tbl.delay)]))
-          .get();
-    }
-    return allOutboundRowsWithDataBySubId(subId);
-  }
+  Future<List<CoreConfigData>> allHomeNodeRowsWithDataBySubId(int subId) =>
+      allOutboundRowsWithDataBySubId(subId);
 
-  Future<List<CoreConfigData>> get allLocalRowsWithData async => (select(
-    coreConfig,
-  )..where((tbl) => tbl.subId.equals(DBConstants.defaultId))).get();
+  Future<List<CoreConfigData>> get allLocalRowsWithData async =>
+      (select(coreConfig)..where(
+            (tbl) =>
+                (tbl.type.equals(CoreConfigType.outbound.name) &
+                    tbl.subId.equals(DBConstants.defaultId)) |
+                tbl.type.equals(CoreConfigType.raw.name),
+          ))
+          .get();
 
   Future<SubscriptionData> _readLocalSubscription() async {
     final expanded = await PreferencesKey().readLocalSubscriptionExpanded();
@@ -286,6 +215,7 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       timestamp: DateTime.now(),
       count: 0,
       expanded: expanded,
+      parseFailureCount: 0,
     );
     return subData;
   }
@@ -297,25 +227,33 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<CoreConfigData?> randomConfig() async {
-    final res =
-        await (select(coreConfig)..where(
-              (tbl) => tbl.type.equals(CoreConfigType.profile.name).not(),
-            ))
-            .get();
-    if (res.isNotEmpty) {
-      return res.first;
-    }
-    return null;
+    return (select(coreConfig)
+          ..where((tbl) => tbl.type.equals(CoreConfigType.outbound.name))
+          ..orderBy([(tbl) => OrderingTerm.asc(tbl.id)])
+          ..limit(1))
+        .getSingleOrNull();
   }
 
   Future<bool> updateRow(CoreConfigData entry) async {
-    return update(coreConfig).replace(entry);
+    if (entry.type != CoreConfigType.outbound.name &&
+        entry.type != CoreConfigType.raw.name) {
+      throw StateError('Unsupported asset type');
+    }
+    return await (update(coreConfig)..where(
+              (table) =>
+                  table.id.equals(entry.id) & table.type.equals(entry.type),
+            ))
+            .write(entry.toCompanion(false)) >
+        0;
   }
 
+  /// Internal/complete-restore insertion. Does not enforce asset types or limits.
+  /// Ordinary additions and imports must use [insertAssetRow]/[insertAssetRows].
   Future<int> insertRow(CoreConfigCompanion entry) async {
     return into(coreConfig).insert(entry);
   }
 
+  /// Internal/complete-restore batch; retained Raw rows may exceed the new limit.
   Future<int> insertRows(List<CoreConfigCompanion> entries) async {
     if (entries.isEmpty) {
       return 0;
@@ -324,37 +262,69 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     return entries.length;
   }
 
+  static const maxRawConfigs = 3;
+
+  Future<int> insertAssetRow(CoreConfigCompanion entry) =>
+      attachedDatabase.transaction(() async {
+        await _checkNewAssets([entry]);
+        return insertRow(entry);
+      });
+
+  Future<int> insertAssetRows(List<CoreConfigCompanion> entries) =>
+      attachedDatabase.transaction(() async {
+        await _checkNewAssets(entries);
+        return insertRows(entries);
+      });
+
+  Future<void> _checkNewAssets(List<CoreConfigCompanion> entries) async {
+    var addedRaw = 0;
+    for (final entry in entries) {
+      final type = entry.type.present ? entry.type.value : null;
+      if (type != CoreConfigType.outbound.name &&
+          type != CoreConfigType.raw.name) {
+        throw ArgumentError('Unsupported asset type');
+      }
+      if (type == CoreConfigType.raw.name) {
+        addedRaw += 1;
+      }
+    }
+    if (addedRaw == 0) {
+      return;
+    }
+    final count = coreConfig.id.count();
+    final row =
+        await (selectOnly(coreConfig)
+              ..addColumns([count])
+              ..where(coreConfig.type.equals(CoreConfigType.raw.name)))
+            .getSingle();
+    if (row.read(count)! + addedRaw > maxRawConfigs) {
+      throw StateError('At most three new Raw configurations are allowed');
+    }
+  }
+
   Future<int> copyRow(int coreConfigId) async {
     final entry = await searchRow(coreConfigId);
     if (entry == null) {
       return 0;
     }
-    final row = CoreConfigCompanion.insert(
-      type: entry.type,
-      name: entry.name,
-      tags: entry.tags,
-      data: Value<String?>(entry.data),
-      delay: entry.delay,
-      subId: DBConstants.defaultId,
-    );
-    return insertRow(row);
+    final row = entry
+        .toCompanion(false)
+        .copyWith(
+          id: const Value.absent(),
+          subId: const Value(DBConstants.defaultId),
+          // A copy keeps asset metadata, but has no measurement of its own yet.
+          delay: const Value(PingDelayConstants.unknown),
+          lastMeasuredAt: const Value(null),
+        );
+    return insertAssetRow(row);
   }
 
   Future<int> deleteRow(CoreConfigData entry) async {
     final res = await (delete(
       coreConfig,
     )..where((tbl) => tbl.id.equals(entry.id))).go();
-    if (entry.subId != DBConstants.defaultId) {
-      final sub = await _searchSubscription(entry.subId);
-      if (sub != null) {
-        final newSub = sub.copyWith(count: sub.count - res);
-        await _updateSubscription(newSub);
-      }
-    }
-    notifyUpdates({
-      TableUpdate.onTable(coreConfig, kind: UpdateKind.delete),
-      TableUpdate.onTable(subscription, kind: UpdateKind.update),
-    });
+    // Subscription.count records the last successful import, not retained rows.
+    notifyUpdates({TableUpdate.onTable(coreConfig, kind: UpdateKind.delete)});
     return res;
   }
 
@@ -368,54 +338,15 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
                     tbl.delay.isBiggerThanValue(PingDelayConstants.unknown),
               ))
             .go();
-    if (subId != DBConstants.defaultId) {
-      final sub = await _searchSubscription(subId);
-      if (sub != null) {
-        final newSub = sub.copyWith(count: sub.count - res);
-        await _updateSubscription(newSub);
-      }
-    }
-    notifyUpdates({
-      TableUpdate.onTable(coreConfig, kind: UpdateKind.delete),
-      TableUpdate.onTable(subscription, kind: UpdateKind.update),
-    });
-    return res;
-  }
-
-  Future<int> deleteUnreachableHomeNodeRows(int subId) async {
-    if (subId != DBConstants.defaultId) {
-      return deleteUnreachableOutboundRows(subId);
-    }
-    final res =
-        await (delete(coreConfig)
-              ..where(
-                (tbl) =>
-                    (tbl.type.equals(CoreConfigType.outbound.name) &
-                        tbl.subId.equals(DBConstants.defaultId)) |
-                    tbl.type.equals(CoreConfigType.raw.name) |
-                    tbl.type.equals(CoreConfigType.multiNodeOutbound.name),
-              )
-              ..where(
-                (tbl) =>
-                    tbl.delay.isBiggerThanValue(PingDelayConstants.unknown),
-              ))
-            .go();
     notifyUpdates({TableUpdate.onTable(coreConfig, kind: UpdateKind.delete)});
     return res;
   }
 
+  Future<int> deleteUnreachableHomeNodeRows(int subId) =>
+      deleteUnreachableOutboundRows(subId);
+
   Future<List<SubscriptionData>> _getAllSubscriptions() async {
     return select(subscription).get();
-  }
-
-  Future<SubscriptionData?> _searchSubscription(int id) async {
-    return (select(
-      subscription,
-    )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
-  }
-
-  Future<bool> _updateSubscription(SubscriptionData entry) async {
-    return update(subscription).replace(entry);
   }
 
   Future<int> clear() async {

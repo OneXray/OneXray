@@ -6,6 +6,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/gen/assets.gen.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:path/path.dart' as p;
 
 final class SystemGeoDatService {
@@ -15,7 +16,9 @@ final class SystemGeoDatService {
 
   SystemGeoDatService._internal();
 
-  Future<void> checkAssets() async {
+  Future<void> checkAssets() => DataMaintenance.run(_checkAssets);
+
+  Future<void> _checkAssets() async {
     final rootPath = AppHostApi().tunFilesDir;
     if (rootPath.isEmpty) {
       ygLogger("System GeoData asset check skipped: tunFilesDir is empty");

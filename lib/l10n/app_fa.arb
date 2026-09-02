@@ -1,5 +1,6 @@
 {
     "@@locale": "fa",
+    "buttonRetry": "تلاش دوباره",
     "validationNameRequired": "نام لازم است",
     "validationNameDuplicate": "نام قبلاً وجود دارد",
     "validationPriorityRequired": "اولویت لازم است",

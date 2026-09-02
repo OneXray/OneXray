@@ -13,6 +13,7 @@ void main() {
       data: null,
       delay: 0,
       subId: 0,
+      favorite: false,
     );
 
     for (final query in const ['multi-node', 'multi node', '多节点', '多節點']) {

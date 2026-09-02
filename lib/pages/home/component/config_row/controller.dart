@@ -7,6 +7,7 @@ import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
 import 'package:onexray/pages/core/xray/raw/params.dart';
 import 'package:onexray/pages/core/xray/profile/ui/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/profile/simple_state.dart';
 import 'package:onexray/pages/main/navigation.dart';
@@ -17,7 +18,6 @@ class ConfigRowController {
     CoreConfigData config,
     IconMenuId menuId,
   ) async {
-    final db = AppDatabase();
     switch (menuId) {
       case IconMenuId.edit:
         _gotoConfig(context, config);
@@ -29,10 +29,10 @@ class ConfigRowController {
         }
         break;
       case IconMenuId.copy:
-        await db.coreConfigDao.copyRow(config.id);
+        await ConfigWriter.copyRow(config.id);
         break;
       case IconMenuId.delete:
-        await db.coreConfigDao.deleteRow(config);
+        await ConfigWriter.deleteRow(config);
         break;
       default:
         break;

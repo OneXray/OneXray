@@ -13,6 +13,7 @@ import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/widget/config_query_filter.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/toast/service.dart';
@@ -110,6 +111,7 @@ class XrayProfileListController extends PageCubit<XrayProfileListPageState> {
       tags: "",
       delay: PingDelayConstants.unknown,
       subId: XrayProfileSimple.simpleId,
+      favorite: false,
     );
     _simpleProfile = XrayProfileListItem(config: config, builtIn: true);
     _emitFilteredProfiles();
@@ -175,7 +177,6 @@ class XrayProfileListController extends PageCubit<XrayProfileListPageState> {
     CoreConfigData config,
     IconMenuId menuId,
   ) async {
-    final db = AppDatabase();
     switch (menuId) {
       case IconMenuId.edit:
         _editXrayProfile(context, config.id);
@@ -187,7 +188,7 @@ class XrayProfileListController extends PageCubit<XrayProfileListPageState> {
         }
         break;
       case IconMenuId.copy:
-        await db.coreConfigDao.copyRow(config.id);
+        await ConfigWriter.copyRow(config.id);
         break;
       case IconMenuId.delete:
         await _deleteSetting(config);
@@ -225,8 +226,7 @@ class XrayProfileListController extends PageCubit<XrayProfileListPageState> {
       );
       return;
     }
-    final db = AppDatabase();
-    await db.coreConfigDao.deleteRow(setting);
+    await ConfigWriter.deleteRow(setting);
   }
 
   Future<void> _updateSettingId() async {

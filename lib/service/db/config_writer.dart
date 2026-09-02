@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 
 class ConfigWriteResult {
   final int count;
@@ -10,34 +11,38 @@ class ConfigWriteResult {
 }
 
 class ConfigWriter {
+  // Inputs are already encoded by their format-specific readers. This shared
+  // asset writer owns type/count transactions, never a second base64 pass.
   static Future<ConfigWriteResult> writeRowsWithResult(
     List<CoreConfigCompanion> rows,
     int? subId,
   ) async {
     final db = AppDatabase();
-    return db.transaction(() => writeRowsInTransaction(db, rows, subId));
+    return writeRowsInTransaction(db, rows, subId);
   }
 
   static Future<ConfigWriteResult> writeRowsInTransaction(
     AppDatabase db,
     List<CoreConfigCompanion> rows,
     int? subId,
-  ) async {
-    var count = 0;
-    final ids = <int>[];
-    for (var row in rows) {
-      if (subId != null) {
-        row = row.copyWith(subId: Value<int>(subId));
+  ) => DataMaintenance.run(
+    () => db.transaction(() async {
+      var count = 0;
+      final ids = <int>[];
+      for (var row in rows) {
+        if (subId != null) {
+          row = row.copyWith(subId: Value<int>(subId));
+        }
+        final res = await db.coreConfigDao.insertAssetRow(row);
+        if (res <= DBConstants.defaultId) {
+          throw StateError('insert core config failed');
+        }
+        count += 1;
+        ids.add(res);
       }
-      final res = await db.coreConfigDao.insertRow(row);
-      if (res <= DBConstants.defaultId) {
-        throw StateError('insert core config failed');
-      }
-      count += 1;
-      ids.add(res);
-    }
-    return ConfigWriteResult(count: count, ids: ids);
-  }
+      return ConfigWriteResult(count: count, ids: ids);
+    }),
+  );
 
   static Future<int> writeRowsBatchInTransaction(
     AppDatabase db,
@@ -47,6 +52,19 @@ class ConfigWriter {
     final entries = rows
         .map((row) => row.copyWith(subId: Value<int>(subId)))
         .toList(growable: false);
-    return db.coreConfigDao.insertRows(entries);
+    return DataMaintenance.run(() => db.coreConfigDao.insertAssetRows(entries));
   }
+
+  static Future<int> insertRow(CoreConfigCompanion row) => DataMaintenance.run(
+    () => AppDatabase().coreConfigDao.insertAssetRow(row),
+  );
+
+  static Future<bool> updateRow(CoreConfigData row) =>
+      DataMaintenance.run(() => AppDatabase().coreConfigDao.updateRow(row));
+
+  static Future<int> copyRow(int id) =>
+      DataMaintenance.run(() => AppDatabase().coreConfigDao.copyRow(id));
+
+  static Future<int> deleteRow(CoreConfigData row) =>
+      DataMaintenance.run(() => AppDatabase().coreConfigDao.deleteRow(row));
 }

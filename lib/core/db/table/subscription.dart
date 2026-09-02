@@ -16,4 +16,6 @@ class Subscription extends Table {
   IntColumn get count => integer()();
 
   BoolColumn get expanded => boolean()();
+
+  IntColumn get parseFailureCount => integer().withDefault(const Constant(0))();
 }

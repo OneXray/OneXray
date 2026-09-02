@@ -8,6 +8,7 @@ import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/pages/main/navigation.dart';
 
@@ -16,14 +17,15 @@ class SubscriptionRowController {
     SubscriptionData subscription,
     VoidCallback expandCallback,
   ) async {
-    final db = AppDatabase();
     if (subscription.id == DBConstants.defaultId) {
       await PreferencesKey().saveLocalSubscriptionExpanded(
         !subscription.expanded,
       );
     } else {
       final row = subscription.copyWith(expanded: !subscription.expanded);
-      await db.subscriptionDao.updateRow(row);
+      await DataMaintenance.run(
+        () => AppDatabase().subscriptionDao.updateRow(row),
+      );
     }
     expandCallback();
   }
@@ -76,7 +78,7 @@ class SubscriptionRowController {
     BuildContext context,
     SubscriptionData data,
   ) async {
-    await showDialog<void>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(
@@ -84,24 +86,46 @@ class SubscriptionRowController {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(ctx, false),
             child: Text(AppLocalizations.of(ctx)!.buttonCancel),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _deleteSubscription(data);
-            },
+            onPressed: () => Navigator.pop(ctx, true),
             child: Text(AppLocalizations.of(ctx)!.buttonOK),
           ),
         ],
       ),
     );
+    if (confirmed == true && context.mounted) {
+      await _deleteSubscription(context, data);
+    }
   }
 
-  Future<void> _deleteSubscription(SubscriptionData data) async {
+  Future<void> _deleteSubscription(
+    BuildContext context,
+    SubscriptionData data,
+  ) async {
     final db = AppDatabase();
-    await db.subscriptionDao.deleteRow(data.id);
+    final service = SubscriptionService();
+    await service.deleteSubscription(
+      data.id,
+      prepareDeletion: (subscription) async {
+        final references = await service.referenceReader();
+        for (final id in references.protectedIds) {
+          final config = await db.coreConfigDao.searchRow(id);
+          if (config?.subId == subscription.id) {
+            if (context.mounted) {
+              ContextAlert.showToast(
+                context,
+                AppLocalizations.of(context)!.validationOutboundInUse,
+              );
+            }
+            return false;
+          }
+        }
+        return true;
+      },
+    );
   }
 
   Future<void> _showCleanWarning(
@@ -138,7 +162,8 @@ class SubscriptionRowController {
       await cleanCallback(data);
       return;
     }
-    final db = AppDatabase();
-    await db.coreConfigDao.deleteUnreachableOutboundRows(data.id);
+    await DataMaintenance.run(
+      () => AppDatabase().coreConfigDao.deleteUnreachableOutboundRows(data.id),
+    );
   }
 }
