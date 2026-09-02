@@ -4,7 +4,7 @@
 
 ## 文档索引
 
-- [Xray 配置合同](xray-configuration.md)：Outbound、Profile、多节点出站、Raw JSON、运行时物化和兼容边界。
+- [Xray 配置合同](xray-configuration.md)：节点、Smart/Custom、Raw JSON、运行计划和兼容边界。
 - [导航与界面](app-navigation.md)：主入口、关键交互、平台差异和响应式结构。
 - [订阅、导入与分享](subscriptions-and-sharing.md)：订阅更新、导入来源、OneXray App Link 和分享边界。
 - [Age 加密订阅](age-encrypted-subscriptions.md)：密钥、下载、解密、备份与安全边界。

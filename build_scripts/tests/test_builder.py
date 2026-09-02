@@ -68,17 +68,33 @@ class BuilderTest(unittest.TestCase):
                     f"core.lib.src.files.{system}": [],
                     "core.dat.dst.dir": "assets/dat",
                 }
+                metadata = workspace / "libXray" / "build" / (
+                    f"build-metadata-{'apple-go' if system == 'macos' else system}.json"
+                )
+                metadata.parent.mkdir(parents=True, exist_ok=True)
+
+                def write_metadata(*args, **kwargs):
+                    metadata.write_text('{"evidence":"build-inputs-only"}')
 
                 with (
-                    mock.patch("app.builder.run_command") as run,
+                    mock.patch("app.builder.run_command", side_effect=write_metadata) as run,
                     mock.patch("app.builder.check_and_create_dir"),
                     mock.patch("app.builder.check_and_delete_dir"),
                     mock.patch("app.builder.shutil.copytree"),
+                    mock.patch("app.builder.source_revision", return_value="b" * 40),
+                    mock.patch("app.builder.validate_lib_inputs"),
                     mock.patch.object(self.builder, "build_core_binary"),
                 ):
                     self.builder.build_core()
 
                 run.assert_called_once_with(command, cwd=str(workspace / "libXray"))
+                self.assertIn("build-inputs-only", self.builder.core_build_metadata)
+
+                with (
+                    mock.patch("app.builder.run_command"),
+                    self.assertRaisesRegex(ValueError, "fresh build input metadata"),
+                ):
+                    self.builder.build_core()
 
     def test_download_file_uses_standard_url_handler(self):
         source = self.root_dir / "source.bin"
@@ -102,7 +118,7 @@ class BuilderTest(unittest.TestCase):
             env={"RESULT": str(result)},
         )
 
-        self.assertEqual(Path(result.read_text()), self.root_dir)
+        self.assertEqual(Path(result.read_text()).resolve(), self.root_dir.resolve())
 
 
 if __name__ == "__main__":

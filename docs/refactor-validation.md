@@ -216,3 +216,24 @@ macOS Debug 构建及非 VPN 检查、Android Debug 构建通过；没有 macOS 
 Windows/Linux 原生、Apple 真机/SE 按需消息、最终签名包、完整读屏/主题/键盘及系统导入导出
 仍为 NOT RUN 或部分验证，不能宣布目标可发布。完整边界及逐页证据见工作空间
 `references/onexray-refactor-validation/p8-results.md`。继续 P9 源码清理和发布收尾。
+
+## P9 — 源码收尾与发布前边界（2026-09-03）
+
+已删除旧 Profile/多节点界面、旧运行构造、旧 ID/模式双写、失效导入器及本地隐私正文，
+保留旧库类型识别、协议 JSON 工具、数据与备份保护。合计删除 131 个旧 Dart 源文件、
+23 个只验证旧实现的测试及 1 个资产；共享端口、环境与协议保真断言迁至当前实现。
+资产生成后无本地隐私引用；订阅引用保护未初始化时拒绝覆盖，保留原节点的回归通过。
+
+最终 Flutter 全量 468 通过、1 Windows 原生跳过；生成、分析、分层、原生模型契约与
+674 条五语核对通过。完整 macOS Debug 构建成功；Android 清理后构建/启动、11 个页面和
+VIEW 链接预览后取消通过，未写入测试节点，最终无运行 VPN。没有 macOS VPN 或截图。
+
+Windows 包脚本对齐既有 VCore revision 3；Build 单次解析依赖 SHA，libXray 记录有效模块
+图与实际 gomobile，App 记录输入、工具链与产物摘要。独立发布流程校验来源、干净初始源码、
+run/attempt、tag 和 hash。App Python 25 项、libXray Python 5 项及 Go 全量通过；Android/
+Apple Go 产物重建复制且 hash 一致。libXray 提交 `f49c426`；VCore 无改动。
+
+P9 **源码工作已交付，不代表最终发布验收完成**。真实脱敏旧库/ZIP 尚未提供；现有迁移、
+WAL、回滚、超额 Raw 与备份证据来自隔离 fixture，不使用主用户库代替。Apple VPN/SE、
+Windows/Linux 原生、渠道签名包及完整无障碍/系统交互仍按清单手测；未 push 或触发发布。
+实施结果与恢复交接见工作空间 `references/onexray-refactor-validation/{p9-results,p9-release-handoff}.md`。

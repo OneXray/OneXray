@@ -3,6 +3,8 @@ import platform
 import re
 import shutil
 import sys
+import time
+from pathlib import Path
 
 from app.command_line import (
     check_and_create_dir,
@@ -11,6 +13,7 @@ from app.command_line import (
     run_command,
 )
 from app.config import PROJECT_CONFIG
+from app.provenance import source_revision, validate_lib_inputs
 
 # ponytail: Only pubspec's top-level version is needed; add a YAML parser if the
 # build interface ever needs structured YAML data.
@@ -69,7 +72,16 @@ class Builder:
         cmd = [sys.executable, "build/main.py", cmd_system]
         if cmd_system == "apple":
             cmd.append("go")
+        started_at = time.time_ns()
         run_command(cmd, cwd=lib_dir)
+        metadata_target = "apple-go" if cmd_system == "apple" else cmd_system
+        metadata_path = Path(lib_dir) / "build" / f"build-metadata-{metadata_target}.json"
+        if not metadata_path.is_file() or metadata_path.stat().st_mtime_ns < started_at:
+            raise ValueError("libXray did not produce fresh build input metadata")
+        self.core_build_metadata = metadata_path.read_bytes().decode("utf-8")
+        validate_lib_inputs(
+            self.core_build_metadata, metadata_target, source_revision(Path(lib_dir)),
+        )
 
         lib_dst_path = os.path.join(
             self.project_dir, self.project_config[f"core.lib.dst.dir.{self.system}"]

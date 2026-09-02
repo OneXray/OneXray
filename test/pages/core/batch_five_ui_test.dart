@@ -1,13 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/controller.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
-import 'package:onexray/pages/core/main/controller.dart';
-import 'package:onexray/pages/core/main/page.dart';
 import 'package:onexray/pages/core/ping/page.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -47,32 +44,6 @@ void main() {
       home: child,
     );
   }
-
-  testWidgets('core overview exposes log files without an index page', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    final controller = CoreRootController();
-    addTearDown(controller.close);
-    await tester.pumpWidget(
-      app(
-        BlocProvider.value(
-          value: controller,
-          child: const Scaffold(body: SafeArea(child: CoreContent())),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.text('Network & Runtime'), findsOneWidget);
-    expect(find.text('Run Mode'), findsNothing);
-    expect(find.text('Data & Updates'), findsOneWidget);
-    expect(find.text('Log'), findsOneWidget);
-    expect(find.text('Xray config file'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
 
   testWidgets('ping settings remain scrollable on phone', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 640));

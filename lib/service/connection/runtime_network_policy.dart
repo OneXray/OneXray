@@ -51,8 +51,8 @@ void validateLocalDnsNetworkPolicy(
         'IPv6 DNS endpoints are unavailable while IPv6 is disabled',
       );
     }
-    // ponytail: fail closed for +local until P3 can enforce interface and IP
-    // family in the global dialer; a routing rule cannot protect this path.
+    // Local DNS transports do not guarantee the selected interface or IP
+    // family. Keep these combinations rejected; routing cannot protect them.
     if (local && requiresInterface) {
       throw const FormatException(
         'Local DNS URLs cannot use the required network interface',

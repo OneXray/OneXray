@@ -17,10 +17,15 @@
 1. 启动早期读取“App 启动时连接”和“启动时隐藏”；读取失败按关闭处理。登录项状态不来自启动偏好，由设置页向操作系统查询。
 2. 桌面窗口准备完成后，根据“启动时隐藏”显示或隐藏窗口。
 3. 托盘在普通服务初始化阶段创建；所有服务准备完成后刷新托盘状态。
-4. 若允许自动连接，先检查并准备系统 GeoData 文件，再启动默认 VPN。
+4. 若允许自动连接，调用新连接协调器完成资源、节点和平台准备，再启动已保存的普通或 Raw 配置。
 5. 托盘初始化或自动连接失败时显示主窗口，让用户可以处理错误。
 
-隐私协议和首次运行流程会抑制本次进程的自动连接，并要求显示主窗口。该抑制只影响当前启动流程，不会偷偷改写用户保存的偏好。
+初始化使用统一流程完成隐私确认、平台 VPN 授权及必要配置。Windows/Linux 必须明确选择
+出口网卡；国家/区域和添加服务器步骤可跳过，已有服务器时跳过添加。授权不启动 VPN。
+进入首页前完成运行前置条件；已有服务器或有效 Raw 时可以直接连接。
+
+隐私协议与首次初始化会抑制本次进程的自动连接，并要求显示主窗口。该抑制不改写保存的偏好。
+隐私正文使用 HTTPS 页面，不在 App 内托管。
 
 ## 各平台登录项
 
@@ -43,7 +48,7 @@ App 在 XDG autostart 目录管理 `net.yuandev.onexray.desktop`。优先使用 
 - 清理 App 数据且准备删除用户偏好时，必须先取消当前平台登录项；取消失败时停止破坏性清理。Windows 只操作当前 MSIX 的 StartupTask。恢复备份会保留登录项状态。
 - 登录项注册状态由操作系统事实决定，不能只依据 Preferences 显示。
 - 自动连接只执行一次。重复的服务就绪事件不得重复启动 Core。
-- 自动连接前的 GeoData 检查与用户手动连接使用同一系统资源准备原则。
+- 自动与手动连接使用同一协调器、不可变计划及 Geodata 发布快照，不回到旧 Profile 路径。
 
 ## 主要实现入口
 
@@ -51,4 +56,6 @@ App 在 XDG autostart 目录管理 `net.yuandev.onexray.desktop`。优先使用 
 - 平台分发：`lib/core/desktop_startup/`
 - 首次运行与隐私流程：`lib/pages/launch/`
 - 偏好：`lib/core/constants/preferences.dart`
-- 系统 GeoData：`lib/service/geo_data/system_dat_service.dart`
+- 初始化：`lib/service/launch/setup.dart`
+- 连接协调：`lib/service/connection/coordinator.dart`
+- 系统 GeoData：`lib/service/geo_data/service.dart`

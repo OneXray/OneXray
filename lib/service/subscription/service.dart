@@ -66,7 +66,7 @@ class SubscriptionService {
   }) : _databaseOverride = database,
        _loadRowsOverride = loadRows,
        _pingOverride = schedulePing {
-    referenceReader = readReferences ?? _currentReferences;
+    referenceReader = readReferences ?? _uninitializedReferences;
   }
 
   final AppDatabase? _databaseOverride;
@@ -77,19 +77,14 @@ class SubscriptionService {
   final _refreshes = <int, Future<SubscriptionRefreshResult>>{};
   var _nextGeneration = 0;
 
-  /// P3 supplies all running node IDs plus persisted fixed/final-exit references.
+  /// The coordinator supplies running and persisted fixed/final-exit references.
   /// Favorites are checked in the same database transaction as replacement.
-  SubscriptionReferenceReader referenceReader = _currentReferences;
+  SubscriptionReferenceReader referenceReader = _uninitializedReferences;
 
   AppDatabase get _database => _databaseOverride ?? AppDatabase();
 
-  static SubscriptionNodeReferences _currentReferences() {
-    final state = AppEventBus.instance.state;
-    // Transitional single-config runtime only; never consult old Preferences.
-    return SubscriptionNodeReferences(
-      runningIds: {state.runningId, state.pendingConfigId},
-    );
-  }
+  static SubscriptionNodeReferences _uninitializedReferences() =>
+      throw StateError('Connection reference protection is not initialized');
 
   void _schedulePing(int subId) {
     final schedule = _pingOverride;

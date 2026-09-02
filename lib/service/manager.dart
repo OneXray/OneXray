@@ -11,7 +11,6 @@ import 'package:onexray/service/menu/window/service.dart';
 import 'package:onexray/service/notification/service.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/toast/service.dart';
-import 'package:onexray/service/vpn/service.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/geo_data/service.dart';
 
@@ -81,7 +80,6 @@ abstract final class ServiceManager {
     _initFuture = null;
     _initialized = false;
     TrayService().dispose();
-    VpnService().dispose();
     ShareService().dispose();
     NotificationService().dispose();
     ShortCutService().dispose();

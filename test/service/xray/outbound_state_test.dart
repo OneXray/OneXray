@@ -1,13 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/profile/state_reader.dart';
-import 'package:onexray/service/xray/profile/state_validator.dart';
 
 void main() {
   const canonicalMethods = [
@@ -88,38 +84,14 @@ void main() {
     }
   });
 
-  test('non-canonical method fails through Profile and Multi validators', () {
-    for (final tag in ['proxy', 'chainProxy']) {
-      final profile = <String, dynamic>{
-        'name': 'Profile',
-        ...jsonDecode(_shadowsocksJson('aead_aes_256_gcm', tag: tag)),
-      };
-      expect(validateProfileFields(profile).item1, isFalse);
-      final multiNodeOutbound = <String, dynamic>{
-        'name': 'Multi-node Outbound',
-        ...jsonDecode(_shadowsocksJson('aead_aes_256_gcm', tag: tag)),
-      };
-      expect(validateMultiNodeOutboundFields(multiNodeOutbound).item1, isFalse);
-    }
+  test('single outbound codec preserves an App-unprojected sibling', () {
+    final json = jsonDecode(_shadowsocksJson('aes-256-gcm'));
+    final outbound = (json['outbounds'] as List<dynamic>).single;
+    outbound['mux'] = {'enabled': true, 'xudpProxyUDP443': 'editorOnly'};
+    final decoded = decodeSingleOutbound(jsonEncode(json));
+    expect(decoded, outbound);
+    expect(decodeSingleOutbound(encodeSingleOutbound(decoded)), outbound);
   });
-
-  test(
-    'profile and multi-node outbound preserve an App-unprojected sibling',
-    () {
-      final json = jsonDecode(_shadowsocksJson('aes-256-gcm'));
-      final outbound = (json['outbounds'] as List<dynamic>).single;
-      outbound['mux'] = {'enabled': true, 'xudpProxyUDP443': 'editorOnly'};
-      final profile = readProfileMapFromText(
-        jsonEncode(<String, dynamic>{'name': 'Profile', ...json}),
-      );
-      expect(profile['outbounds'], [outbound]);
-
-      final multiNodeOutbound = readMultiNodeOutboundFromText(
-        jsonEncode(<String, dynamic>{'name': 'Multi-node Outbound', ...json}),
-      );
-      expect(multiNodeOutbound['outbounds'], [outbound]);
-    },
-  );
 }
 
 String _shadowsocksJson(String? method, {String tag = 'proxy'}) => jsonEncode({

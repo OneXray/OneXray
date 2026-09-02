@@ -168,7 +168,6 @@ class BackupService {
           await datRestore!.commit();
           return rows;
         });
-        await cleanupService.finishBackupRestore();
         if (payload.contents.version < _backupVersion) {
           legacySubscriptions = subscriptions;
         }

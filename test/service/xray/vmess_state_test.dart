@@ -1,13 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state.dart';
-import 'package:onexray/service/xray/profile/state_reader.dart';
-import 'package:onexray/service/xray/profile/state_validator.dart';
 
 void main() {
   const canonicalSecurities = ['aes-128-gcm', 'chacha20-poly1305', 'auto'];
@@ -73,39 +69,15 @@ void main() {
     }
   });
 
-  test('non-canonical security fails through Profile and Multi validators', () {
-    for (final tag in ['proxy', 'chainProxy']) {
-      final profile = <String, dynamic>{
-        'name': 'Profile',
-        ...jsonDecode(_vmessJson('none', tag: tag)),
-      };
-      expect(validateProfileFields(profile).item1, isFalse);
-      final multiNodeOutbound = <String, dynamic>{
-        'name': 'Multi-node Outbound',
-        ...jsonDecode(_vmessJson('none', tag: tag)),
-      };
-      expect(validateMultiNodeOutboundFields(multiNodeOutbound).item1, isFalse);
-    }
+  test('single outbound codec preserves an App-unprojected sibling', () {
+    final json = jsonDecode(_vmessJson('auto'));
+    final outbound = (json['outbounds'] as List<dynamic>).single;
+    final settings = outbound['settings'] as Map<String, dynamic>;
+    settings['address'] = 123;
+    final decoded = decodeSingleOutbound(jsonEncode(json));
+    expect(decoded, outbound);
+    expect(decodeSingleOutbound(encodeSingleOutbound(decoded)), outbound);
   });
-
-  test(
-    'profile and multi-node outbound preserve an App-unprojected sibling',
-    () {
-      final json = jsonDecode(_vmessJson('auto'));
-      final outbound = (json['outbounds'] as List<dynamic>).single;
-      final settings = outbound['settings'] as Map<String, dynamic>;
-      settings['address'] = 123;
-      final profile = readProfileMapFromText(
-        jsonEncode(<String, dynamic>{'name': 'Profile', ...json}),
-      );
-      expect(profile['outbounds'], [outbound]);
-
-      final multiNodeOutbound = readMultiNodeOutboundFromText(
-        jsonEncode(<String, dynamic>{'name': 'Multi-node Outbound', ...json}),
-      );
-      expect(multiNodeOutbound['outbounds'], [outbound]);
-    },
-  );
 }
 
 String _vmessJson(String? security, {String tag = 'proxy'}) => jsonEncode({

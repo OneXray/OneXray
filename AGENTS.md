@@ -2,7 +2,7 @@
 
 OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux.
 
-The app manages servers, subscriptions, Smart / Custom routing, Raw Json configs, and GeoData. The four root destinations are Connect, Servers, Advanced, and Settings. Profile and Multi-node Outbound code remains temporarily for staged removal; new product flows use neither. Production builds use platform TUN on Android, Apple, and Linux. Packaged Windows retains VCore's AppContainer VPN Provider and full-trust Session Host to feed a private loopback SOCKS inbound in OneXrayCore. Proxy mode is an independent in-memory iOS Debug-only tool.
+The app manages servers, subscriptions, Smart / Custom routing, Raw Json configs, and GeoData. The four root destinations are Connect, Servers, Advanced, and Settings. Retired Profile and Multi-node database rows are preserved for compatibility but excluded from product flows. Production builds use platform TUN on Android, Apple, and Linux. Packaged Windows retains VCore's AppContainer VPN Provider and full-trust Session Host to feed a private loopback SOCKS inbound in OneXrayCore. Proxy mode is an independent in-memory iOS Debug-only tool.
 
 For refactor scope, phase gates, and platform verification limits, read `../references/onexray-app-prototype/APP-REFACTOR-PLAN.md` and `DEVELOPMENT.md`; for approved UI behavior and copy, read `PRODUCT-MODEL.md` and the prototype. Execution evidence lives in `../references/onexray-refactor-validation/PROGRESS.md`.
 
@@ -11,7 +11,7 @@ For refactor scope, phase gates, and platform verification limits, read `../refe
 | Path | Purpose |
 | --- | --- |
 | `lib/` | Main Flutter / Dart application code. |
-| `assets/` | App icons, tray icons, bundled GeoData, Markdown files, and other static assets. |
+| `assets/` | App icons, tray icons, bundled GeoData, and other static assets. Privacy pages use HTTPS. |
 | `pigeon/` | Pigeon API definitions used to generate Dart / Kotlin / Swift bridge code. |
 | `swift/` | Shared Apple Swift code, App bridge, Tunnel provider, and shared macOS resources. |
 | `android/` | Android Flutter host, VPN service, Kotlin bridge, and Fastlane configuration. |
@@ -27,7 +27,7 @@ For refactor scope, phase gates, and platform verification limits, read `../refe
 
 `lib/core` is the infrastructure layer. It contains database access, FFI, Pigeon wrappers, common models, network client code, platform tools, and JSON utilities.
 
-`lib/service` is the business layer. It contains subscriptions, sharing, backup, GeoData, Ping, VPN startup, TUN Settings, Xray JSON writing, and runtime fix logic.
+`lib/service` is the business layer. It contains subscriptions, sharing, backup, GeoData, Ping, platform preparation, configuration compilation, and connection coordination.
 
 `lib/pages` is the UI and routing layer. It is organized by page domain. Page controllers and cubits should handle UI state and page actions only; non-trivial business logic should live in `lib/service`.
 
@@ -35,11 +35,13 @@ For refactor scope, phase gates, and platform verification limits, read `../refe
 
 # Runtime Flow
 
-`SetupService` prepares storage, VPN authorization and required platform settings before Home; optional region and server steps never start VPN. `ServiceManager` initializes `ConnectionCoordinator`, not the legacy `VpnService`.
+`SetupService` prepares storage, VPN authorization and required platform settings before Home; optional region and server steps never start VPN. `ServiceManager` initializes `ConnectionCoordinator`.
 
 `lib/service/connection/` owns preparation, immutable plans, serialization, cancellation, commit and recovery. Normal mode always uses the `proxy` balancer with complete node tags, including a single node. Raw retains its source text and extra inbounds; App-managed runtime fields are applied by `ConnectionCompiler`. New page actions, shortcuts and tray actions must use the coordinator, not compose runtime JSON themselves.
 
 The native host reports VPN state. Foreground traffic reads native Xray metrics; libXray periodically saves only the current session, while App owns cumulative totals and reset watermarks. Metrics failure is not proof of disconnection. Packaged Windows uses VCore bridge revision 3 and its Session Host Job Object; statistics require no VCore changes. Preserve iOS Debug-only local proxy isolation from normal UI and business state.
+
+For configuration editing or runtime changes, read `docs/xray-configuration.md`; for migration, Geodata or backup changes, read `docs/data-management.md`; for imports or links, read `docs/subscriptions-and-sharing.md`. Database JSON remains Base64; legacy Raw counts above the new-item limit remain intact.
 
 # Native Bridge
 

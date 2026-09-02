@@ -1,9 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/pigeon/model.dart';
-import 'package:onexray/service/xray/raw/fix.dart';
+import 'package:onexray/service/xray/raw/validator.dart';
 
 void main() {
   test('TUN and start request JSON fields match the native contract', () {
@@ -76,13 +78,24 @@ void main() {
     });
   });
 
-  test('runtime env JSON exposes only the native-supported keys', () {
-    final jsonMap = <String, dynamic>{};
-    XrayRawFix.fixEnv(jsonMap);
-    final env = jsonMap['env'] as Map<String, dynamic>;
-
-    expect(env.keys.toSet(), {'xray.location.asset', 'xray.location.cert'});
-  });
+  test(
+    'validation env JSON exposes the native-supported location keys',
+    () async {
+      final result = await XrayRawValidator.validate(
+        '{"name":"Test","outbounds":[{"protocol":"freedom"}]}',
+        assetDirectory: '/fixture/assets',
+        testXray: (text) async {
+          final config = jsonDecode(text) as Map<String, dynamic>;
+          expect(config['env'], {
+            'xray.location.asset': '/fixture/assets',
+            'xray.location.cert': '/fixture/assets',
+          });
+          return '';
+        },
+      );
+      expect(result.isValid, isTrue);
+    },
+  );
 
   test('runXray request uses the v3 in-memory JSON contract', () {
     final request = LibXrayInvokeRequest(

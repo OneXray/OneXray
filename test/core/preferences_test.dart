@@ -21,7 +21,7 @@ void main() {
       expect(await preferences.readPrivacyAccepted(), isFalse);
       expect(await preferences.readFirstRun(), isTrue);
       expect(await preferences.readConnectOnAppLaunch(), isFalse);
-      expect(await preferences.readRunningConfigId(), 0);
+      expect(await storage.getInt('runningConfigId'), 42);
       await preferences.savePrivacyAccepted(true);
       expect(await preferences.readPrivacyAccepted(), isTrue);
       expect(await storage.getBool('privacyAccepted04'), isTrue);

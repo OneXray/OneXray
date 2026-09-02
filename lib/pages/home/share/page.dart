@@ -34,13 +34,9 @@ class SharePage extends StatelessWidget {
         ? state.linkSection
         : state.showAppLinkSection
         ? AppLocalizations.of(context)!.sharePageAppLink
-        : state.showTextSection
-        ? state.textSection
         : "";
     if (!state.showLinkSection &&
         !state.showAppLinkSection &&
-        !state.showTextSection &&
-        !state.showJsonFileSection &&
         state.linkError.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -75,8 +71,6 @@ class SharePage extends StatelessWidget {
               ],
               if (state.showLinkSection) ..._linkSections(context, state),
               if (state.showAppLinkSection) ..._appLinkSections(context),
-              if (state.showTextSection) ..._textSections(context),
-              if (state.showJsonFileSection) ..._jsonFileSections(context),
             ],
           ),
         ),
@@ -151,52 +145,6 @@ class SharePage extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 18),
-    ];
-  }
-
-  List<Widget> _textSections(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final controller = context.read<ShareController>();
-    return [
-      _ShareActionSection(
-        title: localizations.sharePageText,
-        actions: [
-          _ShareAction(
-            title: localizations.sharePageShareText,
-            icon: LucideIcons.share2,
-            onTap: () => controller.shareText(context),
-          ),
-          _ShareAction(
-            title: localizations.sharePageCopyText,
-            icon: LucideIcons.copy,
-            onTap: () => controller.copyText(context),
-          ),
-        ],
-      ),
-      const SizedBox(height: 18),
-    ];
-  }
-
-  List<Widget> _jsonFileSections(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final controller = context.read<ShareController>();
-    return [
-      _ShareActionSection(
-        title: localizations.sharePageJsonFile,
-        actions: [
-          if (!AppPlatform.isLinux)
-            _ShareAction(
-              title: localizations.sharePageShareJsonFile,
-              icon: LucideIcons.share2,
-              onTap: () => controller.shareJsonFile(context),
-            ),
-          _ShareAction(
-            title: localizations.sharePageSaveJsonFile,
-            icon: LucideIcons.fileJson,
-            onTap: () => controller.saveJsonFile(context),
-          ),
-        ],
-      ),
     ];
   }
 }

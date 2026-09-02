@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -12,7 +11,6 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
-import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/localizations/service.dart';
@@ -21,9 +19,6 @@ import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/service/share/app_link_share_service.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
-import 'package:onexray/service/xray/raw/db.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:zxing2/qrcode.dart';
@@ -36,12 +31,6 @@ class SharePageState {
   final String linkError;
   final bool showAppLinkSection;
   final String appLinkUrl;
-  final bool showTextSection;
-  final String textSection;
-  final String textContent;
-  final bool showJsonFileSection;
-  final String jsonFileSection;
-  final String jsonFileContent;
 
   const SharePageState({
     required this.showLinkSection,
@@ -51,12 +40,6 @@ class SharePageState {
     required this.linkError,
     required this.showAppLinkSection,
     required this.appLinkUrl,
-    required this.showTextSection,
-    required this.textSection,
-    required this.textContent,
-    required this.showJsonFileSection,
-    required this.jsonFileSection,
-    required this.jsonFileContent,
   });
 
   factory SharePageState.initial() => const SharePageState(
@@ -67,12 +50,6 @@ class SharePageState {
     linkError: "",
     showAppLinkSection: false,
     appLinkUrl: "",
-    showTextSection: false,
-    textSection: "",
-    textContent: "",
-    showJsonFileSection: false,
-    jsonFileSection: "",
-    jsonFileContent: "",
   );
 
   SharePageState copyWith({
@@ -83,12 +60,6 @@ class SharePageState {
     String? linkError,
     bool? showAppLinkSection,
     String? appLinkUrl,
-    bool? showTextSection,
-    String? textSection,
-    String? textContent,
-    bool? showJsonFileSection,
-    String? jsonFileSection,
-    String? jsonFileContent,
   }) {
     return SharePageState(
       showLinkSection: showLinkSection ?? this.showLinkSection,
@@ -98,12 +69,6 @@ class SharePageState {
       linkError: linkError ?? this.linkError,
       showAppLinkSection: showAppLinkSection ?? this.showAppLinkSection,
       appLinkUrl: appLinkUrl ?? this.appLinkUrl,
-      showTextSection: showTextSection ?? this.showTextSection,
-      textSection: textSection ?? this.textSection,
-      textContent: textContent ?? this.textContent,
-      showJsonFileSection: showJsonFileSection ?? this.showJsonFileSection,
-      jsonFileSection: jsonFileSection ?? this.jsonFileSection,
-      jsonFileContent: jsonFileContent ?? this.jsonFileContent,
     );
   }
 }
@@ -126,61 +91,24 @@ class ShareController extends PageCubit<SharePageState> {
       case ShareType.subscription:
         _querySubscription(params.id);
         break;
-      case ShareType.geoData:
-        _queryGeoData(params.id);
-        break;
     }
   }
 
   Future<void> _queryConfig(int configId) async {
-    final db = AppDatabase();
-    if (configId != DBConstants.defaultId) {
-      final config = await db.coreConfigDao.searchRow(configId);
-      if (config != null) {
-        final type = CoreConfigType.fromString(config.type);
-        Map<String, dynamic>? multiNodeOutbound;
-        if (type == CoreConfigType.multiNodeOutbound) {
-          try {
-            multiNodeOutbound = readMultiNodeOutboundFromDbData(config);
-            if (!validateMultiNodeOutboundFields(multiNodeOutbound).item1) {
-              throw const FormatException('Invalid Multi-node Outbound');
-            }
-          } catch (error, stackTrace) {
-            ygLogger(
-              'generate Multi-node Outbound share failed: $error\n$stackTrace',
-            );
-            _finishLinkError();
-            return;
-          }
-        }
-        _finishAppLink(await _appLinkShareService.config(config), config.name);
-        switch (type) {
-          case CoreConfigType.outbound:
-            try {
-              await _parseXrayJson(config);
-            } catch (error, stackTrace) {
-              ygLogger(
-                'generate outbound share link failed: $error\n$stackTrace',
-              );
-              _finishLinkError();
-            }
-            break;
-          case CoreConfigType.raw:
-            final text = XrayRawDb.readFromDbData(config);
-            await _finishJsonExport(text, config.name);
-            break;
-          case CoreConfigType.multiNodeOutbound:
-            final text = encodeMultiNodeOutboundMap(multiNodeOutbound!);
-            await _finishJsonExport(text, config.name);
-            break;
-          case CoreConfigType.profile:
-            final text = _readConfigDataText(config);
-            await _finishJsonExport(text, config.name);
-            break;
-          case null:
-            break;
-        }
-      }
+    final config = configId == DBConstants.defaultId
+        ? null
+        : await AppDatabase().coreConfigDao.searchRow(configId);
+    if (config == null ||
+        CoreConfigType.fromString(config.type) != CoreConfigType.outbound) {
+      _finishLinkError();
+      return;
+    }
+    _finishAppLink(await _appLinkShareService.config(config), config.name);
+    try {
+      await _parseXrayJson(config);
+    } catch (error, stackTrace) {
+      ygLogger('generate outbound share link failed: $error\n$stackTrace');
+      _finishLinkError();
     }
   }
 
@@ -201,17 +129,6 @@ class ShareController extends PageCubit<SharePageState> {
         );
         await _parseShareSubscription(subscription);
       }
-    }
-  }
-
-  Future<void> _queryGeoData(int geoDataId) async {
-    final db = AppDatabase();
-    if (geoDataId == DBConstants.defaultId) {
-      return;
-    }
-    final geoData = await db.geoDataDao.searchRow(geoDataId);
-    if (geoData != null) {
-      _finishAppLink(_appLinkShareService.geoData(geoData), geoData.name);
     }
   }
 
@@ -279,24 +196,6 @@ class ShareController extends PageCubit<SharePageState> {
     }
     _name = name;
     emit(state.copyWith(showAppLinkSection: true, appLinkUrl: link));
-  }
-
-  Future<void> _finishJsonExport(String text, String name) async {
-    final jsonText = _formatJsonText(text);
-    if (jsonText.isEmpty) {
-      return;
-    }
-    _name = name;
-    emit(
-      state.copyWith(
-        showTextSection: true,
-        textSection: appLocalizationsNoContext().sharePageXrayJson,
-        textContent: jsonText,
-        showJsonFileSection: true,
-        jsonFileSection: appLocalizationsNoContext().sharePageXrayJson,
-        jsonFileContent: jsonText,
-      ),
-    );
   }
 
   Future<void> shareLinkQrcode(BuildContext context) async {
@@ -440,134 +339,6 @@ class ShareController extends PageCubit<SharePageState> {
       );
       context.pop();
     }
-  }
-
-  Future<void> shareText(BuildContext context) async {
-    await _shareText(context, state.textContent);
-  }
-
-  Future<void> _shareText(BuildContext context, String text) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
-    final params = ShareParams(
-      text: text,
-      subject: _name,
-      sharePositionOrigin: sharePositionOrigin,
-    );
-    final result = await SharePlus.instance.share(params);
-
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        result.status == ShareResultStatus.success,
-        AppLocalizations.of(context)!.sharePageShareText,
-      );
-    }
-  }
-
-  Future<void> copyText(BuildContext context) async {
-    await _copyText(context, state.textContent);
-  }
-
-  Future<void> _copyText(BuildContext context, String text) async {
-    final data = ClipboardData(text: text);
-    await Clipboard.setData(data);
-    if (context.mounted) {
-      ContextAlert.showToast(
-        context,
-        AppLocalizations.of(context)!.actionResult(
-          AppLocalizations.of(context)!.sharePageCopyText,
-          AppLocalizations.of(context)!.resultSuccess,
-        ),
-      );
-      context.pop();
-    }
-  }
-
-  Future<void> shareJsonFile(BuildContext context) async {
-    await _shareJsonFile(context, state.jsonFileContent);
-  }
-
-  Future<void> _shareJsonFile(BuildContext context, String text) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
-
-    final cacheDir = await FileTool.makeCacheDir();
-    final fileName = "${_safeFileName()}.json";
-    final filePath = p.join(cacheDir, fileName);
-    await File(filePath).writeAsString(text);
-
-    final params = ShareParams(
-      files: [XFile(filePath)],
-      fileNameOverrides: [fileName],
-      sharePositionOrigin: sharePositionOrigin,
-    );
-    final result = await SharePlus.instance.share(params);
-    await FileTool.deleteDirIfExists(cacheDir);
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        result.status == ShareResultStatus.success,
-        AppLocalizations.of(context)!.sharePageShareJsonFile,
-      );
-    }
-  }
-
-  Future<void> saveJsonFile(BuildContext context) async {
-    await _saveJsonFile(context, state.jsonFileContent);
-  }
-
-  Future<void> _saveJsonFile(BuildContext context, String text) async {
-    final data = Uint8List.fromList(utf8.encode(text));
-    final success = await FileTool.saveData(
-      data,
-      "${_safeFileName()}.json",
-      ".json",
-    );
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        success,
-        AppLocalizations.of(context)!.sharePageSaveJsonFile,
-      );
-    }
-  }
-
-  String _safeFileName() {
-    final name = _name.trim().replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), "_");
-    return name.isEmpty ? "config" : name;
-  }
-}
-
-String _readConfigDataText(CoreConfigData config) {
-  try {
-    final jsonData = JsonTool.decodeBase64ToJson(config.data ?? "");
-    return JsonTool.encoder.convert(jsonData);
-  } catch (_) {
-    try {
-      return utf8.decode(base64Decode(config.data ?? ""));
-    } catch (_) {
-      return "";
-    }
-  }
-}
-
-String _formatJsonText(String text) {
-  try {
-    final jsonData = JsonTool.decoder.convert(text);
-    return JsonTool.encoder.convert(jsonData);
-  } catch (_) {
-    return text;
   }
 }
 

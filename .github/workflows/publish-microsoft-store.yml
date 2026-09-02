@@ -42,6 +42,8 @@ jobs:
       run_id: ${{ steps.build.outputs.run_id }}
       should_publish: ${{ steps.build.outputs.should_publish }}
     steps:
+      - uses: actions/checkout@v7
+
       - name: Inspect Build run
         id: build
         env:
@@ -52,6 +54,7 @@ jobs:
           echo "should_publish=false" >> "$GITHUB_OUTPUT"
 
           run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID")"
+          printf '%s\n' "$run_json" > build-run.json
           if [ "$(jq -r '.path' <<<"$run_json")" != ".github/workflows/build.yml" ]; then
             echo "Workflow run $BUILD_RUN_ID is not a Build run." >&2
             exit 1
@@ -64,34 +67,23 @@ jobs:
             "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID/artifacts?per_page=100" \
             --jq '.artifacts[].name')"
 
-          metadata_tag=""
-          if grep -Fxq "release-metadata" <<<"$artifact_names"; then
-            gh run download "$BUILD_RUN_ID" \
-              --repo "${{ github.repository }}" \
-              --name release-metadata \
-              --dir release-metadata
-            metadata_tag_file="$(find release-metadata -name tag.txt -type f -print -quit)"
-            if [ -n "$metadata_tag_file" ]; then
-              metadata_tag="$(cat "$metadata_tag_file")"
-              case "$metadata_tag" in
-                v*) ;;
-                *)
-                  echo "Release metadata tag must start with v: $metadata_tag" >&2
-                  exit 1
-                  ;;
-              esac
-            fi
-          fi
-
-          for artifact in windows-store-x64 windows-store-arm64; do
+          for artifact in release-metadata windows-store-x64 windows-store-arm64 \
+            provenance-windows-x64 provenance-windows-arm64; do
             if ! grep -Fxq "$artifact" <<<"$artifact_names"; then
               echo "Build run $BUILD_RUN_ID is missing artifact: $artifact" >&2
               exit 1
             fi
+            gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+              --name "$artifact" --dir "artifacts/$artifact"
           done
-
-          if [ -n "$metadata_tag" ]; then
+          if [ -f artifacts/release-metadata/tag.txt ]; then
+            metadata_tag="$(cat artifacts/release-metadata/tag.txt)"
+            tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$metadata_tag" --jq '.sha')"
+            python3 build_scripts/verify_release.py artifacts build-run.json \
+              --windows-only --tag "$metadata_tag" --tag-sha "$tag_sha"
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            python3 build_scripts/verify_release.py artifacts build-run.json --windows-only
           fi
 
   publish:

@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:onexray/service/core_run_mode/state.dart';
 
 part 'model.g.dart';
 
@@ -10,19 +9,6 @@ class XrayMetricsVars {
   const XrayMetricsVars(this.stats);
 
   XrayTrafficCounter? get tunIn => stats?.inbound?.tunIn;
-
-  XrayTrafficCounter? totalForMode(CoreRunMode mode) {
-    final inbound = stats?.inbound;
-    if (inbound == null) {
-      return null;
-    }
-    switch (mode) {
-      case CoreRunMode.tun:
-        return inbound.tunIn;
-      case CoreRunMode.proxy:
-        return inbound.pingIn;
-    }
-  }
 
   factory XrayMetricsVars.fromJson(Map<String, dynamic> json) =>
       _$XrayMetricsVarsFromJson(json);

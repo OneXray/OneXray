@@ -1,40 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/core/geo_data/add/page.dart';
-import 'package:onexray/pages/core/geo_data/list/page.dart';
-import 'package:onexray/pages/core/geo_data/list/params.dart';
-import 'package:onexray/pages/core/geo_data/select/page.dart';
-import 'package:onexray/pages/core/geo_data/select/params.dart';
-import 'package:onexray/pages/core/geo_data/show/page.dart';
-import 'package:onexray/pages/core/geo_data/show/params.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/ping/page.dart';
-import 'package:onexray/pages/core/tun/installed_app/page.dart';
-import 'package:onexray/pages/core/tun/installed_app/params.dart';
-import 'package:onexray/pages/core/tun/network_interface/page.dart';
-import 'package:onexray/pages/core/tun/network_interface/params.dart';
-import 'package:onexray/pages/core/tun/on_demand_rule/page.dart';
-import 'package:onexray/pages/core/tun/on_demand_rule/params.dart';
-import 'package:onexray/pages/core/tun/selected_app/page.dart';
-import 'package:onexray/pages/core/tun/selected_app/params.dart';
-import 'package:onexray/pages/core/tun/ui/page.dart';
-import 'package:onexray/pages/core/xray/outbound/page.dart';
-import 'package:onexray/pages/core/xray/outbound/params.dart';
-import 'package:onexray/pages/core/xray/multi_node_outbound/page.dart';
-import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
-import 'package:onexray/pages/core/xray/raw/page.dart';
-import 'package:onexray/pages/core/xray/raw/params.dart';
-import 'package:onexray/pages/core/xray/raw_edit/page.dart';
-import 'package:onexray/pages/core/xray/raw_edit/params.dart';
-import 'package:onexray/pages/core/xray/profile/simple/page.dart';
-import 'package:onexray/pages/core/xray/profile/ui/page.dart';
-import 'package:onexray/pages/core/xray/profile/ui/params.dart';
-import 'package:onexray/pages/core/xray/profile_list/page.dart';
-import 'package:onexray/pages/connect/page.dart';
 import 'package:onexray/pages/preferences/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple.dart';
 import 'package:onexray/pages/advanced/tunnel/android.dart';
@@ -44,11 +15,6 @@ import 'package:onexray/pages/advanced/tunnel/interface.dart';
 import 'package:onexray/pages/advanced/geodata/page.dart';
 import 'package:onexray/pages/advanced/geodata/detail.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
-import 'package:onexray/pages/home/node_info/page.dart';
-import 'package:onexray/pages/home/node_info/params.dart';
-import 'package:onexray/pages/home/outbound_select/page.dart';
-import 'package:onexray/pages/home/outbound_select/params.dart';
-import 'package:onexray/pages/home/qrcode/page.dart';
 import 'package:onexray/pages/home/share/page.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/launch/splash/page.dart';
@@ -74,15 +40,9 @@ import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/settings/auto_update/page.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
-import 'package:onexray/pages/settings/general/page.dart';
 import 'package:onexray/pages/settings/language/page.dart';
-import 'package:onexray/pages/settings/main/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
-import 'package:onexray/pages/subscriptions/add/page.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
-import 'package:onexray/pages/subscriptions/list/page.dart';
-import 'package:onexray/pages/subscriptions/nodes/page.dart';
-import 'package:onexray/pages/subscriptions/nodes/params.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: "root",
@@ -358,16 +318,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     (_, state) =>
         CustomRoutingRulePage(rule: state.extra as Map<String, dynamic>?),
   ),
-  _route(AppSecondaryDestination.overview, (_, _) => const ConnectPage()),
-  _route(
-    AppSecondaryDestination.nodeInfo,
-    (_, state) => _withExtra<NodeInfoPageParams>(
-      state,
-      AppSecondaryDestination.nodeInfo,
-      (params) => NodeInfoPage(params: params),
-    ),
-  ),
-  _route(AppSecondaryDestination.qrcode, (_, _) => const QrcodePage()),
   _route(
     AppSecondaryDestination.share,
     (_, state) => _withExtra<SharePageParams>(
@@ -377,138 +327,11 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     ),
   ),
   _route(
-    AppSecondaryDestination.outboundSelect,
-    (_, state) => _withExtra<OutboundSelectParams>(
-      state,
-      AppSecondaryDestination.outboundSelect,
-      (params) => OutboundSelectPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.subscriptionList,
-    (_, _) => const SubscriptionListPage(),
-  ),
-  _route(
-    AppSecondaryDestination.subscriptionNodes,
-    (_, state) => _withExtra<SubscriptionNodesParams>(
-      state,
-      AppSecondaryDestination.subscriptionNodes,
-      (params) => SubscriptionNodesPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.subscriptionAdd,
-    (_, _) => const SubscriptionAddPage(),
-  ),
-  _route(
     AppSecondaryDestination.subscriptionEdit,
     (_, state) => _withExtra<SubscriptionEditParams>(
       state,
       AppSecondaryDestination.subscriptionEdit,
       (params) => SubscriptionEditorPage(subscriptionId: params.id),
-    ),
-  ),
-  _route(AppSecondaryDestination.tun, (_, _) => const TunSettingsPage()),
-  _route(
-    AppSecondaryDestination.onDemandRule,
-    (_, state) => _withExtra<OnDemandRuleParams>(
-      state,
-      AppSecondaryDestination.onDemandRule,
-      (params) => OnDemandRulePage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.networkInterface,
-    (_, state) => _withExtra<NetworkInterfaceParams>(
-      state,
-      AppSecondaryDestination.networkInterface,
-      (params) => NetworkInterfacePage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.selectedApp,
-    (_, state) => _withExtra<SelectedAppParams>(
-      state,
-      AppSecondaryDestination.selectedApp,
-      (params) => SelectedAppPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.installedApp,
-    (_, state) => _withExtra<InstalledAppParams>(
-      state,
-      AppSecondaryDestination.installedApp,
-      (params) => InstalledAppPage(params: params),
-    ),
-  ),
-  _route(AppSecondaryDestination.xray, (_, _) => const XrayProfileListPage()),
-  _route(
-    AppSecondaryDestination.xrayMultiNodeOutbound,
-    (_, state) => _withExtra<XrayMultiNodeOutboundParams>(
-      state,
-      AppSecondaryDestination.xrayMultiNodeOutbound,
-      (params) => XrayMultiNodeOutboundPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.xrayProfileSimple,
-    (_, _) => const XrayProfileSimplePage(),
-  ),
-  _route(
-    AppSecondaryDestination.xrayProfileUI,
-    (_, state) => _withExtra<XrayProfileUIParams>(
-      state,
-      AppSecondaryDestination.xrayProfileUI,
-      (params) => XrayProfileUIPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.outboundUI,
-    (_, state) => _withExtra<OutboundUIParams>(
-      state,
-      AppSecondaryDestination.outboundUI,
-      (params) => OutboundUIPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.xrayRaw,
-    (_, state) => _withExtra<XrayRawParams>(
-      state,
-      AppSecondaryDestination.xrayRaw,
-      (params) => XrayRawPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.xrayRawEdit,
-    (_, state) => _withExtra<XrayRawEditParams>(
-      state,
-      AppSecondaryDestination.xrayRawEdit,
-      (params) => XrayRawEditPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.geoData,
-    (_, state) => _withExtra<GeoDataListParams>(
-      state,
-      AppSecondaryDestination.geoData,
-      (params) => GeoDataListPage(params: params),
-    ),
-  ),
-  _route(AppSecondaryDestination.geoDatAdd, (_, _) => const GeoDatAddPage()),
-  _route(
-    AppSecondaryDestination.geoDatSelect,
-    (_, state) => _withExtra<GeoDatSelectParams>(
-      state,
-      AppSecondaryDestination.geoDatSelect,
-      (params) => GeoDatSelectPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.geoDatShow,
-    (_, state) => _withExtra<GeoDatShowParams>(
-      state,
-      AppSecondaryDestination.geoDatShow,
-      (params) => GeoDatShowPage(params: params),
     ),
   ),
   _route(AppSecondaryDestination.ping, (_, _) => const PingPage()),
@@ -528,10 +351,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       (params) => ConfigFileViewerPage(params: params),
     ),
   ),
-  _route(
-    AppSecondaryDestination.generalSettings,
-    (_, _) => const GeneralSettingsPage(),
-  ),
   _route(AppSecondaryDestination.autoUpdate, (_, _) => const AutoUpdatePage()),
   _route(
     AppSecondaryDestination.desktopSettings,
@@ -545,7 +364,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.aboutOneXray,
     (_, _) => const AboutOneXrayPage(),
   ),
-  _route(AppSecondaryDestination.support, (_, _) => const SettingsPage()),
 ];
 
 Widget _withExtra<T>(

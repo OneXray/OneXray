@@ -18,6 +18,34 @@ void main() {
     addTearDown(database.close);
   });
 
+  test(
+    'refresh preserves nodes until reference protection is installed',
+    () async {
+      final source = await _source(database);
+      final id = await database.coreConfigDao.insertRow(
+        _node('Protected until ready', subId: source.id),
+      );
+      final original = await database.coreConfigDao.searchRow(id);
+      final service = SubscriptionService.forTesting(
+        database: database,
+        loadRows: (_) async => SubscriptionLoadResult(
+          status: SubscriptionUpdateResult.success,
+          rows: [_node('Replacement')],
+        ),
+        schedulePing: (_) =>
+            fail('Failed replacement must not schedule a ping'),
+      );
+
+      final result = await service.refreshSubscriptionResult(source, false);
+      expect(result.status, SubscriptionUpdateResult.writeFailed);
+      expect(await database.coreConfigDao.searchRow(id), original);
+      expect(
+        await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id),
+        hasLength(1),
+      );
+    },
+  );
+
   test('source form edits and automatic switches persist without downloading or rewriting nodes', () async {
     final source = await _source(database);
     final nodeId = await database.coreConfigDao.insertRow(

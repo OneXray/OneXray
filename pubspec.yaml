@@ -127,7 +127,6 @@ flutter:
     - assets/dat/
     - assets/geodata/regions.json
     - assets/icon/
-    - assets/md/
     - assets/app_icon/
     - assets/macos_icon/
 

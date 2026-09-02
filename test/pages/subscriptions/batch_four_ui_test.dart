@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/db/dao/config_query.dart';
-import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/subscriptions/list/view.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/date_view.dart';
-import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -176,93 +171,4 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-
-  testWidgets('subscription list card exposes count and open action', (
-    tester,
-  ) async {
-    final subscription = SubscriptionData(
-      autoUpdate: true,
-      id: 2,
-      name: 'Premium Network',
-      url: 'https://example.com/sub.txt',
-      timestamp: DateTime(2026),
-      count: 7,
-      expanded: true,
-      parseFailureCount: 0,
-    );
-    final item = SubscriptionItem(subscription, ConfigQueryRowType.subscription)
-      ..count = 7;
-    var opened = false;
-
-    await tester.pumpWidget(
-      app(
-        SubscriptionListView(
-          items: [item],
-          emptyMessage: 'No subscriptions',
-          addLabel: 'Add',
-          pingLabel: 'Ping',
-          pinging: false,
-          onAdd: () {},
-          onOpen: (_) => opened = true,
-          onPing: (_) {},
-          onAction: (_, IconMenuId _) {},
-        ),
-      ),
-    );
-
-    expect(find.text('Premium Network'), findsOneWidget);
-    expect(find.text('7'), findsOneWidget);
-    expect(find.byType(DateView), findsOneWidget);
-    await tester.tap(find.text('Premium Network'));
-    expect(opened, isTrue);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('subscription list empty state keeps the add action', (
-    tester,
-  ) async {
-    var added = false;
-    await tester.pumpWidget(
-      app(
-        SubscriptionListView(
-          items: const [],
-          emptyMessage: 'No subscriptions',
-          addLabel: 'Add',
-          pingLabel: 'Ping',
-          pinging: false,
-          onAdd: () => added = true,
-          onOpen: (_) {},
-          onPing: (_) {},
-          onAction: (_, IconMenuId _) {},
-        ),
-      ),
-    );
-
-    expect(find.text('No subscriptions'), findsOneWidget);
-    await tester.tap(find.text('Add'));
-    expect(added, isTrue);
-  });
-
-  testWidgets('subscription list empty state disables add while downloading', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      app(
-        SubscriptionListView(
-          items: const [],
-          emptyMessage: 'No subscriptions',
-          addLabel: 'Add',
-          pingLabel: 'Ping',
-          pinging: false,
-          onAdd: null,
-          onOpen: (_) {},
-          onPing: (_) {},
-          onAction: (_, IconMenuId _) {},
-        ),
-      ),
-    );
-
-    expect(find.text('No subscriptions'), findsOneWidget);
-    expect(find.text('Add'), findsNothing);
-  });
 }

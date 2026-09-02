@@ -1,71 +1,51 @@
 # 数据管理
 
-本文说明 GeoData、自动更新、备份和恢复之间的边界。Xray Profile 不再拥有 `geodata` 根字段；文件由 App 的独立数据服务管理。
+## 原库升级
 
-## 系统 GeoData
+首次业务访问前先停止旧运行、暂停写入并保留升级前快照。SQLite 结构修改与版本提升
+在同一事务完成；已有 ID、订阅关系、Base64 内容及 Age 密钥保持不变，不做全量编码转换。
+`setting/full` 退休行不进入新业务；所有旧 Raw 保留，包括超过新增上限的情况。
+运行偏好重置，已有订阅缓存及有效 Geodata 原位复用。
 
-App 随包提供 `geosite.dat`、`geoip.dat` 和时间戳。`SystemGeoDatService.checkAssets()` 在以下时机尝试把资源准备到 Core 可访问目录：
+升级前快照用于恢复，不意味着旧 App 能直接打开新 schema；新版 ZIP 也不承诺旧版可读。
+不要对主用户数据执行验证迁移，使用隔离样本。真实旧库样本与安装包升级须单独验收。
 
-- 用户手动启动 VPN 前；
-- App 启动后自动连接前。
+## Geodata 发布
 
-目标时间戳不存在时复制整套资源；包内时间戳更新时覆盖整套资源。目录不可用时会跳过，手动连接路径也会记录检查错误后继续，因此当前实现是启动前的尽力准备，不是阻止 Core 启动的强校验。
+默认 `geoip.dat` 与 `geosite.dat` 是一组，只能一起更新且不能删除。自定义数据按文件名
+保存，支持 HTTPS 添加、更新和删除，不提供本地导入。添加成功即有效，不加“可用”标签。
 
-在 macOS System Extension 的 App 主动启动路径中，Provider 先等待 App 信号。App 比较两侧全部文件的文件名和修改时间；任一不一致时，把本地整套文件发送到 Provider 暂存目录并请求整体切换，然后发送启动信号。按需启动会跳过同步，直接使用 Provider 已有文件。当前 App 没有把每个 Provider 返回的错误响应提升为启动失败，不能把这条路径描述成严格的文件存在保证。
+下载先进入暂存目录，libXray 校验 DAT 并生成分类索引，文件封存为不可变 generation 后，
+数据库事务发布唯一引用。默认双文件、索引和元数据一起切换；失败不覆盖当前版本。
+没有 generation 的旧自定义记录仍可读取原文件，不做无条件重写。
 
-## 自定义 GeoData
-
-自定义条目保存名称、domain/ip 类型、下载 URL、更新时间和统计数量。添加或更新时：
-
-1. 下载 `<name>.dat` 到缓存目录。
-2. 调用 libXray `countGeoData` 校验并生成 `<name>.json` 索引。
-3. 更新数据库记录，再把 `.dat`、`.json` 逐文件复制到运行目录。
-
-删除自定义条目时同时删除数据库记录和对应的 `.dat`、`.json`。系统 GeoData 与自定义条目在界面中分组，不共享删除语义。
-
-数据库更新、文件复制和缓存清理不是一个事务；复制异常可能留下部分文件或缓存。文档不得把当前流程描述成原子替换。
+运行计划复制同一发布快照的资源，所以更新和删除不会改变本次连接使用的文件。
+删除移除发布引用；旧 generation 暂保留，尚未实现自动回收，不承诺即时释放磁盘。
+macOS System Extension 只同步固定计划目录，通过暂存/确认完成后才启动；真实按需启动
+及扩展消息链路的设备验收与普通文件事务测试分开记录。
 
 ## 自动更新
 
-后台服务在启动时立即检查，此后每小时检查一次。订阅和 GeoData 可以分别启用，更新周期支持 24、72 或 168 小时。
+数据更新位于高级的 Xray 运行与诊断，订阅与 Geodata 分别保存自动开关和 24/72/168 小时
+周期。启动、前台恢复、每小时与真实连接边沿触发到期检查；重复 connected 不反复调度。
+到期检查串行运行，独立自定义数据不会因默认组更新失败而被长期跳过。更新不重新选择
+本次运行节点。测速只暴露超时与 URL，沿用自动队列，不暴露并发数量/自动测速开关。
 
-GeoData 可以设置为 VPN 连接后更新。此时未连接不会下载；连接成功并稳定 3 秒后重新检查。并发下载或已有更新任务进行中时跳过重复任务。
+## 备份与恢复
 
-系统 GeoData 先整组下载和生成索引，成功后写入时间戳并逐文件复制；自定义 GeoData 逐条更新。这些运行目录写入同样不是原子替换。
+ZIP 当前格式为版本 5，兼容读取旧 v3/v4，包含 manifest、CoreConfig、订阅、Custom 路由
+及引用的 Geodata/索引。保留全部 Raw、订阅缓存、收藏和 Age 密钥；旧退休类型不重新导入业务。
+ZIP 未加密，可能包含节点凭据、订阅 URL 与 Age 私钥，必须提示并按敏感文件处理。
 
-## 备份格式
+恢复先安全解压和校验，再停止运行。Geodata 封存与所有数据库资产在同一发布事务内
+切换；失败保留原资产，成功重置运行选择且不自动连接，保留桌面登录项。
+旧备份没有缓存的订阅在维护门释放后刷新，新备份不以重新下载替代缓存恢复。
+清理全部数据前先取消平台登录项，失败则不继续破坏性清理。
 
-当前备份版本为 4，并兼容读取版本 3。ZIP 包包含：
+## 实现入口
 
-```text
-manifest.json
-core_configs.json
-subscriptions.json
-geo_data.json
-dat/
-```
-
-版本 4 的订阅记录包含 Age 公钥和私钥；版本 3 可以没有。备份中的 `dat/` 只保存数据库记录引用的自定义 GeoData 文件及索引；恢复暂存时再加入当前 App 随包的系统资源。
-
-备份 ZIP 不加密，必须按敏感文件处理。它可能包含订阅 URL、完整配置和 Age 私钥。
-
-## 恢复边界
-
-恢复会替换现有数据库和 GeoData，按以下顺序执行：
-
-1. 安全解压，只接受预期根文件和 `dat/` 内容。
-2. 校验 `manifest.json` 版本、JSON 顶层结构、必要元数据，以及自定义 GeoData 文件是否存在；这里不验证 Xray-core 语义、订阅 URL 或 DAT 内容。
-3. 停止 VPN 并清理运行文件；保留用户偏好和桌面登录项。
-4. 用备份中的自定义文件和当前随包系统资源建立暂存目录，再切换 GeoData 目录。
-5. 在数据库事务中替换配置、订阅和 GeoData 元数据。
-6. 成功后提交文件切换、重置运行选择，并尽力刷新已恢复订阅。
-
-切换后的 GeoData 在提交前发生异常会尝试回滚；数据库替换使用事务。文件切换与数据库事务仍不是同一个原子事务。
-
-## 主要实现入口
-
-- 系统资源：`lib/service/geo_data/system_dat_service.dart`
-- 自定义 GeoData：`lib/service/geo_data/service.dart`
-- 后台更新：`lib/service/background_task/service.dart`、`lib/service/data_update/service.dart`
-- 备份和恢复：`lib/service/share/backup.dart`、`backup_archive.dart`、`backup_dat_stager.dart`
-- 数据清理：`lib/service/data_cleanup/`
+- 升级与维护门：`lib/service/launch/storage_preparation.dart`、`lib/service/maintenance/`
+- 数据发布：`lib/service/geo_data/service.dart`
+- 更新：`lib/service/background_task/service.dart`、`lib/service/data_update/service.dart`
+- ZIP：`lib/service/share/backup.dart`、`backup_archive.dart`、`backup_database.dart`
+- 清理：`lib/service/data_cleanup/`
