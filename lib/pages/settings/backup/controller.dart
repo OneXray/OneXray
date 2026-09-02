@@ -6,6 +6,7 @@ import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/share.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/service/share/backup.dart';
 import 'package:path/path.dart' as p;
@@ -122,26 +123,21 @@ class BackupController extends PageCubit<BackupPageState> {
   }
 
   Future<void> _shareFile(BuildContext context, FileInfo file) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
+    final sharePositionOrigin = ContextShare.positionOrigin(context);
     final params = ShareParams(
       files: [XFile(file.path)],
       fileNameOverrides: [file.name],
       sharePositionOrigin: sharePositionOrigin,
     );
-    final result = await SharePlus.instance.share(params);
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        result.status == ShareResultStatus.success,
-        AppLocalizations.of(context)!.menuShare,
-      );
+    final outcome = await ContextShare.share(params);
+    if (!context.mounted || outcome == ShareOutcome.unconfirmed) {
+      return;
     }
+    _showActionResult(
+      context,
+      outcome == ShareOutcome.success,
+      AppLocalizations.of(context)!.menuShare,
+    );
   }
 
   void _showActionResult(BuildContext context, bool success, String action) {

@@ -15,6 +15,7 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/share.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/home/share/params.dart';
@@ -305,13 +306,7 @@ class ShareController extends PageCubit<SharePageState> {
   }
 
   Future<void> _shareQrcode(BuildContext context, Uint8List qrcode) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
+    final sharePositionOrigin = ContextShare.positionOrigin(context);
 
     final cacheDir = await FileTool.makeCacheDir();
     final imagePath = p.join(cacheDir, "$_name.png");
@@ -322,15 +317,16 @@ class ShareController extends PageCubit<SharePageState> {
       fileNameOverrides: [_name],
       sharePositionOrigin: sharePositionOrigin,
     );
-    final result = await SharePlus.instance.share(params);
+    final outcome = await ContextShare.share(params);
     await FileTool.deleteDirIfExists(cacheDir);
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        result.status == ShareResultStatus.success,
-        AppLocalizations.of(context)!.sharePageShareQRCode,
-      );
+    if (!context.mounted || outcome == ShareOutcome.unconfirmed) {
+      return;
     }
+    _showActionResult(
+      context,
+      outcome == ShareOutcome.success,
+      AppLocalizations.of(context)!.sharePageShareQRCode,
+    );
   }
 
   void _showActionResult(BuildContext context, bool success, String action) {
@@ -393,27 +389,22 @@ class ShareController extends PageCubit<SharePageState> {
   }
 
   Future<void> _shareUrl(BuildContext context, String url) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
+    final sharePositionOrigin = ContextShare.positionOrigin(context);
     final params = ShareParams(
       text: url,
       subject: _name,
       sharePositionOrigin: sharePositionOrigin,
     );
-    final result = await SharePlus.instance.share(params);
+    final outcome = await ContextShare.share(params);
 
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        result.status == ShareResultStatus.success,
-        AppLocalizations.of(context)!.sharePageShareLink,
-      );
+    if (!context.mounted || outcome == ShareOutcome.unconfirmed) {
+      return;
     }
+    _showActionResult(
+      context,
+      outcome == ShareOutcome.success,
+      AppLocalizations.of(context)!.sharePageShareLink,
+    );
   }
 
   Future<void> copyLinkUrl(BuildContext context) async {
@@ -448,27 +439,22 @@ class ShareController extends PageCubit<SharePageState> {
   }
 
   Future<void> _shareText(BuildContext context, String text) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
+    final sharePositionOrigin = ContextShare.positionOrigin(context);
     final params = ShareParams(
       text: text,
       subject: _name,
       sharePositionOrigin: sharePositionOrigin,
     );
-    final result = await SharePlus.instance.share(params);
+    final outcome = await ContextShare.share(params);
 
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        result.status == ShareResultStatus.success,
-        AppLocalizations.of(context)!.sharePageShareText,
-      );
+    if (!context.mounted || outcome == ShareOutcome.unconfirmed) {
+      return;
     }
+    _showActionResult(
+      context,
+      outcome == ShareOutcome.success,
+      AppLocalizations.of(context)!.sharePageShareText,
+    );
   }
 
   Future<void> copyText(BuildContext context) async {
@@ -495,13 +481,7 @@ class ShareController extends PageCubit<SharePageState> {
   }
 
   Future<void> _shareJsonFile(BuildContext context, String text) async {
-    Rect? sharePositionOrigin;
-    if (context.mounted) {
-      final box = context.findRenderObject() as RenderBox?;
-      if (box != null) {
-        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-      }
-    }
+    final sharePositionOrigin = ContextShare.positionOrigin(context);
 
     final cacheDir = await FileTool.makeCacheDir();
     final fileName = "${_safeFileName()}.json";
@@ -513,15 +493,16 @@ class ShareController extends PageCubit<SharePageState> {
       fileNameOverrides: [fileName],
       sharePositionOrigin: sharePositionOrigin,
     );
-    final result = await SharePlus.instance.share(params);
+    final outcome = await ContextShare.share(params);
     await FileTool.deleteDirIfExists(cacheDir);
-    if (context.mounted) {
-      _showActionResult(
-        context,
-        result.status == ShareResultStatus.success,
-        AppLocalizations.of(context)!.sharePageShareJsonFile,
-      );
+    if (!context.mounted || outcome == ShareOutcome.unconfirmed) {
+      return;
     }
+    _showActionResult(
+      context,
+      outcome == ShareOutcome.success,
+      AppLocalizations.of(context)!.sharePageShareJsonFile,
+    );
   }
 
   Future<void> saveJsonFile(BuildContext context) async {
