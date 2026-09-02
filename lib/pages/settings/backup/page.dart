@@ -82,8 +82,14 @@ class BackupPage extends StatelessWidget {
             groupValue: state.selection,
             onChanged: controller.updateSelection,
             child: ListView.separated(
-              itemBuilder: (ctx, index) =>
-                  _itemRow(ctx, state, controller, index),
+              // The itemBuilder context is the sliver element, so its render
+              // object is a RenderSliver. Builder hands the row callbacks a
+              // context that resolves to the row's RenderBox, which the share
+              // sheet needs as its anchor.
+              itemBuilder: (_, index) => Builder(
+                builder: (rowContext) =>
+                    _itemRow(rowContext, state, controller, index),
+              ),
               itemCount: state.files.length,
               separatorBuilder: (_, _) => const Divider(height: 1),
             ),
