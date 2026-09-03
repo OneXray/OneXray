@@ -1615,12 +1615,12 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
   }
 }
 
-class $CustomRoutingProfilesTable extends CustomRoutingProfiles
-    with TableInfo<$CustomRoutingProfilesTable, CustomRoutingProfileData> {
+class $RoutingProfileTable extends RoutingProfile
+    with TableInfo<$RoutingProfileTable, RoutingProfileData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $CustomRoutingProfilesTable(this.attachedDatabase, [this._alias]);
+  $RoutingProfileTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -1658,10 +1658,10 @@ class $CustomRoutingProfilesTable extends CustomRoutingProfiles
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'custom_routing_profiles';
+  static const String $name = 'routing_profile';
   @override
   VerificationContext validateIntegrity(
-    Insertable<CustomRoutingProfileData> instance, {
+    Insertable<RoutingProfileData> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -1691,12 +1691,9 @@ class $CustomRoutingProfilesTable extends CustomRoutingProfiles
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  CustomRoutingProfileData map(
-    Map<String, dynamic> data, {
-    String? tablePrefix,
-  }) {
+  RoutingProfileData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return CustomRoutingProfileData(
+    return RoutingProfileData(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -1713,17 +1710,17 @@ class $CustomRoutingProfilesTable extends CustomRoutingProfiles
   }
 
   @override
-  $CustomRoutingProfilesTable createAlias(String alias) {
-    return $CustomRoutingProfilesTable(attachedDatabase, alias);
+  $RoutingProfileTable createAlias(String alias) {
+    return $RoutingProfileTable(attachedDatabase, alias);
   }
 }
 
-class CustomRoutingProfileData extends DataClass
-    implements Insertable<CustomRoutingProfileData> {
+class RoutingProfileData extends DataClass
+    implements Insertable<RoutingProfileData> {
   final int id;
   final String name;
   final String data;
-  const CustomRoutingProfileData({
+  const RoutingProfileData({
     required this.id,
     required this.name,
     required this.data,
@@ -1737,20 +1734,20 @@ class CustomRoutingProfileData extends DataClass
     return map;
   }
 
-  CustomRoutingProfilesCompanion toCompanion(bool nullToAbsent) {
-    return CustomRoutingProfilesCompanion(
+  RoutingProfileCompanion toCompanion(bool nullToAbsent) {
+    return RoutingProfileCompanion(
       id: Value(id),
       name: Value(name),
       data: Value(data),
     );
   }
 
-  factory CustomRoutingProfileData.fromJson(
+  factory RoutingProfileData.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return CustomRoutingProfileData(
+    return RoutingProfileData(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       data: serializer.fromJson<String>(json['data']),
@@ -1766,16 +1763,14 @@ class CustomRoutingProfileData extends DataClass
     };
   }
 
-  CustomRoutingProfileData copyWith({int? id, String? name, String? data}) =>
-      CustomRoutingProfileData(
+  RoutingProfileData copyWith({int? id, String? name, String? data}) =>
+      RoutingProfileData(
         id: id ?? this.id,
         name: name ?? this.name,
         data: data ?? this.data,
       );
-  CustomRoutingProfileData copyWithCompanion(
-    CustomRoutingProfilesCompanion data,
-  ) {
-    return CustomRoutingProfileData(
+  RoutingProfileData copyWithCompanion(RoutingProfileCompanion data) {
+    return RoutingProfileData(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       data: data.data.present ? data.data.value : this.data,
@@ -1784,7 +1779,7 @@ class CustomRoutingProfileData extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('CustomRoutingProfileData(')
+    return (StringBuffer('RoutingProfileData(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('data: $data')
@@ -1797,29 +1792,28 @@ class CustomRoutingProfileData extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CustomRoutingProfileData &&
+      (other is RoutingProfileData &&
           other.id == this.id &&
           other.name == this.name &&
           other.data == this.data);
 }
 
-class CustomRoutingProfilesCompanion
-    extends UpdateCompanion<CustomRoutingProfileData> {
+class RoutingProfileCompanion extends UpdateCompanion<RoutingProfileData> {
   final Value<int> id;
   final Value<String> name;
   final Value<String> data;
-  const CustomRoutingProfilesCompanion({
+  const RoutingProfileCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.data = const Value.absent(),
   });
-  CustomRoutingProfilesCompanion.insert({
+  RoutingProfileCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required String data,
   }) : name = Value(name),
        data = Value(data);
-  static Insertable<CustomRoutingProfileData> custom({
+  static Insertable<RoutingProfileData> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? data,
@@ -1831,12 +1825,12 @@ class CustomRoutingProfilesCompanion
     });
   }
 
-  CustomRoutingProfilesCompanion copyWith({
+  RoutingProfileCompanion copyWith({
     Value<int>? id,
     Value<String>? name,
     Value<String>? data,
   }) {
-    return CustomRoutingProfilesCompanion(
+    return RoutingProfileCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       data: data ?? this.data,
@@ -1860,7 +1854,7 @@ class CustomRoutingProfilesCompanion
 
   @override
   String toString() {
-    return (StringBuffer('CustomRoutingProfilesCompanion(')
+    return (StringBuffer('RoutingProfileCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('data: $data')
@@ -2139,8 +2133,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CoreConfigTable coreConfig = $CoreConfigTable(this);
   late final $SubscriptionTable subscription = $SubscriptionTable(this);
   late final $GeoDataTable geoData = $GeoDataTable(this);
-  late final $CustomRoutingProfilesTable customRoutingProfiles =
-      $CustomRoutingProfilesTable(this);
+  late final $RoutingProfileTable routingProfile = $RoutingProfileTable(this);
   late final $ConnectionStateTable connectionState = $ConnectionStateTable(
     this,
   );
@@ -2149,8 +2142,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final GeoDataDao geoDataDao = GeoDataDao(this as AppDatabase);
-  late final CustomRoutingProfilesDao customRoutingProfilesDao =
-      CustomRoutingProfilesDao(this as AppDatabase);
+  late final RoutingProfileDao routingProfileDao = RoutingProfileDao(
+    this as AppDatabase,
+  );
   late final ConnectionStateDao connectionStateDao = ConnectionStateDao(
     this as AppDatabase,
   );
@@ -2162,7 +2156,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     coreConfig,
     subscription,
     geoData,
-    customRoutingProfiles,
+    routingProfile,
     connectionState,
   ];
 }
@@ -2963,22 +2957,22 @@ typedef $$GeoDataTableProcessedTableManager =
       GeoDataData,
       PrefetchHooks Function()
     >;
-typedef $$CustomRoutingProfilesTableCreateCompanionBuilder =
-    CustomRoutingProfilesCompanion Function({
+typedef $$RoutingProfileTableCreateCompanionBuilder =
+    RoutingProfileCompanion Function({
       Value<int> id,
       required String name,
       required String data,
     });
-typedef $$CustomRoutingProfilesTableUpdateCompanionBuilder =
-    CustomRoutingProfilesCompanion Function({
+typedef $$RoutingProfileTableUpdateCompanionBuilder =
+    RoutingProfileCompanion Function({
       Value<int> id,
       Value<String> name,
       Value<String> data,
     });
 
-class $$CustomRoutingProfilesTableFilterComposer
-    extends Composer<_$AppDatabase, $CustomRoutingProfilesTable> {
-  $$CustomRoutingProfilesTableFilterComposer({
+class $$RoutingProfileTableFilterComposer
+    extends Composer<_$AppDatabase, $RoutingProfileTable> {
+  $$RoutingProfileTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -3001,9 +2995,9 @@ class $$CustomRoutingProfilesTableFilterComposer
   );
 }
 
-class $$CustomRoutingProfilesTableOrderingComposer
-    extends Composer<_$AppDatabase, $CustomRoutingProfilesTable> {
-  $$CustomRoutingProfilesTableOrderingComposer({
+class $$RoutingProfileTableOrderingComposer
+    extends Composer<_$AppDatabase, $RoutingProfileTable> {
+  $$RoutingProfileTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -3026,9 +3020,9 @@ class $$CustomRoutingProfilesTableOrderingComposer
   );
 }
 
-class $$CustomRoutingProfilesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $CustomRoutingProfilesTable> {
-  $$CustomRoutingProfilesTableAnnotationComposer({
+class $$RoutingProfileTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RoutingProfileTable> {
+  $$RoutingProfileTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -3045,65 +3039,51 @@ class $$CustomRoutingProfilesTableAnnotationComposer
       $composableBuilder(column: $table.data, builder: (column) => column);
 }
 
-class $$CustomRoutingProfilesTableTableManager
+class $$RoutingProfileTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $CustomRoutingProfilesTable,
-          CustomRoutingProfileData,
-          $$CustomRoutingProfilesTableFilterComposer,
-          $$CustomRoutingProfilesTableOrderingComposer,
-          $$CustomRoutingProfilesTableAnnotationComposer,
-          $$CustomRoutingProfilesTableCreateCompanionBuilder,
-          $$CustomRoutingProfilesTableUpdateCompanionBuilder,
+          $RoutingProfileTable,
+          RoutingProfileData,
+          $$RoutingProfileTableFilterComposer,
+          $$RoutingProfileTableOrderingComposer,
+          $$RoutingProfileTableAnnotationComposer,
+          $$RoutingProfileTableCreateCompanionBuilder,
+          $$RoutingProfileTableUpdateCompanionBuilder,
           (
-            CustomRoutingProfileData,
+            RoutingProfileData,
             BaseReferences<
               _$AppDatabase,
-              $CustomRoutingProfilesTable,
-              CustomRoutingProfileData
+              $RoutingProfileTable,
+              RoutingProfileData
             >,
           ),
-          CustomRoutingProfileData,
+          RoutingProfileData,
           PrefetchHooks Function()
         > {
-  $$CustomRoutingProfilesTableTableManager(
+  $$RoutingProfileTableTableManager(
     _$AppDatabase db,
-    $CustomRoutingProfilesTable table,
+    $RoutingProfileTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$CustomRoutingProfilesTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$RoutingProfileTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$CustomRoutingProfilesTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$RoutingProfileTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$CustomRoutingProfilesTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$RoutingProfileTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<String> data = const Value.absent(),
-          }) => CustomRoutingProfilesCompanion(id: id, name: name, data: data),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String name,
-                required String data,
-              }) => CustomRoutingProfilesCompanion.insert(
-                id: id,
-                name: name,
-                data: data,
-              ),
+          }) => RoutingProfileCompanion(id: id, name: name, data: data),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            required String data,
+          }) => RoutingProfileCompanion.insert(id: id, name: name, data: data),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
               .toList(),
@@ -3112,25 +3092,21 @@ class $$CustomRoutingProfilesTableTableManager
       );
 }
 
-typedef $$CustomRoutingProfilesTableProcessedTableManager =
+typedef $$RoutingProfileTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $CustomRoutingProfilesTable,
-      CustomRoutingProfileData,
-      $$CustomRoutingProfilesTableFilterComposer,
-      $$CustomRoutingProfilesTableOrderingComposer,
-      $$CustomRoutingProfilesTableAnnotationComposer,
-      $$CustomRoutingProfilesTableCreateCompanionBuilder,
-      $$CustomRoutingProfilesTableUpdateCompanionBuilder,
+      $RoutingProfileTable,
+      RoutingProfileData,
+      $$RoutingProfileTableFilterComposer,
+      $$RoutingProfileTableOrderingComposer,
+      $$RoutingProfileTableAnnotationComposer,
+      $$RoutingProfileTableCreateCompanionBuilder,
+      $$RoutingProfileTableUpdateCompanionBuilder,
       (
-        CustomRoutingProfileData,
-        BaseReferences<
-          _$AppDatabase,
-          $CustomRoutingProfilesTable,
-          CustomRoutingProfileData
-        >,
+        RoutingProfileData,
+        BaseReferences<_$AppDatabase, $RoutingProfileTable, RoutingProfileData>,
       ),
-      CustomRoutingProfileData,
+      RoutingProfileData,
       PrefetchHooks Function()
     >;
 typedef $$ConnectionStateTableCreateCompanionBuilder =
@@ -3313,8 +3289,8 @@ class $AppDatabaseManager {
       $$SubscriptionTableTableManager(_db, _db.subscription);
   $$GeoDataTableTableManager get geoData =>
       $$GeoDataTableTableManager(_db, _db.geoData);
-  $$CustomRoutingProfilesTableTableManager get customRoutingProfiles =>
-      $$CustomRoutingProfilesTableTableManager(_db, _db.customRoutingProfiles);
+  $$RoutingProfileTableTableManager get routingProfile =>
+      $$RoutingProfileTableTableManager(_db, _db.routingProfile);
   $$ConnectionStateTableTableManager get connectionState =>
       $$ConnectionStateTableTableManager(_db, _db.connectionState);
 }

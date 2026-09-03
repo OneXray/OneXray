@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
-import 'package:onexray/core/db/dao/custom_routing_profiles.dart';
+import 'package:onexray/core/db/dao/routing_profile.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/share/backup_model.dart';
@@ -40,7 +40,7 @@ final class BackupDatabaseContents {
         )..where((table) => table.type.isIn(_retainedTypes))).get();
         final subscriptions = await db.subscriptionDao.allRows;
         final geoData = await db.geoDataDao.allRows;
-        final custom = await db.customRoutingProfilesDao.allRows;
+        final custom = await db.routingProfileDao.allRows;
         return BackupDatabaseContents(
           version: BackupManifestJson.currentVersion,
           coreConfigs: [
@@ -95,7 +95,7 @@ final class BackupDatabaseContents {
       throw const FormatException('Unsupported backup version');
     }
     if ((!_isCurrent && customRoutingProfiles.isNotEmpty) ||
-        customRoutingProfiles.length > CustomRoutingProfilesDao.maxProfiles) {
+        customRoutingProfiles.length > RoutingProfileDao.maxProfiles) {
       throw const FormatException('Invalid custom routing profile count');
     }
     for (final row in coreConfigs) {
@@ -179,7 +179,7 @@ final class BackupDatabaseContents {
       await db.coreConfigDao.clear();
       await db.subscriptionDao.clear();
       await db.geoDataDao.clear();
-      await db.customRoutingProfilesDao.clear();
+      await db.routingProfileDao.clear();
       await db.connectionStateDao.reset();
 
       for (final row in subscriptions) {
@@ -229,8 +229,8 @@ final class BackupDatabaseContents {
         );
       }
       for (final row in customRoutingProfiles) {
-        await db.customRoutingProfilesDao.insertRow(
-          CustomRoutingProfilesCompanion.insert(
+        await db.routingProfileDao.insertRow(
+          RoutingProfileCompanion.insert(
             id: Value(row.id!),
             name: row.name!,
             data: row.data!,

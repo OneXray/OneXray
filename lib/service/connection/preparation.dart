@@ -84,7 +84,7 @@ class ConnectionPreparation {
         custom == null) {
       final row = settings.customId == null
           ? null
-          : await db.customRoutingProfilesDao.searchRow(settings.customId!);
+          : await db.routingProfileDao.searchRow(settings.customId!);
       if (row == null) {
         throw const FormatException('Custom route is unavailable');
       }

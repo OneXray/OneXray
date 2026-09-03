@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
 
-@DataClassName('ConnectionStateData')
 class ConnectionState extends Table {
   IntColumn get id => integer().withDefault(const Constant(1))();
 

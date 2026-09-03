@@ -16,7 +16,7 @@ class CustomRoutingEditorException implements Exception {
 }
 
 class CustomRoutingEditorDraft {
-  final CustomRoutingProfileData? original;
+  final RoutingProfileData? original;
   final String name;
   final CustomRoutingTemplate template;
   const CustomRoutingEditorDraft({
@@ -55,7 +55,7 @@ class CustomRoutingEditorService {
         ),
       );
     }
-    final row = await db.customRoutingProfilesDao.searchRow(id);
+    final row = await db.routingProfileDao.searchRow(id);
     if (row == null) throw const CustomRoutingEditorException('missing');
     return CustomRoutingEditorDraft(
       original: row,
@@ -64,8 +64,7 @@ class CustomRoutingEditorService {
     );
   }
 
-  Future<List<CustomRoutingProfileData>> get rows =>
-      db.customRoutingProfilesDao.allRows;
+  Future<List<RoutingProfileData>> get rows => db.routingProfileDao.allRows;
 
   Future<int?> save(
     CustomRoutingEditorDraft draft, {
@@ -142,7 +141,7 @@ class CustomRoutingEditorService {
   }
 
   Future<bool> delete(
-    CustomRoutingProfileData original, {
+    RoutingProfileData original, {
     required Future<bool> Function(bool selected, bool reconnect) confirm,
   }) async {
     await _checkOriginal(original);
@@ -182,7 +181,7 @@ class CustomRoutingEditorService {
       writeAssets: () async {
         await _checkConfiguration(configuration);
         await _checkOriginal(original);
-        if (await db.customRoutingProfilesDao.deleteRow(original.id) != 1) {
+        if (await db.routingProfileDao.deleteRow(original.id) != 1) {
           throw const CustomRoutingEditorException('missing');
         }
       },
@@ -190,8 +189,8 @@ class CustomRoutingEditorService {
     return true;
   }
 
-  Future<void> _checkOriginal(CustomRoutingProfileData original) async {
-    final current = await db.customRoutingProfilesDao.searchRow(original.id);
+  Future<void> _checkOriginal(RoutingProfileData original) async {
+    final current = await db.routingProfileDao.searchRow(original.id);
     if (current == null ||
         current.data != original.data ||
         current.name != original.name) {

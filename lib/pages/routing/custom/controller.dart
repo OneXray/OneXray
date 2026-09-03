@@ -24,7 +24,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   final name = TextEditingController();
   final rules = <Map<String, dynamic>>[];
   final ruleKeys = <Object>[];
-  List<CustomRoutingProfileData> _rows = [];
+  List<RoutingProfileData> _rows = [];
   CustomRoutingEditorDraft? original;
   Map<String, dynamic> _document = {};
   ConnectionConfiguration configuration = ConnectionConfiguration();

@@ -59,7 +59,7 @@ final class AppDataCleanupService {
       await db.geoDataDao.clear();
       await db.coreConfigDao.clear();
       await db.subscriptionDao.clear();
-      await db.customRoutingProfilesDao.clear();
+      await db.routingProfileDao.clear();
       await db.connectionStateDao.reset();
     });
   }

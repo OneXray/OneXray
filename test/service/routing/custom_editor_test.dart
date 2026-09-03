@@ -64,7 +64,7 @@ void main() {
       ),
       confirmReconnect: () async => throw StateError('Unexpected confirmation'),
     );
-    final row = (await db.customRoutingProfilesDao.searchRow(id!))!;
+    final row = (await db.routingProfileDao.searchRow(id!))!;
     expect(row.name, 'Work');
     final json = jsonDecode(utf8.decode(base64Decode(row.data))) as Map;
     expect(json['name'], 'Work');
@@ -182,7 +182,7 @@ void main() {
       throwsA(isA<ConnectionHostException>()),
     );
     expect(
-      (await db.customRoutingProfilesDao.searchRow(id))!.data,
+      (await db.routingProfileDao.searchRow(id))!.data,
       renamed.original!.data,
     );
     expect((await db.connectionStateDao.read()).toJson(), before);
@@ -204,7 +204,7 @@ void main() {
       service.delete(renamed.original!, confirm: (_, _) async => true),
       throwsA(isA<ConnectionHostException>()),
     );
-    expect(await db.customRoutingProfilesDao.searchRow(id), isNotNull);
+    expect(await db.routingProfileDao.searchRow(id), isNotNull);
     expect(
       (await coordinator.configuration).connection.trafficMode,
       TrafficMode.custom,
@@ -214,7 +214,7 @@ void main() {
       await service.delete(renamed.original!, confirm: (_, _) async => true),
       true,
     );
-    expect(await db.customRoutingProfilesDao.searchRow(id), isNull);
+    expect(await db.routingProfileDao.searchRow(id), isNull);
     expect(
       (await coordinator.configuration).connection.trafficMode,
       TrafficMode.smart,
@@ -256,10 +256,7 @@ void main() {
         service.save(original, confirmReconnect: () async => false),
         throwsA(isA<CustomRoutingEditorException>()),
       );
-      expect(
-        (await db.customRoutingProfilesDao.searchRow(id))!.name,
-        'New name',
-      );
+      expect((await db.routingProfileDao.searchRow(id))!.name, 'New name');
       expect(
         (await coordinator.configuration).connection.trafficMode,
         TrafficMode.smart,

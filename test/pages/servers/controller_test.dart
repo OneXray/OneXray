@@ -111,8 +111,8 @@ void main() {
   test('custom count uses empty outbounds; measured failure is not an untested candidate', () async {
     final one = await server('one');
     final two = await server('two');
-    await db.customRoutingProfilesDao.insertRow(
-      CustomRoutingProfilesCompanion.insert(
+    await db.routingProfileDao.insertRow(
+      RoutingProfileCompanion.insert(
         name: 'custom',
         data: base64Encode(
           utf8.encode(
@@ -124,7 +124,7 @@ void main() {
         ),
       ),
     );
-    controller.customRoutes = await db.customRoutingProfilesDao.allRows;
+    controller.customRoutes = await db.routingProfileDao.allRows;
     controller.configuration = ConnectionConfiguration(
       connection: ConnectionSettings(
         trafficMode: TrafficMode.custom,

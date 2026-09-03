@@ -105,9 +105,16 @@ void main() {
       addTearDown(database.close);
 
       expect(await database.coreConfigDao.allRawRowsWithData, isEmpty);
-      expect(await database.customRoutingProfilesDao.allRows, isEmpty);
+      expect(await database.routingProfileDao.allRows, isEmpty);
       expect(await database.subscriptionDao.allRows, isEmpty);
       expect((await database.connectionStateDao.read()).settingsJson, '{}');
+      final routingTables = await database.customSelect('''
+        SELECT name FROM sqlite_master
+        WHERE type = 'table' AND name IN ('routing_profile', 'custom_routing_profiles')
+      ''').get();
+      expect(routingTables.map((row) => row.read<String>('name')), [
+        'routing_profile',
+      ]);
       for (final entry in {
         'core_config': ['location_source', 'last_measured_at'],
         'subscription': ['parse_failure_count'],
@@ -153,9 +160,16 @@ void main() {
           expect(rawRows, hasLength(4));
           expect(rawRows.every((row) => !row.favorite), isTrue);
           expect(rawRows.every((row) => row.countryCode == null), isTrue);
-          expect(await database.customRoutingProfilesDao.allRows, isEmpty);
+          expect(await database.routingProfileDao.allRows, isEmpty);
           expect((await database.connectionStateDao.read()).settingsJson, '{}');
           expect((await database.geoDataDao.allRows).single.generation, isNull);
+          final routingTables = await database.customSelect('''
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name IN ('routing_profile', 'custom_routing_profiles')
+          ''').get();
+          expect(routingTables.map((row) => row.read<String>('name')), [
+            'routing_profile',
+          ]);
         } finally {
           await database.close();
         }
@@ -218,7 +232,7 @@ void main() {
           expect(_snapshot(check, hasAgeKeys: version == 2), before);
           expect(
             check.select(
-              "SELECT name FROM sqlite_master WHERE name = 'custom_routing_profiles'",
+              "SELECT name FROM sqlite_master WHERE name = 'routing_profile'",
             ),
             isEmpty,
           );
@@ -230,7 +244,7 @@ void main() {
         final retried = AppDatabase.forTesting(NativeDatabase(file));
         try {
           expect(await retried.subscriptionDao.allRows, hasLength(1));
-          expect(await retried.customRoutingProfilesDao.allRows, isEmpty);
+          expect(await retried.routingProfileDao.allRows, isEmpty);
           expect((await retried.connectionStateDao.read()).settingsJson, '{}');
         } finally {
           await retried.close();

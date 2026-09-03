@@ -4,6 +4,7 @@
 
 本次重构的 `schemaVersion` 固定为 3，只保留正式旧库 v1/v2 → v3 的一次性升级。
 同一个 App 版本内的破坏性结构改动直接更新当前 schema，不增加开发版本迁移分支。
+路由配置表使用 `RoutingProfile`，表与数据类沿用 Drift 默认命名，不使用 `DataClassName`。
 不兼容的开发库（包括此前 v4–v7，或结构不同的旧 v3）由开发者在停止 App/VPN 后删除
 旧数据库文件或卸载 App 重建；App 不自动删库，不尝试降级或修补开发库。
 
@@ -44,6 +45,7 @@ macOS System Extension 只同步固定计划目录，通过暂存/确认完成�
 
 ZIP 当前格式为版本 5，兼容读取旧 v3/v4，包含 manifest、CoreConfig、订阅、Custom 路由
 及引用的 Geodata/索引。保留全部 Raw、订阅缓存、收藏和 Age 密钥；旧退休类型不重新导入业务。
+数据库表名调整不改变 ZIP 内既有文件名及 JSON 结构。
 ZIP 未加密，可能包含节点凭据、订阅 URL 与 Age 私钥，必须提示并按敏感文件处理。
 
 恢复先安全解压和校验，再停止运行。Geodata 封存与所有数据库资产在同一发布事务内

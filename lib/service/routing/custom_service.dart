@@ -11,7 +11,7 @@ class CustomRoutingService {
 
   CustomRoutingService(this.database);
 
-  static CustomRoutingTemplate read(CustomRoutingProfileData row) =>
+  static CustomRoutingTemplate read(RoutingProfileData row) =>
       CustomRoutingTemplate.parse(utf8.decode(base64Decode(row.data)));
 
   Future<int> save({
@@ -31,20 +31,20 @@ class CustomRoutingService {
     }
     final data = base64Encode(utf8.encode(template.encode()));
     return database.transaction(() async {
-      if ((await database.customRoutingProfilesDao.allRows).any(
+      if ((await database.routingProfileDao.allRows).any(
         (row) =>
             row.id != id && row.name.trim().toLowerCase() == name.toLowerCase(),
       )) {
         throw const FormatException('Custom route names must be unique');
       }
       if (id == null) {
-        return database.customRoutingProfilesDao.insertRow(
-          CustomRoutingProfilesCompanion.insert(name: name, data: data),
+        return database.routingProfileDao.insertRow(
+          RoutingProfileCompanion.insert(name: name, data: data),
         );
       }
-      final previous = await database.customRoutingProfilesDao.searchRow(id);
+      final previous = await database.routingProfileDao.searchRow(id);
       if (previous == null) throw StateError('Custom route no longer exists');
-      await database.customRoutingProfilesDao.updateRow(
+      await database.routingProfileDao.updateRow(
         previous.copyWith(name: name, data: data),
       );
       return id;

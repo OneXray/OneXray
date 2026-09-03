@@ -175,7 +175,7 @@ void main() {
   test(
     'custom routing enforces three profiles without limiting edits',
     () async {
-      final dao = database.customRoutingProfilesDao;
+      final dao = database.routingProfileDao;
       for (var index = 0; index < 2; index++) {
         await dao.insertRow(_routingProfile('Profile $index'));
       }
@@ -219,8 +219,8 @@ CoreConfigCompanion _config(String type, {int subId = 0}) =>
       subId: subId,
     );
 
-CustomRoutingProfilesCompanion _routingProfile(String name) =>
-    CustomRoutingProfilesCompanion.insert(
+RoutingProfileCompanion _routingProfile(String name) =>
+    RoutingProfileCompanion.insert(
       name: name,
       data: 'eyJvdXRib3VuZHMiOlt7fV19',
     );

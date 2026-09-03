@@ -48,7 +48,7 @@ void main() {
       expect(subscription.autoUpdate, isFalse);
       expect(subscription.ageSecretKey, 'AGE-SECRET-KEY-TEST');
       expect(subscription.agePublicKey, 'age1test');
-      expect((await database.customRoutingProfilesDao.allRows).single.id, 8);
+      expect((await database.routingProfileDao.allRows).single.id, 8);
       expect(await database.coreConfigDao.searchRow(99), isNull);
       final reset = await database.connectionStateDao.read();
       expect(reset.settingsJson, '{}');
@@ -98,7 +98,7 @@ void main() {
         subscriptions.single.ageSecretKey,
         version == 4 ? 'AGE-SECRET-KEY-TEST' : null,
       );
-      expect(await database.customRoutingProfilesDao.allRows, isEmpty);
+      expect(await database.routingProfileDao.allRows, isEmpty);
       expect(await database.geoDataDao.allRows, isEmpty);
     });
   }
@@ -239,7 +239,7 @@ void main() {
       final stateBefore = await database.connectionStateDao.read();
       final before = await BackupDatabaseContents.read(database);
       await database.customStatement('''
-      CREATE TRIGGER fail_custom_restore BEFORE INSERT ON custom_routing_profiles
+      CREATE TRIGGER fail_custom_restore BEFORE INSERT ON routing_profile
       BEGIN SELECT RAISE(ABORT, 'fixture restore failure'); END
     ''');
 
@@ -321,8 +321,8 @@ Future<void> _seedAssets(AppDatabase database) async {
       ),
     );
   }
-  await database.customRoutingProfilesDao.insertRow(
-    CustomRoutingProfilesCompanion.insert(
+  await database.routingProfileDao.insertRow(
+    RoutingProfileCompanion.insert(
       id: const Value(8),
       name: 'Custom',
       data: base64Encode(utf8.encode('{"outbounds":[{}]}')),

@@ -15,10 +15,7 @@ void main() {
       final service = CustomRoutingService(database);
       const text = '{"outbounds":[{}],"routing":{"rules":[]}}';
       final id = await service.save(name: ' Route ', text: text);
-      expect(
-        (await database.customRoutingProfilesDao.searchRow(id))!.name,
-        'Route',
-      );
+      expect((await database.routingProfileDao.searchRow(id))!.name, 'Route');
       await expectLater(
         service.save(name: 'route', text: text),
         throwsFormatException,
@@ -31,10 +28,7 @@ void main() {
         }),
       );
       await service.save(id: id, name: name, text: unicode.encode());
-      expect(
-        (await database.customRoutingProfilesDao.searchRow(id))!.name,
-        name,
-      );
+      expect((await database.routingProfileDao.searchRow(id))!.name, name);
     },
   );
   test(
@@ -45,7 +39,7 @@ void main() {
       final service = CustomRoutingService(database);
       const text = '{"outbounds":[{}],"routing":{"rules":[]}}';
       final id = await service.save(name: 'One', text: text);
-      final row = (await database.customRoutingProfilesDao.searchRow(id))!;
+      final row = (await database.routingProfileDao.searchRow(id))!;
       expect(jsonDecode(utf8.decode(base64Decode(row.data))), jsonDecode(text));
       expect(CustomRoutingService.read(row).entryCount, 1);
       await service.save(name: 'Two', text: text);
@@ -55,10 +49,7 @@ void main() {
         throwsStateError,
       );
       await service.save(id: id, name: 'Edited', text: text);
-      expect(
-        (await database.customRoutingProfilesDao.searchRow(id))!.name,
-        'Edited',
-      );
+      expect((await database.routingProfileDao.searchRow(id))!.name, 'Edited');
       await expectLater(
         service.save(
           id: id,
@@ -67,10 +58,7 @@ void main() {
         ),
         throwsFormatException,
       );
-      expect(
-        (await database.customRoutingProfilesDao.searchRow(id))!.name,
-        'Edited',
-      );
+      expect((await database.routingProfileDao.searchRow(id))!.name, 'Edited');
     },
   );
 }

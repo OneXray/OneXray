@@ -213,7 +213,7 @@ void main() {
     expect(first.count, 0);
     expect(first.rawCount, 0);
     expect(first.customRoutes.single.name, 'One');
-    expect(await db.customRoutingProfilesDao.allRows, isEmpty);
+    expect(await db.routingProfileDao.allRows, isEmpty);
     final result = await service.commit(first);
     expect(result.customCount, 1);
     await CustomRoutingService(db).save(name: 'Two', text: template('Two'));
@@ -222,7 +222,7 @@ void main() {
     expect(await db.geoDataDao.allRows, isEmpty);
     await expectLater(service.commit(next), throwsA(isA<StateError>()));
     expect(await db.geoDataDao.allRows, isEmpty);
-    expect(await db.customRoutingProfilesDao.allRows, hasLength(3));
+    expect(await db.routingProfileDao.allRows, hasLength(3));
     await next.dispose();
   });
 

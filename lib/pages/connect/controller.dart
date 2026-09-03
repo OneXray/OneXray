@@ -33,7 +33,7 @@ class ConnectController extends ChangeNotifier {
   ConnectionConfiguration configuration = ConnectionConfiguration();
   List<CoreConfigData> servers = [];
   List<CoreConfigData> raws = [];
-  List<CustomRoutingProfileData> customRoutes = [];
+  List<RoutingProfileData> customRoutes = [];
   List<SubscriptionData> sources = [];
   bool expertView = false;
   bool ready = false;
@@ -100,7 +100,7 @@ class ConnectController extends ChangeNotifier {
           }, onError: _readFailed),
         );
         _subscriptions.add(
-          db.customRoutingProfilesDao.allRowsStream.listen((rows) {
+          db.routingProfileDao.allRowsStream.listen((rows) {
             customRoutes = rows;
             _notify();
           }, onError: _readFailed),
