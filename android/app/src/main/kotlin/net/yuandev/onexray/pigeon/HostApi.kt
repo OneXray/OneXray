@@ -82,7 +82,16 @@ class AppHostApi(
 
     override fun readVpnStatus(callback: (Result<NativeVpnCommandResult>) -> Unit) {
         scope.launch {
-            flutterApi?.refreshVpnStatus()
+            val status = flutterApi?.readVpnStatus()
+            if (status == VpnStatus.CONNECTING || status == VpnStatus.DISCONNECTING) {
+                flutterApi?.refreshVpnStatus()
+            } else {
+                // A foreground reconciliation must not only echo cached broadcasts.
+                val running = VpnController.readVpnRunning(context)
+                flutterApi?.vpnStatusChanged(
+                    if (running) VpnStatus.CONNECTED else VpnStatus.DISCONNECTED
+                )
+            }
             callback(Result.success(commandSuccess(queryPermissionNow())))
         }
     }

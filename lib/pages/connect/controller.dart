@@ -40,6 +40,18 @@ class ConnectController extends ChangeNotifier {
   bool failed = false;
   bool _closed = false;
   bool _viewInitialized = false;
+  bool _pageVisible = false;
+  bool _trafficDialogOpen = false;
+
+  void setPageVisible(bool visible) {
+    if (_closed || _pageVisible == visible) return;
+    _pageVisible = visible;
+    _syncTrafficVisibility();
+  }
+
+  void _syncTrafficVisibility() => coordinator.setTrafficVisible(
+    !_closed && (_pageVisible || _trafficDialogOpen),
+  );
 
   Future<void> initialize(BuildContext context, {bool services = true}) async {
     failed = false;
@@ -501,44 +513,53 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> showTraffic(BuildContext context) async {
-    await showChoiceDialog<void>(
-      context,
-      (dialogContext) => SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                AppLocalizations.of(dialogContext)!.prototypeTraffic,
-                style: Theme.of(dialogContext).textTheme.titleLarge,
-              ),
-              ValueListenableBuilder<ConnectionView>(
-                valueListenable: coordinator.state,
-                builder: (_, view, _) => TrafficReadout(view: view),
-              ),
-              Wrap(
-                spacing: 12,
-                children: [
-                  TextButton(
-                    onPressed: () => resetTraffic(dialogContext),
-                    child: Text(
-                      AppLocalizations.of(dialogContext)!.prototypeResetTotals,
+    if (_closed || _trafficDialogOpen) return;
+    _trafficDialogOpen = true;
+    _syncTrafficVisibility();
+    try {
+      await showChoiceDialog<void>(
+        context,
+        (dialogContext) => SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  AppLocalizations.of(dialogContext)!.prototypeTraffic,
+                  style: Theme.of(dialogContext).textTheme.titleLarge,
+                ),
+                ValueListenableBuilder<ConnectionView>(
+                  valueListenable: coordinator.state,
+                  builder: (_, view, _) => TrafficReadout(view: view),
+                ),
+                Wrap(
+                  spacing: 12,
+                  children: [
+                    TextButton(
+                      onPressed: () => resetTraffic(dialogContext),
+                      child: Text(
+                        AppLocalizations.of(dialogContext)!
+                            .prototypeResetTotals,
+                      ),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: Text(
-                      AppLocalizations.of(dialogContext)!.prototypeClose,
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(
+                        AppLocalizations.of(dialogContext)!.prototypeClose,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _trafficDialogOpen = false;
+      if (!_closed) _syncTrafficVisibility();
+    }
   }
 
   Future<void> run(BuildContext context, Future<void> Function() action) async {
@@ -569,6 +590,7 @@ class ConnectController extends ChangeNotifier {
   @override
   void dispose() {
     _closed = true;
+    _syncTrafficVisibility();
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }

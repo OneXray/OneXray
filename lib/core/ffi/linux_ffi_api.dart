@@ -45,6 +45,10 @@ class LinuxFfiApi extends BaseFfiApi {
   DesktopCoreProcessRecord? _currentRecord;
   bool _stopping = false;
 
+  // App-owned processes already report exitCode; restored PIDs cannot do so.
+  bool get needsVpnStatusPolling =>
+      _coreProcess == null && _currentRecord != null;
+
   @override
   Future<String> getTunFilesDir() async =>
       _filesDirectory ?? await super.getTunFilesDir();
@@ -176,7 +180,13 @@ class LinuxFfiApi extends BaseFfiApi {
     try {
       final record = _currentRecord ?? await _processStore.read();
       if (record == null) return _coreProcess == null ? false : null;
-      return await _coreProcessIsRunning(record);
+      final running = await _coreProcessIsRunning(record);
+      if (running == true) {
+        _currentRecord = record;
+      } else if (running == false && _coreProcess == null) {
+        _currentRecord = null;
+      }
+      return running;
     } catch (_) {
       return null;
     }

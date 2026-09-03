@@ -74,6 +74,10 @@ class VPNManager {
 
     func refreshVpn() async -> RefreshVpnResult {
         let permission = await queryPlatformPermission()
+        return refreshVpnResult(from: permission)
+    }
+
+    func refreshVpnResult(from permission: PlatformPermissionResult) -> RefreshVpnResult {
         switch permission.state {
         case .granted:
             return .installed

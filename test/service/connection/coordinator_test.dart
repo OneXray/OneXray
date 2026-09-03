@@ -23,6 +23,223 @@ void main() {
     addTearDown(db.close);
   });
 
+  testWidgets('native events synchronize globally without polling or metrics', (
+    tester,
+  ) async {
+    await tester.runAsync(() => db.connectionStateDao.read());
+    final events = StreamController<VpnStatus>.broadcast(sync: true);
+    final plan = _plan('a');
+    var status = VpnStatus.disconnected;
+    var queries = 0;
+    var observations = 0;
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      statusEvents: events.stream,
+      needsStatusPolling: () => false,
+      inspect: (_) async {
+        queries++;
+        events.add(status); // Native query replies also broadcast.
+        return HostConnection(
+          status,
+          plan: status == VpnStatus.connected ? plan : null,
+        );
+      },
+      inspectObserved: (_, value) async {
+        observations++;
+        return HostConnection(
+          value,
+          plan: value == VpnStatus.connected ? plan : null,
+        );
+      },
+      readTraffic: (_) async =>
+          throw StateError('Invisible page cannot sample'),
+    );
+    final initialized = coordinator.initialize(registerReferences: false);
+    await tester.pump();
+    await initialized;
+    await tester.pump(const Duration(seconds: 20));
+    expect(queries, 1);
+    expect(observations, 0);
+
+    status = VpnStatus.connected;
+    events.add(status);
+    await tester.pump();
+    expect(coordinator.state.value.phase, ConnectionPhase.connected);
+    expect(observations, 1);
+    events.add(status);
+    await tester.pump();
+    expect(observations, 1);
+    coordinator.didChangeAppLifecycleState(AppLifecycleState.paused);
+    status = VpnStatus.disconnected;
+    events.add(status);
+    await tester.pump();
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(queries, 2);
+    expect(observations, 2);
+    coordinator.dispose();
+    await events.close();
+  });
+
+  testWidgets(
+    'metrics demand follows visibility, foreground and connection without status queries',
+    (tester) async {
+      await tester.runAsync(() => db.connectionStateDao.read());
+      final events = StreamController<VpnStatus>.broadcast(sync: true);
+      final plan = _plan('a');
+      var queries = 0;
+      var samples = 0;
+      var status = VpnStatus.connected;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        statusEvents: events.stream,
+        needsStatusPolling: () => false,
+        inspect: (_) async {
+          queries++;
+          return HostConnection(status, plan: plan);
+        },
+        inspectObserved: (_, value) async => HostConnection(value, plan: plan),
+        readTraffic: (_) async => _traffic(plan, ++samples),
+      );
+      final initialized = coordinator.initialize(registerReferences: false);
+      await tester.pump();
+      await initialized;
+      await tester.pump(const Duration(seconds: 3));
+      expect(samples, 0);
+      coordinator.setTrafficVisible(true);
+      await tester.pump();
+      expect(samples, 1);
+      expect(coordinator.state.value.uploadSpeed, 0);
+      await tester.pump(const Duration(seconds: 1));
+      expect(samples, 2);
+      expect(coordinator.state.value.uploadSpeed, 100);
+      expect(queries, 1);
+      coordinator.setTrafficVisible(false);
+      await tester.pump(const Duration(seconds: 3));
+      expect(samples, 2);
+      coordinator.setTrafficVisible(true);
+      await tester.pump();
+      expect(samples, 3);
+      expect(coordinator.state.value.uploadSpeed, 0);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await tester.pump(const Duration(seconds: 3));
+      expect(samples, 3);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(samples, 4);
+      expect(queries, 2);
+      status = VpnStatus.disconnected;
+      events.add(status);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      expect(samples, 4);
+      expect(coordinator.state.value.metricsAvailable, false);
+      coordinator.dispose();
+      await events.close();
+    },
+  );
+
+  testWidgets(
+    'query-only fallback runs at five seconds and stops when not needed',
+    (tester) async {
+      await tester.runAsync(() => db.connectionStateDao.read());
+      var fallback = true;
+      var reads = 0;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        statusEvents: const Stream.empty(),
+        needsStatusPolling: () => fallback,
+        inspect: (_) async {
+          reads++;
+          return const HostConnection(VpnStatus.disconnected);
+        },
+      );
+      final initialized = coordinator.initialize(registerReferences: false);
+      await tester.pump();
+      await initialized;
+      await tester.pump(const Duration(seconds: 4));
+      expect(reads, 1);
+      await tester.pump(const Duration(seconds: 1));
+      expect(reads, 2);
+      fallback = false;
+      await tester.pump(const Duration(seconds: 10));
+      expect(reads, 2);
+      coordinator.dispose();
+    },
+  );
+
+  testWidgets('late and failed metrics never revive a disconnected session', (
+    tester,
+  ) async {
+    await tester.runAsync(() => db.connectionStateDao.read());
+    final events = StreamController<VpnStatus>.broadcast(sync: true);
+    final plan = _plan('a');
+    final lateSample = Completer<RuntimeSnapshot>();
+    var fail = false;
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      statusEvents: events.stream,
+      needsStatusPolling: () => false,
+      inspect: (_) async => HostConnection(VpnStatus.connected, plan: plan),
+      inspectObserved: (_, status) async => HostConnection(status, plan: plan),
+      readTraffic: (_) =>
+          fail ? Future.error(StateError('Unavailable')) : lateSample.future,
+    );
+    final initialized = coordinator.initialize(registerReferences: false);
+    await tester.pump();
+    await initialized;
+    coordinator.setTrafficVisible(true);
+    await tester.pump();
+    events.add(VpnStatus.disconnected);
+    await tester.pump();
+    lateSample.complete(_traffic(plan, 50));
+    await tester.pump();
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.traffic, isNull);
+    fail = true;
+    events.add(VpnStatus.connected);
+    await tester.pump();
+    expect(coordinator.state.value.phase, ConnectionPhase.connected);
+    expect(coordinator.state.value.metricsAvailable, false);
+    expect(coordinator.state.value.issue, isNull);
+    coordinator.dispose();
+    await events.close();
+  });
+
+  testWidgets('native disconnect survives a failed snapshot reconciliation', (
+    tester,
+  ) async {
+    await tester.runAsync(() => db.connectionStateDao.read());
+    final events = StreamController<VpnStatus>.broadcast(sync: true);
+    final plan = _plan('a');
+    var reads = 0;
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      statusEvents: events.stream,
+      needsStatusPolling: () => false,
+      inspect: (_) async => HostConnection(VpnStatus.connected, plan: plan),
+      inspectObserved: (_, _) async => throw StateError('Snapshot unavailable'),
+      readTraffic: (_) async => _traffic(plan, ++reads),
+    );
+    addTearDown(coordinator.dispose);
+    addTearDown(events.close);
+    final initialized = coordinator.initialize(registerReferences: false);
+    await tester.pump();
+    await initialized;
+    coordinator.setTrafficVisible(true);
+    await tester.pump();
+    expect(reads, 1);
+    events.add(VpnStatus.disconnected);
+    await tester.pump();
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.plan, isNull);
+    expect(coordinator.state.value.traffic!.uplink, 100);
+    expect(coordinator.state.value.metricsAvailable, false);
+    await tester.pump(const Duration(seconds: 10));
+    expect(reads, 1);
+  });
+
   for (final fail in [false, true]) {
     test(
       'offline runtime save revokes replay and restores it only on rollback; fail=$fail',
@@ -1000,71 +1217,70 @@ void main() {
     expect((await db.connectionStateDao.read()).revision, 0);
   });
 
-  test(
-    'permission failure survives polling and clears after a successful retry',
-    () async {
-      final plan = _plan('b');
-      var host = const HostConnection(VpnStatus.disconnected);
-      var granted = false;
-      final permission = PlatformPermissionResult(
-        kind: PlatformPermissionKind.androidVpn,
-        state: PlatformPermissionState.denied,
-      );
-      final coordinator = await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          prepare: (_, _) async => plan,
-          inspect: (_) async => host,
-          start: (_) async {
-            if (!granted) {
-              throw ConnectionHostException(
-                'permissionRequired',
-                permission: permission,
-              );
-            }
-            return host = HostConnection(VpnStatus.connected, plan: plan);
-          },
-          stop: (_) async =>
-              host = const HostConnection(VpnStatus.disconnected),
-          resetTraffic: _noReset,
-        ),
-      );
-      await expectLater(
-        coordinator.connect(),
-        throwsA(isA<ConnectionHostException>()),
-      );
-      await coordinator.refresh();
-      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
-      expect(coordinator.state.value.failed, isTrue);
-      expect(coordinator.state.value.permission, permission);
-      granted = true;
-      await coordinator.connect();
-      expect(coordinator.state.value.phase, ConnectionPhase.connected);
-      expect(coordinator.state.value.issue, isNull);
-      expect(coordinator.state.value.permission, isNull);
-    },
-  );
-
-  test('background pauses metrics polling and foreground can resume', () async {
-    var reads = 0;
+  test('permission failure survives status reconciliation and clears after a successful retry', () async {
+    final plan = _plan('b');
+    var host = const HostConnection(VpnStatus.disconnected);
+    var granted = false;
+    final permission = PlatformPermissionResult(
+      kind: PlatformPermissionKind.androidVpn,
+      state: PlatformPermissionState.denied,
+    );
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async {
-          reads++;
-          return const HostConnection(VpnStatus.disconnected);
+        prepare: (_, _) async => plan,
+        inspect: (_) async => host,
+        start: (_) async {
+          if (!granted) {
+            throw ConnectionHostException(
+              'permissionRequired',
+              permission: permission,
+            );
+          }
+          return host = HostConnection(VpnStatus.connected, plan: plan);
         },
+        stop: (_) async => host = const HostConnection(VpnStatus.disconnected),
         resetTraffic: _noReset,
       ),
     );
-    final before = reads;
-    coordinator.didChangeAppLifecycleState(AppLifecycleState.paused);
+    await expectLater(
+      coordinator.connect(),
+      throwsA(isA<ConnectionHostException>()),
+    );
     await coordinator.refresh();
-    expect(reads, before);
-    coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
-    await coordinator.refresh();
-    expect(reads, before + 1);
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.failed, isTrue);
+    expect(coordinator.state.value.permission, permission);
+    granted = true;
+    await coordinator.connect();
+    expect(coordinator.state.value.phase, ConnectionPhase.connected);
+    expect(coordinator.state.value.issue, isNull);
+    expect(coordinator.state.value.permission, isNull);
   });
+
+  test(
+    'explicit status queries pause in background and resume in foreground',
+    () async {
+      var reads = 0;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async {
+            reads++;
+            return const HostConnection(VpnStatus.disconnected);
+          },
+          resetTraffic: _noReset,
+        ),
+      );
+      final before = reads;
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await coordinator.refresh();
+      expect(reads, before);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await coordinator.refresh();
+      expect(reads, before + 1);
+    },
+  );
 }
 
 Future<ConnectionCoordinator> _initialize(
@@ -1077,6 +1293,19 @@ Future<ConnectionCoordinator> _initialize(
 
 Future<RuntimeSnapshot?> _noReset(ConnectionPlan? _) async =>
     throw StateError('Unexpected runtime reset');
+
+RuntimeSnapshot _traffic(ConnectionPlan plan, int sample) => RuntimeSnapshot(
+  sessionId: 'session',
+  planId: plan.id,
+  startedAtMs: 1,
+  endedAtMs: 0,
+  uplink: sample * 100,
+  downlink: sample * 200,
+  available: true,
+  sampledAtMs: sample * 1000,
+  savedAtMs: 1,
+  error: '',
+);
 
 Future<void> _seed(
   AppDatabase db,

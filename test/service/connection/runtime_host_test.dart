@@ -161,13 +161,38 @@ void main() {
       readMetrics: (_) async => throw const SocketException('Not available'),
       readStatus: () async => VpnStatus.connected,
     );
-    final state = await host.inspect([plan]);
+    final state = await host.inspect([plan], readMetrics: true);
     expect(state.connected, true);
-    expect(state.plan, isNull);
+    expect(state.plan?.id, plan.id);
     expect(state.traffic!.uplink, 10);
     expect(state.traffic!.totalUplink, 10);
     expect(state.traffic!.available, false);
     expect(state.traffic!.error, 'runtimeMetricsUnavailable');
+  });
+
+  test('status reconciliation uses saved facts without metrics or echoing native events', () async {
+    final plan = _plan();
+    var statusReads = 0;
+    final host = ConnectionRuntimeHost(
+      runDirectory: directory.path,
+      readStatus: () async {
+        statusReads++;
+        return VpnStatus.connected;
+      },
+      readRuntimeFiles: (_) async =>
+          RuntimeStateFiles(current: _snapshot('a', plan.id, 10, 20)),
+      readMetrics: (_) async =>
+          throw StateError('No metrics during reconciliation'),
+    );
+    final initial = await host.inspect([plan]);
+    expect(statusReads, 1);
+    expect(initial.plan?.id, plan.id);
+    expect(initial.traffic!.available, false);
+    final event = await host.inspect([
+      plan,
+    ], observedStatus: VpnStatus.disconnected);
+    expect(statusReads, 1);
+    expect(event.status, VpnStatus.disconnected);
   });
 
   test(

@@ -21,19 +21,34 @@ void main() {
         return true;
       });
 
+      expect(api.needsVpnStatusPolling, isFalse);
       expect(
         await api.queryCoreRunning(),
         isTrue,
       ); // No in-memory Process exists.
+      expect(api.needsVpnStatusPolling, isTrue);
       expect(await api.cleanupStaleCore(), isTrue);
       expect(fixture.signals, isEmpty);
       expect(await api.stopCore(), isTrue);
+      expect(api.needsVpnStatusPolling, isFalse);
       expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
       expect(await Directory(p.join(fixture.proc.path, '43')).exists(), isTrue);
       expect(await fixture.store.read(), isNull);
       expect(await api.queryCoreRunning(), isFalse);
     },
   );
+
+  test('stops polling a restored process after its verified exit', () async {
+    final fixture = await _Fixture.create();
+    await fixture.writeRecord();
+    await fixture.writeProcess(42);
+    final api = fixture.api((_, _) => false);
+    expect(await api.queryCoreRunning(), isTrue);
+    expect(api.needsVpnStatusPolling, isTrue);
+    await Directory(p.join(fixture.proc.path, '42')).delete(recursive: true);
+    expect(await api.queryCoreRunning(), isFalse);
+    expect(api.needsVpnStatusPolling, isFalse);
+  });
 
   test('rejects PID reuse, another executable, config changes and missing runtime argv', () async {
     for (final mismatch in ['ticks', 'exe', 'config', 'runtime']) {
@@ -58,6 +73,7 @@ void main() {
         return true;
       });
       expect(await api.queryCoreRunning(), isNull, reason: mismatch);
+      expect(api.needsVpnStatusPolling, isFalse, reason: mismatch);
       expect(await api.cleanupStaleCore(), isFalse, reason: mismatch);
       expect(await api.stopCore(), isFalse, reason: mismatch);
       expect(fixture.signals, isEmpty, reason: mismatch);
@@ -155,9 +171,10 @@ class _Fixture {
       File(p.join(directory.path, 'run', 'core-process.json'));
 
   static Future<_Fixture> create() async {
-    final directory = await Directory.systemTemp.createTemp(
-      'onexray-linux-process-',
-    );
+    final fixtures = await Directory(
+      '../references/onexray-refactor-validation/test-fixtures',
+    ).absolute.create(recursive: true);
+    final directory = await fixtures.createTemp('onexray-linux-process-');
     addTearDown(() => directory.delete(recursive: true));
     final proc = await Directory(p.join(directory.path, 'proc')).create();
     final executable = File(p.join(directory.path, 'OneXrayCore'));

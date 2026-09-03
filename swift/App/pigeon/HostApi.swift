@@ -32,8 +32,8 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
 
     func readVpnStatus(completion: @escaping (Result<NativeVpnCommandResult, any Error>) -> Void) {
         Task {
-            let installed = await VPNManager.shared.refreshVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
+            let installed = VPNManager.shared.refreshVpnResult(from: permission)
             flutterApi.refreshVpn(result: installed)
             flutterApi.vpnStatusChanged()
             if permission.state == .failed {

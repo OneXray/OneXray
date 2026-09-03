@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/widgets.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -27,22 +28,46 @@ class AdvancedPageState {
 }
 
 /// Runtime facts shared by the Advanced tabs; platform edits use their own draft.
-class AdvancedController extends PageCubit<AdvancedPageState> {
+class AdvancedController extends PageCubit<AdvancedPageState>
+    with WidgetsBindingObserver {
   final ConnectionCoordinator coordinator;
   StreamSubscription<ConnectionStateData>? _subscription;
   PlatformPolicy? _policy;
   String _version = '—';
   bool _failed = false;
+  bool _visible = false;
+  bool _foreground = true;
+  Timer? _uptimeTimer;
+  final DateTime Function() _now;
 
-  AdvancedController({ConnectionCoordinator? coordinator})
-    : coordinator = coordinator ?? ConnectionCoordinator.instance,
-      super(const AdvancedPageState()) {
+  AdvancedController({
+    ConnectionCoordinator? coordinator,
+    DateTime Function()? now,
+  }) : coordinator = coordinator ?? ConnectionCoordinator.instance,
+       _now = now ?? DateTime.now,
+       super(const AdvancedPageState()) {
+    WidgetsBinding.instance.addObserver(this);
+    _foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     this.coordinator.state.addListener(_publish);
     reload();
     _readVersion();
   }
 
   bool get showInterface => AppPlatform.isWindows || AppPlatform.isLinux;
+
+  void setVisible(bool visible) {
+    if (!isPageActive || _visible == visible) return;
+    _visible = visible;
+    _publish();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _publish();
+  }
 
   Future<void> reload() async {
     await _subscription?.cancel();
@@ -79,17 +104,17 @@ class AdvancedController extends PageCubit<AdvancedPageState> {
   }
 
   void _publish() {
+    if (!isPageActive) return;
     final runtime = coordinator.state.value;
     final started = runtime.traffic?.startedAtMs;
     var uptime = '—';
     if (runtime.phase == ConnectionPhase.connected &&
         started != null &&
         started > 0) {
-      final seconds =
-          ((DateTime.now().millisecondsSinceEpoch - started) ~/ 1000).clamp(
-            0,
-            1 << 53,
-          );
+      final seconds = ((_now().millisecondsSinceEpoch - started) ~/ 1000).clamp(
+        0,
+        1 << 53,
+      );
       uptime =
           '${seconds ~/ 3600}:'
           '${(seconds ~/ 60 % 60).toString().padLeft(2, '0')}:'
@@ -104,6 +129,15 @@ class AdvancedController extends PageCubit<AdvancedPageState> {
         failed: _failed,
       ),
     );
+    if (_visible && _foreground && uptime != '—') {
+      _uptimeTimer ??= Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _publish(),
+      );
+    } else {
+      _uptimeTimer?.cancel();
+      _uptimeTimer = null;
+    }
   }
 
   String statusLabel(AppLocalizations l10n) => switch (state.runtime.phase) {
@@ -118,6 +152,8 @@ class AdvancedController extends PageCubit<AdvancedPageState> {
 
   @override
   Future<void> disposePageResources() async {
+    WidgetsBinding.instance.removeObserver(this);
+    _uptimeTimer?.cancel();
     coordinator.state.removeListener(_publish);
     await _subscription?.cancel();
   }

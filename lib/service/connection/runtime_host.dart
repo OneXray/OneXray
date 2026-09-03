@@ -313,8 +313,14 @@ class ConnectionRuntimeHost {
     ))!;
   }
 
-  Future<HostConnection> inspect(Iterable<ConnectionPlan> knownPlans) async {
-    final status = await _status();
+  /// Status reconciliation reads saved facts only. An unsolicited native event
+  /// already carries the status; querying it again would echo the same event.
+  Future<HostConnection> inspect(
+    Iterable<ConnectionPlan> knownPlans, {
+    VpnStatus? observedStatus,
+    bool readMetrics = false,
+  }) async {
+    final status = observedStatus ?? await _status();
     RuntimeSnapshot? saved;
     try {
       saved = await readSavedTraffic();
@@ -343,7 +349,7 @@ class ConnectionRuntimeHost {
       }
     }
     final plan = plans[saved?.planId];
-    if (plan != null) {
+    if (plan != null && readMetrics) {
       try {
         return HostConnection(status, plan: plan, traffic: await query(plan));
       } on Exception {
@@ -352,12 +358,13 @@ class ConnectionRuntimeHost {
     }
     return HostConnection(
       status,
+      plan: plan,
       traffic: saved?.withCounters(
         uplink: saved.uplink,
         downlink: saved.downlink,
         sampledAtMs: saved.sampledAtMs,
         available: false,
-        error: 'runtimeMetricsUnavailable',
+        error: readMetrics ? 'runtimeMetricsUnavailable' : '',
       ),
     );
   }
@@ -417,7 +424,7 @@ class ConnectionRuntimeHost {
     }
     final deadline = DateTime.now().add(startTimeout);
     while (DateTime.now().isBefore(deadline)) {
-      final current = await inspect([plan]);
+      final current = await inspect([plan], readMetrics: true);
       if (current.connected &&
           current.plan?.id == plan.id &&
           current.traffic?.sessionId != previousSession &&

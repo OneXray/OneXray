@@ -31,6 +31,9 @@ class AppHostApi {
 
   bool get windowsPackageAvailable => _windowsPackageAvailable;
   String? get windowsSnapshotToken => WindowsFfiApi().snapshotToken;
+  bool get needsVpnStatusPolling =>
+      AppPlatform.isWindows ||
+      (AppPlatform.isLinux && LinuxFfiApi().needsVpnStatusPolling);
 
   Future<void> initTunFilesDir() async {
     if (AppPlatform.isLinux) {
@@ -408,24 +411,33 @@ class AppHostApi {
     required int limit,
   }) async {
     if (!RegExp(r'^[0-9a-f]{32}$').hasMatch(planId) ||
-        offset < -1 || limit <= 0 || limit > 1024 * 1024) {
+        offset < -1 ||
+        limit <= 0 ||
+        limit > 1024 * 1024) {
       throw const FormatException('Invalid log request');
     }
     if (!AppPlatform.isMacOS) {
       throw UnsupportedError('logRequiresSystemExtension');
     }
-    final chunk = await _api.readLog(planId, access, offset, limit)
+    final chunk = await _api
+        .readLog(planId, access, offset, limit)
         .timeout(const Duration(seconds: 8));
-    if (chunk != null && (chunk.offset < 0 || chunk.size < chunk.offset ||
-        chunk.data.length > limit || chunk.data.length > chunk.size - chunk.offset ||
-        chunk.fileId.isEmpty || chunk.fileId.length > 128)) {
+    if (chunk != null &&
+        (chunk.offset < 0 ||
+            chunk.size < chunk.offset ||
+            chunk.data.length > limit ||
+            chunk.data.length > chunk.size - chunk.offset ||
+            chunk.fileId.isEmpty ||
+            chunk.fileId.length > 128)) {
       throw const FormatException('Invalid log response');
     }
     if (chunk != null) {
       final expectedOffset = offset == -1
           ? (chunk.size > limit ? chunk.size - limit : 0)
           : (offset > chunk.size ? chunk.size : offset);
-      if (chunk.offset != expectedOffset) throw const FormatException('Invalid log response');
+      if (chunk.offset != expectedOffset) {
+        throw const FormatException('Invalid log response');
+      }
     }
     return chunk;
   }

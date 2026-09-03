@@ -6,6 +6,7 @@ import 'package:onexray/pages/advanced/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/page.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
+import 'package:onexray/pages/main/page_visibility.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 
@@ -37,7 +38,17 @@ class AdvancedPage extends StatelessWidget {
             child: TabBarView(
               children: [
                 VpnTunnelPane(openTunnel: openTunnel),
-                Builder(builder: xrayBuilder ?? _runtimeSummary),
+                Builder(
+                  builder: (context) {
+                    final tabs = DefaultTabController.of(context);
+                    return ListenableBuilder(
+                      listenable: tabs,
+                      builder: (_, child) =>
+                          TickerMode(enabled: tabs.index == 1, child: child!),
+                      child: Builder(builder: xrayBuilder ?? _runtimeSummary),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -51,21 +62,24 @@ class AdvancedPage extends StatelessWidget {
         builder: (context, state) {
           final l = AppLocalizations.of(context)!;
           final controller = context.read<AdvancedController>();
-          return SettingsPageScroll(
-            child: SettingSection(
-              title: l.prototypeRuntimeStatus,
-              children: [
-                SettingRow(
-                  title: l.prototypeXrayCore,
-                  value: controller.statusLabel(l),
-                  leading: const Icon(LucideIcons.activity),
-                ),
-                PolicyValueRow(
-                  title: l.prototypeVersion,
-                  value: state.xrayVersion,
-                ),
-                PolicyValueRow(title: l.prototypeUptime, value: state.uptime),
-              ],
+          return PageVisibility(
+            onChanged: controller.setVisible,
+            child: SettingsPageScroll(
+              child: SettingSection(
+                title: l.prototypeRuntimeStatus,
+                children: [
+                  SettingRow(
+                    title: l.prototypeXrayCore,
+                    value: controller.statusLabel(l),
+                    leading: const Icon(LucideIcons.activity),
+                  ),
+                  PolicyValueRow(
+                    title: l.prototypeVersion,
+                    value: state.xrayVersion,
+                  ),
+                  PolicyValueRow(title: l.prototypeUptime, value: state.uptime),
+                ],
+              ),
             ),
           );
         },
