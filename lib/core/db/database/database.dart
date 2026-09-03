@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -72,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,7 +82,7 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA user_version = $schemaVersion');
     }),
     onUpgrade: (migrator, from, to) => transaction(() async {
-      if (from < 1 || from > 5 || to != 6) {
+      if (from < 1 || from > 6 || to != 7) {
         throw StateError('Unsupported database schema upgrade');
       }
 
@@ -160,11 +161,49 @@ class AppDatabase extends _$AppDatabase {
         }
       }
 
-      if (from < 4) await migrator.createTable(connectionState);
+      if (from < 4) {
+        await migrator.createTable(connectionState);
+      } else {
+        // Retire only the rollback journal and duplicated plan body. Saved
+        // settings/revision and every asset table stay in the upgrade transaction.
+        final rows = await customSelect(
+          'SELECT id, revision, settings_json, confirmed_snapshot_json '
+          'FROM connection_state',
+        ).get();
+        await customStatement('DROP TABLE connection_state');
+        await migrator.createTable(connectionState);
+        for (final row in rows) {
+          String? planId;
+          final text = row.data['confirmed_snapshot_json'];
+          if (text is String) {
+            try {
+              final snapshot = jsonDecode(text);
+              final id = snapshot is Map<String, dynamic>
+                  ? snapshot['id']
+                  : null;
+              if (id is String && RegExp(r'^[a-f0-9]{32}$').hasMatch(id)) {
+                planId = id;
+              }
+            } on FormatException {
+              // Discard obsolete recovery metadata, never the user's assets.
+            }
+          }
+          await customStatement(
+            'INSERT INTO connection_state '
+            '(id, revision, settings_json, confirmed_plan_id) VALUES (?, ?, ?, ?)',
+            [
+              row.read<int>('id'),
+              row.read<int>('revision'),
+              row.read<String>('settings_json'),
+              planId,
+            ],
+          );
+        }
+      }
       if (from < 5) {
         await migrator.addColumn(subscription, subscription.autoUpdate);
       }
-      await migrator.addColumn(geoData, geoData.generation);
+      if (from < 6) await migrator.addColumn(geoData, geoData.generation);
       final geoColumns = await customSelect('PRAGMA table_info(geo_data)')
           .get();
       if (!geoColumns.any((row) => row.read<String>('name') == 'generation')) {
@@ -173,15 +212,15 @@ class AppDatabase extends _$AppDatabase {
       final stateColumns = await customSelect(
         'PRAGMA table_info(connection_state)',
       ).get();
-      if (!stateColumns
+      final stateColumnNames = stateColumns
           .map((row) => row.read<String>('name'))
-          .toSet()
-          .containsAll({
+          .toSet();
+      if (stateColumnNames.length != 4 ||
+          !stateColumnNames.containsAll({
             'id',
             'revision',
             'settings_json',
-            'confirmed_snapshot_json',
-            'pending_apply_json',
+            'confirmed_plan_id',
           })) {
         throw StateError('Connection state schema upgrade validation failed');
       }

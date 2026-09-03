@@ -45,7 +45,14 @@ void main() {
     return coordinator;
   }
 
-  for (final change in ['entry', 'exit', 'unused', 'rename', 'live-unused']) {
+  for (final change in [
+    'entry',
+    'exit',
+    'unused',
+    'rename',
+    'live-unused',
+    'missing-plan',
+  ]) {
     test(
       'server edit invalidates only affected offline inputs: $change',
       () async {
@@ -68,7 +75,7 @@ void main() {
         await db.connectionStateDao.commit(
           baseRevision: 0,
           settingsJson: configuration.encode(),
-          confirmedSnapshotJson: old.encode(),
+          confirmedPlanId: old.id,
         );
         final live = _plan('b', configuration, [
           ServerSnapshot.fromRow(unused),
@@ -77,6 +84,8 @@ void main() {
         final coordinator = await initialize(
           ConnectionCoordinator(
             database: db,
+            readPlan: (id) async =>
+                change != 'missing-plan' && id == old.id ? old : null,
             inspect: (_) async => change == 'live-unused'
                 ? HostConnection(VpnStatus.connected, plan: live)
                 : const HostConnection(VpnStatus.disconnected),
@@ -147,12 +156,13 @@ void main() {
         await db.connectionStateDao.commit(
           baseRevision: 0,
           settingsJson: configuration.encode(),
-          confirmedSnapshotJson: old.encode(),
+          confirmedPlanId: old.id,
         );
         final revoked = <String>[];
         final coordinator = await initialize(
           ConnectionCoordinator(
             database: db,
+            readPlan: (id) async => id == old.id ? old : null,
             inspect: (_) async => const HostConnection(VpnStatus.disconnected),
             start: (_) async => throw StateError('Unexpected start'),
             stop: (_) async => throw StateError('Unexpected stop'),
@@ -231,13 +241,14 @@ void main() {
     await db.connectionStateDao.commit(
       baseRevision: 0,
       settingsJson: configuration.encode(),
-      confirmedSnapshotJson: old.encode(),
+      confirmedPlanId: old.id,
     );
     var host = HostConnection(VpnStatus.connected, plan: old);
     final calls = <String>[];
     final coordinator = await initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: (id) async => id == old.id ? old : null,
         inspect: (_) async => host,
         start: (plan) async {
           calls.add('start');

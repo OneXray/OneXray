@@ -85,13 +85,14 @@ void main() {
     await db.connectionStateDao.commit(
       baseRevision: 0,
       settingsJson: configuration.encode(),
-      confirmedSnapshotJson: old.encode(),
+      confirmedPlanId: old.id,
     );
     var host = HostConnection(VpnStatus.connected, plan: old);
     final calls = <String>[];
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: (id) async => id == old.id ? old : null,
         inspect: (_) async => host,
         start: (plan) async {
           calls.add('start:${plan.id}');

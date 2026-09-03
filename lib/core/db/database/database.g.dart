@@ -2073,23 +2073,12 @@ class $ConnectionStateTable extends ConnectionState
     requiredDuringInsert: false,
     defaultValue: const Constant('{}'),
   );
-  static const VerificationMeta _confirmedSnapshotJsonMeta =
-      const VerificationMeta('confirmedSnapshotJson');
-  @override
-  late final GeneratedColumn<String> confirmedSnapshotJson =
-      GeneratedColumn<String>(
-        'confirmed_snapshot_json',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _pendingApplyJsonMeta = const VerificationMeta(
-    'pendingApplyJson',
+  static const VerificationMeta _confirmedPlanIdMeta = const VerificationMeta(
+    'confirmedPlanId',
   );
   @override
-  late final GeneratedColumn<String> pendingApplyJson = GeneratedColumn<String>(
-    'pending_apply_json',
+  late final GeneratedColumn<String> confirmedPlanId = GeneratedColumn<String>(
+    'confirmed_plan_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -2100,8 +2089,7 @@ class $ConnectionStateTable extends ConnectionState
     id,
     revision,
     settingsJson,
-    confirmedSnapshotJson,
-    pendingApplyJson,
+    confirmedPlanId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2133,21 +2121,12 @@ class $ConnectionStateTable extends ConnectionState
         ),
       );
     }
-    if (data.containsKey('confirmed_snapshot_json')) {
+    if (data.containsKey('confirmed_plan_id')) {
       context.handle(
-        _confirmedSnapshotJsonMeta,
-        confirmedSnapshotJson.isAcceptableOrUnknown(
-          data['confirmed_snapshot_json']!,
-          _confirmedSnapshotJsonMeta,
-        ),
-      );
-    }
-    if (data.containsKey('pending_apply_json')) {
-      context.handle(
-        _pendingApplyJsonMeta,
-        pendingApplyJson.isAcceptableOrUnknown(
-          data['pending_apply_json']!,
-          _pendingApplyJsonMeta,
+        _confirmedPlanIdMeta,
+        confirmedPlanId.isAcceptableOrUnknown(
+          data['confirmed_plan_id']!,
+          _confirmedPlanIdMeta,
         ),
       );
     }
@@ -2172,13 +2151,9 @@ class $ConnectionStateTable extends ConnectionState
         DriftSqlType.string,
         data['${effectivePrefix}settings_json'],
       )!,
-      confirmedSnapshotJson: attachedDatabase.typeMapping.read(
+      confirmedPlanId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}confirmed_snapshot_json'],
-      ),
-      pendingApplyJson: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}pending_apply_json'],
+        data['${effectivePrefix}confirmed_plan_id'],
       ),
     );
   }
@@ -2194,14 +2169,12 @@ class ConnectionStateData extends DataClass
   final int id;
   final int revision;
   final String settingsJson;
-  final String? confirmedSnapshotJson;
-  final String? pendingApplyJson;
+  final String? confirmedPlanId;
   const ConnectionStateData({
     required this.id,
     required this.revision,
     required this.settingsJson,
-    this.confirmedSnapshotJson,
-    this.pendingApplyJson,
+    this.confirmedPlanId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2209,11 +2182,8 @@ class ConnectionStateData extends DataClass
     map['id'] = Variable<int>(id);
     map['revision'] = Variable<int>(revision);
     map['settings_json'] = Variable<String>(settingsJson);
-    if (!nullToAbsent || confirmedSnapshotJson != null) {
-      map['confirmed_snapshot_json'] = Variable<String>(confirmedSnapshotJson);
-    }
-    if (!nullToAbsent || pendingApplyJson != null) {
-      map['pending_apply_json'] = Variable<String>(pendingApplyJson);
+    if (!nullToAbsent || confirmedPlanId != null) {
+      map['confirmed_plan_id'] = Variable<String>(confirmedPlanId);
     }
     return map;
   }
@@ -2223,12 +2193,9 @@ class ConnectionStateData extends DataClass
       id: Value(id),
       revision: Value(revision),
       settingsJson: Value(settingsJson),
-      confirmedSnapshotJson: confirmedSnapshotJson == null && nullToAbsent
+      confirmedPlanId: confirmedPlanId == null && nullToAbsent
           ? const Value.absent()
-          : Value(confirmedSnapshotJson),
-      pendingApplyJson: pendingApplyJson == null && nullToAbsent
-          ? const Value.absent()
-          : Value(pendingApplyJson),
+          : Value(confirmedPlanId),
     );
   }
 
@@ -2241,10 +2208,7 @@ class ConnectionStateData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       revision: serializer.fromJson<int>(json['revision']),
       settingsJson: serializer.fromJson<String>(json['settingsJson']),
-      confirmedSnapshotJson: serializer.fromJson<String?>(
-        json['confirmedSnapshotJson'],
-      ),
-      pendingApplyJson: serializer.fromJson<String?>(json['pendingApplyJson']),
+      confirmedPlanId: serializer.fromJson<String?>(json['confirmedPlanId']),
     );
   }
   @override
@@ -2254,10 +2218,7 @@ class ConnectionStateData extends DataClass
       'id': serializer.toJson<int>(id),
       'revision': serializer.toJson<int>(revision),
       'settingsJson': serializer.toJson<String>(settingsJson),
-      'confirmedSnapshotJson': serializer.toJson<String?>(
-        confirmedSnapshotJson,
-      ),
-      'pendingApplyJson': serializer.toJson<String?>(pendingApplyJson),
+      'confirmedPlanId': serializer.toJson<String?>(confirmedPlanId),
     };
   }
 
@@ -2265,18 +2226,14 @@ class ConnectionStateData extends DataClass
     int? id,
     int? revision,
     String? settingsJson,
-    Value<String?> confirmedSnapshotJson = const Value.absent(),
-    Value<String?> pendingApplyJson = const Value.absent(),
+    Value<String?> confirmedPlanId = const Value.absent(),
   }) => ConnectionStateData(
     id: id ?? this.id,
     revision: revision ?? this.revision,
     settingsJson: settingsJson ?? this.settingsJson,
-    confirmedSnapshotJson: confirmedSnapshotJson.present
-        ? confirmedSnapshotJson.value
-        : this.confirmedSnapshotJson,
-    pendingApplyJson: pendingApplyJson.present
-        ? pendingApplyJson.value
-        : this.pendingApplyJson,
+    confirmedPlanId: confirmedPlanId.present
+        ? confirmedPlanId.value
+        : this.confirmedPlanId,
   );
   ConnectionStateData copyWithCompanion(ConnectionStateCompanion data) {
     return ConnectionStateData(
@@ -2285,12 +2242,9 @@ class ConnectionStateData extends DataClass
       settingsJson: data.settingsJson.present
           ? data.settingsJson.value
           : this.settingsJson,
-      confirmedSnapshotJson: data.confirmedSnapshotJson.present
-          ? data.confirmedSnapshotJson.value
-          : this.confirmedSnapshotJson,
-      pendingApplyJson: data.pendingApplyJson.present
-          ? data.pendingApplyJson.value
-          : this.pendingApplyJson,
+      confirmedPlanId: data.confirmedPlanId.present
+          ? data.confirmedPlanId.value
+          : this.confirmedPlanId,
     );
   }
 
@@ -2300,20 +2254,13 @@ class ConnectionStateData extends DataClass
           ..write('id: $id, ')
           ..write('revision: $revision, ')
           ..write('settingsJson: $settingsJson, ')
-          ..write('confirmedSnapshotJson: $confirmedSnapshotJson, ')
-          ..write('pendingApplyJson: $pendingApplyJson')
+          ..write('confirmedPlanId: $confirmedPlanId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    revision,
-    settingsJson,
-    confirmedSnapshotJson,
-    pendingApplyJson,
-  );
+  int get hashCode => Object.hash(id, revision, settingsJson, confirmedPlanId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2321,44 +2268,37 @@ class ConnectionStateData extends DataClass
           other.id == this.id &&
           other.revision == this.revision &&
           other.settingsJson == this.settingsJson &&
-          other.confirmedSnapshotJson == this.confirmedSnapshotJson &&
-          other.pendingApplyJson == this.pendingApplyJson);
+          other.confirmedPlanId == this.confirmedPlanId);
 }
 
 class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
   final Value<int> id;
   final Value<int> revision;
   final Value<String> settingsJson;
-  final Value<String?> confirmedSnapshotJson;
-  final Value<String?> pendingApplyJson;
+  final Value<String?> confirmedPlanId;
   const ConnectionStateCompanion({
     this.id = const Value.absent(),
     this.revision = const Value.absent(),
     this.settingsJson = const Value.absent(),
-    this.confirmedSnapshotJson = const Value.absent(),
-    this.pendingApplyJson = const Value.absent(),
+    this.confirmedPlanId = const Value.absent(),
   });
   ConnectionStateCompanion.insert({
     this.id = const Value.absent(),
     this.revision = const Value.absent(),
     this.settingsJson = const Value.absent(),
-    this.confirmedSnapshotJson = const Value.absent(),
-    this.pendingApplyJson = const Value.absent(),
+    this.confirmedPlanId = const Value.absent(),
   });
   static Insertable<ConnectionStateData> custom({
     Expression<int>? id,
     Expression<int>? revision,
     Expression<String>? settingsJson,
-    Expression<String>? confirmedSnapshotJson,
-    Expression<String>? pendingApplyJson,
+    Expression<String>? confirmedPlanId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (revision != null) 'revision': revision,
       if (settingsJson != null) 'settings_json': settingsJson,
-      if (confirmedSnapshotJson != null)
-        'confirmed_snapshot_json': confirmedSnapshotJson,
-      if (pendingApplyJson != null) 'pending_apply_json': pendingApplyJson,
+      if (confirmedPlanId != null) 'confirmed_plan_id': confirmedPlanId,
     });
   }
 
@@ -2366,16 +2306,13 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
     Value<int>? id,
     Value<int>? revision,
     Value<String>? settingsJson,
-    Value<String?>? confirmedSnapshotJson,
-    Value<String?>? pendingApplyJson,
+    Value<String?>? confirmedPlanId,
   }) {
     return ConnectionStateCompanion(
       id: id ?? this.id,
       revision: revision ?? this.revision,
       settingsJson: settingsJson ?? this.settingsJson,
-      confirmedSnapshotJson:
-          confirmedSnapshotJson ?? this.confirmedSnapshotJson,
-      pendingApplyJson: pendingApplyJson ?? this.pendingApplyJson,
+      confirmedPlanId: confirmedPlanId ?? this.confirmedPlanId,
     );
   }
 
@@ -2391,13 +2328,8 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
     if (settingsJson.present) {
       map['settings_json'] = Variable<String>(settingsJson.value);
     }
-    if (confirmedSnapshotJson.present) {
-      map['confirmed_snapshot_json'] = Variable<String>(
-        confirmedSnapshotJson.value,
-      );
-    }
-    if (pendingApplyJson.present) {
-      map['pending_apply_json'] = Variable<String>(pendingApplyJson.value);
+    if (confirmedPlanId.present) {
+      map['confirmed_plan_id'] = Variable<String>(confirmedPlanId.value);
     }
     return map;
   }
@@ -2408,8 +2340,7 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
           ..write('id: $id, ')
           ..write('revision: $revision, ')
           ..write('settingsJson: $settingsJson, ')
-          ..write('confirmedSnapshotJson: $confirmedSnapshotJson, ')
-          ..write('pendingApplyJson: $pendingApplyJson')
+          ..write('confirmedPlanId: $confirmedPlanId')
           ..write(')'))
         .toString();
   }
@@ -3483,16 +3414,14 @@ typedef $$ConnectionStateTableCreateCompanionBuilder =
       Value<int> id,
       Value<int> revision,
       Value<String> settingsJson,
-      Value<String?> confirmedSnapshotJson,
-      Value<String?> pendingApplyJson,
+      Value<String?> confirmedPlanId,
     });
 typedef $$ConnectionStateTableUpdateCompanionBuilder =
     ConnectionStateCompanion Function({
       Value<int> id,
       Value<int> revision,
       Value<String> settingsJson,
-      Value<String?> confirmedSnapshotJson,
-      Value<String?> pendingApplyJson,
+      Value<String?> confirmedPlanId,
     });
 
 class $$ConnectionStateTableFilterComposer
@@ -3519,13 +3448,8 @@ class $$ConnectionStateTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get confirmedSnapshotJson => $composableBuilder(
-    column: $table.confirmedSnapshotJson,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get pendingApplyJson => $composableBuilder(
-    column: $table.pendingApplyJson,
+  ColumnFilters<String> get confirmedPlanId => $composableBuilder(
+    column: $table.confirmedPlanId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3554,13 +3478,8 @@ class $$ConnectionStateTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get confirmedSnapshotJson => $composableBuilder(
-    column: $table.confirmedSnapshotJson,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get pendingApplyJson => $composableBuilder(
-    column: $table.pendingApplyJson,
+  ColumnOrderings<String> get confirmedPlanId => $composableBuilder(
+    column: $table.confirmedPlanId,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -3585,13 +3504,8 @@ class $$ConnectionStateTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get confirmedSnapshotJson => $composableBuilder(
-    column: $table.confirmedSnapshotJson,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get pendingApplyJson => $composableBuilder(
-    column: $table.pendingApplyJson,
+  GeneratedColumn<String> get confirmedPlanId => $composableBuilder(
+    column: $table.confirmedPlanId,
     builder: (column) => column,
   );
 }
@@ -3636,28 +3550,24 @@ class $$ConnectionStateTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<String> settingsJson = const Value.absent(),
-                Value<String?> confirmedSnapshotJson = const Value.absent(),
-                Value<String?> pendingApplyJson = const Value.absent(),
+                Value<String?> confirmedPlanId = const Value.absent(),
               }) => ConnectionStateCompanion(
                 id: id,
                 revision: revision,
                 settingsJson: settingsJson,
-                confirmedSnapshotJson: confirmedSnapshotJson,
-                pendingApplyJson: pendingApplyJson,
+                confirmedPlanId: confirmedPlanId,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<String> settingsJson = const Value.absent(),
-                Value<String?> confirmedSnapshotJson = const Value.absent(),
-                Value<String?> pendingApplyJson = const Value.absent(),
+                Value<String?> confirmedPlanId = const Value.absent(),
               }) => ConnectionStateCompanion.insert(
                 id: id,
                 revision: revision,
                 settingsJson: settingsJson,
-                confirmedSnapshotJson: confirmedSnapshotJson,
-                pendingApplyJson: pendingApplyJson,
+                confirmedPlanId: confirmedPlanId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

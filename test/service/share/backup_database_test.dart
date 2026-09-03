@@ -22,9 +22,8 @@ void main() {
       await database.connectionStateDao.commit(
         baseRevision: 0,
         settingsJson: '{"connection":{"rawId":30}}',
-        confirmedSnapshotJson: '{"sessionId":"old"}',
+        confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       );
-      await database.connectionStateDao.beginApply(1, '{"attemptId":"old"}');
       final before = await BackupDatabaseContents.read(database);
       final payload = _roundTrip(before);
 
@@ -56,8 +55,7 @@ void main() {
       final reset = await database.connectionStateDao.read();
       expect(reset.revision, 0);
       expect(reset.settingsJson, '{}');
-      expect(reset.confirmedSnapshotJson, isNull);
-      expect(reset.pendingApplyJson, isNull);
+      expect(reset.confirmedPlanId, isNull);
     },
   );
 
@@ -241,9 +239,8 @@ void main() {
       await database.connectionStateDao.commit(
         baseRevision: 0,
         settingsJson: '{"old":true}',
-        confirmedSnapshotJson: '{"sessionId":"old"}',
+        confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       );
-      await database.connectionStateDao.beginApply(1, '{"attemptId":"old"}');
       final stateBefore = await database.connectionStateDao.read();
       final before = await BackupDatabaseContents.read(database);
       await database.customStatement('''

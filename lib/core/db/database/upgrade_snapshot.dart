@@ -12,7 +12,7 @@ Future<File?> prepareUpgradeSnapshot(
   final source = sqlite3.open(database.path, mode: OpenMode.readOnly);
   try {
     final version = source.select('PRAGMA user_version').single.values.single;
-    if (version == 6) return null;
+    if (version == 7) return null;
     if (version == 0 &&
         source
             .select(
@@ -25,12 +25,13 @@ Future<File?> prepareUpgradeSnapshot(
         version != 2 &&
         version != 3 &&
         version != 4 &&
-        version != 5) {
+        version != 5 &&
+        version != 6) {
       throw StateError('Unsupported database schema');
     }
     await stopRunning();
     final snapshot = File(
-      '${database.path}.pre-v6-${DateTime.now().microsecondsSinceEpoch}',
+      '${database.path}.pre-v7-${DateTime.now().microsecondsSinceEpoch}',
     );
     final target = sqlite3.open(snapshot.path);
     try {

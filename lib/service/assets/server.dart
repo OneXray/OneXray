@@ -362,9 +362,8 @@ class ServerAssetService {
     if (coordinator.state.value.phase != ConnectionPhase.disconnected) {
       return false;
     }
-    final snapshot = (await db.connectionStateDao.read()).confirmedSnapshotJson;
-    return snapshot != null &&
-        ConnectionPlan.decode(snapshot).nodeIds.any(ids.contains);
+    final plan = await coordinator.readConfirmedPlan();
+    return plan?.nodeIds.any(ids.contains) == true;
   }
 
   Future<ConnectionPlan> _prepare(

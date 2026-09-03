@@ -174,6 +174,32 @@ class ConnectionRuntimeHost {
 
   Future<RuntimeSnapshot?> readSavedTraffic() => _accounting.read();
 
+  /// A missing or damaged private plan is not evidence of VPN disconnection.
+  Future<ConnectionPlan?> readPlan(String? id) async {
+    if (id == null || !_safeId.hasMatch(id)) return null;
+    try {
+      final directory = p.join(_directory, 'plans', id);
+      for (final path in [_directory, p.join(_directory, 'plans'), directory]) {
+        if (await FileSystemEntity.type(path, followLinks: false) !=
+            FileSystemEntityType.directory) {
+          return null;
+        }
+      }
+      final file = File(p.join(directory, 'plan.json'));
+      if (await FileSystemEntity.type(file.path, followLinks: false) !=
+          FileSystemEntityType.file) {
+        return null;
+      }
+      final plan = ConnectionPlan.decode(await file.readAsString());
+      return plan.id == id ? plan : null;
+    } on Exception {
+      return null;
+    } on TypeError {
+      // Invalid JSON shapes may fail a typed plan field before validation.
+      return null;
+    }
+  }
+
   /// Revoke only Windows CLI input, never the plan, data or shared start file.
   /// This protects later reads after normal cleanup, not a Core that already
   /// read the file or an App killed before cleanup.
@@ -331,22 +357,9 @@ class ConnectionRuntimeHost {
       return HostConnection(status, traffic: saved);
     }
     final plans = {for (final plan in knownPlans) plan.id: plan};
-    if (saved != null &&
-        !plans.containsKey(saved.planId) &&
-        _safeId.hasMatch(saved.planId)) {
-      try {
-        final file = File(
-          p.join(_directory, 'plans', saved.planId, 'plan.json'),
-        );
-        if (await file.exists()) {
-          final plan = ConnectionPlan.decode(await file.readAsString());
-          if (plan.id == saved.planId) {
-            plans[plan.id] = plan;
-          }
-        }
-      } on Exception {
-        // A damaged old plan does not change native connection status.
-      }
+    if (saved != null && !plans.containsKey(saved.planId)) {
+      final plan = await readPlan(saved.planId);
+      if (plan != null) plans[plan.id] = plan;
     }
     final plan = plans[saved?.planId];
     if (plan != null && readMetrics) {

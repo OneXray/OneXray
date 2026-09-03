@@ -10,9 +10,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   test('an interrupted empty first creation retries, but an unknown populated DB does not', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'onexray-empty-db-test-',
-    );
+    final directory = await _fixtureDirectory('onexray-empty-db-test-');
     addTearDown(() => directory.delete(recursive: true));
     final file = File('${directory.path}/db.sqlite');
     sqlite.sqlite3.open(file.path).close();
@@ -91,7 +89,7 @@ void main() {
       expect(_snapshotFile(file, hasAgeKeys: false), before);
       expect(
         file.parent.listSync().where(
-          (entry) => entry.path.contains('.pre-v6-'),
+          (entry) => entry.path.contains('.pre-v7-'),
         ),
         isEmpty,
       );
@@ -99,7 +97,7 @@ void main() {
   );
 
   test(
-    'new installation creates schema 6 with empty assets and default state',
+    'new installation creates schema 7 with empty assets and default state',
     () async {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -111,7 +109,7 @@ void main() {
       expect(
         (await database.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        6,
+        7,
       );
     },
   );
@@ -156,7 +154,7 @@ void main() {
           expect(
             (await reopened.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version'),
-            6,
+            7,
           );
         } finally {
           await reopened.close();
@@ -228,12 +226,14 @@ void main() {
     await interrupted.close();
 
     final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 6);
+    expect(check.userVersion, 7);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
-    expect(
-      _columnNames(check, 'connection_state'),
-      contains('pending_apply_json'),
-    );
+    expect(_columnNames(check, 'connection_state'), [
+      'id',
+      'revision',
+      'settings_json',
+      'confirmed_plan_id',
+    ]);
     check.close();
 
     final retried = AppDatabase.forTesting(NativeDatabase(file));
@@ -266,37 +266,95 @@ void main() {
     },
   );
 
-  test(
-    'schema 4 adds automatic updates without rebuilding connection state',
-    () async {
-      final file = await _legacyDatabase(3);
-      final legacy = sqlite.sqlite3.open(file.path);
-      legacy.execute(
-        'CREATE TABLE connection_state (id INTEGER PRIMARY KEY NOT NULL, revision INTEGER NOT NULL DEFAULT 0, settings_json TEXT NOT NULL DEFAULT \'{}\', confirmed_snapshot_json TEXT, pending_apply_json TEXT)',
-      );
-      legacy.execute(
-        "INSERT INTO connection_state(id, revision, settings_json, confirmed_snapshot_json) VALUES(1, 17, '{}', 'frozen-plan')",
-      );
-      legacy.userVersion = 4;
-      legacy.close();
-      final before = _versionThreeSnapshot(file);
-      final snapshot = await prepareUpgradeSnapshot(
-        file,
-        stopRunning: () async {},
-      );
-      expect(snapshot, isNotNull);
-      final db = AppDatabase.forTesting(NativeDatabase(file));
-      try {
-        final state = await db.connectionStateDao.read();
-        expect(state.revision, 17);
-        expect(state.confirmedSnapshotJson, 'frozen-plan');
-        expect((await db.subscriptionDao.allRows).single.autoUpdate, isTrue);
-      } finally {
-        await db.close();
-      }
-      expect(_versionThreeSnapshot(file), before);
-    },
-  );
+  for (final version in [4, 5, 6]) {
+    test(
+      'schema $version keeps assets and settings but replaces recovery metadata with a plan ID',
+      () async {
+        final file = await _legacyDatabase(version);
+        final before = _versionThreeSnapshot(file);
+        final snapshot = await prepareUpgradeSnapshot(
+          file,
+          stopRunning: () async {},
+        );
+        expect(snapshot, isNotNull);
+        final saved = sqlite.sqlite3.open(snapshot!.path);
+        try {
+          expect(saved.userVersion, version);
+          expect(
+            saved
+                .select('SELECT pending_apply_json FROM connection_state')
+                .single['pending_apply_json'],
+            '{"attemptId":"unfinished"}',
+          );
+        } finally {
+          saved.close();
+        }
+        final db = AppDatabase.forTesting(NativeDatabase(file));
+        try {
+          final state = await db.connectionStateDao.read();
+          expect(state.revision, 17);
+          expect(state.settingsJson, _savedSettings);
+          expect(state.confirmedPlanId, _confirmedPlanId);
+          expect(
+            (await db.subscriptionDao.allRows).single.autoUpdate,
+            version < 5,
+          );
+          expect(
+            (await db.geoDataDao.allRows).single.generation,
+            version < 6 ? null : 'existing-generation',
+          );
+          expect(
+            (await db.customSelect('PRAGMA table_info(connection_state)').get())
+                .map((row) => row.read<String>('name')),
+            ['id', 'revision', 'settings_json', 'confirmed_plan_id'],
+          );
+          expect(
+            (await db.customSelect('PRAGMA user_version').getSingle())
+                .read<int>('user_version'),
+            7,
+          );
+        } finally {
+          await db.close();
+        }
+        expect(_versionThreeSnapshot(file), before);
+      },
+    );
+  }
+
+  for (final snapshot in [
+    null,
+    'not JSON',
+    '[]',
+    '{}',
+    '{"id":42}',
+    '{"id":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}',
+    '{"id":"aaa"}',
+    '{"id":"../outside"}',
+  ]) {
+    test(
+      'an invalid or absent old confirmed snapshot is discarded without changing assets: $snapshot',
+      () async {
+        final file = await _legacyDatabase(6);
+        final legacy = sqlite.sqlite3.open(file.path);
+        legacy.execute(
+          'UPDATE connection_state SET confirmed_snapshot_json = ?',
+          [snapshot],
+        );
+        legacy.close();
+        final before = _versionThreeSnapshot(file);
+        final db = AppDatabase.forTesting(NativeDatabase(file));
+        try {
+          final state = await db.connectionStateDao.read();
+          expect(state.revision, 17);
+          expect(state.settingsJson, _savedSettings);
+          expect(state.confirmedPlanId, isNull);
+        } finally {
+          await db.close();
+        }
+        expect(_versionThreeSnapshot(file), before);
+      },
+    );
+  }
 
   test('schema 5 adds nullable generation without replacing data or default registration', () async {
     final file = await _legacyDatabase(3);
@@ -327,7 +385,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        6,
+        7,
       );
     } finally {
       await db.close();
@@ -346,7 +404,7 @@ void main() {
       },
     );
     expect(stopped, isTrue);
-    expect(snapshot!.path, contains('.pre-v6-'));
+    expect(snapshot!.path, contains('.pre-v7-'));
     expect(_versionThreeSnapshot(snapshot), before);
     final database = AppDatabase.forTesting(NativeDatabase(file));
     try {
@@ -376,7 +434,7 @@ void main() {
       expect(
         (await reopened.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        6,
+        7,
       );
     } finally {
       await reopened.close();
@@ -430,9 +488,7 @@ class _InterruptedAfterUpgrade extends AppDatabase {
 }
 
 Future<File> _legacyDatabase(int version) async {
-  final directory = await Directory.systemTemp.createTemp(
-    'onexray-schema-test-',
-  );
+  final directory = await _fixtureDirectory('onexray-schema-test-');
   addTearDown(() => directory.delete(recursive: true));
   final file = File('${directory.path}/db.sqlite');
   final database = sqlite.sqlite3.open(file.path);
@@ -501,7 +557,7 @@ Future<File> _legacyDatabase(int version) async {
         (id, name, type, url, timestamp, category_count, rule_count)
       VALUES (5, 'legacy-geosite', 'domain', 'https://example.com/geo', 123, 2, 3)
     ''');
-    if (version == 3) {
+    if (version >= 3) {
       database.execute('ALTER TABLE core_config ADD COLUMN country_code TEXT');
       database.execute(
         'ALTER TABLE core_config ADD COLUMN location_source TEXT',
@@ -527,11 +583,49 @@ Future<File> _legacyDatabase(int version) async {
         ['Custom', base64Encode(utf8.encode('{"outbounds":[{}]}'))],
       );
     }
+    if (version >= 4) {
+      database.execute(
+        "CREATE TABLE connection_state (id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1), revision INTEGER NOT NULL DEFAULT 0, settings_json TEXT NOT NULL DEFAULT '{}', confirmed_snapshot_json TEXT, pending_apply_json TEXT)",
+      );
+      database.execute(
+        'INSERT INTO connection_state (id, revision, settings_json, confirmed_snapshot_json, pending_apply_json) VALUES (1, 17, ?, ?, ?)',
+        [
+          _savedSettings,
+          jsonEncode({
+            'id': _confirmedPlanId,
+            'configuration': {'legacy': true},
+          }),
+          '{"attemptId":"unfinished"}',
+        ],
+      );
+    }
+    if (version >= 5) {
+      database.execute(
+        'ALTER TABLE subscription ADD COLUMN auto_update INTEGER NOT NULL DEFAULT 1',
+      );
+      database.execute('UPDATE subscription SET auto_update = 0');
+    }
+    if (version >= 6) {
+      database.execute('ALTER TABLE geo_data ADD COLUMN generation TEXT');
+      database.execute(
+        "UPDATE geo_data SET generation = 'existing-generation'",
+      );
+    }
     database.execute('PRAGMA user_version = $version');
   } finally {
     database.close();
   }
   return file;
+}
+
+const _savedSettings = '{"connection":{"selection":{"kind":"source","id":7}}}';
+const _confirmedPlanId = 'abcdef0123456789abcdef0123456789';
+
+Future<Directory> _fixtureDirectory(String prefix) async {
+  final fixtures = await Directory(
+    '../references/onexray-refactor-validation/test-fixtures',
+  ).absolute.create(recursive: true);
+  return fixtures.createTemp(prefix);
 }
 
 Map<String, List<List<Object?>>> _snapshotFile(

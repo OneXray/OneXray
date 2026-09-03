@@ -60,7 +60,7 @@ class XrayRuntimeController extends ChangeNotifier {
     _changed();
     try {
       final configuration = await coordinator.configuration;
-      final stored = await coordinator.db.connectionStateDao.read();
+      final confirmedPlan = await coordinator.readConfirmedPlan();
       final systemExtension = await AppHostApi().useSystemExtension();
       final preferences = PingState();
       await preferences.readFromPreferences();
@@ -71,11 +71,7 @@ class XrayRuntimeController extends ChangeNotifier {
       );
       _systemExtension = systemExtension;
       ping = preferences;
-      plan =
-          reader.state.runtime.plan ??
-          (stored.confirmedSnapshotJson == null
-              ? null
-              : ConnectionPlan.decode(stored.confirmedSnapshotJson!));
+      plan = reader.state.runtime.plan ?? confirmedPlan;
     } catch (_) {
       failed = true;
     } finally {

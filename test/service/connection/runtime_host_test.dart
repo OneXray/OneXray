@@ -15,9 +15,78 @@ void main() {
   late Directory directory;
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('onexray-runtime-host-');
+    final fixtures = Directory(
+      p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
+    ).absolute;
+    await fixtures.create(recursive: true);
+    directory = await fixtures.createTemp('runtime-host-');
     addTearDown(() => directory.delete(recursive: true));
   });
+
+  test(
+    'private plan reader shares the file used to identify a live session',
+    () async {
+      final plan = _plan();
+      final file = File(p.join(directory.path, 'plans', plan.id, 'plan.json'));
+      await file.parent.create(recursive: true);
+      await file.writeAsString(plan.encode());
+      final host = ConnectionRuntimeHost(
+        runDirectory: directory.path,
+        readRuntimeFiles: (_) async =>
+            RuntimeStateFiles(current: _snapshot('a', plan.id, 10, 20)),
+      );
+      expect((await host.readPlan(plan.id))?.encode(), plan.encode());
+      final running = await host.inspect(
+        [],
+        observedStatus: VpnStatus.connected,
+      );
+      expect(running.plan?.id, plan.id);
+      final stopped = await host.inspect(
+        [],
+        observedStatus: VpnStatus.disconnected,
+      );
+      expect(stopped.connected, false);
+      expect(stopped.plan, isNull);
+    },
+  );
+
+  test('missing, invalid and damaged plan references return no plan', () async {
+    final plan = _plan();
+    final host = ConnectionRuntimeHost(runDirectory: directory.path);
+    for (final id in [null, '', '../plan', _id('F'), plan.id]) {
+      expect(await host.readPlan(id), isNull);
+    }
+    final file = File(p.join(directory.path, 'plans', plan.id, 'plan.json'));
+    await file.parent.create(recursive: true);
+    for (final text in [
+      'broken json',
+      '[]',
+      '{}',
+      jsonEncode({'version': 1, 'id': plan.id, 'request': []}),
+      jsonEncode({...plan.toJson(), 'id': _id('b')}),
+    ]) {
+      await file.writeAsString(text);
+      expect(await host.readPlan(plan.id), isNull);
+    }
+  });
+
+  test('private plan reader ignores linked directories and files', () async {
+    final plan = _plan();
+    final outside = Directory(p.join(directory.path, 'outside'));
+    await outside.create();
+    final file = File(p.join(outside.path, 'plan.json'));
+    await file.writeAsString(plan.encode());
+    final plans = Directory(p.join(directory.path, 'plans'));
+    await plans.create();
+    final link = Link(p.join(plans.path, plan.id));
+    await link.create(outside.path);
+    final host = ConnectionRuntimeHost(runDirectory: directory.path);
+    expect(await host.readPlan(plan.id), isNull);
+    await link.delete();
+    await Directory(link.path).create();
+    await Link(p.join(link.path, 'plan.json')).create(file.path);
+    expect(await host.readPlan(plan.id), isNull);
+  }, skip: Platform.isWindows);
 
   test('Windows replay revocation preserves other files and restores exact metadata', () async {
     final plan = _plan(platform: 'windows');

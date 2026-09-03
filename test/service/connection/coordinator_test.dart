@@ -15,12 +15,48 @@ import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 
+final _savedPlans = <String, ConnectionPlan>{};
+
 void main() {
   late AppDatabase db;
 
   setUp(() {
+    _savedPlans.clear();
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
+  });
+
+  test('initial status failure stays unknown until an explicit initialization retry', () async {
+    var failed = true;
+    var queries = 0;
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      readPlan: _readPlan,
+      inspect: (_) async {
+        queries++;
+        if (failed) throw const ConnectionHostException('nativeStatusFailed');
+        return const HostConnection(VpnStatus.disconnected);
+      },
+      start: (_) async => throw StateError('Initialize must not start VPN'),
+      stop: (_) async => throw StateError('Initialize must not stop VPN'),
+    );
+    addTearDown(coordinator.dispose);
+    await expectLater(
+      coordinator.initialize(poll: false, registerReferences: false),
+      throwsA(isA<ConnectionHostException>()),
+    );
+    expect(queries, 1);
+    expect(coordinator.state.value.phase, ConnectionPhase.failed);
+    expect(coordinator.state.value.issue, 'nativeStatusFailed');
+    await expectLater(
+      coordinator.readReferences(),
+      throwsA(isA<ConnectionHostException>()),
+    );
+    failed = false;
+    await coordinator.initialize(poll: false, registerReferences: false);
+    expect(queries, 2);
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect((await coordinator.readReferences()).protectedIds, isEmpty);
   });
 
   testWidgets('native events synchronize globally without polling or metrics', (
@@ -34,6 +70,7 @@ void main() {
     var observations = 0;
     final coordinator = ConnectionCoordinator(
       database: db,
+      readPlan: _readPlan,
       statusEvents: events.stream,
       needsStatusPolling: () => false,
       inspect: (_) async {
@@ -93,6 +130,7 @@ void main() {
       var status = VpnStatus.connected;
       final coordinator = ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         statusEvents: events.stream,
         needsStatusPolling: () => false,
         inspect: (_) async {
@@ -148,6 +186,7 @@ void main() {
       var reads = 0;
       final coordinator = ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         statusEvents: const Stream.empty(),
         needsStatusPolling: () => fallback,
         inspect: (_) async {
@@ -179,6 +218,7 @@ void main() {
     var fail = false;
     final coordinator = ConnectionCoordinator(
       database: db,
+      readPlan: _readPlan,
       statusEvents: events.stream,
       needsStatusPolling: () => false,
       inspect: (_) async => HostConnection(VpnStatus.connected, plan: plan),
@@ -216,6 +256,7 @@ void main() {
     var reads = 0;
     final coordinator = ConnectionCoordinator(
       database: db,
+      readPlan: _readPlan,
       statusEvents: events.stream,
       needsStatusPolling: () => false,
       inspect: (_) async => HostConnection(VpnStatus.connected, plan: plan),
@@ -253,6 +294,7 @@ void main() {
         final coordinator = await _initialize(
           ConnectionCoordinator(
             database: db,
+            readPlan: _readPlan,
             inspect: (_) async => const HostConnection(VpnStatus.disconnected),
             revokeReplay: (plan) async {
               expect(plan!.id, old.id);
@@ -304,6 +346,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           inspect: (_) async => const HostConnection(VpnStatus.disconnected),
           revokeReplay: (_) async =>
               throw StateError('Unexpected replay revocation'),
@@ -337,6 +380,7 @@ void main() {
         final coordinator = await _initialize(
           ConnectionCoordinator(
             database: db,
+            readPlan: _readPlan,
             prepare: (_, _) async => next,
             inspect: (_) async => host,
             start: (plan) async {
@@ -388,6 +432,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           prepare: (_, _) async => next,
           inspect: (_) async => host,
           start: (plan) async =>
@@ -413,58 +458,55 @@ void main() {
     },
   );
 
-  test(
-    'reopen cleans a stopped uncommitted plan when there is no old session',
-    () async {
-      final next = _plan('b', platform: ConnectionPlatform.windows);
-      await db.connectionStateDao.beginApply(
-        0,
-        jsonEncode({'attemptId': next.id, 'old': null, 'next': next.encode()}),
-      );
-      final revoked = <String>[];
-      await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
-          revokeReplay: (plan) async {
-            revoked.add(plan!.id);
-            return null;
-          },
-          resetTraffic: _noReset,
-        ),
-      );
-      expect(revoked, [next.id]);
-      expect((await db.connectionStateDao.read()).pendingApplyJson, isNull);
-    },
-  );
-
-  test(
-    'failed replay cleanup retains the pending journal for a later retry',
-    () async {
-      final next = _plan('b', platform: ConnectionPlatform.windows);
-      final pending = jsonEncode({
-        'attemptId': next.id,
-        'old': null,
-        'next': next.encode(),
-      });
-      await db.connectionStateDao.beginApply(0, pending);
-      final coordinator = ConnectionCoordinator(
-        database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
-        revokeReplay: (_) async =>
-            throw StateError('Replay file is unavailable'),
-        resetTraffic: _noReset,
-      );
-      addTearDown(coordinator.dispose);
-      await expectLater(
-        coordinator.initialize(poll: false, registerReferences: false),
-        throwsStateError,
-      );
-      expect((await db.connectionStateDao.read()).pendingApplyJson, pending);
-      expect(coordinator.state.value.phase, ConnectionPhase.failed);
-      expect(coordinator.state.value.issue, 'restoreFailed');
-    },
-  );
+  for (final planAvailable in [false, true]) {
+    test(
+      'reopen keeps saved selection without starting a disconnected host; plan=$planAvailable',
+      () async {
+        final old = _plan('a', platform: ConnectionPlatform.windows);
+        await _seed(db, old);
+        if (!planAvailable) _savedPlans.clear();
+        final before = await db.connectionStateDao.read();
+        final calls = <String>[];
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            readPlan: _readPlan,
+            prepare: (_, _) async => throw StateError('Unexpected preparation'),
+            start: (plan) async {
+              calls.add('start:${plan.id}');
+              return HostConnection(VpnStatus.connected, plan: plan);
+            },
+            stop: (_) async {
+              calls.add('stop');
+              return const HostConnection(VpnStatus.disconnected);
+            },
+            inspect: (known) async {
+              expect(
+                known.map((plan) => plan.id),
+                planAvailable ? [old.id] : isEmpty,
+              );
+              return const HostConnection(VpnStatus.disconnected);
+            },
+            revokeReplay: (_) async {
+              calls.add('revoke');
+              return null;
+            },
+            resetTraffic: _noReset,
+          ),
+        );
+        expect(calls, isEmpty);
+        expect((await db.connectionStateDao.read()).toJson(), before.toJson());
+        expect((await coordinator.configuration).encode(), before.settingsJson);
+        expect(
+          (await coordinator.readConfirmedPlan())?.id,
+          planAvailable ? old.id : null,
+        );
+        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+        expect(coordinator.state.value.plan, isNull);
+        expect(coordinator.state.value.issue, isNull);
+      },
+    );
+  }
 
   test('a queued draft cannot reconnect without prior authorization', () async {
     final ready = Completer<void>();
@@ -476,6 +518,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         prepare: (_, _) async {
           prepared++;
           return plan;
@@ -520,6 +563,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         inspect: (_) async => const HostConnection(VpnStatus.disconnected),
         resetTraffic: _noReset,
       ),
@@ -558,6 +602,7 @@ void main() {
         final coordinator = await _initialize(
           ConnectionCoordinator(
             database: db,
+            readPlan: _readPlan,
             prepare: (_, _) async =>
                 throw StateError('Stop-only must not prepare'),
             start: (old) async {
@@ -608,7 +653,6 @@ void main() {
         }
         expect(starts, fail ? 1 : 0);
         expect(replayAllowed, fail);
-        expect((await db.connectionStateDao.read()).pendingApplyJson, isNull);
       },
     );
   }
@@ -624,6 +668,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           prepare: (_, _) async => next,
           start: (_) async {
             enteredStart.complete();
@@ -649,8 +694,8 @@ void main() {
       final waiting = await db.connectionStateDao.read();
       expect(waiting.revision, before.revision);
       expect(waiting.settingsJson, before.settingsJson);
-      expect(waiting.confirmedSnapshotJson, isNull);
-      expect(waiting.pendingApplyJson, isNotNull);
+      expect(waiting.confirmedPlanId, isNull);
+      expect(waiting.toJson(), before.toJson());
       expect(writes, 0);
       expect(await db.select(db.coreConfig).get(), isEmpty);
 
@@ -659,8 +704,7 @@ void main() {
       final saved = await db.connectionStateDao.read();
       expect(saved.revision, before.revision + 1);
       expect(saved.settingsJson, next.configuration.encode());
-      expect(saved.confirmedSnapshotJson, next.encode());
-      expect(saved.pendingApplyJson, isNull);
+      expect(saved.confirmedPlanId, next.id);
       expect(writes, 1);
       expect(await db.select(db.coreConfig).get(), hasLength(1));
       expect(coordinator.state.value.phase, ConnectionPhase.connected);
@@ -679,6 +723,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           prepare: (_, _) async => throw StateError('Preparation failed'),
           start: (_) async {
             calls.add('start');
@@ -713,6 +758,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         prepare: (_, _) async => next,
         start: (plan) async {
           calls.add('start:${plan.id}');
@@ -759,6 +805,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           prepare: (_, _) async => next,
           start: (plan) async {
             calls.add('start:${plan.id}');
@@ -807,6 +854,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         prepare: (_, _) async => next,
         start: (plan) async {
           if (plan.id == next.id) {
@@ -841,15 +889,14 @@ void main() {
     expect(coordinator.state.value.issue, 'cancelled');
   });
 
-  test('failed compensating stops preserve the journal and a later command recovers', () async {
-    final old = _plan('a');
+  test('failed compensating stops preserve actual runtime and disconnect retries without replay', () async {
+    final old = _plan('a', entryIds: [1, 3]);
     final next = _plan('b', entryIds: [2]);
     await _seed(db, old);
     final before = await db.connectionStateDao.read();
     var host = HostConnection(VpnStatus.connected, plan: old);
     var rejectNextStop = true;
-    var rejectOldRestore = true;
-    var rejectOldCleanup = true;
+    final calls = <String>[];
     final permission = PlatformPermissionResult(
       kind: PlatformPermissionKind.androidVpn,
       state: PlatformPermissionState.denied,
@@ -857,18 +904,15 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         prepare: (_, _) async => next,
         start: (plan) async {
-          host = HostConnection(VpnStatus.connected, plan: plan);
-          if (plan.id == old.id && rejectOldRestore) {
-            host = HostConnection(VpnStatus.connecting, plan: plan);
-            throw const ConnectionHostException('startFailed');
-          }
-          return host;
+          calls.add('start:${plan.id}');
+          return host = HostConnection(VpnStatus.connected, plan: plan);
         },
         stop: (plan) async {
-          if ((plan?.id == next.id && rejectNextStop) ||
-              (plan?.id == old.id && !host.connected && rejectOldCleanup)) {
+          calls.add('stop:${plan?.id}');
+          if (plan?.id == next.id && rejectNextStop) {
             throw const ConnectionHostException('stopFailed');
           }
           return host = const HostConnection(VpnStatus.disconnected);
@@ -887,39 +931,116 @@ void main() {
       ),
       throwsA(isA<ConnectionHostException>()),
     );
-    final pending = (await db.connectionStateDao.read()).pendingApplyJson;
-    expect(pending, isNotNull);
+    expect((await db.connectionStateDao.read()).toJson(), before.toJson());
+    expect(calls, ['stop:${old.id}', 'start:${next.id}', 'stop:${next.id}']);
     expect(host.plan!.id, next.id); // The draft really is still running.
     expect(coordinator.state.value.phase, ConnectionPhase.failed);
     expect(coordinator.state.value.busy, false);
     expect(coordinator.state.value.issue, 'restoreFailed');
     expect(coordinator.state.value.permission, same(permission));
-    expect(coordinator.state.value.plan, isNull); // It was never committed.
+    expect(coordinator.state.value.plan!.id, next.id);
     expect((await coordinator.configuration).encode(), before.settingsJson);
     expect(await db.select(db.coreConfig).get(), isEmpty);
-    expect((await coordinator.readReferences()).protectedIds, {1, 2});
+    expect((await coordinator.readReferences()).protectedIds, {2});
 
-    rejectNextStop = false;
     await expectLater(
       coordinator.disconnect(),
       throwsA(isA<ConnectionHostException>()),
     );
-    final failedRecovery = await db.connectionStateDao.read();
-    expect(failedRecovery.pendingApplyJson, pending);
-    expect(failedRecovery.revision, before.revision);
-    expect(failedRecovery.settingsJson, before.settingsJson);
-    expect(failedRecovery.confirmedSnapshotJson, before.confirmedSnapshotJson);
+    expect((await db.connectionStateDao.read()).toJson(), before.toJson());
+    expect(host.plan!.id, next.id);
     expect(coordinator.state.value.phase, ConnectionPhase.failed);
     expect(coordinator.state.value.busy, false);
-    expect(coordinator.state.value.issue, 'restoreFailed');
+    expect(coordinator.state.value.issue, 'stopFailed');
+    expect(coordinator.state.value.plan!.id, next.id);
 
-    rejectOldRestore = false;
-    rejectOldCleanup = false;
+    rejectNextStop = false;
     await coordinator.disconnect();
+    expect(calls, [
+      'stop:${old.id}',
+      'start:${next.id}',
+      'stop:${next.id}',
+      'stop:${next.id}',
+      'stop:${next.id}',
+    ]);
     expect((await db.connectionStateDao.read()).toJson(), before.toJson());
     expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.plan, isNull);
     expect(coordinator.state.value.issue, isNull);
   });
+
+  for (final queryFails in [true, false]) {
+    test(
+      'unknown runtime after failed compensation blocks asset replacement until reconciled; queryFails=$queryFails',
+      () async {
+        final old = _plan('a', entryIds: [1, 3]);
+        final next = _plan('b', entryIds: [2]);
+        await _seed(db, old);
+        final before = await db.connectionStateDao.read();
+        var host = HostConnection(VpnStatus.connected, plan: old);
+        var snapshotUnavailable = false;
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            readPlan: _readPlan,
+            prepare: (_, _) async => next,
+            start: (plan) async =>
+                host = HostConnection(VpnStatus.connected, plan: plan),
+            stop: (plan) async {
+              if (plan?.id == next.id) {
+                snapshotUnavailable = true;
+                throw const ConnectionHostException('stopFailed');
+              }
+              return host = const HostConnection(VpnStatus.disconnected);
+            },
+            inspect: (_) async {
+              if (snapshotUnavailable) {
+                if (queryFails) {
+                  throw const ConnectionHostException('nativeStatusFailed');
+                }
+                return const HostConnection(VpnStatus.connected);
+              }
+              return host;
+            },
+            resetTraffic: _noReset,
+          ),
+        );
+        await expectLater(
+          coordinator.apply(
+            next.configuration,
+            writeAssets: () async => throw StateError('Commit failed'),
+          ),
+          throwsA(isA<ConnectionHostException>()),
+        );
+        expect(coordinator.state.value.phase, ConnectionPhase.failed);
+        expect(coordinator.state.value.plan, isNull);
+        expect(host.plan!.id, next.id);
+        await expectLater(
+          coordinator.readReferences(),
+          throwsA(
+            isA<ConnectionHostException>().having(
+              (error) => error.reason,
+              'reason',
+              'runtimeSnapshotUnavailable',
+            ),
+          ),
+        );
+
+        snapshotUnavailable = false;
+        await coordinator.refresh();
+        expect(coordinator.state.value.phase, ConnectionPhase.connected);
+        expect(coordinator.state.value.plan!.id, next.id);
+        expect((await coordinator.readReferences()).protectedIds, {2});
+
+        host = const HostConnection(VpnStatus.disconnected);
+        await coordinator.refresh();
+        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+        expect(coordinator.state.value.plan, isNull);
+        expect((await coordinator.readReferences()).protectedIds, isEmpty);
+        expect((await db.connectionStateDao.read()).toJson(), before.toJson());
+      },
+    );
+  }
 
   test('failed maintenance stop with unreadable host is retryable without changing saved state', () async {
     final old = _plan('a');
@@ -931,6 +1052,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         prepare: (_, _) async => throw StateError('Unexpected preparation'),
         start: (_) async => throw StateError('Unexpected start'),
         stop: (_) async {
@@ -979,6 +1101,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           prepare: (_, _) async => next,
           start: (plan) async =>
               host = HostConnection(VpnStatus.connected, plan: plan),
@@ -1012,48 +1135,51 @@ void main() {
     },
   );
 
-  test('reopen with an uncommitted running new plan restores the old plan, not the draft', () async {
-    final old = _plan('a');
-    final next = _plan('b', entryIds: [2]);
-    await _seed(db, old);
-    final before = await db.connectionStateDao.read();
-    await db.connectionStateDao.beginApply(
-      before.revision,
-      jsonEncode({
-        'attemptId': next.id,
-        'old': old.encode(),
-        'next': next.encode(),
-      }),
-    );
-    var host = HostConnection(VpnStatus.connected, plan: next);
-    final calls = <String>[];
-    final coordinator = await _initialize(
-      ConnectionCoordinator(
-        database: db,
-        prepare: (_, _) async =>
-            throw StateError('Recovery must use the saved snapshot'),
-        start: (plan) async {
-          calls.add('start:${plan.id}');
-          expect(plan.encode(), old.encode());
-          return host = HostConnection(VpnStatus.connected, plan: plan);
-        },
-        stop: (plan) async {
-          calls.add('stop:${plan?.id}');
-          return host = const HostConnection(VpnStatus.disconnected);
-        },
-        inspect: (known) async {
-          expect(known.map((plan) => plan.id).toSet(), {old.id, next.id});
-          return host;
-        },
-        resetTraffic: _noReset,
-      ),
-    );
-    expect(calls, ['stop:${next.id}', 'start:${old.id}']);
-    expect((await db.connectionStateDao.read()).toJson(), before.toJson());
-    expect(coordinator.state.value.phase, ConnectionPhase.connected);
-    expect(coordinator.state.value.plan!.id, old.id);
-    expect(coordinator.state.value.issue, 'previousSettingsRestored');
-  });
+  test(
+    'reopen shows the actual running plan without replaying a saved selection',
+    () async {
+      final old = _plan('a');
+      final next = _plan('b', entryIds: [2]);
+      await _seed(db, old);
+      final before = await db.connectionStateDao.read();
+      var host = HostConnection(VpnStatus.connected, plan: next);
+      final calls = <String>[];
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readPlan: _readPlan,
+          prepare: (_, _) async => throw StateError('Unexpected preparation'),
+          start: (plan) async {
+            calls.add('start:${plan.id}');
+            return host = HostConnection(VpnStatus.connected, plan: plan);
+          },
+          stop: (plan) async {
+            calls.add('stop:${plan?.id}');
+            return host = const HostConnection(VpnStatus.disconnected);
+          },
+          inspect: (known) async {
+            expect(known.map((plan) => plan.id), [old.id]);
+            return host;
+          },
+          revokeReplay: (_) async {
+            calls.add('revoke');
+            return null;
+          },
+          resetTraffic: _noReset,
+        ),
+      );
+      expect(calls, isEmpty);
+      expect((await db.connectionStateDao.read()).toJson(), before.toJson());
+      expect(
+        (await coordinator.configuration).encode(),
+        old.configuration.encode(),
+      );
+      expect((await coordinator.readConfirmedPlan())?.id, old.id);
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.plan!.id, next.id);
+      expect(coordinator.state.value.issue, isNull);
+    },
+  );
 
   test(
     'when both new startup and old restoration fail the UI is disconnected',
@@ -1067,6 +1193,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           prepare: (_, _) async => next,
           start: (plan) async {
             calls.add('start:${plan.id}');
@@ -1116,6 +1243,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         prepare: (_, _) async => next,
         start: (plan) async =>
             host = HostConnection(VpnStatus.connected, plan: plan),
@@ -1157,6 +1285,51 @@ void main() {
       22,
     });
   });
+  test(
+    'startup protects the old rollback candidates until the new plan commits',
+    () async {
+      final old = _plan('a', entryIds: [11, 12]);
+      final next = _plan('b', entryIds: [31]);
+      await _seed(db, old);
+      var host = HostConnection(VpnStatus.connected, plan: old);
+      final enteredStart = Completer<void>();
+      final releaseStart = Completer<void>();
+      late final ConnectionCoordinator coordinator;
+      coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readPlan: _readPlan,
+          prepare: (_, _) async {
+            coordinator.reportResolvedNodes({31});
+            return next;
+          },
+          start: (plan) async {
+            expect(plan.id, next.id);
+            enteredStart.complete();
+            await releaseStart.future;
+            return host = HostConnection(VpnStatus.connected, plan: plan);
+          },
+          stop: (_) async =>
+              host = const HostConnection(VpnStatus.disconnected),
+          inspect: (_) async => host,
+          resetTraffic: _noReset,
+        ),
+      );
+      final applying = coordinator.apply(next.configuration);
+      await enteredStart.future;
+      try {
+        expect(coordinator.state.value.phase, ConnectionPhase.connecting);
+        expect((await coordinator.readReferences()).protectedIds, {11, 12, 31});
+      } finally {
+        releaseStart.complete();
+        await applying;
+      }
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect((await coordinator.readReferences()).protectedIds, {31});
+      expect((await db.connectionStateDao.read()).confirmedPlanId, next.id);
+    },
+  );
+
   test('App-only reset preserves connection and committed settings', () async {
     final plan = _plan('a');
     await _seed(db, plan);
@@ -1178,6 +1351,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         inspect: (_) async =>
             HostConnection(VpnStatus.connected, plan: plan, traffic: traffic),
         start: (_) async => throw StateError('Reset must not start VPN'),
@@ -1206,6 +1380,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         inspect: (_) async => HostConnection(VpnStatus.connected, plan: plan),
         start: (_) async => throw StateError('Start must be idempotent'),
         prepare: (_, _) async => throw StateError('Do not prepare again'),
@@ -1228,6 +1403,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
+        readPlan: _readPlan,
         prepare: (_, _) async => plan,
         inspect: (_) async => host,
         start: (_) async {
@@ -1265,6 +1441,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
+          readPlan: _readPlan,
           inspect: (_) async {
             reads++;
             return const HostConnection(VpnStatus.disconnected);
@@ -1294,6 +1471,8 @@ Future<ConnectionCoordinator> _initialize(
 Future<RuntimeSnapshot?> _noReset(ConnectionPlan? _) async =>
     throw StateError('Unexpected runtime reset');
 
+Future<ConnectionPlan?> _readPlan(String? id) async => _savedPlans[id];
+
 RuntimeSnapshot _traffic(ConnectionPlan plan, int sample) => RuntimeSnapshot(
   sessionId: 'session',
   planId: plan.id,
@@ -1314,7 +1493,7 @@ Future<void> _seed(
 }) => db.connectionStateDao.commit(
   baseRevision: 0,
   settingsJson: (configuration ?? plan.configuration).encode(),
-  confirmedSnapshotJson: plan.encode(),
+  confirmedPlanId: plan.id,
 );
 
 Future<void> _writeAsset(AppDatabase db) async {
@@ -1386,7 +1565,7 @@ ConnectionPlan _plan(
       ),
     ).toJson(),
   );
-  return ConnectionPlan.create(
+  final plan = ConnectionPlan.create(
     id: id,
     configuration: configuration,
     compiled: compiled,
@@ -1400,4 +1579,6 @@ ConnectionPlan _plan(
       jsonEncode(invoke.toJson()),
     ),
   );
+  _savedPlans[id] = plan;
+  return plan;
 }

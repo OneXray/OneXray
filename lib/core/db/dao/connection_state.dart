@@ -27,33 +27,12 @@ class ConnectionStateDao extends DatabaseAccessor<AppDatabase>
     ).insert(const ConnectionStateCompanion(), mode: InsertMode.insertOrIgnore);
   }
 
-  /// Records only recovery intent; saved settings and the confirmed snapshot stay
-  /// unchanged until commit. A second apply cannot replace an unresolved intent.
-  Future<void> beginApply(int baseRevision, String pendingJson) =>
-      attachedDatabase.transaction(() async {
-        await _ensureRow();
-        final changed =
-            await (update(connectionState)..where(
-                  (row) =>
-                      row.revision.equals(baseRevision) &
-                      row.pendingApplyJson.isNull(),
-                ))
-                .write(
-                  ConnectionStateCompanion(
-                    pendingApplyJson: Value(pendingJson),
-                  ),
-                );
-        if (changed != 1) {
-          throw StateError('Connection state changed or an apply is pending');
-        }
-      });
-
   /// The caller supplies already validated state and already encoded asset data.
   /// Asset mutations must use this database so all writes share this transaction.
   Future<void> commit({
     required int baseRevision,
     required String settingsJson,
-    String? confirmedSnapshotJson,
+    String? confirmedPlanId,
     Future<void> Function()? writeAssets,
   }) => attachedDatabase.transaction(() async {
     await _ensureRow();
@@ -68,23 +47,13 @@ class ConnectionStateDao extends DatabaseAccessor<AppDatabase>
           ConnectionStateCompanion(
             revision: Value(baseRevision + 1),
             settingsJson: Value(settingsJson),
-            confirmedSnapshotJson: Value(confirmedSnapshotJson),
-            pendingApplyJson: const Value(null),
+            confirmedPlanId: Value(confirmedPlanId),
           ),
         );
     if (changed != 1) {
       throw StateError('Connection state changed');
     }
   });
-
-  /// Exact comparison prevents a late cancellation from clearing another apply.
-  Future<bool> clearPending(String expectedPendingJson) async =>
-      await (update(connectionState)
-            ..where((row) => row.pendingApplyJson.equals(expectedPendingJson)))
-          .write(
-            const ConnectionStateCompanion(pendingApplyJson: Value(null)),
-          ) ==
-      1;
 
   /// Restore/clear callers already own their surrounding data transaction.
   Future<void> reset() async {

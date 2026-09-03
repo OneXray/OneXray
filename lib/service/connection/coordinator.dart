@@ -78,6 +78,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   )
   _inspectObserved;
   late final Future<RuntimeSnapshot> Function(ConnectionPlan) _readTraffic;
+  late final Future<ConnectionPlan?> Function(String?) _readPlan;
   final Stream<VpnStatus> _statusEvents;
   final bool Function() _needsStatusPolling;
   late final Future<RuntimeSnapshot?> Function(ConnectionPlan?) _resetTraffic;
@@ -115,6 +116,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     Future<HostConnection> Function(Iterable<ConnectionPlan>, VpnStatus)?
     inspectObserved,
     Future<RuntimeSnapshot> Function(ConnectionPlan)? readTraffic,
+    Future<ConnectionPlan?> Function(String?)? readPlan,
     Stream<VpnStatus>? statusEvents,
     bool Function()? needsStatusPolling,
     Future<RuntimeSnapshot?> Function(ConnectionPlan?)? resetTraffic,
@@ -132,6 +134,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         inspectObserved ??
         ((plans, status) => host.inspect(plans, observedStatus: status));
     _readTraffic = readTraffic ?? host.query;
+    _readPlan = readPlan ?? host.readPlan;
     _resetTraffic = resetTraffic ?? host.resetTraffic;
     _revokeReplay = revokeReplay ?? host.revokeReplay;
     _prepare =
@@ -149,10 +152,14 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             as Map<String, dynamic>,
       );
 
+  /// The database stores a reference, not another copy of the private plan.
+  Future<ConnectionPlan?> readConfirmedPlan() async =>
+      _readPlan((await db.connectionStateDao.read()).confirmedPlanId);
+
   /// Custom preparation (node/route drafts) shares the same temporary reference
   /// protection as the default path. apply clears it on success and failure.
   void reportResolvedNodes(Set<int> ids) {
-    _preparingNodeIds = Set.of(ids);
+    _preparingNodeIds.addAll(ids);
   }
 
   Future<void> initialize({bool poll = true, bool registerReferences = true}) {
@@ -164,7 +171,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           if (poll) {
             _statusSubscription ??= _statusEvents.listen(_onNativeStatus);
           }
-          await _recover();
+          final row = await db.connectionStateDao.read();
+          _publish(await _inspect(await _known(row)));
           _ready = true;
           if (poll) {
             WidgetsBinding.instance.addObserver(this);
@@ -181,6 +189,16 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           unawaited(_statusSubscription?.cancel());
           _statusSubscription = null;
           _initializing = null;
+          _lastNativeStatus = null;
+          state.value = ConnectionView(
+            phase: ConnectionPhase.failed,
+            issue: error is ConnectionHostException
+                ? error.reason
+                : 'runtimeUnavailable',
+            permission: error is ConnectionHostException
+                ? error.permission
+                : null,
+          );
           Error.throwWithStackTrace(error, stack);
         });
   }
@@ -273,14 +291,19 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<SubscriptionNodeReferences> readReferences() async {
     final stored = await configuration;
-    final row = await db.connectionStateDao.read();
+    if (state.value.plan == null &&
+        _pendingPlan == null &&
+        _preparingNodeIds.isEmpty &&
+        state.value.phase != ConnectionPhase.disconnected &&
+        _lastNativeStatus != VpnStatus.disconnected) {
+      // An unknown live plan cannot safely yield an empty protection set.
+      throw const ConnectionHostException('runtimeSnapshotUnavailable');
+    }
     return SubscriptionNodeReferences(
       runningIds: {
         ...?state.value.plan?.nodeIds,
         ...?_pendingPlan?.nodeIds,
         ..._preparingNodeIds,
-        if (row.pendingApplyJson != null)
-          for (final plan in _known(row)) ...plan.nodeIds,
       },
       fixedId: stored.connection.selection.kind == SelectionKind.server
           ? stored.connection.selection.id
@@ -289,76 +312,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     );
   }
 
-  Iterable<ConnectionPlan> _known(ConnectionStateData row) sync* {
-    if (state.value.plan != null) yield state.value.plan!;
-    if (row.confirmedSnapshotJson != null) {
-      yield ConnectionPlan.decode(row.confirmedSnapshotJson!);
-    }
-    if (row.pendingApplyJson != null) {
-      final pending = jsonDecode(row.pendingApplyJson!) as Map<String, dynamic>;
-      for (final key in ['old', 'next']) {
-        if (pending[key] is String) {
-          yield ConnectionPlan.decode(pending[key] as String);
-        }
-      }
-    }
-  }
-
-  Future<void> _recover() async {
-    PlatformPermissionResult? permission;
-    try {
-      final row = await db.connectionStateDao.read();
-      final current = await _inspect(_known(row));
-      final pending = row.pendingApplyJson;
-      if (pending == null) {
-        _publish(current);
-        return;
-      }
-      state.value = ConnectionView(
-        phase: ConnectionPhase.recovering,
-        traffic: current.traffic,
-      );
-      final record = jsonDecode(pending) as Map<String, dynamic>;
-      final old = record['old'] == null
-          ? null
-          : ConnectionPlan.decode(record['old'] as String);
-      // Pending means the data transaction did not commit. Never promote the
-      // draft just because its native session happened to start before a crash.
-      HostConnection recovered = current;
-      if (current.status != VpnStatus.disconnected &&
-          current.plan?.id != old?.id) {
-        recovered = await _stop(current.plan);
-      }
-      if (old != null &&
-          (!recovered.connected || recovered.plan?.id != old.id)) {
-        try {
-          recovered = await _start(old);
-          if (!recovered.connected || recovered.plan?.id != old.id) {
-            throw const ConnectionHostException('restoreFailed');
-          }
-        } catch (error) {
-          if (error is ConnectionHostException) permission = error.permission;
-          recovered = await _stop(old);
-          await db.connectionStateDao.clearPending(pending);
-          _publish(recovered, issue: 'restoreFailed', permission: permission);
-          return;
-        }
-      }
-      if (old == null && recovered.status == VpnStatus.disconnected) {
-        final next = record['next'] as String?;
-        if (next != null) await _revokeReplay(ConnectionPlan.decode(next));
-      }
-      await db.connectionStateDao.clearPending(pending);
-      _publish(recovered, issue: 'previousSettingsRestored');
-    } catch (error) {
-      await _publishHostFailure(
-        'restoreFailed',
-        error: error,
-        permission: permission,
-      );
-      rethrow;
-    }
-  }
+  Future<List<ConnectionPlan>> _known(ConnectionStateData row) async => [
+    ?state.value.plan,
+    ?_pendingPlan,
+    ?await _readPlan(row.confirmedPlanId),
+  ];
 
   Future<void> refresh({VpnStatus? observedStatus}) async {
     if (_closed || (!_foreground && observedStatus == null)) return;
@@ -371,10 +329,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     try {
       await DataMaintenance.run(() async {
         final row = await db.connectionStateDao.read();
-        if (row.pendingApplyJson != null) return;
+        final plans = await _known(row);
         final current = observedStatus == null
-            ? await _inspect(_known(row))
-            : await _inspectObserved(_known(row), observedStatus);
+            ? await _inspect(plans)
+            : await _inspectObserved(plans, observedStatus);
         if (!_commandActive &&
             !_closed &&
             commandGeneration == _commandGeneration &&
@@ -489,7 +447,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         (await configuration).encode() != expectedConfiguration) {
       throw const ConnectionHostException('configurationChanged');
     }
-    final current = await _inspect(_known(row));
+    final current = await _inspect(await _known(row));
     final shouldStart =
         !disconnect && (connect || (affectsRuntime && current.connected));
     final shouldStop = disconnect && current.status != VpnStatus.disconnected;
@@ -502,18 +460,18 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       RestoreReplay? restoreReplay;
       if ((affectsRuntime || disconnect) &&
           current.status == VpnStatus.disconnected &&
-          row.confirmedSnapshotJson != null &&
+          row.confirmedPlanId != null &&
           (writeAssets != null ||
               next.encode() != (await configuration).encode())) {
         restoreReplay = await _revokeReplay(
-          ConnectionPlan.decode(row.confirmedSnapshotJson!),
+          await _readPlan(row.confirmedPlanId),
         );
       }
       try {
         await db.connectionStateDao.commit(
           baseRevision: row.revision,
           settingsJson: next.encode(),
-          confirmedSnapshotJson: row.confirmedSnapshotJson,
+          confirmedPlanId: row.confirmedPlanId,
           writeAssets: writeAssets,
         );
       } catch (_) {
@@ -534,22 +492,16 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       plan: old,
       traffic: current.traffic,
     );
-    String? pending;
     bool touchedHost = false;
     RestoreReplay? restoreReplay;
     try {
+      // Keep the old nodes while this call may still restore the old plan.
+      _preparingNodeIds = {...?old?.nodeIds};
       final plan = disconnect
           ? null
           : await (prepare ?? _prepare)(next, cancellation.future);
       _checkCancelled(cancellation);
       _pendingPlan = plan;
-      pending = jsonEncode({
-        'attemptId': plan?.id ?? newPlanId(),
-        'old': old?.encode(),
-        'next': plan?.encode(),
-      });
-      await db.connectionStateDao.beginApply(row.revision, pending);
-      _checkCancelled(cancellation);
       var running = current;
       if (current.status != VpnStatus.disconnected) {
         touchedHost = true;
@@ -582,13 +534,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       await db.connectionStateDao.commit(
         baseRevision: row.revision,
         settingsJson: (plan?.configuration ?? next).encode(),
-        confirmedSnapshotJson: plan?.encode() ?? row.confirmedSnapshotJson,
+        confirmedPlanId: plan?.id ?? row.confirmedPlanId,
         writeAssets: () async {
           await writeAssets?.call();
           _checkCancelled(cancellation);
         },
       );
-      pending = null;
       _publish(running, issue: plan?.notice);
     } catch (error) {
       var permission = error is ConnectionHostException
@@ -622,7 +573,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             await _revokeReplay(_pendingPlan);
           }
         }
-        if (pending != null) await db.connectionStateDao.clearPending(pending);
         _publish(
           recovered,
           issue: restoreFailed
@@ -669,7 +619,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   Future<void> stopForMaintenance() async {
     try {
       final row = await db.connectionStateDao.read();
-      final current = await _inspect(_known(row));
+      final current = await _inspect(await _known(row));
       state.value = ConnectionView(
         phase: ConnectionPhase.disconnecting,
         plan: current.plan,
@@ -689,23 +639,19 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   }) async {
     ConnectionPlan? plan;
     var traffic = state.value.traffic;
+    _lastNativeStatus = null;
     try {
       final row = await db.connectionStateDao.read();
-      final current = await _inspect(_known(row));
+      final current = await _inspect(await _known(row));
+      _lastNativeStatus = current.status;
       traffic = current.traffic ?? traffic;
-      final pending = row.pendingApplyJson;
-      final oldJson = pending == null
-          ? null
-          : (jsonDecode(pending) as Map<String, dynamic>)['old'] as String?;
-      final oldId = oldJson == null ? null : ConnectionPlan.decode(oldJson).id;
-      // A readable native draft is still uncommitted. Never show it as the
-      // saved selection, nor show a remembered old snapshot as actually running.
-      if (current.status != VpnStatus.disconnected &&
-          (pending == null || current.plan?.id == oldId)) {
+      // The actual running plan can differ from saved settings after a failed
+      // change. Keep it visible and protect its nodes without committing it.
+      if (current.status != VpnStatus.disconnected) {
         plan = current.plan;
       }
     } catch (_) {
-      // Unknown host state stays an explicit failure; retry keeps the journal.
+      // Unknown host state stays an explicit failure; retry inspects it again.
     }
     state.value = ConnectionView(
       phase: ConnectionPhase.failed,
@@ -720,7 +666,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<void> resetTraffic() => _run(() async {
     final row = await db.connectionStateDao.read();
-    final current = await _inspect(_known(row));
+    final current = await _inspect(await _known(row));
     final snapshot = await _resetTraffic(current.plan);
     final previous = current.traffic ?? state.value.traffic;
     _publish(
@@ -748,9 +694,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           _resetSpeed = true;
           _syncPolling();
           try {
-            if ((await db.connectionStateDao.read()).pendingApplyJson != null) {
-              await _recover();
-            }
             await action();
           } finally {
             _commandActive = false;

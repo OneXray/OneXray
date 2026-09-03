@@ -9,9 +9,8 @@ class ConnectionState extends Table {
   // App state metadata, not an encoded Xray asset. Validation belongs to service.
   TextColumn get settingsJson => text().withDefault(const Constant('{}'))();
 
-  TextColumn get confirmedSnapshotJson => text().nullable()();
-
-  TextColumn get pendingApplyJson => text().nullable()();
+  // The immutable plan itself lives in run/plans/<id>/plan.json.
+  TextColumn get confirmedPlanId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
