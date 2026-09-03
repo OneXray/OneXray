@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/localizations/locale.dart';
 
@@ -75,4 +76,23 @@ void main() {
     expect(LanguageCode.system.locale, AppLocalePolicy.traditionalChinese);
     expect(LanguageCode.system.textDirection, TextDirection.ltr);
   });
+
+  test(
+    "approved latency labels accept measured and unavailable values",
+    () async {
+      for (final locale in AppLocalizations.supportedLocales) {
+        final l = await AppLocalizations.delegate.load(locale);
+        for (final latency in <Object>[42, '—']) {
+          expect(
+            l.prototypeCurrentServerLatency('Tokyo', latency),
+            allOf(contains('Tokyo'), contains('$latency')),
+          );
+          expect(
+            l.prototypeGroupAvailability(1, 3, latency),
+            allOf(contains('1'), contains('3'), contains('$latency')),
+          );
+        }
+      }
+    },
+  );
 }

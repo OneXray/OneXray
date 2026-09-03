@@ -39,12 +39,12 @@
   "menuManualInput": "Manual Input",
   "menuSubscribeLink": "Subscribe Link",
   "menuScanQRCode": "Scan QR code",
-  "menuPickImage": "Pick Image",
+  "menuPickImage": "Choose from photos",
   "menuPickFile": "Pick File",
   "menuReadPasteboard": "Read Pasteboard",
   "buttonOK": "OK",
   "buttonCancel": "Cancel",
-  "buttonOpenSettings": "Open Settings",
+  "buttonOpenSettings": "Open system settings",
   "buttonSave": "Save",
   "buttonSaveFailed": "Save failed",
   "buttonAdd": "Add",
@@ -454,14 +454,14 @@
   "sharePageXrayLink": "VMessAEAD/VLESS sharing protocol. Widely used, keeps full compatibility with other apps (except VMess).",
   "sharePageSubscriptionLink": "HTTPS link. Widely used, keeps full compatibility with other apps.",
   "sharePageAppLink": "OneXray URL scheme. Only OneXray can import this link.",
-  "sharePageOneXrayLink": "OneXray Link",
+  "sharePageOneXrayLink": "OneXray link",
   "sharePageQRCode": "QRCode",
   "sharePageShareQRCode": "Share QRCode",
-  "sharePageSaveQRCode": "Save QRCode",
-  "sharePageShowQRCode": "Show QRCode",
+  "sharePageSaveQRCode": "Save QR image",
+  "sharePageShowQRCode": "Show QR code",
   "sharePageLink": "Link",
-  "sharePageShareLink": "Share Link",
-  "sharePageCopyLink": "Copy Link",
+  "sharePageShareLink": "Share",
+  "sharePageCopyLink": "Copy share link",
   "sharePageXrayJson": "Xray JSON. Used to export Raw Json / Xray Profile.",
   "sharePageText": "Text",
   "sharePageShareText": "Share Text",
@@ -513,10 +513,10 @@
   "settingsPageDesktop": "Desktop",
   "settingsPageDesktopDescription": "Startup and desktop behavior",
   "desktopSettingsPageSectionStartup": "Startup",
-  "settingsPageLaunchAtLogin": "Launch at Login",
+  "settingsPageLaunchAtLogin": "Launch at login",
   "settingsPageLaunchAtLoginDescription": "Start OneXray when you sign in",
-  "settingsPageStartHidden": "Start Hidden",
-  "settingsPageStartHiddenDescription": "Keep the main window hidden whenever OneXray starts",
+  "settingsPageStartHidden": "Start hidden",
+  "settingsPageStartHiddenDescription": "Open without showing the main window",
   "settingsPageConnectOnLaunch": "Connect on App Launch",
   "settingsPageConnectOnLaunchDescription": "Connect the last or default node whenever OneXray starts",
   "generalSettingsPageSectionStartup": "Startup",
@@ -525,19 +525,19 @@
   "generalSettingsPageSystemUserAgentDescription": "Use the system browser identity; Windows and Linux use a compatible browser UA",
   "generalSettingsPageOneXrayUserAgent": "OneXray User-Agent",
   "generalSettingsPageOneXrayUserAgentDescription": "Use the OneXray identity with App version information",
-  "settingsPageLaunchAtLoginRequiresApproval": "Approval Required",
+  "settingsPageLaunchAtLoginRequiresApproval": "System approval required",
   "settingsPageLaunchAtLoginApprovalDescription": "Allow OneXray in your system's login or startup app settings",
   "settingsPageLaunchAtLoginUnavailable": "Launch at login is unavailable",
   "settingsPageLaunchAtLoginUpdateFailed": "Unable to update launch at login",
   "appUpdateAlreadyLatest": "You are using the latest version",
   "appUpdateCheckFailed": "Failed to check for updates. Please try again later.",
   "appUpdateAvailable": "Update available",
-  "appUpdateDialogTitle": "New Version Available",
+  "appUpdateDialogTitle": "New version available",
   "appUpdateCurrentVersion": "Current version",
   "appUpdateLatestVersion": "Latest version",
-  "appUpdateOpen": "Update",
+  "appUpdateOpen": "Go to update",
   "appUpdateLater": "Later",
-  "appUpdateSkipVersion": "Skip This Version",
+  "appUpdateSkipVersion": "Skip this version",
   "settingsPageClearData": "Clear Data",
   "settingsPageClearDataSubtitle": "Delete configs, subscriptions, custom rule sets, runtime files, and cache. Backups, app preferences, and initial profiles are kept.",
   "settingsPageClearDataDialogTitle": "Clear data?",
@@ -683,7 +683,7 @@
   "appIconPagePurple": "Purple",
   "appIconPageRed": "Red",
   "appIconPageSetFailed": "Failed to set new App Icon",
-  "desktopSettingsPageHideDockIcon": "Hide icon in Dock",
+  "desktopSettingsPageHideDockIcon": "Hide Dock icon",
   "desktopSettingsPageHideDockIconDescription": "Apply immediately to the current App session",
   "themePageTitle": "Theme",
   "themePageSystem": "System",
@@ -1657,7 +1657,7 @@
         "type": "String"
       },
       "latency": {
-        "type": "int"
+        "type": "Object"
       }
     }
   },
@@ -1704,7 +1704,7 @@
         "type": "int"
       },
       "latency": {
-        "type": "int"
+        "type": "Object"
       }
     }
   },
@@ -3624,5 +3624,114 @@
   "prototypeTunAddress": "TUN address",
   "@prototypeTunAddress": {
     "description": "Approved prototype copy: TUN address"
+  },
+  "prototypeSettingsLocationNote": "Manage subscriptions in Servers. Data updates and Geodata are in Advanced → Xray runtime and diagnostics.",
+  "@prototypeSettingsLocationNote": {
+    "description": "Approved prototype copy: Manage subscriptions in Servers. Data updates and Geodata are in Advanced → Xray runtime and diagnostics."
+  },
+  "@prototypeCloseDialog": {
+    "description": "Approved prototype copy: Close dialog"
+  },
+  "@prototypeChooseRawConfiguration": {
+    "description": "Approved prototype copy: Choose a Raw JSON configuration"
+  },
+  "@buttonRetry": {
+    "description": "Approved prototype copy: Retry"
+  },
+  "@menuEdit": {
+    "description": "Approved prototype copy: Edit"
+  },
+  "@menuShare": {
+    "description": "Approved prototype copy: Share"
+  },
+  "@menuSave": {
+    "description": "Approved prototype copy: Save"
+  },
+  "@menuDelete": {
+    "description": "Approved prototype copy: Delete"
+  },
+  "@menuScanQRCode": {
+    "description": "Approved prototype copy: Scan QR code"
+  },
+  "@menuPickImage": {
+    "description": "Approved prototype copy: Choose from photos"
+  },
+  "@buttonCancel": {
+    "description": "Approved prototype copy: Cancel"
+  },
+  "@buttonSave": {
+    "description": "Approved prototype copy: Save"
+  },
+  "@sharePageTitle": {
+    "description": "Approved prototype copy: Share"
+  },
+  "@sharePageCopyLink": {
+    "description": "Approved prototype copy: Copy share link"
+  },
+  "@sharePageShareLink": {
+    "description": "Approved prototype copy: Share"
+  },
+  "@sharePageShowQRCode": {
+    "description": "Approved prototype copy: Show QR code"
+  },
+  "@sharePageSaveQRCode": {
+    "description": "Approved prototype copy: Save QR image"
+  },
+  "@sharePageOneXrayLink": {
+    "description": "Approved prototype copy: OneXray link"
+  },
+  "@desktopSettingsPageSectionStartup": {
+    "description": "Approved prototype copy: Startup"
+  },
+  "@settingsPageLaunchAtLogin": {
+    "description": "Approved prototype copy: Launch at login"
+  },
+  "@settingsPageLaunchAtLoginDescription": {
+    "description": "Approved prototype copy: Start OneXray when you sign in"
+  },
+  "@settingsPageStartHidden": {
+    "description": "Approved prototype copy: Start hidden"
+  },
+  "@settingsPageStartHiddenDescription": {
+    "description": "Approved prototype copy: Open without showing the main window"
+  },
+  "@settingsPageLaunchAtLoginRequiresApproval": {
+    "description": "Approved prototype copy: System approval required"
+  },
+  "@desktopSettingsPageHideDockIcon": {
+    "description": "Approved prototype copy: Hide Dock icon"
+  },
+  "@appUpdateAvailable": {
+    "description": "Approved prototype copy: Update available"
+  },
+  "@appUpdateDialogTitle": {
+    "description": "Approved prototype copy: New version available"
+  },
+  "@appUpdateCurrentVersion": {
+    "description": "Approved prototype copy: Current version"
+  },
+  "@appUpdateLatestVersion": {
+    "description": "Approved prototype copy: Latest version"
+  },
+  "@appUpdateOpen": {
+    "description": "Approved prototype copy: Go to update"
+  },
+  "@appUpdateLater": {
+    "description": "Approved prototype copy: Later"
+  },
+  "@appUpdateSkipVersion": {
+    "description": "Approved prototype copy: Skip this version"
+  },
+  "@themePageSystem": {
+    "description": "Approved prototype copy: System"
+  },
+  "@themePageLight": {
+    "description": "Approved prototype copy: Light"
+  },
+  "@themePageDark": {
+    "description": "Approved prototype copy: Dark"
+  },
+  "@buttonOpenSettings": {
+    "description": "Approved prototype copy: Open system settings"
   }
 }

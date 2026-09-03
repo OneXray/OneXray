@@ -54,10 +54,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Launch at Login'), findsOneWidget);
-    expect(find.text('Start Hidden'), findsOneWidget);
+    expect(find.text('Launch at login'), findsOneWidget);
+    expect(find.text('Start hidden'), findsOneWidget);
     expect(find.text('Connect on App Launch'), findsNothing);
-    expect(find.text('Hide icon in Dock'), findsOneWidget);
+    expect(find.text('Hide Dock icon'), findsOneWidget);
     expect(find.byType(ShadSwitch), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
@@ -139,8 +139,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Later'), findsOneWidget);
-    expect(find.text('Skip This Version'), findsOneWidget);
-    expect(find.text('Update'), findsOneWidget);
+    expect(find.text('Skip this version'), findsOneWidget);
+    expect(find.text('Go to update'), findsOneWidget);
     expect(find.byType(Scrollable), findsWidgets);
     expect(tester.takeException(), isNull);
   });

@@ -22,7 +22,7 @@ void main() {
       find.text('Permission is denied. Open Settings to allow it?'),
       findsOneWidget,
     );
-    expect(find.text('Open Settings'), findsOneWidget);
+    expect(find.text('Open system settings'), findsOneWidget);
 
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
