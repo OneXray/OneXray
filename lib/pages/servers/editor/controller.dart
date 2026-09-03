@@ -18,11 +18,17 @@ class ServerEditorController extends ChangeNotifier {
   String? error;
   bool _disposed = false;
   bool get loaded => _draft != null;
+  String? get name => _draft?.original.name;
   bool get fromSubscription => _draft != null && _draft!.original.subId != 0;
   int get lineCount => '\n'.allMatches(text.text).length + 1;
   bool get validJson {
     try {
-      return jsonDecode(text.text) is Map;
+      final value = jsonDecode(text.text);
+      return value is Map &&
+          value['tag'] is String &&
+          (value['tag'] as String).trim().isNotEmpty &&
+          value['protocol'] is String &&
+          (value['protocol'] as String).trim().isNotEmpty;
     } catch (_) {
       return false;
     }

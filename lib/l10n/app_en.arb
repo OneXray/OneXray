@@ -3757,5 +3757,62 @@
   "prototypeShareServerHint": "Share an importable server link",
   "@prototypeShareServerHint": {
     "description": "Approved prototype copy: Share an importable server link"
+  },
+  "prototypeLocalOnly": "Local only",
+  "@prototypeLocalOnly": {
+    "description": "Approved prototype copy: Local only"
+  },
+  "prototypeStoredOnThisDevice": "Stored on this device",
+  "@prototypeStoredOnThisDevice": {
+    "description": "Approved prototype copy: Stored on this device"
+  },
+  "prototypeUpdated": "Updated",
+  "@prototypeUpdated": {
+    "description": "Approved prototype copy: Updated"
+  },
+  "prototypeEditSubscriptionHint": "Change its name, HTTPS link, or Age keys",
+  "@prototypeEditSubscriptionHint": {
+    "description": "Approved prototype copy: Change its name, HTTPS link, or Age keys"
+  },
+  "prototypeShareSubscriptionHint": "Share its subscription link",
+  "@prototypeShareSubscriptionHint": {
+    "description": "Approved prototype copy: Share its subscription link"
+  },
+  "prototypeExampleService": "Example Service",
+  "@prototypeExampleService": {
+    "description": "Approved prototype copy: Example Service"
+  },
+  "prototypeLocalServer": "Local server",
+  "@prototypeLocalServer": {
+    "description": "Approved prototype copy: Local server"
+  },
+  "prototypeImportedLinks": "Imported links",
+  "@prototypeImportedLinks": {
+    "description": "Approved prototype copy: Imported links"
+  },
+  "prototypeItemCount": "{count} items",
+  "@prototypeItemCount": {
+    "description": "Approved prototype copy: {count} items",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeLinkFormat": "Link format",
+  "@prototypeLinkFormat": {
+    "description": "Approved prototype copy: Link format"
+  },
+  "prototypeOriginalLink": "Original link",
+  "@prototypeOriginalLink": {
+    "description": "Approved prototype copy: Original link"
+  },
+  "prototypeServerShareLink": "Server share link",
+  "@prototypeServerShareLink": {
+    "description": "Approved prototype copy: Server share link"
+  },
+  "prototypeSubscriptionShareAgeHint": "Includes the name and optional Age type, never an Age secret key. The receiving app creates its own keys.",
+  "@prototypeSubscriptionShareAgeHint": {
+    "description": "Approved prototype copy: Includes the name and optional Age type, never an Age secret key. The receiving app creates its own keys."
   }
 }

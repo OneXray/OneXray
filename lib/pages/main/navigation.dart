@@ -32,7 +32,6 @@ enum AppSecondaryDestination {
   serverPicker("server-picker"),
   serverGroup("server-group"),
   serverEditor("server-editor"),
-  serverSources("server-sources"),
   serverFinalExitPicker("server-final-exit-picker"),
   rawEditor("raw-editor"),
   smartRouting("smart-routing"),
@@ -63,6 +62,8 @@ enum AppSecondaryDestination {
   final String segment;
 
   const AppSecondaryDestination(this.segment);
+
+  static const dialogs = {serversImport, serverEditor, share, subscriptionEdit};
 }
 
 extension AppNavigationContext on BuildContext {

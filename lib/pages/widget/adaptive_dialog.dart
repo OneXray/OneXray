@@ -37,55 +37,87 @@ Future<T?> showChoiceDialog<T>(BuildContext context, WidgetBuilder builder) {
 }
 
 /// Shared presentation for prototype-aligned dialogs. System prompts stay native.
-Future<T?> showAppDialog<T>(BuildContext context, WidgetBuilder builder) =>
-    showGeneralDialog<T>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: ColorManager.palette(context).overlay,
-      pageBuilder: (context, animation, secondaryAnimation) {
-        final size = MediaQuery.sizeOf(context);
-        final mobile = size.width <= AppLayout.mobileBreakpoint;
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: AppLayout.dialogBlur,
-                    sigmaY: AppLayout.dialogBlur,
-                  ),
-                  child: const SizedBox.expand(),
+Future<T?> showAppDialog<T>(
+  BuildContext context,
+  WidgetBuilder builder,
+) => showGeneralDialog<T>(
+  context: context,
+  barrierDismissible: true,
+  barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+  // The previous wizard step still owns its barrier while its card is offstage.
+  barrierColor: ModalRoute.of(context) is PopupRoute
+      ? Colors.transparent
+      : ColorManager.palette(context).overlay,
+  pageBuilder: (context, animation, secondaryAnimation) =>
+      AppDialogFrame(child: builder(context)),
+);
+
+/// The same responsive surface for imperative dialogs and GoRouter pages.
+class AppDialogFrame extends StatelessWidget {
+  const AppDialogFrame({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    // A wizard may push another dialog step. Keep only the current surface
+    // visible so Back restores its state without stacking two modal cards.
+    final covered = ModalRoute.of(context)?.isCurrent == false;
+    final size = MediaQuery.sizeOf(context);
+    final mobile = size.width <= AppLayout.mobileBreakpoint;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final bottomSafeArea = mobile && keyboard == 0
+        ? MediaQuery.paddingOf(context).bottom
+        : 0.0;
+    return Offstage(
+      offstage: covered,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: AppLayout.dialogBlur,
+                  sigmaY: AppLayout.dialogBlur,
                 ),
+                child: const SizedBox.expand(),
               ),
             ),
-            SafeArea(
-              top: !mobile,
-              bottom: !mobile,
-              child: Padding(
-                padding: mobile ? EdgeInsets.zero : const EdgeInsets.all(20),
-                child: Align(
-                  alignment: mobile ? Alignment.bottomCenter : Alignment.center,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: mobile ? size.width : AppLayout.dialogWidth,
-                      maxHeight: math.min(
-                        AppLayout.dialogMaxHeight,
-                        size.height *
-                            (mobile
-                                ? AppLayout.dialogMobileHeightFactor
-                                : AppLayout.dialogDesktopHeightFactor),
+          ),
+          SafeArea(
+            top: !mobile,
+            bottom: !mobile,
+            child: Padding(
+              padding: mobile
+                  ? EdgeInsets.only(bottom: keyboard)
+                  : EdgeInsets.fromLTRB(20, 20, 20, 20 + keyboard),
+              child: Align(
+                alignment: mobile ? Alignment.bottomCenter : Alignment.center,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: mobile ? size.width : AppLayout.dialogWidth,
+                    maxHeight: math.min(
+                      math.min(
+                        AppLayout.dialogMaxHeight + bottomSafeArea,
+                        math.max(0, size.height - keyboard - 32),
                       ),
+                      bottomSafeArea +
+                          size.height *
+                              (mobile
+                                  ? AppLayout.dialogMobileHeightFactor
+                                  : AppLayout.dialogDesktopHeightFactor),
                     ),
-                    child: builder(context),
                   ),
+                  child: child,
                 ),
               ),
             ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
+  }
+}
 
 class AppDialog extends StatelessWidget {
   const AppDialog({
@@ -95,6 +127,8 @@ class AppDialog extends StatelessWidget {
     required this.body,
     this.actions = const [],
     this.expandLastAction = true,
+    this.onBack,
+    this.onClose,
   });
 
   final String title;
@@ -102,6 +136,8 @@ class AppDialog extends StatelessWidget {
   final Widget body;
   final List<Widget> actions;
   final bool expandLastAction;
+  final VoidCallback? onBack;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +188,23 @@ class AppDialog extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (onBack != null) ...[
+                            TextButton(
+                              onPressed: onBack,
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(0, 34),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: AppTypography.dialogBack,
+                              ),
+                              child: Text(
+                                AppLocalizations.of(context)!.prototypeBack,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,7 +228,8 @@ class AppDialog extends StatelessWidget {
                             autofocus: true,
                             tooltip: AppLocalizations.of(context)!
                                 .prototypeCloseDialog,
-                            onPressed: () => Navigator.of(context).pop(),
+                            onPressed:
+                                onClose ?? () => Navigator.of(context).pop(),
                             style: IconButton.styleFrom(
                               foregroundColor: palette.mutedStrong,
                               minimumSize: const Size.square(

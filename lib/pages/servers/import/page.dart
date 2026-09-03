@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
-import 'package:onexray/pages/widget/page_action_bar.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/outbound_json_editor.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -60,68 +63,71 @@ class _ServersImportPageState extends State<ServersImportPage> {
     animation: controller,
     builder: (context, _) {
       final l10n = AppLocalizations.of(context)!;
+      final mobile =
+          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return PopScope(
         canPop: !controller.busy,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(l10n.prototypeAddServers),
-            leading: BackButton(onPressed: () => controller.closePage(context)),
-          ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: ResponsiveContent(
-                desktopMaxWidth: 760,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        l10n.prototypeChooseAddMethod,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      if (controller.supportsScan)
+        child: AppDialog(
+          title: l10n.prototypeAddServersToOneXray,
+          subtitle: l10n.prototypeChooseAddMethod,
+          onClose: () => controller.closeFlow(context),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.all(mobile ? 14 : 20),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = mobile
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - 10) / 2;
+                    return Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        if (controller.supportsScan)
+                          _choice(
+                            context,
+                            width,
+                            ServerImportAction.scan,
+                            LucideIcons.qrCode,
+                            l10n.prototypeScanQrCode,
+                          ),
                         _choice(
                           context,
-                          ServerImportAction.scan,
-                          LucideIcons.qrCode,
-                          l10n.prototypeScanQrCode,
+                          width,
+                          ServerImportAction.paste,
+                          LucideIcons.clipboard,
+                          l10n.prototypePasteLink,
                         ),
-                      _choice(
-                        context,
-                        ServerImportAction.paste,
-                        LucideIcons.clipboardPaste,
-                        l10n.prototypePasteLink,
-                      ),
-                      _choice(
-                        context,
-                        ServerImportAction.subscription,
-                        LucideIcons.link,
-                        l10n.prototypeAddSubscription,
-                      ),
-                      _choice(
-                        context,
-                        ServerImportAction.file,
-                        LucideIcons.fileInput,
-                        l10n.prototypeImportFile,
-                      ),
-                      _choice(
-                        context,
-                        ServerImportAction.json,
-                        LucideIcons.fileJson,
-                        l10n.prototypeAddManually,
-                      ),
-                      if (widget.setup) ...[
-                        const SizedBox(height: 16),
-                        Text(l10n.prototypeSetupDoesNotStartVpn),
+                        _choice(
+                          context,
+                          width,
+                          ServerImportAction.subscription,
+                          LucideIcons.link,
+                          l10n.prototypeAddSubscription,
+                        ),
+                        _choice(
+                          context,
+                          width,
+                          ServerImportAction.file,
+                          LucideIcons.fileInput,
+                          l10n.prototypeImportFile,
+                        ),
+                        _choice(
+                          context,
+                          width,
+                          ServerImportAction.json,
+                          LucideIcons.fileJson,
+                          l10n.prototypeAddManually,
+                        ),
                       ],
-                      _ImportFeedback(controller: controller),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
-            ),
+              _ImportFeedback(controller: controller),
+            ],
           ),
         ),
       );
@@ -130,31 +136,72 @@ class _ServersImportPageState extends State<ServersImportPage> {
 
   Widget _choice(
     BuildContext context,
+    double width,
     ServerImportAction action,
     IconData icon,
     String title,
-  ) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: ShadButton.outline(
-      onPressed: controller.busy
-          ? null
-          : () => controller.open(context, action),
-      leading: Icon(icon),
-      child: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: Text(title),
+  ) {
+    final palette = ColorManager.palette(context);
+    return SizedBox(
+      width: width,
+      child: OutlinedButton(
+        onPressed: controller.busy
+            ? null
+            : () => controller.open(context, action),
+        style:
+            OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 74),
+              padding: const EdgeInsets.all(12),
+              textStyle: AppTypography.importMethod,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.card),
+              ),
+            ).copyWith(
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.disabled)
+                    ? palette.mutedForeground
+                    : states.contains(WidgetState.hovered)
+                    ? palette.primary
+                    : palette.foreground,
+              ),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.hovered)
+                    ? palette.selectedSurface
+                    : palette.card,
+              ),
+              side: WidgetStateProperty.resolveWith(
+                (states) => BorderSide(
+                  color: states.contains(WidgetState.hovered)
+                      ? palette.primary
+                      : palette.border,
+                ),
+              ),
+            ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title)),
+            const SizedBox(width: 10),
+            const Icon(LucideIcons.arrowRightDir, size: 18),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class ServerImportFormPage extends StatelessWidget {
   final ServerImportController controller;
   final ServerImportAction action;
+  final VoidCallback? onBack;
+  final VoidCallback? onClose;
   const ServerImportFormPage({
     super.key,
     required this.controller,
     required this.action,
+    this.onBack,
+    this.onClose,
   });
 
   @override
@@ -164,147 +211,178 @@ class ServerImportFormPage extends StatelessWidget {
       final l10n = AppLocalizations.of(context)!;
       final subscription = action == ServerImportAction.subscription;
       final manual = action == ServerImportAction.json;
+      final mobile =
+          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return PopScope(
         canPop: !controller.busy,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(
-              subscription
+        child: AppDialog(
+          title: subscription
+              ? controller.editingSubscription
+                    ? l10n.prototypeEditSubscription
+                    : l10n.prototypeAddSubscription
+              : manual
+              ? l10n.prototypeAddManually
+              : l10n.prototypePasteLink,
+          subtitle: controller.editingSubscription
+              ? l10n.prototypeChangesApplyToFutureUpdates
+              : null,
+          onBack: onBack,
+          onClose: onClose ?? () => controller.closeFlow(context),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              IgnorePointer(
+                ignoring: controller.busy || controller.loadFailed,
+                child: subscription
+                    ? Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          mobile ? 16 : 20,
+                          20,
+                          mobile ? 16 : 20,
+                          0,
+                        ),
+                        child: _subscription(context),
+                      )
+                    : manual
+                    ? _manual(context, mobile: mobile)
+                    : _paste(context),
+              ),
+              _ImportFeedback(controller: controller),
+              ConnectCallout(
+                icon: LucideIcons.lockKeyhole,
+                text: l10n.prototypeLocalInputPrivacy,
+              ),
+            ],
+          ),
+          actions: [
+            ConnectDialogButton(
+              label: l10n.prototypeCancel,
+              secondary: true,
+              onPressed: controller.busy
+                  ? null
+                  : onClose ?? () => controller.closeFlow(context),
+            ),
+            ConnectDialogButton(
+              label: subscription
                   ? controller.editingSubscription
-                        ? l10n.prototypeEditSubscription
+                        ? l10n.prototypeSave
                         : l10n.prototypeAddSubscription
                   : manual
-                  ? l10n.prototypeXrayNodeJson
-                  : l10n.prototypePasteLink,
+                  ? l10n.prototypeDetect
+                  : l10n.prototypeImportLinks,
+              onPressed: !controller.canSubmit(action)
+                  ? null
+                  : () => subscription
+                        ? controller.subscribe(context)
+                        : controller.detect(context, action),
             ),
-            leading: BackButton(onPressed: () => controller.closePage(context)),
-            actions: [
-              if (!subscription)
-                IconButton(
-                  tooltip: l10n.prototypeReadClipboard,
-                  onPressed: controller.busy
-                      ? null
-                      : () => controller.readClipboard(context),
-                  icon: const Icon(LucideIcons.clipboardPaste),
-                ),
-            ],
-          ),
-          body: SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: subscription
-                      ? IgnorePointer(
-                          ignoring: controller.busy || controller.loadFailed,
-                          child: _subscription(context),
-                        )
-                      : Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: ResponsiveContent(
-                            desktopMaxWidth: 900,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  manual
-                                      ? l10n.prototypeNodeJsonHint
-                                      : l10n.prototypeImportLinksHint,
-                                ),
-                                if (!manual) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    l10n.prototypeSubscriptionDirectImportNotice,
-                                  ),
-                                ],
-                                const SizedBox(height: 8),
-                                Text(
-                                  l10n.prototypeLocalInputPrivacy,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 16),
-                                Expanded(
-                                  child: manual
-                                      ? SettingsJsonEditor(
-                                          controller: controller.text,
-                                          lineCount: controller.lineCount,
-                                          valid: controller.validJson,
-                                          validLabel: l10n.jsonEditorValid,
-                                          invalidLabel: l10n.jsonEditorInvalid,
-                                          linesLabel:
-                                              '${controller.lineCount} ${l10n.jsonEditorLines}',
-                                          spacesLabel: l10n.jsonEditorSpaces,
-                                        )
-                                      : TextField(
-                                          controller: controller.text,
-                                          expands: true,
-                                          maxLines: null,
-                                          minLines: null,
-                                          autocorrect: false,
-                                          enableSuggestions: false,
-                                          keyboardType: TextInputType.multiline,
-                                          decoration: InputDecoration(
-                                            labelText: l10n.prototypePasteLink,
-                                            alignLabelWithHint: true,
-                                          ),
-                                        ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                ),
-                _ImportFeedback(controller: controller),
-              ],
-            ),
-          ),
-          bottomNavigationBar: PageActionBar(
-            children: [
-              ShadButton.outline(
-                onPressed: controller.busy
-                    ? null
-                    : () => controller.closePage(context),
-                child: Text(l10n.prototypeCancel),
-              ),
-              ShadButton(
-                onPressed: controller.busy || controller.loadFailed
-                    ? null
-                    : () => subscription
-                          ? controller.subscribe(context)
-                          : controller.detect(context, action),
-                child: Text(
-                  subscription
-                      ? controller.editingSubscription
-                            ? l10n.prototypeSave
-                            : l10n.prototypeAddSubscription
-                      : l10n.prototypeDetect,
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       );
     },
   );
 
+  Widget _paste(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        spacing: 8,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.prototypeImportLinks,
+            style: AppTypography.importField.copyWith(
+              color: palette.mutedStrong,
+            ),
+          ),
+          SizedBox(
+            height: 120,
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: ShadInput(
+                controller: controller.text,
+                placeholder: const Text(
+                  'vless://, vmess://, trojan://, ss://, https://, onexray://',
+                ),
+                expands: true,
+                editableTextSize: const Size(double.infinity, 98),
+                maxLines: null,
+                minLines: null,
+                autocorrect: false,
+                enableSuggestions: false,
+                keyboardType: TextInputType.multiline,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                style: AppTypography.importField,
+              ),
+            ),
+          ),
+          Text(
+            l10n.prototypeImportLinksHint,
+            style: AppTypography.importHint.copyWith(
+              color: palette.mutedForeground,
+            ),
+          ),
+          Text(
+            l10n.prototypeSubscriptionDirectImportNotice,
+            style: AppTypography.importHint.copyWith(
+              color: palette.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _manual(BuildContext context, {required bool mobile}) {
+    final l10n = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(mobile ? 16 : 20, 20, mobile ? 16 : 20, 0),
+      child: Column(
+        spacing: 7,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.prototypeXrayNodeJson,
+            style: AppTypography.subscriptionField.copyWith(
+              color: palette.mutedStrong,
+            ),
+          ),
+          OutboundJsonEditor(controller: controller.text),
+          Text(
+            l10n.prototypeNodeJsonHint,
+            style: AppTypography.importJsonHint.copyWith(
+              color: palette.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _subscription(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return SubscriptionFormView(
-      supportText: controller.editingSubscription
-          ? l10n.prototypeChangesApplyToFutureUpdates
-          : l10n.prototypeSubscriptionDescription,
+      supportText: l10n.prototypeSubscriptionDescription,
       nameLabel: l10n.prototypeSubscriptionName,
       nameController: controller.name,
+      nameHint: l10n.prototypeExampleService,
       urlLabel: l10n.prototypeSubscriptionLink,
       urlController: controller.url,
-      urlHint: l10n.subscriptionAddPageUrlExample,
+      urlHint: 'https://provider.example/subscription',
       encryptionTitle: l10n.prototypeAgeEncryption,
       ageProviderSupportTitle: l10n.prototypeAgeOptional,
       ageProviderSupportDescription: l10n.prototypeAgeSupportNotice,
       ageSecretKeyLabel: l10n.prototypeAgeSecretKey,
-      ageSecretKeyHint: l10n.subscriptionAgeSecretKeyHint,
+      ageSecretKeyHint: 'AGE-SECRET-KEY-1...',
       ageSecretKeyController: controller.secretKey,
       agePublicKeyLabel: l10n.prototypeAgePublicKey,
-      agePublicKeyHint: l10n.subscriptionAgePublicKeyHint,
+      agePublicKeyHint: 'age1...',
       agePublicKeyController: controller.publicKey,
       ageKeyPairErrorText: controller.incompleteKeys
           ? l10n.prototypeAgeBothKeysRequired
@@ -314,7 +392,7 @@ class ServerImportFormPage extends StatelessWidget {
       revealAgeSecretKeyLabel: l10n.prototypeRevealKey,
       hideAgeSecretKeyLabel: l10n.prototypeHideKey,
       generateAgeKeyLabel: l10n.subscriptionGenerateAgeKey,
-      generateAgeX25519KeyLabel: l10n.subscriptionGenerateAgeX25519Key,
+      generateAgeX25519KeyLabel: 'X25519',
       generateAgeHybridKeyLabel: l10n.prototypeAgeHybrid,
       clearAgeKeyLabel: l10n.prototypeClear,
       onToggleAgeSecretKeyVisibility: controller.toggleSecret,
@@ -328,10 +406,14 @@ class ServerImportFormPage extends StatelessWidget {
 class ServerImportPreviewPage extends StatelessWidget {
   final ServerImportController controller;
   final ServerImportPreview preview;
+  final VoidCallback? onBack;
+  final VoidCallback? onClose;
   const ServerImportPreviewPage({
     super.key,
     required this.controller,
     required this.preview,
+    this.onBack,
+    this.onClose,
   });
 
   @override
@@ -339,118 +421,228 @@ class ServerImportPreviewPage extends StatelessWidget {
     animation: controller,
     builder: (context, _) {
       final l10n = AppLocalizations.of(context)!;
+      final palette = ColorManager.palette(context);
+      final committed = controller.committedResult;
+      final itemCount =
+          preview.rows.length +
+          preview.customRoutes.length +
+          preview.geoData.length +
+          (preview.dependencies?.inputs.length ?? 0);
       return PopScope(
-        canPop: !controller.busy,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(l10n.prototypeImportPreview),
-            leading: BackButton(onPressed: () => controller.closePage(context)),
-          ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: ResponsiveContent(
-                desktopMaxWidth: 760,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        l10n.prototypeUsableNodes(preview.count),
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      if (controller.committedResult != null &&
-                          preview.count > 0)
-                        Text(l10n.prototypeServersAdded),
-                      for (final raw in preview.rows.where(
-                        (row) => row.type.value == 'raw',
-                      ))
-                        ListTile(
-                          leading: const Icon(LucideIcons.fileJson),
-                          title: Text(raw.name.value),
-                          subtitle: Text(
-                            controller.committedResult == null
-                                ? l10n.xrayRawPageTitle
-                                : l10n.prototypeNameSaved(raw.name.value),
+        canPop: !controller.busy && committed == null,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && !controller.busy && committed != null) {
+            controller.closeFlow(context);
+          }
+        },
+        child: AppDialog(
+          title: l10n.prototypeImportPreview,
+          onBack: committed == null ? onBack : null,
+          onClose: onClose ?? () => controller.closeFlow(context),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(17),
+                decoration: BoxDecoration(
+                  color: palette.runningSurface,
+                  borderRadius: BorderRadius.circular(AppRadii.card),
+                ),
+                child: Row(
+                  spacing: 13,
+                  children: [
+                    Icon(
+                      LucideIcons.circleCheck,
+                      size: 26,
+                      color: palette.running,
+                    ),
+                    Expanded(
+                      child: Column(
+                        spacing: 3,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.prototypeImportedLinks,
+                            style: AppTypography.importSummary,
                           ),
+                          Text(
+                            l10n.prototypeItemCount(itemCount),
+                            style: AppTypography.importSummaryMeta.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                          ),
+                          if (committed != null && preview.count > 0)
+                            Text(
+                              l10n.prototypeServersAdded,
+                              style: AppTypography.importSummaryMeta.copyWith(
+                                color: palette.running,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (preview.hasItems)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
+                  child: Column(
+                    children: [
+                      for (final row in preview.rows)
+                        _PreviewItem(
+                          name: row.name.value,
+                          description: committed != null
+                              ? l10n.prototypeNameSaved(row.name.value)
+                              : row.type.value == 'raw'
+                              ? l10n.xrayRawPageTitle
+                              : l10n.prototypeLocalServer,
                         ),
                       for (final route in preview.customRoutes)
-                        ListTile(
-                          leading: const Icon(LucideIcons.route),
-                          title: Text(route.name),
-                          subtitle: Text(
-                            controller.committedResult == null
-                                ? l10n.prototypeCustomRouting
-                                : l10n.prototypeNameSaved(route.name),
-                          ),
+                        _PreviewItem(
+                          name: route.name,
+                          description: committed == null
+                              ? l10n.prototypeCustomRouting
+                              : l10n.prototypeNameSaved(route.name),
                         ),
                       for (final dependency
                           in preview.dependencies?.inputs ?? const [])
-                        ListTile(
-                          leading: const Icon(LucideIcons.database),
-                          title: Text(dependency.fileName),
-                          subtitle: Text(l10n.prototypeDataSource),
+                        _PreviewItem(
+                          name: dependency.fileName,
+                          description: l10n.prototypeDataSource,
                         ),
                       for (final source in preview.geoData)
-                        ListTile(
-                          leading: const Icon(LucideIcons.database),
-                          title: Text(source.name),
-                          subtitle: Text(
-                            controller.committedResult == null
-                                ? l10n.prototypeDataSource
-                                : controller.committedResult!.failedGeoData
-                                      .contains(source)
-                                ? l10n.prototypeCannotReadContent
-                                : l10n.prototypeGeodataAdded,
+                        _PreviewItem(
+                          name: source.name,
+                          description: committed == null
+                              ? l10n.prototypeDataSource
+                              : committed.failedGeoData.contains(source)
+                              ? l10n.prototypeCannotReadContent
+                              : l10n.prototypeGeodataAdded,
+                          failed:
+                              committed?.failedGeoData.contains(source) ??
+                              false,
+                        ),
+                    ],
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Text(
+                    l10n.prototypeNoSupportedLinks,
+                    style: AppTypography.importHint.copyWith(
+                      color: palette.destructive,
+                    ),
+                  ),
+                ),
+              _ImportFeedback(controller: controller),
+              if (preview.count > 0 || (preview.failureCount ?? 0) > 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 8,
+                    children: [
+                      Expanded(
+                        child: _stat(
+                          context,
+                          l10n.prototypeUsableNodes(preview.count),
+                        ),
+                      ),
+                      if (preview.failureCount case final failureCount?)
+                        Expanded(
+                          child: _stat(
+                            context,
+                            l10n.prototypeUnrecognizedNodes(failureCount),
+                            warning: failureCount > 0,
                           ),
                         ),
-                      if (preview.failureCount != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          l10n.prototypeUnrecognizedNodes(
-                            preview.failureCount!,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      if (!preview.hasItems)
-                        Text(l10n.prototypeNoSupportedLinks),
-                      Text(l10n.prototypeLocalInputPrivacy),
-                      _ImportFeedback(controller: controller),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ),
-          bottomNavigationBar: PageActionBar(
-            children: [
-              ShadButton.outline(
-                onPressed: controller.busy
-                    ? null
-                    : () => controller.closePage(context),
-                child: Text(
-                  controller.committedResult == null
-                      ? l10n.prototypeCancel
-                      : l10n.prototypeClose,
-                ),
-              ),
-              ShadButton(
-                onPressed: controller.busy || !preview.hasItems
-                    ? null
-                    : () => controller.confirm(context, preview),
-                child: Text(
-                  controller.committedResult == null
-                      ? l10n.prototypeConfirmAdd
-                      : l10n.prototypeDone,
-                ),
-              ),
             ],
           ),
+          actions: [
+            ConnectDialogButton(
+              label: committed == null
+                  ? l10n.prototypeCancel
+                  : l10n.prototypeClose,
+              secondary: true,
+              onPressed: controller.busy
+                  ? null
+                  : onClose ?? () => controller.closeFlow(context),
+            ),
+            ConnectDialogButton(
+              label: committed == null
+                  ? l10n.prototypeConfirmAdd
+                  : l10n.prototypeDone,
+              onPressed: controller.busy || !preview.hasItems
+                  ? null
+                  : () => controller.confirm(context, preview),
+            ),
+          ],
         ),
       );
     },
   );
+
+  Widget _stat(BuildContext context, String text, {bool warning = false}) {
+    final palette = ColorManager.palette(context);
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: warning ? palette.warningSurface : palette.runningSurface,
+        borderRadius: BorderRadius.circular(AppRadii.control),
+      ),
+      child: Text(
+        text,
+        style: AppTypography.importStat.copyWith(
+          color: warning ? palette.restarting : palette.running,
+        ),
+      ),
+    );
+  }
+}
+
+class _PreviewItem extends StatelessWidget {
+  const _PreviewItem({
+    required this.name,
+    required this.description,
+    this.failed = false,
+  });
+
+  final String name;
+  final String description;
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ColorManager.palette(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: palette.border)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
+        children: [
+          Expanded(child: Text(name, style: AppTypography.serverMenuTitle)),
+          Expanded(
+            child: Text(
+              description,
+              textAlign: TextAlign.end,
+              style: AppTypography.serverMenuHint.copyWith(
+                color: failed ? palette.destructive : palette.mutedForeground,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ServerImportScannerPage extends StatelessWidget {
@@ -480,48 +672,61 @@ class ServerImportScannerPage extends StatelessWidget {
 class _ImportFeedback extends StatelessWidget {
   final ServerImportController controller;
   const _ImportFeedback({required this.controller});
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(12),
-    child: ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.25,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            if (controller.busy) const LinearProgressIndicator(),
-            if (controller.importedSubscriptionCount > 0)
-              Text(
-                AppLocalizations.of(context)!.prototypeSubscriptionsImported(
-                  controller.importedSubscriptionCount,
+  Widget build(BuildContext context) {
+    if (!controller.busy &&
+        controller.subscriptionImports.isEmpty &&
+        controller.error == null) {
+      return const SizedBox.shrink();
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 8,
+        children: [
+          if (controller.busy) const LinearProgressIndicator(),
+          if (controller.importedSubscriptionCount > 0)
+            Text(
+              l10n.prototypeSubscriptionsImported(
+                controller.importedSubscriptionCount,
+              ),
+              style: AppTypography.importHint.copyWith(
+                color: palette.mutedForeground,
+              ),
+            ),
+          for (final item in controller.subscriptionImports)
+            Text(
+              item.result.success
+                  ? item.result.parseFailureCount == null
+                        ? '${item.name}: ${l10n.prototypeUsableNodes(item.result.count)}'
+                        : l10n.prototypeSubscriptionImportResult(
+                            item.name,
+                            item.result.count,
+                            item.result.parseFailureCount!,
+                          )
+                  : '${item.name}: ${ServerImportController.subscriptionError(l10n, item.result.status)}',
+              style: AppTypography.importHint.copyWith(
+                color: item.result.success
+                    ? palette.mutedForeground
+                    : palette.destructive,
+              ),
+            ),
+          if (controller.error case final error?)
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                error,
+                style: AppTypography.importHint.copyWith(
+                  color: palette.destructive,
                 ),
               ),
-            for (final item in controller.subscriptionImports)
-              Text(
-                item.result.success
-                    ? item.result.parseFailureCount == null
-                          ? '${item.name}: ${AppLocalizations.of(context)!.prototypeUsableNodes(item.result.count)}'
-                          : AppLocalizations.of(context)!
-                                .prototypeSubscriptionImportResult(
-                                  item.name,
-                                  item.result.count,
-                                  item.result.parseFailureCount!,
-                                )
-                    : '${item.name}: ${ServerImportController.subscriptionError(AppLocalizations.of(context)!, item.result.status)}',
-              ),
-            if (controller.error != null)
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  controller.error!,
-                  style: Theme.of(context).textTheme.bodyMedium
-                      ?.copyWith(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-          ],
-        ),
+            ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 }

@@ -4,9 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
+import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
@@ -30,7 +32,9 @@ void main() {
       ),
     );
 
+    final rootKey = GlobalKey<NavigatorState>();
     final router = GoRouter(
+      navigatorKey: rootKey,
       initialLocation: AppPrimaryRoute.home.rootPath,
       routes: [
         GoRoute(
@@ -52,6 +56,26 @@ void main() {
                       GoRoute(
                         path: 'details',
                         builder: (_, _) => const Center(child: Text('details')),
+                      ),
+                      GoRoute(
+                        path: 'popup',
+                        parentNavigatorKey: rootKey,
+                        pageBuilder: (context, state) => AppDialogPage<void>(
+                          key: state.pageKey,
+                          useSafeArea: false,
+                          builder: (context) => AppDialogFrame(
+                            child: AppDialog(
+                              title: 'root-popup',
+                              body: const SizedBox(height: 100),
+                              actions: [
+                                FilledButton(
+                                  onPressed: () => context.pop(),
+                                  child: const Text('close-popup'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -131,6 +155,47 @@ void main() {
           .selected,
       isTrue,
     );
+    for (final path in ['/settings', '/settings/details']) {
+      router.go(path);
+      await tester.pumpAndSettle();
+      final root = path == '/settings';
+      final content = root ? 'settings-content' : 'details';
+      expect(navigation, root ? findsOneWidget : findsNothing);
+      expect(find.text(content), findsOneWidget);
+
+      final closed = router.push<void>('/settings/popup');
+      await tester.pumpAndSettle();
+      expect(find.text('root-popup'), findsOneWidget);
+      expect(
+        Navigator.of(tester.element(find.byType(AppDialog))),
+        same(rootKey.currentState),
+      );
+      expect(navigation, root ? findsOneWidget : findsNothing);
+      expect(find.text(content), findsOneWidget);
+      await tester.tap(find.text('close-popup'));
+      await tester.pumpAndSettle();
+      await closed;
+
+      expect(find.byType(AppDialog), findsNothing);
+      expect(router.routeInformationProvider.value.uri.path, path);
+      expect(navigation, root ? findsOneWidget : findsNothing);
+      expect(find.text(content), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+    // A declarative popup location has the root, not the previous detail, below it.
+    router.go('/settings/popup');
+    await tester.pumpAndSettle();
+    expect(find.text('root-popup'), findsOneWidget);
+    expect(find.text('settings-content'), findsOneWidget);
+    expect(navigation, findsOneWidget);
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(AppDialog), findsNothing);
+    expect(router.routeInformationProvider.value.uri.path, '/settings');
+    expect(find.text('settings-content'), findsOneWidget);
+    expect(navigation, findsOneWidget);
+    expect(tester.takeException(), isNull);
+
     router.go('/settings/details');
     await tester.pumpAndSettle();
     expect(navigation, findsNothing);

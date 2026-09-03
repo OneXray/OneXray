@@ -43,7 +43,12 @@ class AdaptiveMainShell extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar:
-          GoRouterState.of(context).uri.path !=
+          navigationShell
+                  .shellRouteContext
+                  .match
+                  .matches
+                  .last
+                  .matchedLocation !=
               AppPrimaryRoute.values[navigationShell.currentIndex].rootPath
           ? null
           : Material(

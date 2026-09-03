@@ -1366,5 +1366,18 @@
     "prototypeShareBackup": "اشتراک‌گذاری نسخهٔ پشتیبان",
     "prototypeExportBackup": "صدور نسخهٔ پشتیبان",
     "prototypeEditServerHint": "ویرایش JSON خروجی Xray آن",
-    "prototypeShareServerHint": "اشتراک‌گذاری پیوند قابل وارد کردن سرور"
+    "prototypeShareServerHint": "اشتراک‌گذاری پیوند قابل وارد کردن سرور",
+    "prototypeLocalOnly": "فقط محلی",
+    "prototypeStoredOnThisDevice": "ذخیره‌شده در همین دستگاه",
+    "prototypeUpdated": "به‌روزرسانی شد",
+    "prototypeEditSubscriptionHint": "تغییر نام، پیوند HTTPS یا کلیدهای Age آن",
+    "prototypeShareSubscriptionHint": "اشتراک‌گذاری پیوند اشتراک آن",
+    "prototypeExampleService": "سرویس نمونه",
+    "prototypeLocalServer": "سرور محلی",
+    "prototypeImportedLinks": "پیوندهای واردشده",
+    "prototypeItemCount": "{count} مورد",
+    "prototypeLinkFormat": "قالب پیوند",
+    "prototypeOriginalLink": "پیوند اصلی",
+    "prototypeServerShareLink": "پیوند اشتراک‌گذاری سرور",
+    "prototypeSubscriptionShareAgeHint": "شامل نام و نوع اختیاری Age است، اما هرگز کلید محرمانهٔ Age را شامل نمی‌شود. برنامهٔ دریافت‌کننده کلیدهای خودش را می‌سازد."
 }

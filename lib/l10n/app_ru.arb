@@ -1366,5 +1366,18 @@
   "prototypeShareBackup": "Поделиться резервной копией",
   "prototypeExportBackup": "Экспорт резервной копии",
   "prototypeEditServerHint": "Изменить JSON исходящего подключения Xray",
-  "prototypeShareServerHint": "Передать ссылку для импорта сервера"
+  "prototypeShareServerHint": "Передать ссылку для импорта сервера",
+  "prototypeLocalOnly": "Только локально",
+  "prototypeStoredOnThisDevice": "Хранится на устройстве",
+  "prototypeUpdated": "Обновлено",
+  "prototypeEditSubscriptionHint": "Изменить название, ссылку HTTPS или ключи Age",
+  "prototypeShareSubscriptionHint": "Передать ссылку подписки",
+  "prototypeExampleService": "Демонстрационный сервис",
+  "prototypeLocalServer": "Локальный сервер",
+  "prototypeImportedLinks": "Импортируемые ссылки",
+  "prototypeItemCount": "Элементов: {count}",
+  "prototypeLinkFormat": "Формат ссылки",
+  "prototypeOriginalLink": "Исходная ссылка",
+  "prototypeServerShareLink": "Ссылка на сервер",
+  "prototypeSubscriptionShareAgeHint": "Содержит название и при необходимости тип Age, но не закрытый ключ. Получающее приложение создаёт собственные ключи."
 }

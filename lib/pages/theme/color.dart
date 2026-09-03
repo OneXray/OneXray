@@ -54,6 +54,7 @@ class AppPalette {
     required this.runningSurface,
     required this.restarting,
     required this.restartingText,
+    required this.warningSurface,
     required this.destructiveSurface,
     required this.chart1,
     required this.chart2,
@@ -113,6 +114,7 @@ class AppPalette {
     runningSurface: Color(0xFFEDF9F1),
     restarting: Color(0xFF9A6500),
     restartingText: Color(0xFF9A6500),
+    warningSurface: Color(0xFFFFF7E6),
     destructiveSurface: Color(0xFFFFF1F1),
     chart1: Color(0xFF2584F5),
     chart2: Color(0xFF0BAA6B),
@@ -170,6 +172,7 @@ class AppPalette {
     runningSurface: Color(0xFF163623),
     restarting: Color(0xFFF4BD5F),
     restartingText: Color(0xFFF4BD5F),
+    warningSurface: Color(0xFF3A2D17),
     destructiveSurface: Color(0xFF3B1D21),
     chart1: Color(0xFF2584F5),
     chart2: Color(0xFF0BAA6B),
@@ -227,6 +230,7 @@ class AppPalette {
   final Color runningSurface;
   final Color restarting;
   final Color restartingText;
+  final Color warningSurface;
   final Color destructiveSurface;
   final Color chart1;
   final Color chart2;
@@ -304,6 +308,7 @@ class AppPalette {
       runningSurface: color(begin.runningSurface, end.runningSurface),
       restarting: color(begin.restarting, end.restarting),
       restartingText: color(begin.restartingText, end.restartingText),
+      warningSurface: color(begin.warningSurface, end.warningSurface),
       destructiveSurface: color(
         begin.destructiveSurface,
         end.destructiveSurface,

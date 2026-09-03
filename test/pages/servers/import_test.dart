@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
@@ -7,6 +8,7 @@ import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/share/app_link_model.dart';
@@ -16,8 +18,157 @@ import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  test('submit availability follows text, HTTPS, Age, and working state', () {
+    final controller = ServerImportController(
+      loadSubscription: (_) async => null,
+    );
+    addTearDown(controller.dispose);
+    var changes = 0;
+    controller.addListener(() => changes++);
+
+    expect(controller.canSubmit(ServerImportAction.paste), isFalse);
+    controller.text.text = 'vless://local';
+    expect(controller.canSubmit(ServerImportAction.paste), isTrue);
+    expect(controller.canSubmit(ServerImportAction.json), isTrue);
+    controller.text.text = '  ';
+    expect(controller.canSubmit(ServerImportAction.json), isFalse);
+
+    controller.name.text = 'Provider';
+    expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
+    controller.url.text = 'http://provider.example/list';
+    expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
+    controller.url.text = 'https://provider.example/list';
+    expect(controller.canSubmit(ServerImportAction.subscription), isTrue);
+    controller.secretKey.text = 'secret';
+    expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
+    controller.publicKey.text = 'public';
+    expect(controller.canSubmit(ServerImportAction.subscription), isTrue);
+    expect(changes, 7);
+    controller.busy = true;
+    expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
+    controller.busy = false;
+    controller.loadFailed = true;
+    expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
+  });
+
+  testWidgets('Back returns to methods; Cancel closes only the import wizard', (
+    tester,
+  ) async {
+    _mobileViewport(tester);
+    var completed = false;
+    ServerImportResult? result;
+    var clipboardReads = 0;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') {
+          clipboardReads++;
+          return {'text': 'Do not read automatically'};
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              result = await showAppDialog<ServerImportResult>(
+                context,
+                (_) => const ServersImportPage(),
+              );
+              completed = true;
+            },
+            child: const Text('Open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Paste link'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ServerImportFormPage), findsOneWidget);
+    final controller = tester
+        .widget<ServerImportFormPage>(find.byType(ServerImportFormPage))
+        .controller;
+    expect(controller.text.text, isEmpty);
+    expect(clipboardReads, 0);
+
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add servers to OneXray'), findsOneWidget);
+    expect(completed, isFalse);
+
+    await tester.tap(find.text('Paste link'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ServerImportFormPage>(find.byType(ServerImportFormPage))
+          .controller,
+      same(controller),
+    );
+    await tester.tap(find.byTooltip('Close dialog'));
+    await tester.pumpAndSettle();
+    expect(completed, isTrue);
+    expect(result, isNull);
+    expect(find.byType(ServerImportFormPage), findsNothing);
+    expect(find.text('Add servers to OneXray'), findsNothing);
+    expect(find.text('Open'), findsOneWidget);
+    expect(Navigator.of(tester.element(find.text('Open'))).canPop(), isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'cancelling local preview keeps completed subscriptions and writes no local nodes',
+    'preview Cancel unwinds form and method dialogs without a write',
+    (tester) async {
+      _mobileViewport(tester);
+      var writes = 0;
+      var completed = false;
+      final controller = ServerImportController(
+        loadSubscription: (_) async => null,
+        service: ServerImportService(
+          parseReport: (_) async => ShareParseReport([
+            outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
+          ], failureCount: 0),
+          write: (_) async {
+            writes++;
+            throw StateError('Cancel cannot write');
+          },
+        ),
+      );
+      addTearDown(controller.dispose);
+      controller.text.text = 'vless://local';
+      await tester.pumpWidget(_wizard(controller, (_) => completed = true));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Paste route'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Import links'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ServerImportPreviewPage), findsOneWidget);
+      controller.closeFlow(
+        tester.element(find.byType(ServerImportPreviewPage)),
+      );
+      await tester.pumpAndSettle();
+      expect(completed, isTrue);
+      expect(writes, 0);
+      expect(find.byType(ServerImportPreviewPage), findsNothing);
+      expect(find.byType(ServerImportFormPage), findsNothing);
+      expect(find.text('Choose method'), findsNothing);
+      expect(Navigator.of(tester.element(find.text('Open'))).canPop(), isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'preview Back and retry keep subscriptions; Cancel reports completed imports',
     (tester) async {
       var imported = 0;
       var writes = 0;
@@ -54,9 +205,11 @@ void main() {
               onPressed: () async {
                 result = await Navigator.of(context).push<ServerImportResult>(
                   MaterialPageRoute(
-                    builder: (_) => ServerImportFormPage(
-                      controller: controller,
-                      action: ServerImportAction.paste,
+                    builder: (_) => AppDialogFrame(
+                      child: ServerImportFormPage(
+                        controller: controller,
+                        action: ServerImportAction.paste,
+                      ),
                     ),
                   ),
                 );
@@ -68,7 +221,7 @@ void main() {
       );
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Detect'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Import links'));
       await tester.pumpAndSettle();
       expect(find.byType(ServerImportPreviewPage), findsOneWidget);
       expect(
@@ -79,6 +232,16 @@ void main() {
       );
       expect(imported, 1);
       expect(writes, 0);
+      controller.closePage(
+        tester.element(find.byType(ServerImportPreviewPage)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ServerImportFormPage), findsOneWidget);
+      expect(result, isNull);
+      await tester.tap(find.widgetWithText(FilledButton, 'Import links'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ServerImportPreviewPage), findsOneWidget);
+      expect(imported, 1);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(result?.count, 2);
@@ -125,9 +288,11 @@ void main() {
             onPressed: () async {
               routeResult = await Navigator.of(context).push<int>(
                 MaterialPageRoute(
-                  builder: (_) => ServerImportFormPage(
-                    controller: controller,
-                    action: ServerImportAction.subscription,
+                  builder: (_) => AppDialogFrame(
+                    child: ServerImportFormPage(
+                      controller: controller,
+                      action: ServerImportAction.subscription,
+                    ),
                   ),
                 ),
               );
@@ -163,78 +328,126 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'partial local completion reports each source and Done cannot repeat writes',
-    (tester) async {
-      var writes = 0;
-      var downloads = 0;
-      ServerImportResult? result;
-      final service = ServerImportService(
-        write: (rows) async {
-          writes++;
-          return ConfigWriteResult(count: rows.length, ids: [1]);
-        },
-        schedule: (_) {},
-        writeGeoData: (_) async {
-          downloads++;
-          return false;
-        },
-      );
-      final controller = ServerImportController(
-        service: service,
-        loadSubscription: (_) async => null,
-      );
-      addTearDown(controller.dispose);
-      final preview = ServerImportPreview(
-        [
-          outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
-        ],
-        failureCount: 0,
-        geoData: [
-          const OneXrayGeoDataLink(
-            name: 'Data source',
-            type: GeoDataType.domain,
-            url: 'https://data.example/list.dat',
-          ),
-        ],
-      );
-      await tester.pumpWidget(
-        _app(
-          Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                result = await Navigator.of(context).push<ServerImportResult>(
-                  MaterialPageRoute(
-                    builder: (_) => ServerImportPreviewPage(
+  for (final exit in ['done', 'system', 'barrier']) {
+    testWidgets(
+      'partial local completion returns committed results without rewriting ($exit)',
+      (tester) async {
+        _mobileViewport(tester);
+        var writes = 0;
+        var downloads = 0;
+        ServerImportResult? result;
+        final service = ServerImportService(
+          write: (rows) async {
+            writes++;
+            return ConfigWriteResult(count: rows.length, ids: [1]);
+          },
+          schedule: (_) {},
+          writeGeoData: (_) async {
+            downloads++;
+            return false;
+          },
+        );
+        final controller = ServerImportController(
+          service: service,
+          loadSubscription: (_) async => null,
+        );
+        addTearDown(controller.dispose);
+        final preview = ServerImportPreview(
+          [
+            outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
+          ],
+          failureCount: 0,
+          geoData: [
+            const OneXrayGeoDataLink(
+              name: 'Data source',
+              type: GeoDataType.domain,
+              url: 'https://data.example/list.dat',
+            ),
+          ],
+        );
+        await tester.pumpWidget(
+          _app(
+            Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  result = await showAppDialog<ServerImportResult>(
+                    context,
+                    (_) => ServerImportPreviewPage(
                       controller: controller,
                       preview: preview,
                     ),
-                  ),
-                );
-              },
-              child: const Text('Open'),
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
-        ),
-      );
-      await tester.tap(find.text('Open'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Confirm add'));
-      await tester.pumpAndSettle();
-      expect(find.text('Servers added'), findsOneWidget);
-      expect(find.text('Data source'), findsOneWidget);
-      expect(find.text('Done'), findsOneWidget);
-      expect(controller.committedResult?.writeFailureCount, 1);
-      await tester.tap(find.text('Done'));
-      await tester.pumpAndSettle();
-      expect(result?.count, 1);
-      expect(result?.writeFailureCount, 1);
-      expect(writes, 1);
-      expect(downloads, 1);
-      expect(tester.takeException(), isNull);
-    },
-  );
+        );
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Confirm add'));
+        await tester.pumpAndSettle();
+        expect(find.text('Servers added'), findsOneWidget);
+        expect(find.text('Data source'), findsOneWidget);
+        expect(find.text('Done'), findsOneWidget);
+        expect(controller.committedResult?.writeFailureCount, 1);
+        if (exit == 'done') {
+          await tester.tap(find.text('Done'));
+        } else if (exit == 'system') {
+          await Navigator.of(
+            tester.element(find.byType(ServerImportPreviewPage)),
+          ).maybePop();
+        } else {
+          await tester.tapAt(const Offset(5, 5));
+        }
+        await tester.pumpAndSettle();
+        expect(find.byType(ServerImportPreviewPage), findsNothing);
+        expect(result?.count, 1);
+        expect(result?.writeFailureCount, 1);
+        expect(writes, 1);
+        expect(downloads, 1);
+        expect(
+          Navigator.of(tester.element(find.text('Open'))).canPop(),
+          isFalse,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 }
+
+void _mobileViewport(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(390, 844);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPhysicalSize);
+}
+
+Widget _wizard(
+  ServerImportController controller,
+  ValueChanged<ServerImportResult?> onResult,
+) => _app(
+  Builder(
+    builder: (context) => TextButton(
+      onPressed: () async {
+        onResult(
+          await showAppDialog<ServerImportResult>(
+            context,
+            (dialogContext) => AppDialog(
+              title: 'Choose method',
+              body: TextButton(
+                onPressed: () =>
+                    controller.open(dialogContext, ServerImportAction.paste),
+                child: const Text('Paste route'),
+              ),
+            ),
+          ),
+        );
+      },
+      child: const Text('Open'),
+    ),
+  ),
+);
 
 Widget _app(Widget child) => MaterialApp(
   theme: AppTheme.light,

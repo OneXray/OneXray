@@ -425,11 +425,15 @@ abstract final class AppTheme {
     final minimumButtonSize = Size.square(
       mobile ? AppLayout.mobileButtonMinHeight : AppLayout.buttonMinHeight,
     );
+    Color disabledButtonColor(Color color) =>
+        Color.alphaBlend(color.withValues(alpha: 0.52), palette.card);
     final primaryButtonStyle =
         FilledButton.styleFrom(
           foregroundColor: palette.primaryForeground,
-          disabledForegroundColor: palette.mutedForeground,
-          disabledBackgroundColor: palette.secondary,
+          disabledForegroundColor: disabledButtonColor(
+            palette.primaryForeground,
+          ),
+          disabledBackgroundColor: disabledButtonColor(palette.primarySolid),
           minimumSize: minimumButtonSize,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.buttonHorizontal,
@@ -439,7 +443,9 @@ abstract final class AppTheme {
           textStyle: AppTypography.control,
         ).copyWith(
           backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return palette.secondary;
+            if (states.contains(WidgetState.disabled)) {
+              return disabledButtonColor(palette.primarySolid);
+            }
             return states.contains(WidgetState.hovered)
                 ? palette.primarySolidHover
                 : palette.primarySolid;
@@ -545,14 +551,14 @@ abstract final class AppTheme {
         style:
             TextButton.styleFrom(
               foregroundColor: palette.primary,
-              disabledForegroundColor: palette.mutedForeground,
+              disabledForegroundColor: disabledButtonColor(palette.primary),
               minimumSize: minimumButtonSize,
               shape: roundedRectangle,
               textStyle: AppTypography.control,
             ).copyWith(
               foregroundColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.disabled)) {
-                  return palette.mutedForeground;
+                  return disabledButtonColor(palette.primary);
                 }
                 return states.contains(WidgetState.hovered)
                     ? palette.primaryHover

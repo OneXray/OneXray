@@ -131,6 +131,33 @@ abstract final class AppTypography {
   static final settingsDetailNote = _prototypeRole(12, 400, height: 1.6);
   static final settingsSelect = _prototypeRole(14, 400, height: 1.4);
   static final settingsInput = _prototypeRole(13, 400);
+  static final subscriptionField = _prototypeRole(12, 610);
+  static final subscriptionInfo = _prototypeRole(12, 400, height: 1.45);
+  static final subscriptionAgeTitle = _prototypeRole(13, 700);
+  static final subscriptionAgeOptional = _prototypeRole(11, 450);
+  static final subscriptionAgeWarning = _prototypeRole(11, 400, height: 1.45);
+  static final subscriptionAgeAction = _prototypeRole(11, 620);
+  static final subscriptionClear = _prototypeRole(13, 620);
+  static final importMethod = _prototypeRole(16, 400);
+  static final importField = _prototypeRole(13, 610);
+  static final importHint = _prototypeRole(10.83, 450, height: 1.4);
+  static final importJson = _prototypeRole(
+    11.5,
+    400,
+    height: 1.55,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final importJsonHint = _prototypeRole(10, 450, height: 1.45);
+  static final importSummary = _prototypeRole(16, 700);
+  static final importSummaryMeta = _prototypeRole(12, 400);
+  static final importStat = _prototypeRole(12, 400);
+  static final dialogBack = _prototypeRole(13, 400);
+  static final shareLink = _prototypeRole(
+    11,
+    400,
+    height: 1.45,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final shareQr = _prototypeRole(13, 400);
+  static final shareHint = _prototypeRole(11, 400, height: 1.6);
   static final aboutBrandTitle = _prototypeRole(19, 700, height: 1.3);
   static final aboutBrandDescription = _prototypeRole(12, 400, height: 1.375);
   static final settingsChoiceTitle = _prototypeRole(14, 570);

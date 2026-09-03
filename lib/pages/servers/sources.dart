@@ -1,141 +1,185 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
-import 'package:onexray/pages/servers/page.dart';
-import 'package:onexray/pages/servers/view.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
 
-class ServerSourcesPage extends StatefulWidget {
-  const ServerSourcesPage({super.key});
+class ServerSourcesDialog extends StatelessWidget {
+  const ServerSourcesDialog({super.key, required this.controller});
+
+  final ServersController controller;
+
   @override
-  State<ServerSourcesPage> createState() => _ServerSourcesPageState();
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return AppDialog(
+      title: l.prototypeManageSources,
+      subtitle: l.prototypeSourceUpdateGuard,
+      body: ListenableBuilder(
+        listenable: Listenable.merge([
+          controller,
+          controller.coordinator.state,
+        ]),
+        builder: (context, _) {
+          final material = MaterialLocalizations.of(context);
+          final localCount = controller.sourceCount(0);
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (controller.actionBusy) const LinearProgressIndicator(),
+                if (controller.sources.isEmpty && localCount == 0)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(l.prototypeNoServersYet),
+                  ),
+                for (final source in controller.sources)
+                  _SourceRow(
+                    name: source.name,
+                    detail:
+                        '${l.prototypeServerCount(controller.sourceCount(source.id))} · '
+                        '${material.formatMediumDate(source.timestamp.toLocal())} '
+                        '${material.formatTimeOfDay(TimeOfDay.fromDateTime(source.timestamp.toLocal()))}',
+                    status:
+                        controller.sourceErrors[source.id] ??
+                        l.prototypeUpdated,
+                    failed: controller.sourceErrors.containsKey(source.id),
+                    showDivider:
+                        source != controller.sources.last || localCount > 0,
+                    subscription: true,
+                    onMore: controller.busy
+                        ? null
+                        : () =>
+                              Navigator.of(context)
+                                  .pop<SubscriptionData>(source),
+                    onUpdate: controller.busy
+                        ? null
+                        : () => controller.sourceAction(
+                            context,
+                            source,
+                            SourceAction.update,
+                          ),
+                  ),
+                if (localCount > 0)
+                  _SourceRow(
+                    name: l.prototypeManualAdditions,
+                    detail:
+                        '${l.prototypeServerCount(localCount)} · ${l.prototypeLocalOnly}',
+                    status: l.prototypeStoredOnThisDevice,
+                    showDivider: false,
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _ServerSourcesPageState extends State<ServerSourcesPage> {
-  final controller = ServersController();
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) controller.initialize(context, services: false);
-    });
-  }
+class _SourceRow extends StatelessWidget {
+  const _SourceRow({
+    required this.name,
+    required this.detail,
+    required this.status,
+    required this.showDivider,
+    this.subscription = false,
+    this.failed = false,
+    this.onMore,
+    this.onUpdate,
+  });
+
+  final String name;
+  final String detail;
+  final String status;
+  final bool showDivider;
+  final bool subscription;
+  final bool failed;
+  final VoidCallback? onMore;
+  final VoidCallback? onUpdate;
 
   @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([controller, controller.coordinator.state]),
-    builder: (context, _) {
-      final l = AppLocalizations.of(context)!;
-      final material = MaterialLocalizations.of(context);
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(l.prototypeUpdatesAndSources),
-          actions: [
-            IconButton(
-              tooltip: l.prototypeAddServers,
-              icon: const Icon(LucideIcons.plus),
-              onPressed: controller.busy
-                  ? null
-                  : () => controller.addServers(context),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: ServerLoadState(
-            controller: controller,
-            child: ResponsiveContent(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    l.prototypeSourceUpdateGuard,
-                    style: Theme.of(context).textTheme.bodySmall,
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final statusLabel = Text(
+      status,
+      style: AppTypography.serverSelectionHealth.copyWith(
+        color: failed ? palette.destructive : palette.running,
+      ),
+    );
+    final actionStyle = IconButton.styleFrom(
+      foregroundColor: palette.mutedStrong,
+      iconSize: 18,
+      padding: EdgeInsets.zero,
+      minimumSize: const Size.square(36),
+      fixedSize: const Size.square(36),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: EdgeInsets.symmetric(horizontal: mobile ? 14 : 18, vertical: 11),
+      decoration: BoxDecoration(
+        border: showDivider
+            ? Border(bottom: BorderSide(color: palette.border))
+            : null,
+      ),
+      child: Row(
+        children: [
+          Icon(LucideIcons.link2, size: 20, color: palette.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AppTypography.serverMenuTitle.copyWith(
+                    color: palette.foreground,
                   ),
-                  if (controller.actionBusy) const LinearProgressIndicator(),
-                  if (controller.sources.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(l.prototypeNoServersYet),
-                    ),
-                  for (final source in controller.sources)
-                    Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(source.name),
-                              subtitle: Text(
-                                l.prototypeServerCount(
-                                  controller.sourceCount(source.id),
-                                ),
-                              ),
-                              trailing: SourceMenu(
-                                controller: controller,
-                                source: source,
-                              ),
-                            ),
-                            Text(
-                              '${l.prototypeLastSuccessfulUpdate}: ${material.formatMediumDate(source.timestamp.toLocal())} '
-                              '${material.formatTimeOfDay(TimeOfDay.fromDateTime(source.timestamp.toLocal()))}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            if (controller.sourceErrors[source.id] != null)
-                              Text(
-                                controller.sourceErrors[source.id]!,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .error,
-                                    ),
-                              ),
-                            Wrap(
-                              spacing: 8,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed: controller.busy
-                                      ? null
-                                      : () => controller.sourceAction(
-                                          context,
-                                          source,
-                                          SourceAction.update,
-                                        ),
-                                  icon: const Icon(LucideIcons.refreshCw),
-                                  label: Text(l.prototypeCheckForUpdates),
-                                ),
-                                TextButton(
-                                  onPressed: controller.busy
-                                      ? null
-                                      : () => controller.sourceAction(
-                                          context,
-                                          source,
-                                          SourceAction.edit,
-                                        ),
-                                  child: Text(l.prototypeEdit),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.serverMenuHint.copyWith(
+                    color: palette.mutedForeground,
+                  ),
+                ),
+                if (mobile) ...[const SizedBox(height: 10), statusLabel],
+              ],
             ),
           ),
-        ),
-      );
-    },
-  );
+          if (!mobile) ...[const SizedBox(width: 10), statusLabel],
+          if (subscription) ...[
+            if (!mobile) ...[
+              const SizedBox(width: 10),
+              IconButton(
+                tooltip: l.prototypeCheckForUpdates,
+                style: actionStyle,
+                onPressed: onUpdate,
+                icon: const Icon(LucideIcons.refreshCw),
+              ),
+            ],
+            const SizedBox(width: 10),
+            IconButton(
+              tooltip: '${l.prototypeMoreActions}: $name',
+              style: actionStyle,
+              onPressed: onMore,
+              icon: const Icon(LucideIcons.ellipsis),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

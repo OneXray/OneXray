@@ -21,13 +21,14 @@ import 'package:onexray/pages/launch/splash/page.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/editor/page.dart';
-import 'package:onexray/pages/servers/sources.dart';
 import 'package:onexray/pages/servers/import/subscription_editor.dart';
 import 'package:onexray/pages/connect/raw_editor/page.dart';
 import 'package:onexray/pages/routing/smart/page.dart';
@@ -75,7 +76,13 @@ abstract final class RouterPath {
       ),
       GoRoute(
         path: '/setup/servers',
-        builder: (_, _) => const ServersImportPage(setup: true),
+        pageBuilder: (context, state) => AppDialogPage<dynamic>(
+          key: state.pageKey,
+          barrierColor: ColorManager.palette(context).overlay,
+          useSafeArea: false,
+          builder: (_) =>
+              const AppDialogFrame(child: ServersImportPage(setup: true)),
+        ),
       ),
       GoRoute(
         path: '/setup/interface',
@@ -134,13 +141,27 @@ StatefulShellBranch _buildPrimaryBranch(AppPrimaryRoute primary) {
 List<GoRoute> _buildSharedSecondaryRoutes() {
   return _sharedSecondaryRoutes
       .map(
-        (route) => GoRoute(
-          path: route.destination.segment,
-          builder: (context, state) => Theme(
-            data: AppTheme.secondaryPage(context),
-            child: Builder(builder: (context) => route.builder(context, state)),
-          ),
-        ),
+        (route) => AppSecondaryDestination.dialogs.contains(route.destination)
+            ? GoRoute(
+                path: route.destination.segment,
+                parentNavigatorKey: _rootNavigatorKey,
+                pageBuilder: (context, state) => AppDialogPage<dynamic>(
+                  key: state.pageKey,
+                  barrierColor: ColorManager.palette(context).overlay,
+                  useSafeArea: false,
+                  builder: (context) =>
+                      AppDialogFrame(child: route.builder(context, state)),
+                ),
+              )
+            : GoRoute(
+                path: route.destination.segment,
+                builder: (context, state) => Theme(
+                  data: AppTheme.secondaryPage(context),
+                  child: Builder(
+                    builder: (context) => route.builder(context, state),
+                  ),
+                ),
+              ),
       )
       .toList();
 }
@@ -271,10 +292,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
       AppSecondaryDestination.serverEditor,
       (id) => ServerEditorPage(serverId: id),
     ),
-  ),
-  _route(
-    AppSecondaryDestination.serverSources,
-    (_, _) => const ServerSourcesPage(),
   ),
   _route(
     AppSecondaryDestination.serverFinalExitPicker,

@@ -1468,9 +1468,42 @@ class SourceMenu extends StatelessWidget {
   final ServersController controller;
   final SubscriptionData source;
   const SourceMenu({super.key, required this.controller, required this.source});
+
+  static Future<void> open(
+    BuildContext context,
+    ServersController controller,
+    SubscriptionData source,
+  ) async {
+    final action = await showSourceActionsMenu(
+      context,
+      name: source.name,
+      count: controller.sourceCount(source.id),
+    );
+    if (context.mounted && action != null) {
+      await controller.sourceAction(context, source, action);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
+      return IconButton(
+        tooltip: '${l.prototypeMoreActions}: ${source.name}',
+        onPressed: controller.busy
+            ? null
+            : () => open(context, controller, source),
+        style: IconButton.styleFrom(
+          foregroundColor: ColorManager.palette(context).mutedStrong,
+          iconSize: 18,
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(36, 42),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: const RoundedRectangleBorder(),
+        ),
+        icon: const Icon(LucideIcons.ellipsis),
+      );
+    }
     return PopupMenuButton<SourceAction>(
       tooltip: l.prototypeMoreActions,
       enabled: !controller.busy,

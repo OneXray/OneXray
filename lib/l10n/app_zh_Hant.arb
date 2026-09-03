@@ -1366,5 +1366,18 @@
   "prototypeShareBackup": "分享備份",
   "prototypeExportBackup": "匯出備份",
   "prototypeEditServerHint": "編輯 Xray outbound JSON",
-  "prototypeShareServerHint": "分享可匯入的節點連結"
+  "prototypeShareServerHint": "分享可匯入的節點連結",
+  "prototypeLocalOnly": "僅本機",
+  "prototypeStoredOnThisDevice": "僅儲存在本機",
+  "prototypeUpdated": "已更新",
+  "prototypeEditSubscriptionHint": "修改名稱、HTTPS 連結或 Age 金鑰",
+  "prototypeShareSubscriptionHint": "分享訂閱連結",
+  "prototypeExampleService": "範例服務",
+  "prototypeLocalServer": "本機節點",
+  "prototypeImportedLinks": "匯入的連結",
+  "prototypeItemCount": "{count} 項",
+  "prototypeLinkFormat": "連結格式",
+  "prototypeOriginalLink": "原始連結",
+  "prototypeServerShareLink": "伺服器分享連結",
+  "prototypeSubscriptionShareAgeHint": "包含名稱和選用的 Age 類型，不包含 Age 私鑰。接收端產生自己的金鑰。"
 }

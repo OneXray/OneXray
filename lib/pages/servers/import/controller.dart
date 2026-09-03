@@ -2,12 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/servers/import/page.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/subscription/model.dart';
@@ -46,7 +48,9 @@ class ServerImportController extends ChangeNotifier {
              );
              return result.item1 ? null : result.item2;
            }) {
-    text.addListener(_changed);
+    for (final field in [text, name, url, secretKey, publicKey]) {
+      field.addListener(_changed);
+    }
   }
 
   final text = TextEditingController();
@@ -59,6 +63,9 @@ class ServerImportController extends ChangeNotifier {
   bool loadFailed = false;
   String? error;
   bool _disposed = false;
+  bool _closingFlow = false;
+  bool _previewOpen = false;
+  final _completedSubscriptions = <String, ServerSubscriptionImport>{};
   AgeKeyType? _linkAgeType;
   List<ServerSubscriptionImport> subscriptionImports = const [];
   ServerImportResult? committedResult;
@@ -72,6 +79,20 @@ class ServerImportController extends ChangeNotifier {
   bool get editingSubscription => subscriptionId != null;
   bool get incompleteKeys =>
       secretKey.text.trim().isEmpty != publicKey.text.trim().isEmpty;
+  bool canSubmit(ServerImportAction action) {
+    if (busy || loadFailed) return false;
+    if (action == ServerImportAction.subscription) {
+      final uri = Uri.tryParse(SubscriptionUrl.normalize(url.text));
+      return name.text.trim().isNotEmpty &&
+          uri != null &&
+          NetClient.isHttpsDownloadUri(uri) &&
+          !incompleteKeys;
+    }
+    return action == ServerImportAction.file ||
+        action == ServerImportAction.scan ||
+        text.text.trim().isNotEmpty;
+  }
+
   int get lineCount => '\n'.allMatches(text.text).length + 1;
   bool get validJson {
     try {
@@ -86,8 +107,28 @@ class ServerImportController extends ChangeNotifier {
   }
 
   void closePage(BuildContext context) {
-    if (!busy) Navigator.of(context).pop(committedResult);
+    if (busy) return;
+    // A completed preview must not become an editable, repeatable import again.
+    if (_previewOpen && committedResult != null) {
+      closeFlow(context);
+    } else {
+      Navigator.of(context).pop();
+    }
   }
+
+  void closeFlow(BuildContext context) {
+    if (busy) return;
+    _closingFlow = true;
+    Navigator.of(context)
+        .pop(committedResult ?? (_previewOpen ? null : _subscriptionResult));
+  }
+
+  ServerImportResult? get _subscriptionResult => importedSubscriptionCount == 0
+      ? null
+      : ServerImportResult(
+          count: importedSubscriptionNodes,
+          subscriptionCount: importedSubscriptionCount,
+        );
 
   Future<void> loadSubscription(BuildContext context) async {
     final id = subscriptionId;
@@ -115,6 +156,7 @@ class ServerImportController extends ChangeNotifier {
 
   Future<void> open(BuildContext context, ServerImportAction action) async {
     if (busy) return;
+    _closingFlow = false;
     error = null;
     committedResult = null;
     _changed();
@@ -143,28 +185,32 @@ class ServerImportController extends ChangeNotifier {
         _changed();
       }
     } else {
-      if (action == ServerImportAction.paste && text.text.isEmpty) {
-        await readClipboard(context);
-        if (!context.mounted) return;
-      }
       if (action == ServerImportAction.json && text.text.isEmpty) {
         text.text = '{\n  "outbounds": []\n}';
       }
-      result = await Navigator.of(context).push<ServerImportResult>(
-        MaterialPageRoute(
-          builder: (_) =>
-              ServerImportFormPage(controller: this, action: action),
+      result = await showAppDialog<ServerImportResult>(
+        context,
+        (dialogContext) => ServerImportFormPage(
+          controller: this,
+          action: action,
+          onBack: () => closePage(dialogContext),
+          onClose: () => closeFlow(dialogContext),
         ),
       );
     }
-    if (result != null && context.mounted) {
-      Navigator.of(context).pop(result);
+    if ((result != null || _closingFlow) && context.mounted) {
+      Navigator.of(context)
+          .pop(result ?? committedResult ?? _subscriptionResult);
     }
   }
 
   Future<void> openText(BuildContext context, String input) async {
+    _closingFlow = false;
     final result = await _importText(context, input);
-    if (result != null && context.mounted) Navigator.of(context).pop(result);
+    if ((result != null || _closingFlow) && context.mounted) {
+      Navigator.of(context)
+          .pop(result ?? committedResult ?? _subscriptionResult);
+    }
   }
 
   Future<ServerImportResult?> _importText(
@@ -190,12 +236,13 @@ class ServerImportController extends ChangeNotifier {
       secretKey.clear();
       publicKey.clear();
       _linkAgeType = link.ageKeyType;
-      return Navigator.of(context).push<ServerImportResult>(
-        MaterialPageRoute(
-          builder: (_) => ServerImportFormPage(
-            controller: this,
-            action: ServerImportAction.subscription,
-          ),
+      return showAppDialog<ServerImportResult>(
+        context,
+        (dialogContext) => ServerImportFormPage(
+          controller: this,
+          action: ServerImportAction.subscription,
+          onBack: () => closePage(dialogContext),
+          onClose: () => closeFlow(dialogContext),
         ),
       );
     }
@@ -204,9 +251,21 @@ class ServerImportController extends ChangeNotifier {
     subscriptionImports = const [];
     _changed();
     try {
-      subscriptionImports = await service.importSubscriptions(
-        detection.subscriptions,
-      );
+      // Back only reopens the local draft; successful subscriptions are not
+      // downloaded and inserted again when Detect is pressed a second time.
+      final pending = detection.subscriptions
+          .where((link) => !_completedSubscriptions.containsKey(link.url))
+          .toList();
+      final results = await service.importSubscriptions(pending);
+      for (var index = 0; index < results.length; index++) {
+        if (results[index].result.success) {
+          _completedSubscriptions[pending[index].url] = results[index];
+        }
+      }
+      subscriptionImports = [
+        ..._completedSubscriptions.values,
+        ...results.where((item) => !item.result.success),
+      ];
     } finally {
       busy = false;
       _changed();
@@ -226,6 +285,13 @@ class ServerImportController extends ChangeNotifier {
       failureCount: local?.failureCount,
       failedGeoData: local?.failedGeoData ?? const [],
     );
+    if (detection.localText.trim().isNotEmpty &&
+        local == null &&
+        !_closingFlow) {
+      committedResult = result;
+      _changed();
+      return null;
+    }
     if (detection.localText.trim().isEmpty) {
       if (subscriptionImports.any((item) => !item.result.success)) {
         // Keep failures visible and the original input available for retry.
@@ -310,7 +376,10 @@ class ServerImportController extends ChangeNotifier {
     final result = action == ServerImportAction.json
         ? await _preview(context, text.text, manual: true)
         : await _importText(context, text.text);
-    if (result != null && context.mounted) Navigator.of(context).pop(result);
+    if ((result != null || _closingFlow) && context.mounted) {
+      Navigator.of(context)
+          .pop(result ?? committedResult ?? _subscriptionResult);
+    }
   }
 
   Future<ServerImportResult?> _preview(
@@ -342,14 +411,19 @@ class ServerImportController extends ChangeNotifier {
       return null;
     }
     final ready = preview;
+    _previewOpen = true;
     try {
-      return await Navigator.of(context).push<ServerImportResult>(
-        MaterialPageRoute(
-          builder: (_) =>
-              ServerImportPreviewPage(controller: this, preview: ready),
+      return await showAppDialog<ServerImportResult>(
+        context,
+        (dialogContext) => ServerImportPreviewPage(
+          controller: this,
+          preview: ready,
+          onBack: () => closePage(dialogContext),
+          onClose: () => closeFlow(dialogContext),
         ),
       );
     } finally {
+      _previewOpen = false;
       await ready.dispose();
     }
   }

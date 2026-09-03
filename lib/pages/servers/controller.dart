@@ -7,7 +7,10 @@ import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/servers/menus.dart';
+import 'package:onexray/pages/servers/sources.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/assets/server.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/settings.dart';
@@ -545,22 +548,8 @@ class ServersController extends ConnectController {
     }
   }
 
-  Future<void> shareAsset(BuildContext context, SharePageParams params) async {
-    final l = AppLocalizations.of(context)!;
-    if (await ContextAlert.showConfirmDialog(
-          context,
-          title: params.type == ShareType.subscription
-              ? l.prototypeShareSubscription
-              : l.prototypeShareServer,
-          content: params.type == ShareType.subscription
-              ? l.prototypeSubscriptionShareWarning
-              : l.prototypeServerShareWarning,
-          confirmLabel: l.prototypeContinue,
-        ) &&
-        context.mounted) {
-      await context.pushScoped(AppSecondaryDestination.share, extra: params);
-    }
-  }
+  Future<void> shareAsset(BuildContext context, SharePageParams params) =>
+      context.pushScoped(AppSecondaryDestination.share, extra: params);
 
   Future<void> remove(
     BuildContext context,
@@ -595,8 +584,22 @@ class ServersController extends ConnectController {
     });
   }
 
-  Future<void> openSources(BuildContext context) =>
-      context.pushScoped(AppSecondaryDestination.serverSources);
+  Future<void> openSources(BuildContext context) async {
+    if (busy) return;
+    final source = await showAppDialog<SubscriptionData>(
+      context,
+      (_) => ServerSourcesDialog(controller: this),
+    );
+    if (source == null || !context.mounted || _disposed) return;
+    final action = await showSourceActionsMenu(
+      context,
+      name: source.name,
+      count: sourceCount(source.id),
+    );
+    if (action != null && context.mounted && !_disposed) {
+      await sourceAction(context, source, action);
+    }
+  }
 
   Future<void> perform(
     BuildContext context,
