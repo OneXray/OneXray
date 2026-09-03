@@ -10,7 +10,7 @@ const _filename =
     'OneXray-2026-09-03-user-servers-subscriptions-Age-keys-custom-routing-'
     'Raw-JSON-and-custom-Geodata-backup.zip';
 
-enum _Action { delete, restore, export }
+enum _Action { delete, restore, export, clear }
 
 AppConfirmationDialog _dialog(AppLocalizations l, _Action action) =>
     AppConfirmationDialog(
@@ -18,21 +18,24 @@ AppConfirmationDialog _dialog(AppLocalizations l, _Action action) =>
         _Action.delete => l.prototypeDeleteBackupQuestion,
         _Action.restore => l.prototypeRestoreBackupQuestion,
         _Action.export => l.prototypeExportBackup,
+        _Action.clear => l.prototypeClearAllDataQuestion,
       },
-      subject: _filename,
+      subject: action == _Action.clear ? null : _filename,
       content: switch (action) {
         _Action.delete => l.prototypeDeleteBackupWarning,
         _Action.restore => l.prototypeRestoreBackupWarning,
         _Action.export => l.prototypeBackupTransferWarning,
+        _Action.clear => l.prototypeClearAllDataWarning,
       },
       cancelLabel: l.prototypeCancel,
       confirmLabel: switch (action) {
         _Action.delete => l.prototypeDelete,
         _Action.restore => l.prototypeConfirmRestore,
         _Action.export => l.prototypeContinue,
+        _Action.clear => l.prototypeConfirmClearData,
       },
-      destructive: action == _Action.delete,
-      expandConfirm: action != _Action.delete,
+      destructive: action == _Action.delete || action == _Action.clear,
+      expandConfirm: action == _Action.restore || action == _Action.export,
     );
 
 Future<void> _pumpDialog(
@@ -100,7 +103,7 @@ void main() {
       expect(confirm.left - cancel.right, closeTo(10, 0.01));
       expect(cancel.height, 42);
       expect(confirm.height, 42);
-      if (action == _Action.delete) {
+      if (action == _Action.delete || action == _Action.clear) {
         final label = tester.getRect(
           find.descendant(
             of: find.byType(FilledButton),
@@ -135,7 +138,11 @@ void main() {
           Directionality.of(tester.element(find.byType(AppConfirmationDialog))),
           locale.languageCode == 'fa' ? TextDirection.rtl : TextDirection.ltr,
         );
-        for (final text in [dialog.title, _filename, dialog.content]) {
+        for (final text in [
+          dialog.title,
+          if (dialog.subject != null) dialog.subject!,
+          dialog.content,
+        ]) {
           final bounds = tester.getRect(find.text(text));
           expect(bounds.left, greaterThanOrEqualTo(surface.left));
           expect(bounds.right, lessThanOrEqualTo(surface.right));
@@ -165,7 +172,7 @@ void main() {
       var actionCalls = 0;
       await _pumpDialog(
         tester,
-        action: _Action.delete,
+        action: _Action.clear,
         onResult: (confirmed) {
           result = confirmed;
           if (confirmed) actionCalls++;

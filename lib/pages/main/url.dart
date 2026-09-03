@@ -283,10 +283,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     (_, state) => ServersImportPage(initialText: state.extra as String?),
   ),
   _route(
-    AppSecondaryDestination.serverPicker,
-    (_, _) => const ServersPage(picker: true),
-  ),
-  _route(
     AppSecondaryDestination.serverGroup,
     (_, state) => _withExtra<ServerGroupParams>(
       state,

@@ -29,7 +29,6 @@ enum AppPrimaryRoute {
 
 enum AppSecondaryDestination {
   serversImport("servers-import"),
-  serverPicker("server-picker"),
   serverGroup("server-group"),
   serverEditor("server-editor"),
   serverFinalExitPicker("server-final-exit-picker"),

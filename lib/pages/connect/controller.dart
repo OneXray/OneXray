@@ -536,8 +536,8 @@ class ConnectController extends ChangeNotifier {
       context.pushScoped(AppSecondaryDestination.serversImport);
   Future<void> editRaw(BuildContext context, [int? id]) =>
       context.pushScoped(AppSecondaryDestination.rawEditor, extra: id);
-  Future<void> chooseServer(BuildContext context) =>
-      context.pushScoped(AppSecondaryDestination.serverPicker);
+  void chooseServer(BuildContext context) =>
+      context.goPrimaryRoot(AppPrimaryRoute.subscriptions);
 
   Future<void> showRawActions(BuildContext context, CoreConfigData row) async {
     final edit = await showConnectDialog<bool>(context, (dialogContext) {

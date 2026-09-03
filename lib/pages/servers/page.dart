@@ -9,8 +9,7 @@ import 'package:onexray/pages/widget/page_title.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 
 class ServersPage extends StatefulWidget {
-  const ServersPage({super.key, this.picker = false});
-  final bool picker;
+  const ServersPage({super.key});
   @override
   State<ServersPage> createState() => _ServersPageState();
 }
@@ -39,17 +38,12 @@ class _ServersPageState extends State<ServersPage> {
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
       final mobileRoot =
-          !widget.picker &&
           MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return Scaffold(
         appBar: AppBar(
           title: mobileRoot
               ? PageTitle(l.prototypeServers)
-              : Text(
-                  widget.picker
-                      ? l.prototypeConnectionLocation
-                      : l.prototypeServers,
-                ),
+              : Text(l.prototypeServers),
           actions: [
             if (!mobileRoot)
               IconButton(
@@ -80,11 +74,7 @@ class _ServersPageState extends State<ServersPage> {
             controller: controller,
             child: ResponsiveContent(
               desktopMaxWidth: 1200,
-              child: ServerBrowser(
-                controller: controller,
-                scroll: scroll,
-                picker: widget.picker,
-              ),
+              child: ServerBrowser(controller: controller, scroll: scroll),
             ),
           ),
         ),
@@ -117,7 +107,6 @@ class ServerGroupPage extends StatelessWidget {
                   : ServerGroupView(
                       controller: controller,
                       group: group,
-                      picker: params.picker,
                       groupPage: true,
                     ),
             ),

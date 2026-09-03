@@ -38,8 +38,7 @@ class ServerExitPickerParams {
 class ServerGroupParams {
   final ServersController controller;
   final String groupId;
-  final bool picker;
-  const ServerGroupParams(this.controller, this.groupId, {this.picker = false});
+  const ServerGroupParams(this.controller, this.groupId);
 }
 
 class ServerGroup {
@@ -347,19 +346,9 @@ class ServersController extends ConnectController {
 
   String protocol(CoreConfigData row) => ServerAssetService.protocolLabel(row);
 
-  void chooseRow(
-    BuildContext context,
-    CoreConfigData row, {
-    bool picker = false,
-    bool groupPage = false,
-  }) {
+  void chooseRow(BuildContext context, CoreConfigData row) {
     if (!canChoose(row)) return;
-    choose(
-      context,
-      ServerSelection.server(row.id),
-      picker: picker,
-      groupPage: groupPage,
-    );
+    choose(context, ServerSelection.server(row.id));
   }
 
   Set<int> get runningEntries =>
@@ -397,36 +386,20 @@ class ServersController extends ConnectController {
     BuildContext context,
     ServerGroup group, {
     required bool mobile,
-    bool picker = false,
   }) async {
     activeGroupId = group.id;
     changed();
     if (mobile) {
-      final choice = await context.pushScoped<Object>(
+      await context.pushScoped(
         AppSecondaryDestination.serverGroup,
-        extra: ServerGroupParams(this, group.id, picker: picker),
+        extra: ServerGroupParams(this, group.id),
       );
-      if (context.mounted && picker && choice == true) {
-        Navigator.of(context).pop(choice);
-      }
     }
   }
 
-  Future<void> choose(
-    BuildContext context,
-    ServerSelection selection, {
-    bool picker = false,
-    bool groupPage = false,
-  }) async {
+  Future<void> choose(BuildContext context, ServerSelection selection) async {
     if (busy) return;
-    if (await change(context, {
-          'selection': selection.toJson(),
-          'expert': false,
-        }) &&
-        context.mounted &&
-        picker) {
-      Navigator.of(context).pop(groupPage ? true : null);
-    }
+    await change(context, {'selection': selection.toJson(), 'expert': false});
   }
 
   void chooseExit(BuildContext context, int? id) =>

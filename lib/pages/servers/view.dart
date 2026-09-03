@@ -12,12 +12,10 @@ import 'package:onexray/service/connection/settings.dart';
 class ServerBrowser extends StatelessWidget {
   final ServersController controller;
   final ScrollController scroll;
-  final bool picker;
   const ServerBrowser({
     super.key,
     required this.controller,
     required this.scroll,
-    this.picker = false,
   });
 
   @override
@@ -28,7 +26,7 @@ class ServerBrowser extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final mobile = constraints.maxWidth < 840;
-        if (constraints.maxWidth <= AppLayout.mobileBreakpoint && !picker) {
+        if (constraints.maxWidth <= AppLayout.mobileBreakpoint) {
           return _mobileBrowser(context, groups, favorites);
         }
         final selectedGroup =
@@ -50,13 +48,12 @@ class ServerBrowser extends StatelessWidget {
                   : () => controller.choose(
                       context,
                       const ServerSelection.automatic(),
-                      picker: picker,
                     ),
             ),
             if (favorites.isNotEmpty) ...[
               ServerSectionTitle(l.prototypeFavorites),
               for (final row in favorites)
-                ServerNodeRow(controller: controller, row: row, picker: picker),
+                ServerNodeRow(controller: controller, row: row),
               const SizedBox(height: 16),
             ],
             if (controller.servers.isEmpty) ...[
@@ -111,22 +108,14 @@ class ServerBrowser extends StatelessWidget {
                         title: Text(group.name),
                         subtitle: Text(controller.summary(l, group)),
                         trailing: const Icon(LucideIcons.chevronRightDir),
-                        onTap: () => controller.browse(
-                          context,
-                          group,
-                          mobile: mobile,
-                          picker: picker,
-                        ),
+                        onTap: () =>
+                            controller.browse(context, group, mobile: mobile),
                       ),
                       Wrap(
                         alignment: WrapAlignment.end,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          ServerUseButton(
-                            controller: controller,
-                            group: group,
-                            picker: picker,
-                          ),
+                          ServerUseButton(controller: controller, group: group),
                           if (group.source != null)
                             SourceMenu(
                               controller: controller,
@@ -214,7 +203,6 @@ class ServerBrowser extends StatelessWidget {
                               : ServerGroupView(
                                   controller: controller,
                                   group: selectedGroup,
-                                  picker: picker,
                                 ),
                         ),
                       ],
@@ -661,13 +649,11 @@ class ServerBrowser extends StatelessWidget {
 class ServerGroupView extends StatelessWidget {
   final ServersController controller;
   final ServerGroup group;
-  final bool picker;
   final bool groupPage;
   const ServerGroupView({
     super.key,
     required this.controller,
     required this.group,
-    this.picker = false,
     this.groupPage = false,
   });
 
@@ -700,12 +686,7 @@ class ServerGroupView extends StatelessWidget {
               icon: const Icon(LucideIcons.gauge),
               label: Text(l.prototypeTestServers),
             ),
-            ServerUseButton(
-              controller: controller,
-              group: group,
-              picker: picker,
-              groupPage: groupPage,
-            ),
+            ServerUseButton(controller: controller, group: group),
             if (group.source != null)
               SourceMenu(controller: controller, source: group.source!),
           ],
@@ -717,12 +698,7 @@ class ServerGroupView extends StatelessWidget {
             child: Text(l.prototypeNoServersYet),
           ),
         for (final row in group.visibleRows)
-          ServerNodeRow(
-            controller: controller,
-            row: row,
-            picker: picker,
-            groupPage: groupPage,
-          ),
+          ServerNodeRow(controller: controller, row: row),
       ],
     );
   }
@@ -834,12 +810,7 @@ class ServerGroupView extends StatelessWidget {
                               ],
                             ),
                           ),
-                          ServerUseButton(
-                            controller: controller,
-                            group: group,
-                            picker: picker,
-                            groupPage: groupPage,
-                          ),
+                          ServerUseButton(controller: controller, group: group),
                           if (group.source != null)
                             SizedBox(
                               width: 36,
@@ -871,8 +842,6 @@ class ServerGroupView extends StatelessWidget {
                   ServerNodeRow(
                     controller: controller,
                     row: row,
-                    picker: picker,
-                    groupPage: groupPage,
                     detail: group.country != null
                         ? controller.sourceName(l, row)
                         : controller.countryName(l, row.countryCode),
@@ -890,15 +859,11 @@ class ServerGroupView extends StatelessWidget {
 class ServerUseButton extends StatelessWidget {
   final ServersController controller;
   final ServerGroup group;
-  final bool picker;
-  final bool groupPage;
   final bool inline;
   const ServerUseButton({
     super.key,
     required this.controller,
     required this.group,
-    this.picker = false,
-    this.groupPage = false,
     this.inline = false,
   });
 
@@ -910,12 +875,7 @@ class ServerUseButton extends StatelessWidget {
     final selected = controller.selected(group.selection);
     final VoidCallback? choose = controller.busy || !enabled
         ? null
-        : () => controller.choose(
-            context,
-            group.selection,
-            picker: picker,
-            groupPage: groupPage,
-          );
+        : () => controller.choose(context, group.selection);
     if (inline ||
         MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
       final palette = ColorManager.palette(context);
@@ -1026,16 +986,12 @@ class ServerUseButton extends StatelessWidget {
 class ServerNodeRow extends StatelessWidget {
   final ServersController controller;
   final CoreConfigData row;
-  final bool picker;
-  final bool groupPage;
   final String? detail;
   final bool showDivider;
   const ServerNodeRow({
     super.key,
     required this.controller,
     required this.row,
-    this.picker = false,
-    this.groupPage = false,
     this.detail,
     this.showDivider = true,
   });
@@ -1074,12 +1030,7 @@ class ServerNodeRow extends StatelessWidget {
               child: InkWell(
                 onTap: controller.busy || !enabled
                     ? null
-                    : () => controller.chooseRow(
-                        context,
-                        row,
-                        picker: picker,
-                        groupPage: groupPage,
-                      ),
+                    : () => controller.chooseRow(context, row),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
@@ -1223,12 +1174,7 @@ class ServerNodeRow extends StatelessWidget {
                             onTap: controller.busy || conflict
                                 ? null
                                 : enabled
-                                ? () => controller.chooseRow(
-                                    context,
-                                    row,
-                                    picker: picker,
-                                    groupPage: groupPage,
-                                  )
+                                ? () => controller.chooseRow(context, row)
                                 : () =>
                                       ServerMenu.open(context, controller, row),
                             child: Padding(

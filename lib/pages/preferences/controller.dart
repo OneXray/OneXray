@@ -8,6 +8,7 @@ import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/settings/app_icon/controller.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/data_cleanup/service.dart';
 import 'package:onexray/service/app_startup/service.dart';
@@ -171,12 +172,13 @@ class PreferencesController extends PageCubit<PreferencesPageState> {
   Future<void> clearData(BuildContext context) async {
     if (state.clearingData) return;
     final l10n = AppLocalizations.of(context)!;
-    if (!await ContextAlert.showConfirmDialog(
-          context,
+    if (!await AppConfirmationDialog(
           title: l10n.prototypeClearAllDataQuestion,
           content: l10n.prototypeClearAllDataWarning,
+          cancelLabel: l10n.prototypeCancel,
           confirmLabel: l10n.prototypeConfirmClearData,
-        ) ||
+          destructive: true,
+        ).show(context) ||
         !context.mounted) {
       return;
     }

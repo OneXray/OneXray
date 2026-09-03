@@ -9,6 +9,7 @@ import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
+import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -80,7 +81,7 @@ void main() {
   );
 
   testWidgets(
-    'Raw empty, edit return, and cancelled reset use the home navigation',
+    'home actions use editors, dialogs and the shared server root navigation',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -90,6 +91,10 @@ void main() {
           ConnectController(database: coordinator.db, coordinator: coordinator)
             ..configuration = coordinator.saved
             ..expertView = true;
+      final servers = ServersController(
+        database: coordinator.db,
+        coordinator: coordinator,
+      );
       final router = GoRouter(
         initialLocation: '/home',
         routes: [
@@ -111,6 +116,10 @@ void main() {
                     onPressed: () => controller.showTraffic(context),
                     child: const Text('traffic-action'),
                   ),
+                  TextButton(
+                    onPressed: () => controller.chooseServer(context),
+                    child: const Text('location-action'),
+                  ),
                 ],
               ),
             ),
@@ -125,9 +134,33 @@ void main() {
               ),
             ],
           ),
+          GoRoute(
+            path: '/subscriptions',
+            builder: (context, _) => Scaffold(
+              body: TextButton(
+                onPressed: () => context.push('/subscriptions/server-group'),
+                child: const Text('servers-root'),
+              ),
+            ),
+            routes: [
+              GoRoute(
+                path: 'server-group',
+                builder: (context, _) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => servers.choose(
+                      context,
+                      const ServerSelection.region('SG'),
+                    ),
+                    child: const Text('use-group'),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       );
       addTearDown(controller.dispose);
+      addTearDown(servers.dispose);
       addTearDown(coordinator.dispose);
       addTearDown(coordinator.db.close);
       addTearDown(router.dispose);
@@ -175,6 +208,24 @@ void main() {
       await tester.tapAt(const Offset(8, 8));
       await tester.pumpAndSettle();
       expect(find.text('Choose a traffic method'), findsNothing);
+      await tester.tap(find.text('location-action'));
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/subscriptions');
+      expect(find.text('servers-root'), findsOneWidget);
+      expect(router.canPop(), false);
+      await tester.tap(find.text('servers-root'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('use-group'));
+      await tester.pumpAndSettle();
+      expect(
+        GoRouterState.of(tester.element(find.text('use-group'))).uri.path,
+        '/subscriptions/server-group',
+      );
+      expect(find.text('use-group'), findsOneWidget);
+      expect(coordinator.saved.connection.expert, false);
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/subscriptions');
       expect(tester.takeException(), isNull);
     },
   );
