@@ -137,7 +137,7 @@ class PingService {
   }
 
   static bool isUnmeasured(CoreConfigData row) =>
-      row.lastMeasuredAt == null || row.delay == PingDelayConstants.unknown;
+      row.delay == PingDelayConstants.unknown;
 
   Future<void> _runPinging(Future<void> Function() task) =>
       DataMaintenance.run(() async {
@@ -256,12 +256,7 @@ class PingService {
               table.data.equals(row.data!),
         ))
         .write(
-          CoreConfigCompanion(
-            delay: Value(delay),
-            countryCode: Value(country),
-            locationSource: Value(country == null ? null : 'pingBatch'),
-            lastMeasuredAt: Value(DateTime.now()),
-          ),
+          CoreConfigCompanion(delay: Value(delay), countryCode: Value(country)),
         );
   }
 

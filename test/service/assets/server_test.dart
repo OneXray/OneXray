@@ -29,9 +29,7 @@ void main() {
         subId: Value(subId),
         favorite: Value(favorite),
         countryCode: const Value('JP'),
-        locationSource: const Value('ip'),
         delay: const Value(20),
-        lastMeasuredAt: Value(DateTime(2026, 9, 3)),
       ),
     );
     return (await db.coreConfigDao.searchRow(id))!;
@@ -73,7 +71,6 @@ void main() {
           finalExit: ServerSnapshot.fromRow(exit),
         );
         await db.connectionStateDao.commit(
-          baseRevision: 0,
           settingsJson: configuration.encode(),
           confirmedPlanId: old.id,
         );
@@ -126,6 +123,12 @@ void main() {
             ? [old.id]
             : <String>[];
         expect(revoked, expected);
+        final saved = (await db.coreConfigDao.searchRow(row.id))!;
+        expect(
+          saved.delay,
+          change == 'rename' ? 20 : PingDelayConstants.unknown,
+        );
+        expect(saved.countryCode, change == 'rename' ? 'JP' : isNull);
         await service.favorite(row.id, true);
         expect(revoked, expected);
         expect((await db.coreConfigDao.searchRow(row.id))!.favorite, true);
@@ -154,7 +157,6 @@ void main() {
           finalExit: ServerSnapshot.fromRow(exit),
         );
         await db.connectionStateDao.commit(
-          baseRevision: 0,
           settingsJson: configuration.encode(),
           confirmedPlanId: old.id,
         );
@@ -221,7 +223,6 @@ void main() {
       expect(copy.favorite, false);
       expect(copy.countryCode, 'JP');
       expect(copy.delay, PingDelayConstants.unknown);
-      expect(copy.lastMeasuredAt, isNull);
       expect(readOutboundFromDbData(copy)['tag'], 'original · Local copy');
       expect(scheduled, [copyId]);
       await service.favorite(original.id, false);
@@ -239,7 +240,6 @@ void main() {
     );
     final old = _plan('a', configuration, [ServerSnapshot.fromRow(row)]);
     await db.connectionStateDao.commit(
-      baseRevision: 0,
       settingsJson: configuration.encode(),
       confirmedPlanId: old.id,
     );
@@ -284,7 +284,8 @@ void main() {
     final renamed = await service.load(row.id);
     expect(renamed.original.name, 'renamed');
     expect(renamed.original.favorite, true);
-    expect(renamed.original.lastMeasuredAt, row.lastMeasuredAt);
+    expect(renamed.original.delay, row.delay);
+    expect(renamed.original.countryCode, row.countryCode);
     final changed = ServerEditDraft(
       renamed.original,
       renamed.text.replaceFirst('freedom', 'blackhole'),
@@ -315,10 +316,7 @@ void main() {
         smart: SmartRoutingSettings(finalExitId: row.id),
       ),
     );
-    await db.connectionStateDao.commit(
-      baseRevision: 0,
-      settingsJson: configuration.encode(),
-    );
+    await db.connectionStateDao.commit(settingsJson: configuration.encode());
     final coordinator = await initialize(
       ConnectionCoordinator(
         database: db,

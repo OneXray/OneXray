@@ -469,7 +469,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       }
       try {
         await db.connectionStateDao.commit(
-          baseRevision: row.revision,
           settingsJson: next.encode(),
           confirmedPlanId: row.confirmedPlanId,
           writeAssets: writeAssets,
@@ -532,7 +531,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         restoreReplay = await _revokeReplay(old);
       }
       await db.connectionStateDao.commit(
-        baseRevision: row.revision,
         settingsJson: (plan?.configuration ?? next).encode(),
         confirmedPlanId: plan?.id ?? row.confirmedPlanId,
         writeAssets: () async {

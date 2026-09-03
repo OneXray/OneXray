@@ -9,11 +9,7 @@ class ConnectionStateDao extends DatabaseAccessor<AppDatabase>
     with _$ConnectionStateDaoMixin {
   ConnectionStateDao(super.db);
 
-  static const _initial = ConnectionStateData(
-    id: 1,
-    revision: 0,
-    settingsJson: '{}',
-  );
+  static const _initial = ConnectionStateData(id: 1, settingsJson: '{}');
 
   Future<ConnectionStateData> read() async =>
       await select(connectionState).getSingleOrNull() ?? _initial;
@@ -30,28 +26,21 @@ class ConnectionStateDao extends DatabaseAccessor<AppDatabase>
   /// The caller supplies already validated state and already encoded asset data.
   /// Asset mutations must use this database so all writes share this transaction.
   Future<void> commit({
-    required int baseRevision,
     required String settingsJson,
     String? confirmedPlanId,
     Future<void> Function()? writeAssets,
   }) => attachedDatabase.transaction(() async {
     await _ensureRow();
-    if ((await read()).revision != baseRevision) {
-      throw StateError('Connection state changed');
-    }
     await writeAssets?.call();
     final changed =
-        await (update(
-          connectionState,
-        )..where((row) => row.revision.equals(baseRevision))).write(
+        await (update(connectionState)..where((row) => row.id.equals(1))).write(
           ConnectionStateCompanion(
-            revision: Value(baseRevision + 1),
             settingsJson: Value(settingsJson),
             confirmedPlanId: Value(confirmedPlanId),
           ),
         );
     if (changed != 1) {
-      throw StateError('Connection state changed');
+      throw StateError('Connection state is missing');
     }
   });
 

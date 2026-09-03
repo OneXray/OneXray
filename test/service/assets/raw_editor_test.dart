@@ -30,10 +30,7 @@ void main() {
         selection: const ServerSelection.server(77),
       ),
     );
-    await db.connectionStateDao.commit(
-      baseRevision: 0,
-      settingsJson: configuration.encode(),
-    );
+    await db.connectionStateDao.commit(settingsJson: configuration.encode());
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
@@ -83,7 +80,6 @@ void main() {
     );
     final old = _plan('a', configuration, _text);
     await db.connectionStateDao.commit(
-      baseRevision: 0,
       settingsJson: configuration.encode(),
       confirmedPlanId: old.id,
     );

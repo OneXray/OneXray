@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/share/backup_database.dart';
 import 'package:onexray/service/share/backup_model.dart';
@@ -20,7 +21,6 @@ void main() {
     () async {
       await _seedAssets(database);
       await database.connectionStateDao.commit(
-        baseRevision: 0,
         settingsJson: '{"connection":{"rawId":30}}',
         confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       );
@@ -32,7 +32,7 @@ void main() {
       await payload.restore(database);
       final after = await BackupDatabaseContents.read(database);
 
-      expect(_json(after), _json(before));
+      expect(_json(after), _json(before, resetMeasurements: true));
       final nodes = await database.coreConfigDao.allRawRowsWithData;
       expect(nodes, hasLength(4));
       expect(nodes.singleWhere((row) => row.id == 33).data, 'not base64!');
@@ -41,19 +41,16 @@ void main() {
       expect(cached!.subId, 7);
       expect(cached.favorite, isTrue);
       expect(cached.countryCode, 'JP');
-      expect(cached.locationSource, 'test-path');
-      expect(cached.lastMeasuredAt!.millisecondsSinceEpoch, 2000);
+      expect(cached.delay, PingDelayConstants.unknown);
       final subscription = (await database.subscriptionDao.allRows).single;
       expect(subscription.id, 7);
       expect(subscription.count, 1);
-      expect(subscription.parseFailureCount, 2);
       expect(subscription.autoUpdate, isFalse);
       expect(subscription.ageSecretKey, 'AGE-SECRET-KEY-TEST');
       expect(subscription.agePublicKey, 'age1test');
       expect((await database.customRoutingProfilesDao.allRows).single.id, 8);
       expect(await database.coreConfigDao.searchRow(99), isNull);
       final reset = await database.connectionStateDao.read();
-      expect(reset.revision, 0);
       expect(reset.settingsJson, '{}');
       expect(reset.confirmedPlanId, isNull);
     },
@@ -97,7 +94,6 @@ void main() {
       expect(raw.every((row) => row.subId == 0 && !row.favorite), isTrue);
       expect(raw.every((row) => row.countryCode == null), isTrue);
       expect(subscriptions.single.count, 0);
-      expect(subscriptions.single.parseFailureCount, 0);
       expect(
         subscriptions.single.ageSecretKey,
         version == 4 ? 'AGE-SECRET-KEY-TEST' : null,
@@ -165,7 +161,7 @@ void main() {
 
       await _roundTrip(payload).restore(database);
       final restored = await BackupDatabaseContents.read(database);
-      expect(_json(restored), _json(payload));
+      expect(_json(restored), _json(payload, resetMeasurements: true));
       final orphan = await database.coreConfigDao.searchRow(2);
       final original = before.coreConfigs.singleWhere((row) => row.id == 2);
       expect(orphan!.subId, 7);
@@ -237,7 +233,6 @@ void main() {
     () async {
       await _seedAssets(database);
       await database.connectionStateDao.commit(
-        baseRevision: 0,
         settingsJson: '{"old":true}',
         confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       );
@@ -296,7 +291,6 @@ Future<void> _seedAssets(AppDatabase database) async {
       timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
       count: 1,
       expanded: true,
-      parseFailureCount: const Value(2),
       autoUpdate: const Value(false),
     ),
   );
@@ -323,12 +317,6 @@ Future<void> _seedAssets(AppDatabase database) async {
             ? 999
             : 0,
         countryCode: id == 2 ? const Value('JP') : const Value.absent(),
-        locationSource: id == 2
-            ? const Value('test-path')
-            : const Value.absent(),
-        lastMeasuredAt: id == 2
-            ? Value(DateTime.fromMillisecondsSinceEpoch(2000))
-            : const Value.absent(),
         favorite: Value(id == 2),
       ),
     );
@@ -370,8 +358,18 @@ BackupDatabaseContents _roundTrip(BackupDatabaseContents value) =>
           .toList(),
     );
 
-Map<String, Object> _json(BackupDatabaseContents value) => {
-  'core': value.coreConfigs.map((row) => row.toJson()).toList(),
+Map<String, Object> _json(
+  BackupDatabaseContents value, {
+  bool resetMeasurements = false,
+}) => {
+  'core': [
+    for (final row in value.coreConfigs)
+      {
+        ...row.toJson(),
+        if (resetMeasurements && row.type == 'outbound')
+          'delay': PingDelayConstants.unknown,
+      },
+  ],
   'subscriptions': value.subscriptions.map((row) => row.toJson()).toList(),
   'geodata': value.geoDataList.map((row) => row.toJson()).toList(),
   'custom': value.customRoutingProfiles.map((row) => row.toJson()).toList(),

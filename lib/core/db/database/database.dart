@@ -8,6 +8,7 @@ import 'package:onexray/core/db/dao/core_config.dart';
 import 'package:onexray/core/db/dao/custom_routing_profiles.dart';
 import 'package:onexray/core/db/dao/geo_data.dart';
 import 'package:onexray/core/db/dao/subscription.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/table/connection_state.dart';
 import 'package:onexray/core/db/table/core_config.dart';
 import 'package:onexray/core/db/table/custom_routing_profiles.dart';
@@ -92,14 +93,18 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(subscription, subscription.agePublicKey);
       }
       await migrator.addColumn(coreConfig, coreConfig.countryCode);
-      await migrator.addColumn(coreConfig, coreConfig.locationSource);
-      await migrator.addColumn(coreConfig, coreConfig.lastMeasuredAt);
       await migrator.addColumn(coreConfig, coreConfig.favorite);
-      await migrator.addColumn(subscription, subscription.parseFailureCount);
       await migrator.addColumn(subscription, subscription.autoUpdate);
       await migrator.addColumn(geoData, geoData.generation);
       await migrator.createTable(customRoutingProfiles);
       await migrator.createTable(connectionState);
+
+      // Old delays are not a health result for the new measurement flow.
+      await (update(
+        coreConfig,
+      )..where((row) => row.type.equals('outbound'))).write(
+        const CoreConfigCompanion(delay: Value(PingDelayConstants.unknown)),
+      );
 
       // Drift writes this again after beforeOpen. Commit it with the DDL so an
       // interruption between those callbacks cannot leave the old version.

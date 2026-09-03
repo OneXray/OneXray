@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/assets/import.dart';
@@ -38,7 +39,7 @@ void main() {
       'one',
       'two',
     ]);
-    expect(saved.every((row) => row.lastMeasuredAt == null), true);
+    expect(saved.every((row) => row.delay == PingDelayConstants.unknown), true);
   });
 
   test('manual invalid member or duplicate tag rejects the whole input before native validation', () async {

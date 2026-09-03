@@ -245,7 +245,6 @@ class ConnectionResolver {
       };
 
   static bool _isSuccessful(CoreConfigData row) =>
-      row.lastMeasuredAt != null &&
       row.delay >= 0 &&
       row.delay != PingDelayConstants.unknown &&
       row.delay != PingDelayConstants.error &&

@@ -291,6 +291,5 @@ SubscriptionData _subscription({
     timestamp: DateTime(2026),
     count: 1,
     expanded: true,
-    parseFailureCount: 0,
   );
 }

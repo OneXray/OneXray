@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/upgrade_snapshot.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
@@ -107,6 +108,19 @@ void main() {
       expect(await database.customRoutingProfilesDao.allRows, isEmpty);
       expect(await database.subscriptionDao.allRows, isEmpty);
       expect((await database.connectionStateDao.read()).settingsJson, '{}');
+      for (final entry in {
+        'core_config': ['location_source', 'last_measured_at'],
+        'subscription': ['parse_failure_count'],
+        'connection_state': ['revision'],
+      }.entries) {
+        final columns = await database
+            .customSelect('PRAGMA table_info(${entry.key})')
+            .get();
+        expect(
+          columns.map((row) => row.read<String>('name')),
+          isNot(anyElement(isIn(entry.value))),
+        );
+      }
       expect(
         (await database.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
@@ -126,7 +140,6 @@ void main() {
         try {
           final subscriptions = await database.subscriptionDao.allRows;
           expect(subscriptions.single.id, 7);
-          expect(subscriptions.single.parseFailureCount, 0);
           expect(subscriptions.single.autoUpdate, isTrue);
           expect(
             subscriptions.single.ageSecretKey,
@@ -140,16 +153,14 @@ void main() {
           expect(rawRows, hasLength(4));
           expect(rawRows.every((row) => !row.favorite), isTrue);
           expect(rawRows.every((row) => row.countryCode == null), isTrue);
-          expect(rawRows.every((row) => row.locationSource == null), isTrue);
-          expect(rawRows.every((row) => row.lastMeasuredAt == null), isTrue);
           expect(await database.customRoutingProfilesDao.allRows, isEmpty);
-          expect((await database.connectionStateDao.read()).revision, 0);
+          expect((await database.connectionStateDao.read()).settingsJson, '{}');
           expect((await database.geoDataDao.allRows).single.generation, isNull);
         } finally {
           await database.close();
         }
 
-        expect(_snapshotFile(file, hasAgeKeys: true), before);
+        expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
         expect(
           await prepareUpgradeSnapshot(
             file,
@@ -168,7 +179,7 @@ void main() {
         } finally {
           await reopened.close();
         }
-        expect(_snapshotFile(file, hasAgeKeys: true), before);
+        expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
       },
     );
 
@@ -196,7 +207,7 @@ void main() {
           );
           expect(
             _columnNames(check, 'subscription'),
-            isNot(contains('parse_failure_count')),
+            isNot(contains('auto_update')),
           );
           if (version == 1) {
             expect(
@@ -224,7 +235,7 @@ void main() {
         } finally {
           await retried.close();
         }
-        expect(_snapshotFile(file, hasAgeKeys: true), before);
+        expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
       },
     );
   }
@@ -241,7 +252,6 @@ void main() {
     expect(_columnNames(check, 'core_config'), contains('favorite'));
     expect(_columnNames(check, 'connection_state'), [
       'id',
-      'revision',
       'settings_json',
       'confirmed_plan_id',
     ]);
@@ -253,7 +263,7 @@ void main() {
     } finally {
       await retried.close();
     }
-    expect(_snapshotFile(file, hasAgeKeys: true), before);
+    expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
   });
 
   test(
@@ -273,7 +283,7 @@ void main() {
       } finally {
         await database.close();
       }
-      expect(_snapshotFile(file, hasAgeKeys: true), before);
+      expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
     },
   );
 
@@ -442,3 +452,19 @@ List<String> _columnNames(sqlite.Database database, String table) => database
     .select('PRAGMA table_info($table)')
     .map((row) => row['name'] as String)
     .toList();
+
+Map<String, List<List<Object?>>> _afterUpgrade(
+  Map<String, List<List<Object?>>> before,
+) => {
+  ...before,
+  'core_config': [
+    for (final row in before['core_config']!)
+      [
+        for (var index = 0; index < row.length; index++)
+          if (row[2] == 'outbound' && index == 5)
+            PingDelayConstants.unknown
+          else
+            row[index],
+      ],
+  ],
+};

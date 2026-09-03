@@ -4,8 +4,6 @@ import 'package:drift/drift.dart';
 class ConnectionState extends Table {
   IntColumn get id => integer().withDefault(const Constant(1))();
 
-  IntColumn get revision => integer().withDefault(const Constant(0))();
-
   // App state metadata, not an encoded Xray asset. Validation belongs to service.
   TextColumn get settingsJson => text().withDefault(const Constant('{}'))();
 

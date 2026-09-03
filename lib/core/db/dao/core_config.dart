@@ -32,8 +32,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       delay: delay ?? PingDelayConstants.unknown,
       subId: subId ?? DBConstants.defaultId,
       countryCode: row.read(coreConfig.countryCode),
-      locationSource: row.read(coreConfig.locationSource),
-      lastMeasuredAt: row.read(coreConfig.lastMeasuredAt),
       favorite: row.read(coreConfig.favorite) ?? false,
     );
     return data;
@@ -131,8 +129,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
         coreConfig.delay,
         coreConfig.subId,
         coreConfig.countryCode,
-        coreConfig.locationSource,
-        coreConfig.lastMeasuredAt,
         coreConfig.favorite,
       ]);
     return query;
@@ -216,7 +212,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
       timestamp: DateTime.now(),
       count: 0,
       expanded: expanded,
-      parseFailureCount: 0,
     );
     return subData;
   }
@@ -315,7 +310,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
           subId: const Value(DBConstants.defaultId),
           // A copy keeps asset metadata, but has no measurement of its own yet.
           delay: const Value(PingDelayConstants.unknown),
-          lastMeasuredAt: const Value(null),
         );
     return insertAssetRow(row);
   }

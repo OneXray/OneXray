@@ -29,8 +29,6 @@ BackupCoreConfigJson _$BackupCoreConfigJsonFromJson(
   subId: (json['subId'] as num?)?.toInt(),
   delay: (json['delay'] as num?)?.toInt(),
   countryCode: json['countryCode'] as String?,
-  locationSource: json['locationSource'] as String?,
-  lastMeasuredAt: (json['lastMeasuredAt'] as num?)?.toInt(),
   favorite: json['favorite'] as bool?,
 );
 
@@ -45,8 +43,6 @@ Map<String, dynamic> _$BackupCoreConfigJsonToJson(
   'subId': ?instance.subId,
   'delay': ?instance.delay,
   'countryCode': ?instance.countryCode,
-  'locationSource': ?instance.locationSource,
-  'lastMeasuredAt': ?instance.lastMeasuredAt,
   'favorite': ?instance.favorite,
 };
 
@@ -61,7 +57,6 @@ BackupSubscriptionJson _$BackupSubscriptionJsonFromJson(
   json['expanded'] as bool?,
   id: (json['id'] as num?)?.toInt(),
   count: (json['count'] as num?)?.toInt(),
-  parseFailureCount: (json['parseFailureCount'] as num?)?.toInt(),
   autoUpdate: json['autoUpdate'] as bool?,
 );
 
@@ -76,7 +71,6 @@ Map<String, dynamic> _$BackupSubscriptionJsonToJson(
   'timestamp': ?instance.timestamp,
   'expanded': ?instance.expanded,
   'count': ?instance.count,
-  'parseFailureCount': ?instance.parseFailureCount,
   'autoUpdate': ?instance.autoUpdate,
 };
 

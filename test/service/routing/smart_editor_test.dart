@@ -47,7 +47,6 @@ void main() {
       ),
     );
     await db.connectionStateDao.commit(
-      baseRevision: 0,
       settingsJson: original.encode(),
       confirmedPlanId: null,
     );
@@ -102,7 +101,6 @@ void main() {
       final original = ConnectionConfiguration();
       final old = _plan('a', original);
       await db.connectionStateDao.commit(
-        baseRevision: 0,
         settingsJson: original.encode(),
         confirmedPlanId: old.id,
       );

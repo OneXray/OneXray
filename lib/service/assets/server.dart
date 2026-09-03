@@ -76,7 +76,7 @@ class ServerAssetService {
   )..where((row) => row.type.equals('outbound'))).get();
 
   static bool measured(CoreConfigData row) =>
-      row.lastMeasuredAt != null && row.delay != PingDelayConstants.unknown;
+      row.delay != PingDelayConstants.unknown;
 
   static bool healthy(CoreConfigData row) =>
       measured(row) &&
@@ -203,13 +203,7 @@ class ServerAssetService {
             tags: companion.tags.value,
             data: companion.data,
             delay: semanticChange ? PingDelayConstants.unknown : current.delay,
-            lastMeasuredAt: semanticChange
-                ? const Value(null)
-                : const Value.absent(),
             countryCode: semanticChange
-                ? const Value(null)
-                : const Value.absent(),
-            locationSource: semanticChange
                 ? const Value(null)
                 : const Value.absent(),
           ),
@@ -237,7 +231,6 @@ class ServerAssetService {
         final id = await db.coreConfigDao.insertAssetRow(
           outboundCompanion(outbound).copyWith(
             countryCode: Value(current.countryCode),
-            locationSource: Value(current.locationSource),
             favorite: const Value(false),
           ),
         );

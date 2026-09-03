@@ -56,11 +56,7 @@ void main() {
       readRegionCodes: () async => ['CN', 'RU', 'US'],
       saveConfiguration: (value) async {
         writes++;
-        final row = await db.connectionStateDao.read();
-        await db.connectionStateDao.commit(
-          baseRevision: row.revision,
-          settingsJson: value.encode(),
-        );
+        await db.connectionStateDao.commit(settingsJson: value.encode());
       },
     );
   });
@@ -97,14 +93,10 @@ void main() {
   test('confirmed region persists before progress; skip preserves configuration and Raw activation', () async {
     await setup.acceptPrivacy();
     await setup.continueSystem('');
-    final row = await db.connectionStateDao.read();
     final expert = ConnectionConfiguration(
       connection: ConnectionSettings(expert: true, rawId: 7),
     );
-    await db.connectionStateDao.commit(
-      baseRevision: row.revision,
-      settingsJson: expert.encode(),
-    );
+    await db.connectionStateDao.commit(settingsJson: expert.encode());
     await setup.continueRegion('RU');
     final saved = await setup.configuration();
     expect(saved.connection.smart.directRegions, ['RU']);

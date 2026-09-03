@@ -132,7 +132,7 @@ void main() {
   });
 
   test(
-    'nonempty import stores exact known counts and already encoded data',
+    'nonempty import reports recognition failures without persisting them',
     () async {
       final imported = _node('Imported');
       final pings = <int>[];
@@ -155,7 +155,7 @@ void main() {
       expect(result.parseFailureCount, 4);
       final source = (await database.subscriptionDao.allRows).single;
       expect(source.count, 1);
-      expect(source.parseFailureCount, 4);
+      expect(source.toJson(), isNot(contains('parseFailureCount')));
       final row = (await database.coreConfigDao.allOutboundRowsWithDataBySubId(
         source.id,
       )).single;
@@ -171,7 +171,7 @@ void main() {
   test(
     'refresh preserves all references and favorites, but counts only imports',
     () async {
-      final source = await _source(database, parseFailureCount: 7);
+      final source = await _source(database);
       final originals = <CoreConfigData>[];
       for (final name in [
         'Run A',
@@ -194,11 +194,13 @@ void main() {
         fixedId: originals[2].id,
         finalExitId: originals[3].id,
       );
+      int? parseFailures = 7;
       final service = _service(
         database,
         (_) async => SubscriptionLoadResult(
           status: SubscriptionUpdateResult.success,
           rows: [_node('Run A'), _node('New')],
+          parseFailureCount: parseFailures,
         ),
         readReferences: () => references,
       );
@@ -206,7 +208,7 @@ void main() {
       final result = await service.refreshSubscriptionResult(source, false);
       expect(result.success, isTrue);
       expect(result.count, 2);
-      expect(result.parseFailureCount, isNull);
+      expect(result.parseFailureCount, 7);
       for (final row in originals.take(5)) {
         expect(await database.coreConfigDao.searchRow(row.id), row);
       }
@@ -217,7 +219,6 @@ void main() {
       );
       final updated = (await database.subscriptionDao.searchRow(source.id))!;
       expect(updated.count, 2);
-      expect(updated.parseFailureCount, 7);
       expect(updated.expanded, source.expanded);
       expect(updated.ageSecretKey, source.ageSecretKey);
       expect(updated.agePublicKey, source.agePublicKey);
@@ -227,7 +228,12 @@ void main() {
         fixedId: originals[2].id,
         finalExitId: originals[3].id,
       );
-      await service.refreshSubscriptionResult(updated, false);
+      parseFailures = null;
+      final nextResult = await service.refreshSubscriptionResult(
+        updated,
+        false,
+      );
+      expect(nextResult.parseFailureCount, isNull);
       expect(await database.coreConfigDao.searchRow(originals[0].id), isNull);
       expect(await database.coreConfigDao.searchRow(originals[1].id), isNull);
       for (final row in originals.skip(2).take(3)) {
@@ -252,7 +258,7 @@ void main() {
   test(
     'empty or failed results leave nodes, source settings and counts intact',
     () async {
-      final source = await _source(database, parseFailureCount: 3);
+      final source = await _source(database);
       final nodeId = await database.coreConfigDao.insertRow(
         _node('Existing', subId: source.id),
       );
@@ -370,7 +376,6 @@ void main() {
       final current = (await database.subscriptionDao.searchRow(source.id))!;
       expect(current.url, 'https://example.com/new');
       expect(current.ageSecretKey, 'new-secret');
-      expect(current.parseFailureCount, 2);
       expect(
         (await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id))
             .single
@@ -569,10 +574,7 @@ SubscriptionService _service(
   readReferences: readReferences ?? () => const SubscriptionNodeReferences(),
 );
 
-Future<SubscriptionData> _source(
-  AppDatabase database, {
-  int parseFailureCount = 0,
-}) async {
+Future<SubscriptionData> _source(AppDatabase database) async {
   final id = await database.subscriptionDao.insertRow(
     SubscriptionCompanion.insert(
       name: 'Source',
@@ -582,7 +584,6 @@ Future<SubscriptionData> _source(
       timestamp: DateTime.utc(2024),
       count: 1,
       expanded: false,
-      parseFailureCount: Value(parseFailureCount),
     ),
   );
   return (await database.subscriptionDao.searchRow(id))!;

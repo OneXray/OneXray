@@ -692,7 +692,6 @@ void main() {
       );
       await enteredStart.future;
       final waiting = await db.connectionStateDao.read();
-      expect(waiting.revision, before.revision);
       expect(waiting.settingsJson, before.settingsJson);
       expect(waiting.confirmedPlanId, isNull);
       expect(waiting.toJson(), before.toJson());
@@ -702,7 +701,6 @@ void main() {
       confirmation.complete(HostConnection(VpnStatus.connected, plan: next));
       await applying;
       final saved = await db.connectionStateDao.read();
-      expect(saved.revision, before.revision + 1);
       expect(saved.settingsJson, next.configuration.encode());
       expect(saved.confirmedPlanId, next.id);
       expect(writes, 1);
@@ -1387,9 +1385,10 @@ void main() {
         resetTraffic: _noReset,
       ),
     );
+    final before = await db.connectionStateDao.read();
     await Future.wait([coordinator.connect(), coordinator.connect()]);
     expect(coordinator.state.value.plan?.id, plan.id);
-    expect((await db.connectionStateDao.read()).revision, 0);
+    expect(await db.connectionStateDao.read(), before);
   });
 
   test('permission failure survives status reconciliation and clears after a successful retry', () async {
@@ -1491,7 +1490,6 @@ Future<void> _seed(
   ConnectionPlan plan, {
   ConnectionConfiguration? configuration,
 }) => db.connectionStateDao.commit(
-  baseRevision: 0,
   settingsJson: (configuration ?? plan.configuration).encode(),
   confirmedPlanId: plan.id,
 );

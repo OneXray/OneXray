@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/constants/preferences.dart';
@@ -51,6 +51,7 @@ void main() {
     );
     await service.pingConfigIds([first, second]);
     expect((await db.coreConfigDao.searchRow(first))!.countryCode, 'US');
+    expect((await db.coreConfigDao.searchRow(first))!.delay, 0);
     expect((await db.coreConfigDao.searchRow(second))!.countryCode, 'JP');
     await service.pingConfigIds([first, second]);
     expect(run, 1);
@@ -58,12 +59,8 @@ void main() {
     final row = (await db.coreConfigDao.searchRow(first))!;
     expect(row.delay, 12);
     expect(row.countryCode, isNull);
-    expect(row.locationSource, isNull);
+    expect(PingService.isUnmeasured(row), isFalse);
     expect((await db.coreConfigDao.searchRow(second))!.countryCode, 'SG');
-    expect(
-      (await db.coreConfigDao.searchRow(second))!.locationSource,
-      'pingBatch',
-    );
   });
 
   test(
@@ -93,7 +90,7 @@ void main() {
       for (final id in [local, remote]) {
         final row = (await db.coreConfigDao.searchRow(id))!;
         expect(row.delay, 20);
-        expect(row.lastMeasuredAt, isNotNull);
+        expect(PingService.isUnmeasured(row), isFalse);
       }
       expect(AppEventBus.instance.state.pinging, isFalse);
     },
@@ -137,15 +134,12 @@ void main() {
     expect(releaseSecond.isCompleted, isFalse);
     expect(selected.map((node) => node.id), ids.take(2));
     expect(
-      (await db.coreConfigDao.searchRow(ids.last))!.lastMeasuredAt,
-      isNull,
+      (await db.coreConfigDao.searchRow(ids.last))!.delay,
+      PingDelayConstants.unknown,
     );
     releaseSecond.complete();
     await probing;
-    expect(
-      (await db.coreConfigDao.searchRow(ids.last))!.lastMeasuredAt,
-      isNotNull,
-    );
+    expect((await db.coreConfigDao.searchRow(ids.last))!.delay, 20);
     expect(selected.map((node) => node.id), ids.take(2));
   });
 
@@ -183,13 +177,13 @@ void main() {
 
     final failed = (await db.coreConfigDao.searchRow(first))!;
     expect(failed.delay, PingDelayConstants.error);
-    expect(failed.lastMeasuredAt, isNotNull);
+    expect(PingService.isUnmeasured(failed), isFalse);
     expect(failed.favorite, isTrue);
     final edited = (await db.coreConfigDao.searchRow(second))!;
     expect(edited.name, 'New content');
     expect(edited.subId, 9);
     expect(edited.delay, PingDelayConstants.unknown);
-    expect(edited.lastMeasuredAt, isNull);
+    expect(PingService.isUnmeasured(edited), isTrue);
     expect(edited.favorite, isTrue);
   });
 
@@ -243,7 +237,6 @@ void main() {
         final row = (await db.coreConfigDao.searchRow(id))!;
         expect(row.name, 'Restored');
         expect(row.delay, PingDelayConstants.unknown);
-        expect(row.lastMeasuredAt, isNull);
       }
     },
   );

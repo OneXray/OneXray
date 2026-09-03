@@ -54,8 +54,6 @@ final class BackupDatabaseContents {
                 subId: row.subId,
                 delay: row.delay,
                 countryCode: row.countryCode,
-                locationSource: row.locationSource,
-                lastMeasuredAt: row.lastMeasuredAt?.millisecondsSinceEpoch,
                 favorite: row.favorite,
               ),
           ],
@@ -70,7 +68,6 @@ final class BackupDatabaseContents {
                 row.expanded,
                 id: row.id,
                 count: row.count,
-                parseFailureCount: row.parseFailureCount,
                 autoUpdate: row.autoUpdate,
               ),
           ],
@@ -167,15 +164,9 @@ final class BackupDatabaseContents {
           row.favorite == null) {
         throw const FormatException('Invalid backup node metadata');
       }
-      if (row.lastMeasuredAt != null) {
-        DateTime.fromMillisecondsSinceEpoch(row.lastMeasuredAt!);
-      }
     }
     for (final row in subscriptions) {
-      if (row.count == null ||
-          row.count! < 0 ||
-          row.parseFailureCount == null ||
-          row.parseFailureCount! < 0) {
+      if (row.count == null || row.count! < 0) {
         throw const FormatException('Invalid backup subscription counts');
       }
     }
@@ -202,7 +193,6 @@ final class BackupDatabaseContents {
             timestamp: DateTime.fromMillisecondsSinceEpoch(row.timestamp!),
             count: _isCurrent ? row.count! : 0,
             expanded: row.expanded!,
-            parseFailureCount: Value(_isCurrent ? row.parseFailureCount! : 0),
             autoUpdate: Value(row.autoUpdate ?? true),
           ),
         );
@@ -228,15 +218,12 @@ final class BackupDatabaseContents {
             type: row.type!,
             tags: row.tags!,
             data: Value(row.data),
-            delay: _isCurrent ? row.delay! : PingDelayConstants.unknown,
+            // Probe caches are disposable; restored nodes use the normal queue.
+            delay: _isCurrent && row.type != 'outbound'
+                ? row.delay!
+                : PingDelayConstants.unknown,
             subId: _isCurrent ? row.subId! : DBConstants.defaultId,
             countryCode: Value(_isCurrent ? row.countryCode : null),
-            locationSource: Value(_isCurrent ? row.locationSource : null),
-            lastMeasuredAt: Value(
-              _isCurrent && row.lastMeasuredAt != null
-                  ? DateTime.fromMillisecondsSinceEpoch(row.lastMeasuredAt!)
-                  : null,
-            ),
             favorite: Value(_isCurrent ? row.favorite! : false),
           ),
         );

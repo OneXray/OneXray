@@ -14,7 +14,7 @@ void main() {
     final rows = [
       _row(1, delay: 60, source: 1, region: 'US'),
       _row(2, delay: 20, source: 2, region: 'US'),
-      _row(3, delay: 5, source: 0, region: 'CN'),
+      _row(3, delay: 0, source: 0, region: 'CN'),
       _row(4, delay: 1, type: 'raw'),
     ];
     final resolver = _oneShot(rows);
@@ -119,32 +119,35 @@ void main() {
     );
   });
 
-  test('only timestamped successes qualify; legacy delay and unknown sentinel are probed once', () async {
-    var rows = [
-      _row(1, delay: 1, measured: false),
-      _row(2, delay: PingDelayConstants.unknown),
-      _row(3, delay: PingDelayConstants.error),
-      _row(4, delay: PingDelayConstants.timeout),
-      _row(5, delay: -1),
-    ];
-    final probes = <List<int>>[];
-    final resolver = ConnectionResolver(
-      rows: () => Stream.value(rows),
-      probe: (ids) async {
-        probes.add(ids);
-        rows = [
-          _row(1, delay: 50),
-          _row(2, delay: PingDelayConstants.error),
-          ...rows.skip(2),
-        ];
-      },
-    );
-    final result = await resolver.resolve(ConnectionSettings());
-    expect(probes, [
-      [1, 2],
-    ]);
-    expect(result.single.id, 1);
-  });
+  test(
+    'only successful delays qualify; unknown candidates are probed once',
+    () async {
+      var rows = [
+        _row(1, delay: PingDelayConstants.unknown),
+        _row(2, delay: PingDelayConstants.unknown),
+        _row(3, delay: PingDelayConstants.error),
+        _row(4, delay: PingDelayConstants.timeout),
+        _row(5, delay: -1),
+      ];
+      final probes = <List<int>>[];
+      final resolver = ConnectionResolver(
+        rows: () => Stream.value(rows),
+        probe: (ids) async {
+          probes.add(ids);
+          rows = [
+            _row(1, delay: 50),
+            _row(2, delay: PingDelayConstants.error),
+            ...rows.skip(2),
+          ];
+        },
+      );
+      final result = await resolver.resolve(ConnectionSettings());
+      expect(probes, [
+        [1, 2],
+      ]);
+      expect(result.single.id, 1);
+    },
+  );
 
   test(
     'fully failed or unrepairable candidates do not trigger an endless retry',
@@ -158,7 +161,7 @@ void main() {
       );
       var probes = 0;
       final resolver = ConnectionResolver(
-        rows: () => Stream.value([_row(1, measured: false)]),
+        rows: () => Stream.value([_row(1, delay: PingDelayConstants.unknown)]),
         probe: (_) async {
           probes++;
         },
@@ -177,7 +180,10 @@ void main() {
   );
 
   test('a watched batch resolves early and later updates cannot mutate the snapshot', () async {
-    final rows = _Rows([_row(1, measured: false), _row(2, measured: false)]);
+    final rows = _Rows([
+      _row(1, delay: PingDelayConstants.unknown),
+      _row(2, delay: PingDelayConstants.unknown),
+    ]);
     addTearDown(rows.close);
     final started = Completer<void>();
     final remaining = Completer<void>();
@@ -193,7 +199,10 @@ void main() {
     );
     final resolving = resolver.resolve(ConnectionSettings());
     await started.future;
-    rows.update([_row(1, delay: 30), _row(2, measured: false)]);
+    rows.update([
+      _row(1, delay: 30),
+      _row(2, delay: PingDelayConstants.unknown),
+    ]);
     final snapshots = await resolving;
     expect(remaining.isCompleted, isFalse);
     expect(rows.listeners, 0);
@@ -209,7 +218,7 @@ void main() {
   test(
     'cancellation releases the watch without cancelling background probing',
     () async {
-      final rows = _Rows([_row(1, measured: false)]);
+      final rows = _Rows([_row(1, delay: PingDelayConstants.unknown)]);
       addTearDown(rows.close);
       final started = Completer<void>();
       final remaining = Completer<void>();
@@ -249,7 +258,7 @@ void main() {
             .resolve(ConnectionSettings()),
         _fails(ConnectionResolutionFailure.readFailed),
       );
-      final rows = _Rows([_row(1, measured: false)]);
+      final rows = _Rows([_row(1, delay: PingDelayConstants.unknown)]);
       addTearDown(rows.close);
       await expectLater(
         ConnectionResolver(
@@ -281,7 +290,6 @@ Matcher _fails(ConnectionResolutionFailure reason) => throwsA(
 CoreConfigData _row(
   int id, {
   int delay = 10,
-  bool measured = true,
   int source = 0,
   String region = 'US',
   String type = 'outbound',
@@ -295,7 +303,6 @@ CoreConfigData _row(
   subId: source,
   countryCode: region,
   favorite: false,
-  lastMeasuredAt: measured ? DateTime.utc(2026) : null,
   data: base64Encode(
     utf8.encode(
       jsonEncode({

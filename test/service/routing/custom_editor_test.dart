@@ -124,7 +124,6 @@ void main() {
     );
     final old = _plan('a', configuration);
     await db.connectionStateDao.commit(
-      baseRevision: 0,
       settingsJson: configuration.encode(),
       confirmedPlanId: old.id,
     );

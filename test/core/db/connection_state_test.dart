@@ -15,7 +15,6 @@ void main() {
     final dao = db.connectionStateDao;
     final initial = await dao.read();
     expect(initial.id, 1);
-    expect(initial.revision, 0);
     expect(initial.settingsJson, '{}');
     expect(initial.confirmedPlanId, isNull);
     expect(await dao.watch().first, initial);
@@ -31,7 +30,6 @@ void main() {
       final dao = db.connectionStateDao;
       const settings = '{"connection":{"expert":true},"policy":{"ipv6":false}}';
       await dao.commit(
-        baseRevision: 0,
         settingsJson: settings,
         confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         writeAssets: () async {
@@ -39,7 +37,6 @@ void main() {
         },
       );
       final saved = await dao.watch().first;
-      expect(saved.revision, 1);
       expect(saved.settingsJson, settings);
       expect(saved.confirmedPlanId, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
       expect(
@@ -47,21 +44,16 @@ void main() {
         'eyJmb28iOjF9',
       );
 
-      var wroteAssets = false;
-      await expectLater(
-        dao.commit(
-          baseRevision: 0,
-          settingsJson: '{}',
-          writeAssets: () async {
-            wroteAssets = true;
-          },
-        ),
-        throwsStateError,
+      await dao.commit(
+        settingsJson: '{"updated":true}',
+        confirmedPlanId: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       );
-      expect(wroteAssets, isFalse);
-      expect(await dao.read(), saved);
+      final updated = await dao.read();
+      expect(updated.settingsJson, '{"updated":true}');
+      expect(updated.confirmedPlanId, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+      expect(await db.select(db.connectionState).get(), [updated]);
       await dao.reset();
-      expect((await dao.watch().first).revision, 0);
+      expect(await dao.watch().first, await dao.read());
       expect((await dao.read()).settingsJson, '{}');
       expect((await dao.read()).confirmedPlanId, isNull);
       expect(await db.coreConfigDao.allRawRowsWithData, hasLength(1));
@@ -71,14 +63,12 @@ void main() {
   test('asset failure leaves saved settings and plan ID intact', () async {
     final dao = db.connectionStateDao;
     await dao.commit(
-      baseRevision: 0,
       settingsJson: '{"old":true}',
       confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     );
     final before = await dao.read();
     await expectLater(
       dao.commit(
-        baseRevision: 1,
         settingsJson: '{"new":true}',
         confirmedPlanId: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
         writeAssets: () async {
@@ -101,7 +91,6 @@ void main() {
     ''');
     await expectLater(
       dao.commit(
-        baseRevision: 0,
         settingsJson: '{"new":true}',
         writeAssets: () async {
           await db.coreConfigDao.insertAssetRow(_asset);

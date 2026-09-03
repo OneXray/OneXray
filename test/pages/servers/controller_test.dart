@@ -93,6 +93,21 @@ void main() {
     expect(controller.entryCount(group.selection), 1);
   });
 
+  test('delay alone distinguishes untested, successful, failed and timed-out nodes', () async {
+    final row = await server('one');
+    for (final (delay, label, selectable) in [
+      (PingDelayConstants.unknown, l.prototypeNotTested, true),
+      (0, l.prototypeAvailableLatency(0), true),
+      (320, l.prototypeSlowLatency(320), true),
+      (PingDelayConstants.error, l.prototypeTemporarilyUnavailable, false),
+      (PingDelayConstants.timeout, l.prototypeTemporarilyUnavailable, false),
+    ]) {
+      final candidate = row.copyWith(delay: delay);
+      expect(controller.health(l, candidate), label);
+      expect(controller.canChoose(candidate), selectable);
+    }
+  });
+
   test('custom count uses empty outbounds; measured failure is not an untested candidate', () async {
     final one = await server('one');
     final two = await server('two');
@@ -116,13 +131,7 @@ void main() {
         customId: controller.customRoutes.single.id,
       ),
     );
-    controller.servers = [
-      one,
-      two.copyWith(
-        delay: PingDelayConstants.error,
-        lastMeasuredAt: Value(DateTime(2026)),
-      ),
-    ];
+    controller.servers = [one, two.copyWith(delay: PingDelayConstants.error)];
     final group = controller.groups(l).single;
     expect(controller.entryCount(group.selection), 2);
     expect(controller.canUse(group), false);

@@ -220,9 +220,6 @@ class SubscriptionService {
           timestamp: DateTime.now(),
           count: rows.length,
           expanded: true,
-          parseFailureCount: loaded.parseFailureCount == null
-              ? const Value.absent()
-              : Value(loaded.parseFailureCount!),
         );
         final nextSubId = await db.subscriptionDao.insertRow(row);
         if (nextSubId <= DBConstants.defaultId) {
@@ -582,8 +579,6 @@ class SubscriptionService {
             : Value(editedInput.normalizedAgePublicKey),
         timestamp: DateTime.now(),
         count: count,
-        parseFailureCount:
-            loaded.parseFailureCount ?? current.parseFailureCount,
       );
       _ensureCurrent(expected.id, generation);
       if (!await db.subscriptionDao.updateRow(updated)) {

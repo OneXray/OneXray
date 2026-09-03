@@ -87,29 +87,6 @@ class $CoreConfigTable extends CoreConfig
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _locationSourceMeta = const VerificationMeta(
-    'locationSource',
-  );
-  @override
-  late final GeneratedColumn<String> locationSource = GeneratedColumn<String>(
-    'location_source',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _lastMeasuredAtMeta = const VerificationMeta(
-    'lastMeasuredAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> lastMeasuredAt =
-      GeneratedColumn<DateTime>(
-        'last_measured_at',
-        aliasedName,
-        true,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: false,
-      );
   static const VerificationMeta _favoriteMeta = const VerificationMeta(
     'favorite',
   );
@@ -135,8 +112,6 @@ class $CoreConfigTable extends CoreConfig
     delay,
     subId,
     countryCode,
-    locationSource,
-    lastMeasuredAt,
     favorite,
   ];
   @override
@@ -209,24 +184,6 @@ class $CoreConfigTable extends CoreConfig
         ),
       );
     }
-    if (data.containsKey('location_source')) {
-      context.handle(
-        _locationSourceMeta,
-        locationSource.isAcceptableOrUnknown(
-          data['location_source']!,
-          _locationSourceMeta,
-        ),
-      );
-    }
-    if (data.containsKey('last_measured_at')) {
-      context.handle(
-        _lastMeasuredAtMeta,
-        lastMeasuredAt.isAcceptableOrUnknown(
-          data['last_measured_at']!,
-          _lastMeasuredAtMeta,
-        ),
-      );
-    }
     if (data.containsKey('favorite')) {
       context.handle(
         _favoriteMeta,
@@ -274,14 +231,6 @@ class $CoreConfigTable extends CoreConfig
         DriftSqlType.string,
         data['${effectivePrefix}country_code'],
       ),
-      locationSource: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}location_source'],
-      ),
-      lastMeasuredAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}last_measured_at'],
-      ),
       favorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}favorite'],
@@ -304,8 +253,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
   final int delay;
   final int subId;
   final String? countryCode;
-  final String? locationSource;
-  final DateTime? lastMeasuredAt;
   final bool favorite;
   const CoreConfigData({
     required this.id,
@@ -316,8 +263,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     required this.delay,
     required this.subId,
     this.countryCode,
-    this.locationSource,
-    this.lastMeasuredAt,
     required this.favorite,
   });
   @override
@@ -335,12 +280,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     if (!nullToAbsent || countryCode != null) {
       map['country_code'] = Variable<String>(countryCode);
     }
-    if (!nullToAbsent || locationSource != null) {
-      map['location_source'] = Variable<String>(locationSource);
-    }
-    if (!nullToAbsent || lastMeasuredAt != null) {
-      map['last_measured_at'] = Variable<DateTime>(lastMeasuredAt);
-    }
     map['favorite'] = Variable<bool>(favorite);
     return map;
   }
@@ -357,12 +296,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       countryCode: countryCode == null && nullToAbsent
           ? const Value.absent()
           : Value(countryCode),
-      locationSource: locationSource == null && nullToAbsent
-          ? const Value.absent()
-          : Value(locationSource),
-      lastMeasuredAt: lastMeasuredAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastMeasuredAt),
       favorite: Value(favorite),
     );
   }
@@ -381,8 +314,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       delay: serializer.fromJson<int>(json['delay']),
       subId: serializer.fromJson<int>(json['subId']),
       countryCode: serializer.fromJson<String?>(json['countryCode']),
-      locationSource: serializer.fromJson<String?>(json['locationSource']),
-      lastMeasuredAt: serializer.fromJson<DateTime?>(json['lastMeasuredAt']),
       favorite: serializer.fromJson<bool>(json['favorite']),
     );
   }
@@ -398,8 +329,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       'delay': serializer.toJson<int>(delay),
       'subId': serializer.toJson<int>(subId),
       'countryCode': serializer.toJson<String?>(countryCode),
-      'locationSource': serializer.toJson<String?>(locationSource),
-      'lastMeasuredAt': serializer.toJson<DateTime?>(lastMeasuredAt),
       'favorite': serializer.toJson<bool>(favorite),
     };
   }
@@ -413,8 +342,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     int? delay,
     int? subId,
     Value<String?> countryCode = const Value.absent(),
-    Value<String?> locationSource = const Value.absent(),
-    Value<DateTime?> lastMeasuredAt = const Value.absent(),
     bool? favorite,
   }) => CoreConfigData(
     id: id ?? this.id,
@@ -425,12 +352,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     delay: delay ?? this.delay,
     subId: subId ?? this.subId,
     countryCode: countryCode.present ? countryCode.value : this.countryCode,
-    locationSource: locationSource.present
-        ? locationSource.value
-        : this.locationSource,
-    lastMeasuredAt: lastMeasuredAt.present
-        ? lastMeasuredAt.value
-        : this.lastMeasuredAt,
     favorite: favorite ?? this.favorite,
   );
   CoreConfigData copyWithCompanion(CoreConfigCompanion data) {
@@ -445,12 +366,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       countryCode: data.countryCode.present
           ? data.countryCode.value
           : this.countryCode,
-      locationSource: data.locationSource.present
-          ? data.locationSource.value
-          : this.locationSource,
-      lastMeasuredAt: data.lastMeasuredAt.present
-          ? data.lastMeasuredAt.value
-          : this.lastMeasuredAt,
       favorite: data.favorite.present ? data.favorite.value : this.favorite,
     );
   }
@@ -466,8 +381,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
           ..write('delay: $delay, ')
           ..write('subId: $subId, ')
           ..write('countryCode: $countryCode, ')
-          ..write('locationSource: $locationSource, ')
-          ..write('lastMeasuredAt: $lastMeasuredAt, ')
           ..write('favorite: $favorite')
           ..write(')'))
         .toString();
@@ -483,8 +396,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     delay,
     subId,
     countryCode,
-    locationSource,
-    lastMeasuredAt,
     favorite,
   );
   @override
@@ -499,8 +410,6 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
           other.delay == this.delay &&
           other.subId == this.subId &&
           other.countryCode == this.countryCode &&
-          other.locationSource == this.locationSource &&
-          other.lastMeasuredAt == this.lastMeasuredAt &&
           other.favorite == this.favorite);
 }
 
@@ -513,8 +422,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
   final Value<int> delay;
   final Value<int> subId;
   final Value<String?> countryCode;
-  final Value<String?> locationSource;
-  final Value<DateTime?> lastMeasuredAt;
   final Value<bool> favorite;
   const CoreConfigCompanion({
     this.id = const Value.absent(),
@@ -525,8 +432,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     this.delay = const Value.absent(),
     this.subId = const Value.absent(),
     this.countryCode = const Value.absent(),
-    this.locationSource = const Value.absent(),
-    this.lastMeasuredAt = const Value.absent(),
     this.favorite = const Value.absent(),
   });
   CoreConfigCompanion.insert({
@@ -538,8 +443,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     required int delay,
     required int subId,
     this.countryCode = const Value.absent(),
-    this.locationSource = const Value.absent(),
-    this.lastMeasuredAt = const Value.absent(),
     this.favorite = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
@@ -555,8 +458,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     Expression<int>? delay,
     Expression<int>? subId,
     Expression<String>? countryCode,
-    Expression<String>? locationSource,
-    Expression<DateTime>? lastMeasuredAt,
     Expression<bool>? favorite,
   }) {
     return RawValuesInsertable({
@@ -568,8 +469,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
       if (delay != null) 'delay': delay,
       if (subId != null) 'sub_id': subId,
       if (countryCode != null) 'country_code': countryCode,
-      if (locationSource != null) 'location_source': locationSource,
-      if (lastMeasuredAt != null) 'last_measured_at': lastMeasuredAt,
       if (favorite != null) 'favorite': favorite,
     });
   }
@@ -583,8 +482,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     Value<int>? delay,
     Value<int>? subId,
     Value<String?>? countryCode,
-    Value<String?>? locationSource,
-    Value<DateTime?>? lastMeasuredAt,
     Value<bool>? favorite,
   }) {
     return CoreConfigCompanion(
@@ -596,8 +493,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
       delay: delay ?? this.delay,
       subId: subId ?? this.subId,
       countryCode: countryCode ?? this.countryCode,
-      locationSource: locationSource ?? this.locationSource,
-      lastMeasuredAt: lastMeasuredAt ?? this.lastMeasuredAt,
       favorite: favorite ?? this.favorite,
     );
   }
@@ -629,12 +524,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     if (countryCode.present) {
       map['country_code'] = Variable<String>(countryCode.value);
     }
-    if (locationSource.present) {
-      map['location_source'] = Variable<String>(locationSource.value);
-    }
-    if (lastMeasuredAt.present) {
-      map['last_measured_at'] = Variable<DateTime>(lastMeasuredAt.value);
-    }
     if (favorite.present) {
       map['favorite'] = Variable<bool>(favorite.value);
     }
@@ -652,8 +541,6 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
           ..write('delay: $delay, ')
           ..write('subId: $subId, ')
           ..write('countryCode: $countryCode, ')
-          ..write('locationSource: $locationSource, ')
-          ..write('lastMeasuredAt: $lastMeasuredAt, ')
           ..write('favorite: $favorite')
           ..write(')'))
         .toString();
@@ -753,18 +640,6 @@ class $SubscriptionTable extends Subscription
       'CHECK ("expanded" IN (0, 1))',
     ),
   );
-  static const VerificationMeta _parseFailureCountMeta = const VerificationMeta(
-    'parseFailureCount',
-  );
-  @override
-  late final GeneratedColumn<int> parseFailureCount = GeneratedColumn<int>(
-    'parse_failure_count',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
   static const VerificationMeta _autoUpdateMeta = const VerificationMeta(
     'autoUpdate',
   );
@@ -790,7 +665,6 @@ class $SubscriptionTable extends Subscription
     timestamp,
     count,
     expanded,
-    parseFailureCount,
     autoUpdate,
   ];
   @override
@@ -866,15 +740,6 @@ class $SubscriptionTable extends Subscription
     } else if (isInserting) {
       context.missing(_expandedMeta);
     }
-    if (data.containsKey('parse_failure_count')) {
-      context.handle(
-        _parseFailureCountMeta,
-        parseFailureCount.isAcceptableOrUnknown(
-          data['parse_failure_count']!,
-          _parseFailureCountMeta,
-        ),
-      );
-    }
     if (data.containsKey('auto_update')) {
       context.handle(
         _autoUpdateMeta,
@@ -922,10 +787,6 @@ class $SubscriptionTable extends Subscription
         DriftSqlType.bool,
         data['${effectivePrefix}expanded'],
       )!,
-      parseFailureCount: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}parse_failure_count'],
-      )!,
       autoUpdate: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}auto_update'],
@@ -949,7 +810,6 @@ class SubscriptionData extends DataClass
   final DateTime timestamp;
   final int count;
   final bool expanded;
-  final int parseFailureCount;
   final bool autoUpdate;
   const SubscriptionData({
     required this.id,
@@ -960,7 +820,6 @@ class SubscriptionData extends DataClass
     required this.timestamp,
     required this.count,
     required this.expanded,
-    required this.parseFailureCount,
     required this.autoUpdate,
   });
   @override
@@ -978,7 +837,6 @@ class SubscriptionData extends DataClass
     map['timestamp'] = Variable<DateTime>(timestamp);
     map['count'] = Variable<int>(count);
     map['expanded'] = Variable<bool>(expanded);
-    map['parse_failure_count'] = Variable<int>(parseFailureCount);
     map['auto_update'] = Variable<bool>(autoUpdate);
     return map;
   }
@@ -997,7 +855,6 @@ class SubscriptionData extends DataClass
       timestamp: Value(timestamp),
       count: Value(count),
       expanded: Value(expanded),
-      parseFailureCount: Value(parseFailureCount),
       autoUpdate: Value(autoUpdate),
     );
   }
@@ -1016,7 +873,6 @@ class SubscriptionData extends DataClass
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
       count: serializer.fromJson<int>(json['count']),
       expanded: serializer.fromJson<bool>(json['expanded']),
-      parseFailureCount: serializer.fromJson<int>(json['parseFailureCount']),
       autoUpdate: serializer.fromJson<bool>(json['autoUpdate']),
     );
   }
@@ -1032,7 +888,6 @@ class SubscriptionData extends DataClass
       'timestamp': serializer.toJson<DateTime>(timestamp),
       'count': serializer.toJson<int>(count),
       'expanded': serializer.toJson<bool>(expanded),
-      'parseFailureCount': serializer.toJson<int>(parseFailureCount),
       'autoUpdate': serializer.toJson<bool>(autoUpdate),
     };
   }
@@ -1046,7 +901,6 @@ class SubscriptionData extends DataClass
     DateTime? timestamp,
     int? count,
     bool? expanded,
-    int? parseFailureCount,
     bool? autoUpdate,
   }) => SubscriptionData(
     id: id ?? this.id,
@@ -1057,7 +911,6 @@ class SubscriptionData extends DataClass
     timestamp: timestamp ?? this.timestamp,
     count: count ?? this.count,
     expanded: expanded ?? this.expanded,
-    parseFailureCount: parseFailureCount ?? this.parseFailureCount,
     autoUpdate: autoUpdate ?? this.autoUpdate,
   );
   SubscriptionData copyWithCompanion(SubscriptionCompanion data) {
@@ -1074,9 +927,6 @@ class SubscriptionData extends DataClass
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
       count: data.count.present ? data.count.value : this.count,
       expanded: data.expanded.present ? data.expanded.value : this.expanded,
-      parseFailureCount: data.parseFailureCount.present
-          ? data.parseFailureCount.value
-          : this.parseFailureCount,
       autoUpdate: data.autoUpdate.present
           ? data.autoUpdate.value
           : this.autoUpdate,
@@ -1094,7 +944,6 @@ class SubscriptionData extends DataClass
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
           ..write('expanded: $expanded, ')
-          ..write('parseFailureCount: $parseFailureCount, ')
           ..write('autoUpdate: $autoUpdate')
           ..write(')'))
         .toString();
@@ -1110,7 +959,6 @@ class SubscriptionData extends DataClass
     timestamp,
     count,
     expanded,
-    parseFailureCount,
     autoUpdate,
   );
   @override
@@ -1125,7 +973,6 @@ class SubscriptionData extends DataClass
           other.timestamp == this.timestamp &&
           other.count == this.count &&
           other.expanded == this.expanded &&
-          other.parseFailureCount == this.parseFailureCount &&
           other.autoUpdate == this.autoUpdate);
 }
 
@@ -1138,7 +985,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
   final Value<DateTime> timestamp;
   final Value<int> count;
   final Value<bool> expanded;
-  final Value<int> parseFailureCount;
   final Value<bool> autoUpdate;
   const SubscriptionCompanion({
     this.id = const Value.absent(),
@@ -1149,7 +995,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.timestamp = const Value.absent(),
     this.count = const Value.absent(),
     this.expanded = const Value.absent(),
-    this.parseFailureCount = const Value.absent(),
     this.autoUpdate = const Value.absent(),
   });
   SubscriptionCompanion.insert({
@@ -1161,7 +1006,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     required DateTime timestamp,
     required int count,
     required bool expanded,
-    this.parseFailureCount = const Value.absent(),
     this.autoUpdate = const Value.absent(),
   }) : name = Value(name),
        url = Value(url),
@@ -1177,7 +1021,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Expression<DateTime>? timestamp,
     Expression<int>? count,
     Expression<bool>? expanded,
-    Expression<int>? parseFailureCount,
     Expression<bool>? autoUpdate,
   }) {
     return RawValuesInsertable({
@@ -1189,7 +1032,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       if (timestamp != null) 'timestamp': timestamp,
       if (count != null) 'count': count,
       if (expanded != null) 'expanded': expanded,
-      if (parseFailureCount != null) 'parse_failure_count': parseFailureCount,
       if (autoUpdate != null) 'auto_update': autoUpdate,
     });
   }
@@ -1203,7 +1045,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Value<DateTime>? timestamp,
     Value<int>? count,
     Value<bool>? expanded,
-    Value<int>? parseFailureCount,
     Value<bool>? autoUpdate,
   }) {
     return SubscriptionCompanion(
@@ -1215,7 +1056,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       timestamp: timestamp ?? this.timestamp,
       count: count ?? this.count,
       expanded: expanded ?? this.expanded,
-      parseFailureCount: parseFailureCount ?? this.parseFailureCount,
       autoUpdate: autoUpdate ?? this.autoUpdate,
     );
   }
@@ -1247,9 +1087,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     if (expanded.present) {
       map['expanded'] = Variable<bool>(expanded.value);
     }
-    if (parseFailureCount.present) {
-      map['parse_failure_count'] = Variable<int>(parseFailureCount.value);
-    }
     if (autoUpdate.present) {
       map['auto_update'] = Variable<bool>(autoUpdate.value);
     }
@@ -1267,7 +1104,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
           ..write('expanded: $expanded, ')
-          ..write('parseFailureCount: $parseFailureCount, ')
           ..write('autoUpdate: $autoUpdate')
           ..write(')'))
         .toString();
@@ -2049,18 +1885,6 @@ class $ConnectionStateTable extends ConnectionState
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
-  static const VerificationMeta _revisionMeta = const VerificationMeta(
-    'revision',
-  );
-  @override
-  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
-    'revision',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
   static const VerificationMeta _settingsJsonMeta = const VerificationMeta(
     'settingsJson',
   );
@@ -2085,12 +1909,7 @@ class $ConnectionStateTable extends ConnectionState
     requiredDuringInsert: false,
   );
   @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    revision,
-    settingsJson,
-    confirmedPlanId,
-  ];
+  List<GeneratedColumn> get $columns => [id, settingsJson, confirmedPlanId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2105,12 +1924,6 @@ class $ConnectionStateTable extends ConnectionState
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('revision')) {
-      context.handle(
-        _revisionMeta,
-        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
-      );
     }
     if (data.containsKey('settings_json')) {
       context.handle(
@@ -2143,10 +1956,6 @@ class $ConnectionStateTable extends ConnectionState
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      revision: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}revision'],
-      )!,
       settingsJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}settings_json'],
@@ -2167,12 +1976,10 @@ class $ConnectionStateTable extends ConnectionState
 class ConnectionStateData extends DataClass
     implements Insertable<ConnectionStateData> {
   final int id;
-  final int revision;
   final String settingsJson;
   final String? confirmedPlanId;
   const ConnectionStateData({
     required this.id,
-    required this.revision,
     required this.settingsJson,
     this.confirmedPlanId,
   });
@@ -2180,7 +1987,6 @@ class ConnectionStateData extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['revision'] = Variable<int>(revision);
     map['settings_json'] = Variable<String>(settingsJson);
     if (!nullToAbsent || confirmedPlanId != null) {
       map['confirmed_plan_id'] = Variable<String>(confirmedPlanId);
@@ -2191,7 +1997,6 @@ class ConnectionStateData extends DataClass
   ConnectionStateCompanion toCompanion(bool nullToAbsent) {
     return ConnectionStateCompanion(
       id: Value(id),
-      revision: Value(revision),
       settingsJson: Value(settingsJson),
       confirmedPlanId: confirmedPlanId == null && nullToAbsent
           ? const Value.absent()
@@ -2206,7 +2011,6 @@ class ConnectionStateData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ConnectionStateData(
       id: serializer.fromJson<int>(json['id']),
-      revision: serializer.fromJson<int>(json['revision']),
       settingsJson: serializer.fromJson<String>(json['settingsJson']),
       confirmedPlanId: serializer.fromJson<String?>(json['confirmedPlanId']),
     );
@@ -2216,7 +2020,6 @@ class ConnectionStateData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'revision': serializer.toJson<int>(revision),
       'settingsJson': serializer.toJson<String>(settingsJson),
       'confirmedPlanId': serializer.toJson<String?>(confirmedPlanId),
     };
@@ -2224,12 +2027,10 @@ class ConnectionStateData extends DataClass
 
   ConnectionStateData copyWith({
     int? id,
-    int? revision,
     String? settingsJson,
     Value<String?> confirmedPlanId = const Value.absent(),
   }) => ConnectionStateData(
     id: id ?? this.id,
-    revision: revision ?? this.revision,
     settingsJson: settingsJson ?? this.settingsJson,
     confirmedPlanId: confirmedPlanId.present
         ? confirmedPlanId.value
@@ -2238,7 +2039,6 @@ class ConnectionStateData extends DataClass
   ConnectionStateData copyWithCompanion(ConnectionStateCompanion data) {
     return ConnectionStateData(
       id: data.id.present ? data.id.value : this.id,
-      revision: data.revision.present ? data.revision.value : this.revision,
       settingsJson: data.settingsJson.present
           ? data.settingsJson.value
           : this.settingsJson,
@@ -2252,7 +2052,6 @@ class ConnectionStateData extends DataClass
   String toString() {
     return (StringBuffer('ConnectionStateData(')
           ..write('id: $id, ')
-          ..write('revision: $revision, ')
           ..write('settingsJson: $settingsJson, ')
           ..write('confirmedPlanId: $confirmedPlanId')
           ..write(')'))
@@ -2260,43 +2059,37 @@ class ConnectionStateData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, revision, settingsJson, confirmedPlanId);
+  int get hashCode => Object.hash(id, settingsJson, confirmedPlanId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ConnectionStateData &&
           other.id == this.id &&
-          other.revision == this.revision &&
           other.settingsJson == this.settingsJson &&
           other.confirmedPlanId == this.confirmedPlanId);
 }
 
 class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
   final Value<int> id;
-  final Value<int> revision;
   final Value<String> settingsJson;
   final Value<String?> confirmedPlanId;
   const ConnectionStateCompanion({
     this.id = const Value.absent(),
-    this.revision = const Value.absent(),
     this.settingsJson = const Value.absent(),
     this.confirmedPlanId = const Value.absent(),
   });
   ConnectionStateCompanion.insert({
     this.id = const Value.absent(),
-    this.revision = const Value.absent(),
     this.settingsJson = const Value.absent(),
     this.confirmedPlanId = const Value.absent(),
   });
   static Insertable<ConnectionStateData> custom({
     Expression<int>? id,
-    Expression<int>? revision,
     Expression<String>? settingsJson,
     Expression<String>? confirmedPlanId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (revision != null) 'revision': revision,
       if (settingsJson != null) 'settings_json': settingsJson,
       if (confirmedPlanId != null) 'confirmed_plan_id': confirmedPlanId,
     });
@@ -2304,13 +2097,11 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
 
   ConnectionStateCompanion copyWith({
     Value<int>? id,
-    Value<int>? revision,
     Value<String>? settingsJson,
     Value<String?>? confirmedPlanId,
   }) {
     return ConnectionStateCompanion(
       id: id ?? this.id,
-      revision: revision ?? this.revision,
       settingsJson: settingsJson ?? this.settingsJson,
       confirmedPlanId: confirmedPlanId ?? this.confirmedPlanId,
     );
@@ -2321,9 +2112,6 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
-    }
-    if (revision.present) {
-      map['revision'] = Variable<int>(revision.value);
     }
     if (settingsJson.present) {
       map['settings_json'] = Variable<String>(settingsJson.value);
@@ -2338,7 +2126,6 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
   String toString() {
     return (StringBuffer('ConnectionStateCompanion(')
           ..write('id: $id, ')
-          ..write('revision: $revision, ')
           ..write('settingsJson: $settingsJson, ')
           ..write('confirmedPlanId: $confirmedPlanId')
           ..write(')'))
@@ -2389,8 +2176,6 @@ typedef $$CoreConfigTableCreateCompanionBuilder = CoreConfigCompanion Function({
   required int delay,
   required int subId,
   Value<String?> countryCode,
-  Value<String?> locationSource,
-  Value<DateTime?> lastMeasuredAt,
   Value<bool> favorite,
 });
 typedef $$CoreConfigTableUpdateCompanionBuilder = CoreConfigCompanion Function({
@@ -2402,8 +2187,6 @@ typedef $$CoreConfigTableUpdateCompanionBuilder = CoreConfigCompanion Function({
   Value<int> delay,
   Value<int> subId,
   Value<String?> countryCode,
-  Value<String?> locationSource,
-  Value<DateTime?> lastMeasuredAt,
   Value<bool> favorite,
 });
 
@@ -2453,16 +2236,6 @@ class $$CoreConfigTableFilterComposer
 
   ColumnFilters<String> get countryCode => $composableBuilder(
     column: $table.countryCode,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get locationSource => $composableBuilder(
-    column: $table.locationSource,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get lastMeasuredAt => $composableBuilder(
-    column: $table.lastMeasuredAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2521,16 +2294,6 @@ class $$CoreConfigTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get locationSource => $composableBuilder(
-    column: $table.locationSource,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get lastMeasuredAt => $composableBuilder(
-    column: $table.lastMeasuredAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get favorite => $composableBuilder(
     column: $table.favorite,
     builder: (column) => ColumnOrderings(column),
@@ -2569,16 +2332,6 @@ class $$CoreConfigTableAnnotationComposer
 
   GeneratedColumn<String> get countryCode => $composableBuilder(
     column: $table.countryCode,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get locationSource => $composableBuilder(
-    column: $table.locationSource,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get lastMeasuredAt => $composableBuilder(
-    column: $table.lastMeasuredAt,
     builder: (column) => column,
   );
 
@@ -2625,8 +2378,6 @@ class $$CoreConfigTableTableManager
                 Value<int> delay = const Value.absent(),
                 Value<int> subId = const Value.absent(),
                 Value<String?> countryCode = const Value.absent(),
-                Value<String?> locationSource = const Value.absent(),
-                Value<DateTime?> lastMeasuredAt = const Value.absent(),
                 Value<bool> favorite = const Value.absent(),
               }) => CoreConfigCompanion(
                 id: id,
@@ -2637,8 +2388,6 @@ class $$CoreConfigTableTableManager
                 delay: delay,
                 subId: subId,
                 countryCode: countryCode,
-                locationSource: locationSource,
-                lastMeasuredAt: lastMeasuredAt,
                 favorite: favorite,
               ),
           createCompanionCallback:
@@ -2651,8 +2400,6 @@ class $$CoreConfigTableTableManager
                 required int delay,
                 required int subId,
                 Value<String?> countryCode = const Value.absent(),
-                Value<String?> locationSource = const Value.absent(),
-                Value<DateTime?> lastMeasuredAt = const Value.absent(),
                 Value<bool> favorite = const Value.absent(),
               }) => CoreConfigCompanion.insert(
                 id: id,
@@ -2663,8 +2410,6 @@ class $$CoreConfigTableTableManager
                 delay: delay,
                 subId: subId,
                 countryCode: countryCode,
-                locationSource: locationSource,
-                lastMeasuredAt: lastMeasuredAt,
                 favorite: favorite,
               ),
           withReferenceMapper: (p0) => p0
@@ -2702,7 +2447,6 @@ typedef $$SubscriptionTableCreateCompanionBuilder =
       required DateTime timestamp,
       required int count,
       required bool expanded,
-      Value<int> parseFailureCount,
       Value<bool> autoUpdate,
     });
 typedef $$SubscriptionTableUpdateCompanionBuilder =
@@ -2715,7 +2459,6 @@ typedef $$SubscriptionTableUpdateCompanionBuilder =
       Value<DateTime> timestamp,
       Value<int> count,
       Value<bool> expanded,
-      Value<int> parseFailureCount,
       Value<bool> autoUpdate,
     });
 
@@ -2765,11 +2508,6 @@ class $$SubscriptionTableFilterComposer
 
   ColumnFilters<bool> get expanded => $composableBuilder(
     column: $table.expanded,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get parseFailureCount => $composableBuilder(
-    column: $table.parseFailureCount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2828,11 +2566,6 @@ class $$SubscriptionTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get parseFailureCount => $composableBuilder(
-    column: $table.parseFailureCount,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get autoUpdate => $composableBuilder(
     column: $table.autoUpdate,
     builder: (column) => ColumnOrderings(column),
@@ -2875,11 +2608,6 @@ class $$SubscriptionTableAnnotationComposer
 
   GeneratedColumn<bool> get expanded =>
       $composableBuilder(column: $table.expanded, builder: (column) => column);
-
-  GeneratedColumn<int> get parseFailureCount => $composableBuilder(
-    column: $table.parseFailureCount,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<bool> get autoUpdate => $composableBuilder(
     column: $table.autoUpdate,
@@ -2926,7 +2654,6 @@ class $$SubscriptionTableTableManager
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<int> count = const Value.absent(),
                 Value<bool> expanded = const Value.absent(),
-                Value<int> parseFailureCount = const Value.absent(),
                 Value<bool> autoUpdate = const Value.absent(),
               }) => SubscriptionCompanion(
                 id: id,
@@ -2937,7 +2664,6 @@ class $$SubscriptionTableTableManager
                 timestamp: timestamp,
                 count: count,
                 expanded: expanded,
-                parseFailureCount: parseFailureCount,
                 autoUpdate: autoUpdate,
               ),
           createCompanionCallback:
@@ -2950,7 +2676,6 @@ class $$SubscriptionTableTableManager
                 required DateTime timestamp,
                 required int count,
                 required bool expanded,
-                Value<int> parseFailureCount = const Value.absent(),
                 Value<bool> autoUpdate = const Value.absent(),
               }) => SubscriptionCompanion.insert(
                 id: id,
@@ -2961,7 +2686,6 @@ class $$SubscriptionTableTableManager
                 timestamp: timestamp,
                 count: count,
                 expanded: expanded,
-                parseFailureCount: parseFailureCount,
                 autoUpdate: autoUpdate,
               ),
           withReferenceMapper: (p0) => p0
@@ -3412,14 +3136,12 @@ typedef $$CustomRoutingProfilesTableProcessedTableManager =
 typedef $$ConnectionStateTableCreateCompanionBuilder =
     ConnectionStateCompanion Function({
       Value<int> id,
-      Value<int> revision,
       Value<String> settingsJson,
       Value<String?> confirmedPlanId,
     });
 typedef $$ConnectionStateTableUpdateCompanionBuilder =
     ConnectionStateCompanion Function({
       Value<int> id,
-      Value<int> revision,
       Value<String> settingsJson,
       Value<String?> confirmedPlanId,
     });
@@ -3435,11 +3157,6 @@ class $$ConnectionStateTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get revision => $composableBuilder(
-    column: $table.revision,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3468,11 +3185,6 @@ class $$ConnectionStateTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get revision => $composableBuilder(
-    column: $table.revision,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get settingsJson => $composableBuilder(
     column: $table.settingsJson,
     builder: (column) => ColumnOrderings(column),
@@ -3495,9 +3207,6 @@ class $$ConnectionStateTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<int> get revision =>
-      $composableBuilder(column: $table.revision, builder: (column) => column);
 
   GeneratedColumn<String> get settingsJson => $composableBuilder(
     column: $table.settingsJson,
@@ -3548,24 +3257,20 @@ class $$ConnectionStateTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<int> revision = const Value.absent(),
                 Value<String> settingsJson = const Value.absent(),
                 Value<String?> confirmedPlanId = const Value.absent(),
               }) => ConnectionStateCompanion(
                 id: id,
-                revision: revision,
                 settingsJson: settingsJson,
                 confirmedPlanId: confirmedPlanId,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<int> revision = const Value.absent(),
                 Value<String> settingsJson = const Value.absent(),
                 Value<String?> confirmedPlanId = const Value.absent(),
               }) => ConnectionStateCompanion.insert(
                 id: id,
-                revision: revision,
                 settingsJson: settingsJson,
                 confirmedPlanId: confirmedPlanId,
               ),

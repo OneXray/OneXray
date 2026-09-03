@@ -28,11 +28,9 @@ void main() {
       }
       final rawId = await dao.insertRow(_config('raw', subId: 7));
       final outboundId = await dao.insertRow(
-        _config('outbound').copyWith(
-          countryCode: const Value('US'),
-          locationSource: const Value('probe'),
-          favorite: const Value(true),
-        ),
+        _config(
+          'outbound',
+        ).copyWith(countryCode: const Value('US'), favorite: const Value(true)),
       );
       final subscriptionId = await database.subscriptionDao.insertRow(
         SubscriptionCompanion.insert(
@@ -53,7 +51,6 @@ void main() {
           .toList();
       expect(configs.map((row) => row.config.id), [outboundId, subscribedId]);
       expect(configs.first.config.countryCode, 'US');
-      expect(configs.first.config.locationSource, 'probe');
       expect(configs.first.config.favorite, isTrue);
       expect(
         (await dao.allHomeNodeRowsStream().first).whereType<ConfigItem>().map(
@@ -105,8 +102,6 @@ void main() {
         _config('outbound', subId: 7).copyWith(
           data: const Value('eyJ0YWciOiJ0ZXN0In0='),
           countryCode: const Value('JP'),
-          locationSource: const Value('probe'),
-          lastMeasuredAt: Value(DateTime.utc(2026, 9, 2)),
           favorite: const Value(true),
           delay: const Value(42),
         ),
@@ -120,10 +115,8 @@ void main() {
       expect(copy.tags, 'test-tags');
       expect(copy.data, 'eyJ0YWciOiJ0ZXN0In0=');
       expect(copy.countryCode, 'JP');
-      expect(copy.locationSource, 'probe');
       expect(copy.favorite, isTrue);
       expect(copy.delay, PingDelayConstants.unknown);
-      expect(copy.lastMeasuredAt, isNull);
       expect((await dao.searchRow(originalId))!.delay, 42);
     },
   );

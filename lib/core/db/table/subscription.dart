@@ -17,7 +17,5 @@ class Subscription extends Table {
 
   BoolColumn get expanded => boolean()();
 
-  IntColumn get parseFailureCount => integer().withDefault(const Constant(0))();
-
   BoolColumn get autoUpdate => boolean().withDefault(const Constant(true))();
 }

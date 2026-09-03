@@ -28,8 +28,6 @@ class BackupCoreConfigJson {
   final int? subId;
   final int? delay;
   final String? countryCode;
-  final String? locationSource;
-  final int? lastMeasuredAt;
   final bool? favorite;
 
   const BackupCoreConfigJson(
@@ -41,8 +39,6 @@ class BackupCoreConfigJson {
     this.subId,
     this.delay,
     this.countryCode,
-    this.locationSource,
-    this.lastMeasuredAt,
     this.favorite,
   });
 
@@ -62,7 +58,6 @@ class BackupSubscriptionJson {
   final int? timestamp;
   final bool? expanded;
   final int? count;
-  final int? parseFailureCount;
   final bool? autoUpdate;
 
   const BackupSubscriptionJson(
@@ -74,7 +69,6 @@ class BackupSubscriptionJson {
     this.expanded, {
     this.id,
     this.count,
-    this.parseFailureCount,
     this.autoUpdate,
   });
 

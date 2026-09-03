@@ -19,7 +19,6 @@ void main() {
     expect(subscription.agePublicKey, isNull);
     expect(subscription.id, isNull);
     expect(subscription.count, isNull);
-    expect(subscription.parseFailureCount, isNull);
   });
 
   test(
@@ -34,8 +33,6 @@ void main() {
         subId: 7,
         delay: 30,
         countryCode: 'JP',
-        locationSource: 'test-path',
-        lastMeasuredAt: 1000,
         favorite: true,
       );
       expect(
@@ -60,7 +57,6 @@ void main() {
         true,
         id: 7,
         count: 1,
-        parseFailureCount: 2,
       );
       expect(
         BackupSubscriptionJson.fromJson(subscription.toJson()).toJson(),
@@ -68,6 +64,23 @@ void main() {
       );
     },
   );
+
+  test('retired probe and parse metadata is ignored and never exported', () {
+    final node = BackupCoreConfigJson.fromJson({
+      'name': 'Node',
+      'type': 'outbound',
+      'delay': 30,
+      'locationSource': 'pingBatch',
+      'lastMeasuredAt': 1000,
+    });
+    expect(node.toJson(), {'name': 'Node', 'type': 'outbound', 'delay': 30});
+    final subscription = BackupSubscriptionJson.fromJson({
+      'name': 'Sub',
+      'parseFailureCount': 2,
+      'autoUpdate': false,
+    });
+    expect(subscription.toJson(), {'name': 'Sub', 'autoUpdate': false});
+  });
 
   test('version 4 subscription data preserves the age key pair', () {
     const subscription = BackupSubscriptionJson(
