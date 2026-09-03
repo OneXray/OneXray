@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 @immutable
 class AppPalette {
+  // The backup confirmation overlay is shared by both prototype themes.
+  static const restoreOverlay = Color.fromRGBO(5, 12, 30, 0.4);
+
   const AppPalette({
     required this.background,
     required this.foreground,

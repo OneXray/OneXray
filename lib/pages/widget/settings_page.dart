@@ -1,7 +1,12 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:re_editor/re_editor.dart';
@@ -205,92 +210,238 @@ class SettingsChoiceRow extends StatelessWidget {
 
 class AppConfirmationDialog extends StatelessWidget {
   final String title;
+  final String? subject;
   final String content;
   final String cancelLabel;
   final String confirmLabel;
   final bool destructive;
+  final bool expandConfirm;
 
   const AppConfirmationDialog({
     super.key,
     required this.title,
+    this.subject,
     required this.content,
     required this.cancelLabel,
     required this.confirmLabel,
     this.destructive = false,
+    this.expandConfirm = false,
   });
+
+  Future<bool> show(BuildContext context) async =>
+      await showDialog<bool>(
+        context: context,
+        useSafeArea: false,
+        barrierColor: AppPalette.restoreOverlay,
+        builder: (_) => this,
+      ) ??
+      false;
 
   @override
   Widget build(BuildContext context) {
-    final confirm = destructive
-        ? ShadButton.destructive(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(confirmLabel),
-          )
-        : ShadButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(confirmLabel),
-          );
-    return Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      backgroundColor: Colors.transparent,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: ShadCard(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          radius: const BorderRadius.all(Radius.circular(8)),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(18, 17, 18, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      content,
-                      style: AppTypography.supporting.copyWith(
-                        color: ColorManager.secondaryText(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: ColorManager.tagBackground(context)
-                      .withValues(alpha: 0.45),
-                  border: Border(
-                    top: BorderSide(color: ColorManager.border(context)),
-                  ),
-                ),
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ShadButton.outline(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: Text(cancelLabel),
-                    ),
-                    confirm,
-                  ],
-                ),
-              ),
-            ],
-          ),
+    final palette = ColorManager.palette(context);
+    final size = MediaQuery.sizeOf(context);
+    final mobile = size.width <= AppLayout.mobileBreakpoint;
+    final buttonStyle = ButtonStyle(
+      minimumSize: WidgetStatePropertyAll(
+        Size(
+          0,
+          mobile ? AppLayout.mobileButtonMinHeight : AppLayout.buttonMinHeight,
         ),
       ),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: AppSpacing.buttonHorizontal),
+      ),
+      textStyle: WidgetStatePropertyAll(AppTypography.control),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.standard,
+      shape: const WidgetStatePropertyAll(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppRadii.control)),
+        ),
+      ),
+    );
+    final confirm = FilledButton(
+      onPressed: () => Navigator.pop(context, true),
+      style: destructive
+          ? buttonStyle.merge(AppTheme.destructiveButton(context))
+          : buttonStyle,
+      child: Text(confirmLabel, textAlign: TextAlign.center),
+    );
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Dialog(
+            insetPadding: EdgeInsets.symmetric(
+              horizontal: mobile ? 19 : 20,
+              vertical: 24,
+            ),
+            backgroundColor: palette.card,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: mobile
+                  ? const BorderRadius.vertical(
+                      top: Radius.circular(AppRadii.mobileDialog),
+                    )
+                  : const BorderRadius.all(Radius.circular(AppRadii.dialog)),
+              side: BorderSide(color: palette.border),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: AppLayout.dialogWidth,
+                maxHeight: math.min(
+                  AppLayout.dialogMaxHeight,
+                  size.height *
+                      (mobile
+                          ? AppLayout.dialogMobileHeightFactor
+                          : AppLayout.dialogDesktopHeightFactor),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            constraints: BoxConstraints(
+                              minHeight: mobile
+                                  ? AppLayout.dialogMobileHeaderMinHeight
+                                  : AppLayout.dialogHeaderMinHeight,
+                            ),
+                            padding: mobile
+                                ? const EdgeInsets.fromLTRB(16, 17, 16, 14)
+                                : const EdgeInsets.fromLTRB(21, 20, 21, 17),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(color: palette.border),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    title,
+                                    style:
+                                        (mobile
+                                                ? AppTypography.dialogTitle
+                                                : AppTypography
+                                                      .confirmationDesktopTitle)
+                                            .copyWith(
+                                              color: palette.foreground,
+                                            ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                IconButton(
+                                  autofocus: true,
+                                  tooltip: AppLocalizations.of(context)!
+                                      .prototypeCloseDialog,
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  style: IconButton.styleFrom(
+                                    foregroundColor: palette.mutedStrong,
+                                    minimumSize: const Size.square(
+                                      AppLayout.dialogCloseSize,
+                                    ),
+                                    maximumSize: const Size.square(
+                                      AppLayout.dialogCloseSize,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  icon: const Icon(LucideIcons.x, size: 20),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              spacing: 15,
+                              children: [
+                                if (subject != null)
+                                  Text(
+                                    subject!,
+                                    style: AppTypography.confirmationSubject
+                                        .copyWith(color: palette.foreground),
+                                  ),
+                                Text(
+                                  content,
+                                  style: AppTypography.confirmationBody
+                                      .copyWith(color: palette.foreground),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    constraints: const BoxConstraints(minHeight: 70),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: mobile ? 16 : 20,
+                      vertical: mobile ? 12 : 14,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: palette.border)),
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth * .62,
+                            ),
+                            child: IntrinsicWidth(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                style: buttonStyle.copyWith(
+                                  side: WidgetStatePropertyAll(
+                                    BorderSide(color: palette.borderStrong),
+                                  ),
+                                ),
+                                child: Text(
+                                  cancelLabel,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.actionGap),
+                          if (mobile && expandConfirm)
+                            Expanded(child: confirm)
+                          else
+                            Flexible(child: confirm),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

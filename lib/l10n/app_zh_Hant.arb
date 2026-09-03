@@ -1360,5 +1360,9 @@
   "prototypeCancelRequest": "取消請求",
   "prototypeWifiActionConflict": "同一個 Wi-Fi 名稱只能選擇一種操作，請從其中一組移除重複名稱。",
   "prototypeTunAddress": "TUN 位址",
-  "prototypeSettingsLocationNote": "在「伺服器」中管理訂閱；資料更新和 Geodata 位於「進階 → Xray 運作與診斷」。"
+  "prototypeSettingsLocationNote": "在「伺服器」中管理訂閱；資料更新和 Geodata 位於「進階 → Xray 運作與診斷」。",
+  "prototypeAdvancedDescription": "管理系統整合與執行階段設定",
+  "prototypeAboutPrivacyNotice": "OneXray 不收集或上傳使用情況、流量或瀏覽資料。",
+  "prototypeShareBackup": "分享備份",
+  "prototypeExportBackup": "匯出備份"
 }

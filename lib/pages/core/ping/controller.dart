@@ -109,7 +109,13 @@ class PingController extends PageCubit<PingPageState> {
     try {
       state.pingState.customUrl = customUrl;
       await state.pingState.saveToPreferences();
-      if (context.mounted) context.pop();
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.prototypeSettingsSaved,
+        );
+        context.pop();
+      }
     } catch (_) {
       emit(state.copyWith(error: 'unavailable'));
     } finally {

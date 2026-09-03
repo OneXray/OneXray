@@ -73,13 +73,14 @@ class BackupService {
     return backupPath;
   }
 
-  Future<bool> importBackup() async {
+  /// Null means the system picker was cancelled, not a failed import.
+  Future<bool?> importBackup() async {
     final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ["zip"],
     );
     if (file == null) {
-      return false;
+      return null;
     }
     final path = file.path;
     if (path == null) {

@@ -26,6 +26,114 @@ abstract final class AppTheme {
         mobile: mobile,
       );
 
+  static AppBarTheme appBarTheme({
+    required AppPalette palette,
+    required Brightness brightness,
+    required bool mobile,
+    bool secondary = false,
+  }) => AppBarTheme(
+    backgroundColor: palette.header,
+    foregroundColor: palette.foreground,
+    surfaceTintColor: Colors.transparent,
+    centerTitle: mobile && secondary,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    toolbarHeight: mobile ? AppLayout.mobileHeaderHeight : null,
+    titleSpacing: mobile ? AppSpacing.mobileHeaderHorizontal : AppSpacing.page,
+    actionsPadding: EdgeInsetsDirectional.only(
+      end: mobile ? AppSpacing.mobileHeaderHorizontal : AppSpacing.page,
+    ),
+    titleTextStyle:
+        (mobile
+                ? secondary
+                      ? AppTypography.secondaryPageTitle
+                      : AppTypography.mobilePageTitle
+                : AppTypography.pageTitle)
+            .copyWith(color: palette.foreground),
+    systemOverlayStyle: SystemUiOverlayStyle(
+      statusBarColor: palette.header,
+      statusBarIconBrightness: brightness == Brightness.light
+          ? Brightness.dark
+          : Brightness.light,
+      statusBarBrightness: brightness,
+    ),
+    shape: Border(bottom: BorderSide(color: palette.border)),
+  );
+
+  static ThemeData secondaryPage(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.copyWith(
+      appBarTheme: appBarTheme(
+        palette: ColorManager.palette(context),
+        brightness: theme.brightness,
+        mobile: MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint,
+        secondary: true,
+      ),
+    );
+  }
+
+  static ThemeData pageActions(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = ButtonStyle(
+      textStyle: WidgetStatePropertyAll(AppTypography.pageAction),
+      minimumSize: const WidgetStatePropertyAll(
+        Size(0, AppLayout.pageActionButtonMinHeight),
+      ),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      ),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.standard,
+    );
+    return theme.copyWith(
+      filledButtonTheme: FilledButtonThemeData(
+        style: style.merge(theme.filledButtonTheme.style),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: style.merge(theme.outlinedButtonTheme.style),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: style.merge(theme.textButtonTheme.style),
+      ),
+    );
+  }
+
+  static ShadThemeData pageActionsShad(BuildContext context) {
+    final theme =
+        ShadTheme.maybeOf(context) ??
+        shad(Theme.of(context).brightness, mobile: true);
+    final height = math.max(
+      AppLayout.pageActionButtonMinHeight,
+      MediaQuery.textScalerOf(context)
+                  .scale(AppTypography.pageAction.fontSize!) *
+              AppTypography.pageAction.height! *
+              2 +
+          12,
+    );
+    return theme.copyWith(
+      primaryButtonTheme: theme.primaryButtonTheme.copyWith(
+        textStyle: AppTypography.pageAction,
+        expands: true,
+      ),
+      outlineButtonTheme: theme.outlineButtonTheme.copyWith(
+        textStyle: AppTypography.pageAction,
+        expands: true,
+        // Shad's 1px outline is outside the content constraints.
+        height: height - 2,
+      ),
+      destructiveButtonTheme: theme.destructiveButtonTheme.copyWith(
+        textStyle: AppTypography.pageAction,
+        expands: true,
+      ),
+      buttonSizesTheme: theme.buttonSizesTheme.copyWith(
+        regular: ShadButtonSizeTheme(
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        ),
+      ),
+    );
+  }
+
   static ButtonStyle destructiveButton(BuildContext context) {
     final palette = ColorManager.palette(context);
     return ButtonStyle(
@@ -150,6 +258,15 @@ abstract final class AppTheme {
         thumbColor: palette.primaryForeground,
         checkedTrackColor: palette.primary,
         uncheckedTrackColor: palette.borderStrong,
+      ),
+      radioTheme: ShadRadioTheme(
+        // Shad adds the border outside its content size: 15 + 1 + 1 = 17.
+        size: 15,
+        circleSize: 10,
+        color: palette.primary,
+        decoration: ShadDecoration(
+          border: ShadBorder.all(color: palette.mutedForeground, width: 1),
+        ),
       ),
       buttonSizesTheme: ShadButtonSizesTheme(
         regular: ShadButtonSizeTheme(
@@ -331,31 +448,10 @@ abstract final class AppTheme {
         selectionColor: palette.selection,
         selectionHandleColor: palette.primary,
       ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: palette.header,
-        foregroundColor: palette.foreground,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: false,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        toolbarHeight: mobile ? AppLayout.mobileHeaderHeight : null,
-        titleSpacing: mobile
-            ? AppSpacing.mobileHeaderHorizontal
-            : AppSpacing.page,
-        actionsPadding: EdgeInsetsDirectional.only(
-          end: mobile ? AppSpacing.mobileHeaderHorizontal : AppSpacing.page,
-        ),
-        titleTextStyle:
-            (mobile ? AppTypography.mobilePageTitle : AppTypography.pageTitle)
-                .copyWith(color: palette.foreground),
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: palette.header,
-          statusBarIconBrightness: brightness == Brightness.light
-              ? Brightness.dark
-              : Brightness.light,
-          statusBarBrightness: brightness,
-        ),
-        shape: Border(bottom: BorderSide(color: palette.border, width: 1)),
+      appBarTheme: appBarTheme(
+        palette: palette,
+        brightness: brightness,
+        mobile: mobile,
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: palette.card,

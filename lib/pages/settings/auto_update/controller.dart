@@ -4,6 +4,8 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/auto_update/state.dart';
 
 class AutoUpdatePageState {
@@ -97,7 +99,13 @@ class AutoUpdateController extends PageCubit<AutoUpdatePageState> {
       await state.autoUpdateState.saveToPreferences();
       await PreferencesKey().saveDownloadUserAgentMode(state.userAgent);
       await NetClient().updateUserAgentMode(state.userAgent);
-      if (context.mounted) context.pop();
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.prototypeSettingsSaved,
+        );
+        context.pop();
+      }
     } catch (_) {
       emit(state.copyWith(failed: true));
     } finally {

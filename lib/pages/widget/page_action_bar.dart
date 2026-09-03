@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/theme/theme.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 /// A full-page footer. Use as Scaffold.bottomNavigationBar, not inside a scroll
 /// view. Dialogs own their actions and do not use this component.
 class PageActionBar extends StatelessWidget {
-  const PageActionBar({super.key, required this.children});
+  const PageActionBar({
+    super.key,
+    required this.children,
+    this.horizontalPadding,
+    this.spacing = AppSpacing.actionGap,
+  });
 
   final List<Widget> children;
+  final double? horizontalPadding;
+  final double spacing;
 
   @override
   Widget build(BuildContext context) {
@@ -33,29 +42,54 @@ class PageActionBar extends StatelessWidget {
               ),
               child: SafeArea(
                 top: false,
-                minimum: EdgeInsets.symmetric(
-                  horizontal: mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                  vertical:
-                      (minHeight - AppLayout.pageActionButtonMinHeight) / 2,
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: AppSpacing.actionGap,
-                    runSpacing: AppSpacing.actionRunGap,
-                    children: [
-                      for (final child in children)
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minWidth: mobile
-                                ? 0
-                                : AppLayout.pageActionButtonMinWidth,
-                            minHeight: AppLayout.pageActionButtonMinHeight,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal:
+                        horizontalPadding ??
+                        (mobile ? AppSpacing.mobilePage : AppSpacing.page),
+                    vertical:
+                        (minHeight - AppLayout.pageActionButtonMinHeight) / 2,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: mobile
+                        ? Theme(
+                            data: AppTheme.pageActions(context),
+                            child: ShadTheme(
+                              data: AppTheme.pageActionsShad(context),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  for (
+                                    var index = 0;
+                                    index < children.length;
+                                    index++
+                                  ) ...[
+                                    if (index > 0) SizedBox(width: spacing),
+                                    Expanded(child: children[index]),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          )
+                        : Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: spacing,
+                            runSpacing: AppSpacing.actionRunGap,
+                            children: [
+                              for (final child in children)
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minWidth: mobile
+                                        ? 0
+                                        : AppLayout.pageActionButtonMinWidth,
+                                    minHeight:
+                                        AppLayout.pageActionButtonMinHeight,
+                                  ),
+                                  child: child,
+                                ),
+                            ],
                           ),
-                          child: child,
-                        ),
-                    ],
                   ),
                 ),
               ),

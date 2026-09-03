@@ -6,6 +6,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/plan.dart';
@@ -40,6 +41,47 @@ void main() {
       await db.close();
     });
   });
+
+  test(
+    'restoring defaults changes only the draft, not storage or VPN',
+    () async {
+      final service = PolicyEditorService(
+        coordinator: coordinator,
+        platform: ConnectionPlatform.android,
+      );
+      final seed = await service.load();
+      seed.policy['ipv6Enabled'] = false;
+      seed.policy['android']['appScope'] = 'excluded';
+      seed.policy['android']['excludedAppPackageNames'] = [
+        'com.example.bypass',
+      ];
+      seed.policy['log']['enabled'] = true;
+      await service.save(
+        draft: seed,
+        confirm: (_) async => throw StateError('Must not confirm'),
+      );
+      final original = await service.load();
+      final stored = (await db.connectionStateDao.read()).settingsJson;
+      final controller = PolicyEditorController(
+        draft: original,
+        service: service,
+      );
+      addTearDown(controller.dispose);
+      controller.error = 'previous error';
+
+      controller.restoreDefaults();
+
+      expect(controller.value, PlatformPolicy.defaults().toJson());
+      expect(controller.draft!.original, same(original.original));
+      expect(original.policy, original.original.policy.toJson());
+      expect(controller.error, isNull);
+      expect((await db.connectionStateDao.read()).settingsJson, stored);
+      expect(stops, 0);
+      expect(host.status, VpnStatus.disconnected);
+      controller.discard();
+      expect(controller.value, original.policy);
+    },
+  );
 
   test(
     'drafts are isolated and both Android lists survive empty included saves',

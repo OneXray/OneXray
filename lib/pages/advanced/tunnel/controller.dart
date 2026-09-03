@@ -3,6 +3,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
+import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/settings.dart';
 
 enum TunnelDestination { apple, android, windows, interface }
@@ -220,6 +221,16 @@ class PolicyEditorController extends ChangeNotifier {
       return;
     }
     draft = PolicyEditorDraft(draft!.original);
+    error = null;
+    notify();
+  }
+
+  void restoreDefaults() {
+    if (blocked || draft == null) return;
+    draft = PolicyEditorDraft(
+      draft!.original,
+      PlatformPolicy.defaults().toJson(),
+    );
     error = null;
     notify();
   }

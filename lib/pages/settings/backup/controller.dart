@@ -7,6 +7,7 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/share/backup.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
@@ -123,6 +124,7 @@ class BackupController extends PageCubit<BackupPageState> {
     emit(state.copyWith(working: true));
     try {
       final success = await BackupService().importBackup();
+      if (success == null) return;
       if (context.mounted) {
         _showActionResult(
           context,
@@ -162,16 +164,23 @@ class BackupController extends PageCubit<BackupPageState> {
     if (action == null) return;
     emit(state.copyWith(working: true));
     try {
-      final confirmed = await ContextAlert.showConfirmDialog(
-        context,
-        title: menuId == IconMenuId.delete
-            ? l10n.prototypeDeleteBackupQuestion
-            : action,
+      final confirmed = await AppConfirmationDialog(
+        title: switch (menuId) {
+          IconMenuId.delete => l10n.prototypeDeleteBackupQuestion,
+          IconMenuId.share => l10n.prototypeShareBackup,
+          _ => l10n.prototypeExportBackup,
+        },
+        subject: file.name,
         content: menuId == IconMenuId.delete
             ? l10n.prototypeDeleteBackupWarning
             : l10n.prototypeBackupTransferWarning,
-        confirmLabel: action,
-      );
+        cancelLabel: l10n.prototypeCancel,
+        confirmLabel: menuId == IconMenuId.delete
+            ? action
+            : l10n.prototypeContinue,
+        destructive: menuId == IconMenuId.delete,
+        expandConfirm: menuId != IconMenuId.delete,
+      ).show(context);
       if (!confirmed || !context.mounted) return;
       switch (menuId) {
         case IconMenuId.share:
@@ -271,22 +280,23 @@ class BackupController extends PageCubit<BackupPageState> {
 
   Future<void> restore(BuildContext context) async {
     if (state.busy) return;
-    final zipPath = state.files
+    final file = state.files
         .where((e) => e.name == state.selection)
-        .firstOrNull
-        ?.path;
-    if (zipPath == null) return;
+        .firstOrNull;
+    if (file == null) return;
     final l10n = AppLocalizations.of(context)!;
     emit(state.copyWith(restoring: true));
     try {
-      final confirmed = await ContextAlert.showConfirmDialog(
-        context,
+      final confirmed = await AppConfirmationDialog(
         title: l10n.prototypeRestoreBackupQuestion,
+        subject: file.name,
         content: l10n.prototypeRestoreBackupWarning,
+        cancelLabel: l10n.prototypeCancel,
         confirmLabel: l10n.prototypeConfirmRestore,
-      );
+        expandConfirm: true,
+      ).show(context);
       if (!confirmed || !context.mounted) return;
-      final success = await BackupService().restore(zipPath);
+      final success = await BackupService().restore(file.path);
       if (context.mounted) {
         _showActionResult(context, success, l10n.backupPageRestore);
       }

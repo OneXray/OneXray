@@ -1070,7 +1070,7 @@
     "prototypeCreateBackup": "ایجاد نسخهٔ پشتیبان",
     "prototypeImportBackup": "وارد کردن نسخهٔ پشتیبان",
     "prototypeNoBackups": "هنوز نسخهٔ پشتیبانی وجود ندارد",
-    "prototypeRestoreSelectedBackup": "بازیابی نسخهٔ پشتیبان انتخاب‌شده",
+    "prototypeRestoreSelectedBackup": "بازیابی نسخهٔ پشتیبان",
     "prototypeRestoreBackupQuestion": "این نسخهٔ پشتیبان بازیابی شود؟",
     "prototypeRestoreBackupWarning": "بازیابی، سرورهای کاربر، اشتراک‌ها، کلیدهای Age، پیکربندی‌های مسیریابی سفارشی، JSON خام و Geodata سفارشی را جایگزین می‌کند. ابتدا از داده‌های فعلی پشتیبان بگیرید.",
     "prototypeConfirmRestore": "تأیید بازیابی",
@@ -1360,5 +1360,9 @@
     "prototypeCancelRequest": "لغو درخواست",
     "prototypeWifiActionConflict": "برای هر نام Wi-Fi یک اقدام انتخاب کنید. یک نام نمی‌تواند در هر دو گروه باشد.",
     "prototypeTunAddress": "نشانی TUN",
-    "prototypeSettingsLocationNote": "اشتراک‌ها را در بخش سرورها مدیریت کنید. به‌روزرسانی داده‌ها و Geodata در پیشرفته ← محیط اجرای Xray و عیب‌یابی قرار دارند."
+    "prototypeSettingsLocationNote": "اشتراک‌ها را در بخش سرورها مدیریت کنید. به‌روزرسانی داده‌ها و Geodata در پیشرفته ← محیط اجرای Xray و عیب‌یابی قرار دارند.",
+    "prototypeAdvancedDescription": "مدیریت یکپارچگی با سیستم و پیکربندی زمان اجرا",
+    "prototypeAboutPrivacyNotice": "OneXray داده‌های استفاده، ترافیک یا مرور وب را جمع‌آوری یا بارگذاری نمی‌کند.",
+    "prototypeShareBackup": "اشتراک‌گذاری نسخهٔ پشتیبان",
+    "prototypeExportBackup": "صدور نسخهٔ پشتیبان"
 }

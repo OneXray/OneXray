@@ -2430,9 +2430,9 @@
   "@prototypeNoBackups": {
     "description": "Approved prototype copy: No backups yet"
   },
-  "prototypeRestoreSelectedBackup": "Restore selected backup",
+  "prototypeRestoreSelectedBackup": "Restore backup",
   "@prototypeRestoreSelectedBackup": {
-    "description": "Approved prototype copy: Restore selected backup"
+    "description": "Approved prototype copy: Restore backup"
   },
   "prototypeRestoreBackupQuestion": "Restore this backup?",
   "@prototypeRestoreBackupQuestion": {
@@ -3733,5 +3733,21 @@
   },
   "@buttonOpenSettings": {
     "description": "Approved prototype copy: Open system settings"
+  },
+  "prototypeAdvancedDescription": "Manage system integration and runtime configuration",
+  "@prototypeAdvancedDescription": {
+    "description": "Approved prototype copy: Manage system integration and runtime configuration"
+  },
+  "prototypeAboutPrivacyNotice": "OneXray does not collect or upload usage, traffic, or browsing data.",
+  "@prototypeAboutPrivacyNotice": {
+    "description": "Approved prototype copy: OneXray does not collect or upload usage, traffic, or browsing data."
+  },
+  "prototypeShareBackup": "Share backup",
+  "@prototypeShareBackup": {
+    "description": "Approved prototype copy: Share backup"
+  },
+  "prototypeExportBackup": "Export backup",
+  "@prototypeExportBackup": {
+    "description": "Approved prototype copy: Export backup"
   }
 }

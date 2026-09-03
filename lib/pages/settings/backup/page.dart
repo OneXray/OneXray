@@ -3,8 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/backup/controller.dart';
-import 'package:onexray/pages/widget/data_list.dart';
-import 'package:onexray/pages/widget/date_view.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
@@ -21,6 +22,9 @@ class BackupPage extends StatelessWidget {
       builder: (context, state) {
         final controller = context.read<BackupController>();
         final l10n = AppLocalizations.of(context)!;
+        final palette = ColorManager.palette(context);
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         return PopScope(
           canPop: !state.busy,
           child: Scaffold(
@@ -30,76 +34,164 @@ class BackupPage extends StatelessWidget {
             ),
             body: SafeArea(
               child: SettingsPageScroll(
+                desktopMaxWidth: 760,
+                padding: const EdgeInsets.fromLTRB(14, 17, 14, 26),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: mobile ? 23 : 24,
                   children: [
-                    SettingSection(
-                      title: l10n.prototypeBackupContents,
+                    Text(
+                      l10n.prototypeBackupRestoreHint,
+                      style: AppTypography.settingsDetailNote.copyWith(
+                        color: palette.mutedForeground,
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(l10n.prototypeBackupAssets),
-                              const SizedBox(height: 8),
-                              Text(
-                                l10n.prototypeBackupNoPreferences,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        SettingSection(
+                          title: l10n.prototypeBackupContents,
+                          icon: LucideIcons.hardDrive,
+                          headerInset: 0,
+                          padding: EdgeInsets.zero,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  const Icon(LucideIcons.shieldAlert, size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      l10n.prototypeBackupSecurityWarning,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall,
-                                    ),
+                                  Text(
+                                    l10n.prototypeBackupAssets,
+                                    style: AppTypography.backupBody,
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    l10n.prototypeBackupNoPreferences,
+                                    style: AppTypography.backupScopeHint
+                                        .copyWith(
+                                          color: palette.mutedForeground,
+                                        ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(
+                                LucideIcons.shield,
+                                size: 16,
+                                color: palette.mutedForeground,
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                l10n.prototypeBackupSecurityWarning,
+                                style: AppTypography.settingsDetailNote
+                                    .copyWith(color: palette.mutedForeground),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    SettingSection(
-                      title:
-                          '${l10n.prototypeBackupFiles} (${state.files.length})',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: mobile ? 20 : 24,
+                          ),
+                          child: Row(
                             children: [
-                              ShadButton(
-                                onPressed: state.busy
-                                    ? null
-                                    : () => controller.backup(context),
-                                leading: const Icon(
-                                  LucideIcons.archive,
-                                  size: 18,
+                              Expanded(
+                                child: Text(
+                                  l10n.prototypeBackupFiles,
+                                  style: mobile
+                                      ? AppTypography.settingsSectionTitle
+                                      : AppTypography
+                                            .settingsSectionDesktopTitle,
                                 ),
-                                child: Text(l10n.prototypeCreateBackup),
                               ),
-                              ShadButton.outline(
-                                onPressed: state.busy
-                                    ? null
-                                    : () => controller.importBackup(context),
-                                leading: const Icon(
-                                  LucideIcons.filePlus2,
-                                  size: 18,
-                                ),
-                                child: Text(l10n.prototypeImportBackup),
+                              Text(
+                                '${state.files.length}',
+                                style: AppTypography.settingsDetailNote
+                                    .copyWith(color: palette.mutedForeground),
                               ),
                             ],
                           ),
                         ),
+                        SizedBox(height: mobile ? 11 : 13),
+                        Row(
+                          spacing: 10,
+                          children: [
+                            Expanded(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: 42,
+                                ),
+                                child: ShadButton.outline(
+                                  enabled: !state.busy,
+                                  expands: true,
+                                  height: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 15,
+                                    vertical: 10,
+                                  ),
+                                  onPressed: () => controller.backup(context),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(LucideIcons.plus, size: 17),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(l10n.prototypeCreateBackup),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: 42,
+                                ),
+                                child: ShadButton.outline(
+                                  enabled: !state.busy,
+                                  expands: true,
+                                  height: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 15,
+                                    vertical: 10,
+                                  ),
+                                  onPressed: () =>
+                                      controller.importBackup(context),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        LucideIcons.download,
+                                        size: 17,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(l10n.prototypeImportBackup),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
                         if (state.loading)
                           const Padding(
                             padding: EdgeInsets.all(20),
@@ -108,6 +200,7 @@ class BackupPage extends StatelessWidget {
                         if (state.readFailed)
                           SettingRow(
                             title: l10n.prototypeTemporarilyUnavailable,
+                            enabled: !state.busy,
                             trailing: IconButton(
                               tooltip: l10n.prototypeRetry,
                               onPressed: state.busy ? null : controller.refresh,
@@ -117,36 +210,55 @@ class BackupPage extends StatelessWidget {
                         if (!state.loading &&
                             !state.readFailed &&
                             state.files.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(l10n.prototypeNoBackups),
-                          ),
-                        AbsorbPointer(
-                          absorbing: state.busy,
-                          child: RadioGroup<String>(
-                            groupValue: state.selection,
-                            onChanged: controller.updateSelection,
-                            child: Column(
-                              children: [
-                                for (final file in state.files)
-                                  _BackupFileRow(
-                                    file: file,
-                                    selected: state.selection == file.name,
-                                    onSelect: () => controller.updateSelection(
-                                      state.selection == file.name
-                                          ? null
-                                          : file.name,
-                                    ),
-                                    onAction: (action) => controller.moreAction(
-                                      context,
-                                      file,
-                                      action,
-                                    ),
+                          CustomPaint(
+                            painter: _BackupEmptyBorder(palette.border),
+                            child: Container(
+                              constraints: const BoxConstraints(minHeight: 175),
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    LucideIcons.hardDrive,
+                                    size: 29,
+                                    color: palette.mutedForeground,
                                   ),
-                              ],
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    l10n.prototypeNoBackups,
+                                    textAlign: TextAlign.center,
+                                    style: AppTypography.backupEmptyTitle,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
+                        if (state.files.isNotEmpty)
+                          ShadRadioGroup<String>(
+                            axis: Axis.horizontal,
+                            enabled: !state.busy,
+                            initialValue: state.selection,
+                            onChanged: controller.updateSelection,
+                            items: [
+                              SettingSection(
+                                title: '',
+                                padding: EdgeInsets.zero,
+                                dividerIndent: 0,
+                                children: [
+                                  for (final file in state.files)
+                                    _BackupFileRow(
+                                      file: file,
+                                      selected: state.selection == file.name,
+                                      enabled: !state.busy,
+                                      onSelect: () =>
+                                          controller.updateSelection(file.name),
+                                      onAction: (action) => controller
+                                          .moreAction(context, file, action),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ],
@@ -156,17 +268,23 @@ class BackupPage extends StatelessWidget {
             bottomNavigationBar: PageActionBar(
               children: [
                 ShadButton.outline(
-                  onPressed: state.busy
-                      ? null
-                      : () => controller.cancel(context),
+                  enabled: !state.busy,
+                  onPressed: () => controller.cancel(context),
                   child: Text(l10n.prototypeBack),
                 ),
                 ShadButton(
-                  onPressed: state.busy || state.selection.isEmpty
-                      ? null
-                      : () => controller.restore(context),
-                  leading: const Icon(LucideIcons.upload, size: 18),
-                  child: Text(l10n.prototypeRestoreSelectedBackup),
+                  enabled: !state.busy && state.selection.isNotEmpty,
+                  onPressed: () => controller.restore(context),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(LucideIcons.rotateCcw, size: 17),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(l10n.prototypeRestoreSelectedBackup),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -177,47 +295,165 @@ class BackupPage extends StatelessWidget {
   );
 }
 
+class _BackupEmptyBorder extends CustomPainter {
+  const _BackupEmptyBorder(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          (Offset.zero & size).deflate(.5),
+          const Radius.circular(AppRadii.card),
+        ),
+      );
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke;
+    for (final metric in path.computeMetrics()) {
+      for (double start = 0; start < metric.length; start += 6) {
+        canvas.drawPath(metric.extractPath(start, start + 3), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BackupEmptyBorder oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 class _BackupFileRow extends StatelessWidget {
   const _BackupFileRow({
     required this.file,
     required this.selected,
+    required this.enabled,
     required this.onSelect,
     required this.onAction,
   });
   final FileInfo file;
   final bool selected;
+  final bool enabled;
   final VoidCallback onSelect;
   final ValueChanged<IconMenuId> onAction;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return DataListRow(
-      title: file.name,
-      leading: const Icon(LucideIcons.fileArchive),
-      meta: file.timestamp == null ? null : DateView(date: file.timestamp!),
-      tone: selected ? DataListRowTone.selected : DataListRowTone.normal,
-      onTap: onSelect,
-      trailing: ActionCluster(
-        children: [
-          Radio<String>(value: file.name, toggleable: true),
-          IconButton(
-            tooltip: l10n.prototypeExport,
-            onPressed: () => onAction(IconMenuId.save),
-            icon: const Icon(LucideIcons.download, size: 18),
-          ),
-          if (!AppPlatform.isLinux)
-            IconButton(
-              tooltip: l10n.prototypeShare,
-              onPressed: () => onAction(IconMenuId.share),
-              icon: const Icon(LucideIcons.share2, size: 18),
+    final palette = ColorManager.palette(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: selected ? palette.selectedSurface : Colors.transparent,
+          child: MergeSemantics(
+            child: InkWell(
+              onTap: enabled ? onSelect : null,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 78),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                child: Row(
+                  spacing: 13,
+                  children: [
+                    Icon(
+                      LucideIcons.fileText,
+                      size: 20,
+                      color: palette.primary,
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            file.name,
+                            style: AppTypography.settingsChoiceTitle,
+                          ),
+                          if (file.timestamp != null) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              DateFormat.yMd(
+                                Localizations.localeOf(context).toString(),
+                              ).add_Hms().format(file.timestamp!),
+                              style: AppTypography.settingsChoiceDetail
+                                  .copyWith(color: palette.mutedForeground),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    ShadRadio<String>(
+                      value: file.name,
+                      enabled: enabled,
+                      radioPadding: EdgeInsets.zero,
+                      decoration: selected
+                          ? ShadDecoration(
+                              border: ShadBorder.all(
+                                color: palette.primary,
+                                width: 1,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          IconButton(
-            tooltip: l10n.prototypeDelete,
-            onPressed: () => onAction(IconMenuId.delete),
-            icon: const Icon(LucideIcons.trash2, size: 18),
           ),
-        ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _actionButton(
+                context,
+                l10n.prototypeExport,
+                IconMenuId.save,
+                icon: LucideIcons.download,
+              ),
+              if (!AppPlatform.isLinux)
+                _actionButton(context, l10n.prototypeShare, IconMenuId.share),
+              _actionButton(
+                context,
+                l10n.prototypeDelete,
+                IconMenuId.delete,
+                icon: LucideIcons.trash2,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _actionButton(
+    BuildContext context,
+    String label,
+    IconMenuId action, {
+    IconData? icon,
+  }) {
+    final destructive = action == IconMenuId.delete;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 36),
+      child: ShadButton.outline(
+        enabled: enabled,
+        height: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        foregroundColor: destructive
+            ? ColorManager.palette(context).destructive
+            : null,
+        hoverForegroundColor: destructive
+            ? ColorManager.palette(context).destructive
+            : null,
+        textStyle: AppTypography.backupAction,
+        leading: icon == null ? null : Icon(icon, size: 15),
+        onPressed: () => onAction(action),
+        child: Text(label),
       ),
     );
   }

@@ -43,6 +43,7 @@ import 'package:onexray/pages/settings/desktop/page.dart';
 import 'package:onexray/pages/settings/language/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
+import 'package:onexray/pages/theme/theme.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: "root",
@@ -135,7 +136,10 @@ List<GoRoute> _buildSharedSecondaryRoutes() {
       .map(
         (route) => GoRoute(
           path: route.destination.segment,
-          builder: (context, state) => route.builder(context, state),
+          builder: (context, state) => Theme(
+            data: AppTheme.secondaryPage(context),
+            child: Builder(builder: (context) => route.builder(context, state)),
+          ),
         ),
       )
       .toList();

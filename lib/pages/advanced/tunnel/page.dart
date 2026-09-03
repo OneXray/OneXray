@@ -3,6 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -52,19 +54,34 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
       }
       return Scaffold(
         body: SettingsPageScroll(
+          padding: const EdgeInsets.fromLTRB(15, 22, 15, 24),
           child: Column(
+            spacing: 25,
             children: [
-              SettingSection(
+              _section(
+                icon: LucideIcons.activity,
                 title: l.prototypeConnectionStatus,
                 children: [
                   SettingRow(
                     title: l.prototypeSystemVpn,
-                    leading: const Icon(LucideIcons.shield),
+                    leading: Icon(
+                      LucideIcons.circleCheck,
+                      color: ColorManager.palette(context).running,
+                    ),
+                    decorateLeading: false,
+                    minHeight: 52,
+                    titleStyle: AppTypography.settingsStatus.copyWith(
+                      color: ColorManager.palette(context).running,
+                    ),
+                    valueStyle: AppTypography.settingsStatus.copyWith(
+                      color: ColorManager.primaryText(context),
+                    ),
                     value: _status(l),
                   ),
                 ],
               ),
-              SettingSection(
+              _section(
+                icon: LucideIcons.network,
                 title: l.prototypeTunAddress,
                 children: [
                   PolicyValueRow(
@@ -77,7 +94,8 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
                   ),
                 ],
               ),
-              SettingSection(
+              _section(
+                icon: LucideIcons.globe2,
                 title: l.prototypeTunnelDns,
                 children: [
                   PolicyValueRow(
@@ -94,7 +112,8 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
                   ),
                 ],
               ),
-              SettingSection(
+              _section(
+                icon: LucideIcons.network,
                 title: 'IPv6',
                 description: controller.ipv6Conflict
                     ? l.prototypeIpv6BypassConflict
@@ -108,13 +127,14 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
                 ],
               ),
               if (controller.service.requiresInterface)
-                SettingSection(
+                _section(
+                  icon: LucideIcons.network,
                   title: l.prototypeXrayOutboundInterface,
                   description: l.prototypeManagedInterfaceNotice,
                   children: [
                     SettingRow(
                       title: l.prototypeXrayOutboundInterface,
-                      subtitle:
+                      value:
                           (controller.value['xrayOutboundInterfaceName']
                                   as String)
                               .isEmpty
@@ -122,6 +142,11 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
                           : controller.value['xrayOutboundInterfaceName']
                                 as String,
                       showChevron: true,
+                      minHeight: 52,
+                      titleStyle: AppTypography.settingsValueLabel,
+                      valueStyle: AppTypography.settingsValue.copyWith(
+                        color: ColorManager.primaryText(context),
+                      ),
                       enabled: !controller.blocked && widget.openTunnel != null,
                       onTap: () => _open(TunnelDestination.interface),
                     ),
@@ -150,9 +175,11 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
           ),
         ),
         bottomNavigationBar: PolicyActions(
+          root: true,
           controller: controller,
-          cancel: controller.discard,
-          cancelLabel: l.prototypeCancel,
+          cancel: controller.restoreDefaults,
+          cancelLabel: l.prototypeRestoreDefaults,
+          cancelIcon: LucideIcons.rotateCcw,
           save: () => controller.save(context, pop: false),
         ),
       );
@@ -163,16 +190,38 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
     String title,
     String description,
     TunnelDestination destination,
-  ) => SettingSection(
+  ) => _section(
+    icon: switch (destination) {
+      TunnelDestination.apple => LucideIcons.apple,
+      TunnelDestination.android => LucideIcons.appWindow,
+      _ => LucideIcons.monitor,
+    },
     title: title,
     children: [
       SettingRow(
         title: description,
+        titleStyle: AppTypography.settingsRow,
+        minHeight: 52,
         showChevron: true,
         enabled: !controller.blocked && widget.openTunnel != null,
         onTap: () => _open(destination),
       ),
     ],
+  );
+
+  Widget _section({
+    required String title,
+    required IconData icon,
+    String? description,
+    required List<Widget> children,
+  }) => SettingSection(
+    title: title,
+    icon: icon,
+    description: description,
+    descriptionBelow: true,
+    padding: EdgeInsets.zero,
+    dividerIndent: 0,
+    children: children,
   );
 
   void _open(TunnelDestination destination) {

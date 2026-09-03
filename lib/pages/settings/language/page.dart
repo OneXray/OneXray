@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/language/controller.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
@@ -40,12 +42,14 @@ class LanguagePage extends StatelessWidget {
               bottomNavigationBar: PageActionBar(
                 children: [
                   ShadButton.outline(
+                    enabled: !state.saving,
                     onPressed: state.saving
                         ? null
                         : () => controller.cancel(context),
                     child: Text(l10n.prototypeCancel),
                   ),
                   ShadButton(
+                    enabled: !state.saving,
                     onPressed: state.saving
                         ? null
                         : () => controller.save(context),
@@ -76,35 +80,102 @@ class LanguageChoiceView extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return SettingsPageScroll(
       desktopMaxWidth: 720,
+      padding: const EdgeInsets.fromLTRB(14, 17, 14, 26),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingSection(
-            title: "",
-            children:
-                const [
-                  LanguageCode.system,
-                  LanguageCode.zh,
-                  LanguageCode.zhHant,
-                  LanguageCode.en,
-                  LanguageCode.ru,
-                  LanguageCode.fa,
-                ].map((language) {
-                  return SettingsChoiceRow(
-                    title: languageNativeLabel(l10n, language),
-                    description: language == LanguageCode.system
-                        ? null
-                        : _title(l10n, language),
-                    leading: const Icon(LucideIcons.globe2),
-                    selected: selected == language,
-                    onTap: () => onSelected(language),
-                  );
-                }).toList(),
+          Text(
+            l10n.prototypeChooseLanguage,
+            style: AppTypography.settingsDetailNote.copyWith(
+              color: ColorManager.secondaryText(context),
+            ),
+          ),
+          const SizedBox(height: 23),
+          ShadRadioGroup<LanguageCode>(
+            axis: Axis.horizontal,
+            initialValue: selected,
+            onChanged: onSelected,
+            items: [
+              SettingSection(
+                title: "",
+                padding: EdgeInsets.zero,
+                dividerIndent: 0,
+                children:
+                    const [
+                      LanguageCode.system,
+                      LanguageCode.zh,
+                      LanguageCode.zhHant,
+                      LanguageCode.en,
+                      LanguageCode.ru,
+                      LanguageCode.fa,
+                    ].map((language) {
+                      return ColoredBox(
+                        color: selected == language
+                            ? ColorManager.palette(context).accent
+                            : Colors.transparent,
+                        child: SettingRow(
+                          title: languageNativeLabel(l10n, language),
+                          titleTextDirection: language == LanguageCode.system
+                              ? null
+                              : language == LanguageCode.fa
+                              ? TextDirection.rtl
+                              : TextDirection.ltr,
+                          minHeight: 78,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 13,
+                          ),
+                          titleStyle: AppTypography.settingsChoiceTitle,
+                          subtitleWidget: language == LanguageCode.system
+                              ? null
+                              : Padding(
+                                  padding: const EdgeInsets.only(top: 1),
+                                  child: Text(
+                                    _title(l10n, language),
+                                    style: AppTypography.settingsChoiceDetail
+                                        .copyWith(
+                                          color: ColorManager.secondaryText(
+                                            context,
+                                          ),
+                                        ),
+                                  ),
+                                ),
+                          leading: SizedBox(
+                            width: 23,
+                            child: Icon(
+                              LucideIcons.languages,
+                              size: 21,
+                              color: ColorManager.palette(context).primary,
+                            ),
+                          ),
+                          decorateLeading: false,
+                          trailing: ShadRadio<LanguageCode>(
+                            value: language,
+                            decoration: selected == language
+                                ? ShadDecoration(
+                                    border: ShadBorder.all(
+                                      color: ColorManager.palette(context)
+                                          .primary,
+                                      width: 1,
+                                    ),
+                                  )
+                                : null,
+                            radioPadding: EdgeInsets.zero,
+                          ),
+                          onTap: () => onSelected(language),
+                        ),
+                      );
+                    }).toList(),
+              ),
+            ],
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(top: 13),
             child: Text(
               l10n.prototypeLanguageSavedNotice,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: AppTypography.settingsDetailNote.copyWith(
+                color: ColorManager.secondaryText(context),
+              ),
             ),
           ),
         ],

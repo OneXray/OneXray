@@ -7,8 +7,11 @@ import 'package:onexray/pages/preferences/controller.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/settings/desktop/controller.dart';
 import 'package:onexray/pages/settings/language/page.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/widget/page_title.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -28,44 +31,47 @@ class PreferencesPage extends StatelessWidget {
         return PopScope(
           canPop: !state.clearingData,
           child: Scaffold(
-            appBar: AppBar(title: Text(l10n.prototypeSettings)),
+            appBar: AppBar(title: PageTitle(l10n.prototypeSettings)),
             body: SafeArea(
               child: BlocBuilder<AppEventBus, AppEventBusState>(
                 builder: (context, preferences) {
+                  final mobile =
+                      MediaQuery.sizeOf(context).width <=
+                      AppLayout.mobileBreakpoint;
+                  final palette = ColorManager.palette(context);
+                  final rowHeight = mobile ? 43.0 : 56.0;
+                  final sectionGap = mobile ? 25.0 : 28.0;
                   final appearance = SettingSection(
                     title: l10n.prototypeAppearance,
+                    icon: LucideIcons.palette,
+                    padding: EdgeInsets.zero,
+                    dividerIndent: 0,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final theme in ThemeCode.values)
-                              ChoiceChip(
-                                label: Text(switch (theme) {
-                                  ThemeCode.system => l10n.prototypeSystem,
-                                  ThemeCode.light => l10n.prototypeLight,
-                                  ThemeCode.dark => l10n.prototypeDark,
-                                }),
-                                selected: preferences.themeCode == theme,
-                                onSelected: (_) =>
-                                    controller.setTheme(context, theme),
-                              ),
-                          ],
-                        ),
+                      _ThemeOptions(
+                        selected: preferences.themeCode,
+                        onSelected: (theme) =>
+                            controller.setTheme(context, theme),
                       ),
                       if (controller.showAppIcon)
-                        NavigationSettingRow(
+                        SettingRow(
                           title: l10n.prototypeAppIcon,
                           value: appIconLabel(l10n, state.appIcon),
+                          minHeight: mobile ? 52 : 56,
+                          titleStyle: AppTypography.settingsRow,
+                          valueStyle: AppTypography.settingsVersion.copyWith(
+                            color: palette.mutedStrong,
+                          ),
+                          decorateLeading: false,
+                          showChevron: true,
                           leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(
+                              AppRadii.compact,
+                            ),
                             child:
                                 (AppPlatform.isMacOS
                                         ? state.appIcon.dockAssetImage
                                         : state.appIcon.assetImage)
-                                    .image(width: 32, height: 32),
+                                    .image(width: 26, height: 26),
                           ),
                           onTap: () => controller.openSetting(
                             context,
@@ -76,13 +82,17 @@ class PreferencesPage extends StatelessWidget {
                   );
                   final language = SettingSection(
                     title: l10n.prototypeLanguage,
+                    icon: LucideIcons.languages,
+                    padding: EdgeInsets.zero,
                     children: [
-                      NavigationSettingRow(
+                      SettingRow(
                         title: languageNativeLabel(
                           l10n,
                           preferences.languageCode,
                         ),
-                        leading: const Icon(LucideIcons.languages),
+                        minHeight: rowHeight,
+                        titleStyle: AppTypography.settingsRow,
+                        showChevron: true,
                         onTap: () => controller.openSetting(
                           context,
                           AppSecondaryDestination.language,
@@ -92,8 +102,11 @@ class PreferencesPage extends StatelessWidget {
                   );
                   final startup = SettingSection(
                     title: l10n.prototypeStartup,
+                    icon: LucideIcons.power,
+                    padding: EdgeInsets.zero,
+                    dividerIndent: 0,
                     children: [
-                      SwitchSettingRow(
+                      _StartupSettingRow(
                         title: l10n.prototypeConnectAfterAppLaunch,
                         subtitle: l10n.prototypeConnectAfterAppLaunchHint,
                         value: state.connectOnLaunch,
@@ -111,11 +124,15 @@ class PreferencesPage extends StatelessWidget {
                   );
                   final data = SettingSection(
                     title: l10n.prototypeData,
+                    icon: LucideIcons.hardDrive,
+                    padding: EdgeInsets.zero,
+                    dividerIndent: 0,
                     children: [
                       SettingRow(
                         title: l10n.prototypeBackupRestore,
+                        minHeight: rowHeight,
+                        titleStyle: AppTypography.settingsRow,
                         showChevron: true,
-                        leading: const Icon(LucideIcons.archive),
                         onTap: state.clearingData
                             ? null
                             : () => controller.openSetting(
@@ -125,9 +142,9 @@ class PreferencesPage extends StatelessWidget {
                       ),
                       SettingRow(
                         title: l10n.prototypeClearData,
-                        leading: Icon(
-                          LucideIcons.trash2,
-                          color: Theme.of(context).colorScheme.error,
+                        minHeight: rowHeight,
+                        titleStyle: AppTypography.settingsDanger.copyWith(
+                          color: palette.destructive,
                         ),
                         trailing: state.clearingData
                             ? const SizedBox.square(
@@ -145,44 +162,53 @@ class PreferencesPage extends StatelessWidget {
                   );
                   final about = SettingSection(
                     title: l10n.prototypeAbout,
+                    icon: LucideIcons.info,
+                    padding: EdgeInsets.zero,
+                    dividerIndent: 0,
                     children: [
                       Semantics(
                         label: preferences.appUpdateInfo == null
                             ? null
                             : l10n.prototypeAboutUpdateAvailable,
-                        child: ListTile(
-                          minTileHeight: 62,
-                          title: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  l10n.prototypeAboutOneXray,
-                                  style: AppTypography.rowTitle,
-                                ),
-                              ),
-                              if (preferences.appUpdateInfo != null) ...[
-                                const SizedBox(width: 8),
-                                const _UpdateDot(),
-                              ],
-                            ],
-                          ),
-                          leading: const Icon(LucideIcons.info),
-                          trailing: const Icon(LucideIcons.chevronRightDir),
+                        child: SettingRow(
+                          minHeight: rowHeight,
+                          title: l10n.prototypeAboutOneXray,
+                          titleStyle: AppTypography.settingsRow,
+                          titleTrailing: preferences.appUpdateInfo == null
+                              ? null
+                              : const _UpdateDot(),
+                          showChevron: true,
                           onTap: () => controller.openSetting(
                             context,
                             AppSecondaryDestination.aboutOneXray,
                           ),
                         ),
                       ),
-                      _VersionRow(
-                        label: l10n.prototypeAppVersion,
-                        value: state.appVersion,
+                      Column(
+                        children: [
+                          _VersionRow(
+                            label: l10n.prototypeAppVersion,
+                            value: state.appVersion,
+                            compact: true,
+                          ),
+                          _VersionRow(
+                            label: 'Xray-core',
+                            value: state.xrayVersion,
+                            compact: true,
+                          ),
+                        ],
                       ),
-                      _VersionRow(label: 'Xray-core', value: state.xrayVersion),
                     ],
                   );
                   return SettingsPageScroll(
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      mobile ? 12 : AppSpacing.page,
+                      27,
+                      mobile ? 12 : AppSpacing.page,
+                      20,
+                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         LayoutBuilder(
                           builder: (context, constraints) =>
@@ -194,25 +220,52 @@ class PreferencesPage extends StatelessWidget {
                                       child: Column(
                                         children: [
                                           appearance,
+                                          SizedBox(height: sectionGap),
                                           language,
+                                          SizedBox(height: sectionGap),
                                           startup,
                                         ],
                                       ),
                                     ),
+                                    const SizedBox(width: 56),
                                     Expanded(
-                                      child: Column(children: [data, about]),
+                                      child: Column(
+                                        children: [
+                                          data,
+                                          SizedBox(height: sectionGap),
+                                          about,
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 )
                               : Column(
                                   children: [
                                     appearance,
+                                    SizedBox(height: sectionGap),
                                     language,
+                                    SizedBox(height: sectionGap),
                                     startup,
+                                    SizedBox(height: sectionGap),
                                     data,
+                                    SizedBox(height: sectionGap),
                                     about,
                                   ],
                                 ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsetsDirectional.fromSTEB(
+                            10,
+                            25,
+                            10,
+                            0,
+                          ),
+                          child: Text(
+                            l10n.prototypeSettingsLocationNote,
+                            style: AppTypography.settingsNote.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -227,6 +280,152 @@ class PreferencesPage extends StatelessWidget {
   );
 }
 
+class _ThemeOptions extends StatelessWidget {
+  final ThemeCode selected;
+  final ValueChanged<ThemeCode> onSelected;
+
+  const _ThemeOptions({required this.selected, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final theme in ThemeCode.values)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: selected == theme,
+                  child: Material(
+                    color: selected == theme
+                        ? palette.selectedSurface
+                        : Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.compact),
+                      side: BorderSide(
+                        color: selected == theme
+                            ? palette.primary
+                            : Colors.transparent,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => onSelected(theme),
+                      child: Container(
+                        constraints: BoxConstraints(
+                          minHeight: mobile ? 45 : 47,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: mobile ? 5 : 8,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          border: selected == theme || theme == ThemeCode.dark
+                              ? null
+                              : BorderDirectional(
+                                  end: BorderSide(color: palette.border),
+                                ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              switch (theme) {
+                                ThemeCode.system => LucideIcons.monitor,
+                                ThemeCode.light => LucideIcons.sun,
+                                ThemeCode.dark => LucideIcons.moon,
+                              },
+                              size: mobile ? 16 : 18,
+                              color: selected == theme
+                                  ? palette.primary
+                                  : palette.foreground,
+                            ),
+                            SizedBox(width: mobile ? 6 : 8),
+                            Flexible(
+                              child: Text(
+                                switch (theme) {
+                                  ThemeCode.system => l10n.prototypeSystem,
+                                  ThemeCode.light => l10n.prototypeLight,
+                                  ThemeCode.dark => l10n.prototypeDark,
+                                },
+                                textAlign: TextAlign.center,
+                                style:
+                                    (mobile
+                                            ? AppTypography
+                                                  .settingsThemeOptionMobile
+                                            : AppTypography.settingsThemeOption)
+                                        .copyWith(
+                                          color: selected == theme
+                                              ? palette.primary
+                                              : palette.foreground,
+                                        ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StartupSettingRow extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  const _StartupSettingRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return SettingRow(
+      title: title,
+      subtitle: subtitle,
+      minHeight: mobile ? 58 : 64,
+      contentPadding: EdgeInsetsDirectional.symmetric(
+        horizontal: mobile ? 13 : 14,
+        vertical: mobile ? 7 : 9,
+      ),
+      titleStyle: mobile
+          ? AppTypography.settingsFieldTitle
+          : AppTypography.settingsRow,
+      subtitleStyle: AppTypography.settingsHint.copyWith(
+        color: ColorManager.secondaryText(context),
+      ),
+      enabled: onChanged != null,
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      trailing: ShadSwitch(
+        value: value,
+        width: mobile ? 40 : 46,
+        height: mobile ? 23 : 27,
+        enabled: onChanged != null,
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
 class _DesktopStartupRows extends StatelessWidget {
   const _DesktopStartupRows();
   @override
@@ -237,7 +436,7 @@ class _DesktopStartupRows extends StatelessWidget {
           final l10n = AppLocalizations.of(context)!;
           return Column(
             children: [
-              SwitchSettingRow(
+              _StartupSettingRow(
                 title: l10n.prototypeLaunchAtLogin,
                 subtitle: l10n.prototypeLaunchAtLoginHint,
                 value: state.launchAtLogin.enabled,
@@ -275,7 +474,7 @@ class _DesktopStartupRows extends StatelessWidget {
                     ],
                   ),
                 ),
-              SwitchSettingRow(
+              _StartupSettingRow(
                 title: l10n.prototypeStartHidden,
                 subtitle: l10n.prototypeStartHiddenHint,
                 value: state.startHidden,
@@ -285,7 +484,7 @@ class _DesktopStartupRows extends StatelessWidget {
                     : null,
               ),
               if (AppPlatform.isMacOS)
-                SwitchSettingRow(
+                _StartupSettingRow(
                   title: l10n.prototypeHideDockIcon,
                   subtitle: l10n.prototypeHideDockIconHint,
                   value: state.hideDockIcon,
@@ -316,39 +515,71 @@ class AboutOneXrayPage extends StatelessWidget {
           body: SafeArea(
             child: SettingsPageScroll(
               desktopMaxWidth: 760,
+              padding: const EdgeInsets.fromLTRB(14, 17, 14, 26),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text(
+                    l10n.prototypeAppInformation,
+                    style: AppTypography.settingsDetailNote.copyWith(
+                      color: ColorManager.secondaryText(context),
+                    ),
+                  ),
+                  const SizedBox(height: 23),
                   Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.only(top: 8, bottom: 16),
                     child: Column(
                       children: [
-                        state.appIcon.assetImage.image(width: 80, height: 80),
-                        const SizedBox(height: 12),
-                        Text(
-                          'OneXray',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: state.appIcon.assetImage.image(
+                            width: 74,
+                            height: 74,
+                          ),
                         ),
-                        Text(l10n.prototypeCrossPlatformXrayClient),
+                        const SizedBox(height: 9),
+                        Text('OneXray', style: AppTypography.aboutBrandTitle),
+                        const SizedBox(height: 9),
+                        Text(
+                          l10n.prototypeCrossPlatformXrayClient,
+                          style: AppTypography.aboutBrandDescription.copyWith(
+                            color: ColorManager.secondaryText(context),
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 23),
                   SettingSection(
                     title: '',
+                    padding: EdgeInsets.zero,
+                    dividerIndent: 0,
                     children: [
                       _VersionRow(
                         label: l10n.prototypeAppVersion,
                         value: state.appVersion,
+                        compact: true,
                       ),
-                      _VersionRow(label: 'Xray-core', value: state.xrayVersion),
+                      _VersionRow(
+                        label: 'Xray-core',
+                        value: state.xrayVersion,
+                        compact: true,
+                      ),
                       BlocBuilder<AppEventBus, AppEventBusState>(
                         builder: (context, preferences) => SettingRow(
                           title: l10n.prototypeCheckAppUpdates,
+                          minHeight: 64,
+                          titleStyle: AppTypography.settingsRow,
+                          subtitleStyle: AppTypography.settingsChoiceDetail,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 13,
+                            vertical: 12,
+                          ),
                           subtitle: preferences.appUpdateInfo == null
-                              ? null
+                              ? l10n.prototypeCheckNewVersions
                               : l10n.prototypeVersionAvailable(
                                   preferences.appUpdateInfo!.latestVersion,
                                 ),
-                          leading: const Icon(LucideIcons.download),
                           trailing: state.checkingUpdate
                               ? const SizedBox.square(
                                   dimension: 20,
@@ -356,9 +587,18 @@ class AboutOneXrayPage extends StatelessWidget {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : preferences.appUpdateInfo == null
-                              ? null
-                              : const _UpdateDot(),
+                              : Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    const Icon(LucideIcons.download, size: 18),
+                                    if (preferences.appUpdateInfo != null)
+                                      const Positioned(
+                                        right: -4,
+                                        top: -4,
+                                        child: _UpdateDot(),
+                                      ),
+                                  ],
+                                ),
                           onTap: state.checkingUpdate
                               ? null
                               : () => controller.checkUpdate(context),
@@ -366,8 +606,13 @@ class AboutOneXrayPage extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 23),
                   SettingSection(
                     title: l10n.prototypeHelpCommunity,
+                    headerInset: 0,
+                    icon: LucideIcons.circleHelp,
+                    padding: EdgeInsets.zero,
+                    dividerIndent: 0,
                     children: [
                       _LinkRow(
                         label: l10n.prototypeDocumentation,
@@ -402,10 +647,12 @@ class AboutOneXrayPage extends StatelessWidget {
                     ],
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.only(top: 13),
                     child: Text(
-                      l10n.prototypeNoDataUpload,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      l10n.prototypeAboutPrivacyNotice,
+                      style: AppTypography.settingsDetailNote.copyWith(
+                        color: ColorManager.secondaryText(context),
+                      ),
                     ),
                   ),
                 ],
@@ -434,16 +681,46 @@ class _UpdateDot extends StatelessWidget {
 class _VersionRow extends StatelessWidget {
   final String label;
   final String value;
-  const _VersionRow({required this.label, required this.value});
+  final bool compact;
+  const _VersionRow({
+    required this.label,
+    required this.value,
+    this.compact = false,
+  });
   @override
-  Widget build(BuildContext context) => SettingRow(
-    title: label,
-    trailing: Text(
-      value,
-      textDirection: TextDirection.ltr,
-      style: AppTypography.code,
-    ),
-  );
+  Widget build(BuildContext context) {
+    if (!compact) {
+      return SettingRow(
+        title: label,
+        trailing: Text(
+          value,
+          textDirection: TextDirection.ltr,
+          style: AppTypography.code,
+        ),
+      );
+    }
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final color = ColorManager.palette(context).mutedStrong;
+    return SettingRow(
+      title: label,
+      minHeight: mobile ? 42 : 53,
+      contentPadding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 13,
+        vertical: 8,
+      ),
+      titleStyle: AppTypography.settingsVersion.copyWith(color: color),
+      trailing: Text(
+        value,
+        textDirection: TextDirection.ltr,
+        style: AppTypography.settingsVersion.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontVariations: const [FontVariation('wght', 600)],
+        ),
+      ),
+    );
+  }
 }
 
 class _LinkRow extends StatelessWidget {
@@ -454,8 +731,10 @@ class _LinkRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SettingRow(
     title: label,
-    leading: Icon(icon),
-    trailing: const Icon(LucideIcons.externalLink),
+    minHeight: 43,
+    titleStyle: AppTypography.settingsRow,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+    trailing: const Icon(LucideIcons.chevronRightDir, size: 17),
     onTap: () => context.read<PreferencesController>().openLink(context, link),
   );
 }

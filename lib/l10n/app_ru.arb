@@ -1070,7 +1070,7 @@
   "prototypeCreateBackup": "Создать копию",
   "prototypeImportBackup": "Импортировать копию",
   "prototypeNoBackups": "Резервных копий пока нет",
-  "prototypeRestoreSelectedBackup": "Восстановить выбранную копию",
+  "prototypeRestoreSelectedBackup": "Восстановить копию",
   "prototypeRestoreBackupQuestion": "Восстановить эту копию?",
   "prototypeRestoreBackupWarning": "Восстановление заменит серверы, подписки, ключи Age, пользовательские маршруты, Raw JSON и пользовательские Geodata. Сначала сохраните резервную копию текущих данных.",
   "prototypeConfirmRestore": "Подтвердить восстановление",
@@ -1360,5 +1360,9 @@
   "prototypeCancelRequest": "Отменить запрос",
   "prototypeWifiActionConflict": "Для каждого имени Wi-Fi выберите одно действие. Удалите повторяющееся имя из одной из групп.",
   "prototypeTunAddress": "Адрес TUN",
-  "prototypeSettingsLocationNote": "Подписки находятся в разделе «Серверы». Обновление данных и Geodata — в разделе «Расширенные → Работа и диагностика Xray»."
+  "prototypeSettingsLocationNote": "Подписки находятся в разделе «Серверы». Обновление данных и Geodata — в разделе «Расширенные → Работа и диагностика Xray».",
+  "prototypeAdvancedDescription": "Системная интеграция и рабочая конфигурация",
+  "prototypeAboutPrivacyNotice": "OneXray не собирает и не передаёт сведения об использовании, трафике или посещённых сайтах.",
+  "prototypeShareBackup": "Поделиться резервной копией",
+  "prototypeExportBackup": "Экспорт резервной копии"
 }

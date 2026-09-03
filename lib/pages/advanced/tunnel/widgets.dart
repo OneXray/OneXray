@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class PolicyDetailScaffold extends StatelessWidget {
   final String title;
@@ -50,12 +52,16 @@ class PolicyActions extends StatelessWidget {
   final VoidCallback cancel;
   final VoidCallback save;
   final String cancelLabel;
+  final IconData? cancelIcon;
+  final bool root;
   const PolicyActions({
     super.key,
     required this.controller,
     required this.cancel,
     required this.save,
     required this.cancelLabel,
+    this.cancelIcon,
+    this.root = false,
     this.canSave = true,
   });
 
@@ -74,10 +80,21 @@ class PolicyActions extends StatelessWidget {
             ),
           ),
         PageActionBar(
+          horizontalPadding: root ? 15 : null,
+          spacing: root ? 13 : AppSpacing.actionGap,
           children: [
             OutlinedButton(
               onPressed: controller.blocked ? null : cancel,
-              child: Text(cancelLabel),
+              child: cancelIcon == null
+                  ? Text(cancelLabel)
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(cancelIcon, size: 16),
+                        const SizedBox(width: 8),
+                        Flexible(child: Text(cancelLabel)),
+                      ],
+                    ),
             ),
             FilledButton(
               onPressed: controller.blocked || !canSave ? null : save,
@@ -117,7 +134,12 @@ class PolicyToggle extends StatelessWidget {
     title: title,
     subtitle: subtitle,
     titleMaxLines: 4,
-    trailing: Switch.adaptive(
+    minHeight: MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint
+        ? 52
+        : 56,
+    titleStyle: AppTypography.settingsFieldTitle,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+    trailing: ShadSwitch(
       value:
           (section == null
                   ? controller.value
@@ -136,12 +158,17 @@ class PolicyValueRow extends StatelessWidget {
   const PolicyValueRow({super.key, required this.title, required this.value});
 
   @override
-  Widget build(BuildContext context) => SettingRow(
-    title: title,
-    subtitleWidget: SelectableText(
-      value,
-      textDirection: TextDirection.ltr,
-      style: AppTypography.code,
+  Widget build(BuildContext context) => SelectionArea(
+    child: SettingRow(
+      title: title,
+      value: value,
+      minHeight: 46,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      titleStyle: AppTypography.settingsValueLabel,
+      valueStyle: AppTypography.settingsValue.copyWith(
+        color: ColorManager.primaryText(context),
+      ),
+      valueTextDirection: TextDirection.ltr,
     ),
   );
 }

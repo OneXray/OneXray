@@ -3,10 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/auto_update/controller.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/auto_update/state.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AutoUpdatePage extends StatelessWidget {
   const AutoUpdatePage({super.key});
@@ -18,11 +22,13 @@ class AutoUpdatePage extends StatelessWidget {
         final controller = context.read<AutoUpdateController>();
         final l = AppLocalizations.of(context)!;
         final value = state.autoUpdateState;
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         return Scaffold(
           appBar: AppBar(title: Text(l.prototypeDataUpdates)),
           bottomNavigationBar: PageActionBar(
             children: [
-              TextButton(
+              OutlinedButton(
                 onPressed: state.saving
                     ? null
                     : () => controller.cancel(context),
@@ -53,19 +59,33 @@ class AutoUpdatePage extends StatelessWidget {
                     ),
                   )
                 : SettingsPageScroll(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      14,
+                      12,
+                      14,
+                      26,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: 25,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(l.prototypeDataUpdateIntervalsHint),
-                        ),
+                        if (!mobile)
+                          Text(
+                            l.prototypeDataUpdateIntervalsHint,
+                            style: AppTypography.settingsDetailNote.copyWith(
+                              color: ColorManager.secondaryText(context),
+                            ),
+                          ),
                         SettingSection(
                           title: l.prototypeSubscriptions,
+                          icon: LucideIcons.refreshCw,
+                          padding: EdgeInsets.zero,
+                          dividerIndent: 0,
                           description: l.prototypeSubscriptionUpdateGuard,
+                          descriptionBelow: true,
                           children: [
-                            SwitchListTile(
-                              title: Text(l.prototypeAutomaticUpdates),
+                            _automaticUpdates(
+                              title: l.prototypeAutomaticUpdates,
                               value: value.subscriptionEnabled,
                               onChanged: state.saving
                                   ? null
@@ -81,10 +101,14 @@ class AutoUpdatePage extends StatelessWidget {
                         ),
                         SettingSection(
                           title: l.prototypeRoutingData,
+                          icon: LucideIcons.globe2,
+                          padding: EdgeInsets.zero,
+                          dividerIndent: 0,
                           description: l.prototypeGeodataUpdatesTogether,
+                          descriptionBelow: true,
                           children: [
-                            SwitchListTile(
-                              title: Text(l.prototypeAutomaticUpdates),
+                            _automaticUpdates(
+                              title: l.prototypeAutomaticUpdates,
                               value: value.geoDataEnable,
                               onChanged: state.saving
                                   ? null
@@ -98,53 +122,44 @@ class AutoUpdatePage extends StatelessWidget {
                             ),
                           ],
                         ),
+                        _note(context, l.prototypeUpdateTimingNotice),
+                        _note(context, l.prototypeDueUpdatesRetryNotice),
                         SettingSection(
                           title: l.prototypeDownloadCompatibility,
+                          icon: LucideIcons.globe2,
+                          padding: EdgeInsets.zero,
+                          dividerIndent: 0,
                           description: l.prototypeDownloadCompatibilityHint,
+                          descriptionBelow: true,
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child:
-                                  DropdownButtonFormField<
-                                    DownloadUserAgentMode
-                                  >(
-                                    initialValue: state.userAgent,
-                                    decoration: const InputDecoration(
-                                      labelText: 'User-Agent',
-                                    ),
-                                    items: [
-                                      const DropdownMenuItem(
-                                        value: DownloadUserAgentMode.oneXray,
-                                        child: Text('OneXray'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: DownloadUserAgentMode.system,
-                                        child: Text(l.prototypeSystemBrowser),
-                                      ),
-                                    ],
-                                    onChanged: state.saving
-                                        ? null
-                                        : controller.updateUserAgent,
+                            SettingRow(
+                              title: 'User-Agent',
+                              titleStyle: AppTypography.settingsRow,
+                              minHeight: 62,
+                              contentPadding:
+                                  const EdgeInsetsDirectional.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
                                   ),
+                              trailing: SettingSelect<DownloadUserAgentMode>(
+                                value: state.userAgent,
+                                entries: {
+                                  DownloadUserAgentMode.oneXray: 'OneXray',
+                                  DownloadUserAgentMode.system:
+                                      l.prototypeSystemBrowser,
+                                },
+                                onChanged: state.saving
+                                    ? null
+                                    : controller.updateUserAgent,
+                              ),
                             ),
                           ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(l.prototypeUpdateTimingNotice),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Text(l.prototypeDueUpdatesRetryNotice),
-                        ),
                         if (state.failed)
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text(
-                              l.prototypeTemporarilyUnavailable,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
+                          Text(
+                            l.prototypeTemporarilyUnavailable,
+                            style: AppTypography.settingsDetailNote.copyWith(
+                              color: Theme.of(context).colorScheme.error,
                             ),
                           ),
                       ],
@@ -156,30 +171,57 @@ class AutoUpdatePage extends StatelessWidget {
     ),
   );
 
+  Widget _automaticUpdates({
+    required String title,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+  }) => SettingRow(
+    title: title,
+    titleStyle: AppTypography.settingsRow,
+    minHeight: 58,
+    contentPadding: const EdgeInsetsDirectional.symmetric(
+      horizontal: 13,
+      vertical: 7,
+    ),
+    enabled: onChanged != null,
+    onTap: onChanged == null ? null : () => onChanged(!value),
+    trailing: ShadSwitch(
+      value: value,
+      enabled: onChanged != null,
+      onChanged: onChanged,
+    ),
+  );
+
+  Widget _note(BuildContext context, String text) => Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: Text(
+      text,
+      style: AppTypography.settingsDetailNote.copyWith(
+        color: ColorManager.secondaryText(context),
+      ),
+    ),
+  );
+
   Widget _interval(
     AppLocalizations l,
     AutoUpdateInterval value,
     bool enabled,
     ValueChanged<AutoUpdateInterval?> onChanged,
-  ) => Padding(
-    padding: const EdgeInsets.all(16),
-    child: DropdownButtonFormField<AutoUpdateInterval>(
-      initialValue: value,
-      decoration: InputDecoration(labelText: l.prototypeUpdateInterval),
-      items: [
-        DropdownMenuItem(
-          value: AutoUpdateInterval.oneDay,
-          child: Text(l.prototypeEveryDay),
-        ),
-        DropdownMenuItem(
-          value: AutoUpdateInterval.threeDays,
-          child: Text(l.prototypeEveryThreeDays),
-        ),
-        DropdownMenuItem(
-          value: AutoUpdateInterval.oneWeek,
-          child: Text(l.prototypeEveryWeek),
-        ),
-      ],
+  ) => SettingRow(
+    title: l.prototypeUpdateInterval,
+    titleStyle: AppTypography.settingsRow,
+    minHeight: 62,
+    contentPadding: const EdgeInsetsDirectional.symmetric(
+      horizontal: 14,
+      vertical: 10,
+    ),
+    trailing: SettingSelect<AutoUpdateInterval>(
+      value: value,
+      entries: {
+        AutoUpdateInterval.oneDay: l.prototypeEveryDay,
+        AutoUpdateInterval.threeDays: l.prototypeEveryThreeDays,
+        AutoUpdateInterval.oneWeek: l.prototypeEveryWeek,
+      },
       onChanged: enabled ? onChanged : null,
     ),
   );

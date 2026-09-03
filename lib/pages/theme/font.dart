@@ -98,6 +98,77 @@ abstract final class AppTypography {
   static final mobileNavigationLabel = _prototypeRole(10, 400);
   static final selectedMobileNavigationLabel = _prototypeRole(10, 620);
 
+  static final pageAction = _prototypeRole(12, 620, height: 1.4);
+  static final secondaryPageTitle = _prototypeRole(
+    16,
+    680,
+    height: 1.18,
+  ).copyWith(letterSpacing: 16 * -0.035);
+  static final advancedPageTitle = _prototypeRole(
+    23,
+    700,
+    height: 1.18,
+  ).copyWith(letterSpacing: 23 * -0.035);
+  static final advancedTab = _prototypeRole(12.5, 560);
+  static final selectedAdvancedTab = _prototypeRole(12.5, 620);
+
+  static final settingsSectionTitle = _prototypeRole(14, 650, height: 1.3);
+  static final settingsSectionDesktopTitle = _prototypeRole(
+    16,
+    650,
+    height: 1.3,
+  );
+  static final settingsRow = _prototypeRole(14, 560);
+  static final settingsFieldTitle = _prototypeRole(13.5, 560);
+  static final settingsValueLabel = _prototypeRole(12.5, 400);
+  static final settingsValue = _prototypeRole(12.5, 520);
+  static final settingsStatus = _prototypeRole(12.5, 620);
+  static final settingsHint = _prototypeRole(10.5, 400, height: 1.5);
+  static final settingsThemeOption = _prototypeRole(14, 400);
+  static final settingsThemeOptionMobile = _prototypeRole(12.5, 400);
+  static final settingsVersion = _prototypeRole(12.5, 400);
+  static final settingsNote = _prototypeRole(10.5, 400, height: 1.45);
+  static final settingsDetailNote = _prototypeRole(12, 400, height: 1.6);
+  static final settingsSelect = _prototypeRole(14, 400, height: 1.4);
+  static final settingsInput = _prototypeRole(13, 400);
+  static final aboutBrandTitle = _prototypeRole(19, 700, height: 1.3);
+  static final aboutBrandDescription = _prototypeRole(12, 400, height: 1.375);
+  static final settingsChoiceTitle = _prototypeRole(14, 570);
+  static final settingsChoiceDetail = _prototypeRole(11, 400, height: 1.5);
+  static final settingsDanger = _prototypeRole(13.5, 570);
+  static final backupBody = _prototypeRole(14, 400, height: 1.65);
+  static final backupScopeHint = _prototypeRole(12, 400, height: 1.65);
+  static final backupAction = _prototypeRole(12, 620);
+  static final backupEmptyTitle = _prototypeRole(16, 700);
+
+  static final runtimeLabel = _prototypeRole(9.5, 400);
+  static final runtimeDesktopLabel = _prototypeRole(11, 400);
+  static final runtimeValue = _prototypeRole(11, 700);
+  static final runtimeDesktopValue = _prototypeRole(13, 700);
+  static final runtimeNavigationHint = _prototypeRole(11.5, 400);
+  static final runtimePushHint = _prototypeRole(10, 400);
+  static final runtimeDesktopPushHint = _prototypeRole(11, 400);
+  static final runtimeSelector = _prototypeRole(12, 400);
+  static final runtimeDesktopSelector = _prototypeRole(14, 400);
+
+  static final serverBody = _prototypeRole(16, 400);
+  static final serverTitle = _prototypeRole(14, 630);
+  // HTML small inherits 5/6 of the prototype's 16px body text.
+  static final serverDetail = _prototypeRole(16 * 5 / 6, 400);
+  static final serverGroupDetail = _prototypeRole(16 * 5 / 6, 400, height: 1.4);
+  static final serverSectionTitle = _prototypeRole(
+    12,
+    650,
+    height: 1.3,
+  ).copyWith(letterSpacing: 12 * 0.035);
+  static final serverRegionCode = _prototypeRole(11, 720);
+  static final serverSelectionHealth = _prototypeRole(11, 620);
+  static final serverSelectionLabel = _prototypeRole(11, 400);
+  static final serverSelectionTitle = _prototypeRole(14, 700);
+  static final serverSelectionDetail = _prototypeRole(12, 400);
+  static final serverUseLabel = _prototypeRole(10.5, 620);
+  static final serverUseCount = _prototypeRole(14, 630, height: 1);
+
   static final connectStatusTitle = _prototypeRole(17, 650, height: 1.3);
   static final connectStatusDetail = _prototypeRole(13, 400);
   static final connectButton = _prototypeRole(16, 660);
@@ -132,6 +203,9 @@ abstract final class AppTypography {
   static final dialogGroupTitle = _prototypeRole(13, 700);
   static final dialogGroupMeta = _prototypeRole(10.5, 400);
   static final dialogAddAction = _prototypeRole(12, 620);
+  static final confirmationDesktopTitle = _prototypeRole(20, 700, height: 1.3);
+  static final confirmationSubject = _prototypeRole(14, 700, height: 1.6);
+  static final confirmationBody = _prototypeRole(14, 400, height: 1.6);
 
   static final shad = ShadTextTheme.custom(
     h1Large: pageTitle,

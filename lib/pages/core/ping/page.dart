@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/ping/controller.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -17,11 +20,12 @@ class PingPage extends StatelessWidget {
         final controller = context.read<PingController>();
         final l = AppLocalizations.of(context)!;
         final value = state.pingState;
+        final palette = ColorManager.palette(context);
         return Scaffold(
           appBar: AppBar(title: Text(l.prototypeSpeedTest)),
           bottomNavigationBar: PageActionBar(
             children: [
-              TextButton(
+              OutlinedButton(
                 onPressed: state.saving
                     ? null
                     : () => controller.cancel(context),
@@ -52,107 +56,166 @@ class PingPage extends StatelessWidget {
                     ),
                   )
                 : SettingsPageScroll(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      14,
+                      12,
+                      14,
+                      26,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(l.prototypeSpeedTestHint),
-                        ),
                         SettingSection(
                           title: l.prototypeTimeout,
+                          icon: LucideIcons.activity,
                           description: l.prototypeTimeoutHint,
+                          descriptionBelow: true,
+                          padding: EdgeInsets.zero,
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    l.prototypeSeconds(value.timeout.round()),
+                            SettingRow(
+                              title: l.prototypeTimeout,
+                              titleStyle: AppTypography.settingsSelect,
+                              contentPadding:
+                                  const EdgeInsetsDirectional.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
                                   ),
-                                  Slider(
-                                    min: PingTimeout.min,
-                                    max: PingTimeout.max,
-                                    divisions: PingTimeout.divisions,
-                                    value: value.timeout,
-                                    label: l.prototypeSeconds(
-                                      value.timeout.round(),
+                              trailing: SettingSelect<double>(
+                                value: value.timeout,
+                                entries: {
+                                  for (
+                                    var seconds = PingTimeout.min;
+                                    seconds <= PingTimeout.max;
+                                    seconds++
+                                  )
+                                    seconds: l.prototypeSeconds(
+                                      seconds.round(),
                                     ),
-                                    onChanged: state.saving
-                                        ? null
-                                        : controller.updateTimeout,
-                                  ),
-                                ],
+                                },
+                                onChanged: state.saving
+                                    ? null
+                                    : (seconds) {
+                                        if (seconds != null) {
+                                          controller.updateTimeout(seconds);
+                                        }
+                                      },
                               ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 25),
                         SettingSection(
                           title: l.prototypeSpeedTestUrl,
+                          icon: LucideIcons.globe,
                           description: l.prototypeSpeedTestUrlHint,
+                          descriptionBelow: true,
+                          padding: EdgeInsets.zero,
+                          dividerIndent: 0,
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  DropdownButtonFormField<String>(
-                                    initialValue: value.url.name,
-                                    decoration: InputDecoration(
-                                      labelText: l.prototypeSpeedTestUrl,
-                                    ),
-                                    items: [
-                                      for (final option in PingUrl.values)
-                                        DropdownMenuItem(
-                                          value: option.name,
-                                          child: Text(
-                                            option == PingUrl.custom
-                                                ? l.prototypeCustomUrl
-                                                : option.name,
-                                          ),
-                                        ),
-                                    ],
-                                    onChanged: state.saving
-                                        ? null
-                                        : (value) {
-                                            if (value != null) {
-                                              controller.updateUrl(value);
-                                            }
-                                          },
+                            SettingRow(
+                              title: l.prototypeSpeedTestUrl,
+                              titleStyle: AppTypography.settingsSelect,
+                              contentPadding:
+                                  const EdgeInsetsDirectional.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
                                   ),
-                                  const SizedBox(height: 16),
-                                  if (value.url == PingUrl.custom)
+                              trailing: SettingSelect<String>(
+                                value: value.url.name,
+                                entries: {
+                                  for (final option in PingUrl.values)
+                                    option.name: option == PingUrl.custom
+                                        ? l.prototypeCustom
+                                        : option.name,
+                                },
+                                onChanged: state.saving
+                                    ? null
+                                    : (url) {
+                                        if (url != null) {
+                                          controller.updateUrl(url);
+                                        }
+                                      },
+                              ),
+                            ),
+                            if (value.url == PingUrl.custom)
+                              Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l.prototypeCustomUrl,
+                                      style: AppTypography.settingsInput
+                                          .copyWith(color: palette.foreground),
+                                    ),
+                                    const SizedBox(height: 9),
                                     TextField(
                                       controller:
                                           controller.customUrlController,
                                       enabled: !state.saving,
                                       textDirection: TextDirection.ltr,
+                                      textAlign: TextAlign.left,
                                       keyboardType: TextInputType.url,
                                       autocorrect: false,
+                                      style: AppTypography.settingsInput
+                                          .copyWith(color: palette.foreground),
                                       decoration: InputDecoration(
-                                        labelText: l.prototypeCustomUrl,
+                                        isDense: true,
+                                        constraints: const BoxConstraints(
+                                          minHeight: 40,
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 8,
+                                            ),
+                                        hintText:
+                                            'https://example.com/generate_204',
+                                        hintTextDirection: TextDirection.ltr,
+                                        hintStyle: AppTypography.settingsInput
+                                            .copyWith(
+                                              color: palette.mutedForeground,
+                                            ),
                                       ),
-                                    )
-                                  else
-                                    SelectableText(
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                height: 46,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: SelectableText(
                                       value.realUrl,
                                       textDirection: TextDirection.ltr,
+                                      textAlign: TextAlign.left,
+                                      style: AppTypography.settingsDetailNote
+                                          .copyWith(color: palette.mutedStrong),
                                     ),
-                                ],
+                                  ),
+                                ),
                               ),
-                            ),
                           ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(l.prototypeSpeedTestSavedNotice),
+                        const SizedBox(height: 35),
+                        Text(
+                          l.prototypeSpeedTestSavedNotice,
+                          style: AppTypography.settingsDetailNote.copyWith(
+                            color: palette.mutedForeground,
+                          ),
                         ),
                         if (state.error != null)
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsetsDirectional.only(top: 10),
                             child: Text(
                               l.prototypeTemporarilyUnavailable,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
+                              style: AppTypography.settingsDetailNote.copyWith(
+                                color: palette.destructive,
                               ),
                             ),
                           ),
