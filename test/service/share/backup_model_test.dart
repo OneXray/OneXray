@@ -58,6 +58,7 @@ void main() {
         id: 7,
         count: 1,
       );
+      expect(subscription.toJson(), isNot(contains('autoUpdate')));
       expect(
         BackupSubscriptionJson.fromJson(subscription.toJson()).toJson(),
         subscription.toJson(),

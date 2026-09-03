@@ -303,17 +303,6 @@ class SubscriptionService {
     }
   });
 
-  Future<void> setAutomaticUpdates(int id, bool enabled) =>
-      DataMaintenance.run(() async {
-        await _database.transaction(() async {
-          final row = await _database.subscriptionDao.searchRow(id);
-          if (row == null) throw StateError('Subscription no longer exists');
-          await _database.subscriptionDao.updateRow(
-            row.copyWith(autoUpdate: enabled),
-          );
-        });
-      });
-
   Future<SubscriptionUpdateResult> _saveSubscription(
     int id,
     SubscriptionInput input,
@@ -707,8 +696,7 @@ class SubscriptionService {
       final subs = await _database.subscriptionDao.allRows;
       final now = DateTime.now();
       for (final sub in subs) {
-        if (sub.autoUpdate &&
-            now.difference(sub.timestamp).inHours >= interval) {
+        if (now.difference(sub.timestamp).inHours >= interval) {
           await _refreshSubscriptionResult(sub, false);
         }
       }

@@ -106,7 +106,6 @@ void main() {
         timestamp: DateTime(2026),
         count: 2,
         expanded: true,
-        autoUpdate: true,
       ),
       validateSubscription: (_, id) async {
         expect(id, 7);

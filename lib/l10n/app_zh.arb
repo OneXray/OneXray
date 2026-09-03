@@ -1316,7 +1316,6 @@
   "prototypeLocalCopySaved": "已另存为本地节点，不受订阅更新影响。",
   "prototypeUpdatesAndSources": "更新与来源",
   "prototypeManageSources": "管理更新与来源",
-  "prototypeAutomaticChecks": "自动检查",
   "prototypeSourceUpdateGuard": "更新时识别到至少 1 个可用节点才会覆盖，否则保留原节点。",
   "prototypeSourceUpdateHint": "下载并直接导入可用节点",
   "prototypeNameRemoved": "{name} 已移除",

@@ -3445,10 +3445,6 @@
   "@prototypeManageSources": {
     "description": "Approved prototype copy: Manage updates and sources"
   },
-  "prototypeAutomaticChecks": "Automatic checks",
-  "@prototypeAutomaticChecks": {
-    "description": "Approved prototype copy: Automatic checks"
-  },
   "prototypeSourceUpdateGuard": "Updates replace the subscription only when at least one usable node is recognized.",
   "@prototypeSourceUpdateGuard": {
     "description": "Approved prototype copy: Updates replace the subscription only when at least one usable node is recognized."

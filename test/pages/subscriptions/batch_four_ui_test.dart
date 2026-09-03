@@ -59,9 +59,6 @@ void main() {
           urlController: urlController,
           urlHint: 'https://example.com/sub.txt',
           urlHelper: 'HTTPS only',
-          autoUpdateTitle: 'Auto Update',
-          autoUpdateValue: 'Enabled · Three days',
-          onOpenAutoUpdate: () {},
           encryptionTitle: 'Encryption',
           ageProviderSupportTitle: 'Provider support required',
           ageProviderSupportDescription: 'Enter age keys only when your subscription provider supports age encryption.',
@@ -89,8 +86,6 @@ void main() {
     expect(find.text('Name'), findsWidgets);
     expect(find.text('URL'), findsWidgets);
     expect(find.text('HTTPS only'), findsOneWidget);
-    expect(find.text('Auto Update'), findsOneWidget);
-    expect(find.text('Enabled · Three days'), findsOneWidget);
     expect(find.text('Encryption'), findsOneWidget);
     expect(find.text('Provider support required'), findsOneWidget);
     expect(
@@ -103,10 +98,6 @@ void main() {
     expect(find.text('Age Public Key'), findsOneWidget);
     expect(find.text('Generate'), findsOneWidget);
     expect(find.text('Clear'), findsOneWidget);
-    final autoUpdateValueAlign = tester.widget<Align>(
-      find.byKey(const ValueKey('subscriptionAutoUpdateValue')),
-    );
-    expect(autoUpdateValueAlign.alignment, AlignmentDirectional.centerEnd);
     expect(find.byType(ShadInput), findsNWidgets(4));
     expect(tester.takeException(), isNull);
 
@@ -142,8 +133,6 @@ void main() {
             urlLabel: 'URL',
             urlController: urlController,
             urlHelper: 'HTTPS only',
-            autoUpdateTitle: 'Auto Update',
-            onOpenAutoUpdate: () {},
             encryptionTitle: 'Encryption',
             ageProviderSupportTitle: 'Provider support required',
             ageProviderSupportDescription: 'Enter age keys only when your subscription provider supports age encryption.',

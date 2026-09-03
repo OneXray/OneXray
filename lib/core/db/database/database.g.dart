@@ -640,21 +640,6 @@ class $SubscriptionTable extends Subscription
       'CHECK ("expanded" IN (0, 1))',
     ),
   );
-  static const VerificationMeta _autoUpdateMeta = const VerificationMeta(
-    'autoUpdate',
-  );
-  @override
-  late final GeneratedColumn<bool> autoUpdate = GeneratedColumn<bool>(
-    'auto_update',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("auto_update" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -665,7 +650,6 @@ class $SubscriptionTable extends Subscription
     timestamp,
     count,
     expanded,
-    autoUpdate,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -740,12 +724,6 @@ class $SubscriptionTable extends Subscription
     } else if (isInserting) {
       context.missing(_expandedMeta);
     }
-    if (data.containsKey('auto_update')) {
-      context.handle(
-        _autoUpdateMeta,
-        autoUpdate.isAcceptableOrUnknown(data['auto_update']!, _autoUpdateMeta),
-      );
-    }
     return context;
   }
 
@@ -787,10 +765,6 @@ class $SubscriptionTable extends Subscription
         DriftSqlType.bool,
         data['${effectivePrefix}expanded'],
       )!,
-      autoUpdate: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}auto_update'],
-      )!,
     );
   }
 
@@ -810,7 +784,6 @@ class SubscriptionData extends DataClass
   final DateTime timestamp;
   final int count;
   final bool expanded;
-  final bool autoUpdate;
   const SubscriptionData({
     required this.id,
     required this.name,
@@ -820,7 +793,6 @@ class SubscriptionData extends DataClass
     required this.timestamp,
     required this.count,
     required this.expanded,
-    required this.autoUpdate,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -837,7 +809,6 @@ class SubscriptionData extends DataClass
     map['timestamp'] = Variable<DateTime>(timestamp);
     map['count'] = Variable<int>(count);
     map['expanded'] = Variable<bool>(expanded);
-    map['auto_update'] = Variable<bool>(autoUpdate);
     return map;
   }
 
@@ -855,7 +826,6 @@ class SubscriptionData extends DataClass
       timestamp: Value(timestamp),
       count: Value(count),
       expanded: Value(expanded),
-      autoUpdate: Value(autoUpdate),
     );
   }
 
@@ -873,7 +843,6 @@ class SubscriptionData extends DataClass
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
       count: serializer.fromJson<int>(json['count']),
       expanded: serializer.fromJson<bool>(json['expanded']),
-      autoUpdate: serializer.fromJson<bool>(json['autoUpdate']),
     );
   }
   @override
@@ -888,7 +857,6 @@ class SubscriptionData extends DataClass
       'timestamp': serializer.toJson<DateTime>(timestamp),
       'count': serializer.toJson<int>(count),
       'expanded': serializer.toJson<bool>(expanded),
-      'autoUpdate': serializer.toJson<bool>(autoUpdate),
     };
   }
 
@@ -901,7 +869,6 @@ class SubscriptionData extends DataClass
     DateTime? timestamp,
     int? count,
     bool? expanded,
-    bool? autoUpdate,
   }) => SubscriptionData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -911,7 +878,6 @@ class SubscriptionData extends DataClass
     timestamp: timestamp ?? this.timestamp,
     count: count ?? this.count,
     expanded: expanded ?? this.expanded,
-    autoUpdate: autoUpdate ?? this.autoUpdate,
   );
   SubscriptionData copyWithCompanion(SubscriptionCompanion data) {
     return SubscriptionData(
@@ -927,9 +893,6 @@ class SubscriptionData extends DataClass
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
       count: data.count.present ? data.count.value : this.count,
       expanded: data.expanded.present ? data.expanded.value : this.expanded,
-      autoUpdate: data.autoUpdate.present
-          ? data.autoUpdate.value
-          : this.autoUpdate,
     );
   }
 
@@ -943,8 +906,7 @@ class SubscriptionData extends DataClass
           ..write('agePublicKey: $agePublicKey, ')
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
-          ..write('expanded: $expanded, ')
-          ..write('autoUpdate: $autoUpdate')
+          ..write('expanded: $expanded')
           ..write(')'))
         .toString();
   }
@@ -959,7 +921,6 @@ class SubscriptionData extends DataClass
     timestamp,
     count,
     expanded,
-    autoUpdate,
   );
   @override
   bool operator ==(Object other) =>
@@ -972,8 +933,7 @@ class SubscriptionData extends DataClass
           other.agePublicKey == this.agePublicKey &&
           other.timestamp == this.timestamp &&
           other.count == this.count &&
-          other.expanded == this.expanded &&
-          other.autoUpdate == this.autoUpdate);
+          other.expanded == this.expanded);
 }
 
 class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
@@ -985,7 +945,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
   final Value<DateTime> timestamp;
   final Value<int> count;
   final Value<bool> expanded;
-  final Value<bool> autoUpdate;
   const SubscriptionCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -995,7 +954,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.timestamp = const Value.absent(),
     this.count = const Value.absent(),
     this.expanded = const Value.absent(),
-    this.autoUpdate = const Value.absent(),
   });
   SubscriptionCompanion.insert({
     this.id = const Value.absent(),
@@ -1006,7 +964,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     required DateTime timestamp,
     required int count,
     required bool expanded,
-    this.autoUpdate = const Value.absent(),
   }) : name = Value(name),
        url = Value(url),
        timestamp = Value(timestamp),
@@ -1021,7 +978,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Expression<DateTime>? timestamp,
     Expression<int>? count,
     Expression<bool>? expanded,
-    Expression<bool>? autoUpdate,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1032,7 +988,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       if (timestamp != null) 'timestamp': timestamp,
       if (count != null) 'count': count,
       if (expanded != null) 'expanded': expanded,
-      if (autoUpdate != null) 'auto_update': autoUpdate,
     });
   }
 
@@ -1045,7 +1000,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Value<DateTime>? timestamp,
     Value<int>? count,
     Value<bool>? expanded,
-    Value<bool>? autoUpdate,
   }) {
     return SubscriptionCompanion(
       id: id ?? this.id,
@@ -1056,7 +1010,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       timestamp: timestamp ?? this.timestamp,
       count: count ?? this.count,
       expanded: expanded ?? this.expanded,
-      autoUpdate: autoUpdate ?? this.autoUpdate,
     );
   }
 
@@ -1087,9 +1040,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     if (expanded.present) {
       map['expanded'] = Variable<bool>(expanded.value);
     }
-    if (autoUpdate.present) {
-      map['auto_update'] = Variable<bool>(autoUpdate.value);
-    }
     return map;
   }
 
@@ -1103,8 +1053,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
           ..write('agePublicKey: $agePublicKey, ')
           ..write('timestamp: $timestamp, ')
           ..write('count: $count, ')
-          ..write('expanded: $expanded, ')
-          ..write('autoUpdate: $autoUpdate')
+          ..write('expanded: $expanded')
           ..write(')'))
         .toString();
   }
@@ -2441,7 +2390,6 @@ typedef $$SubscriptionTableCreateCompanionBuilder =
       required DateTime timestamp,
       required int count,
       required bool expanded,
-      Value<bool> autoUpdate,
     });
 typedef $$SubscriptionTableUpdateCompanionBuilder =
     SubscriptionCompanion Function({
@@ -2453,7 +2401,6 @@ typedef $$SubscriptionTableUpdateCompanionBuilder =
       Value<DateTime> timestamp,
       Value<int> count,
       Value<bool> expanded,
-      Value<bool> autoUpdate,
     });
 
 class $$SubscriptionTableFilterComposer
@@ -2502,11 +2449,6 @@ class $$SubscriptionTableFilterComposer
 
   ColumnFilters<bool> get expanded => $composableBuilder(
     column: $table.expanded,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get autoUpdate => $composableBuilder(
-    column: $table.autoUpdate,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2559,11 +2501,6 @@ class $$SubscriptionTableOrderingComposer
     column: $table.expanded,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<bool> get autoUpdate => $composableBuilder(
-    column: $table.autoUpdate,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$SubscriptionTableAnnotationComposer
@@ -2602,11 +2539,6 @@ class $$SubscriptionTableAnnotationComposer
 
   GeneratedColumn<bool> get expanded =>
       $composableBuilder(column: $table.expanded, builder: (column) => column);
-
-  GeneratedColumn<bool> get autoUpdate => $composableBuilder(
-    column: $table.autoUpdate,
-    builder: (column) => column,
-  );
 }
 
 class $$SubscriptionTableTableManager
@@ -2648,7 +2580,6 @@ class $$SubscriptionTableTableManager
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<int> count = const Value.absent(),
                 Value<bool> expanded = const Value.absent(),
-                Value<bool> autoUpdate = const Value.absent(),
               }) => SubscriptionCompanion(
                 id: id,
                 name: name,
@@ -2658,7 +2589,6 @@ class $$SubscriptionTableTableManager
                 timestamp: timestamp,
                 count: count,
                 expanded: expanded,
-                autoUpdate: autoUpdate,
               ),
           createCompanionCallback:
               ({
@@ -2670,7 +2600,6 @@ class $$SubscriptionTableTableManager
                 required DateTime timestamp,
                 required int count,
                 required bool expanded,
-                Value<bool> autoUpdate = const Value.absent(),
               }) => SubscriptionCompanion.insert(
                 id: id,
                 name: name,
@@ -2680,7 +2609,6 @@ class $$SubscriptionTableTableManager
                 timestamp: timestamp,
                 count: count,
                 expanded: expanded,
-                autoUpdate: autoUpdate,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

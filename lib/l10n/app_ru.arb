@@ -1316,7 +1316,6 @@
   "prototypeLocalCopySaved": "Сохранена локальная копия сервера. Обновления подписки её не заменят.",
   "prototypeUpdatesAndSources": "Обновления и источники",
   "prototypeManageSources": "Обновления и источники",
-  "prototypeAutomaticChecks": "Автоматические проверки",
   "prototypeSourceUpdateGuard": "Подписка заменяется при обновлении, только если распознан хотя бы один пригодный узел.",
   "prototypeSourceUpdateHint": "Загрузить и сразу импортировать пригодные узлы",
   "prototypeNameRemoved": "Удалено: {name}",

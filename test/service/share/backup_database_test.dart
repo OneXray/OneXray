@@ -45,7 +45,6 @@ void main() {
       final subscription = (await database.subscriptionDao.allRows).single;
       expect(subscription.id, 7);
       expect(subscription.count, 1);
-      expect(subscription.autoUpdate, isFalse);
       expect(subscription.ageSecretKey, 'AGE-SECRET-KEY-TEST');
       expect(subscription.agePublicKey, 'age1test');
       expect((await database.routingProfileDao.allRows).single.id, 8);
@@ -291,7 +290,6 @@ Future<void> _seedAssets(AppDatabase database) async {
       timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
       count: 1,
       expanded: true,
-      autoUpdate: const Value(false),
     ),
   );
   for (final id in [1, 2, 30, 31, 32, 33, 99]) {

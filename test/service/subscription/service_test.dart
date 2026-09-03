@@ -46,7 +46,7 @@ void main() {
     },
   );
 
-  test('source form edits and automatic switches persist without downloading or rewriting nodes', () async {
+  test('source edits do not download, and global automatic opt-out still allows manual refresh', () async {
     final source = await _source(database);
     final nodeId = await database.coreConfigDao.insertRow(
       _node('Existing', subId: source.id),
@@ -78,28 +78,62 @@ void main() {
     expect(await database.coreConfigDao.searchRow(nodeId), original);
     final saved = (await database.subscriptionDao.searchRow(source.id))!;
     expect(saved.timestamp, source.timestamp);
-    expect(saved.autoUpdate, isTrue);
-    await service.setAutomaticUpdates(source.id, false);
     await service.refreshOutdatedSubscription(
-      autoUpdateState: AutoUpdateState(),
+      autoUpdateState: AutoUpdateState()..subscriptionEnabled = false,
       updateDownloading: false,
     );
     expect(downloads, 0);
-    expect(
-      (await database.subscriptionDao.searchRow(source.id))!.autoUpdate,
-      isFalse,
-    );
+    expect(await database.subscriptionDao.searchRow(source.id), saved);
     final result = await service.refreshSubscriptionResult(saved, false);
-    expect(
-      result.success,
-      isTrue,
-    ); // Manual refresh is independent of automatic opt-out.
+    expect(result.success, isTrue);
     expect(downloads, 1);
-    expect(
-      (await database.subscriptionDao.searchRow(source.id))!.autoUpdate,
-      isFalse,
-    );
   });
+
+  test(
+    'global automatic updates refresh all due sources and skip fresh sources',
+    () async {
+      final now = DateTime.now();
+      for (final entry in {
+        'Due A': const Duration(days: 2),
+        'Due B': const Duration(hours: 25),
+        'Fresh': const Duration(hours: 1),
+      }.entries) {
+        await database.subscriptionDao.insertRow(
+          SubscriptionCompanion.insert(
+            name: entry.key,
+            url: 'https://example.com/${Uri.encodeComponent(entry.key)}',
+            timestamp: now.subtract(entry.value),
+            count: 0,
+            expanded: false,
+          ),
+        );
+      }
+      final downloads = <String>[];
+      final service = _service(database, (input) async {
+        downloads.add(input.name);
+        return SubscriptionLoadResult(
+          status: SubscriptionUpdateResult.success,
+          rows: [_node(input.name)],
+        );
+      });
+      final settings = AutoUpdateState()
+        ..subscriptionEnabled = true
+        ..subscriptionInterval = AutoUpdateInterval.oneDay;
+
+      await service.refreshOutdatedSubscription(
+        autoUpdateState: settings,
+        updateDownloading: false,
+      );
+      expect(downloads, unorderedEquals(['Due A', 'Due B']));
+
+      downloads.clear();
+      await service.refreshOutdatedSubscription(
+        autoUpdateState: settings,
+        updateDownloading: false,
+      );
+      expect(downloads, isEmpty);
+    },
+  );
 
   test('saving source form invalidates an earlier in-flight refresh', () async {
     final source = await _source(database);

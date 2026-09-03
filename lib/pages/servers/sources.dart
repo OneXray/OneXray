@@ -100,18 +100,6 @@ class _ServerSourcesPageState extends State<ServerSourcesPage> {
                                           .error,
                                     ),
                               ),
-                            SwitchListTile.adaptive(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(l.prototypeAutomaticChecks),
-                              value: source.autoUpdate,
-                              onChanged: controller.busy
-                                  ? null
-                                  : (value) => controller.setAutomatic(
-                                      context,
-                                      source,
-                                      value,
-                                    ),
-                            ),
                             Wrap(
                               spacing: 8,
                               children: [

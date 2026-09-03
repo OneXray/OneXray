@@ -16,6 +16,4 @@ class Subscription extends Table {
   IntColumn get count => integer()();
 
   BoolColumn get expanded => boolean()();
-
-  BoolColumn get autoUpdate => boolean().withDefault(const Constant(true))();
 }

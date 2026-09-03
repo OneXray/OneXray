@@ -68,7 +68,6 @@ final class BackupDatabaseContents {
                 row.expanded,
                 id: row.id,
                 count: row.count,
-                autoUpdate: row.autoUpdate,
               ),
           ],
           geoDataList: [
@@ -193,7 +192,6 @@ final class BackupDatabaseContents {
             timestamp: DateTime.fromMillisecondsSinceEpoch(row.timestamp!),
             count: _isCurrent ? row.count! : 0,
             expanded: row.expanded!,
-            autoUpdate: Value(row.autoUpdate ?? true),
           ),
         );
       }

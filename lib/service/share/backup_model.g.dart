@@ -57,7 +57,6 @@ BackupSubscriptionJson _$BackupSubscriptionJsonFromJson(
   json['expanded'] as bool?,
   id: (json['id'] as num?)?.toInt(),
   count: (json['count'] as num?)?.toInt(),
-  autoUpdate: json['autoUpdate'] as bool?,
 );
 
 Map<String, dynamic> _$BackupSubscriptionJsonToJson(
@@ -71,7 +70,6 @@ Map<String, dynamic> _$BackupSubscriptionJsonToJson(
   'timestamp': ?instance.timestamp,
   'expanded': ?instance.expanded,
   'count': ?instance.count,
-  'autoUpdate': ?instance.autoUpdate,
 };
 
 BackupGeoDataJson _$BackupGeoDataJsonFromJson(Map<String, dynamic> json) =>

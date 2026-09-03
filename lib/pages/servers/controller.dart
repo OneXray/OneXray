@@ -486,14 +486,6 @@ class ServersController extends ConnectController {
     });
   }
 
-  Future<void> setAutomatic(
-    BuildContext context,
-    SubscriptionData source,
-    bool value,
-  ) => perform(context, () async {
-    await SubscriptionService().setAutomaticUpdates(source.id, value);
-  });
-
   Future<void> openSources(BuildContext context) =>
       context.pushScoped(AppSecondaryDestination.serverSources);
 

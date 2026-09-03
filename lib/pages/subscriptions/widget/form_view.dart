@@ -16,9 +16,6 @@ class SubscriptionFormView extends StatelessWidget {
     required this.urlController,
     this.urlHint,
     this.urlHelper,
-    this.autoUpdateTitle,
-    this.autoUpdateValue,
-    this.onOpenAutoUpdate,
     required this.encryptionTitle,
     required this.ageProviderSupportTitle,
     required this.ageProviderSupportDescription,
@@ -50,9 +47,6 @@ class SubscriptionFormView extends StatelessWidget {
   final TextEditingController urlController;
   final String? urlHint;
   final String? urlHelper;
-  final String? autoUpdateTitle;
-  final String? autoUpdateValue;
-  final VoidCallback? onOpenAutoUpdate;
   final String encryptionTitle;
   final String ageProviderSupportTitle;
   final String ageProviderSupportDescription;
@@ -88,10 +82,6 @@ class SubscriptionFormView extends StatelessWidget {
               _formCard(context),
               const SizedBox(height: 18),
               _encryptionCard(context),
-              if (onOpenAutoUpdate != null) ...[
-                const SizedBox(height: 18),
-                _autoUpdateCard(context),
-              ],
             ],
           ),
         ),
@@ -341,69 +331,6 @@ class SubscriptionFormView extends StatelessWidget {
       style: AppTypography.supporting.copyWith(
         fontWeight: FontWeight.w600,
         color: ColorManager.secondaryText(context),
-      ),
-    );
-  }
-
-  Widget _autoUpdateCard(BuildContext context) {
-    final radius = BorderRadius.circular(8);
-    return ShadCard(
-      width: double.infinity,
-      padding: EdgeInsets.zero,
-      radius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onOpenAutoUpdate,
-          borderRadius: radius,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 58),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      autoUpdateTitle ?? "",
-                      style: AppTypography.sectionTitle,
-                    ),
-                  ),
-                  if (autoUpdateValue != null &&
-                      autoUpdateValue!.isNotEmpty) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: Align(
-                        key: const ValueKey("subscriptionAutoUpdateValue"),
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: Text(
-                          autoUpdateValue!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: AppTypography.supporting.copyWith(
-                            color: ColorManager.secondaryText(context),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(width: 7),
-                  Icon(
-                    LucideIcons.chevronRight,
-                    size: 17,
-                    color: ColorManager.secondaryText(context),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

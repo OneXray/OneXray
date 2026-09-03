@@ -1316,7 +1316,6 @@
     "prototypeLocalCopySaved": "به‌عنوان سرور محلی ذخیره شد. به‌روزرسانی اشتراک آن را جایگزین نمی‌کند.",
     "prototypeUpdatesAndSources": "به‌روزرسانی‌ها و منابع",
     "prototypeManageSources": "مدیریت به‌روزرسانی‌ها و منابع",
-    "prototypeAutomaticChecks": "بررسی‌های خودکار",
     "prototypeSourceUpdateGuard": "به‌روزرسانی فقط وقتی اشتراک را جایگزین می‌کند که حداقل یک گره قابل استفاده شناسایی شود.",
     "prototypeSourceUpdateHint": "دانلود و وارد کردن مستقیم گره‌های قابل استفاده",
     "prototypeNameRemoved": "{name} حذف شد",

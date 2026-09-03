@@ -58,7 +58,6 @@ class BackupSubscriptionJson {
   final int? timestamp;
   final bool? expanded;
   final int? count;
-  final bool? autoUpdate;
 
   const BackupSubscriptionJson(
     this.name,
@@ -69,7 +68,6 @@ class BackupSubscriptionJson {
     this.expanded, {
     this.id,
     this.count,
-    this.autoUpdate,
   });
 
   factory BackupSubscriptionJson.fromJson(Map<String, dynamic> json) =>

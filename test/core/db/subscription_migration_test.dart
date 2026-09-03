@@ -117,7 +117,7 @@ void main() {
       ]);
       for (final entry in {
         'core_config': ['location_source', 'last_measured_at'],
-        'subscription': ['parse_failure_count'],
+        'subscription': ['parse_failure_count', 'auto_update'],
         'connection_state': ['revision'],
       }.entries) {
         final columns = await database
@@ -147,7 +147,13 @@ void main() {
         try {
           final subscriptions = await database.subscriptionDao.allRows;
           expect(subscriptions.single.id, 7);
-          expect(subscriptions.single.autoUpdate, isTrue);
+          final subscriptionColumns = await database
+              .customSelect('PRAGMA table_info(subscription)')
+              .get();
+          expect(
+            subscriptionColumns.map((row) => row.read<String>('name')),
+            isNot(contains('auto_update')),
+          );
           expect(
             subscriptions.single.ageSecretKey,
             version == 2 ? 'AGE-SECRET-KEY-TEST' : null,
@@ -218,10 +224,6 @@ void main() {
           expect(
             _columnNames(check, 'core_config'),
             isNot(contains('favorite')),
-          );
-          expect(
-            _columnNames(check, 'subscription'),
-            isNot(contains('auto_update')),
           );
           if (version == 1) {
             expect(
