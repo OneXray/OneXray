@@ -70,8 +70,8 @@ abstract final class RouterPath {
       GoRoute(
         path: RouterPath.setup,
         builder: (_, _) => SetupPage(
-          addServers: (context) async {
-            await context.push('/setup/servers');
+          addServers: (context, action) async {
+            await context.push('/setup/servers', extra: action);
           },
         ),
       ),
@@ -81,9 +81,17 @@ abstract final class RouterPath {
           key: state.pageKey,
           barrierColor: ColorManager.palette(context).overlay,
           useSafeArea: false,
-          builder: (_) =>
-              const AppDialogFrame(child: ServersImportPage(setup: true)),
+          builder: (_) => AppDialogFrame(
+            child: ServersImportPage(
+              setup: true,
+              initialAction: state.extra as ServerImportAction?,
+            ),
+          ),
         ),
+      ),
+      GoRoute(
+        path: '/setup/privacy',
+        builder: (_, _) => const SetupPrivacyPage(),
       ),
       GoRoute(
         path: '/setup/interface',

@@ -10,11 +10,13 @@ class PageActionBar extends StatelessWidget {
     super.key,
     required this.children,
     this.horizontalPadding,
+    this.verticalPadding,
     this.spacing = AppSpacing.actionGap,
   });
 
   final List<Widget> children;
   final double? horizontalPadding;
+  final double? verticalPadding;
   final double spacing;
 
   @override
@@ -48,6 +50,7 @@ class PageActionBar extends StatelessWidget {
                         horizontalPadding ??
                         (mobile ? AppSpacing.mobilePage : AppSpacing.page),
                     vertical:
+                        verticalPadding ??
                         (minHeight - AppLayout.pageActionButtonMinHeight) / 2,
                   ),
                   child: SizedBox(

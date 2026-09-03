@@ -3,11 +3,14 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
+import 'package:onexray/pages/advanced/tunnel/apple_widgets.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AppleVpnController extends PolicyEditorController {
   AppleVpnCapabilities? capabilities;
@@ -63,116 +66,177 @@ class _AppleVpnPageState extends State<AppleVpnPage> {
     animation: controller,
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
-      final apple = controller.group('apple');
-      final supported = controller.capabilities;
       return PolicyDetailScaffold(
         title: l.prototypeAppleSystemVpn,
         controller: controller,
-        canSave: supported != null,
-        body: Column(
+        canSave: controller.capabilities != null,
+        contentPadding: EdgeInsets.zero,
+        body: AppleVpnView(
+          controller: controller,
+          capabilities: controller.capabilities,
+          capabilityLoading: controller.capabilityLoading,
+          onRetry: controller.readCapabilities,
+          onEditWifi: () => controller.openChild(context, widget.openWifi),
+        ),
+      );
+    },
+  );
+}
+
+/// Presentation can be exercised without invoking Apple system APIs.
+class AppleVpnView extends StatelessWidget {
+  final PolicyEditorController controller;
+  final AppleVpnCapabilities? capabilities;
+  final bool capabilityLoading;
+  final VoidCallback? onRetry;
+  final VoidCallback? onEditWifi;
+
+  const AppleVpnView({
+    super.key,
+    required this.controller,
+    required this.capabilities,
+    this.capabilityLoading = false,
+    this.onRetry,
+    this.onEditWifi,
+  });
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: controller,
+    builder: (context, _) {
+      final l = AppLocalizations.of(context)!;
+      final apple = controller.group('apple');
+      final mobile =
+          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+      Widget toggle(
+        String field,
+        String title,
+        String description, {
+        bool nested = false,
+        bool supported = true,
+      }) => AppleSettingToggle(
+        key: ValueKey(field),
+        title: title,
+        description: description,
+        nested: nested,
+        value: apple[field] as bool,
+        onChanged: controller.blocked || !supported
+            ? null
+            : (value) => controller.update(field, value, section: 'apple'),
+      );
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          mobile ? 14 : 28,
+          mobile ? 14 : 18,
+          mobile ? 14 : 28,
+          mobile ? 18 : 24,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (supported == null)
+            if (capabilities == null)
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: controller.capabilityLoading
+                child: capabilityLoading
                     ? const CircularProgressIndicator()
                     : Column(
                         children: [
                           Text(l.prototypeTemporarilyUnavailable),
                           TextButton(
-                            onPressed: controller.readCapabilities,
+                            onPressed: onRetry,
                             child: Text(l.prototypeRetry),
                           ),
                         ],
                       ),
               ),
             SettingSection(
-              title: l.prototypeSystemVpnPolicy,
+              title: '',
+              padding: EdgeInsets.zero,
+              dividerIndent: 0,
               children: [
-                PolicyToggle(
-                  controller: controller,
-                  section: 'apple',
-                  field: 'captureAllTraffic',
-                  title: l.prototypeCaptureAllTraffic,
-                  subtitle: l.prototypeCaptureAllTrafficHint,
+                toggle(
+                  'captureAllTraffic',
+                  l.prototypeCaptureAllTraffic,
+                  l.prototypeCaptureAllTrafficHint,
                 ),
                 if (apple['captureAllTraffic'] == true) ...[
-                  PolicyToggle(
-                    controller: controller,
-                    section: 'apple',
-                    field: 'allowLocalNetwork',
-                    title: l.prototypeAllowLocalNetwork,
-                    subtitle: l.prototypeAllowLocalNetworkHint,
+                  toggle(
+                    'allowLocalNetwork',
+                    l.prototypeAllowLocalNetwork,
+                    l.prototypeAllowLocalNetworkHint,
+                    nested: true,
                   ),
-                  PolicyToggle(
-                    controller: controller,
-                    section: 'apple',
-                    field: 'bypassCellularServices',
-                    supported: supported?.serviceExclusions ?? false,
-                    title: l.prototypeBypassCellularServices,
-                    subtitle: supported?.serviceExclusions == true
+                  toggle(
+                    'bypassCellularServices',
+                    l.prototypeBypassCellularServices,
+                    capabilities?.serviceExclusions == true
                         ? l.prototypeBypassCellularServicesHint
                         : l.tunSettingsPageExcludeCellularServicesTip,
+                    nested: true,
+                    supported: capabilities?.serviceExclusions ?? false,
                   ),
-                  PolicyToggle(
-                    controller: controller,
-                    section: 'apple',
-                    field: 'bypassApplePushNotifications',
-                    supported: supported?.serviceExclusions ?? false,
-                    title: l.prototypeBypassApplePush,
-                    subtitle: supported?.serviceExclusions == true
+                  toggle(
+                    'bypassApplePushNotifications',
+                    l.prototypeBypassApplePush,
+                    capabilities?.serviceExclusions == true
                         ? l.prototypeBypassApplePushHint
                         : l.tunSettingsPageExcludeAPNsTip,
+                    nested: true,
+                    supported: capabilities?.serviceExclusions ?? false,
                   ),
-                  PolicyToggle(
-                    controller: controller,
-                    section: 'apple',
-                    field: 'allowDeviceCommunication',
-                    supported: supported?.deviceCommunication ?? false,
-                    title: l.prototypeAllowDeviceCommunication,
-                    subtitle: supported?.deviceCommunication == true
+                  toggle(
+                    'allowDeviceCommunication',
+                    l.prototypeAllowDeviceCommunication,
+                    capabilities?.deviceCommunication == true
                         ? l.prototypeAllowDeviceCommunicationHint
                         : l.tunSettingsPageExcludeDeviceCommunicationTip,
+                    nested: true,
+                    supported: capabilities?.deviceCommunication ?? false,
                   ),
                 ],
-                PolicyToggle(
-                  controller: controller,
-                  section: 'apple',
-                  field: 'dnsOverTls',
-                  title: l.prototypeUseDnsOverTls,
-                  subtitle: l.prototypeUseDnsOverTlsHint,
+                toggle(
+                  'dnsOverTls',
+                  l.prototypeUseDnsOverTls,
+                  l.prototypeUseDnsOverTlsHint,
                 ),
               ],
             ),
+            SizedBox(height: mobile ? 16 : 20),
+            Text(
+              l.prototypeAutomaticConnectionDisconnection,
+              style: mobile
+                  ? AppTypography.appleAutoTitle
+                  : AppTypography.appleAutoTitleDesktop,
+            ),
+            SizedBox(height: mobile ? 8 : 10),
             SettingSection(
-              title: l.prototypeAutomaticConnectionDisconnection,
+              title: '',
+              padding: EdgeInsets.zero,
+              dividerIndent: 0,
               children: [
-                PolicyToggle(
-                  controller: controller,
-                  section: 'apple',
-                  field: 'alwaysOn',
-                  title: l.prototypeAlwaysOn,
-                  subtitle: l.prototypeAlwaysOnHint,
+                toggle(
+                  'alwaysOn',
+                  l.prototypeAlwaysOn,
+                  l.prototypeAlwaysOnHint,
                 ),
                 if (apple['alwaysOn'] == false) ...[
-                  PolicyToggle(
-                    controller: controller,
-                    section: 'apple',
-                    field: 'onDemandEnabled',
-                    title: l.prototypeConnectOnDemand,
-                    subtitle: l.prototypeConnectOnDemandHint,
+                  toggle(
+                    'onDemandEnabled',
+                    l.prototypeConnectOnDemand,
+                    l.prototypeConnectOnDemandHint,
                   ),
-                  if (apple['onDemandEnabled'] == true) ...[
-                    AppleWifiPreview(controller: controller),
-                    _NetworkChoice(controller: controller),
-                    SettingRow(
-                      title: l.prototypeEditWifiRules,
-                      showChevron: true,
-                      enabled: !controller.blocked,
-                      onTap: () =>
-                          controller.openChild(context, widget.openWifi),
+                  if (apple['onDemandEnabled'] == true)
+                    Padding(
+                      padding: mobile
+                          ? const EdgeInsets.all(10)
+                          : const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      child: AppleWifiPreview(
+                        controller: controller,
+                        showNetwork: true,
+                        onEdit: controller.blocked ? null : onEditWifi,
+                        editable: true,
+                      ),
                     ),
-                  ],
                 ],
               ],
             ),
@@ -181,38 +245,6 @@ class _AppleVpnPageState extends State<AppleVpnPage> {
       );
     },
   );
-}
-
-class _NetworkChoice extends StatelessWidget {
-  final PolicyEditorController controller;
-  const _NetworkChoice({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final ios = controller.platform == ConnectionPlatform.ios;
-    final field = ios ? 'cellularAction' : 'ethernetAction';
-    return SettingSubsection(
-      title: ios ? l.prototypeCellularNetwork : l.prototypeEthernet,
-      children: [
-        SettingRow(
-          title: ios
-              ? l.prototypeWhenUsingCellular
-              : l.prototypeWhenUsingEthernet,
-        ),
-        for (final choice in ['connect', 'disconnect'])
-          SettingsChoiceRow(
-            title: choice == 'connect'
-                ? l.prototypeConnectAutomatically
-                : l.prototypeDisconnectVpn,
-            selected: controller.group('apple')[field] == choice,
-            onTap: controller.blocked
-                ? null
-                : () => controller.update(field, choice, section: 'apple'),
-          ),
-      ],
-    );
-  }
 }
 
 class AppleWifiPage extends StatefulWidget {
@@ -239,115 +271,102 @@ class _AppleWifiPageState extends State<AppleWifiPage> {
         title: l.prototypeWifiRules,
         controller: controller,
         canSave: !controller.wifiConflict,
-        body: Column(
+        contentPadding: EdgeInsets.zero,
+        body: AppleWifiView(controller: controller),
+      );
+    },
+  );
+}
+
+class AppleWifiView extends StatelessWidget {
+  final PolicyEditorController controller;
+  const AppleWifiView({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: controller,
+    builder: (context, _) {
+      final l = AppLocalizations.of(context)!;
+      final mobile =
+          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+      final palette = ColorManager.palette(context);
+      final gap = mobile ? 18.0 : 24.0;
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          mobile ? 14 : 28,
+          17,
+          mobile ? 14 : 28,
+          mobile ? 18 : 24,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (final connect in [true, false])
-              SettingSection(
-                title: connect
-                    ? l.prototypeWifiConnectNetworks
-                    : l.prototypeWifiDisconnectNetworks,
-                description: connect
-                    ? l.prototypeWifiConnectNetworksHint
-                    : l.prototypeWifiDisconnectNetworksHint,
-                children: [
-                  PolicyStringList(
-                    key: ValueKey(connect),
-                    label: connect
-                        ? l.prototypeWifiConnectNetworks
-                        : l.prototypeWifiDisconnectNetworks,
-                    values: controller.strings(
-                      'apple',
-                      connect ? 'connectWifiSsids' : 'disconnectWifiSsids',
-                    ),
-                    onChanged: (values) => controller.update(
-                      connect ? 'connectWifiSsids' : 'disconnectWifiSsids',
-                      values,
-                      section: 'apple',
-                    ),
-                    enabled: !controller.blocked,
-                    addLabel: l.prototypeAddWifi,
-                    removeLabel: l.prototypeRemoveWifi,
+              Padding(
+                padding: EdgeInsets.only(bottom: gap, top: connect ? 0 : 2),
+                child: AppleWifiEditorSection(
+                  key: ValueKey(connect),
+                  title: connect
+                      ? l.prototypeWifiConnectNetworks
+                      : l.prototypeWifiDisconnectNetworks,
+                  description: connect
+                      ? l.prototypeWifiConnectNetworksHint
+                      : l.prototypeWifiDisconnectNetworksHint,
+                  values: controller.strings(
+                    'apple',
+                    connect ? 'connectWifiSsids' : 'disconnectWifiSsids',
                   ),
-                ],
+                  otherValues: controller.strings(
+                    'apple',
+                    connect ? 'disconnectWifiSsids' : 'connectWifiSsids',
+                  ),
+                  onChanged: (values) => controller.update(
+                    connect ? 'connectWifiSsids' : 'disconnectWifiSsids',
+                    values,
+                    section: 'apple',
+                  ),
+                  enabled: !controller.blocked,
+                ),
               ),
             if (controller.wifiConflict)
-              Padding(
-                padding: const EdgeInsets.all(16),
+              Semantics(
+                liveRegion: true,
                 child: Text(
                   l.prototypeWifiActionConflict,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style:
+                      (mobile
+                              ? AppTypography.appleWifiDescription
+                              : AppTypography.appleWifiDescriptionDesktop)
+                          .copyWith(color: palette.destructive),
                 ),
               )
             else
               AppleWifiPreview(controller: controller),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(l.prototypeWifiExactMatchNotice),
+            SizedBox(height: gap),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  LucideIcons.info,
+                  size: 17,
+                  color: palette.mutedForeground,
+                ),
+                SizedBox(width: mobile ? 7 : 8),
+                Expanded(
+                  child: Text(
+                    l.prototypeWifiExactMatchNotice,
+                    style:
+                        (mobile
+                                ? AppTypography.appleWifiMatchNote
+                                : AppTypography.appleWifiMatchNoteDesktop)
+                            .copyWith(color: palette.mutedForeground),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       );
     },
   );
-}
-
-class AppleWifiPreview extends StatelessWidget {
-  final PolicyEditorController controller;
-  const AppleWifiPreview({super.key, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final connect = controller
-        .strings('apple', 'connectWifiSsids')
-        .where((name) => name.trim().isNotEmpty)
-        .toList();
-    final disconnect = controller
-        .strings('apple', 'disconnectWifiSsids')
-        .where((name) => name.trim().isNotEmpty)
-        .toList();
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (connect.isEmpty && disconnect.isEmpty) ...[
-            Text(l.prototypeNoWifiRules),
-            Text(
-              l.prototypeOtherNetworkRulesApply,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-          for (final group in [connect, disconnect])
-            if (group.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(l.prototypeConnectTo),
-                    ...group.map((name) => Chip(label: Text(name))),
-                    Text(
-                      identical(group, connect)
-                          ? l.prototypeThenConnectVpn
-                          : l.prototypeThenDisconnectVpn,
-                    ),
-                  ],
-                ),
-              ),
-          Text(
-            l.prototypeOtherWifiNetworks,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          Text(l.prototypeKeepCurrentConnection),
-          Text(
-            l.prototypeKeepCurrentConnectionHint,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
 }

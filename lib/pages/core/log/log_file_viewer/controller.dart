@@ -7,6 +7,7 @@ import 'package:onexray/service/xray/runtime_files.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 
 class LogFileViewerPageState {
@@ -167,25 +168,13 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
   Future<void> export(BuildContext context) async {
     if (state.exporting || !state.fileExists) return;
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l.prototypeExport),
-        content: Text(
-          '${p.basename(params.path)}\n\n${l.prototypeLocalLogNotice}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l.prototypeCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l.prototypeExport),
-          ),
-        ],
-      ),
-    );
+    final confirmed = await AppConfirmationDialog(
+      title: l.prototypeExport,
+      subject: p.basename(params.path),
+      content: l.prototypeLocalLogNotice,
+      cancelLabel: l.prototypeCancel,
+      confirmLabel: l.prototypeExport,
+    ).show(context);
     if (confirmed != true || !isPageActive) return;
     emit(state.copyWith(exporting: true));
     try {

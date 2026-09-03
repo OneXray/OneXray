@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/launch/setup/widgets.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/pages/widget/page_action_bar.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/launch/setup.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -105,7 +107,10 @@ class _ChoiceController extends PageCubit<_ChoiceState> {
     : _all = choices,
       super(_ChoiceState(selected, choices));
 
-  void select(String id) => emit(_ChoiceState(id, state.choices));
+  void select(String id) {
+    if (id != state.selected) emit(_ChoiceState(id, state.choices));
+  }
+
   bool get canSave => _all.any((choice) => choice.id == state.selected);
   void search(String text) {
     final search = text.trim().toLowerCase();
@@ -123,7 +128,9 @@ class _ChoiceController extends PageCubit<_ChoiceState> {
   }
 
   void cancel(BuildContext context) => context.pop();
-  void save(BuildContext context) => context.pop(state.selected);
+  void save(BuildContext context) {
+    if (canSave) context.pop(state.selected);
+  }
 }
 
 class _SetupSelector extends StatelessWidget {
@@ -147,52 +154,258 @@ class _SetupSelector extends StatelessWidget {
       builder: (context, state) {
         final l10n = AppLocalizations.of(context)!;
         final controller = context.read<_ChoiceController>();
+        final palette = ColorManager.palette(context);
         return Scaffold(
-          appBar: AppBar(title: Text(title)),
           body: SafeArea(
-            child: SettingsPageScroll(
-              desktopMaxWidth: 760,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(description),
-                  if (searchLabel != null) ...[
-                    const SizedBox(height: 20),
-                    TextField(
-                      decoration: InputDecoration(labelText: searchLabel),
-                      onChanged: controller.search,
+            bottom: false,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: CustomScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
+                      sliver: SliverMainAxisGroup(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          controller.cancel(context),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                        minimumSize: const Size(0, 38),
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        textStyle: AppTypography.control,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            LucideIcons.arrowLeftDir,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(l10n.prototypeBack),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        title,
+                                        style: AppTypography.setupChildTitle,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  description,
+                                  style: AppTypography.setupSelectorDetail
+                                      .copyWith(color: palette.mutedForeground),
+                                ),
+                                const SizedBox(height: 22),
+                                if (searchLabel != null) ...[
+                                  TextField(
+                                    style: AppTypography.setupSearch,
+                                    onChanged: controller.search,
+                                    decoration: InputDecoration(
+                                      hintText: searchLabel,
+                                      hintStyle: AppTypography.setupSearch
+                                          .copyWith(
+                                            color: palette.mutedForeground,
+                                          ),
+                                      prefixIcon: Icon(
+                                        LucideIcons.search,
+                                        size: 19,
+                                        color: palette.mutedForeground,
+                                      ),
+                                      prefixIconConstraints:
+                                          const BoxConstraints(
+                                            minWidth: 44,
+                                            minHeight: 46,
+                                          ),
+                                      contentPadding:
+                                          const EdgeInsetsDirectional.fromSTEB(
+                                            0,
+                                            13,
+                                            14,
+                                            13,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.card,
+                                        ),
+                                        borderSide: BorderSide(
+                                          color: palette.borderStrong,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.card,
+                                        ),
+                                        borderSide: BorderSide(
+                                          color: palette.borderStrong,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                                if (state.choices.isEmpty)
+                                  Text(
+                                    searchLabel == null
+                                        ? l10n.prototypeTemporarilyUnavailable
+                                        : l10n.prototypeNoRegionsFound,
+                                    style: AppTypography.setupSelectorDetail
+                                        .copyWith(
+                                          color: palette.mutedForeground,
+                                        ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          SliverList.builder(
+                            itemCount: state.choices.length,
+                            itemBuilder: (context, index) {
+                              final choice = state.choices[index];
+                              final selected = state.selected == choice.id;
+                              final radius = BorderRadius.vertical(
+                                top: index == 0
+                                    ? const Radius.circular(AppRadii.card)
+                                    : Radius.zero,
+                                bottom: index == state.choices.length - 1
+                                    ? const Radius.circular(AppRadii.card)
+                                    : Radius.zero,
+                              );
+                              return Semantics(
+                                selected: selected,
+                                inMutuallyExclusiveGroup: true,
+                                child: Material(
+                                  color: selected
+                                      ? palette.selectedSurface
+                                      : palette.card,
+                                  borderRadius: radius,
+                                  clipBehavior: Clip.antiAlias,
+                                  child: InkWell(
+                                    onTap: () => controller.select(choice.id),
+                                    child: Container(
+                                      constraints: const BoxConstraints(
+                                        minHeight: 68,
+                                      ),
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        borderRadius: radius,
+                                        border: Border(
+                                          left: BorderSide(
+                                            color: palette.border,
+                                          ),
+                                          right: BorderSide(
+                                            color: palette.border,
+                                          ),
+                                          bottom: BorderSide(
+                                            color: palette.border,
+                                          ),
+                                          top: index == 0
+                                              ? BorderSide(
+                                                  color: palette.border,
+                                                )
+                                              : BorderSide.none,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          ShadRadioGroup<String>(
+                                            initialValue: state.selected,
+                                            onChanged: (value) {
+                                              if (value != null &&
+                                                  value != state.selected) {
+                                                controller.select(value);
+                                              }
+                                            },
+                                            items: [
+                                              ShadRadio<String>(
+                                                value: choice.id,
+                                                size: 16,
+                                                circleSize: 10,
+                                                radioPadding: EdgeInsets.zero,
+                                                decoration: ShadDecoration(
+                                                  border: ShadBorder.all(
+                                                    color: selected
+                                                        ? palette.primary
+                                                        : palette.borderStrong,
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                Text(
+                                                  choice.label,
+                                                  style: AppTypography
+                                                      .setupSelectorTitle,
+                                                ),
+                                                if (choice
+                                                    .description
+                                                    .isNotEmpty) ...[
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    choice.description,
+                                                    style: AppTypography
+                                                        .setupSelectorDetail
+                                                        .copyWith(
+                                                          color: palette
+                                                              .mutedForeground,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 20),
-                  if (state.choices.isEmpty)
-                    Text(
-                      searchLabel == null
-                          ? l10n.prototypeTemporarilyUnavailable
-                          : l10n.prototypeNoRegionsFound,
-                    ),
-                  for (final choice in state.choices)
-                    SettingsChoiceRow(
-                      title: choice.label,
-                      description: choice.description,
-                      selected: state.selected == choice.id,
-                      onTap: () => controller.select(choice.id),
-                    ),
-                ],
+                ),
               ),
             ),
           ),
-          bottomNavigationBar: PageActionBar(
+          bottomNavigationBar: SetupFooter(
             children: [
-              ShadButton.outline(
+              SetupActionButton(
+                label: l10n.prototypeCancel,
+                outline: true,
                 onPressed: () => controller.cancel(context),
-                child: Text(l10n.prototypeCancel),
               ),
-              ShadButton(
+              SetupActionButton(
+                label: l10n.prototypeDone,
                 onPressed: controller.canSave
                     ? () => controller.save(context)
                     : null,
-                child: Text(l10n.prototypeDone),
               ),
             ],
           ),

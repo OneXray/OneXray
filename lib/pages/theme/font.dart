@@ -166,6 +166,20 @@ abstract final class AppTypography {
   static final configurationTool = _prototypeRole(12, 620);
   static final rawField = _prototypeRole(12, 620);
   static final rawNote = _prototypeRole(11, 400, height: 1.45);
+  static final runtimeCodePill = _prototypeRole(11, 620);
+  static final runtimeCodeAction = _prototypeRole(11, 600);
+  static final runtimeCodeMobile = _prototypeRole(
+    10.5,
+    400,
+    height: 1.65,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final runtimeCodeDesktop = _prototypeRole(
+    12,
+    400,
+    height: 1.75,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final runtimeCodeNote = _prototypeRole(10, 400, height: 1.45);
+  static final runtimeCodeDesktopNote = _prototypeRole(11, 400, height: 1.45);
   static final routingConditionInput = _prototypeRole(16, 400);
   static final subscriptionField = _prototypeRole(12, 610);
   static final subscriptionInfo = _prototypeRole(12, 400, height: 1.45);
@@ -198,6 +212,96 @@ abstract final class AppTypography {
   static final aboutBrandDescription = _prototypeRole(12, 400, height: 1.375);
   static final settingsChoiceTitle = _prototypeRole(14, 570);
   static final settingsChoiceDetail = _prototypeRole(11, 400, height: 1.5);
+  static final iconPreviewBrand = _prototypeRole(16, 700);
+  static final iconChoice = _prototypeRole(13, 400);
+  static final iconPreviewCaption = _prototypeRole(12, 400);
+  static final platformDetailTitle = _prototypeRole(19, 700, height: 1.3);
+  static final platformDetailBody = _prototypeRole(16, 400);
+  static final platformChoiceTitle = _prototypeRole(13, 700);
+  static final platformChoiceHint = _prototypeRole(11, 400);
+  static final windowsPolicyHint = _prototypeRole(12, 400, height: 1.6);
+  static final windowsNetworkTitle = _prototypeRole(15, 700, height: 1.3);
+  static final windowsNetworkMeta = _prototypeRole(12, 400);
+  static final windowsNetworkInput = _prototypeRole(13, 400);
+  static final windowsNetworkNote = _prototypeRole(11, 400, height: 1.6);
+  static final setupBrand = _prototypeRole(
+    19,
+    720,
+  ).copyWith(letterSpacing: 19 * -0.04);
+  static final setupTitle = _prototypeRole(
+    27,
+    680,
+    height: 1.4,
+  ).copyWith(letterSpacing: 27 * -0.035);
+  static final setupDesktopTitle = _prototypeRole(
+    40,
+    680,
+    height: 1.3,
+  ).copyWith(letterSpacing: 40 * -0.035);
+  static final setupWelcomeTitle = _prototypeRole(
+    25,
+    680,
+    height: 1.4,
+  ).copyWith(letterSpacing: 25 * -0.035);
+  static final setupSubtitle = _prototypeRole(14, 400, height: 1.65);
+  static final setupDesktopSubtitle = _prototypeRole(16, 400, height: 1.65);
+  static final setupPoint = _prototypeRole(13, 400, height: 1.65);
+  static final setupDesktopPoint = _prototypeRole(14, 400, height: 1.65);
+  static final setupProgress = _prototypeRole(14, 700, height: 1.5);
+  static final setupReady = _prototypeRole(16, 550, height: 1.6);
+  static final setupPermission = _prototypeRole(16, 400, height: 1.5);
+  static final setupStatus = _prototypeRole(13, 400);
+  static final setupHint = _prototypeRole(12, 400, height: 1.65);
+  static final setupSkipNote = _prototypeRole(12, 400, height: 1.6);
+  static final setupRowTitle = _prototypeRole(16, 600, height: 1.5);
+  static final setupImport = _prototypeRole(14, 400);
+  static final setupAction = _prototypeRole(16, 620, height: 1.4);
+  static final setupChildTitle = _prototypeRole(
+    23,
+    700,
+    height: 1.35,
+  ).copyWith(letterSpacing: 23 * -0.035);
+  static final setupSelectorTitle = _prototypeRole(15, 600, height: 1.5);
+  static final setupSelectorDetail = _prototypeRole(13, 400, height: 1.5);
+  static final setupSearch = _prototypeRole(15, 400);
+  static final setupError = _prototypeRole(13, 400, height: 1.6);
+  static final setupPrivacyLink = _prototypeRole(14, 620);
+  static final appleSettingTitle = _prototypeRole(12, 700);
+  static final appleSettingTitleDesktop = _prototypeRole(13, 700);
+  static final appleSettingHint = _prototypeRole(10, 400, height: 1.4);
+  static final appleSettingHintDesktop = _prototypeRole(11, 400, height: 1.4);
+  static final appleAutoTitle = _prototypeRole(14, 680, height: 1.3);
+  static final appleAutoTitleDesktop = _prototypeRole(15, 680, height: 1.3);
+  static final appleRuleTitle = _prototypeRole(11, 700);
+  static final appleRuleTitleDesktop = _prototypeRole(12, 700);
+  static final appleRuleHint = _prototypeRole(10, 400);
+  static final appleRuleHintDesktop = _prototypeRole(11, 400);
+  static final appleWifiToken = _prototypeRole(11, 560);
+  static final appleWifiTokenDesktop = _prototypeRole(12, 560);
+  static final appleNetworkAction = _prototypeRole(10.5, 620);
+  static final appleNetworkActionDesktop = _prototypeRole(11, 620);
+  static final appleFallbackPill = _prototypeRole(10, 560);
+  static final appleFallbackPillDesktop = _prototypeRole(11, 560);
+  static final appleWifiEdit = _prototypeRole(11, 650);
+  static final appleWifiEditDesktop = _prototypeRole(12, 650);
+  static final appleWifiHeading = _prototypeRole(15, 700, height: 1.3);
+  static final appleWifiHeadingDesktop = _prototypeRole(18, 700, height: 1.3);
+  static final appleWifiDescription = _prototypeRole(11, 400);
+  static final appleWifiDescriptionDesktop = _prototypeRole(13, 400);
+  static final appleWifiInput = _prototypeRole(12, 400);
+  static final appleWifiInputDesktop = _prototypeRole(16, 400);
+  static final appleWifiAdd = _prototypeRole(12, 650);
+  static final appleWifiAddDesktop = _prototypeRole(13, 650);
+  static final appleWifiMatchNote = _prototypeRole(10.5, 400);
+  static final appleWifiMatchNoteDesktop = _prototypeRole(12, 400);
+  static final updateTitle = _prototypeRole(18, 600, height: 1.3);
+  static final updateVersionLabel = _prototypeRole(13, 400);
+  static final updateVersion = _prototypeRole(
+    12,
+    400,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final updateNotesHeading = _prototypeRole(14, 700, height: 1.3);
+  static final updateNotes = _prototypeRole(13, 400, height: 1.65);
   static final settingsDanger = _prototypeRole(13.5, 570);
   static final backupBody = _prototypeRole(14, 400, height: 1.65);
   static final backupScopeHint = _prototypeRole(12, 400, height: 1.65);

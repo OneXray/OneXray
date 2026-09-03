@@ -45,8 +45,10 @@ void main() {
     testWidgets(
       'settings language and icon choices fit ${locale.toLanguageTag()}',
       (tester) async {
-        await tester.binding.setSurfaceSize(const Size(390, 844));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
         LanguageCode? language;
         await tester.pumpWidget(
           app(
@@ -88,6 +90,17 @@ void main() {
         for (final option in AppIcon.values) {
           expect(find.text(appIconLabel(l10n, option)), findsOneWidget);
         }
+        final icons = find.byType(Image);
+        expect(tester.getSize(icons.first), const Size(100, 100));
+        expect(tester.getSize(icons.at(1)), const Size(62, 62));
+        expect(
+          tester.getTopLeft(icons.at(1)).dy,
+          tester.getTopLeft(icons.at(3)).dy,
+        );
+        expect(
+          tester.getTopLeft(icons.at(4)).dy,
+          greaterThan(tester.getTopLeft(icons.at(1)).dy),
+        );
         await tester.tap(find.text(l10n.prototypeIconBlack));
         expect(icon, AppIcon.black);
         expect(tester.takeException(), isNull);

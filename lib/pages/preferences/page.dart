@@ -440,11 +440,36 @@ class _DesktopStartupRows extends StatelessWidget {
                 title: l10n.prototypeLaunchAtLogin,
                 subtitle: l10n.prototypeLaunchAtLoginHint,
                 value: state.launchAtLogin.enabled,
-                onChanged: state.launchToggleEnabled
+                onChanged: state.launchToggleEnabled && !state.requiresApproval
                     ? (value) => controller.updateLaunchAtLogin(context, value)
                     : null,
               ),
-              if (state.requiresApproval)
+              const Divider(height: 1),
+              _StartupSettingRow(
+                title: l10n.prototypeStartHidden,
+                subtitle: l10n.prototypeStartHiddenHint,
+                value: state.startHidden,
+                onChanged: state.behaviorSettingsEnabled
+                    ? (value) =>
+                          controller.updateStartHidden(value, context: context)
+                    : null,
+              ),
+              if (AppPlatform.isMacOS) ...[
+                const Divider(height: 1),
+                _StartupSettingRow(
+                  title: l10n.prototypeHideDockIcon,
+                  subtitle: l10n.prototypeHideDockIconHint,
+                  value: state.hideDockIcon,
+                  onChanged: state.behaviorSettingsEnabled
+                      ? (value) => controller.updateHideDockIcon(
+                          value,
+                          context: context,
+                        )
+                      : null,
+                ),
+              ],
+              if (state.requiresApproval) ...[
+                const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -474,27 +499,7 @@ class _DesktopStartupRows extends StatelessWidget {
                     ],
                   ),
                 ),
-              _StartupSettingRow(
-                title: l10n.prototypeStartHidden,
-                subtitle: l10n.prototypeStartHiddenHint,
-                value: state.startHidden,
-                onChanged: state.behaviorSettingsEnabled
-                    ? (value) =>
-                          controller.updateStartHidden(value, context: context)
-                    : null,
-              ),
-              if (AppPlatform.isMacOS)
-                _StartupSettingRow(
-                  title: l10n.prototypeHideDockIcon,
-                  subtitle: l10n.prototypeHideDockIconHint,
-                  value: state.hideDockIcon,
-                  onChanged: state.behaviorSettingsEnabled
-                      ? (value) => controller.updateHideDockIcon(
-                          value,
-                          context: context,
-                        )
-                      : null,
-                ),
+              ],
             ],
           );
         },

@@ -7,9 +7,23 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/doc/helper.dart';
+import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/service/launch/setup.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+enum SetupAction {
+  acceptPrivacy,
+  privacy,
+  back,
+  permission,
+  continueSystem,
+  chooseInterface,
+  chooseRegion,
+  detectRegion,
+  skipRegion,
+  confirmRegion,
+  finish,
+  retry,
+}
 
 class SetupPageState {
   final SetupStep step;
@@ -38,6 +52,11 @@ class SetupPageState {
 
   bool get authorized =>
       permission != null && SetupService.permissionReady(permission!);
+
+  bool ready({required bool requiresInterface}) =>
+      localReady &&
+      authorized &&
+      (!requiresInterface || interfaceName.isNotEmpty);
 
   SetupPageState copyWith({
     SetupStep? step,
@@ -76,10 +95,37 @@ class SetupController extends PageCubit<SetupPageState>
     unawaited(_perform(_load, initial: true));
   }
 
-  bool get ready =>
-      state.localReady &&
-      state.authorized &&
-      (!service.requiresInterface || state.interfaceName.isNotEmpty);
+  bool get ready => state.ready(requiresInterface: service.requiresInterface);
+
+  void handleAction(BuildContext context, SetupAction action) {
+    if (state.busy) return;
+    switch (action) {
+      case SetupAction.acceptPrivacy:
+        unawaited(acceptPrivacy());
+      case SetupAction.privacy:
+        unawaited(context.push('${RouterPath.setup}/privacy'));
+      case SetupAction.back:
+        showWelcome();
+      case SetupAction.permission:
+        unawaited(requestPermission());
+      case SetupAction.continueSystem:
+        unawaited(continueSystem());
+      case SetupAction.chooseInterface:
+        unawaited(chooseInterface(context));
+      case SetupAction.chooseRegion:
+        unawaited(chooseRegion(context));
+      case SetupAction.detectRegion:
+        unawaited(detectRegion());
+      case SetupAction.skipRegion:
+        unawaited(continueRegion(confirm: false));
+      case SetupAction.confirmRegion:
+        unawaited(continueRegion(confirm: true));
+      case SetupAction.finish:
+        unawaited(finish());
+      case SetupAction.retry:
+        unawaited(retry());
+    }
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -187,9 +233,10 @@ class SetupController extends PageCubit<SetupPageState>
 
   Future<void> addServers(
     BuildContext context,
-    Future<void> Function(BuildContext) open,
+    ServerImportAction action,
+    Future<void> Function(BuildContext, ServerImportAction) open,
   ) => _perform(() async {
-    await open(context);
+    await open(context, action);
     emit(state.copyWith(hasServers: await service.hasServers()));
   });
 
@@ -199,12 +246,6 @@ class SetupController extends PageCubit<SetupPageState>
     await service.finish();
     emit(state.copyWith(step: SetupStep.complete));
   }
-
-  Future<void> openPrivacy() => _perform(() async {
-    if (!await launchUrl(DocURLHelper.privacyUri())) {
-      throw const SetupFailure('privacy');
-    }
-  });
 
   void goHome(BuildContext context) => context.go(RouterPath.home);
 

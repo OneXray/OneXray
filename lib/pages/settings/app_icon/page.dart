@@ -5,6 +5,8 @@ import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/app_icon/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -46,12 +48,14 @@ class AppIconPage extends StatelessWidget {
               bottomNavigationBar: PageActionBar(
                 children: [
                   ShadButton.outline(
+                    enabled: !state.saving,
                     onPressed: state.saving
                         ? null
                         : () => controller.cancel(context),
                     child: Text(l10n.prototypeCancel),
                   ),
                   ShadButton(
+                    enabled: !state.loading && !state.saving,
                     onPressed: state.loading || state.saving
                         ? null
                         : () => controller.save(context),
@@ -84,44 +88,72 @@ class AppIconChoiceView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     return SettingsPageScroll(
       desktopMaxWidth: 760,
+      padding: const EdgeInsets.fromLTRB(14, 17, 14, 26),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsPageIntro(
-            title: useDockIconAssets
-                ? l10n.prototypeDockPreview
-                : l10n.prototypeHomeScreenPreview,
-            description: description,
-            trailing: _iconImage(_imageFor(selected), 76),
-          ),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 8),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 600 ? 3 : 2;
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: AppIcon.values.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: columns == 3 ? 1.22 : 1.0,
-                  ),
-                  itemBuilder: (context, index) {
-                    final icon = AppIcon.values[index];
-                    return _AppIconOption(
-                      label: appIconLabel(l10n, icon),
-                      image: _imageFor(icon),
-                      selected: selected == icon,
-                      onTap: () => onSelected(icon),
-                    );
-                  },
-                );
-              },
+          Text(
+            description,
+            style: AppTypography.settingsDetailNote.copyWith(
+              color: ColorManager.secondaryText(context),
             ),
+          ),
+          const SizedBox(height: 23),
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 16),
+            child: Column(
+              children: [
+                _iconImage(_imageFor(selected), 100),
+                const SizedBox(height: 9),
+                Text('OneXray', style: AppTypography.iconPreviewBrand),
+                const SizedBox(height: 9),
+                Text(
+                  useDockIconAssets
+                      ? l10n.prototypeDockPreview
+                      : l10n.prototypeHomeScreenPreview,
+                  style: AppTypography.iconPreviewCaption.copyWith(
+                    color: ColorManager.secondaryText(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 23),
+          ShadRadioGroup<AppIcon>(
+            axis: Axis.horizontal,
+            initialValue: selected,
+            onChanged: (icon) {
+              if (icon != null && icon != selected) onSelected(icon);
+            },
+            items: [
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final gap = mobile ? 10.0 : 14.0;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final icon in AppIcon.values)
+                        SizedBox(
+                          width: (constraints.maxWidth - gap * 2) / 3,
+                          child: _AppIconOption(
+                            icon: icon,
+                            label: appIconLabel(l10n, icon),
+                            image: _imageFor(icon),
+                            selected: selected == icon,
+                            onTap: () => onSelected(icon),
+                            mobile: mobile,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -133,10 +165,7 @@ class AppIconChoiceView extends StatelessWidget {
   }
 
   static Widget _iconImage(AssetGenImage image, double size) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(size * 0.22),
-      child: image.image(width: size, height: size, fit: BoxFit.cover),
-    );
+    return image.image(width: size, height: size, fit: BoxFit.contain);
   }
 }
 
@@ -150,16 +179,20 @@ String appIconLabel(AppLocalizations l10n, AppIcon icon) => switch (icon) {
 };
 
 class _AppIconOption extends StatelessWidget {
+  final AppIcon icon;
   final String label;
   final AssetGenImage image;
   final bool selected;
   final VoidCallback onTap;
+  final bool mobile;
 
   const _AppIconOption({
+    required this.icon,
     required this.label,
     required this.image,
     required this.selected,
     required this.onTap,
+    required this.mobile,
   });
 
   @override
@@ -175,7 +208,10 @@ class _AppIconOption extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.all(13),
+            padding: EdgeInsets.symmetric(
+              horizontal: mobile ? 5 : 10,
+              vertical: mobile ? 14 : 18,
+            ),
             decoration: BoxDecoration(
               color: selected
                   ? ColorManager.selected(context)
@@ -185,28 +221,21 @@ class _AppIconOption extends StatelessWidget {
                 color: selected ? primary : ColorManager.border(context),
               ),
             ),
-            child: Stack(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppIconChoiceView._iconImage(image, 72),
-                      const SizedBox(height: 10),
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-                PositionedDirectional(
-                  top: 0,
-                  end: 0,
-                  child: SettingsChoiceIndicator(selected: selected),
+                AppIconChoiceView._iconImage(image, mobile ? 62 : 72),
+                const SizedBox(height: 12),
+                ShadRadio<AppIcon>(
+                  value: icon,
+                  decoration: selected
+                      ? ShadDecoration(
+                          border: ShadBorder.all(color: primary, width: 1),
+                        )
+                      : null,
+                  radioPadding: EdgeInsets.zero,
+                  padding: const EdgeInsetsDirectional.only(start: 7),
+                  label: Text(label, style: AppTypography.iconChoice),
                 ),
               ],
             ),
