@@ -115,7 +115,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
         guard let text = request.coreInvokeText,
               let planId = try LibXrayInvokeRequest.fromText(text).payload?.runtime?.planId,
-              RuntimeStateSnapshot.isSessionId(planId) else {
+              isValidPlanId(planId) else {
             throw TunnelError.noStartModel
         }
         let fm = FileManager.default
@@ -256,13 +256,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         case .startXray:
             fulfillStartSignal()
             response = .ok
-        case let .readRuntime(removeSessionIds):
-            do {
-                guard data.count <= RuntimeStateFiles.maximumBytes else { throw RuntimeStateError.invalid }
-                response = .runtimeState(try readRuntimeState(removeSessionIds: removeSessionIds))
-            } catch {
-                response = .error((error as? RuntimeStateError ?? .unavailable).rawValue)
-            }
         case let .readLog(planId, access, offset, limit):
             do {
                 guard data.count <= 4096 else { throw RuntimeStateError.invalid }
@@ -272,9 +265,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             }
         }
         guard let encoded = try? TunnelMessageCoder.encode(response) else { return nil }
-        if case .readRuntime = request, encoded.count > RuntimeStateFiles.maximumBytes {
-            return try? TunnelMessageCoder.encode(TunnelResponse.error(RuntimeStateError.invalid.rawValue))
-        }
         if case .readLog = request, encoded.count > TunnelLogChunk.maximumMessageBytes {
             return try? TunnelMessageCoder.encode(TunnelResponse.error(RuntimeStateError.invalid.rawValue))
         }
@@ -285,7 +275,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         guard Constants.useSystemExtension, let container = extensionGroupContainerURL() else {
             throw RuntimeStateError.unsupported
         }
-        guard RuntimeStateSnapshot.isSessionId(planId) else { throw RuntimeStateError.invalid }
+        guard isValidPlanId(planId) else { throw RuntimeStateError.invalid }
         var directory = container
         for component in ["", "run", "plans", planId] {
             if !component.isEmpty { directory = directory.adaptedAppendPath(path: component) }
@@ -319,48 +309,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         return chunk
     }
 
-    private func readRuntimeState(removeSessionIds: [String]) throws -> String {
-        guard Constants.useSystemExtension, let container = extensionGroupContainerURL() else {
-            throw RuntimeStateError.unsupported
-        }
-        guard removeSessionIds.allSatisfy(RuntimeStateSnapshot.isSessionId) else {
-            throw RuntimeStateError.invalid
-        }
-        let runDirectory = container.adaptedAppendPath(path: "run")
-        guard try runtimeDirectoryExists(runDirectory) else {
-            return try RuntimeStateFiles(current: nil, archived: []).validatedText()
-        }
-        let current = try readRuntimeSnapshot(runDirectory.adaptedAppendPath(path: "runtime.json"))
-        guard !removeSessionIds.contains(where: { $0 == current?.session.id }) else {
-            throw RuntimeStateError.inUse
-        }
-        let archives = runDirectory.adaptedAppendPath(path: "runtime-sessions")
-        guard try runtimeDirectoryExists(archives) else {
-            return try RuntimeStateFiles(current: current, archived: []).validatedText()
-        }
-        let manager = FileManager.default
-        // Only IDs already settled by the App may be removed; never touch runtime.json.
-        for id in Set(removeSessionIds) {
-            let file = archives.adaptedAppendPath(path: "\(id).json")
-            if let snapshot = try readRuntimeSnapshot(file) {
-                guard snapshot.session.id == id else { throw RuntimeStateError.invalid }
-                try manager.removeItem(at: file)
-            }
-        }
-        var archived: [RuntimeStateSnapshot] = []
-        var totalBytes = 0
-        for file in try manager.contentsOfDirectory(at: archives, includingPropertiesForKeys: nil) {
-            let id = file.deletingPathExtension().lastPathComponent
-            guard file.pathExtension == "json", RuntimeStateSnapshot.isSessionId(id) else { continue }
-            guard let snapshot = try readRuntimeSnapshot(file) else { continue }
-            guard snapshot.session.id == id else { throw RuntimeStateError.invalid }
-            totalBytes += try JSONEncoder().encode(snapshot).count + 1
-            guard totalBytes <= RuntimeStateFiles.maximumBytes else { throw RuntimeStateError.invalid }
-            archived.append(snapshot)
-        }
-        return try RuntimeStateFiles(current: current, archived: archived).validatedText()
-    }
-
     private func runtimeDirectoryExists(_ directory: URL) throws -> Bool {
         do {
             let values = try directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
@@ -370,24 +318,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             return true
         } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
             return false
-        }
-    }
-
-    private func readRuntimeSnapshot(_ file: URL) throws -> RuntimeStateSnapshot? {
-        do {
-            let values = try file.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
-            guard values.isRegularFile == true, values.isSymbolicLink != true else {
-                throw RuntimeStateError.invalid
-            }
-            let handle = try FileHandle(forReadingFrom: file)
-            defer { try? handle.close() }
-            let data = try handle.read(upToCount: 65537) ?? Data()
-            guard data.count <= 65536 else { throw RuntimeStateError.invalid }
-            let snapshot = try JSONDecoder().decode(RuntimeStateSnapshot.self, from: data)
-            try snapshot.validate()
-            return snapshot
-        } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
-            return nil
         }
     }
 

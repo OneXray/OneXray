@@ -395,14 +395,6 @@ class AppHostApi {
     return _errorResult;
   }
 
-  /// Reads fixed System Extension session files and removes settled archives.
-  Future<String?> readRuntimeState({List<String> removeSessionIds = const []}) {
-    if (!AppPlatform.isMacOS) {
-      throw UnsupportedError('runtimeStateRequiresSystemExtension');
-    }
-    return _api.readRuntimeState(removeSessionIds);
-  }
-
   /// Reads only the two fixed logs inside a System Extension plan directory.
   Future<NativeLogChunk?> readLog({
     required String planId,

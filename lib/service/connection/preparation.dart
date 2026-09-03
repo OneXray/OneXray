@@ -34,6 +34,29 @@ String newPlanId() {
   ).join();
 }
 
+Future<List<int>> allocateRuntimePorts(
+  List<dynamic> rawInbounds, {
+  Future<List<int>> Function(int count)? getFreePorts,
+}) async {
+  final allocate = getFreePorts ?? AppHostApi().getFreePorts;
+  for (var attempt = 0; attempt < 5; attempt++) {
+    final candidates = await allocate(4);
+    if (candidates.length == 4 &&
+        candidates.toSet().length == 4 &&
+        candidates.every((port) => port > 0 && port <= 65535) &&
+        !rawInbounds.any(
+          (entry) =>
+              entry is Map &&
+              candidates.any(
+                (port) => ConnectionCompiler.portIncludes(entry['port'], port),
+              ),
+        )) {
+      return candidates;
+    }
+  }
+  throw const FormatException('Runtime ports are unavailable');
+}
+
 /// Resolves and validates without publishing settings or starting a VPN.
 class ConnectionPreparation {
   final AppDatabase db;
@@ -159,26 +182,7 @@ class ConnectionPreparation {
           ? null
           : jsonDecode(raw) as Map<String, dynamic>;
       final rawInbounds = rawObject?['inbounds'] as List<dynamic>? ?? [];
-      List<int>? ports;
-      for (var attempt = 0; attempt < 5; attempt++) {
-        final candidates = await AppHostApi().getFreePorts(3);
-        if (candidates.length == 3 &&
-            candidates.toSet().length == 3 &&
-            !rawInbounds.any(
-              (entry) =>
-                  entry is Map &&
-                  candidates.any(
-                    (port) =>
-                        ConnectionCompiler.portIncludes(entry['port'], port),
-                  ),
-            )) {
-          ports = candidates;
-          break;
-        }
-      }
-      if (ports == null) {
-        throw const FormatException('Runtime ports are unavailable');
-      }
+      final ports = await allocateRuntimePorts(rawInbounds);
       final bootstrap = <String, List<String>>{};
       if (!policy.ipv6Enabled) {
         final outbounds = rawObject == null
@@ -249,6 +253,8 @@ class ConnectionPreparation {
       final runtime = ManagedRuntimeRequest(
         statePath: p.join(VpnConstants.runDir, 'runtime.json'),
         planId: id,
+        listen: '127.0.0.1:${ports[3]}',
+        token: newPlanId(),
       );
       final request = StartVpnRequest(
         tun,

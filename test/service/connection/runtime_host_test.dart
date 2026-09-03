@@ -32,8 +32,8 @@ void main() {
       await file.writeAsString(plan.encode());
       final host = ConnectionRuntimeHost(
         runDirectory: directory.path,
-        readRuntimeFiles: (_) async =>
-            RuntimeStateFiles(current: _snapshot('a', plan.id, 10, 20)),
+        readRuntimeState: (_) async =>
+            RuntimeState(current: _snapshot('a', plan.id, 10, 20)),
       );
       expect((await host.readPlan(plan.id))?.encode(), plan.encode());
       final running = await host.inspect(
@@ -204,7 +204,7 @@ void main() {
     final current = _snapshot('a', plan.id, 10, 20);
     final host = ConnectionRuntimeHost(
       runDirectory: directory.path,
-      readRuntimeFiles: (_) async => RuntimeStateFiles(current: current),
+      readRuntimeState: (_) async => RuntimeState(current: current),
     );
     final first = await host.query(plan);
     expect(first.uplink, 15);
@@ -225,8 +225,8 @@ void main() {
     final plan = _plan();
     final host = ConnectionRuntimeHost(
       runDirectory: directory.path,
-      readRuntimeFiles: (_) async =>
-          RuntimeStateFiles(current: _snapshot('a', plan.id, 10, 20)),
+      readRuntimeState: (_) async =>
+          RuntimeState(current: _snapshot('a', plan.id, 10, 20)),
       readMetrics: (_) async => throw const SocketException('Not available'),
       readStatus: () async => VpnStatus.connected,
     );
@@ -248,8 +248,8 @@ void main() {
         statusReads++;
         return VpnStatus.connected;
       },
-      readRuntimeFiles: (_) async =>
-          RuntimeStateFiles(current: _snapshot('a', plan.id, 10, 20)),
+      readRuntimeState: (_) async =>
+          RuntimeState(current: _snapshot('a', plan.id, 10, 20)),
       readMetrics: (_) async =>
           throw StateError('No metrics during reconciliation'),
     );
@@ -273,7 +273,7 @@ void main() {
       final result = Completer<XrayMetricsVars>();
       final host = ConnectionRuntimeHost(
         runDirectory: directory.path,
-        readRuntimeFiles: (_) async => RuntimeStateFiles(current: current),
+        readRuntimeState: (_) async => RuntimeState(current: current),
         readMetrics: (_) {
           entered.complete();
           return result.future;
@@ -296,7 +296,7 @@ void main() {
     },
   );
 
-  test('start skips a healthy old file until native confirms a different live session', () async {
+  test('start skips a healthy old snapshot until native confirms a different live session', () async {
     final plan = _plan();
     var current = _snapshot('a', plan.id, 1, 2);
     var statusReads = 0;
@@ -304,7 +304,7 @@ void main() {
     var metricReads = 0;
     final host = ConnectionRuntimeHost(
       runDirectory: directory.path,
-      readRuntimeFiles: (_) async => RuntimeStateFiles(current: current),
+      readRuntimeState: (_) async => RuntimeState(current: current),
       readStatus: () async {
         if (++statusReads == 2) {
           current = _snapshot('b', plan.id, 3, 6);
@@ -328,39 +328,42 @@ void main() {
     expect(started.plan!.id, plan.id);
   });
 
-  test('a new file without working metrics cannot confirm startup', () async {
-    final plan = _plan();
-    var current = _snapshot('a', plan.id, 1, 2);
-    final host = ConnectionRuntimeHost(
-      runDirectory: directory.path,
-      readRuntimeFiles: (_) async => RuntimeStateFiles(current: current),
-      readStatus: () async => VpnStatus.connected,
-      startVpn: (_) async {
-        current = _snapshot('b', plan.id, 3, 6);
-        return _success();
-      },
-      readMetrics: (_) async => throw const SocketException('Not ready'),
-      startTimeout: const Duration(milliseconds: 30),
-      pollInterval: Duration.zero,
-    );
-    await expectLater(host.start(plan), throwsA(_reason('startTimeout')));
-    final actual = await host.inspect([plan]);
-    expect(actual.connected, true);
-    expect(actual.traffic!.available, false);
-  });
+  test(
+    'a new snapshot without working metrics cannot confirm startup',
+    () async {
+      final plan = _plan();
+      var current = _snapshot('a', plan.id, 1, 2);
+      final host = ConnectionRuntimeHost(
+        runDirectory: directory.path,
+        readRuntimeState: (_) async => RuntimeState(current: current),
+        readStatus: () async => VpnStatus.connected,
+        startVpn: (_) async {
+          current = _snapshot('b', plan.id, 3, 6);
+          return _success();
+        },
+        readMetrics: (_) async => throw const SocketException('Not ready'),
+        startTimeout: const Duration(milliseconds: 30),
+        pollInterval: Duration.zero,
+      );
+      await expectLater(host.start(plan), throwsA(_reason('startTimeout')));
+      final actual = await host.inspect([plan]);
+      expect(actual.connected, true);
+      expect(actual.traffic!.available, false);
+    },
+  );
 
   test(
-    'unavailable pre-start provider does not block a freshly started session',
+    'unavailable pre-start endpoint does not block a freshly started session',
     () async {
       final plan = _plan();
       RuntimeSnapshot? current;
       final host = ConnectionRuntimeHost(
         runDirectory: directory.path,
-        readRuntimeFiles: (_) async {
+        readRuntimeState: (_) async {
           if (current == null) {
-            throw const SocketException('Provider not started');
+            throw const SocketException('Core not started');
           }
-          return RuntimeStateFiles(current: current);
+          return RuntimeState(current: current);
         },
         readStatus: () async => VpnStatus.connected,
         startVpn: (_) async {
@@ -387,64 +390,224 @@ void main() {
     },
   );
 
-  test(
-    'stop calls native first and reads its final file without a metrics flush',
-    () async {
-      final plan = _plan();
-      var stopped = false;
-      final host = ConnectionRuntimeHost(
-        runDirectory: directory.path,
-        readRuntimeFiles: (_) async {
-          expect(stopped, true);
-          return RuntimeStateFiles(
-            current: _snapshot('a', plan.id, 23, 46, ended: 9),
-          );
-        },
-        readStatus: () async => VpnStatus.disconnected,
-        stopVpn: () async {
-          stopped = true;
-          return _success();
-        },
-        readMetrics: (_) async =>
-            throw StateError('Unexpected metrics request'),
+  test('runtime HTTP authenticates requests and rejects invalid sessions or redirects', () async {
+    await File(p.join(directory.path, 'runtime.json'))
+        .writeAsString('invalid legacy state');
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final plan = _plan(runtimePort: server.port);
+    final valid = _snapshot('a', plan.id, 1, 2).toJson();
+    Object? current = valid;
+    var redirect = false;
+    final paths = <String>[];
+    server.listen((request) async {
+      paths.add(request.uri.path);
+      expect(request.method, 'GET');
+      expect(
+        request.headers.value(HttpHeaders.authorizationHeader),
+        'Bearer ${plan.runtime.token}',
       );
-      final result = await host.stop(plan);
-      expect(result.connected, false);
-      expect(result.traffic!.endedAtMs, 9);
-      expect(result.traffic!.totalUplink, 23);
-    },
-  );
-
-  test(
-    'local archives are accounted and removed without deleting current',
-    () async {
-      final archiveDirectory = Directory(
-        p.join(directory.path, 'runtime-sessions'),
-      );
-      await archiveDirectory.create();
-      final currentFile = File(p.join(directory.path, 'runtime.json'));
-      final archivedFile = File(
-        p.join(archiveDirectory.path, '${_id('a')}.json'),
-      );
-      await currentFile.writeAsString(jsonEncode(_snapshotJson('b', 3, 6)));
-      await archivedFile.writeAsString(jsonEncode(_snapshotJson('a', 7, 14)));
-      final host = ConnectionRuntimeHost(runDirectory: directory.path);
-      expect((await host.readSavedTraffic())!.totalUplink, 10);
-      expect(await currentFile.exists(), true);
-      expect(await archivedFile.exists(), false);
-      expect((await host.readSavedTraffic())!.totalUplink, 10);
-    },
-  );
-
-  test('local archive reader rejects a linked archive directory', () async {
-    final outside = await Directory.systemTemp.createTemp(
-      'onexray-archive-link-',
+      if (redirect && request.uri.path == '/runtime') {
+        request.response.statusCode = HttpStatus.found;
+        request.response.headers.set(HttpHeaders.locationHeader, '/forwarded');
+      } else {
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({'current': current, 'archived': []}),
+        );
+      }
+      await request.response.close();
+    });
+    var metricsReads = 0;
+    final host = ConnectionRuntimeHost(
+      runDirectory: directory.path,
+      readMetrics: (_) async {
+        metricsReads++;
+        return _metrics(1, 2);
+      },
     );
-    addTearDown(() => outside.delete(recursive: true));
-    await Link(p.join(directory.path, 'runtime-sessions')).create(outside.path);
-    final host = ConnectionRuntimeHost(runDirectory: directory.path);
-    await expectLater(host.readSavedTraffic(), throwsFormatException);
-  }, skip: Platform.isWindows);
+    expect((await host.query(plan)).totalUplink, 1);
+    expect(paths, everyElement('/runtime'));
+    expect(metricsReads, 1);
+    for (final invalid in <({Object? current, Matcher error})>[
+      (current: null, error: _reason('runtimePlanMismatch')),
+      (current: {...valid, 'session': null}, error: isA<FormatException>()),
+      (
+        current: {
+          ...valid,
+          'session': {...(valid['session'] as Map), 'id': ''},
+        },
+        error: isA<FormatException>(),
+      ),
+      (
+        current: _snapshot('a', _id('d'), 1, 2).toJson(),
+        error: _reason('runtimePlanMismatch'),
+      ),
+    ]) {
+      current = invalid.current;
+      await expectLater(host.query(plan), throwsA(invalid.error));
+    }
+    expect(metricsReads, 1);
+    current = valid;
+    paths.clear();
+    redirect = true;
+    await expectLater(host.query(plan), throwsA(_reason('runtimeQueryFailed')));
+    expect(paths, ['/runtime']);
+  });
+
+  test('HTTP archives settle before ack and offline reset preserves session watermarks', () async {
+    await Directory(p.join(directory.path, 'runtime.json')).create();
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    var stopped = false;
+    addTearDown(() async {
+      if (!stopped) await server.close(force: true);
+    });
+    final plan = _plan(runtimePort: server.port);
+    var current = _snapshot('b', plan.id, 3, 6);
+    var archived = [_snapshot('a', plan.id, 7, 14, ended: 9)];
+    final acknowledged = <List<String>>[];
+    final ledgerFile = File(p.join(directory.path, 'traffic-totals.json'));
+    Future<void> respond(HttpRequest request) async {
+      expect(
+        request.headers.value(HttpHeaders.authorizationHeader),
+        'Bearer ${_id('e')}',
+      );
+      if (request.uri.path == '/runtime/ack') {
+        expect(request.method, 'POST');
+        expect(request.headers.contentType?.mimeType, 'application/json');
+        final body = jsonDecode(await utf8.decoder.bind(request).join()) as Map;
+        final ids = List<String>.from(body['removeSessionIds'] as List);
+        expect(ids, isNot(contains(current.sessionId)));
+        final ledger = jsonDecode(await ledgerFile.readAsString()) as Map;
+        final settled = ledger['sessions'] as Map;
+        for (final id in ids) {
+          expect(settled.containsKey(id), true);
+          final snapshot = archived.singleWhere((row) => row.sessionId == id);
+          expect((settled[id] as Map)['uplink'], snapshot.uplink);
+        }
+        acknowledged.add(ids);
+        archived.removeWhere((row) => ids.contains(row.sessionId));
+      } else {
+        expect(request.method, 'GET');
+        expect(request.uri.path, '/runtime');
+      }
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(
+        jsonEncode({
+          'current': current.toJson(),
+          'archived': [for (final row in archived) row.toJson()],
+        }),
+      );
+      await request.response.close();
+    }
+
+    server.listen(respond);
+    final host = ConnectionRuntimeHost(
+      runDirectory: directory.path,
+      readStatus: () async {
+        expect(stopped, true);
+        return VpnStatus.disconnected;
+      },
+      stopVpn: () async {
+        await server.close(force: true);
+        stopped = true;
+        return _success();
+      },
+      readMetrics: (_) async => throw StateError('No metrics flush on stop'),
+    );
+    final connected = await host.inspect([
+      plan,
+    ], observedStatus: VpnStatus.connected);
+    expect(connected.traffic!.totalUplink, 10);
+    expect(acknowledged, [
+      [_id('a')],
+    ]);
+    expect((await host.readSavedTraffic())!.totalUplink, 10);
+
+    final disconnected = await host.stop(plan);
+    expect(disconnected.connected, false);
+    expect(disconnected.traffic!.uplink, 3);
+    expect(disconnected.traffic!.totalUplink, 10);
+    expect(disconnected.traffic!.available, false);
+    final reopened = ConnectionRuntimeHost(runDirectory: directory.path);
+    final unavailable = await reopened.inspect([
+      plan,
+    ], observedStatus: VpnStatus.connected);
+    expect(unavailable.connected, true);
+    expect(unavailable.plan, isNull);
+    expect(unavailable.traffic!.totalUplink, 10);
+    expect(unavailable.traffic!.available, false);
+    await reopened.inspect([plan], observedStatus: VpnStatus.disconnected);
+    final reset = (await reopened.resetTraffic())!;
+    expect(reset.uplink, 3);
+    expect(reset.totalUplink, 0);
+    expect(reset.totalDownlink, 0);
+    expect(reset.resetGeneration, 1);
+
+    final nextServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => nextServer.close(force: true));
+    final nextPlan = _plan(runtimePort: nextServer.port, planId: _id('d'));
+    current = _snapshot('c', nextPlan.id, 2, 4);
+    archived = [_snapshot('b', plan.id, 5, 10, ended: 9)];
+    nextServer.listen(respond);
+    final next = await reopened.inspect([
+      nextPlan,
+    ], observedStatus: VpnStatus.connected);
+    expect(next.plan?.id, nextPlan.id);
+    expect(next.traffic!.totalUplink, 4);
+    expect(next.traffic!.totalDownlink, 8);
+    expect(next.traffic!.resetGeneration, 1);
+    expect(acknowledged, [
+      [_id('a')],
+      [_id('b')],
+    ]);
+    expect((await reopened.readSavedTraffic())!.totalUplink, 4);
+    expect(acknowledged, hasLength(2));
+  });
+
+  test(
+    'startup request finds an uncommitted plan but HTTP confirms its session',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      final previous = _plan(runtimePort: 0);
+      final starting = _plan(runtimePort: server.port, planId: _id('b'));
+      final planFile = File(
+        p.join(directory.path, 'plans', starting.id, 'plan.json'),
+      );
+      await planFile.parent.create(recursive: true);
+      await planFile.writeAsString(starting.encode());
+      await File(p.join(directory.path, 'start.json'))
+          .writeAsString(jsonEncode(starting.request.toJson()));
+      var reads = 0;
+      server.listen((request) async {
+        reads++;
+        expect(request.method, 'GET');
+        expect(request.uri.path, '/runtime');
+        expect(
+          request.headers.value(HttpHeaders.authorizationHeader),
+          'Bearer ${starting.runtime.token}',
+        );
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode({
+            'current': _snapshot('c', starting.id, 20, 40).toJson(),
+            'archived': [],
+          }),
+        );
+        await request.response.close();
+      });
+      final host = ConnectionRuntimeHost(runDirectory: directory.path);
+      final result = await host.inspect([
+        previous,
+      ], observedStatus: VpnStatus.connected);
+      expect(reads, 1);
+      expect(result.connected, true);
+      expect(result.plan?.id, starting.id);
+      expect(result.traffic!.sessionId, _id('c'));
+      expect(result.traffic!.totalUplink, 20);
+    },
+  );
 }
 
 Matcher _reason(String reason) => isA<ConnectionHostException>().having(
@@ -479,26 +642,17 @@ RuntimeSnapshot _snapshot(
   error: '',
 );
 
-Map<String, dynamic> _snapshotJson(String digit, int up, int down) => {
-  'version': 1,
-  'session': {
-    'id': _id(digit),
-    'planId': _id('f'),
-    'startedAtMs': 1,
-    'endedAtMs': 0,
-    'uplink': up,
-    'downlink': down,
-  },
-  'available': true,
-  'sampledAtMs': 3,
-  'savedAtMs': 4,
-  'error': '',
-};
-
 String _id(String digit) => List.filled(32, digit).join();
 
-ConnectionPlan _plan({int port = 18003, String platform = 'android'}) {
-  final id = _id('f');
+ConnectionPlan _plan({
+  int port = 18003,
+  int runtimePort = 18004,
+  String? listen,
+  String? token,
+  String? planId,
+  String platform = 'android',
+}) {
+  final id = planId ?? _id('f');
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
     payload: RunXrayRequest(
@@ -506,6 +660,8 @@ ConnectionPlan _plan({int port = 18003, String platform = 'android'}) {
       runtime: ManagedRuntimeRequest(
         statePath: '/fixture/run/runtime.json',
         planId: id,
+        listen: listen ?? '127.0.0.1:$runtimePort',
+        token: token ?? _id('e'),
       ),
     ).toJson(),
   );

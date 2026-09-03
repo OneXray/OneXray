@@ -87,8 +87,8 @@ const _contracts = [
   _Contract('RunXrayRequest', {'xrayJson', 'runtime'}, {'xrayJson', 'runtime'}),
   _Contract(
     'ManagedRuntimeRequest',
-    {'statePath', 'planId', 'inboundTag'},
-    {'statePath', 'planId', 'inboundTag'},
+    {'statePath', 'planId', 'inboundTag', 'listen', 'token'},
+    {'statePath', 'planId', 'inboundTag', 'listen', 'token'},
   ),
   _Contract(
     'LibXrayInvokeRequest',

@@ -137,16 +137,6 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         )))
     }
 
-    func readRuntimeState(removeSessionIds: [String], completion: @escaping (Result<String?, any Error>) -> Void) {
-        Task {
-            do {
-                completion(.success(try await VPNManager.shared.readRuntimeState(removeSessionIds: removeSessionIds)))
-            } catch {
-                completion(.failure(error as? RuntimeStateError ?? RuntimeStateError.unavailable))
-            }
-        }
-    }
-
     func readLog(planId: String, access: Bool, offset: Int64, limit: Int64,
                  completion: @escaping (Result<NativeLogChunk?, any Error>) -> Void) {
         Task {

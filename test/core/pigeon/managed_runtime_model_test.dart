@@ -1,0 +1,42 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/pigeon/model.dart';
+
+void main() {
+  test('runXray API 3 preserves the managed traffic endpoint and token', () {
+    const runtime = ManagedRuntimeRequest(
+      statePath: '/run/runtime.json',
+      planId: '0123456789abcdef0123456789abcdef',
+      listen: '127.0.0.1:12003',
+      token: 'fedcba9876543210fedcba9876543210',
+    );
+    final invoke = LibXrayInvokeRequest(
+      method: LibXrayMethod.runXray,
+      payload: RunXrayRequest('{}', runtime: runtime).toJson(),
+    ).toJson();
+
+    expect(invoke['apiVersion'], 3);
+    expect(invoke['method'], 'runXray');
+    final decoded = RunXrayRequest.fromJson(
+      invoke['payload'] as Map<String, dynamic>,
+    ).runtime!;
+    expect(decoded.toJson(), {
+      'statePath': runtime.statePath,
+      'planId': runtime.planId,
+      'inboundTag': 'tunIn',
+      'listen': runtime.listen,
+      'token': runtime.token,
+    });
+  });
+
+  test('optional managed endpoint fields are omitted when not supplied', () {
+    const runtime = ManagedRuntimeRequest(
+      statePath: '/run/runtime.json',
+      planId: '0123456789abcdef0123456789abcdef',
+    );
+    expect(runtime.toJson(), {
+      'statePath': runtime.statePath,
+      'planId': runtime.planId,
+      'inboundTag': 'tunIn',
+    });
+  });
+}

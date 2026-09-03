@@ -416,35 +416,6 @@ class VPNManager {
 
     // MARK: - System Extension path rewriting + XPC dat sync
 
-    func readRuntimeState(removeSessionIds: [String]) async throws -> String? {
-        guard Constants.useSystemExtension else { throw RuntimeStateError.unsupported }
-        guard removeSessionIds.allSatisfy(RuntimeStateSnapshot.isSessionId) else {
-            throw RuntimeStateError.invalid
-        }
-        guard let manager = try await findVpn(),
-              let session = manager.connection as? NETunnelProviderSession else {
-            throw RuntimeStateError.unavailable
-        }
-        // NE may launch the provider just to handle a message. Do not start a
-        // tunnel or require connected status; offline SE delivery remains NOT RUN.
-        let response = try await sendTunnelRequest(
-            session: session,
-            .readRuntime(removeSessionIds: removeSessionIds),
-            timeoutSeconds: 5
-        )
-        switch response {
-        case let .runtimeState(text):
-            guard let text, text.utf8.count <= RuntimeStateFiles.maximumBytes else {
-                throw RuntimeStateError.invalid
-            }
-            return try JSONDecoder().decode(RuntimeStateFiles.self, from: Data(text.utf8)).validatedText()
-        case let .error(code):
-            throw RuntimeStateError(rawValue: code) ?? .unavailable
-        default:
-            throw RuntimeStateError.invalid
-        }
-    }
-
     func readLog(planId: String, access: Bool, offset: Int64, limit: Int64) async throws -> TunnelLogChunk? {
         guard Constants.useSystemExtension else { throw RuntimeStateError.unsupported }
         try TunnelLogChunk.validateRequest(planId: planId, offset: offset, limit: limit)
@@ -512,7 +483,7 @@ class VPNManager {
     private func syncDatAndStart(session: NETunnelProviderSession, request: StartVpnRequest) async throws {
         guard let text = request.coreInvokeText,
               let planId = try LibXrayInvokeRequest.fromText(text).payload?.runtime?.planId,
-              RuntimeStateSnapshot.isSessionId(planId),
+              isValidPlanId(planId),
               let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
             throw VPNError.routingDataSyncFailed
         }
@@ -573,7 +544,6 @@ class VPNManager {
         let data = try TunnelMessageCoder.encode(request)
         let maximumResponseBytes: Int?
         switch request {
-        case .readRuntime: maximumResponseBytes = RuntimeStateFiles.maximumBytes
         case .readLog: maximumResponseBytes = TunnelLogChunk.maximumMessageBytes
         default: maximumResponseBytes = nil
         }

@@ -780,25 +780,6 @@ class BridgeHostApi {
     return pigeonVar_replyValue! as AppleVpnCapabilities;
   }
 
-  Future<String?> readRuntimeState(List<String> removeSessionIds) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState$pigeonVar_messageChannelSuffix';
-    final pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[removeSessionIds]);
-    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
-
-    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
-    return pigeonVar_replyValue as String?;
-  }
-
   Future<NativeLogChunk?> readLog(String planId, bool access, int offset, int limit) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.onexray.BridgeHostApi.readLog$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(

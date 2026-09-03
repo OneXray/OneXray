@@ -65,6 +65,22 @@ class RuntimeSnapshot {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+    'version': 1,
+    'session': {
+      'id': sessionId,
+      'planId': planId,
+      'startedAtMs': startedAtMs,
+      'endedAtMs': endedAtMs,
+      'uplink': uplink,
+      'downlink': downlink,
+    },
+    'available': available,
+    'sampledAtMs': sampledAtMs,
+    'savedAtMs': savedAtMs,
+    'error': error,
+  };
+
   RuntimeSnapshot withTotals({
     required int uplink,
     required int downlink,
@@ -108,21 +124,21 @@ class RuntimeSnapshot {
   );
 }
 
-class RuntimeStateFiles {
+class RuntimeState {
   final RuntimeSnapshot? current;
   final List<RuntimeSnapshot> archived;
 
-  const RuntimeStateFiles({this.current, this.archived = const []});
+  const RuntimeState({this.current, this.archived = const []});
 
-  factory RuntimeStateFiles.fromJson(Map<String, dynamic> json) {
+  factory RuntimeState.fromJson(Map<String, dynamic> json) {
     if ((json['current'] != null && json['current'] is! Map<String, dynamic>) ||
         json['archived'] is! List ||
         (json['archived'] as List).any(
           (snapshot) => snapshot is! Map<String, dynamic>,
         )) {
-      throw const FormatException('Invalid runtime files');
+      throw const FormatException('Invalid runtime state');
     }
-    return RuntimeStateFiles(
+    return RuntimeState(
       current: json['current'] == null
           ? null
           : RuntimeSnapshot.fromJson(json['current'] as Map<String, dynamic>),
@@ -134,15 +150,15 @@ class RuntimeStateFiles {
   }
 }
 
-/// Reads the remaining files after attempting removal of the requested archives.
+/// Reads host snapshots after acknowledging the requested settled archives.
 /// It must never remove the current session, and must retain failed deletions.
-typedef RuntimeStateReader = Future<RuntimeStateFiles> Function(
+typedef RuntimeStateReader = Future<RuntimeState> Function(
   List<String> removeSessionIds,
 );
 
 class TrafficAccounting {
   final String path;
-  final RuntimeStateReader readRuntimeFiles;
+  final RuntimeStateReader readRuntimeState;
   final Future<void> Function(String text)? _write;
 
   // Multiple runtime-host instances still have exactly one App ledger writer.
@@ -150,7 +166,7 @@ class TrafficAccounting {
 
   TrafficAccounting({
     required String path,
-    required this.readRuntimeFiles,
+    required this.readRuntimeState,
     this._write,
   }) : path = p.normalize(p.absolute(path));
 
@@ -175,16 +191,16 @@ class TrafficAccounting {
   }) async {
     // Read inside the same queue as archive deletion/watermark pruning. Otherwise
     // a previously captured archive could be counted again after its removal.
-    RuntimeStateFiles files;
+    RuntimeState files;
     try {
-      files = await readRuntimeFiles(const []);
+      files = await readRuntimeState(const []);
     } on Exception {
-      if (!reset) {
+      if (live != null) {
         rethrow;
       }
-      // Clearing App totals does not require a running System Extension.
-      // Keep every recorded watermark when no new counters are available.
-      files = const RuntimeStateFiles();
+      // The HTTP endpoint closes with the core. Offline display/reset uses only
+      // the App ledger; the next connection reconciles remaining host snapshots.
+      files = const RuntimeState();
     }
     final current = files.current;
     if (live != null &&
@@ -207,6 +223,34 @@ class TrafficAccounting {
       ledger.downlink = 0;
       ledger.resetGeneration++;
     }
+
+    RuntimeSnapshot? display = current;
+    for (final snapshot in files.archived) {
+      if (display == null ||
+          (current == null && snapshot.savedAtMs > display.savedAtMs)) {
+        display = snapshot;
+      }
+    }
+    display ??= ledger.last?.withCounters(
+      uplink: ledger.last!.uplink,
+      downlink: ledger.last!.downlink,
+      sampledAtMs: ledger.last!.sampledAtMs,
+      available: false,
+      error: 'runtimeStateUnavailable',
+    );
+    if (display != null) {
+      final watermark = ledger.watermarks[display.sessionId];
+      if (watermark != null) {
+        display = display.withCounters(
+          uplink: math.max(display.uplink, watermark.uplink),
+          downlink: math.max(display.downlink, watermark.downlink),
+          sampledAtMs: math.max(display.sampledAtMs, watermark.time),
+          available: live?.available ?? display.available,
+          error: live?.error ?? display.error,
+        );
+      }
+      ledger.last = display;
+    }
     if (before != ledger.encode()) {
       await _save(ledger);
     }
@@ -219,7 +263,7 @@ class TrafficAccounting {
       try {
         // The first save is durable before any archive is removed. If deletion
         // fails, retain its watermark. If pruning fails, extra watermarks are safe.
-        final remaining = await readRuntimeFiles(removable.toList());
+        final remaining = await readRuntimeState(removable.toList());
         final retained = {
           for (final snapshot in remaining.archived) snapshot.sessionId,
           ?remaining.current?.sessionId,
@@ -236,25 +280,8 @@ class TrafficAccounting {
       }
     }
 
-    RuntimeSnapshot? display = current;
-    for (final snapshot in files.archived) {
-      if (display == null ||
-          (current == null && snapshot.savedAtMs > display.savedAtMs)) {
-        display = snapshot;
-      }
-    }
     if (display == null) {
       return null;
-    }
-    final watermark = ledger.watermarks[display.sessionId];
-    if (watermark != null) {
-      display = display.withCounters(
-        uplink: math.max(display.uplink, watermark.uplink),
-        downlink: math.max(display.downlink, watermark.downlink),
-        sampledAtMs: math.max(display.sampledAtMs, watermark.time),
-        available: live?.available ?? display.available,
-        error: live?.error ?? display.error,
-      );
     }
     return display.withTotals(
       uplink: ledger.uplink,
@@ -318,6 +345,7 @@ class _TrafficLedger {
   int uplink = 0;
   int downlink = 0;
   int resetGeneration = 0;
+  RuntimeSnapshot? last;
   final Map<String, _Watermark> watermarks = {};
 
   _TrafficLedger();
@@ -333,6 +361,11 @@ class _TrafficLedger {
       ..uplink = _number(json, 'uplink')
       ..downlink = _number(json, 'downlink')
       ..resetGeneration = _number(json, 'resetGeneration');
+    if (json['last'] != null) {
+      result.last = RuntimeSnapshot.fromJson(
+        json['last'] as Map<String, dynamic>,
+      );
+    }
     for (final entry in (json['sessions'] as Map).entries) {
       if (entry.key is! String || entry.value is! Map) {
         throw const FormatException('Invalid traffic watermark');
@@ -363,6 +396,7 @@ class _TrafficLedger {
     'uplink': uplink,
     'downlink': downlink,
     'resetGeneration': resetGeneration,
+    'last': ?last?.toJson(),
     'sessions': {
       for (final entry in watermarks.entries)
         entry.key: {

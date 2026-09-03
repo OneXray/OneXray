@@ -108,6 +108,8 @@ data class ManagedRuntimeRequest(
     val statePath: String,
     val planId: String,
     val inboundTag: String,
+    val listen: String? = null,
+    val token: String? = null,
 )
 
 @Serializable

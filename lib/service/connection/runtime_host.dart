@@ -8,6 +8,7 @@ import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/debug_proxy.dart';
@@ -38,11 +39,11 @@ class ConnectionHostException implements Exception {
 }
 
 /// Native status owns VPN state. Xray metrics supplies live session counters;
-/// saved host snapshots supply background counters. Only the App writes totals.
+/// HTTP host snapshots supply background counters. Only the App writes totals.
 class ConnectionRuntimeHost {
   final AppHostApi _host = AppHostApi();
   final String? _runDirectory;
-  final RuntimeStateReader? _readFiles;
+  final RuntimeStateReader? _readState;
   final Future<XrayMetricsVars> Function(int port)? _metrics;
   final Future<VpnStatus> Function()? _readStatus;
   final Future<NativeVpnCommandResult> Function(ConnectionPlan plan)? _startVpn;
@@ -50,10 +51,13 @@ class ConnectionRuntimeHost {
   final Duration startTimeout;
   final Duration stopTimeout;
   final Duration pollInterval;
+  Map<String, ConnectionPlan> _plans = {};
+  ConnectionPlan? _runtimePlan;
+  bool _runtimeOnline = true;
 
   ConnectionRuntimeHost({
     this._runDirectory,
-    RuntimeStateReader? readRuntimeFiles,
+    RuntimeStateReader? readRuntimeState,
     Future<XrayMetricsVars> Function(int port)? readMetrics,
     this._readStatus,
     this._startVpn,
@@ -61,13 +65,13 @@ class ConnectionRuntimeHost {
     this.startTimeout = const Duration(seconds: 30),
     this.stopTimeout = const Duration(seconds: 15),
     this.pollInterval = const Duration(milliseconds: 200),
-  }) : _readFiles = readRuntimeFiles,
+  }) : _readState = readRuntimeState,
        _metrics = readMetrics;
 
   String get _directory => _runDirectory ?? VpnConstants.runDir;
   late final _accounting = TrafficAccounting(
     path: p.join(_directory, 'traffic-totals.json'),
-    readRuntimeFiles: _files,
+    readRuntimeState: _state,
   );
 
   Future<VpnStatus> _status() async {
@@ -90,61 +94,63 @@ class ConnectionRuntimeHost {
     return event;
   }
 
-  Future<RuntimeStateFiles> _files(List<String> removeSessionIds) async {
-    final reader = _readFiles;
+  Future<RuntimeState> _state(List<String> removeSessionIds) async {
+    final reader = _readState;
     if (reader != null) {
       return reader(removeSessionIds);
     }
-    if (_runDirectory == null && await _host.useSystemExtension()) {
-      final text = await _host
-          .readRuntimeState(removeSessionIds: removeSessionIds)
-          .timeout(const Duration(seconds: 8));
-      return text == null
-          ? const RuntimeStateFiles()
-          : RuntimeStateFiles.fromJson(_jsonObject(text));
+    if (!_runtimeOnline) {
+      throw const ConnectionHostException('runtimeStateUnavailable');
     }
-    final current = await _readSnapshot(
-      File(p.join(_directory, 'runtime.json')),
-    );
-    final archiveDirectory = Directory(p.join(_directory, 'runtime-sessions'));
-    final archiveType = await FileSystemEntity.type(
-      archiveDirectory.path,
-      followLinks: false,
-    );
-    if (archiveType != FileSystemEntityType.notFound &&
-        archiveType != FileSystemEntityType.directory) {
-      throw const FormatException('Invalid runtime archive directory');
-    }
-    for (final id in removeSessionIds.toSet()) {
-      if (!_safeId.hasMatch(id) || id == current?.sessionId) {
-        continue;
-      }
-      final file = File(p.join(archiveDirectory.path, '$id.json'));
+    final candidates = {
+      for (final plan in [?_runtimePlan, ..._plans.values]) plan.id: plan,
+    };
+    for (final plan in candidates.values) {
       try {
-        if ((await _readSnapshot(file))?.sessionId == id) {
-          await file.delete();
-        }
+        final state = await _stateFor(plan, removeSessionIds);
+        _runtimePlan = plan;
+        return state;
       } on Exception {
-        // The returned archive keeps its watermark when deletion failed.
+        // A previous plan's endpoint may have closed during a switch.
       }
     }
-    final archived = <RuntimeSnapshot>[];
-    if (await archiveDirectory.exists()) {
-      await for (final entity in archiveDirectory.list(followLinks: false)) {
-        if (entity is! File || p.extension(entity.path) != '.json') {
-          continue;
-        }
-        final id = p.basenameWithoutExtension(entity.path);
-        if (!_safeId.hasMatch(id)) {
-          continue;
-        }
-        final snapshot = await _readSnapshot(entity);
-        if (snapshot != null && snapshot.sessionId == id) {
-          archived.add(snapshot);
-        }
-      }
+    throw const ConnectionHostException('runtimeStateUnavailable');
+  }
+
+  Future<RuntimeState> _stateFor(
+    ConnectionPlan plan,
+    List<String> removeSessionIds,
+  ) async {
+    final reader = _readState;
+    if (reader != null) return reader(removeSessionIds);
+    final runtime = plan.runtime;
+    final address = RegExp(r'^127\.0\.0\.1:([0-9]{1,5})$')
+        .firstMatch(runtime.listen ?? '');
+    final port = int.tryParse(address?.group(1) ?? '');
+    if (port == null ||
+        port < 1 ||
+        port > 65535 ||
+        !_safeId.hasMatch(runtime.token ?? '')) {
+      throw const ConnectionHostException('runtimeStateUnavailable');
     }
-    return RuntimeStateFiles(current: current, archived: archived);
+    final json = await _httpJson(
+      Uri(
+        scheme: 'http',
+        host: '127.0.0.1',
+        port: port,
+        path: removeSessionIds.isEmpty ? '/runtime' : '/runtime/ack',
+      ),
+      token: runtime.token,
+      body: removeSessionIds.isEmpty
+          ? null
+          : {'removeSessionIds': removeSessionIds},
+      maximumBytes: 16 * 1024 * 1024,
+    );
+    final state = RuntimeState.fromJson(json);
+    if (state.current?.planId != plan.id) {
+      throw const ConnectionHostException('runtimePlanMismatch');
+    }
+    return state;
   }
 
   static final _safeId = RegExp(r'^[a-f0-9]{32}$');
@@ -157,22 +163,30 @@ class ConnectionRuntimeHost {
     return json;
   }
 
-  static Future<RuntimeSnapshot?> _readSnapshot(File file) async {
-    final type = await FileSystemEntity.type(file.path, followLinks: false);
-    if (type == FileSystemEntityType.notFound) {
+  Future<RuntimeSnapshot?> readSavedTraffic() => _accounting.read();
+
+  Future<ConnectionPlan?> _readStartPlan() async {
+    try {
+      final file = File(p.join(_directory, 'start.json'));
+      if (await FileSystemEntity.type(file.path, followLinks: false) !=
+              FileSystemEntityType.file ||
+          await file.length() > 16 * 1024 * 1024) {
+        return null;
+      }
+      final request = StartVpnRequest.fromJson(
+        _jsonObject(await file.readAsString()),
+      );
+      final id = LibXrayRunConfig.fromInvokeText(request.coreInvokeText!)
+          .request
+          .runtime
+          ?.planId;
+      return await readPlan(id);
+    } on Exception {
+      return null;
+    } on TypeError {
       return null;
     }
-    if (type != FileSystemEntityType.file || await file.length() > 65536) {
-      throw const FormatException('Invalid runtime state file');
-    }
-    final bytes = await file.readAsBytes();
-    if (bytes.length > 65536) {
-      throw const FormatException('Invalid runtime state size');
-    }
-    return RuntimeSnapshot.fromJson(_jsonObject(utf8.decode(bytes)));
   }
-
-  Future<RuntimeSnapshot?> readSavedTraffic() => _accounting.read();
 
   /// A missing or damaged private plan is not evidence of VPN disconnection.
   Future<ConnectionPlan?> readPlan(String? id) async {
@@ -230,7 +244,9 @@ class ConnectionRuntimeHost {
     final runtime = plan.runtime;
     if (metadata['planId'] != plan.id ||
         metadata['statePath'] != runtime.statePath ||
-        metadata['inboundTag'] != runtime.inboundTag) {
+        metadata['inboundTag'] != runtime.inboundTag ||
+        metadata['listen'] != runtime.listen ||
+        metadata['token'] != runtime.token) {
       throw const FormatException('Replay metadata differs from its plan');
     }
     if (await _status() != VpnStatus.disconnected) {
@@ -274,13 +290,41 @@ class ConnectionRuntimeHost {
     if (reader != null) {
       return reader(port);
     }
+    try {
+      return XrayMetricsVars.fromJson(
+        await _httpJson(
+          Uri(
+            scheme: 'http',
+            host: '127.0.0.1',
+            port: port,
+            path: '/debug/vars',
+          ),
+        ),
+      );
+    } on TypeError {
+      throw const FormatException('Invalid metrics counters');
+    }
+  }
+
+  static Future<Map<String, dynamic>> _httpJson(
+    Uri uri, {
+    String? token,
+    Map<String, Object>? body,
+    int maximumBytes = 1048576,
+  }) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 2)
       ..findProxy = (_) => 'DIRECT';
     try {
-      final request = await client.getUrl(
-        Uri.parse('http://127.0.0.1:$port/debug/vars'),
-      );
+      final request = await client.openUrl(body == null ? 'GET' : 'POST', uri);
+      request.followRedirects = false;
+      if (token != null) {
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+      }
+      if (body != null) {
+        request.headers.contentType = ContentType.json;
+        request.write(jsonEncode(body));
+      }
       final response = await request.close().timeout(
         const Duration(seconds: 3),
       );
@@ -290,22 +334,20 @@ class ConnectionRuntimeHost {
       final bytes = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 3))) {
         bytes.addAll(chunk);
-        if (bytes.length > 1048576) {
-          throw const FormatException('Invalid metrics response size');
+        if (bytes.length > maximumBytes) {
+          throw const FormatException('Invalid runtime response size');
         }
       }
-      try {
-        return XrayMetricsVars.fromJson(_jsonObject(utf8.decode(bytes)));
-      } on TypeError {
-        throw const FormatException('Invalid metrics counters');
-      }
+      return _jsonObject(utf8.decode(bytes));
     } finally {
       client.close(force: true);
     }
   }
 
   Future<RuntimeSnapshot> query(ConnectionPlan plan) async {
-    final before = (await _files(const [])).current;
+    _runtimePlan = plan;
+    _runtimeOnline = true;
+    final before = (await _stateFor(plan, const [])).current;
     if (before == null || before.planId != plan.id || before.endedAtMs != 0) {
       throw const ConnectionHostException('runtimePlanMismatch');
     }
@@ -319,7 +361,7 @@ class ConnectionRuntimeHost {
     if (uplink == null || downlink == null || uplink < 0 || downlink < 0) {
       throw const ConnectionHostException('runtimeMetricsUnavailable');
     }
-    final after = (await _files(const [])).current;
+    final after = (await _stateFor(plan, const [])).current;
     if (after == null ||
         after.sessionId != before.sessionId ||
         after.planId != plan.id ||
@@ -347,6 +389,14 @@ class ConnectionRuntimeHost {
     bool readMetrics = false,
   }) async {
     final status = observedStatus ?? await _status();
+    _runtimeOnline = status != VpnStatus.disconnected;
+    _plans = {for (final plan in knownPlans) plan.id: plan};
+    if (_runtimeOnline) {
+      // The App-owned startup request can name an uncommitted plan after a
+      // restart. It only locates the endpoint; HTTP must confirm the session.
+      final starting = await _readStartPlan();
+      if (starting != null) _plans[starting.id] = starting;
+    }
     RuntimeSnapshot? saved;
     try {
       saved = await readSavedTraffic();
@@ -356,12 +406,14 @@ class ConnectionRuntimeHost {
     if (status == VpnStatus.disconnected) {
       return HostConnection(status, traffic: saved);
     }
-    final plans = {for (final plan in knownPlans) plan.id: plan};
+    final plans = {..._plans};
     if (saved != null && !plans.containsKey(saved.planId)) {
       final plan = await readPlan(saved.planId);
       if (plan != null) plans[plan.id] = plan;
     }
-    final plan = plans[saved?.planId];
+    final plan = saved?.error == 'runtimeStateUnavailable'
+        ? null
+        : plans[saved?.planId];
     if (plan != null && readMetrics) {
       try {
         return HostConnection(status, plan: plan, traffic: await query(plan));
@@ -417,12 +469,14 @@ class ConnectionRuntimeHost {
   }
 
   Future<HostConnection> start(ConnectionPlan plan) async {
+    _plans[plan.id] = plan;
+    _runtimeOnline = true;
     String? previousSession;
     var previousReadable = true;
     try {
-      previousSession = (await _files(const [])).current?.sessionId;
+      previousSession = (await _state(const [])).current?.sessionId;
     } on Exception {
-      // A stopped System Extension may not serve files until it is started.
+      // A stopped core cannot serve statistics until it is started.
       previousReadable = false;
     }
     final requestedAt = DateTime.now().millisecondsSinceEpoch;
@@ -463,6 +517,7 @@ class ConnectionRuntimeHost {
     while (DateTime.now().isBefore(deadline)) {
       final status = await _status();
       if (status == VpnStatus.disconnected) {
+        _runtimeOnline = false;
         RuntimeSnapshot? saved;
         try {
           saved = await readSavedTraffic();

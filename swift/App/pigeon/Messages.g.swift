@@ -620,7 +620,6 @@ protocol BridgeHostApi {
   func getAppIcon(packageName: String, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
   func useSystemExtension(completion: @escaping (Result<Bool, Error>) -> Void)
   func appleVpnCapabilities(completion: @escaping (Result<AppleVpnCapabilities, Error>) -> Void)
-  func readRuntimeState(removeSessionIds: [String], completion: @escaping (Result<String?, Error>) -> Void)
   func readLog(planId: String, access: Bool, offset: Int64, limit: Int64, completion: @escaping (Result<NativeLogChunk?, Error>) -> Void)
   func queryLaunchAtLogin(completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func setLaunchAtLogin(enabled: Bool, completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
@@ -803,23 +802,6 @@ class BridgeHostApiSetup {
       }
     } else {
       appleVpnCapabilitiesChannel.setMessageHandler(nil)
-    }
-    let readRuntimeStateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.readRuntimeState\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      readRuntimeStateChannel.setMessageHandler { message, reply in
-        let args = message as! [Any?]
-        let removeSessionIdsArg = args[0] as! [String]
-        api.readRuntimeState(removeSessionIds: removeSessionIdsArg) { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      readRuntimeStateChannel.setMessageHandler(nil)
     }
     let readLogChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.readLog\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

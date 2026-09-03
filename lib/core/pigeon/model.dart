@@ -216,16 +216,20 @@ class RunXrayRequest {
   Map<String, dynamic> toJson() => _$RunXrayRequestToJson(this);
 }
 
-@JsonSerializable(explicitToJson: true)
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class ManagedRuntimeRequest {
   final String statePath;
   final String planId;
   final String inboundTag;
+  final String? listen;
+  final String? token;
 
   const ManagedRuntimeRequest({
     required this.statePath,
     required this.planId,
     this.inboundTag = 'tunIn',
+    this.listen,
+    this.token,
   });
 
   factory ManagedRuntimeRequest.fromJson(Map<String, dynamic> json) =>

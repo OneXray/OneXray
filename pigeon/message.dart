@@ -51,10 +51,6 @@ abstract class BridgeHostApi {
   @asyncCallback
   AppleVpnCapabilities appleVpnCapabilities();
 
-  // System Extension-owned session files only; removal IDs are already settled.
-  @asyncCallback
-  String? readRuntimeState(List<String> removeSessionIds);
-
   // Fixed System Extension plan logs. Offset -1 reads the bounded file tail.
   @asyncCallback
   NativeLogChunk? readLog(String planId, bool access, int offset, int limit);

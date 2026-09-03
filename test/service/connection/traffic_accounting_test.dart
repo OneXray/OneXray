@@ -40,11 +40,11 @@ void main() {
     );
   });
 
-  test('file and live counters deduplicate; reset preserves session watermarks', () async {
+  test('saved and live counters deduplicate; reset preserves session watermarks', () async {
     var current = _snapshot('a', 10, 20);
     final accounting = TrafficAccounting(
       path: ledger.path,
-      readRuntimeFiles: (_) async => RuntimeStateFiles(current: current),
+      readRuntimeState: (_) async => RuntimeState(current: current),
     );
     expect((await accounting.read())!.totalUplink, 10);
     final live = _snapshot('a', 15, 30, time: 4);
@@ -61,7 +61,7 @@ void main() {
     expect((await accounting.read())!.totalUplink, 0);
     final reopened = TrafficAccounting(
       path: ledger.path,
-      readRuntimeFiles: (_) async => RuntimeStateFiles(current: current),
+      readRuntimeState: (_) async => RuntimeState(current: current),
     );
     final next = (await reopened.read(live: _snapshot('a', 19, 33, time: 5)))!;
     expect(next.totalUplink, 4);
@@ -78,7 +78,7 @@ void main() {
       var allowDelete = false;
       final accounting = TrafficAccounting(
         path: ledger.path,
-        readRuntimeFiles: (remove) async {
+        readRuntimeState: (remove) async {
           if (remove.isNotEmpty) {
             final saved = jsonDecode(await ledger.readAsString()) as Map;
             expect(saved['uplink'], 17);
@@ -90,7 +90,7 @@ void main() {
                   .toList();
             }
           }
-          return RuntimeStateFiles(current: current, archived: archives);
+          return RuntimeState(current: current, archived: archives);
         },
       );
       expect((await accounting.read())!.totalUplink, 17);
@@ -118,12 +118,12 @@ void main() {
       var failWrite = true;
       final accounting = TrafficAccounting(
         path: ledger.path,
-        readRuntimeFiles: (remove) async {
+        readRuntimeState: (remove) async {
           if (remove.isNotEmpty) {
             removals++;
             archives = [];
           }
-          return RuntimeStateFiles(
+          return RuntimeState(
             current: _snapshot('b', 1, 2),
             archived: archives,
           );
@@ -153,11 +153,11 @@ void main() {
       var saves = 0;
       final accounting = TrafficAccounting(
         path: ledger.path,
-        readRuntimeFiles: (remove) async {
+        readRuntimeState: (remove) async {
           if (remove.isNotEmpty) {
             archives = [];
           }
-          return RuntimeStateFiles(
+          return RuntimeState(
             current: _snapshot('b', 1, 2),
             archived: archives,
           );
@@ -186,7 +186,7 @@ void main() {
       final entered = Completer<void>();
       final release = Completer<void>();
       var reads = 0;
-      Future<RuntimeStateFiles> read(List<String> remove) async {
+      Future<RuntimeState> read(List<String> remove) async {
         if (++reads == 1) {
           entered.complete();
           await release.future;
@@ -194,19 +194,16 @@ void main() {
         if (remove.isNotEmpty) {
           archives = [];
         }
-        return RuntimeStateFiles(
-          current: _snapshot('b', 1, 2),
-          archived: archives,
-        );
+        return RuntimeState(current: _snapshot('b', 1, 2), archived: archives);
       }
 
       final first = TrafficAccounting(
         path: ledger.path,
-        readRuntimeFiles: read,
+        readRuntimeState: read,
       );
       final second = TrafficAccounting(
         path: ledger.path,
-        readRuntimeFiles: read,
+        readRuntimeState: read,
       );
       final reading = first.read();
       await entered.future;
@@ -224,8 +221,8 @@ void main() {
     () async {
       final accounting = TrafficAccounting(
         path: ledger.path,
-        readRuntimeFiles: (_) async =>
-            RuntimeStateFiles(current: _snapshot('b', 1, 2)),
+        readRuntimeState: (_) async =>
+            RuntimeState(current: _snapshot('b', 1, 2)),
       );
       await expectLater(
         accounting.read(live: _snapshot('a', 100, 200)),
@@ -236,20 +233,23 @@ void main() {
     },
   );
 
-  test('reset can clear only App totals while the runtime file reader is unavailable', () async {
+  test('reset can clear only App totals while the runtime HTTP endpoint is unavailable', () async {
     var readable = true;
     final accounting = TrafficAccounting(
       path: ledger.path,
-      readRuntimeFiles: (_) async {
+      readRuntimeState: (_) async {
         if (!readable) {
           throw const FileSystemException('Provider unavailable');
         }
-        return RuntimeStateFiles(current: _snapshot('a', 7, 9));
+        return RuntimeState(current: _snapshot('a', 7, 9));
       },
     );
     await accounting.read();
     readable = false;
-    expect(await accounting.read(reset: true), isNull);
+    final offline = (await accounting.read(reset: true))!;
+    expect(offline.uplink, 7);
+    expect(offline.totalUplink, 0);
+    expect(offline.available, false);
     final saved = jsonDecode(await ledger.readAsString()) as Map;
     expect(saved['uplink'], 0);
     expect(saved['resetGeneration'], 1);
@@ -259,6 +259,52 @@ void main() {
     expect(current.uplink, 7);
     expect(current.totalUplink, 0);
   });
+
+  test(
+    'offline reopen retains last session and totals until HTTP returns',
+    () async {
+      var online = true;
+      var current = _snapshot('a', 7, 9);
+      var archives = <RuntimeSnapshot>[];
+      Future<RuntimeState> read(List<String> remove) async {
+        if (!online) throw const SocketException('Core stopped');
+        archives.removeWhere((snapshot) => remove.contains(snapshot.sessionId));
+        return RuntimeState(current: current, archived: archives);
+      }
+
+      final first = TrafficAccounting(
+        path: ledger.path,
+        readRuntimeState: read,
+      );
+      await first.read(live: _snapshot('a', 10, 15, time: 4));
+      online = false;
+      final reopened = TrafficAccounting(
+        path: ledger.path,
+        readRuntimeState: read,
+      );
+      final cached = (await reopened.read())!;
+      expect(cached.sessionId, _id('a'));
+      expect(cached.uplink, 10);
+      expect(cached.totalUplink, 10);
+      expect(cached.available, false);
+      await expectLater(
+        reopened.read(live: _snapshot('a', 100, 200)),
+        throwsA(isA<SocketException>()),
+      );
+      expect((await reopened.read())!.totalUplink, 10);
+      expect((await reopened.read(reset: true))!.totalUplink, 0);
+      online = true;
+      archives = [_snapshot('a', 12, 19, time: 5)];
+      current = _snapshot('b', 3, 6, time: 6);
+      final next = (await reopened.read())!;
+      expect(next.sessionId, _id('b'));
+      expect(next.uplink, 3);
+      expect(next.totalUplink, 5);
+      expect(next.totalDownlink, 10);
+      expect(archives, isEmpty);
+      expect((await reopened.read())!.totalUplink, 5);
+    },
+  );
 }
 
 RuntimeSnapshot _snapshot(String digit, int up, int down, {int time = 3}) =>

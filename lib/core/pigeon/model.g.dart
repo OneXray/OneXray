@@ -204,6 +204,8 @@ ManagedRuntimeRequest _$ManagedRuntimeRequestFromJson(
   statePath: json['statePath'] as String,
   planId: json['planId'] as String,
   inboundTag: json['inboundTag'] as String? ?? 'tunIn',
+  listen: json['listen'] as String?,
+  token: json['token'] as String?,
 );
 
 Map<String, dynamic> _$ManagedRuntimeRequestToJson(
@@ -212,6 +214,8 @@ Map<String, dynamic> _$ManagedRuntimeRequestToJson(
   'statePath': instance.statePath,
   'planId': instance.planId,
   'inboundTag': instance.inboundTag,
+  'listen': ?instance.listen,
+  'token': ?instance.token,
 };
 
 TestXrayRequest _$TestXrayRequestFromJson(Map<String, dynamic> json) =>
