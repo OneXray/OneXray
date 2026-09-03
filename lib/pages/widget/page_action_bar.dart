@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/theme/layout.dart';
 
 /// A full-page footer. Use as Scaffold.bottomNavigationBar, not inside a scroll
 /// view. Dialogs own their actions and do not use this component.
@@ -9,6 +10,11 @@ class PageActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final minHeight = mobile
+        ? AppLayout.mobilePageActionMinHeight
+        : AppLayout.pageActionMinHeight;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Material(
@@ -19,20 +25,37 @@ class PageActionBar extends StatelessWidget {
               top: BorderSide(color: Theme.of(context).dividerColor),
             ),
           ),
-          child: SafeArea(
-            top: false,
-            minimum: const EdgeInsets.all(16),
-            child: Center(
-              heightFactor: 1,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1040),
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppLayout.standardMaxWidth,
+              ),
+              child: SafeArea(
+                top: false,
+                minimum: EdgeInsets.symmetric(
+                  horizontal: mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                  vertical:
+                      (minHeight - AppLayout.pageActionButtonMinHeight) / 2,
+                ),
                 child: SizedBox(
                   width: double.infinity,
                   child: Wrap(
                     alignment: WrapAlignment.end,
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: children,
+                    spacing: AppSpacing.actionGap,
+                    runSpacing: AppSpacing.actionRunGap,
+                    children: [
+                      for (final child in children)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: mobile
+                                ? 0
+                                : AppLayout.pageActionButtonMinWidth,
+                            minHeight: AppLayout.pageActionButtonMinHeight,
+                          ),
+                          child: child,
+                        ),
+                    ],
                   ),
                 ),
               ),

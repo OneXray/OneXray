@@ -5,12 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
 void main() {
-  testWidgets('desktop update reminder opens dialog from Settings', (
+  testWidgets('shared navigation breakpoints preserve the update flow', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -70,6 +71,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('home-content'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(NavigationRail)).width,
+      AppLayout.desktopSidebarWidth,
+    );
+    for (final width in [900.0, 721.0]) {
+      await tester.binding.setSurfaceSize(Size(width, 800));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byType(NavigationRail)).width,
+        AppLayout.compactSidebarWidth,
+      );
+      expect(
+        tester.widget<NavigationRail>(find.byType(NavigationRail)).extended,
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    }
+    await tester.binding.setSurfaceSize(const Size(720, 800));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    await tester.binding.setSurfaceSize(const Size(901, 800));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byType(NavigationRail)).width,
+      AppLayout.desktopSidebarWidth,
+    );
     await tester.tap(find.text('Update available'));
     await tester.pumpAndSettle();
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/theme/layout.dart';
 
 class ResponsiveContent extends StatelessWidget {
   final Widget child;
@@ -8,8 +9,8 @@ class ResponsiveContent extends StatelessWidget {
   const ResponsiveContent({
     super.key,
     required this.child,
-    this.desktopMaxWidth = 1040,
-    this.adaptiveBreakpoint = 840,
+    this.desktopMaxWidth = AppLayout.standardMaxWidth,
+    this.adaptiveBreakpoint = AppLayout.contentBreakpoint,
   });
 
   @override

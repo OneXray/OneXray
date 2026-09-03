@@ -15,67 +15,100 @@ abstract final class AppFontFamily {
 }
 
 abstract final class AppTypography {
-  static final _shadDefaults = ShadTextTheme(family: AppFontFamily.sans);
-
-  static TextStyle _normalize(TextStyle style) {
-    return style.copyWith(
-      letterSpacing: 0,
+  // Semantic roles from the prototype's src/theme/tokens.json. Use logical
+  // pixels and leave system text scaling and locale-specific glyphs to Flutter.
+  static TextStyle _style(
+    double size, {
+    double height = 1.5,
+    FontWeight weight = FontWeight.w400,
+    double tracking = 0,
+  }) {
+    return TextStyle(
+      fontFamily: AppFontFamily.sans,
       fontFamilyFallback: AppFontFamily.sansFallback,
+      fontSize: size,
+      height: height,
+      fontWeight: weight,
+      letterSpacing: size * tracking,
     );
   }
 
+  static final pageTitle = _style(
+    31,
+    height: 1.18,
+    weight: FontWeight.w700,
+    tracking: -0.035,
+  );
+  static final mobilePageTitle = _style(
+    21,
+    height: 1.18,
+    weight: FontWeight.w700,
+    tracking: -0.025,
+  );
+  static final panelTitle = _style(19, height: 1.3, weight: FontWeight.w700);
+  static final sectionTitle = _style(14, height: 1.35, weight: FontWeight.w700);
+  static final listSectionTitle = _style(16, weight: FontWeight.w600);
+  static final rowTitle = _style(13, weight: FontWeight.w700);
+  static final rowValue = _style(13);
+  static final supporting = _style(12);
+  static final metadata = _style(11, height: 1.4);
+  static final control = _style(
+    13,
+    weight: FontWeight.w600,
+  ).copyWith(fontVariations: const [FontVariation('wght', 620)]);
+  static final navigationLabel = _style(
+    16,
+    weight: FontWeight.w500,
+  ).copyWith(fontVariations: const [FontVariation('wght', 520)]);
+  static final selectedNavigationLabel = navigationLabel.copyWith(
+    fontWeight: FontWeight.w600,
+    fontVariations: const [FontVariation('wght', 620)],
+  );
+  static final badge = metadata.copyWith(fontWeight: FontWeight.w600);
+  static final code = _style(
+    12,
+    height: 1.55,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final metric = _style(20, weight: FontWeight.w600).copyWith(
+    fontVariations: const [FontVariation('wght', 620)],
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+  static final numeric = rowValue.copyWith(
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
+
   static final shad = ShadTextTheme.custom(
-    h1Large: _normalize(_shadDefaults.h1Large),
-    h1: _normalize(_shadDefaults.h1),
-    h2: _normalize(_shadDefaults.h2),
-    h3: _normalize(_shadDefaults.h3),
-    h4: _normalize(_shadDefaults.h4),
-    p: _normalize(_shadDefaults.p),
-    blockquote: _normalize(_shadDefaults.blockquote),
-    table: _normalize(_shadDefaults.table),
-    list: _normalize(_shadDefaults.list),
-    lead: _normalize(_shadDefaults.lead),
-    large: _normalize(_shadDefaults.large),
-    small: _normalize(_shadDefaults.small),
-    muted: _normalize(_shadDefaults.muted),
+    h1Large: pageTitle,
+    h1: pageTitle,
+    h2: panelTitle,
+    h3: sectionTitle,
+    h4: sectionTitle,
+    p: rowValue,
+    blockquote: rowValue,
+    table: rowValue,
+    list: rowValue,
+    lead: supporting,
+    large: panelTitle,
+    small: control,
+    muted: supporting,
     family: AppFontFamily.sans,
   );
 
   static final material = TextTheme(
-    displayLarge: shad.h1Large,
-    displayMedium: shad.h1,
-    displaySmall: shad.h2,
-    headlineLarge: shad.h3,
-    headlineMedium: shad.h4,
-    headlineSmall: shad.h4,
-    titleLarge: shad.large,
-    titleMedium: shad.p.copyWith(fontWeight: FontWeight.w600),
-    titleSmall: shad.small.copyWith(fontWeight: FontWeight.w600),
-    bodyLarge: shad.p,
-    bodyMedium: shad.muted,
-    bodySmall: shad.muted,
-    labelLarge: shad.small.copyWith(fontWeight: FontWeight.w600),
-    labelMedium: shad.small.copyWith(fontWeight: FontWeight.w600),
-    labelSmall: shad.small.copyWith(fontWeight: FontWeight.w600),
-  );
-
-  static final pageTitle = shad.h4;
-  static final panelTitle = shad.large;
-  static final sectionTitle = shad.small.copyWith(fontWeight: FontWeight.w600);
-  static final listSectionTitle = shad.p.copyWith(fontWeight: FontWeight.w600);
-  static final rowTitle = shad.muted.copyWith(fontWeight: FontWeight.w500);
-  static final rowValue = shad.muted;
-  static final supporting = shad.muted;
-  static final control = shad.small.copyWith(fontWeight: FontWeight.w600);
-  static final navigationLabel = shad.small.copyWith(
-    fontWeight: FontWeight.w600,
-  );
-  static final badge = shad.small.copyWith(fontWeight: FontWeight.w600);
-  static final code = shad.muted.copyWith(fontFamily: AppFontFamily.mono);
-  static final metric = shad.large.copyWith(
-    fontFeatures: const [FontFeature.tabularFigures()],
-  );
-  static final numeric = shad.muted.copyWith(
-    fontFeatures: const [FontFeature.tabularFigures()],
+    displayLarge: pageTitle,
+    displayMedium: pageTitle,
+    displaySmall: panelTitle,
+    headlineLarge: pageTitle,
+    headlineMedium: panelTitle,
+    headlineSmall: panelTitle,
+    titleLarge: panelTitle,
+    titleMedium: sectionTitle,
+    titleSmall: rowTitle,
+    bodyLarge: rowValue,
+    bodyMedium: rowValue,
+    bodySmall: supporting,
+    labelLarge: control,
+    labelMedium: control,
+    labelSmall: badge,
   );
 }

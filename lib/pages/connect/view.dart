@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 
@@ -269,8 +270,10 @@ class ConnectView extends StatelessWidget {
                 : onConnection,
             style: connected
                 ? FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                    foregroundColor: Theme.of(context).colorScheme.onError,
+                    backgroundColor: ColorManager.palette(context)
+                        .destructiveSolid,
+                    foregroundColor: ColorManager.palette(context)
+                        .destructiveForeground,
                   )
                 : null,
             icon: Icon(

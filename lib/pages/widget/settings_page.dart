@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:re_editor/re_editor.dart';
@@ -73,7 +74,7 @@ class SettingsPageScroll extends StatelessWidget {
   const SettingsPageScroll({
     super.key,
     required this.child,
-    this.desktopMaxWidth = 1040,
+    this.desktopMaxWidth = AppLayout.standardMaxWidth,
     this.padding = const EdgeInsetsDirectional.only(bottom: 24),
   });
 

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/view.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -211,6 +212,24 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(tester.getRect(find.text('Save')), before);
+    expect(
+      tester.getSize(find.byType(PageActionBar)).height,
+      greaterThanOrEqualTo(AppLayout.mobilePageActionMinHeight),
+    );
+    expect(
+      tester.getSize(find.byType(FilledButton)).height,
+      greaterThanOrEqualTo(AppLayout.pageActionButtonMinHeight),
+    );
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byType(FilledButton)).width,
+      greaterThanOrEqualTo(AppLayout.pageActionButtonMinWidth),
+    );
+    expect(
+      tester.getSize(find.byType(PageActionBar)).height,
+      greaterThanOrEqualTo(AppLayout.pageActionMinHeight),
+    );
     expect(tester.takeException(), isNull);
   });
 }

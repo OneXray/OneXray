@@ -10,15 +10,13 @@ import 'package:onexray/pages/preferences/page.dart';
 import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
 
 class AdaptiveMainShell extends StatelessWidget {
   const AdaptiveMainShell({super.key, required this.navigationShell});
-
-  static const double railBreakpoint = 700;
-  static const double _extendedRailBreakpoint = 900;
 
   final StatefulNavigationShell navigationShell;
 
@@ -28,7 +26,7 @@ class AdaptiveMainShell extends StatelessWidget {
       selector: (state) => state.appUpdateInfo,
       builder: (context, appUpdateInfo) => LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth >= railBreakpoint) {
+          if (constraints.maxWidth > AppLayout.mobileBreakpoint) {
             return _railScaffold(context, constraints.maxWidth, appUpdateInfo);
           }
           return _bottomNavigationScaffold(context, appUpdateInfo != null);
@@ -79,21 +77,22 @@ class AdaptiveMainShell extends StatelessWidget {
     double width,
     AppUpdateInfo? appUpdateInfo,
   ) {
-    final extended = width >= _extendedRailBreakpoint;
+    final sidebarWidth = width > AppLayout.compactDesktopBreakpoint
+        ? AppLayout.desktopSidebarWidth
+        : AppLayout.compactSidebarWidth;
     return Scaffold(
       body: Row(
         children: [
           SafeArea(
             bottom: false,
             child: SizedBox(
-              width: extended ? 220 : 72,
+              width: sidebarWidth,
               child: Column(
                 children: [
                   Expanded(
                     child: NavigationRail(
-                      extended: extended,
-                      minWidth: 72,
-                      minExtendedWidth: 220,
+                      extended: true,
+                      minExtendedWidth: sidebarWidth,
                       selectedIndex: navigationShell.currentIndex,
                       onDestinationSelected: (index) => context.goPrimary(
                         navigationShell,
@@ -112,7 +111,6 @@ class AdaptiveMainShell extends StatelessWidget {
                   ),
                   if (appUpdateInfo != null)
                     _DesktopUpdateReminder(
-                      extended: extended,
                       onTap: () => _showDesktopUpdate(context, appUpdateInfo),
                     ),
                 ],
@@ -171,9 +169,8 @@ class AdaptiveMainShell extends StatelessWidget {
 }
 
 class _DesktopUpdateReminder extends StatelessWidget {
-  const _DesktopUpdateReminder({required this.extended, required this.onTap});
+  const _DesktopUpdateReminder({required this.onTap});
 
-  final bool extended;
   final VoidCallback onTap;
 
   @override
@@ -186,42 +183,36 @@ class _DesktopUpdateReminder extends StatelessWidget {
         message: label,
         child: Material(
           color: palette.sidebarAccent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.card),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.card),
             child: SizedBox(
               width: double.infinity,
               height: 44,
-              child: extended
-                  ? Padding(
-                      padding: const EdgeInsetsDirectional.symmetric(
-                        horizontal: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          const _UpdateBadge(
-                            child: Icon(LucideIcons.download, size: 19),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.navigationLabel.copyWith(
-                                color: palette.sidebarAccentForeground,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : const Center(
-                      child: _UpdateBadge(
-                        child: Icon(LucideIcons.download, size: 19),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: AppSpacing.controlHorizontal,
+                ),
+                child: Row(
+                  children: [
+                    const _UpdateBadge(
+                      child: Icon(LucideIcons.download, size: 19),
+                    ),
+                    const SizedBox(width: AppSpacing.actionGap),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.navigationLabel.copyWith(
+                          color: palette.sidebarAccentForeground,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
