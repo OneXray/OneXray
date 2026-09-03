@@ -11,7 +11,7 @@ void main() {
     'core_configs.json',
     'subscriptions.json',
     'geo_data.json',
-    'custom_routing_profiles.json',
+    'routing_profile.json',
   };
 
   late Directory tempDir;
@@ -36,17 +36,14 @@ void main() {
     ).extract(archivePath, output);
 
     expect(await File(p.join(output, 'manifest.json')).exists(), isTrue);
-    expect(
-      await File(p.join(output, 'custom_routing_profiles.json')).exists(),
-      isTrue,
-    );
+    expect(await File(p.join(output, 'routing_profile.json')).exists(), isTrue);
     expect(await File(p.join(output, 'dat', 'geoip.dat')).exists(), isTrue);
   });
 
   test('also accepts legacy archives without the Custom file', () async {
     final source = await _makeBackupSource(
       tempDir,
-      rootFiles.difference({'custom_routing_profiles.json'}),
+      rootFiles.difference({'routing_profile.json'}),
     );
     final archivePath = p.join(tempDir.path, 'legacy.zip');
     await _zipDirectory(source, archivePath);
@@ -59,7 +56,7 @@ void main() {
 
     expect(await File(p.join(output, 'core_configs.json')).exists(), isTrue);
     expect(
-      await File(p.join(output, 'custom_routing_profiles.json')).exists(),
+      await File(p.join(output, 'routing_profile.json')).exists(),
       isFalse,
     );
   });
@@ -96,6 +93,30 @@ void main() {
       throwsA(isA<BackupArchiveException>()),
     );
   });
+
+  test(
+    'rejects the retired development route filename before writing output',
+    () async {
+      final source = await _makeBackupSource(
+        tempDir,
+        rootFiles.difference({'routing_profile.json'}).union({
+          'custom_routing_profiles.json',
+        }),
+      );
+      final archivePath = p.join(tempDir.path, 'development.zip');
+      await _zipDirectory(source, archivePath);
+      final output = p.join(tempDir.path, 'development-output');
+
+      await expectLater(
+        const BackupArchiveExtractor(
+          rootFiles: rootFiles,
+          dataDirectory: 'dat',
+        ).extract(archivePath, output),
+        throwsA(isA<BackupArchiveException>()),
+      );
+      expect(await Directory(output).exists(), isFalse);
+    },
+  );
 
   test('rejects traversal paths', () async {
     final archive = Archive()

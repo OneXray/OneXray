@@ -105,15 +105,15 @@ class BackupGeoDataJson {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class BackupCustomRoutingProfileJson {
+class BackupRoutingProfileJson {
   final int? id;
   final String? name;
   final String? data;
 
-  const BackupCustomRoutingProfileJson(this.id, this.name, this.data);
+  const BackupRoutingProfileJson(this.id, this.name, this.data);
 
-  factory BackupCustomRoutingProfileJson.fromJson(Map<String, dynamic> json) =>
-      _$BackupCustomRoutingProfileJsonFromJson(json);
+  factory BackupRoutingProfileJson.fromJson(Map<String, dynamic> json) =>
+      _$BackupRoutingProfileJsonFromJson(json);
 
-  Map<String, dynamic> toJson() => _$BackupCustomRoutingProfileJsonToJson(this);
+  Map<String, dynamic> toJson() => _$BackupRoutingProfileJsonToJson(this);
 }

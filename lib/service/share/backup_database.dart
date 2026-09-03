@@ -15,14 +15,14 @@ final class BackupDatabaseContents {
   final List<BackupCoreConfigJson> coreConfigs;
   final List<BackupSubscriptionJson> subscriptions;
   final List<BackupGeoDataJson> geoDataList;
-  final List<BackupCustomRoutingProfileJson> customRoutingProfiles;
+  final List<BackupRoutingProfileJson> routingProfiles;
 
   const BackupDatabaseContents({
     required this.version,
     required this.coreConfigs,
     required this.subscriptions,
     required this.geoDataList,
-    required this.customRoutingProfiles,
+    required this.routingProfiles,
   });
 
   bool get _isCurrent => version == BackupManifestJson.currentVersion;
@@ -83,9 +83,9 @@ final class BackupDatabaseContents {
                 id: row.id,
               ),
           ],
-          customRoutingProfiles: [
+          routingProfiles: [
             for (final row in custom)
-              BackupCustomRoutingProfileJson(row.id, row.name, row.data),
+              BackupRoutingProfileJson(row.id, row.name, row.data),
           ],
         );
       });
@@ -94,8 +94,8 @@ final class BackupDatabaseContents {
     if (!BackupManifestJson.supportedVersions.contains(version)) {
       throw const FormatException('Unsupported backup version');
     }
-    if ((!_isCurrent && customRoutingProfiles.isNotEmpty) ||
-        customRoutingProfiles.length > RoutingProfileDao.maxProfiles) {
+    if ((!_isCurrent && routingProfiles.isNotEmpty) ||
+        routingProfiles.length > RoutingProfileDao.maxProfiles) {
       throw const FormatException('Invalid custom routing profile count');
     }
     for (final row in coreConfigs) {
@@ -134,7 +134,7 @@ final class BackupDatabaseContents {
       }
       DateTime.fromMillisecondsSinceEpoch(row.timestamp!);
     }
-    for (final row in customRoutingProfiles) {
+    for (final row in routingProfiles) {
       if (row.name == null || row.data == null) {
         throw const FormatException('Invalid backup custom routing profile');
       }
@@ -153,7 +153,7 @@ final class BackupDatabaseContents {
     _validateIds(_retainedConfigs.map((row) => row.id));
     _validateIds(subscriptions.map((row) => row.id));
     _validateIds(geoDataList.map((row) => row.id));
-    _validateIds(customRoutingProfiles.map((row) => row.id));
+    _validateIds(routingProfiles.map((row) => row.id));
     // Legacy subscription deletion could keep a running node after deleting its
     // subscription. Full backup preserves that orphan's original ID/subId/data;
     // it must neither invent a subscription nor silently relabel the node local.
@@ -228,7 +228,7 @@ final class BackupDatabaseContents {
           ),
         );
       }
-      for (final row in customRoutingProfiles) {
+      for (final row in routingProfiles) {
         await db.routingProfileDao.insertRow(
           RoutingProfileCompanion.insert(
             id: Value(row.id!),

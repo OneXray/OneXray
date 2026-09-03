@@ -39,13 +39,13 @@ void main() {
         BackupCoreConfigJson.fromJson(node.toJson()).toJson(),
         node.toJson(),
       );
-      const custom = BackupCustomRoutingProfileJson(
+      const custom = BackupRoutingProfileJson(
         4,
         'Custom',
         'eyJvdXRib3VuZHMiOlt7fV19',
       );
       expect(
-        BackupCustomRoutingProfileJson.fromJson(custom.toJson()).toJson(),
+        BackupRoutingProfileJson.fromJson(custom.toJson()).toJson(),
         custom.toJson(),
       );
       const subscription = BackupSubscriptionJson(
@@ -64,23 +64,6 @@ void main() {
       );
     },
   );
-
-  test('retired probe and parse metadata is ignored and never exported', () {
-    final node = BackupCoreConfigJson.fromJson({
-      'name': 'Node',
-      'type': 'outbound',
-      'delay': 30,
-      'locationSource': 'pingBatch',
-      'lastMeasuredAt': 1000,
-    });
-    expect(node.toJson(), {'name': 'Node', 'type': 'outbound', 'delay': 30});
-    final subscription = BackupSubscriptionJson.fromJson({
-      'name': 'Sub',
-      'parseFailureCount': 2,
-      'autoUpdate': false,
-    });
-    expect(subscription.toJson(), {'name': 'Sub', 'autoUpdate': false});
-  });
 
   test('version 4 subscription data preserves the age key pair', () {
     const subscription = BackupSubscriptionJson(

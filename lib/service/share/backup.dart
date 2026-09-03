@@ -27,7 +27,7 @@ import 'package:path_provider/path_provider.dart';
 // -- core_configs.json
 // -- subscriptions.json
 // -- geo_data.json
-// -- custom_routing_profiles.json
+// -- routing_profile.json
 // -- dat
 //    -- geo.dat
 //    -- geo.json
@@ -45,7 +45,7 @@ class BackupService {
   static const _coreConfigsFile = "core_configs.json";
   static const _subscriptionsFile = "subscriptions.json";
   static const _geoDataFile = "geo_data.json";
-  static const _customRoutingProfilesFile = "custom_routing_profiles.json";
+  static const _routingProfileFile = "routing_profile.json";
 
   int _lastRestoreSkippedCoreConfigCount = 0;
   int get lastRestoreSkippedCoreConfigCount =>
@@ -61,7 +61,7 @@ class BackupService {
       _coreConfigsFile,
       _subscriptionsFile,
       _geoDataFile,
-      _customRoutingProfilesFile,
+      _routingProfileFile,
     },
     dataDirectory: _datDir,
   );
@@ -123,8 +123,8 @@ class BackupService {
         p.join(stagingDir, _subscriptionsFile),
       );
       await _writeJsonToFile(
-        contents.customRoutingProfiles,
-        p.join(stagingDir, _customRoutingProfilesFile),
+        contents.routingProfiles,
+        p.join(stagingDir, _routingProfileFile),
       );
 
       final zipSrcPath = p.join(cacheDir, "$_zipFilePrefix.zip");
@@ -227,19 +227,16 @@ class BackupService {
       p.join(backupRoot, _geoDataFile),
       BackupGeoDataJson.fromJson,
     );
-    final customFile = p.join(backupRoot, _customRoutingProfilesFile);
-    final customRoutingProfiles = manifest.version == _backupVersion
-        ? await _readJsonList(
-            customFile,
-            BackupCustomRoutingProfileJson.fromJson,
-          )
-        : <BackupCustomRoutingProfileJson>[];
+    final routingFile = p.join(backupRoot, _routingProfileFile);
+    final routingProfiles = manifest.version == _backupVersion
+        ? await _readJsonList(routingFile, BackupRoutingProfileJson.fromJson)
+        : <BackupRoutingProfileJson>[];
     if (coreConfigs == null ||
         subscriptions == null ||
         geoDataList == null ||
-        customRoutingProfiles == null ||
+        routingProfiles == null ||
         (manifest.version != _backupVersion &&
-            await File(customFile).exists())) {
+            await File(routingFile).exists())) {
       return null;
     }
 
@@ -248,7 +245,7 @@ class BackupService {
       coreConfigs: coreConfigs,
       subscriptions: subscriptions,
       geoDataList: geoDataList,
-      customRoutingProfiles: customRoutingProfiles,
+      routingProfiles: routingProfiles,
     );
     contents.validate();
     if (!await _validateGeoDataList(backupRoot, geoDataList)) {
@@ -386,8 +383,7 @@ class BackupService {
       List<BackupCoreConfigJson>() => data.map((e) => e.toJson()).toList(),
       List<BackupSubscriptionJson>() => data.map((e) => e.toJson()).toList(),
       List<BackupGeoDataJson>() => data.map((e) => e.toJson()).toList(),
-      List<BackupCustomRoutingProfileJson>() =>
-        data.map((e) => e.toJson()).toList(),
+      List<BackupRoutingProfileJson>() => data.map((e) => e.toJson()).toList(),
       _ => data,
     };
     await File(path).writeAsString(JsonTool.encoder.convert(json));

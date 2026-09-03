@@ -80,7 +80,7 @@ void main() {
           ),
         ],
         geoDataList: const [],
-        customRoutingProfiles: const [],
+        routingProfiles: const [],
       );
 
       expect(payload.skippedCoreConfigCount, 3);
@@ -111,9 +111,9 @@ void main() {
       coreConfigs: before.coreConfigs,
       subscriptions: before.subscriptions,
       geoDataList: before.geoDataList,
-      customRoutingProfiles: [
+      routingProfiles: [
         for (var id = 1; id <= 4; id++)
-          BackupCustomRoutingProfileJson(id, 'Custom $id', 'encoded-$id'),
+          BackupRoutingProfileJson(id, 'Custom $id', 'encoded-$id'),
       ],
     );
 
@@ -131,8 +131,8 @@ void main() {
         coreConfigs: before.coreConfigs,
         subscriptions: before.subscriptions,
         geoDataList: before.geoDataList,
-        customRoutingProfiles: [
-          BackupCustomRoutingProfileJson(
+        routingProfiles: [
+          BackupRoutingProfileJson(
             8,
             'Invalid',
             base64Encode(
@@ -156,7 +156,7 @@ void main() {
         coreConfigs: before.coreConfigs,
         subscriptions: const [],
         geoDataList: before.geoDataList,
-        customRoutingProfiles: before.customRoutingProfiles,
+        routingProfiles: before.routingProfiles,
       );
 
       await _roundTrip(payload).restore(database);
@@ -178,7 +178,7 @@ void main() {
       coreConfigs: [...before.coreConfigs, before.coreConfigs.first],
       subscriptions: before.subscriptions,
       geoDataList: before.geoDataList,
-      customRoutingProfiles: before.customRoutingProfiles,
+      routingProfiles: before.routingProfiles,
     );
     expect(duplicate.validate, throwsFormatException);
     final incompleteAge = BackupDatabaseContents(
@@ -195,7 +195,7 @@ void main() {
         ),
       ],
       geoDataList: const [],
-      customRoutingProfiles: const [],
+      routingProfiles: const [],
     );
     expect(incompleteAge.validate, throwsFormatException);
   });
@@ -221,7 +221,7 @@ void main() {
         ],
         subscriptions: const [],
         geoDataList: const [],
-        customRoutingProfiles: const [],
+        routingProfiles: const [],
       );
       await expectLater(invalid.restore(database), throwsFormatException);
       expect(_json(await BackupDatabaseContents.read(database)), _json(before));
@@ -273,7 +273,7 @@ void main() {
               1,
             ),
         ],
-        customRoutingProfiles: const [],
+        routingProfiles: const [],
       );
       expect(payload.validate, throwsFormatException);
     }
@@ -353,8 +353,8 @@ BackupDatabaseContents _roundTrip(BackupDatabaseContents value) =>
       geoDataList: value.geoDataList
           .map((row) => BackupGeoDataJson.fromJson(row.toJson()))
           .toList(),
-      customRoutingProfiles: value.customRoutingProfiles
-          .map((row) => BackupCustomRoutingProfileJson.fromJson(row.toJson()))
+      routingProfiles: value.routingProfiles
+          .map((row) => BackupRoutingProfileJson.fromJson(row.toJson()))
           .toList(),
     );
 
@@ -372,5 +372,5 @@ Map<String, Object> _json(
   ],
   'subscriptions': value.subscriptions.map((row) => row.toJson()).toList(),
   'geodata': value.geoDataList.map((row) => row.toJson()).toList(),
-  'custom': value.customRoutingProfiles.map((row) => row.toJson()).toList(),
+  'custom': value.routingProfiles.map((row) => row.toJson()).toList(),
 };

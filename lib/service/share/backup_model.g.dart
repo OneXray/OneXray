@@ -96,16 +96,16 @@ Map<String, dynamic> _$BackupGeoDataJsonToJson(BackupGeoDataJson instance) =>
       'ruleCount': ?instance.ruleCount,
     };
 
-BackupCustomRoutingProfileJson _$BackupCustomRoutingProfileJsonFromJson(
+BackupRoutingProfileJson _$BackupRoutingProfileJsonFromJson(
   Map<String, dynamic> json,
-) => BackupCustomRoutingProfileJson(
+) => BackupRoutingProfileJson(
   (json['id'] as num?)?.toInt(),
   json['name'] as String?,
   json['data'] as String?,
 );
 
-Map<String, dynamic> _$BackupCustomRoutingProfileJsonToJson(
-  BackupCustomRoutingProfileJson instance,
+Map<String, dynamic> _$BackupRoutingProfileJsonToJson(
+  BackupRoutingProfileJson instance,
 ) => <String, dynamic>{
   'id': ?instance.id,
   'name': ?instance.name,
