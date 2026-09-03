@@ -7,6 +7,8 @@ import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
 
+enum RawEditorAction { test, save }
+
 class RawEditorController extends ChangeNotifier {
   final RawEditorService service;
   final int? rawId;
@@ -26,6 +28,7 @@ class RawEditorController extends ChangeNotifier {
   final text = TextEditingController();
   RawEditorDraft? _draft;
   bool busy = true;
+  RawEditorAction? action;
   String? error;
   bool _disposed = false;
   RawTestResult? testResult;
@@ -51,12 +54,14 @@ class RawEditorController extends ChangeNotifier {
   bool get canSave => canTest && name.text.trim().isNotEmpty;
   int get lineCount => '\n'.allMatches(text.text).length + 1;
   void _changed() {
+    if (_disposed) return;
     testResult = null;
     _updateSharingDataCount();
     _notify();
   }
 
   void _transferChanged() {
+    if (_disposed) return;
     _updateSharingDataCount();
     _notify();
   }
@@ -83,7 +88,7 @@ class RawEditorController extends ChangeNotifier {
   }
 
   void closePage(BuildContext context) {
-    if (!working) Navigator.of(context).pop();
+    Navigator.of(context).pop();
   }
 
   Future<void> load(BuildContext context) async {
@@ -111,6 +116,7 @@ class RawEditorController extends ChangeNotifier {
       }
     } finally {
       busy = false;
+      if (_disposed) transfers.dispose();
       _changed();
     }
   }
@@ -123,18 +129,23 @@ class RawEditorController extends ChangeNotifier {
 
   Future<void> test(BuildContext context) async {
     if (!canTest) return;
+    final revision = _textRevision;
     busy = true;
+    action = RawEditorAction.test;
     error = null;
     testResult = null;
     _notify();
     try {
-      testResult = await service.test(draft, geodata: transfers.pending);
+      final result = await service.test(draft, geodata: transfers.pending);
+      if (!_disposed && revision == _textRevision) testResult = result;
     } catch (_) {
-      if (context.mounted) {
+      if (context.mounted && revision == _textRevision) {
         error = AppLocalizations.of(context)!.prototypeCheckNetwork;
       }
     } finally {
       busy = false;
+      action = null;
+      if (_disposed) transfers.dispose();
       _notify();
     }
   }
@@ -142,6 +153,7 @@ class RawEditorController extends ChangeNotifier {
   Future<void> save(BuildContext context) async {
     if (!canSave) return;
     busy = true;
+    action = RawEditorAction.save;
     error = null;
     _changed();
     final l10n = AppLocalizations.of(context)!;
@@ -158,7 +170,12 @@ class RawEditorController extends ChangeNotifier {
               )
             : Future.value(false),
       );
-      if (id != null && context.mounted) Navigator.of(context).pop(id);
+      if (id != null &&
+          !_disposed &&
+          context.mounted &&
+          ModalRoute.of(context)?.isCurrent == true) {
+        Navigator.of(context).pop(id);
+      }
     } on RawEditorException catch (failure) {
       error = switch (failure.reason) {
         'limit' => l10n.prototypeRawJsonLimit,
@@ -172,6 +189,8 @@ class RawEditorController extends ChangeNotifier {
       error = l10n.buttonSaveFailed;
     } finally {
       busy = false;
+      action = null;
+      if (_disposed) transfers.dispose();
       _changed();
     }
   }
@@ -179,7 +198,7 @@ class RawEditorController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    transfers.dispose();
+    if (!busy) transfers.dispose();
     name.dispose();
     text.dispose();
     super.dispose();

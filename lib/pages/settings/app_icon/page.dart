@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/gen/assets.gen.dart';
@@ -23,46 +24,41 @@ class AppIconPage extends StatelessWidget {
           final controller = context.read<AppIconController>();
           final l10n = AppLocalizations.of(context)!;
           final useDockIconLabel = AppPlatform.isMacOS;
-          return PopScope(
-            canPop: !state.saving,
-            child: Scaffold(
-              appBar: AppBar(
-                title: Text(l10n.prototypeAppIcon),
-                leading: BackButton(
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(l10n.prototypeAppIcon),
+              leading: BackButton(onPressed: () => controller.cancel(context)),
+            ),
+            body: SafeArea(
+              child: AbsorbPointer(
+                absorbing: state.loading || state.saving,
+                child: AppIconChoiceView(
+                  selected: state.appIcon,
+                  useDockIconAssets: useDockIconLabel,
+                  description: useDockIconLabel
+                      ? l10n.prototypeDockIconHint
+                      : l10n.prototypeHomeScreenIconHint,
+                  onSelected: controller.updateIcon,
+                ),
+              ),
+            ),
+            bottomNavigationBar: PageActionBar(
+              children: [
+                ShadButton.outline(
                   onPressed: () => controller.cancel(context),
+                  child: Text(l10n.prototypeCancel),
                 ),
-              ),
-              body: SafeArea(
-                child: AbsorbPointer(
-                  absorbing: state.loading || state.saving,
-                  child: AppIconChoiceView(
-                    selected: state.appIcon,
-                    useDockIconAssets: useDockIconLabel,
-                    description: useDockIconLabel
-                        ? l10n.prototypeDockIconHint
-                        : l10n.prototypeHomeScreenIconHint,
-                    onSelected: controller.updateIcon,
-                  ),
-                ),
-              ),
-              bottomNavigationBar: PageActionBar(
-                children: [
-                  ShadButton.outline(
-                    enabled: !state.saving,
-                    onPressed: state.saving
-                        ? null
-                        : () => controller.cancel(context),
-                    child: Text(l10n.prototypeCancel),
-                  ),
-                  ShadButton(
-                    enabled: !state.loading && !state.saving,
-                    onPressed: state.loading || state.saving
-                        ? null
-                        : () => controller.save(context),
+                ShadButton(
+                  enabled: !state.loading && !state.saving,
+                  onPressed: state.loading || state.saving
+                      ? null
+                      : () => controller.save(context),
+                  child: ButtonProgress(
+                    busy: state.saving,
                     child: Text(l10n.prototypeSave),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },

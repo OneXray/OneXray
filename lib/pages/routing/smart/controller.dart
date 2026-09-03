@@ -50,7 +50,7 @@ class SmartRoutingEditorController extends ChangeNotifier {
   }
 
   void update(String key, Object? value) {
-    if (busy) return;
+    if (original == null) return;
     draft = SmartRoutingSettings.fromJson({...draft.toJson(), key: value});
     error = null;
     _notify();
@@ -200,7 +200,9 @@ class SmartRoutingEditorController extends ChangeNotifier {
               )
             : Future.value(false),
       );
-      if (saved && context.mounted) {
+      if (saved &&
+          context.mounted &&
+          ModalRoute.of(context)?.isCurrent == true) {
         Navigator.of(context).pop(true);
       }
     } catch (_) {
@@ -212,7 +214,7 @@ class SmartRoutingEditorController extends ChangeNotifier {
   }
 
   void cancel(BuildContext context) {
-    if (!busy) Navigator.of(context).pop();
+    Navigator.of(context).pop();
   }
 
   void _notify() {

@@ -30,27 +30,22 @@ abstract final class AppTheme {
     required AppPalette palette,
     required Brightness brightness,
     required bool mobile,
-    bool secondary = false,
   }) => AppBarTheme(
     backgroundColor: palette.header,
     foregroundColor: palette.foreground,
     iconTheme: IconThemeData(color: palette.mutedStrong, size: 21),
     surfaceTintColor: Colors.transparent,
-    centerTitle: mobile && secondary,
+    centerTitle: false,
     elevation: 0,
     scrolledUnderElevation: 0,
-    toolbarHeight: mobile ? AppLayout.mobileHeaderHeight : null,
+    toolbarHeight: kToolbarHeight,
     titleSpacing: mobile ? AppSpacing.mobileHeaderHorizontal : AppSpacing.page,
     actionsPadding: EdgeInsetsDirectional.only(
       end: mobile ? AppSpacing.mobileHeaderHorizontal : AppSpacing.page,
     ),
-    titleTextStyle:
-        (mobile
-                ? secondary
-                      ? AppTypography.secondaryPageTitle
-                      : AppTypography.mobilePageTitle
-                : AppTypography.pageTitle)
-            .copyWith(color: palette.foreground),
+    titleTextStyle: AppTypography.navigationTitle.copyWith(
+      color: palette.foreground,
+    ),
     systemOverlayStyle: SystemUiOverlayStyle(
       statusBarColor: palette.header,
       statusBarIconBrightness: brightness == Brightness.light
@@ -68,7 +63,6 @@ abstract final class AppTheme {
         palette: ColorManager.palette(context),
         brightness: theme.brightness,
         mobile: MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint,
-        secondary: true,
       ),
     );
   }

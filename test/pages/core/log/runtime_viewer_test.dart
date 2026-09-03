@@ -11,6 +11,7 @@ import 'package:onexray/pages/core/log/log_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/runtime_code_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 
 const _panel = ValueKey('runtime-code-panel');
 const _logLines = ValueKey('runtime-log-lines');
@@ -154,7 +155,11 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        if (state.exporting) {
+          await tester.pump(const Duration(milliseconds: 100));
+        } else {
+          await tester.pumpAndSettle();
+        }
         final l = _strings(tester);
         expect(
           find.text(l.prototypeTemporarilyUnavailable),
@@ -172,6 +177,10 @@ void main() {
           find.widgetWithText(OutlinedButton, l.prototypeExport),
         );
         expect(export.onPressed != null, state.fileExists && !state.exporting);
+        expect(
+          find.byType(ButtonProgressIndicator),
+          state.exporting ? findsOneWidget : findsNothing,
+        );
         expect(tester.takeException(), isNull);
       }
     },

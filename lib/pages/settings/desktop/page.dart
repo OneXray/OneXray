@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -83,8 +84,12 @@ class DesktopSettingsView extends StatelessWidget {
                   title: l10n.settingsPageLaunchAtLoginRequiresApproval,
                   subtitle: l10n.settingsPageLaunchAtLoginApprovalDescription,
                   leading: const Icon(LucideIcons.settings2),
-                  trailing: const Icon(LucideIcons.externalLink),
-                  onTap: onOpenSystemSettings,
+                  trailing: state.openingSystemSettings
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.externalLink),
+                  onTap: state.openingSystemSettings
+                      ? null
+                      : onOpenSystemSettings,
                 ),
               SwitchSettingRow(
                 title: l10n.settingsPageStartHidden,

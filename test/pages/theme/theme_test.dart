@@ -25,7 +25,9 @@ void main() {
       expect(material.colorScheme.outline, palette.border);
       expect(material.appBarTheme.backgroundColor, palette.header);
       expect(material.appBarTheme.foregroundColor, palette.foreground);
-      expect(material.appBarTheme.toolbarHeight, isNull);
+      expect(material.appBarTheme.toolbarHeight, kToolbarHeight);
+      expect(material.appBarTheme.centerTitle, isFalse);
+      expect(material.appBarTheme.titleTextStyle!.fontSize, 20);
       expect(material.appBarTheme.titleSpacing, AppSpacing.page);
       expect(
         material.appBarTheme.actionsPadding,
@@ -233,8 +235,10 @@ void main() {
     test('mobile theme uses shared header, gutter and button sizes', () {
       final material = AppTheme.material(Brightness.light, mobile: true);
       final shad = AppTheme.shad(Brightness.light, mobile: true);
-      expect(material.appBarTheme.titleTextStyle!.fontSize, 21);
-      expect(material.appBarTheme.titleTextStyle!.letterSpacing, 21 * -0.025);
+      expect(material.appBarTheme.titleTextStyle!.fontSize, 20);
+      expect(material.appBarTheme.titleTextStyle!.fontWeight, FontWeight.w600);
+      expect(material.appBarTheme.titleTextStyle!.letterSpacing, 0);
+      expect(material.appBarTheme.centerTitle, isFalse);
       expect(material.appBarTheme.toolbarHeight, AppLayout.mobileHeaderHeight);
       expect(
         material.appBarTheme.titleSpacing,

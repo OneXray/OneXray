@@ -73,11 +73,31 @@ class ServersController extends ConnectController {
   final search = TextEditingController();
   ServerGrouping grouping = ServerGrouping.location;
   String? activeGroupId;
-  bool actionBusy = false;
+  final Set<String> _pending = {};
+  final Set<int> testingIds = {};
+  final Set<int> favoritingIds = {};
+  ServerSelection? selecting;
+  bool get actionBusy => _pending.isNotEmpty;
   bool _disposed = false;
   final Map<int, String> sourceErrors = {};
 
-  bool get busy => actionBusy || coordinator.state.value.busy;
+  bool get busy =>
+      selecting != null ||
+      pendingChange != null ||
+      coordinator.state.value.busy;
+  bool serverBusy(CoreConfigData row) =>
+      _pending.contains('server:${row.id}') ||
+      _pending.contains('source:${row.subId}');
+  bool sourceBusy(int id) =>
+      _pending.contains('source:$id') ||
+      servers.any(
+        (row) => row.subId == id && _pending.contains('server:${row.id}'),
+      );
+  bool testing(Iterable<CoreConfigData> rows) =>
+      rows.any((row) => testingIds.contains(row.id));
+  bool selectingGroup(ServerSelection value) =>
+      selecting != null &&
+      jsonEncode(selecting!.toJson()) == jsonEncode(value.toJson());
   void changed() {
     if (!_disposed) notifyListeners();
   }
@@ -399,29 +419,52 @@ class ServersController extends ConnectController {
 
   Future<void> choose(BuildContext context, ServerSelection selection) async {
     if (busy) return;
-    await change(context, {'selection': selection.toJson(), 'expert': false});
+    selecting = selection;
+    changed();
+    try {
+      await change(context, {'selection': selection.toJson(), 'expert': false});
+    } finally {
+      selecting = null;
+      changed();
+    }
   }
 
   void chooseExit(BuildContext context, int? id) =>
       Navigator.of(context).pop(ServerExitChoice(id));
 
   Future<void> toggleFavorite(BuildContext context, CoreConfigData row) =>
-      perform(context, () => assets.favorite(row.id, !row.favorite));
-
-  Future<void> test(BuildContext context, Iterable<CoreConfigData> rows) =>
       perform(context, () async {
-        await PingService().pingConfigIds(
-          rows.map((row) => row.id).toList(),
-          force: true,
-        );
-      });
+        favoritingIds.add(row.id);
+        changed();
+        try {
+          await assets.favorite(row.id, !row.favorite);
+        } finally {
+          favoritingIds.remove(row.id);
+          changed();
+        }
+      }, ids: {row.id});
+
+  Future<void> test(BuildContext context, Iterable<CoreConfigData> rows) async {
+    final ids = rows.map((row) => row.id).toSet();
+    if (ids.isEmpty) return;
+    await perform(context, () async {
+      testingIds.addAll(ids);
+      changed();
+      try {
+        await PingService().pingConfigIds(ids.toList(), force: true);
+      } finally {
+        testingIds.removeAll(ids);
+        changed();
+      }
+    }, ids: ids);
+  }
 
   Future<void> serverAction(
     BuildContext context,
     CoreConfigData row,
     ServerAction action,
   ) async {
-    if (busy) return;
+    if (serverBusy(row)) return;
     final l = AppLocalizations.of(context)!;
     switch (action) {
       case ServerAction.edit:
@@ -437,7 +480,7 @@ class ServersController extends ConnectController {
           if (context.mounted) {
             ContextAlert.showToast(context, l.prototypeLocalCopySaved);
           }
-        });
+        }, ids: {row.id});
       case ServerAction.share:
         await shareAsset(context, SharePageParams(ShareType.config, row.id));
       case ServerAction.delete:
@@ -450,7 +493,7 @@ class ServersController extends ConnectController {
     SubscriptionData source,
     SourceAction action,
   ) async {
-    if (busy) return;
+    if (sourceBusy(source.id)) return;
     switch (action) {
       case SourceAction.update:
         await perform(context, () async {
@@ -479,7 +522,7 @@ class ServersController extends ConnectController {
               l.prototypeSubscriptionExistingNodesKept,
             );
           }
-        });
+        }, sourceId: source.id);
       case SourceAction.test:
         await test(context, servers.where((row) => row.subId == source.id));
       case SourceAction.edit:
@@ -506,35 +549,42 @@ class ServersController extends ConnectController {
     Set<int> ids = const {},
     int? sourceId,
   }) async {
-    await perform(context, () async {
-      final preview = await assets.previewRemoval(ids: ids, sourceId: sourceId);
-      if (!context.mounted) return;
-      final l = AppLocalizations.of(context)!;
-      if (!await ContextAlert.showConfirmDialog(
-        context,
-        title: sourceId == null
-            ? l.prototypeDeleteServer
-            : l.prototypeDeleteSource,
-        content:
-            '$name\n${l.prototypeServerCount(preview.ids.length)}\n\n${l.prototypeDeletedServerSelectionNotice}'
-            '${preview.affectsRuntime && !preview.disconnect ? '\n\n${l.prototypeReconnectNotice}' : ''}',
-        confirmLabel: preview.disconnect
-            ? l.prototypeDeleteAndDisconnect
-            : preview.affectsRuntime
-            ? l.prototypeDeleteAndReconnect
-            : l.prototypeDelete,
-      )) {
-        return;
-      }
-      await assets.remove(preview);
-      if (context.mounted) {
-        ContextAlert.showToast(context, l.prototypeNameRemoved(name));
-      }
-    });
+    await perform(
+      context,
+      () async {
+        final preview = await assets.previewRemoval(
+          ids: ids,
+          sourceId: sourceId,
+        );
+        if (!context.mounted) return;
+        final l = AppLocalizations.of(context)!;
+        if (!await ContextAlert.showConfirmDialog(
+          context,
+          title: sourceId == null
+              ? l.prototypeDeleteServer
+              : l.prototypeDeleteSource,
+          content:
+              '$name\n${l.prototypeServerCount(preview.ids.length)}\n\n${l.prototypeDeletedServerSelectionNotice}'
+              '${preview.affectsRuntime && !preview.disconnect ? '\n\n${l.prototypeReconnectNotice}' : ''}',
+          confirmLabel: preview.disconnect
+              ? l.prototypeDeleteAndDisconnect
+              : preview.affectsRuntime
+              ? l.prototypeDeleteAndReconnect
+              : l.prototypeDelete,
+        )) {
+          return;
+        }
+        await assets.remove(preview);
+        if (context.mounted) {
+          ContextAlert.showToast(context, l.prototypeNameRemoved(name));
+        }
+      },
+      ids: ids,
+      sourceId: sourceId,
+    );
   }
 
   Future<void> openSources(BuildContext context) async {
-    if (busy) return;
     final source = await showAppDialog<SubscriptionData>(
       context,
       (_) => ServerSourcesDialog(controller: this),
@@ -552,15 +602,28 @@ class ServersController extends ConnectController {
 
   Future<void> perform(
     BuildContext context,
-    Future<void> Function() action,
-  ) async {
-    if (busy) return;
-    actionBusy = true;
+    Future<void> Function() action, {
+    Set<int> ids = const {},
+    int? sourceId,
+  }) async {
+    final keys = <String>{
+      for (final id in ids) 'server:$id',
+      if (sourceId != null) 'source:$sourceId',
+    };
+    if (keys.any(_pending.contains) ||
+        (sourceId != null && sourceBusy(sourceId)) ||
+        servers.any(
+          (row) =>
+              ids.contains(row.id) && _pending.contains('source:${row.subId}'),
+        )) {
+      return;
+    }
+    _pending.addAll(keys);
     changed();
     try {
       await run(context, action);
     } finally {
-      actionBusy = false;
+      _pending.removeAll(keys);
       changed();
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/language/controller.dart';
@@ -21,42 +22,37 @@ class LanguagePage extends StatelessWidget {
         builder: (context, state) {
           final controller = context.read<LanguageController>();
           final l10n = AppLocalizations.of(context)!;
-          return PopScope(
-            canPop: !state.saving,
-            child: Scaffold(
-              appBar: AppBar(
-                title: Text(l10n.prototypeLanguage),
-                leading: BackButton(
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(l10n.prototypeLanguage),
+              leading: BackButton(onPressed: () => controller.cancel(context)),
+            ),
+            body: SafeArea(
+              child: AbsorbPointer(
+                absorbing: state.saving,
+                child: LanguageChoiceView(
+                  selected: state.languageCode,
+                  onSelected: controller.updateLanguageCode,
+                ),
+              ),
+            ),
+            bottomNavigationBar: PageActionBar(
+              children: [
+                ShadButton.outline(
                   onPressed: () => controller.cancel(context),
+                  child: Text(l10n.prototypeCancel),
                 ),
-              ),
-              body: SafeArea(
-                child: AbsorbPointer(
-                  absorbing: state.saving,
-                  child: LanguageChoiceView(
-                    selected: state.languageCode,
-                    onSelected: controller.updateLanguageCode,
-                  ),
-                ),
-              ),
-              bottomNavigationBar: PageActionBar(
-                children: [
-                  ShadButton.outline(
-                    enabled: !state.saving,
-                    onPressed: state.saving
-                        ? null
-                        : () => controller.cancel(context),
-                    child: Text(l10n.prototypeCancel),
-                  ),
-                  ShadButton(
-                    enabled: !state.saving,
-                    onPressed: state.saving
-                        ? null
-                        : () => controller.save(context),
+                ShadButton(
+                  enabled: !state.saving,
+                  onPressed: state.saving
+                      ? null
+                      : () => controller.save(context),
+                  child: ButtonProgress(
+                    busy: state.saving,
                     child: Text(l10n.prototypeSave),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },

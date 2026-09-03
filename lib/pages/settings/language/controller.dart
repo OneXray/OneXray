@@ -44,7 +44,9 @@ class LanguageController extends PageCubit<LanguagePageState> {
     emit(state.copyWith(saving: true));
     try {
       await AppEventBus.instance.updateLanguageCode(state.languageCode);
-      if (context.mounted) context.pop();
+      if (context.mounted && ModalRoute.of(context)?.isCurrent == true) {
+        context.pop();
+      }
     } catch (_) {
       if (context.mounted) {
         ContextAlert.showToast(
@@ -58,6 +60,6 @@ class LanguageController extends PageCubit<LanguagePageState> {
   }
 
   void cancel(BuildContext context) {
-    if (!state.saving) context.pop();
+    context.pop();
   }
 }

@@ -64,10 +64,7 @@ class _ServerEditorPageState extends State<ServerEditorPage> {
                   ),
                 ),
                 const SizedBox(height: 7),
-                AbsorbPointer(
-                  absorbing: controller.busy || !controller.loaded,
-                  child: OutboundJsonEditor(controller: controller.text),
-                ),
+                OutboundJsonEditor(controller: controller.text),
                 const SizedBox(height: 7),
                 Text(
                   controller.fromSubscription
@@ -77,7 +74,6 @@ class _ServerEditorPageState extends State<ServerEditorPage> {
                     color: p.mutedForeground,
                   ),
                 ),
-                if (controller.busy) const LinearProgressIndicator(),
                 if (controller.error != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -104,6 +100,7 @@ class _ServerEditorPageState extends State<ServerEditorPage> {
             ),
             ConnectDialogButton(
               label: l.prototypeSave,
+              busy: controller.busy,
               onPressed:
                   controller.busy || !controller.loaded || !controller.validJson
                   ? null

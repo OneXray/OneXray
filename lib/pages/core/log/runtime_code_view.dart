@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -18,6 +19,7 @@ class RuntimeCodeScaffold extends StatelessWidget {
     required this.code,
     this.onExport,
     this.onStatusPressed,
+    this.exporting = false,
   });
 
   final String title;
@@ -27,6 +29,7 @@ class RuntimeCodeScaffold extends StatelessWidget {
   final Widget code;
   final VoidCallback? onExport;
   final VoidCallback? onStatusPressed;
+  final bool exporting;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +68,10 @@ class RuntimeCodeScaffold extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.download, size: 15),
+          if (exporting)
+            const ButtonProgressIndicator(size: 15)
+          else
+            const Icon(LucideIcons.download, size: 15),
           const SizedBox(width: 6),
           Flexible(child: Text(exportLabel, textAlign: TextAlign.center)),
         ],

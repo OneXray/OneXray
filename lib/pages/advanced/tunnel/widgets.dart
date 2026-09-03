@@ -5,6 +5,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -28,23 +29,20 @@ class PolicyDetailScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return PopScope(
-      canPop: !controller.blocked,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(title),
-          leading: BackButton(onPressed: () => controller.cancel(context)),
-        ),
-        body: SafeArea(
-          child: SettingsPageScroll(padding: contentPadding, child: body),
-        ),
-        bottomNavigationBar: PolicyActions(
-          controller: controller,
-          canSave: canSave,
-          cancel: () => controller.cancel(context),
-          save: () => controller.save(context),
-          cancelLabel: l.prototypeCancel,
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        leading: BackButton(onPressed: () => controller.cancel(context)),
+      ),
+      body: SafeArea(
+        child: SettingsPageScroll(padding: contentPadding, child: body),
+      ),
+      bottomNavigationBar: PolicyActions(
+        controller: controller,
+        canSave: canSave,
+        cancel: () => controller.cancel(context),
+        save: () => controller.save(context),
+        cancelLabel: l.prototypeCancel,
       ),
     );
   }
@@ -88,7 +86,7 @@ class PolicyActions extends StatelessWidget {
           spacing: root ? 13 : AppSpacing.actionGap,
           children: [
             OutlinedButton(
-              onPressed: controller.blocked ? null : cancel,
+              onPressed: root && controller.blocked ? null : cancel,
               child: cancelIcon == null
                   ? Text(cancelLabel)
                   : Row(
@@ -101,13 +99,14 @@ class PolicyActions extends StatelessWidget {
                     ),
             ),
             FilledButton(
-              onPressed: controller.blocked || !canSave ? null : save,
-              child: controller.busy
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(controller.saveLabel(l)),
+              onPressed:
+                  controller.blocked || controller.runtimeBusy || !canSave
+                  ? null
+                  : save,
+              child: ButtonProgress(
+                busy: controller.busy,
+                child: Text(controller.saveLabel(l)),
+              ),
             ),
           ],
         ),

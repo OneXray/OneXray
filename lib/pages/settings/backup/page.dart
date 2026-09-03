@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -25,269 +26,276 @@ class BackupPage extends StatelessWidget {
         final palette = ColorManager.palette(context);
         final mobile =
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-        return PopScope(
-          canPop: !state.busy,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(l10n.prototypeBackupRestore),
-              leading: BackButton(onPressed: () => controller.cancel(context)),
-            ),
-            body: SafeArea(
-              child: SettingsPageScroll(
-                desktopMaxWidth: 760,
-                padding: const EdgeInsets.fromLTRB(14, 17, 14, 26),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: mobile ? 23 : 24,
-                  children: [
-                    Text(
-                      l10n.prototypeBackupRestoreHint,
-                      style: AppTypography.settingsDetailNote.copyWith(
-                        color: palette.mutedForeground,
-                      ),
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(l10n.prototypeBackupRestore),
+            leading: BackButton(onPressed: () => controller.cancel(context)),
+          ),
+          body: SafeArea(
+            child: SettingsPageScroll(
+              desktopMaxWidth: 760,
+              padding: const EdgeInsets.fromLTRB(14, 17, 14, 26),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: mobile ? 23 : 24,
+                children: [
+                  Text(
+                    l10n.prototypeBackupRestoreHint,
+                    style: AppTypography.settingsDetailNote.copyWith(
+                      color: palette.mutedForeground,
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SettingSection(
-                          title: l10n.prototypeBackupContents,
-                          icon: LucideIcons.hardDrive,
-                          headerInset: 0,
-                          padding: EdgeInsets.zero,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    l10n.prototypeBackupAssets,
-                                    style: AppTypography.backupBody,
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SettingSection(
+                        title: l10n.prototypeBackupContents,
+                        icon: LucideIcons.hardDrive,
+                        headerInset: 0,
+                        padding: EdgeInsets.zero,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  l10n.prototypeBackupAssets,
+                                  style: AppTypography.backupBody,
+                                ),
+                                const SizedBox(height: 7),
+                                Text(
+                                  l10n.prototypeBackupNoPreferences,
+                                  style: AppTypography.backupScopeHint.copyWith(
+                                    color: palette.mutedForeground,
                                   ),
-                                  const SizedBox(height: 7),
-                                  Text(
-                                    l10n.prototypeBackupNoPreferences,
-                                    style: AppTypography.backupScopeHint
-                                        .copyWith(
-                                          color: palette.mutedForeground,
-                                        ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Icon(
-                                LucideIcons.shield,
-                                size: 16,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Icon(
+                              LucideIcons.shield,
+                              size: 16,
+                              color: palette.mutedForeground,
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          Expanded(
+                            child: Text(
+                              l10n.prototypeBackupSecurityWarning,
+                              style: AppTypography.settingsDetailNote.copyWith(
                                 color: palette.mutedForeground,
                               ),
                             ),
-                            const SizedBox(width: 7),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: mobile ? 20 : 24,
+                        ),
+                        child: Row(
+                          children: [
                             Expanded(
                               child: Text(
-                                l10n.prototypeBackupSecurityWarning,
-                                style: AppTypography.settingsDetailNote
-                                    .copyWith(color: palette.mutedForeground),
+                                l10n.prototypeBackupFiles,
+                                style: mobile
+                                    ? AppTypography.settingsSectionTitle
+                                    : AppTypography.settingsSectionDesktopTitle,
+                              ),
+                            ),
+                            Text(
+                              '${state.files.length}',
+                              style: AppTypography.settingsDetailNote.copyWith(
+                                color: palette.mutedForeground,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: mobile ? 20 : 24,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  l10n.prototypeBackupFiles,
-                                  style: mobile
-                                      ? AppTypography.settingsSectionTitle
-                                      : AppTypography
-                                            .settingsSectionDesktopTitle,
+                      ),
+                      SizedBox(height: mobile ? 11 : 13),
+                      Row(
+                        spacing: 10,
+                        children: [
+                          Expanded(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 42),
+                              child: ShadButton.outline(
+                                enabled: state.canBackup,
+                                expands: true,
+                                height: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                  vertical: 10,
                                 ),
-                              ),
-                              Text(
-                                '${state.files.length}',
-                                style: AppTypography.settingsDetailNote
-                                    .copyWith(color: palette.mutedForeground),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: mobile ? 11 : 13),
-                        Row(
-                          spacing: 10,
-                          children: [
-                            Expanded(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  minHeight: 42,
-                                ),
-                                child: ShadButton.outline(
-                                  enabled: !state.busy,
-                                  expands: true,
-                                  height: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 15,
-                                    vertical: 10,
-                                  ),
-                                  onPressed: () => controller.backup(context),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
+                                onPressed: () => controller.backup(context),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (state.backingUp)
+                                      const ButtonProgressIndicator(size: 17)
+                                    else
                                       const Icon(LucideIcons.plus, size: 17),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(l10n.prototypeCreateBackup),
-                                      ),
-                                    ],
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(l10n.prototypeCreateBackup),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            Expanded(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  minHeight: 42,
+                          ),
+                          Expanded(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 42),
+                              child: ShadButton.outline(
+                                enabled: state.canImport,
+                                expands: true,
+                                height: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                  vertical: 10,
                                 ),
-                                child: ShadButton.outline(
-                                  enabled: !state.busy,
-                                  expands: true,
-                                  height: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 15,
-                                    vertical: 10,
-                                  ),
-                                  onPressed: () =>
-                                      controller.importBackup(context),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
+                                onPressed: () =>
+                                    controller.importBackup(context),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (state.importing)
+                                      const ButtonProgressIndicator(size: 17)
+                                    else
                                       const Icon(
                                         LucideIcons.download,
                                         size: 17,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(l10n.prototypeImportBackup),
-                                      ),
-                                    ],
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(l10n.prototypeImportBackup),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      if (state.loading)
+                        const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: CircularProgressIndicator(),
+                        ),
+                      if (state.readFailed)
+                        SettingRow(
+                          title: l10n.prototypeTemporarilyUnavailable,
+                          enabled: !state.loading,
+                          trailing: IconButton(
+                            tooltip: l10n.prototypeRetry,
+                            onPressed: state.loading
+                                ? null
+                                : controller.refresh,
+                            icon: state.loading
+                                ? const ButtonProgressIndicator()
+                                : const Icon(LucideIcons.refreshCw),
+                          ),
+                        ),
+                      if (!state.loading &&
+                          !state.readFailed &&
+                          state.files.isEmpty)
+                        CustomPaint(
+                          painter: _BackupEmptyBorder(palette.border),
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 175),
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  LucideIcons.hardDrive,
+                                  size: 29,
+                                  color: palette.mutedForeground,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  l10n.prototypeNoBackups,
+                                  textAlign: TextAlign.center,
+                                  style: AppTypography.backupEmptyTitle,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (state.files.isNotEmpty)
+                        ShadRadioGroup<String>(
+                          axis: Axis.horizontal,
+                          initialValue: state.selection,
+                          onChanged: controller.updateSelection,
+                          items: [
+                            SettingSection(
+                              title: '',
+                              padding: EdgeInsets.zero,
+                              dividerIndent: 0,
+                              children: [
+                                for (final file in state.files)
+                                  _BackupFileRow(
+                                    file: file,
+                                    selected: state.selection == file.name,
+                                    enabled: !state.fileBusy(file.path),
+                                    action: state.fileActions[file.path],
+                                    canTransfer: !state.transferring,
+                                    onSelect: () =>
+                                        controller.updateSelection(file.name),
+                                    onAction: (action) => controller.moreAction(
+                                      context,
+                                      file,
+                                      action,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 14),
-                        if (state.loading)
-                          const Padding(
-                            padding: EdgeInsets.all(20),
-                            child: CircularProgressIndicator(),
-                          ),
-                        if (state.readFailed)
-                          SettingRow(
-                            title: l10n.prototypeTemporarilyUnavailable,
-                            enabled: !state.busy,
-                            trailing: IconButton(
-                              tooltip: l10n.prototypeRetry,
-                              onPressed: state.busy ? null : controller.refresh,
-                              icon: const Icon(LucideIcons.refreshCw),
-                            ),
-                          ),
-                        if (!state.loading &&
-                            !state.readFailed &&
-                            state.files.isEmpty)
-                          CustomPaint(
-                            painter: _BackupEmptyBorder(palette.border),
-                            child: Container(
-                              constraints: const BoxConstraints(minHeight: 175),
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    LucideIcons.hardDrive,
-                                    size: 29,
-                                    color: palette.mutedForeground,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    l10n.prototypeNoBackups,
-                                    textAlign: TextAlign.center,
-                                    style: AppTypography.backupEmptyTitle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        if (state.files.isNotEmpty)
-                          ShadRadioGroup<String>(
-                            axis: Axis.horizontal,
-                            enabled: !state.busy,
-                            initialValue: state.selection,
-                            onChanged: controller.updateSelection,
-                            items: [
-                              SettingSection(
-                                title: '',
-                                padding: EdgeInsets.zero,
-                                dividerIndent: 0,
-                                children: [
-                                  for (final file in state.files)
-                                    _BackupFileRow(
-                                      file: file,
-                                      selected: state.selection == file.name,
-                                      enabled: !state.busy,
-                                      onSelect: () =>
-                                          controller.updateSelection(file.name),
-                                      onAction: (action) => controller
-                                          .moreAction(context, file, action),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          bottomNavigationBar: PageActionBar(
+            children: [
+              ShadButton.outline(
+                onPressed: () => controller.cancel(context),
+                child: Text(l10n.prototypeBack),
+              ),
+              ShadButton(
+                enabled: state.canRestore,
+                onPressed: () => controller.restore(context),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (state.restoring)
+                      const ButtonProgressIndicator(size: 17)
+                    else
+                      const Icon(LucideIcons.rotateCcw, size: 17),
+                    const SizedBox(width: 8),
+                    Flexible(child: Text(l10n.prototypeRestoreSelectedBackup)),
                   ],
                 ),
               ),
-            ),
-            bottomNavigationBar: PageActionBar(
-              children: [
-                ShadButton.outline(
-                  enabled: !state.busy,
-                  onPressed: () => controller.cancel(context),
-                  child: Text(l10n.prototypeBack),
-                ),
-                ShadButton(
-                  enabled: !state.busy && state.selection.isNotEmpty,
-                  onPressed: () => controller.restore(context),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(LucideIcons.rotateCcw, size: 17),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(l10n.prototypeRestoreSelectedBackup),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
         );
       },
@@ -330,12 +338,16 @@ class _BackupFileRow extends StatelessWidget {
     required this.enabled,
     required this.onSelect,
     required this.onAction,
+    this.action,
+    this.canTransfer = true,
   });
   final FileInfo file;
   final bool selected;
   final bool enabled;
   final VoidCallback onSelect;
   final ValueChanged<IconMenuId> onAction;
+  final IconMenuId? action;
+  final bool canTransfer;
 
   @override
   Widget build(BuildContext context) {
@@ -441,7 +453,7 @@ class _BackupFileRow extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 36),
       child: ShadButton.outline(
-        enabled: enabled,
+        enabled: enabled && (action == IconMenuId.delete || canTransfer),
         height: 0,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         foregroundColor: destructive
@@ -451,7 +463,11 @@ class _BackupFileRow extends StatelessWidget {
             ? ColorManager.palette(context).destructive
             : null,
         textStyle: AppTypography.backupAction,
-        leading: icon == null ? null : Icon(icon, size: 15),
+        leading: this.action == action
+            ? const ButtonProgressIndicator(size: 15)
+            : icon == null
+            ? null
+            : Icon(icon, size: 15),
         onPressed: () => onAction(action),
         child: Text(label),
       ),

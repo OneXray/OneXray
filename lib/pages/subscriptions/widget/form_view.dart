@@ -3,6 +3,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SubscriptionFormView extends StatefulWidget {
@@ -37,7 +38,8 @@ class SubscriptionFormView extends StatefulWidget {
     required this.onToggleAgeSecretKeyVisibility,
     required this.onGenerateAgeKey,
     required this.onClearAgeKey,
-    this.generatingAgeKey = false,
+    this.generatingAgeKeyType,
+    this.ageKeyActionsEnabled = true,
   });
 
   final String supportText;
@@ -69,7 +71,9 @@ class SubscriptionFormView extends StatefulWidget {
   final VoidCallback onToggleAgeSecretKeyVisibility;
   final ValueChanged<AgeKeyType> onGenerateAgeKey;
   final VoidCallback onClearAgeKey;
-  final bool generatingAgeKey;
+  final AgeKeyType? generatingAgeKeyType;
+  final bool ageKeyActionsEnabled;
+  bool get generatingAgeKey => generatingAgeKeyType != null;
 
   @override
   State<SubscriptionFormView> createState() => _SubscriptionFormViewState();
@@ -288,6 +292,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                               hintText: widget.ageSecretKeyHint,
                               obscureText: widget.obscureAgeSecretKey,
                               onChanged: widget.onAgeKeyChanged,
+                              enabled: !widget.generatingAgeKey,
                               textDirection: TextDirection.ltr,
                             ),
                           ),
@@ -295,9 +300,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                             tooltip: widget.obscureAgeSecretKey
                                 ? widget.revealAgeSecretKeyLabel
                                 : widget.hideAgeSecretKeyLabel,
-                            onPressed: widget.generatingAgeKey
-                                ? null
-                                : widget.onToggleAgeSecretKeyVisibility,
+                            onPressed: widget.onToggleAgeSecretKeyVisibility,
                             style: IconButton.styleFrom(
                               foregroundColor: palette.mutedStrong,
                               minimumSize: const Size.square(36),
@@ -322,6 +325,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                     controller: widget.agePublicKeyController,
                     hintText: widget.agePublicKeyHint,
                     onChanged: widget.onAgeKeyChanged,
+                    enabled: !widget.generatingAgeKey,
                     textDirection: TextDirection.ltr,
                   ),
                   if (widget.ageKeyPairErrorText != null)
@@ -352,14 +356,11 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.standard,
       ),
-      onPressed: widget.generatingAgeKey
+      onPressed: widget.generatingAgeKey || !widget.ageKeyActionsEnabled
           ? null
           : () => widget.onGenerateAgeKey(type),
-      icon: widget.generatingAgeKey && type == AgeKeyType.x25519
-          ? const SizedBox.square(
-              dimension: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+      icon: widget.generatingAgeKeyType == type
+          ? const ButtonProgressIndicator()
           : const Icon(LucideIcons.keyRound, size: 16),
       label: Text(label),
     );
@@ -372,7 +373,8 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
       ],
     );
     final clear = TextButton(
-      onPressed: widget.generatingAgeKey || !_hasKeys
+      onPressed:
+          widget.generatingAgeKey || !widget.ageKeyActionsEnabled || !_hasKeys
           ? null
           : widget.onClearAgeKey,
       style: TextButton.styleFrom(
@@ -418,13 +420,14 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
     TextDirection? textDirection,
     TextInputType? keyboardType,
     bool obscureText = false,
+    bool enabled = true,
     ValueChanged<String>? onChanged,
   }) {
     final palette = ColorManager.palette(context);
     return Directionality(
       textDirection: textDirection ?? Directionality.of(context),
       child: ShadInput(
-        enabled: !widget.generatingAgeKey,
+        enabled: enabled,
         controller: controller,
         placeholder: hintText == null ? null : Text(hintText),
         constraints: const BoxConstraints(minHeight: 42),
@@ -458,6 +461,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
     TextDirection? textDirection,
     TextInputType? keyboardType,
     ValueChanged<String>? onChanged,
+    bool enabled = true,
   }) {
     return Column(
       spacing: 7,
@@ -471,6 +475,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
           textDirection: textDirection,
           keyboardType: keyboardType,
           onChanged: onChanged,
+          enabled: enabled,
         ),
         if (helperText != null && helperText.isNotEmpty)
           Text(

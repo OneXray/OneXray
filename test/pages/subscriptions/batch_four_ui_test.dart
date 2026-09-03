@@ -4,6 +4,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -27,39 +28,40 @@ void main() {
     public.dispose();
   });
 
-  Widget form({bool busy = false, bool obscure = true}) => SubscriptionFormView(
-    supportText: 'Supported formats',
-    nameLabel: 'Name',
-    nameHint: 'Example Service',
-    nameController: name,
-    urlLabel: 'URL',
-    urlController: url,
-    urlHint: 'https://provider.example/subscription',
-    urlHelper: 'HTTPS only',
-    encryptionTitle: 'Encryption',
-    ageProviderSupportTitle: 'Provider support required',
-    ageProviderSupportDescription: 'Enter Age keys only when your provider supports encrypted subscriptions.',
-    ageSecretKeyLabel: 'Age Secret Key',
-    ageSecretKeyHint: 'AGE-SECRET-KEY-1...',
-    ageSecretKeyController: secret,
-    agePublicKeyLabel: 'Age Public Key',
-    agePublicKeyHint: 'age1...',
-    agePublicKeyController: public,
-    obscureAgeSecretKey: obscure,
-    revealAgeSecretKeyLabel: 'Reveal',
-    hideAgeSecretKeyLabel: 'Hide',
-    generateAgeKeyLabel: 'Generate',
-    generateAgeX25519KeyLabel: 'X25519',
-    generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
-    clearAgeKeyLabel: 'Clear',
-    onToggleAgeSecretKeyVisibility: () => revealed++,
-    onGenerateAgeKey: generated.add,
-    onClearAgeKey: () {
-      secret.clear();
-      public.clear();
-    },
-    generatingAgeKey: busy,
-  );
+  Widget form({AgeKeyType? generatingKey, bool obscure = true}) =>
+      SubscriptionFormView(
+        supportText: 'Supported formats',
+        nameLabel: 'Name',
+        nameHint: 'Example Service',
+        nameController: name,
+        urlLabel: 'URL',
+        urlController: url,
+        urlHint: 'https://provider.example/subscription',
+        urlHelper: 'HTTPS only',
+        encryptionTitle: 'Encryption',
+        ageProviderSupportTitle: 'Provider support required',
+        ageProviderSupportDescription: 'Enter Age keys only when your provider supports encrypted subscriptions.',
+        ageSecretKeyLabel: 'Age Secret Key',
+        ageSecretKeyHint: 'AGE-SECRET-KEY-1...',
+        ageSecretKeyController: secret,
+        agePublicKeyLabel: 'Age Public Key',
+        agePublicKeyHint: 'age1...',
+        agePublicKeyController: public,
+        obscureAgeSecretKey: obscure,
+        revealAgeSecretKeyLabel: 'Reveal',
+        hideAgeSecretKeyLabel: 'Hide',
+        generateAgeKeyLabel: 'Generate',
+        generateAgeX25519KeyLabel: 'X25519',
+        generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
+        clearAgeKeyLabel: 'Clear',
+        onToggleAgeSecretKeyVisibility: () => revealed++,
+        onGenerateAgeKey: generated.add,
+        onClearAgeKey: () {
+          secret.clear();
+          public.clear();
+        },
+        generatingAgeKeyType: generatingKey,
+      );
 
   Widget app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
     theme: AppTheme.light,
@@ -113,12 +115,37 @@ void main() {
       isFalse,
     );
 
-    await tester.pumpWidget(app(form(busy: true)));
-    for (final button in tester.widgetList<ButtonStyleButton>(
-      find.byWidgetPredicate((widget) => widget is ButtonStyleButton),
-    )) {
-      expect(button.onPressed, isNull);
+    await tester.pumpWidget(app(form(generatingKey: AgeKeyType.hybrid)));
+    for (final button in [
+      find.widgetWithText(OutlinedButton, 'X25519'),
+      find.widgetWithText(OutlinedButton, 'Hybrid (ML-KEM-768 + X25519)'),
+      find.widgetWithText(TextButton, 'Clear'),
+    ]) {
+      expect(tester.widget<ButtonStyleButton>(button).onPressed, isNull);
     }
+    expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(OutlinedButton, 'Hybrid (ML-KEM-768 + X25519)'),
+        matching: find.byType(ButtonProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.widgetWithText(OutlinedButton, 'X25519'),
+        matching: find.byType(ButtonProgressIndicator),
+      ),
+      findsNothing,
+    );
+    for (final input in tester.widgetList<ShadInput>(find.byType(ShadInput))) {
+      expect(
+        input.enabled,
+        input.controller == name || input.controller == url,
+      );
+    }
+    await tester.tap(find.byTooltip('Reveal'));
+    expect(revealed, 2);
     expect(generated, hasLength(2));
     await tester.pumpWidget(app(form()));
     await tester.tap(find.text('Clear'));

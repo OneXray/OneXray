@@ -18,6 +18,7 @@ class DesktopSettingsPageState {
   final bool loading;
   final bool changingLaunchAtLogin;
   final bool changingBehavior;
+  final bool openingSystemSettings;
 
   const DesktopSettingsPageState({
     this.launchAtLogin = const LaunchAtLoginStatus.unavailable(),
@@ -26,6 +27,7 @@ class DesktopSettingsPageState {
     this.loading = true,
     this.changingLaunchAtLogin = false,
     this.changingBehavior = false,
+    this.openingSystemSettings = false,
   });
 
   bool get launchToggleEnabled =>
@@ -46,6 +48,7 @@ class DesktopSettingsPageState {
     bool? loading,
     bool? changingLaunchAtLogin,
     bool? changingBehavior,
+    bool? openingSystemSettings,
   }) {
     return DesktopSettingsPageState(
       launchAtLogin: launchAtLogin ?? this.launchAtLogin,
@@ -55,6 +58,8 @@ class DesktopSettingsPageState {
       changingLaunchAtLogin:
           changingLaunchAtLogin ?? this.changingLaunchAtLogin,
       changingBehavior: changingBehavior ?? this.changingBehavior,
+      openingSystemSettings:
+          openingSystemSettings ?? this.openingSystemSettings,
     );
   }
 }
@@ -203,12 +208,18 @@ class DesktopSettingsController extends PageCubit<DesktopSettingsPageState>
   }
 
   Future<void> openSystemSettings(BuildContext context) async {
-    final opened = await AppStartupService().openLaunchAtLoginSettings();
-    if (!opened && context.mounted) {
-      ContextAlert.showToast(
-        context,
-        AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,
-      );
+    if (state.openingSystemSettings) return;
+    emit(state.copyWith(openingSystemSettings: true));
+    try {
+      final opened = await AppStartupService().openLaunchAtLoginSettings();
+      if (!opened && context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,
+        );
+      }
+    } finally {
+      emit(state.copyWith(openingSystemSettings: false));
     }
   }
 }

@@ -8,6 +8,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/widget/outbound_json_editor.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -66,7 +67,7 @@ class _ServersImportPageState extends State<ServersImportPage> {
       final mobile =
           MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return PopScope(
-        canPop: !controller.busy,
+        canPop: controller.canClose,
         child: AppDialog(
           title: l10n.prototypeAddServersToOneXray,
           subtitle: l10n.prototypeChooseAddMethod,
@@ -179,7 +180,10 @@ class _ServersImportPageState extends State<ServersImportPage> {
             ),
         child: Row(
           children: [
-            Icon(icon, size: 22),
+            if (controller.openingAction == action)
+              const ButtonProgressIndicator(size: 22)
+            else
+              Icon(icon, size: 22),
             const SizedBox(width: 10),
             Expanded(child: Text(title)),
             const SizedBox(width: 10),
@@ -214,7 +218,7 @@ class ServerImportFormPage extends StatelessWidget {
       final mobile =
           MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return PopScope(
-        canPop: !controller.busy,
+        canPop: controller.canClose,
         child: AppDialog(
           title: subscription
               ? controller.editingSubscription
@@ -231,22 +235,20 @@ class ServerImportFormPage extends StatelessWidget {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              IgnorePointer(
-                ignoring: controller.busy || controller.loadFailed,
-                child: subscription
-                    ? Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          mobile ? 16 : 20,
-                          20,
-                          mobile ? 16 : 20,
-                          0,
-                        ),
-                        child: _subscription(context),
-                      )
-                    : manual
-                    ? _manual(context, mobile: mobile)
-                    : _paste(context),
-              ),
+              if (subscription)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    mobile ? 16 : 20,
+                    20,
+                    mobile ? 16 : 20,
+                    0,
+                  ),
+                  child: _subscription(context),
+                )
+              else if (manual)
+                _manual(context, mobile: mobile)
+              else
+                _paste(context),
               _ImportFeedback(controller: controller),
               ConnectCallout(
                 icon: LucideIcons.lockKeyhole,
@@ -258,7 +260,7 @@ class ServerImportFormPage extends StatelessWidget {
             ConnectDialogButton(
               label: l10n.prototypeCancel,
               secondary: true,
-              onPressed: controller.busy
+              onPressed: !controller.canClose
                   ? null
                   : onClose ?? () => controller.closeFlow(context),
             ),
@@ -270,6 +272,7 @@ class ServerImportFormPage extends StatelessWidget {
                   : manual
                   ? l10n.prototypeDetect
                   : l10n.prototypeImportLinks,
+              busy: controller.submitting,
               onPressed: !controller.canSubmit(action)
                   ? null
                   : () => subscription
@@ -398,7 +401,8 @@ class ServerImportFormPage extends StatelessWidget {
       onToggleAgeSecretKeyVisibility: controller.toggleSecret,
       onGenerateAgeKey: (type) => controller.generateKeys(context, type),
       onClearAgeKey: controller.clearKeys,
-      generatingAgeKey: controller.busy,
+      generatingAgeKeyType: controller.generatingAgeKeyType,
+      ageKeyActionsEnabled: !controller.busy && !controller.loadFailed,
     );
   }
 }
@@ -578,6 +582,7 @@ class ServerImportPreviewPage extends StatelessWidget {
               label: committed == null
                   ? l10n.prototypeConfirmAdd
                   : l10n.prototypeDone,
+              busy: controller.submitting,
               onPressed: controller.busy || !preview.hasItems
                   ? null
                   : () => controller.confirm(context, preview),
@@ -645,14 +650,33 @@ class _PreviewItem extends StatelessWidget {
   }
 }
 
-class ServerImportScannerPage extends StatelessWidget {
+class ServerImportScannerPage extends StatefulWidget {
   final void Function(BarcodeCapture) onDetect;
-  final VoidCallback onPickImage;
+  final Future<void> Function() onPickImage;
   const ServerImportScannerPage({
     super.key,
     required this.onDetect,
     required this.onPickImage,
   });
+
+  @override
+  State<ServerImportScannerPage> createState() =>
+      _ServerImportScannerPageState();
+}
+
+class _ServerImportScannerPageState extends State<ServerImportScannerPage> {
+  bool _pickingImage = false;
+
+  Future<void> _pickImage() async {
+    if (_pickingImage) return;
+    setState(() => _pickingImage = true);
+    try {
+      await widget.onPickImage();
+    } finally {
+      if (mounted) setState(() => _pickingImage = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -660,12 +684,14 @@ class ServerImportScannerPage extends StatelessWidget {
       actions: [
         IconButton(
           tooltip: AppLocalizations.of(context)!.menuPickImage,
-          onPressed: onPickImage,
-          icon: const Icon(LucideIcons.image),
+          onPressed: _pickingImage ? null : _pickImage,
+          icon: _pickingImage
+              ? const ButtonProgressIndicator()
+              : const Icon(LucideIcons.image),
         ),
       ],
     ),
-    body: SafeArea(child: MobileScanner(onDetect: onDetect)),
+    body: SafeArea(child: MobileScanner(onDetect: widget.onDetect)),
   );
 }
 
@@ -675,9 +701,7 @@ class _ImportFeedback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!controller.busy &&
-        controller.subscriptionImports.isEmpty &&
-        controller.error == null) {
+    if (controller.subscriptionImports.isEmpty && controller.error == null) {
       return const SizedBox.shrink();
     }
     final l10n = AppLocalizations.of(context)!;
@@ -688,7 +712,6 @@ class _ImportFeedback extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 8,
         children: [
-          if (controller.busy) const LinearProgressIndicator(),
           if (controller.importedSubscriptionCount > 0)
             Text(
               l10n.prototypeSubscriptionsImported(

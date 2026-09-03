@@ -59,6 +59,13 @@ class ServerImportController extends ChangeNotifier {
   final secretKey = TextEditingController();
   final publicKey = TextEditingController();
   bool busy = false;
+  bool loadingSubscription = false;
+  ServerImportAction? openingAction;
+  AgeKeyType? generatingAgeKeyType;
+  bool get generatingAgeKey => generatingAgeKeyType != null;
+  bool get submitting => busy && !loadingSubscription && openingAction == null;
+  // A committing import owns its preview files and must return partial writes.
+  bool get canClose => !busy || loadingSubscription || openingAction != null;
   bool obscureSecret = true;
   bool loadFailed = false;
   String? error;
@@ -80,7 +87,7 @@ class ServerImportController extends ChangeNotifier {
   bool get incompleteKeys =>
       secretKey.text.trim().isEmpty != publicKey.text.trim().isEmpty;
   bool canSubmit(ServerImportAction action) {
-    if (busy || loadFailed) return false;
+    if (busy || generatingAgeKey || loadFailed) return false;
     if (action == ServerImportAction.subscription) {
       final uri = Uri.tryParse(SubscriptionUrl.normalize(url.text));
       return name.text.trim().isNotEmpty &&
@@ -107,7 +114,7 @@ class ServerImportController extends ChangeNotifier {
   }
 
   void closePage(BuildContext context) {
-    if (busy) return;
+    if (!canClose) return;
     // A completed preview must not become an editable, repeatable import again.
     if (_previewOpen && committedResult != null) {
       closeFlow(context);
@@ -117,7 +124,7 @@ class ServerImportController extends ChangeNotifier {
   }
 
   void closeFlow(BuildContext context) {
-    if (busy) return;
+    if (!canClose) return;
     _closingFlow = true;
     Navigator.of(context)
         .pop(committedResult ?? (_previewOpen ? null : _subscriptionResult));
@@ -133,16 +140,26 @@ class ServerImportController extends ChangeNotifier {
   Future<void> loadSubscription(BuildContext context) async {
     final id = subscriptionId;
     if (id == null || busy) return;
+    final fields = [name, url, secretKey, publicKey];
+    final initialValues = fields.map((field) => field.text).toList();
     busy = true;
+    loadingSubscription = true;
     _changed();
     try {
       final row = await _loadSubscription(id);
       if (_disposed) return;
       if (row == null) throw StateError('Subscription no longer exists');
-      name.text = row.name;
-      url.text = row.url;
-      secretKey.text = row.ageSecretKey ?? '';
-      publicKey.text = row.agePublicKey ?? '';
+      final loadedValues = [
+        row.name,
+        row.url,
+        row.ageSecretKey ?? '',
+        row.agePublicKey ?? '',
+      ];
+      for (var index = 0; index < fields.length; index++) {
+        if (fields[index].text == initialValues[index]) {
+          fields[index].text = loadedValues[index];
+        }
+      }
     } catch (_) {
       loadFailed = true;
       if (context.mounted) {
@@ -150,6 +167,7 @@ class ServerImportController extends ChangeNotifier {
       }
     } finally {
       busy = false;
+      loadingSubscription = false;
       _changed();
     }
   }
@@ -165,14 +183,16 @@ class ServerImportController extends ChangeNotifier {
         action == ServerImportAction.scan) {
       String? input;
       busy = true;
+      openingAction = action;
       _changed();
       try {
         input = action == ServerImportAction.file
             ? await ServerImportService.pickTextFile()
             : await _scan(context);
         busy = false;
+        openingAction = null;
         _changed();
-        if (input != null && context.mounted) {
+        if (input != null && !_disposed && context.mounted) {
           result = await _importText(context, input);
         }
       } catch (_) {
@@ -182,6 +202,7 @@ class ServerImportController extends ChangeNotifier {
         _changed();
       } finally {
         busy = false;
+        openingAction = null;
         _changed();
       }
     } else {
@@ -360,6 +381,7 @@ class ServerImportController extends ChangeNotifier {
   Future<void> readClipboard(BuildContext context) async {
     try {
       final input = await ServerImportService.readClipboard();
+      if (_disposed) return;
       if (input == null) throw const FormatException('Empty clipboard');
       text.text = input;
       error = null;
@@ -478,7 +500,7 @@ class ServerImportController extends ChangeNotifier {
   }
 
   Future<void> subscribe(BuildContext context) async {
-    if (busy || loadFailed) return;
+    if (busy || generatingAgeKey || loadFailed) return;
     busy = true;
     error = null;
     _changed();
@@ -508,6 +530,7 @@ class ServerImportController extends ChangeNotifier {
         return;
       }
       final problem = await _validateSubscription(input, subscriptionId);
+      if (_disposed || !context.mounted) return;
       if (problem != null) {
         error = problem;
         return;
@@ -587,29 +610,31 @@ class ServerImportController extends ChangeNotifier {
   }
 
   void clearKeys() {
+    if (busy || generatingAgeKey) return;
     secretKey.clear();
     publicKey.clear();
     _changed();
   }
 
   Future<void> generateKeys(BuildContext context, AgeKeyType type) async {
-    if (busy) return;
+    if (busy || generatingAgeKey || _disposed) return;
     final l10n = AppLocalizations.of(context)!;
-    if (secretKey.text.isNotEmpty || publicKey.text.isNotEmpty) {
-      if (!await ContextAlert.showConfirmDialog(
-            context,
-            title: l10n.prototypeReplaceAgeKeys,
-            content: l10n.subscriptionReplaceAgeKeyMessage,
-            confirmLabel: l10n.subscriptionGenerateAgeKey,
-          ) ||
-          !context.mounted) {
-        return;
-      }
-    }
-    busy = true;
+    generatingAgeKeyType = type;
     error = null;
     _changed();
     try {
+      if (secretKey.text.isNotEmpty || publicKey.text.isNotEmpty) {
+        if (!await ContextAlert.showConfirmDialog(
+              context,
+              title: l10n.prototypeReplaceAgeKeys,
+              content: l10n.subscriptionReplaceAgeKeyMessage,
+              confirmLabel: l10n.subscriptionGenerateAgeKey,
+            ) ||
+            _disposed ||
+            !context.mounted) {
+          return;
+        }
+      }
       final pair = await AppHostApi().generateAgeKeyPair(keyType: type);
       if (!_disposed) {
         secretKey.text = pair.secretKey ?? '';
@@ -618,7 +643,7 @@ class ServerImportController extends ChangeNotifier {
     } catch (_) {
       error = l10n.subscriptionGenerateAgeKeyFailed;
     } finally {
-      busy = false;
+      generatingAgeKeyType = null;
       _changed();
     }
   }

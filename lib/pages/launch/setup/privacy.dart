@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -120,7 +121,12 @@ class SetupPrivacyView extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(child: Text(l.prototypeReadFullPrivacyPolicy)),
+                    Flexible(
+                      child: ButtonProgress(
+                        busy: busy,
+                        child: Text(l.prototypeReadFullPrivacyPolicy),
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Icon(
                       LucideIcons.chevronRightDir,

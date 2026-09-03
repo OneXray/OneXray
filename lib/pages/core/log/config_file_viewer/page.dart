@@ -45,6 +45,7 @@ class ConfigFileViewerView extends StatelessWidget {
       title: state.title,
       status: l.prototypeReadOnly,
       exportLabel: l.prototypeExportOriginalConfiguration,
+      exporting: state.exporting,
       note: l.prototypeExportOriginalConfigurationWarning,
       onExport: state.loading || state.failed || state.exporting
           ? null

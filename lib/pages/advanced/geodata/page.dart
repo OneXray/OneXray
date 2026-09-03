@@ -8,6 +8,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadInput;
 
@@ -96,10 +97,12 @@ class _GeoDataPageState extends State<GeoDataPage> {
                                       visualDensity: VisualDensity.standard,
                                     )
                                   : null,
-                              onPressed: controller.busy
+                              onPressed: !controller.canUpdateAll
                                   ? null
                                   : () => controller.updateAll(context),
-                              icon: const Icon(LucideIcons.refreshCw, size: 15),
+                              icon: controller.updatingAll
+                                  ? const ButtonProgressIndicator(size: 15)
+                                  : const Icon(LucideIcons.refreshCw, size: 15),
                               label: Text(l.prototypeUpdateAll),
                             ),
                           ),
@@ -114,28 +117,25 @@ class _GeoDataPageState extends State<GeoDataPage> {
                                 )
                               : Theme.of(context).textTheme.bodySmall,
                         ),
-                        if (controller.busy)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 12),
-                            child: LinearProgressIndicator(),
-                          ),
                         SizedBox(height: mobile ? 7 : 28),
                         _heading(
                           context,
                           l.prototypeDefaultRoutingData,
                           OutlinedButton.icon(
                             style: _headingButtonStyle(context),
-                            onPressed: controller.busy
+                            onPressed: controller.fileBusy(-1)
                                 ? null
                                 : () => controller.update(context, null),
-                            icon: const Icon(LucideIcons.refreshCw, size: 16),
+                            icon: controller.updating.contains(-1)
+                                ? const ButtonProgressIndicator()
+                                : const Icon(LucideIcons.refreshCw, size: 16),
                             label: Text(l.prototypeUpdate),
                           ),
                         ),
                         GeoDataRows(
                           files: controller.defaults,
                           custom: false,
-                          busy: controller.busy,
+                          busy: controller.updatingAll,
                           onOpen: (file) =>
                               widget.openFile(context, file.row.id),
                           onUpdate: (file) => controller.update(context, file),
@@ -149,7 +149,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
                           l.prototypeCustomRoutingData,
                           OutlinedButton.icon(
                             style: _headingButtonStyle(context),
-                            onPressed: controller.busy
+                            onPressed: controller.formBusy
                                 ? null
                                 : controller.toggleAdd,
                             icon: const Icon(LucideIcons.plus, size: 16),
@@ -183,7 +183,9 @@ class _GeoDataPageState extends State<GeoDataPage> {
                           GeoDataRows(
                             files: controller.custom,
                             custom: true,
-                            busy: controller.busy,
+                            busy: controller.updatingAll,
+                            updating: controller.updating,
+                            deleting: controller.deleting,
                             onOpen: (file) =>
                                 widget.openFile(context, file.row.id),
                             onUpdate: (file) =>
@@ -270,12 +272,12 @@ class _GeoDataPageState extends State<GeoDataPage> {
                 child: Text('GeoSite'),
               ),
             ],
-            onChanged: controller.busy ? null : controller.changeType,
+            onChanged: controller.formBusy ? null : controller.changeType,
           ),
           const SizedBox(height: 16),
           TextField(
             controller: controller.name,
-            enabled: !controller.busy,
+            enabled: !controller.formBusy,
             autocorrect: false,
             textDirection: TextDirection.ltr,
             decoration: InputDecoration(labelText: l.prototypeSavedFileName),
@@ -283,7 +285,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
           const SizedBox(height: 16),
           TextField(
             controller: controller.url,
-            enabled: !controller.busy,
+            enabled: !controller.formBusy,
             keyboardType: TextInputType.url,
             autocorrect: false,
             textDirection: TextDirection.ltr,
@@ -300,14 +302,17 @@ class _GeoDataPageState extends State<GeoDataPage> {
             runSpacing: 8,
             children: [
               TextButton(
-                onPressed: controller.busy ? null : controller.toggleAdd,
+                onPressed: controller.formBusy ? null : controller.toggleAdd,
                 child: Text(l.prototypeCancel),
               ),
               FilledButton(
-                onPressed: controller.busy
+                onPressed: controller.formBusy
                     ? null
                     : () => controller.add(context),
-                child: Text(l.prototypeAdd),
+                child: ButtonProgress(
+                  busy: controller.formBusy,
+                  child: Text(l.prototypeAdd),
+                ),
               ),
             ],
           ),
@@ -362,7 +367,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
                   GeoDataType.domain: 'GeoSite',
                 },
                 textStyle: AppTypography.geodataField,
-                onChanged: controller.busy ? null : controller.changeType,
+                onChanged: controller.formBusy ? null : controller.changeType,
               ),
             ),
           ),
@@ -370,7 +375,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
             l.prototypeSavedFileName,
             ShadInput(
               controller: controller.name,
-              enabled: !controller.busy,
+              enabled: !controller.formBusy,
               autofocus: true,
               autocorrect: false,
               textDirection: TextDirection.ltr,
@@ -389,7 +394,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
             l.prototypeHttpsDownloadAddress,
             ShadInput(
               controller: controller.url,
-              enabled: !controller.busy,
+              enabled: !controller.formBusy,
               keyboardType: TextInputType.url,
               autocorrect: false,
               textDirection: TextDirection.ltr,
@@ -411,17 +416,20 @@ class _GeoDataPageState extends State<GeoDataPage> {
               Flexible(
                 child: OutlinedButton(
                   style: buttonStyle,
-                  onPressed: controller.busy ? null : controller.toggleAdd,
+                  onPressed: controller.formBusy ? null : controller.toggleAdd,
                   child: Text(l.prototypeCancel),
                 ),
               ),
               Flexible(
                 child: FilledButton(
                   style: buttonStyle,
-                  onPressed: controller.busy
+                  onPressed: controller.formBusy
                       ? null
                       : () => controller.add(context),
-                  child: Text(l.prototypeAdd),
+                  child: ButtonProgress(
+                    busy: controller.formBusy,
+                    child: Text(l.prototypeAdd),
+                  ),
                 ),
               ),
             ],

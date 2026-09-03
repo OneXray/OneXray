@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -29,16 +30,17 @@ class AutoUpdatePage extends StatelessWidget {
           bottomNavigationBar: PageActionBar(
             children: [
               OutlinedButton(
-                onPressed: state.saving
-                    ? null
-                    : () => controller.cancel(context),
+                onPressed: () => controller.cancel(context),
                 child: Text(l.prototypeCancel),
               ),
               FilledButton(
                 onPressed: !state.loaded || state.saving
                     ? null
                     : () => controller.save(context),
-                child: Text(l.prototypeSave),
+                child: ButtonProgress(
+                  busy: state.saving,
+                  child: Text(l.prototypeSave),
+                ),
               ),
             ],
           ),

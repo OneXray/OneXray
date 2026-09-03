@@ -39,17 +39,16 @@ abstract final class AppTypography {
     );
   }
 
+  static final navigationTitle = _style(
+    20,
+    height: 1.3,
+    weight: FontWeight.w600,
+  );
   static final pageTitle = _style(
     31,
     height: 1.18,
     weight: FontWeight.w700,
     tracking: -0.035,
-  );
-  static final mobilePageTitle = _style(
-    21,
-    height: 1.18,
-    weight: FontWeight.w700,
-    tracking: -0.025,
   );
   static final panelTitle = _style(19, height: 1.3, weight: FontWeight.w700);
   static final sectionTitle = _style(14, height: 1.35, weight: FontWeight.w700);
@@ -99,16 +98,6 @@ abstract final class AppTypography {
   static final selectedMobileNavigationLabel = _prototypeRole(10, 620);
 
   static final pageAction = _prototypeRole(12, 620, height: 1.4);
-  static final secondaryPageTitle = _prototypeRole(
-    16,
-    680,
-    height: 1.18,
-  ).copyWith(letterSpacing: 16 * -0.035);
-  static final advancedPageTitle = _prototypeRole(
-    23,
-    700,
-    height: 1.18,
-  ).copyWith(letterSpacing: 23 * -0.035);
   static final advancedTab = _prototypeRole(12.5, 560);
   static final selectedAdvancedTab = _prototypeRole(12.5, 620);
 

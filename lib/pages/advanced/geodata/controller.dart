@@ -25,7 +25,10 @@ class GeoDataController extends ChangeNotifier {
   String? formError;
   bool loading = true;
   bool failed = false;
-  bool busy = false;
+  bool formBusy = false;
+  bool updatingAll = false;
+  final Set<int> updating = {};
+  final Set<int> deleting = {};
   bool adding = false;
   bool _disposed = false;
   StreamSubscription<List<PublishedGeoData>>? _subscription;
@@ -34,6 +37,10 @@ class GeoDataController extends ChangeNotifier {
       files.where((file) => file.builtIn).toList();
   List<PublishedGeoData> get custom =>
       files.where((file) => !file.builtIn).toList();
+
+  bool get canUpdateAll => !updatingAll && updating.isEmpty && deleting.isEmpty;
+  bool fileBusy(int id) =>
+      updatingAll || updating.contains(id) || deleting.contains(id);
 
   void _changed() {
     if (!_disposed) notifyListeners();
@@ -68,6 +75,7 @@ class GeoDataController extends ChangeNotifier {
   }
 
   void toggleAdd() {
+    if (formBusy) return;
     adding = !adding;
     formError = null;
     if (!adding) {
@@ -78,30 +86,29 @@ class GeoDataController extends ChangeNotifier {
   }
 
   void changeType(GeoDataType? value) {
-    if (value == null) return;
+    if (value == null || formBusy) return;
     type = value;
     _changed();
   }
 
   Future<void> add(BuildContext context) async {
-    if (busy) return;
+    if (formBusy) return;
     final l = AppLocalizations.of(context)!;
-    busy = true;
+    final input = GeoDataInput(fileName: name.text, type: type, url: url.text);
+    formBusy = true;
     formError = null;
     _changed();
     try {
       final validation = await GeoDataValidator.validate(
-        name.text.trim(),
-        url.text.trim(),
+        input.fileName.trim(),
+        input.url.trim(),
       );
       if (_disposed) return;
       if (!validation.item1) {
         formError = validation.item2;
         return;
       }
-      await service.add(
-        GeoDataInput(fileName: name.text, type: type, url: url.text),
-      );
+      await service.add(input);
       if (_disposed) return;
       adding = false;
       name.clear();
@@ -110,16 +117,16 @@ class GeoDataController extends ChangeNotifier {
     } catch (_) {
       formError = l.prototypeCheckNetwork;
     } finally {
-      busy = false;
+      formBusy = false;
       _changed();
     }
   }
 
   Future<void> update(BuildContext context, PublishedGeoData? file) async {
-    if (busy) return;
+    final key = file == null || file.builtIn ? -1 : file.row.id;
+    if (fileBusy(key)) return;
     final l = AppLocalizations.of(context)!;
-    busy = true;
-    final key = file?.row.id ?? -1;
+    updating.add(key);
     errors.remove(key);
     _changed();
     try {
@@ -132,15 +139,16 @@ class GeoDataController extends ChangeNotifier {
     } catch (_) {
       errors[key] = l.prototypeCheckNetwork;
     } finally {
-      busy = false;
+      updating.remove(key);
       _changed();
     }
   }
 
   Future<void> updateAll(BuildContext context) async {
-    if (busy) return;
+    if (!canUpdateAll) return;
     final l = AppLocalizations.of(context)!;
-    busy = true;
+    final targets = custom.toList();
+    updatingAll = true;
     errors.clear();
     _changed();
     try {
@@ -149,7 +157,7 @@ class GeoDataController extends ChangeNotifier {
       } catch (_) {
         errors[-1] = l.prototypeCheckNetwork;
       }
-      for (final file in custom) {
+      for (final file in targets) {
         try {
           await service.updateCustom(file.row);
         } catch (_) {
@@ -160,50 +168,50 @@ class GeoDataController extends ChangeNotifier {
         _message(context, l.prototypeAllGeodataUpdated);
       }
     } finally {
-      busy = false;
+      updatingAll = false;
       _changed();
     }
   }
 
   Future<void> delete(BuildContext context, PublishedGeoData file) async {
-    if (busy || file.builtIn) return;
+    if (fileBusy(file.row.id) || file.builtIn) return;
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showAppDialog<bool>(
-      context,
-      (context) => AppDialog(
-        title: l.prototypeDeleteCustomDatasetQuestion,
-        subtitle: file.fileName,
-        expandLastAction: false,
-        body: ConnectCallout(
-          icon: LucideIcons.circleAlert,
-          text: l.prototypeDeleteDatasetWarning,
-          warning: true,
-        ),
-        actions: [
-          ConnectDialogButton(
-            onPressed: () => Navigator.pop(context, false),
-            label: l.prototypeCancel,
-            secondary: true,
-          ),
-          ConnectDialogButton(
-            onPressed: () => Navigator.pop(context, true),
-            label: l.prototypeDelete,
-            icon: LucideIcons.trash2,
-            destructive: true,
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || _disposed) return;
-    busy = true;
-    errors.remove(file.row.id);
+    deleting.add(file.row.id);
     _changed();
     try {
+      final confirmed = await showAppDialog<bool>(
+        context,
+        (context) => AppDialog(
+          title: l.prototypeDeleteCustomDatasetQuestion,
+          subtitle: file.fileName,
+          expandLastAction: false,
+          body: ConnectCallout(
+            icon: LucideIcons.circleAlert,
+            text: l.prototypeDeleteDatasetWarning,
+            warning: true,
+          ),
+          actions: [
+            ConnectDialogButton(
+              onPressed: () => Navigator.pop(context, false),
+              label: l.prototypeCancel,
+              secondary: true,
+            ),
+            ConnectDialogButton(
+              onPressed: () => Navigator.pop(context, true),
+              label: l.prototypeDelete,
+              icon: LucideIcons.trash2,
+              destructive: true,
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || _disposed) return;
+      errors.remove(file.row.id);
       await service.deleteGeoDat(file.row);
     } catch (_) {
       errors[file.row.id] = l.prototypeCheckNetwork;
     } finally {
-      busy = false;
+      deleting.remove(file.row.id);
       _changed();
     }
   }

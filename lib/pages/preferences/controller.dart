@@ -172,18 +172,18 @@ class PreferencesController extends PageCubit<PreferencesPageState> {
   Future<void> clearData(BuildContext context) async {
     if (state.clearingData) return;
     final l10n = AppLocalizations.of(context)!;
-    if (!await AppConfirmationDialog(
-          title: l10n.prototypeClearAllDataQuestion,
-          content: l10n.prototypeClearAllDataWarning,
-          cancelLabel: l10n.prototypeCancel,
-          confirmLabel: l10n.prototypeConfirmClearData,
-          destructive: true,
-        ).show(context) ||
-        !context.mounted) {
-      return;
-    }
     emit(state.copyWith(clearingData: true));
     try {
+      if (!await AppConfirmationDialog(
+            title: l10n.prototypeClearAllDataQuestion,
+            content: l10n.prototypeClearAllDataWarning,
+            cancelLabel: l10n.prototypeCancel,
+            confirmLabel: l10n.prototypeConfirmClearData,
+            destructive: true,
+          ).show(context) ||
+          !context.mounted) {
+        return;
+      }
       if (await AppDataCleanupService().clearFromSettings()) {
         AppStartupService().suppressConnectOnAppLaunch();
         if (context.mounted) context.go('/setup');

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,8 +10,39 @@ import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/geo_data/model.dart';
 
 void main() {
+  testWidgets('Raw test result is discarded after the editable JSON changes', (
+    tester,
+  ) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final coordinator = ConnectionCoordinator(database: db);
+    final service = _PendingRawTest(database: db, coordinator: coordinator);
+    final controller = RawEditorController(rawId: null, service: service);
+    addTearDown(() async {
+      controller.dispose();
+      coordinator.dispose();
+      await db.close();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: Text('Draft')),
+      ),
+    );
+    final context = tester.element(find.text('Draft'));
+    await controller.load(context);
+    final testing = controller.test(context);
+    expect(controller.action, RawEditorAction.test);
+    controller.text.text = '{"outbounds": [], "tag": "edited"}';
+    service.result.complete(const RawTestResult(42, 'https://example.com', 5));
+    await testing;
+    expect(controller.testResult, isNull);
+    expect(controller.action, isNull);
+    expect(controller.canTest, isTrue);
+  });
   testWidgets(
     'Raw save follows name and JSON while draft loading does not connect',
     (tester) async {
@@ -80,4 +113,15 @@ void main() {
     expect(field.scrollController!.offset, 500);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _PendingRawTest extends RawEditorService {
+  _PendingRawTest({super.database, super.coordinator});
+  final result = Completer<RawTestResult>();
+
+  @override
+  Future<RawTestResult> test(
+    RawEditorDraft draft, {
+    GeoDataImportDraft? geodata,
+  }) => result.future;
 }

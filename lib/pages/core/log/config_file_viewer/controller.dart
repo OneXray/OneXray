@@ -69,15 +69,15 @@ class ConfigFileViewerController extends PageCubit<ConfigFileViewerPageState> {
   Future<void> shareFile(BuildContext context) async {
     if (state.loading || state.failed || state.exporting) return;
     final l = AppLocalizations.of(context)!;
-    final confirmed = await AppConfirmationDialog(
-      title: l.prototypeExportOriginalConfigurationQuestion,
-      content: l.prototypeExportOriginalConfigurationWarning,
-      cancelLabel: l.prototypeCancel,
-      confirmLabel: l.prototypeExport,
-    ).show(context);
-    if (confirmed != true || !isPageActive) return;
     emit(state.copyWith(exporting: true));
     try {
+      final confirmed = await AppConfirmationDialog(
+        title: l.prototypeExportOriginalConfigurationQuestion,
+        content: l.prototypeExportOriginalConfigurationWarning,
+        cancelLabel: l.prototypeCancel,
+        confirmLabel: l.prototypeExport,
+      ).show(context);
+      if (confirmed != true || !isPageActive) return;
       await RuntimeDiagnosticFiles.exportConfiguration(state.text);
     } catch (_) {
       if (context.mounted) {

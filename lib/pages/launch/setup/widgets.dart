@@ -3,6 +3,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 
 /// Small setup forms fill the viewport but still scroll on a short screen or
 /// with a larger system text size. Long selector lists use slivers instead.
@@ -60,11 +61,13 @@ class SetupActionButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.outline = false,
+    this.busy = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool outline;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +93,10 @@ class SetupActionButton extends StatelessWidget {
                   : null,
             ),
     );
-    final text = Text(label, textAlign: TextAlign.center);
+    final text = ButtonProgress(
+      busy: busy,
+      child: Text(label, textAlign: TextAlign.center),
+    );
     return outline
         ? OutlinedButton(onPressed: onPressed, style: style, child: text)
         : FilledButton(onPressed: onPressed, style: style, child: text);

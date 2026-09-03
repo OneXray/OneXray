@@ -5,6 +5,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/setup/controller.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -259,6 +260,7 @@ class SetupView extends StatelessWidget {
                   _SetupRow(
                     icon: LucideIcons.shieldCheck,
                     title: l.prototypeVpnPermission,
+                    busy: state.activeAction == SetupAction.permission,
                     description: l.prototypeAllowAddVpn,
                     trailing: Text(
                       status,
@@ -276,6 +278,7 @@ class SetupView extends StatelessWidget {
                     _SetupRow(
                       icon: LucideIcons.network,
                       title: l.prototypeXrayOutboundInterface,
+                      busy: state.activeAction == SetupAction.chooseInterface,
                       description: state.interfaceName.isEmpty
                           ? l.prototypeNotSelected
                           : state.interfaceName,
@@ -336,6 +339,7 @@ class SetupView extends StatelessWidget {
       _SetupRow(
         icon: LucideIcons.globe2,
         title: setupRegionLabel(l, state.region),
+        busy: state.activeAction == SetupAction.chooseRegion,
         outlined: true,
         onTap: _action(SetupAction.chooseRegion),
       ),
@@ -355,7 +359,9 @@ class SetupView extends StatelessWidget {
           style: TextButton.styleFrom(
             textStyle: AppTypography.setupPrivacyLink,
           ),
-          icon: const Icon(LucideIcons.locateFixed, size: 18),
+          icon: state.activeAction == SetupAction.detectRegion
+              ? const ButtonProgressIndicator(size: 18)
+              : const Icon(LucideIcons.locateFixed, size: 18),
           label: Text(l.prototypeDetect),
         ),
       ),
@@ -402,14 +408,19 @@ class SetupView extends StatelessWidget {
           title: methods[index].$3,
           outlined: true,
           importMethod: true,
-          onTap: state.busy ? null : () => onAddServer(methods[index].$1),
+          busy: state.activeImport == methods[index].$1,
+          onTap: state.activeImport == methods[index].$1
+              ? null
+              : () => onAddServer(methods[index].$1),
         ),
       ],
     ];
   }
 
   List<Widget> _feedback(BuildContext context) => [
-    if (state.busy) ...[
+    if (state.busy &&
+        state.activeAction == null &&
+        state.activeImport == null) ...[
       const SizedBox(height: 20),
       const LinearProgressIndicator(),
     ],
@@ -421,19 +432,28 @@ class SetupView extends StatelessWidget {
           alignment: AlignmentDirectional.centerStart,
           child: TextButton(
             onPressed: _action(SetupAction.retry),
-            child: Text(AppLocalizations.of(context)!.prototypeRetry),
+            child: ButtonProgress(
+              busy: state.activeAction == SetupAction.retry,
+              child: Text(AppLocalizations.of(context)!.prototypeRetry),
+            ),
           ),
         ),
     ],
   ];
 
   VoidCallback? _action(SetupAction action) =>
-      state.busy ? null : () => onAction(action);
+      state.busy &&
+          action != SetupAction.back &&
+          action != SetupAction.privacy &&
+          (state.activeAction == null || state.activeAction == action)
+      ? null
+      : () => onAction(action);
 
   List<Widget> _actions(AppLocalizations l) => switch (state.step) {
     SetupStep.welcome => [
       SetupActionButton(
         label: l.prototypeAgreeAndContinue,
+        busy: state.activeAction == SetupAction.acceptPrivacy,
         onPressed: _action(SetupAction.acceptPrivacy),
       ),
     ],
@@ -445,6 +465,9 @@ class SetupView extends StatelessWidget {
       ),
       SetupActionButton(
         label: state.authorized ? l.prototypeContinue : l.prototypeSetUpVpn,
+        busy:
+            state.activeAction == SetupAction.permission ||
+            state.activeAction == SetupAction.continueSystem,
         onPressed: state.authorized
             ? state.ready(requiresInterface: requiresInterface)
                   ? _action(SetupAction.continueSystem)
@@ -455,22 +478,26 @@ class SetupView extends StatelessWidget {
     SetupStep.region => [
       SetupActionButton(
         label: l.prototypeSkip,
+        busy: state.activeAction == SetupAction.skipRegion,
         outline: true,
         onPressed: _action(SetupAction.skipRegion),
       ),
       SetupActionButton(
         label: l.prototypeConfirmAndContinue,
+        busy: state.activeAction == SetupAction.confirmRegion,
         onPressed: _action(SetupAction.confirmRegion),
       ),
     ],
     SetupStep.servers => [
       SetupActionButton(
         label: l.prototypeAddLater,
+        busy: state.activeAction == SetupAction.finishLater,
         outline: true,
-        onPressed: _action(SetupAction.finish),
+        onPressed: _action(SetupAction.finishLater),
       ),
       SetupActionButton(
         label: l.prototypeGoToHome,
+        busy: state.activeAction == SetupAction.finish,
         onPressed: state.hasServers ? _action(SetupAction.finish) : null,
       ),
     ],
@@ -546,6 +573,7 @@ class _SetupRow extends StatelessWidget {
     this.onTap,
     this.outlined = false,
     this.importMethod = false,
+    this.busy = false,
   });
   final IconData icon;
   final String title;
@@ -554,6 +582,7 @@ class _SetupRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool outlined;
   final bool importMethod;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -591,11 +620,14 @@ class _SetupRow extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: importMethod ? 23 : 24,
-                  color: palette.primary,
-                ),
+                if (busy)
+                  const ButtonProgressIndicator()
+                else
+                  Icon(
+                    icon,
+                    size: importMethod ? 23 : 24,
+                    color: palette.primary,
+                  ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

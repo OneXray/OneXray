@@ -5,7 +5,6 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/view.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/page_title.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 
 class ServersPage extends StatefulWidget {
@@ -41,31 +40,19 @@ class _ServersPageState extends State<ServersPage> {
           MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return Scaffold(
         appBar: AppBar(
-          title: mobileRoot
-              ? PageTitle(l.prototypeServers)
-              : Text(l.prototypeServers),
+          title: Text(l.prototypeServers),
           actions: [
             if (!mobileRoot)
               IconButton(
                 tooltip: l.prototypeManageSources,
-                onPressed: controller.busy
-                    ? null
-                    : () => controller.openSources(context),
+                onPressed: () => controller.openSources(context),
                 icon: const Icon(LucideIcons.refreshCw),
               ),
-            Transform.translate(
-              offset: Offset(
-                0,
-                mobileRoot ? AppSpacing.mobileHeaderContentOffset : 0,
-              ),
-              child: IconButton(
-                style: mobileRoot ? AppTheme.mobileHeaderAction(context) : null,
-                tooltip: l.prototypeAddServers,
-                onPressed: controller.busy
-                    ? null
-                    : () => controller.addServers(context),
-                icon: const Icon(LucideIcons.plus),
-              ),
+            IconButton(
+              style: mobileRoot ? AppTheme.mobileHeaderAction(context) : null,
+              tooltip: l.prototypeAddServers,
+              onPressed: () => controller.addServers(context),
+              icon: const Icon(LucideIcons.plus),
             ),
           ],
         ),

@@ -7,12 +7,15 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:share_plus/share_plus.dart';
+
+enum ConfigurationTransferAction { file, clipboard, export, share }
 
 class ConfigurationTransferController extends ChangeNotifier {
   final ConfigurationKind kind;
@@ -23,6 +26,7 @@ class ConfigurationTransferController extends ChangeNotifier {
   final ConfigurationTransferService service;
   ConfigurationImportDraft? _draft;
   bool busy = false;
+  ConfigurationTransferAction? action;
   bool _disposed = false;
   String? notice;
 
@@ -41,6 +45,9 @@ class ConfigurationTransferController extends ChangeNotifier {
     if (busy) return;
     final l10n = AppLocalizations.of(context)!;
     busy = true;
+    action = clipboard
+        ? ConfigurationTransferAction.clipboard
+        : ConfigurationTransferAction.file;
     notice = null;
     _notify();
     ConfigurationImportDraft? next;
@@ -82,6 +89,8 @@ class ConfigurationTransferController extends ChangeNotifier {
     } finally {
       await next?.dispose();
       busy = false;
+      action = null;
+      if (_disposed) await _draft?.dispose();
       _notify();
     }
   }
@@ -89,22 +98,27 @@ class ConfigurationTransferController extends ChangeNotifier {
   Future<void> export(BuildContext context, {required bool share}) async {
     if (busy) return;
     final l10n = AppLocalizations.of(context)!;
-    if (!await ContextAlert.showConfirmDialog(
-          context,
-          title: share ? l10n.prototypeShare : l10n.prototypeExportJson,
-          content: kind == ConfigurationKind.raw
-              ? l10n.prototypeRawJsonShareWarning
-              : l10n.prototypeCustomShareWarning,
-          confirmLabel: share ? l10n.prototypeShare : l10n.prototypeExportJson,
-        ) ||
-        !context.mounted ||
-        _disposed) {
-      return;
-    }
     busy = true;
+    action = share
+        ? ConfigurationTransferAction.share
+        : ConfigurationTransferAction.export;
     notice = null;
     _notify();
     try {
+      if (!await ContextAlert.showConfirmDialog(
+            context,
+            title: share ? l10n.prototypeShare : l10n.prototypeExportJson,
+            content: kind == ConfigurationKind.raw
+                ? l10n.prototypeRawJsonShareWarning
+                : l10n.prototypeCustomShareWarning,
+            confirmLabel: share
+                ? l10n.prototypeShare
+                : l10n.prototypeExportJson,
+          ) ||
+          !context.mounted ||
+          _disposed) {
+        return;
+      }
       final name = readName();
       final text = readText();
       if (share) {
@@ -143,6 +157,7 @@ class ConfigurationTransferController extends ChangeNotifier {
           text: text,
           pending: pending,
         );
+        if (_disposed || !context.mounted) return;
         final basename = name.trim().replaceAll(
           RegExp(r'[\\/:*?"<>|\x00-\x1f]'),
           '_',
@@ -161,6 +176,8 @@ class ConfigurationTransferController extends ChangeNotifier {
       notice = l10n.prototypeCannotShareConfiguration;
     } finally {
       busy = false;
+      action = null;
+      if (_disposed) await _draft?.dispose();
       _notify();
     }
   }
@@ -172,7 +189,7 @@ class ConfigurationTransferController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    unawaited(_draft?.dispose());
+    if (!busy) unawaited(_draft?.dispose());
     super.dispose();
   }
 }
@@ -218,28 +235,37 @@ class ConfigurationTransferTools extends StatelessWidget {
                   onPressed: busy
                       ? null
                       : () => controller.import(context, clipboard: false),
-                  icon: const Icon(LucideIcons.upload, size: 16),
+                  icon: controller.action == ConfigurationTransferAction.file
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.upload, size: 16),
                   label: Text(l10n.prototypeImportFile),
                 ),
                 OutlinedButton.icon(
                   onPressed: busy
                       ? null
                       : () => controller.import(context, clipboard: true),
-                  icon: const Icon(LucideIcons.clipboard, size: 16),
+                  icon:
+                      controller.action == ConfigurationTransferAction.clipboard
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.clipboard, size: 16),
                   label: Text(l10n.prototypeReadClipboard),
                 ),
                 OutlinedButton.icon(
                   onPressed: busy || empty
                       ? null
                       : () => controller.export(context, share: false),
-                  icon: const Icon(LucideIcons.download, size: 16),
+                  icon: controller.action == ConfigurationTransferAction.export
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.download, size: 16),
                   label: Text(l10n.prototypeExportJson),
                 ),
                 OutlinedButton.icon(
                   onPressed: busy || empty
                       ? null
                       : () => controller.export(context, share: true),
-                  icon: const Icon(LucideIcons.share2, size: 16),
+                  icon: controller.action == ConfigurationTransferAction.share
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.share2, size: 16),
                   label: Text(l10n.prototypeShare),
                 ),
                 ...children,

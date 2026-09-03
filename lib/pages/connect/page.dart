@@ -3,7 +3,6 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/main/page_visibility.dart';
-import 'package:onexray/pages/widget/page_title.dart';
 
 class ConnectPage extends StatefulWidget {
   const ConnectPage({super.key});
@@ -32,7 +31,7 @@ class _ConnectPageState extends State<ConnectPage> {
     onChanged: controller.setPageVisible,
     child: Scaffold(
       appBar: AppBar(
-        title: PageTitle(AppLocalizations.of(context)!.prototypeConnect),
+        title: Text(AppLocalizations.of(context)!.prototypeConnect),
       ),
       body: SafeArea(
         child: ListenableBuilder(
@@ -63,6 +62,8 @@ class _ConnectPageState extends State<ConnectPage> {
               hasServers: controller.servers.isNotEmpty,
               expert: controller.expertView,
               raws: controller.raws,
+              pendingChange: controller.pendingChange,
+              deletingRawIds: controller.deletingRawIds,
               activeRawId: controller.configuration.connection.expert
                   ? controller.configuration.connection.rawId
                   : null,

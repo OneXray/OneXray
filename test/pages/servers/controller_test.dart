@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -46,6 +48,38 @@ void main() {
     );
     return (await db.coreConfigDao.searchRow(id))!;
   }
+
+  testWidgets(
+    'pending node work blocks its source but not another node or navigation',
+    (tester) async {
+      final one = await server('one', source: 4);
+      final two = await server('two', source: 4);
+      controller.servers = [one, two];
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: Text('Servers'))),
+      );
+      final context = tester.element(find.text('Servers'));
+      final pending = Completer<void>();
+      final operation = controller.perform(
+        context,
+        () => pending.future,
+        ids: {one.id},
+      );
+      expect(controller.serverBusy(one), isTrue);
+      expect(controller.serverBusy(two), isFalse);
+      expect(controller.sourceBusy(4), isTrue);
+      expect(controller.busy, isFalse);
+      var writes = 0;
+      await controller.perform(context, () async => writes++, ids: {one.id});
+      await controller.perform(context, () async => writes++, sourceId: 4);
+      expect(writes, 0);
+      await controller.perform(context, () async => writes++, ids: {two.id});
+      expect(writes, 1);
+      pending.complete();
+      await operation;
+      expect(controller.sourceBusy(4), isFalse);
+    },
+  );
 
   test('location/source grouping shares rows; searching never changes connection settings', () async {
     final one = await server('Tokyo', source: 4, favorite: true);

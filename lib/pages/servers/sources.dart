@@ -7,6 +7,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 
 class ServerSourcesDialog extends StatelessWidget {
   const ServerSourcesDialog({super.key, required this.controller});
@@ -32,7 +33,6 @@ class ServerSourcesDialog extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (controller.actionBusy) const LinearProgressIndicator(),
                 if (controller.sources.isEmpty && localCount == 0)
                   Padding(
                     padding: const EdgeInsets.all(24),
@@ -52,12 +52,13 @@ class ServerSourcesDialog extends StatelessWidget {
                     showDivider:
                         source != controller.sources.last || localCount > 0,
                     subscription: true,
-                    onMore: controller.busy
+                    busy: controller.sourceBusy(source.id),
+                    onMore: controller.sourceBusy(source.id)
                         ? null
                         : () =>
                               Navigator.of(context)
                                   .pop<SubscriptionData>(source),
-                    onUpdate: controller.busy
+                    onUpdate: controller.sourceBusy(source.id)
                         ? null
                         : () => controller.sourceAction(
                             context,
@@ -90,6 +91,7 @@ class _SourceRow extends StatelessWidget {
     required this.showDivider,
     this.subscription = false,
     this.failed = false,
+    this.busy = false,
     this.onMore,
     this.onUpdate,
   });
@@ -100,6 +102,7 @@ class _SourceRow extends StatelessWidget {
   final bool showDivider;
   final bool subscription;
   final bool failed;
+  final bool busy;
   final VoidCallback? onMore;
   final VoidCallback? onUpdate;
 
@@ -167,7 +170,9 @@ class _SourceRow extends StatelessWidget {
                 tooltip: l.prototypeCheckForUpdates,
                 style: actionStyle,
                 onPressed: onUpdate,
-                icon: const Icon(LucideIcons.refreshCw),
+                icon: busy
+                    ? const ButtonProgressIndicator()
+                    : const Icon(LucideIcons.refreshCw),
               ),
             ],
             const SizedBox(width: 10),
@@ -175,7 +180,9 @@ class _SourceRow extends StatelessWidget {
               tooltip: '${l.prototypeMoreActions}: $name',
               style: actionStyle,
               onPressed: onMore,
-              icon: const Icon(LucideIcons.ellipsis),
+              icon: busy && mobile
+                  ? const ButtonProgressIndicator()
+                  : const Icon(LucideIcons.ellipsis),
             ),
           ],
         ],

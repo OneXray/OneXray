@@ -11,7 +11,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/pages/widget/page_title.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -28,250 +28,240 @@ class PreferencesPage extends StatelessWidget {
       builder: (context, state) {
         final l10n = AppLocalizations.of(context)!;
         final controller = context.read<PreferencesController>();
-        return PopScope(
-          canPop: !state.clearingData,
-          child: Scaffold(
-            appBar: AppBar(title: PageTitle(l10n.prototypeSettings)),
-            body: SafeArea(
-              child: BlocBuilder<AppEventBus, AppEventBusState>(
-                builder: (context, preferences) {
-                  final mobile =
-                      MediaQuery.sizeOf(context).width <=
-                      AppLayout.mobileBreakpoint;
-                  final palette = ColorManager.palette(context);
-                  final rowHeight = mobile ? 43.0 : 56.0;
-                  final sectionGap = mobile ? 25.0 : 28.0;
-                  final appearance = SettingSection(
-                    title: l10n.prototypeAppearance,
-                    icon: LucideIcons.palette,
-                    padding: EdgeInsets.zero,
-                    dividerIndent: 0,
-                    children: [
-                      _ThemeOptions(
-                        selected: preferences.themeCode,
-                        onSelected: (theme) =>
-                            controller.setTheme(context, theme),
-                      ),
-                      if (controller.showAppIcon)
-                        SettingRow(
-                          title: l10n.prototypeAppIcon,
-                          value: appIconLabel(l10n, state.appIcon),
-                          minHeight: mobile ? 52 : 56,
-                          titleStyle: AppTypography.settingsRow,
-                          valueStyle: AppTypography.settingsVersion.copyWith(
-                            color: palette.mutedStrong,
-                          ),
-                          decorateLeading: false,
-                          showChevron: true,
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              AppRadii.compact,
-                            ),
-                            child:
-                                (AppPlatform.isMacOS
-                                        ? state.appIcon.dockAssetImage
-                                        : state.appIcon.assetImage)
-                                    .image(width: 26, height: 26),
-                          ),
-                          onTap: () => controller.openSetting(
-                            context,
-                            AppSecondaryDestination.appIcon,
-                          ),
-                        ),
-                    ],
-                  );
-                  final language = SettingSection(
-                    title: l10n.prototypeLanguage,
-                    icon: LucideIcons.languages,
-                    padding: EdgeInsets.zero,
-                    children: [
+        return Scaffold(
+          appBar: AppBar(title: Text(l10n.prototypeSettings)),
+          body: SafeArea(
+            child: BlocBuilder<AppEventBus, AppEventBusState>(
+              builder: (context, preferences) {
+                final mobile =
+                    MediaQuery.sizeOf(context).width <=
+                    AppLayout.mobileBreakpoint;
+                final palette = ColorManager.palette(context);
+                final rowHeight = mobile ? 43.0 : 56.0;
+                final sectionGap = mobile ? 25.0 : 28.0;
+                final appearance = SettingSection(
+                  title: l10n.prototypeAppearance,
+                  icon: LucideIcons.palette,
+                  padding: EdgeInsets.zero,
+                  dividerIndent: 0,
+                  children: [
+                    _ThemeOptions(
+                      selected: preferences.themeCode,
+                      onSelected: (theme) =>
+                          controller.setTheme(context, theme),
+                    ),
+                    if (controller.showAppIcon)
                       SettingRow(
-                        title: languageNativeLabel(
-                          l10n,
-                          preferences.languageCode,
-                        ),
-                        minHeight: rowHeight,
+                        title: l10n.prototypeAppIcon,
+                        value: appIconLabel(l10n, state.appIcon),
+                        minHeight: mobile ? 52 : 56,
                         titleStyle: AppTypography.settingsRow,
+                        valueStyle: AppTypography.settingsVersion.copyWith(
+                          color: palette.mutedStrong,
+                        ),
+                        decorateLeading: false,
+                        showChevron: true,
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadii.compact),
+                          child:
+                              (AppPlatform.isMacOS
+                                      ? state.appIcon.dockAssetImage
+                                      : state.appIcon.assetImage)
+                                  .image(width: 26, height: 26),
+                        ),
+                        onTap: () => controller.openSetting(
+                          context,
+                          AppSecondaryDestination.appIcon,
+                        ),
+                      ),
+                  ],
+                );
+                final language = SettingSection(
+                  title: l10n.prototypeLanguage,
+                  icon: LucideIcons.languages,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    SettingRow(
+                      title: languageNativeLabel(
+                        l10n,
+                        preferences.languageCode,
+                      ),
+                      minHeight: rowHeight,
+                      titleStyle: AppTypography.settingsRow,
+                      showChevron: true,
+                      onTap: () => controller.openSetting(
+                        context,
+                        AppSecondaryDestination.language,
+                      ),
+                    ),
+                  ],
+                );
+                final startup = SettingSection(
+                  title: l10n.prototypeStartup,
+                  icon: LucideIcons.power,
+                  padding: EdgeInsets.zero,
+                  dividerIndent: 0,
+                  children: [
+                    _StartupSettingRow(
+                      title: l10n.prototypeConnectAfterAppLaunch,
+                      subtitle: l10n.prototypeConnectAfterAppLaunchHint,
+                      value: state.connectOnLaunch,
+                      onChanged: state.loading || state.saving
+                          ? null
+                          : (value) =>
+                                controller.setConnectOnLaunch(context, value),
+                    ),
+                    if (AppPlatform.isDesktop)
+                      BlocProvider(
+                        create: (_) => DesktopSettingsController(),
+                        child: const _DesktopStartupRows(),
+                      ),
+                  ],
+                );
+                final data = SettingSection(
+                  title: l10n.prototypeData,
+                  icon: LucideIcons.hardDrive,
+                  padding: EdgeInsets.zero,
+                  dividerIndent: 0,
+                  children: [
+                    SettingRow(
+                      title: l10n.prototypeBackupRestore,
+                      minHeight: rowHeight,
+                      titleStyle: AppTypography.settingsRow,
+                      showChevron: true,
+                      onTap: state.clearingData
+                          ? null
+                          : () => controller.openSetting(
+                              context,
+                              AppSecondaryDestination.backup,
+                            ),
+                    ),
+                    SettingRow(
+                      title: l10n.prototypeClearData,
+                      minHeight: rowHeight,
+                      titleStyle: AppTypography.settingsDanger.copyWith(
+                        color: palette.destructive,
+                      ),
+                      trailing: state.clearingData
+                          ? const ButtonProgressIndicator(size: 20)
+                          : null,
+                      onTap: state.clearingData
+                          ? null
+                          : () => controller.clearData(context),
+                    ),
+                  ],
+                );
+                final about = SettingSection(
+                  title: l10n.prototypeAbout,
+                  icon: LucideIcons.info,
+                  padding: EdgeInsets.zero,
+                  dividerIndent: 0,
+                  children: [
+                    Semantics(
+                      label: preferences.appUpdateInfo == null
+                          ? null
+                          : l10n.prototypeAboutUpdateAvailable,
+                      child: SettingRow(
+                        minHeight: rowHeight,
+                        title: l10n.prototypeAboutOneXray,
+                        titleStyle: AppTypography.settingsRow,
+                        titleTrailing: preferences.appUpdateInfo == null
+                            ? null
+                            : const _UpdateDot(),
                         showChevron: true,
                         onTap: () => controller.openSetting(
                           context,
-                          AppSecondaryDestination.language,
+                          AppSecondaryDestination.aboutOneXray,
                         ),
                       ),
-                    ],
-                  );
-                  final startup = SettingSection(
-                    title: l10n.prototypeStartup,
-                    icon: LucideIcons.power,
-                    padding: EdgeInsets.zero,
-                    dividerIndent: 0,
-                    children: [
-                      _StartupSettingRow(
-                        title: l10n.prototypeConnectAfterAppLaunch,
-                        subtitle: l10n.prototypeConnectAfterAppLaunchHint,
-                        value: state.connectOnLaunch,
-                        onChanged: state.loading || state.saving
-                            ? null
-                            : (value) =>
-                                  controller.setConnectOnLaunch(context, value),
-                      ),
-                      if (AppPlatform.isDesktop)
-                        BlocProvider(
-                          create: (_) => DesktopSettingsController(),
-                          child: const _DesktopStartupRows(),
-                        ),
-                    ],
-                  );
-                  final data = SettingSection(
-                    title: l10n.prototypeData,
-                    icon: LucideIcons.hardDrive,
-                    padding: EdgeInsets.zero,
-                    dividerIndent: 0,
-                    children: [
-                      SettingRow(
-                        title: l10n.prototypeBackupRestore,
-                        minHeight: rowHeight,
-                        titleStyle: AppTypography.settingsRow,
-                        showChevron: true,
-                        onTap: state.clearingData
-                            ? null
-                            : () => controller.openSetting(
-                                context,
-                                AppSecondaryDestination.backup,
-                              ),
-                      ),
-                      SettingRow(
-                        title: l10n.prototypeClearData,
-                        minHeight: rowHeight,
-                        titleStyle: AppTypography.settingsDanger.copyWith(
-                          color: palette.destructive,
-                        ),
-                        trailing: state.clearingData
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : null,
-                        onTap: state.clearingData
-                            ? null
-                            : () => controller.clearData(context),
-                      ),
-                    ],
-                  );
-                  final about = SettingSection(
-                    title: l10n.prototypeAbout,
-                    icon: LucideIcons.info,
-                    padding: EdgeInsets.zero,
-                    dividerIndent: 0,
-                    children: [
-                      Semantics(
-                        label: preferences.appUpdateInfo == null
-                            ? null
-                            : l10n.prototypeAboutUpdateAvailable,
-                        child: SettingRow(
-                          minHeight: rowHeight,
-                          title: l10n.prototypeAboutOneXray,
-                          titleStyle: AppTypography.settingsRow,
-                          titleTrailing: preferences.appUpdateInfo == null
-                              ? null
-                              : const _UpdateDot(),
-                          showChevron: true,
-                          onTap: () => controller.openSetting(
-                            context,
-                            AppSecondaryDestination.aboutOneXray,
-                          ),
-                        ),
-                      ),
-                      Column(
-                        children: [
-                          _VersionRow(
-                            label: l10n.prototypeAppVersion,
-                            value: state.appVersion,
-                            compact: true,
-                          ),
-                          _VersionRow(
-                            label: 'Xray-core',
-                            value: state.xrayVersion,
-                            compact: true,
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                  return SettingsPageScroll(
-                    padding: EdgeInsetsDirectional.fromSTEB(
-                      mobile ? 12 : AppSpacing.page,
-                      27,
-                      mobile ? 12 : AppSpacing.page,
-                      20,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    Column(
                       children: [
-                        LayoutBuilder(
-                          builder: (context, constraints) =>
-                              constraints.maxWidth >= 850
-                              ? Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          appearance,
-                                          SizedBox(height: sectionGap),
-                                          language,
-                                          SizedBox(height: sectionGap),
-                                          startup,
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 56),
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          data,
-                                          SizedBox(height: sectionGap),
-                                          about,
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    appearance,
-                                    SizedBox(height: sectionGap),
-                                    language,
-                                    SizedBox(height: sectionGap),
-                                    startup,
-                                    SizedBox(height: sectionGap),
-                                    data,
-                                    SizedBox(height: sectionGap),
-                                    about,
-                                  ],
-                                ),
+                        _VersionRow(
+                          label: l10n.prototypeAppVersion,
+                          value: state.appVersion,
+                          compact: true,
                         ),
-                        Padding(
-                          padding: const EdgeInsetsDirectional.fromSTEB(
-                            10,
-                            25,
-                            10,
-                            0,
-                          ),
-                          child: Text(
-                            l10n.prototypeSettingsLocationNote,
-                            style: AppTypography.settingsNote.copyWith(
-                              color: palette.mutedForeground,
-                            ),
-                          ),
+                        _VersionRow(
+                          label: 'Xray-core',
+                          value: state.xrayVersion,
+                          compact: true,
                         ),
                       ],
                     ),
-                  );
-                },
-              ),
+                  ],
+                );
+                return SettingsPageScroll(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    mobile ? 12 : AppSpacing.page,
+                    27,
+                    mobile ? 12 : AppSpacing.page,
+                    20,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) =>
+                            constraints.maxWidth >= 850
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        appearance,
+                                        SizedBox(height: sectionGap),
+                                        language,
+                                        SizedBox(height: sectionGap),
+                                        startup,
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 56),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        data,
+                                        SizedBox(height: sectionGap),
+                                        about,
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  appearance,
+                                  SizedBox(height: sectionGap),
+                                  language,
+                                  SizedBox(height: sectionGap),
+                                  startup,
+                                  SizedBox(height: sectionGap),
+                                  data,
+                                  SizedBox(height: sectionGap),
+                                  about,
+                                ],
+                              ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          10,
+                          25,
+                          10,
+                          0,
+                        ),
+                        child: Text(
+                          l10n.prototypeSettingsLocationNote,
+                          style: AppTypography.settingsNote.copyWith(
+                            color: palette.mutedForeground,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         );
@@ -487,12 +477,19 @@ class _DesktopStartupRows extends StatelessWidget {
                                     context,
                                     false,
                                   ),
-                            child: Text(l10n.prototypeCancelRequest),
+                            child: ButtonProgress(
+                              busy: state.changingLaunchAtLogin,
+                              child: Text(l10n.prototypeCancelRequest),
+                            ),
                           ),
                           TextButton(
-                            onPressed: () =>
-                                controller.openSystemSettings(context),
-                            child: Text(l10n.prototypeOpenSystemSettings),
+                            onPressed: state.openingSystemSettings
+                                ? null
+                                : () => controller.openSystemSettings(context),
+                            child: ButtonProgress(
+                              busy: state.openingSystemSettings,
+                              child: Text(l10n.prototypeOpenSystemSettings),
+                            ),
                           ),
                         ],
                       ),
@@ -586,12 +583,7 @@ class AboutOneXrayPage extends StatelessWidget {
                                   preferences.appUpdateInfo!.latestVersion,
                                 ),
                           trailing: state.checkingUpdate
-                              ? const SizedBox.square(
-                                  dimension: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
+                              ? const ButtonProgressIndicator(size: 20)
                               : Stack(
                                   clipBehavior: Clip.none,
                                   children: [

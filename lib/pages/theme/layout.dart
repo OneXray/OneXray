@@ -7,7 +7,8 @@ abstract final class AppLayout {
   static const compactSidebarWidth = 190.0;
   static const standardMaxWidth = 1120.0;
   static const contentBreakpoint = 840.0;
-  static const mobileHeaderHeight = 61.0;
+  static const mobileHeaderHeight = 56.0;
+  static const navigationTabsHeight = 44.0;
   static const mobileNavigationHeight = 92.0;
   static const mobileNavigationIconSize = 21.0;
   static const pageActionMinHeight = 72.0;
@@ -35,7 +36,6 @@ abstract final class AppLayout {
 }
 
 abstract final class AppSpacing {
-  static const mobileHeaderContentOffset = 4.0;
   static const page = 28.0;
   static const mobilePage = 14.0;
   static const mobileHeaderHorizontal = 16.0;

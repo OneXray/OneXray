@@ -104,7 +104,7 @@ class AutoUpdateController extends PageCubit<AutoUpdatePageState> {
           context,
           AppLocalizations.of(context)!.prototypeSettingsSaved,
         );
-        context.pop();
+        if (ModalRoute.of(context)?.isCurrent == true) context.pop();
       }
     } catch (_) {
       emit(state.copyWith(failed: true));

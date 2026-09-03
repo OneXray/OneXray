@@ -21,6 +21,7 @@ enum SetupAction {
   detectRegion,
   skipRegion,
   confirmRegion,
+  finishLater,
   finish,
   retry,
 }
@@ -28,6 +29,8 @@ enum SetupAction {
 class SetupPageState {
   final SetupStep step;
   final bool busy;
+  final SetupAction? activeAction;
+  final ServerImportAction? activeImport;
   final bool localReady;
   final bool hasServers;
   final PlatformPermissionResult? permission;
@@ -40,6 +43,8 @@ class SetupPageState {
   const SetupPageState({
     this.step = SetupStep.welcome,
     this.busy = true,
+    this.activeAction,
+    this.activeImport,
     this.localReady = false,
     this.hasServers = false,
     this.permission,
@@ -61,6 +66,9 @@ class SetupPageState {
   SetupPageState copyWith({
     SetupStep? step,
     bool? busy,
+    SetupAction? activeAction,
+    ServerImportAction? activeImport,
+    bool clearAction = false,
     bool? localReady,
     bool? hasServers,
     PlatformPermissionResult? permission,
@@ -73,6 +81,8 @@ class SetupPageState {
   }) => SetupPageState(
     step: step ?? this.step,
     busy: busy ?? this.busy,
+    activeAction: clearAction ? null : activeAction ?? this.activeAction,
+    activeImport: clearAction ? null : activeImport ?? this.activeImport,
     localReady: localReady ?? this.localReady,
     hasServers: hasServers ?? this.hasServers,
     permission: permission ?? this.permission,
@@ -98,7 +108,16 @@ class SetupController extends PageCubit<SetupPageState>
   bool get ready => state.ready(requiresInterface: service.requiresInterface);
 
   void handleAction(BuildContext context, SetupAction action) {
+    if (action == SetupAction.privacy) {
+      unawaited(context.push('${RouterPath.setup}/privacy'));
+      return;
+    }
+    if (action == SetupAction.back) {
+      showWelcome();
+      return;
+    }
     if (state.busy) return;
+    emit(state.copyWith(activeAction: action));
     switch (action) {
       case SetupAction.acceptPrivacy:
         unawaited(acceptPrivacy());
@@ -120,6 +139,7 @@ class SetupController extends PageCubit<SetupPageState>
         unawaited(continueRegion(confirm: false));
       case SetupAction.confirmRegion:
         unawaited(continueRegion(confirm: true));
+      case SetupAction.finishLater:
       case SetupAction.finish:
         unawaited(finish());
       case SetupAction.retry:
@@ -236,6 +256,7 @@ class SetupController extends PageCubit<SetupPageState>
     ServerImportAction action,
     Future<void> Function(BuildContext, ServerImportAction) open,
   ) => _perform(() async {
+    emit(state.copyWith(activeImport: action));
     await open(context, action);
     emit(state.copyWith(hasServers: await service.hasServers()));
   });
@@ -282,7 +303,7 @@ class SetupController extends PageCubit<SetupPageState>
         ),
       );
     } finally {
-      emit(state.copyWith(busy: false));
+      emit(state.copyWith(busy: false, clearAction: true));
     }
   }
 

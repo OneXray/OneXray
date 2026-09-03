@@ -168,16 +168,16 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
   Future<void> export(BuildContext context) async {
     if (state.exporting || !state.fileExists) return;
     final l = AppLocalizations.of(context)!;
-    final confirmed = await AppConfirmationDialog(
-      title: l.prototypeExport,
-      subject: p.basename(params.path),
-      content: l.prototypeLocalLogNotice,
-      cancelLabel: l.prototypeCancel,
-      confirmLabel: l.prototypeExport,
-    ).show(context);
-    if (confirmed != true || !isPageActive) return;
     emit(state.copyWith(exporting: true));
     try {
+      final confirmed = await AppConfirmationDialog(
+        title: l.prototypeExport,
+        subject: p.basename(params.path),
+        content: l.prototypeLocalLogNotice,
+        cancelLabel: l.prototypeCancel,
+        confirmLabel: l.prototypeExport,
+      ).show(context);
+      if (confirmed != true || !isPageActive) return;
       await RuntimeDiagnosticFiles.exportLog(
         params.path,
         p.basename(params.path),

@@ -7,6 +7,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -47,107 +48,103 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
       final l = AppLocalizations.of(context)!;
       final mobile =
           MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      return PopScope(
-        canPop: !controller.busy,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(l.prototypeSmartRouting),
-            leading: BackButton(onPressed: () => controller.cancel(context)),
-          ),
-          body: SafeArea(
-            child: controller.original == null
-                ? Center(
-                    child: controller.busy
-                        ? const CircularProgressIndicator()
-                        : TextButton(
-                            onPressed: () => controller.load(context),
-                            child: Text(l.prototypeRetry),
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(l.prototypeSmartRouting),
+          leading: BackButton(onPressed: () => controller.cancel(context)),
+        ),
+        body: SafeArea(
+          child: controller.original == null
+              ? Center(
+                  child: controller.busy
+                      ? const CircularProgressIndicator()
+                      : TextButton(
+                          onPressed: () => controller.load(context),
+                          child: Text(l.prototypeRetry),
+                        ),
+                )
+              : SettingsPageScroll(
+                  desktopMaxWidth: 1220,
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                    12,
+                    mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                    mobile ? 18 : 42,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!mobile) ...[
+                        Text(
+                          l.prototypeSmartRulesMaintained,
+                          style: AppTypography.rowValue.copyWith(
+                            color: ColorManager.secondaryText(context),
                           ),
-                  )
-                : SettingsPageScroll(
-                    desktopMaxWidth: 1220,
-                    padding: EdgeInsetsDirectional.fromSTEB(
-                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                      12,
-                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                      mobile ? 18 : 42,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (!mobile) ...[
-                          Text(
-                            l.prototypeSmartRulesMaintained,
-                            style: AppTypography.rowValue.copyWith(
-                              color: ColorManager.secondaryText(context),
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-                        ],
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final settings = _settings(context);
-                            final preview = _preview(context);
-                            if (constraints.maxWidth < 900) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  settings,
-                                  SizedBox(height: mobile ? 12 : 16),
-                                  preview,
-                                ],
-                              );
-                            }
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                        const SizedBox(height: 22),
+                      ],
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final settings = _settings(context);
+                          final preview = _preview(context);
+                          if (constraints.maxWidth < 900) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Expanded(flex: 25, child: settings),
-                                const SizedBox(width: 16),
-                                Expanded(flex: 24, child: preview),
+                                settings,
+                                SizedBox(height: mobile ? 12 : 16),
+                                preview,
                               ],
                             );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-          ),
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (controller.busy) const LinearProgressIndicator(),
-              if (controller.error case final error?)
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      error,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
+                          }
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(flex: 25, child: settings),
+                              const SizedBox(width: 16),
+                              Expanded(flex: 24, child: preview),
+                            ],
+                          );
+                        },
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              PageActionBar(
-                children: [
-                  if (!mobile)
-                    OutlinedButton(
-                      onPressed: controller.busy
-                          ? null
-                          : () => controller.cancel(context),
-                      child: Text(l.prototypeCancel),
-                    ),
-                  FilledButton(
-                    onPressed: controller.busy || controller.original == null
-                        ? null
-                        : () => controller.save(context),
+        ),
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (controller.error case final error?)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    error,
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: Theme.of(context).colorScheme.error),
+                  ),
+                ),
+              ),
+            PageActionBar(
+              children: [
+                if (!mobile)
+                  OutlinedButton(
+                    onPressed: () => controller.cancel(context),
+                    child: Text(l.prototypeCancel),
+                  ),
+                FilledButton(
+                  onPressed: controller.busy || controller.original == null
+                      ? null
+                      : () => controller.save(context),
+                  child: ButtonProgress(
+                    busy: controller.busy && controller.original != null,
                     child: Text(l.prototypeSave),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       );
     },
@@ -198,9 +195,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
           ),
           RoutingEntryCountRow(
             value: smart.entryCount,
-            onChanged: controller.busy
-                ? null
-                : (count) => controller.update('entryCount', count),
+            onChanged: (count) => controller.update('entryCount', count),
           ),
           RoutingSettingRow(
             icon: LucideIcons.earth,
@@ -237,15 +232,13 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
     icon: icon,
     title: title,
     description: description,
-    enabled: !controller.busy,
+    enabled: controller.original != null,
     trailing: Semantics(
       label: title,
       child: ShadSwitch(
         value: value,
-        enabled: !controller.busy,
-        onChanged: controller.busy
-            ? null
-            : (value) => controller.update(key, value),
+        enabled: controller.original != null,
+        onChanged: (value) => controller.update(key, value),
       ),
     ),
   );

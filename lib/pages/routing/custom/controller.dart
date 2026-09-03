@@ -34,7 +34,10 @@ class CustomRoutingEditorController extends ChangeNotifier {
   ConnectionConfiguration configuration = ConnectionConfiguration();
   int entryCount = 1;
   bool _busy = true;
+  bool saving = false;
+  bool deleting = false;
   bool get busy => _busy || transfer.busy;
+  bool get editingBlocked => deleting || transfer.busy;
   late final transfer = ConfigurationTransferController(
     kind: ConfigurationKind.custom,
     readText: () => previewTemplate?.encode() ?? '',
@@ -94,6 +97,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
       }
     } finally {
       _busy = false;
+      if (_closed) transfer.dispose();
       _notify();
     }
   }
@@ -182,7 +186,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
     OpenCustomRule open, [
     int? index,
   ]) async {
-    if (busy) return;
+    if (!loaded || editingBlocked) return;
     final rule = index == null ? null : rules[index];
     if (index != null) {
       selectedRuleKey = ruleKeys[index];
@@ -201,7 +205,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   }
 
   void deleteRule(int index) {
-    if (busy) return;
+    if (!loaded || editingBlocked) return;
     final selected = selectedRuleKey == ruleKeys[index];
     rules.removeAt(index);
     ruleKeys.removeAt(index);
@@ -214,7 +218,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   }
 
   void reorder(int from, int to) {
-    if (busy) return;
+    if (!loaded || editingBlocked) return;
     rules.insert(to, rules.removeAt(from));
     ruleKeys.insert(to, ruleKeys.removeAt(from));
     _notify();
@@ -252,7 +256,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
       };
 
   void close(BuildContext context) {
-    if (!busy) Navigator.of(context).pop();
+    Navigator.of(context).pop();
   }
 
   Future<void> save(BuildContext context) async {
@@ -260,6 +264,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
     final l10n = AppLocalizations.of(context)!;
     if (nameError(l10n) != null) return;
     _busy = true;
+    saving = true;
     error = null;
     _notify();
     try {
@@ -279,11 +284,17 @@ class CustomRoutingEditorController extends ChangeNotifier {
             : Future.value(false),
         geodata: transfer.pending,
       );
-      if (id != null && context.mounted) Navigator.of(context).pop(id);
+      if (id != null &&
+          context.mounted &&
+          ModalRoute.of(context)?.isCurrent == true) {
+        Navigator.of(context).pop(id);
+      }
     } catch (failure) {
       error = _failureMessage(l10n, failure);
     } finally {
       _busy = false;
+      saving = false;
+      if (_closed) transfer.dispose();
       _notify();
     }
   }
@@ -293,6 +304,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
     if (busy || row == null) return;
     final l10n = AppLocalizations.of(context)!;
     _busy = true;
+    deleting = true;
     error = null;
     _notify();
     try {
@@ -335,11 +347,17 @@ class CustomRoutingEditorController extends ChangeNotifier {
                 ) ==
                 true,
       );
-      if (deleted && context.mounted) Navigator.of(context).pop(row.id);
+      if (deleted &&
+          context.mounted &&
+          ModalRoute.of(context)?.isCurrent == true) {
+        Navigator.of(context).pop(row.id);
+      }
     } catch (failure) {
       error = _failureMessage(l10n, failure);
     } finally {
       _busy = false;
+      deleting = false;
+      if (_closed) transfer.dispose();
       _notify();
     }
   }
@@ -363,7 +381,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   void dispose() {
     _closed = true;
     transfer.removeListener(_notify);
-    transfer.dispose();
+    if (!_busy) transfer.dispose();
     name.dispose();
     super.dispose();
   }

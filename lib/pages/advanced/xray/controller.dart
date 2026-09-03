@@ -36,7 +36,8 @@ class XrayRuntimeController extends ChangeNotifier {
   bool saving = false;
   bool _systemExtension = false;
   bool _disposed = false;
-  bool get busy => saving || reader.state.runtime.busy;
+  bool get busy => saving;
+  bool get runtimeBusy => reader.state.runtime.busy;
   bool get dirty =>
       base != null &&
       jsonEncode(log) != jsonEncode(base!.policy.toJson()['log']);
@@ -54,8 +55,8 @@ class XrayRuntimeController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  Future<void> load() async {
-    loading = true;
+  Future<void> load({bool showLoading = true}) async {
+    loading = showLoading;
     failed = false;
     _changed();
     try {
@@ -99,7 +100,7 @@ class XrayRuntimeController extends ChangeNotifier {
   }
 
   Future<void> save(BuildContext context) async {
-    if (busy || !dirty || base == null) return;
+    if (busy || runtimeBusy || !dirty || base == null) return;
     final l = AppLocalizations.of(context)!;
     saving = true;
     failed = false;
@@ -130,7 +131,7 @@ class XrayRuntimeController extends ChangeNotifier {
             true,
       );
       if (saved && !_disposed) {
-        await load();
+        await load(showLoading: false);
         if (context.mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(l.prototypeSettingsSaved)));

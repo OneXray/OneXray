@@ -123,7 +123,9 @@ class AppIconController extends PageCubit<AppIconPageState> {
       if (!await AppHostApi().setAppIcon(name)) {
         throw StateError('Icon update failed');
       }
-      if (context.mounted) context.pop();
+      if (context.mounted && ModalRoute.of(context)?.isCurrent == true) {
+        context.pop();
+      }
     } catch (_) {
       if (context.mounted) {
         ContextAlert.showToast(
@@ -137,6 +139,6 @@ class AppIconController extends PageCubit<AppIconPageState> {
   }
 
   void cancel(BuildContext context) {
-    if (!state.saving) context.pop();
+    context.pop();
   }
 }

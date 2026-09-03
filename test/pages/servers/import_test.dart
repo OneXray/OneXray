@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,7 @@ import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/share/app_link_model.dart';
@@ -258,6 +261,7 @@ void main() {
     SubscriptionInput? saved;
     int? savedId;
     int? routeResult;
+    final saveCompletion = Completer<SubscriptionUpdateResult>();
     final controller = ServerImportController(
       subscriptionId: 7,
       loadSubscription: (_) async => SubscriptionData(
@@ -277,7 +281,7 @@ void main() {
       saveSubscriptionInput: (id, input) async {
         savedId = id;
         saved = input;
-        return SubscriptionUpdateResult.success;
+        return saveCompletion.future;
       },
     );
     addTearDown(controller.dispose);
@@ -319,6 +323,20 @@ void main() {
     expect(controller.obscureSecret, false);
     controller.name.text = 'Renamed';
     await tester.tap(find.text('Save'));
+    await tester.pump();
+    expect(find.text('Save'), findsOneWidget);
+    expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(
+      tester
+          .widgetList<ShadInput>(find.byType(ShadInput))
+          .every((input) => input.enabled),
+      isTrue,
+    );
+    expect(controller.canClose, isFalse);
+    controller.name.text = 'Another draft';
+    expect(saved?.name, 'Renamed');
+    saveCompletion.complete(SubscriptionUpdateResult.success);
     await tester.pumpAndSettle();
     expect(savedId, 7);
     expect(saved?.name, 'Renamed');
@@ -327,6 +345,50 @@ void main() {
     expect(routeResult, 7);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'loading subscription preserves input and does not block closing',
+    (tester) async {
+      final loaded = Completer<SubscriptionData?>();
+      final controller = ServerImportController(
+        subscriptionId: 7,
+        loadSubscription: (_) => loaded.future,
+      );
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        _app(
+          ServerImportFormPage(
+            controller: controller,
+            action: ServerImportAction.subscription,
+          ),
+        ),
+      );
+      final pending = controller.loadSubscription(
+        tester.element(find.byType(ServerImportFormPage)),
+      );
+      await tester.pump();
+      expect(controller.canClose, isTrue);
+      expect(controller.submitting, isFalse);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.byType(ButtonProgressIndicator), findsNothing);
+      controller.name.text = 'Typed while loading';
+      loaded.complete(
+        SubscriptionData(
+          id: 7,
+          name: 'Provider',
+          url: 'https://provider.example/list',
+          timestamp: DateTime(2026),
+          count: 2,
+          expanded: true,
+        ),
+      );
+      await pending;
+      await tester.pumpAndSettle();
+      expect(controller.name.text, 'Typed while loading');
+      expect(controller.url.text, 'https://provider.example/list');
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final exit in ['done', 'system', 'barrier']) {
     testWidgets(

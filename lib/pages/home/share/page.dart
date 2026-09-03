@@ -10,6 +10,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 
 class SharePage extends StatelessWidget {
   const SharePage({super.key, required this.params});
@@ -40,7 +41,9 @@ class SharePage extends StatelessWidget {
                   ? l.sharePageCopyLink
                   : l.prototypeShare,
               icon: LucideIcons.share2,
-              onPressed: state.loading || state.selectedLink.isEmpty
+              busy: state.sharing,
+              onPressed:
+                  state.loading || state.sharing || state.selectedLink.isEmpty
                   ? null
                   : () => controller.shareSelectedLink(context),
             ),
@@ -177,7 +180,12 @@ class SharePage extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(LucideIcons.qrCode, size: 18),
+                      if (state.qrExpanded &&
+                          state.qrCode == null &&
+                          state.qrError.isEmpty)
+                        const ButtonProgressIndicator(size: 18)
+                      else
+                        const Icon(LucideIcons.qrCode, size: 18),
                       const SizedBox(width: 8),
                       Text(l.sharePageShowQRCode, style: AppTypography.shareQr),
                     ],
@@ -201,7 +209,7 @@ class SharePage extends StatelessWidget {
                             )
                           : Center(
                               child: state.qrError.isEmpty
-                                  ? const CircularProgressIndicator()
+                                  ? const SizedBox.shrink()
                                   : Text(
                                       state.qrError,
                                       style: AppTypography.shareHint.copyWith(
@@ -216,7 +224,8 @@ class SharePage extends StatelessWidget {
                   label: l.sharePageSaveQRCode,
                   icon: LucideIcons.download,
                   secondary: true,
-                  onPressed: state.qrCode == null
+                  busy: state.savingQr,
+                  onPressed: state.qrCode == null || state.savingQr
                       ? null
                       : () => controller.saveQr(context),
                 ),

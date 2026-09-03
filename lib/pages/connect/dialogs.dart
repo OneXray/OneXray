@@ -6,6 +6,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/settings.dart';
 
 Future<T?> showConnectDialog<T>(BuildContext context, WidgetBuilder builder) =>
@@ -21,6 +22,7 @@ class ConnectDialogButton extends StatelessWidget {
     this.icon,
     this.secondary = false,
     this.destructive = false,
+    this.busy = false,
   });
 
   final String label;
@@ -28,6 +30,7 @@ class ConnectDialogButton extends StatelessWidget {
   final IconData? icon;
   final bool secondary;
   final bool destructive;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +39,10 @@ class ConnectDialogButton extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (icon != null) ...[Icon(icon, size: 16), const SizedBox(width: 8)],
+        if (busy || icon != null) ...[
+          if (busy) const ButtonProgressIndicator() else Icon(icon, size: 16),
+          const SizedBox(width: 8),
+        ],
         Flexible(child: Text(label, textAlign: TextAlign.center)),
       ],
     );

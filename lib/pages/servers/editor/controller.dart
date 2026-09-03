@@ -14,7 +14,8 @@ class ServerEditorController extends ChangeNotifier {
   }
   final text = TextEditingController();
   ServerEditDraft? _draft;
-  bool busy = true;
+  bool busy = false;
+  bool loading = true;
   String? error;
   bool _disposed = false;
   bool get loaded => _draft != null;
@@ -43,23 +44,24 @@ class ServerEditorController extends ChangeNotifier {
   }
 
   Future<void> load(BuildContext context) async {
+    final initialText = text.text;
     try {
       final draft = await service.load(serverId);
       if (_disposed) return;
       _draft = draft;
-      text.text = draft.text;
+      if (text.text == initialText) text.text = draft.text;
     } catch (_) {
       if (context.mounted) {
         error = AppLocalizations.of(context)!.prototypeCannotReadContent;
       }
     } finally {
-      busy = false;
+      loading = false;
       _changed();
     }
   }
 
   Future<void> save(BuildContext context) async {
-    if (busy || !loaded) return;
+    if (_disposed || busy || loading || !loaded) return;
     final l = AppLocalizations.of(context)!;
     busy = true;
     error = null;
@@ -67,7 +69,7 @@ class ServerEditorController extends ChangeNotifier {
     try {
       final saved = await service.save(
         ServerEditDraft(_draft!.original, text.text),
-        confirmReconnect: () => context.mounted
+        confirmReconnect: () => !_disposed && context.mounted
             ? ContextAlert.showConfirmDialog(
                 context,
                 title: l.prototypeApplyChange,
@@ -76,7 +78,9 @@ class ServerEditorController extends ChangeNotifier {
               )
             : Future.value(false),
       );
-      if (saved && context.mounted) Navigator.of(context).pop(serverId);
+      if (saved && !_disposed && context.mounted) {
+        Navigator.of(context).pop(serverId);
+      }
     } on FormatException {
       error = l.validationJsonInvalid;
     } catch (_) {

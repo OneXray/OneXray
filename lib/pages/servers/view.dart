@@ -7,6 +7,7 @@ import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/settings.dart';
 
 class ServerBrowser extends StatelessWidget {
@@ -39,7 +40,10 @@ class ServerBrowser extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             ListTile(
-              leading: const Icon(LucideIcons.sparkles),
+              leading:
+                  controller.selectingGroup(const ServerSelection.automatic())
+                  ? const ButtonProgressIndicator()
+                  : const Icon(LucideIcons.sparkles),
               title: Text(l.prototypeAutomaticRecommended),
               subtitle: Text(l.prototypeChooseBySpeedAvailability),
               selected: controller.selected(const ServerSelection.automatic()),
@@ -74,9 +78,7 @@ class ServerBrowser extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
-                      onPressed: controller.busy
-                          ? null
-                          : () => controller.addServers(context),
+                      onPressed: () => controller.addServers(context),
                       icon: const Icon(LucideIcons.plus),
                       label: Text(l.prototypeAddServers),
                     ),
@@ -188,7 +190,6 @@ class ServerBrowser extends StatelessWidget {
                 ],
               ),
             ),
-            if (controller.actionBusy) const LinearProgressIndicator(),
             Expanded(
               child: mobile
                   ? browse
@@ -289,7 +290,6 @@ class ServerBrowser extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        if (controller.actionBusy) const LinearProgressIndicator(),
         Material(
           color: palette.card,
           shape: RoundedRectangleBorder(
@@ -377,9 +377,7 @@ class ServerBrowser extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
-                        onPressed: controller.busy
-                            ? null
-                            : () => controller.addServers(context),
+                        onPressed: () => controller.addServers(context),
                         icon: const Icon(LucideIcons.plus),
                         label: Text(l.prototypeAddServers),
                       ),
@@ -411,9 +409,7 @@ class ServerBrowser extends StatelessWidget {
                   ),
                 ),
               InkWell(
-                onTap: controller.busy
-                    ? null
-                    : () => controller.openSources(context),
+                onTap: () => controller.openSources(context),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 52),
                   child: Padding(
@@ -490,11 +486,12 @@ class ServerBrowser extends StatelessWidget {
                     color: palette.selectedSurface,
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Icon(
-                    LucideIcons.zap,
-                    size: 20,
-                    color: palette.primary,
-                  ),
+                  child:
+                      controller.selectingGroup(
+                        const ServerSelection.automatic(),
+                      )
+                      ? const Center(child: ButtonProgressIndicator())
+                      : Icon(LucideIcons.zap, size: 20, color: palette.primary),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -680,10 +677,13 @@ class ServerGroupView extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             OutlinedButton.icon(
-              onPressed: controller.busy || group.rows.isEmpty
+              onPressed:
+                  group.rows.isEmpty || group.rows.any(controller.serverBusy)
                   ? null
                   : () => controller.test(context, group.rows),
-              icon: const Icon(LucideIcons.gauge),
+              icon: controller.testing(group.rows)
+                  ? const ButtonProgressIndicator()
+                  : const Icon(LucideIcons.gauge),
               label: Text(l.prototypeTestServers),
             ),
             ServerUseButton(controller: controller, group: group),
@@ -778,7 +778,9 @@ class ServerGroupView extends StatelessWidget {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           OutlinedButton(
-                            onPressed: controller.busy || group.rows.isEmpty
+                            onPressed:
+                                group.rows.isEmpty ||
+                                    group.rows.any(controller.serverBusy)
                                 ? null
                                 : () => controller.test(context, group.rows),
                             style: OutlinedButton.styleFrom(
@@ -804,7 +806,10 @@ class ServerGroupView extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(LucideIcons.refreshCw, size: 16),
+                                if (controller.testing(group.rows))
+                                  const ButtonProgressIndicator()
+                                else
+                                  const Icon(LucideIcons.refreshCw, size: 16),
                                 const SizedBox(width: 8),
                                 Text(l.prototypeTestServers),
                               ],
@@ -922,10 +927,13 @@ class ServerUseButton extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    selected ? LucideIcons.circleCheck : LucideIcons.zap,
-                    size: inline ? 15 : 16,
-                  ),
+                  if (controller.selectingGroup(group.selection))
+                    const ButtonProgressIndicator()
+                  else
+                    Icon(
+                      selected ? LucideIcons.circleCheck : LucideIcons.zap,
+                      size: inline ? 15 : 16,
+                    ),
                   const SizedBox(width: 6),
                   Text(l.prototypeUse),
                   const SizedBox(width: 6),
@@ -965,7 +973,9 @@ class ServerUseButton extends StatelessWidget {
           : l.prototypeNotEnoughServers,
       child: OutlinedButton.icon(
         onPressed: choose,
-        icon: Icon(selected ? LucideIcons.check : LucideIcons.network),
+        icon: controller.selectingGroup(group.selection)
+            ? const ButtonProgressIndicator()
+            : Icon(selected ? LucideIcons.check : LucideIcons.network),
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1038,7 +1048,12 @@ class ServerNodeRow extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          if (chosen) ...[
+                          if (controller.selectingGroup(
+                            ServerSelection.server(row.id),
+                          )) ...[
+                            const ButtonProgressIndicator(),
+                            const SizedBox(width: 6),
+                          ] else if (chosen) ...[
                             Icon(
                               LucideIcons.circleCheck,
                               color: colors.primary,
@@ -1093,12 +1108,16 @@ class ServerNodeRow extends StatelessWidget {
                   tooltip: row.favorite
                       ? l.prototypeRemoveFavorite
                       : l.prototypeAddFavorite,
-                  onPressed: controller.busy
+                  onPressed: controller.serverBusy(row)
                       ? null
                       : () => controller.toggleFavorite(context, row),
                   isSelected: row.favorite,
-                  icon: const Icon(LucideIcons.star),
-                  selectedIcon: Icon(LucideIcons.star, color: colors.primary),
+                  icon: controller.favoritingIds.contains(row.id)
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.star),
+                  selectedIcon: controller.favoritingIds.contains(row.id)
+                      ? const ButtonProgressIndicator()
+                      : Icon(LucideIcons.star, color: colors.primary),
                 ),
                 ServerMenu(controller: controller, row: row),
               ],
@@ -1148,7 +1167,7 @@ class ServerNodeRow extends StatelessWidget {
                           tooltip: row.favorite
                               ? l.prototypeRemoveFavorite
                               : l.prototypeAddFavorite,
-                          onPressed: controller.busy
+                          onPressed: controller.serverBusy(row)
                               ? null
                               : () => controller.toggleFavorite(context, row),
                           isSelected: row.favorite,
@@ -1160,8 +1179,13 @@ class ServerNodeRow extends StatelessWidget {
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             shape: const RoundedRectangleBorder(),
                           ),
-                          icon: const Icon(LucideIcons.star),
-                          selectedIcon: const Icon(LucideIcons.star600),
+                          icon: controller.favoritingIds.contains(row.id)
+                              ? const ButtonProgressIndicator()
+                              : const Icon(LucideIcons.star),
+                          selectedIcon:
+                              controller.favoritingIds.contains(row.id)
+                              ? const ButtonProgressIndicator()
+                              : const Icon(LucideIcons.star600),
                         ),
                       ),
                     ),
@@ -1186,11 +1210,16 @@ class ServerNodeRow extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(
-                                    LucideIcons.server,
-                                    size: 19,
-                                    color: palette.foreground,
-                                  ),
+                                  if (controller.selectingGroup(
+                                    ServerSelection.server(row.id),
+                                  ))
+                                    const ButtonProgressIndicator()
+                                  else
+                                    Icon(
+                                      LucideIcons.server,
+                                      size: 19,
+                                      color: palette.foreground,
+                                    ),
                                   const SizedBox(width: 11),
                                   Expanded(
                                     child: Column(
@@ -1337,7 +1366,7 @@ class ServerMenu extends StatelessWidget {
     if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
       return IconButton(
         tooltip: '${l.prototypeMoreActions}: ${controller.serverName(row)}',
-        onPressed: controller.busy
+        onPressed: controller.serverBusy(row)
             ? null
             : () => open(context, controller, row),
         style: IconButton.styleFrom(
@@ -1348,13 +1377,21 @@ class ServerMenu extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: const RoundedRectangleBorder(),
         ),
-        icon: const Icon(LucideIcons.ellipsis),
+        icon:
+            controller.serverBusy(row) &&
+                !controller.favoritingIds.contains(row.id)
+            ? const ButtonProgressIndicator()
+            : const Icon(LucideIcons.ellipsis),
       );
     }
     return PopupMenuButton<ServerAction>(
       tooltip: l.prototypeMoreActions,
-      enabled: !controller.busy,
-      icon: const Icon(LucideIcons.ellipsis),
+      enabled: !controller.serverBusy(row),
+      icon:
+          controller.serverBusy(row) &&
+              !controller.favoritingIds.contains(row.id)
+          ? const ButtonProgressIndicator()
+          : const Icon(LucideIcons.ellipsis),
       onSelected: (action) => controller.serverAction(context, row, action),
       itemBuilder: (_) => [
         PopupMenuItem(value: ServerAction.edit, child: Text(l.prototypeEdit)),
@@ -1403,7 +1440,7 @@ class SourceMenu extends StatelessWidget {
     if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
       return IconButton(
         tooltip: '${l.prototypeMoreActions}: ${source.name}',
-        onPressed: controller.busy
+        onPressed: controller.sourceBusy(source.id)
             ? null
             : () => open(context, controller, source),
         style: IconButton.styleFrom(
@@ -1414,13 +1451,17 @@ class SourceMenu extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: const RoundedRectangleBorder(),
         ),
-        icon: const Icon(LucideIcons.ellipsis),
+        icon: controller.sourceBusy(source.id)
+            ? const ButtonProgressIndicator()
+            : const Icon(LucideIcons.ellipsis),
       );
     }
     return PopupMenuButton<SourceAction>(
       tooltip: l.prototypeMoreActions,
-      enabled: !controller.busy,
-      icon: const Icon(LucideIcons.ellipsis),
+      enabled: !controller.sourceBusy(source.id),
+      icon: controller.sourceBusy(source.id)
+          ? const ButtonProgressIndicator()
+          : const Icon(LucideIcons.ellipsis),
       onSelected: (action) => controller.sourceAction(context, source, action),
       itemBuilder: (_) => [
         PopupMenuItem(

@@ -25,7 +25,9 @@ class BackupPageState {
   final String selection;
   final bool backingUp;
   final bool restoring;
-  final bool working;
+  final bool importing;
+  final String restoringPath;
+  final Map<String, IconMenuId> fileActions;
   final bool loading;
   final bool readFailed;
 
@@ -34,19 +36,33 @@ class BackupPageState {
     this.selection = "",
     this.backingUp = false,
     this.restoring = false,
-    this.working = false,
+    this.importing = false,
+    this.restoringPath = '',
+    this.fileActions = const {},
     this.loading = true,
     this.readFailed = false,
   });
 
-  bool get busy => backingUp || restoring || working || loading;
+  bool get canBackup => !backingUp && !restoring && !importing;
+  // Import can replace an existing archive with the same creation timestamp.
+  bool get canImport => canBackup && fileActions.isEmpty;
+  bool get transferring => fileActions.values.any(
+    (action) => action == IconMenuId.share || action == IconMenuId.save,
+  );
+  bool fileBusy(String path) =>
+      importing || fileActions.containsKey(path) || restoringPath == path;
+  bool get canRestore =>
+      canBackup &&
+      files.any((file) => file.name == selection && !fileBusy(file.path));
 
   BackupPageState copyWith({
     List<FileInfo>? files,
     String? selection,
     bool? backingUp,
     bool? restoring,
-    bool? working,
+    bool? importing,
+    String? restoringPath,
+    Map<String, IconMenuId>? fileActions,
     bool? loading,
     bool? readFailed,
   }) {
@@ -55,7 +71,9 @@ class BackupPageState {
       selection: selection ?? this.selection,
       backingUp: backingUp ?? this.backingUp,
       restoring: restoring ?? this.restoring,
-      working: working ?? this.working,
+      importing: importing ?? this.importing,
+      restoringPath: restoringPath ?? this.restoringPath,
+      fileActions: fileActions ?? this.fileActions,
       loading: loading ?? this.loading,
       readFailed: readFailed ?? this.readFailed,
     );
@@ -66,9 +84,15 @@ class BackupController extends PageCubit<BackupPageState> {
   BackupController() : super(const BackupPageState()) {
     _readFiles();
   }
+  int _readGeneration = 0;
 
-  Future<void> _readFiles({bool selectNewest = false}) async {
-    emit(state.copyWith(loading: true, readFailed: false));
+  Future<void> _readFiles({
+    bool selectNewest = false,
+    bool showLoading = true,
+  }) async {
+    if (!isPageActive) return;
+    final generation = ++_readGeneration;
+    emit(state.copyWith(loading: showLoading, readFailed: false));
     try {
       final backupDir = await BackupService().backupDir;
       final zipFiles = await Directory(backupDir)
@@ -89,6 +113,7 @@ class BackupController extends PageCubit<BackupPageState> {
         final bTime = b.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
         return bTime.compareTo(aTime);
       });
+      if (!isPageActive || generation != _readGeneration) return;
       final selection = selectNewest && fileInfos.isNotEmpty
           ? fileInfos.first.name
           : fileInfos.any((file) => file.name == state.selection)
@@ -96,22 +121,26 @@ class BackupController extends PageCubit<BackupPageState> {
           : "";
       emit(state.copyWith(files: fileInfos, selection: selection));
     } catch (_) {
-      emit(state.copyWith(readFailed: true));
+      if (generation == _readGeneration) {
+        emit(state.copyWith(readFailed: true));
+      }
     } finally {
-      emit(state.copyWith(loading: false));
+      if (generation == _readGeneration) {
+        emit(state.copyWith(loading: false));
+      }
     }
   }
 
   Future<void> refresh() async {
-    if (!state.busy) await _readFiles();
+    if (!state.loading) await _readFiles();
   }
 
   void cancel(BuildContext context) {
-    if (!state.busy) Navigator.of(context).pop();
+    Navigator.of(context).pop();
   }
 
   void updateSelection(String? value) {
-    if (state.busy) return;
+    if (value == state.selection) return;
     if (value == null) {
       emit(state.copyWith(selection: ""));
     } else {
@@ -120,8 +149,8 @@ class BackupController extends PageCubit<BackupPageState> {
   }
 
   Future<void> importBackup(BuildContext context) async {
-    if (state.busy) return;
-    emit(state.copyWith(working: true));
+    if (!state.canImport) return;
+    emit(state.copyWith(importing: true));
     try {
       final success = await BackupService().importBackup();
       if (success == null) return;
@@ -132,7 +161,7 @@ class BackupController extends PageCubit<BackupPageState> {
           AppLocalizations.of(context)!.prototypeImportBackup,
         );
       }
-      await _readFiles(selectNewest: success);
+      await _readFiles(selectNewest: success, showLoading: false);
     } catch (_) {
       if (context.mounted) {
         _showActionResult(
@@ -142,7 +171,7 @@ class BackupController extends PageCubit<BackupPageState> {
         );
       }
     } finally {
-      emit(state.copyWith(working: false));
+      emit(state.copyWith(importing: false));
     }
   }
 
@@ -151,7 +180,12 @@ class BackupController extends PageCubit<BackupPageState> {
     FileInfo file,
     IconMenuId menuId,
   ) async {
-    if (state.busy || !state.files.any((entry) => entry.path == file.path)) {
+    if (state.fileBusy(file.path) ||
+        !state.files.any((entry) => entry.path == file.path)) {
+      return;
+    }
+    if (state.transferring &&
+        (menuId == IconMenuId.share || menuId == IconMenuId.save)) {
       return;
     }
     final l10n = AppLocalizations.of(context)!;
@@ -162,7 +196,9 @@ class BackupController extends PageCubit<BackupPageState> {
       _ => null,
     };
     if (action == null) return;
-    emit(state.copyWith(working: true));
+    emit(
+      state.copyWith(fileActions: {...state.fileActions, file.path: menuId}),
+    );
     try {
       final confirmed = await AppConfirmationDialog(
         title: switch (menuId) {
@@ -198,7 +234,9 @@ class BackupController extends PageCubit<BackupPageState> {
     } catch (_) {
       if (context.mounted) _showActionResult(context, false, action);
     } finally {
-      emit(state.copyWith(working: false));
+      emit(
+        state.copyWith(fileActions: {...state.fileActions}..remove(file.path)),
+      );
     }
   }
 
@@ -254,15 +292,15 @@ class BackupController extends PageCubit<BackupPageState> {
 
   Future<void> _deleteFile(FileInfo file) async {
     await File(file.path).delete();
-    await _readFiles();
+    await _readFiles(showLoading: false);
   }
 
   Future<void> backup(BuildContext context) async {
-    if (state.busy) return;
+    if (!state.canBackup) return;
     emit(state.copyWith(backingUp: true));
     try {
       await BackupService().backup();
-      await _readFiles(selectNewest: true);
+      await _readFiles(selectNewest: true, showLoading: false);
     } catch (_) {
       if (context.mounted) {
         _showActionResult(
@@ -279,13 +317,13 @@ class BackupController extends PageCubit<BackupPageState> {
   }
 
   Future<void> restore(BuildContext context) async {
-    if (state.busy) return;
+    if (!state.canRestore) return;
     final file = state.files
         .where((e) => e.name == state.selection)
         .firstOrNull;
     if (file == null) return;
     final l10n = AppLocalizations.of(context)!;
-    emit(state.copyWith(restoring: true));
+    emit(state.copyWith(restoring: true, restoringPath: file.path));
     try {
       final confirmed = await AppConfirmationDialog(
         title: l10n.prototypeRestoreBackupQuestion,
@@ -306,7 +344,7 @@ class BackupController extends PageCubit<BackupPageState> {
       }
     } finally {
       if (isPageActive) {
-        emit(state.copyWith(restoring: false));
+        emit(state.copyWith(restoring: false, restoringPath: ''));
       }
     }
   }

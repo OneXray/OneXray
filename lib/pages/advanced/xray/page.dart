@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/controller.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
@@ -62,13 +63,16 @@ class _XrayRuntimePageState extends State<XrayRuntimePage> {
                       label: Text(l.prototypeRestoreDefaults),
                     ),
                     FilledButton(
-                      onPressed: disabled
+                      onPressed: disabled || controller.runtimeBusy
                           ? null
                           : () => controller.save(context),
-                      child: Text(
-                        controller.connected
-                            ? l.prototypeSaveAndReconnect
-                            : l.prototypeSave,
+                      child: ButtonProgress(
+                        busy: controller.saving,
+                        child: Text(
+                          controller.connected
+                              ? l.prototypeSaveAndReconnect
+                              : l.prototypeSave,
+                        ),
                       ),
                     ),
                   ],

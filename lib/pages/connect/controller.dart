@@ -47,6 +47,8 @@ class ConnectController extends ChangeNotifier {
   bool _viewInitialized = false;
   bool _pageVisible = false;
   bool _trafficDialogOpen = false;
+  String? pendingChange;
+  final Set<int> deletingRawIds = {};
 
   void setPageVisible(bool visible) {
     if (_closed || _pageVisible == visible) return;
@@ -320,7 +322,7 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> toggleExpert(BuildContext context, bool value) async {
-    if (coordinator.state.value.busy) return;
+    if (coordinator.state.value.busy || pendingChange != null) return;
     if (!value && configuration.connection.expert) {
       if (!await change(context, {'expert': false})) return;
     }
@@ -334,63 +336,76 @@ class ConnectController extends ChangeNotifier {
     Future<void> Function()? writeAssets,
     String? label,
   }) async {
-    if (coordinator.state.value.busy) return false;
-    final l10n = AppLocalizations.of(context)!;
-    final current = await coordinator.configuration;
-    final next = ConnectionConfiguration(
-      connection: ConnectionSettings.fromJson({
-        ...current.connection.toJson(),
-        ...values,
-      }),
-      policy: current.policy,
-    );
-    if (next.encode() == current.encode() && writeAssets == null) return true;
-    if (!context.mounted) return false;
-    final reconnect =
-        coordinator.state.value.phase == ConnectionPhase.connected;
-    if (reconnect &&
-        await showConnectDialog<bool>(
-              context,
-              (dialogContext) => ConnectDialog(
-                title: l10n.prototypeApplyChange,
-                subtitle: l10n.prototypeReconnectNotice,
-                body: ConnectCallout(
-                  icon: LucideIcons.refreshCw,
-                  text: l10n.prototypeWillUseName(
-                    label ?? _changeLabel(l10n, values, next.connection),
-                  ),
-                ),
-                actions: [
-                  ConnectDialogButton(
-                    label: l10n.prototypeCancel,
-                    secondary: true,
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
-                  ),
-                  ConnectDialogButton(
-                    label: l10n.prototypeApplyAndReconnect,
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
-                  ),
-                ],
-              ),
-            ) !=
-            true) {
-      return false;
-    }
-    if (!context.mounted) return false;
-    var success = false;
-    await run(context, () async {
-      await coordinator.apply(
-        next,
-        writeAssets: writeAssets,
-        expectedConfiguration: current.encode(),
-        allowReconnect: reconnect,
+    if (coordinator.state.value.busy || pendingChange != null) return false;
+    pendingChange = values.containsKey('rawId')
+        ? 'raw:${values['rawId']}'
+        : values.containsKey('selection')
+        ? 'selection'
+        : values.containsKey('trafficMode')
+        ? 'method'
+        : 'expert';
+    _notify();
+    try {
+      final l10n = AppLocalizations.of(context)!;
+      final current = await coordinator.configuration;
+      final next = ConnectionConfiguration(
+        connection: ConnectionSettings.fromJson({
+          ...current.connection.toJson(),
+          ...values,
+        }),
+        policy: current.policy,
       );
-      // Failed applies rethrow, including after restoration. A successful plan
-      // may legitimately commit Automatic instead of an unavailable selection.
-      success = true;
-      configuration = await coordinator.configuration;
-    });
-    return success;
+      if (next.encode() == current.encode() && writeAssets == null) return true;
+      if (!context.mounted) return false;
+      final reconnect =
+          coordinator.state.value.phase == ConnectionPhase.connected;
+      if (reconnect &&
+          await showConnectDialog<bool>(
+                context,
+                (dialogContext) => ConnectDialog(
+                  title: l10n.prototypeApplyChange,
+                  subtitle: l10n.prototypeReconnectNotice,
+                  body: ConnectCallout(
+                    icon: LucideIcons.refreshCw,
+                    text: l10n.prototypeWillUseName(
+                      label ?? _changeLabel(l10n, values, next.connection),
+                    ),
+                  ),
+                  actions: [
+                    ConnectDialogButton(
+                      label: l10n.prototypeCancel,
+                      secondary: true,
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                    ),
+                    ConnectDialogButton(
+                      label: l10n.prototypeApplyAndReconnect,
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                    ),
+                  ],
+                ),
+              ) !=
+              true) {
+        return false;
+      }
+      if (!context.mounted) return false;
+      var success = false;
+      await run(context, () async {
+        await coordinator.apply(
+          next,
+          writeAssets: writeAssets,
+          expectedConfiguration: current.encode(),
+          allowReconnect: reconnect,
+        );
+        // Failed applies rethrow, including after restoration. A successful plan
+        // may legitimately commit Automatic instead of an unavailable selection.
+        success = true;
+        configuration = await coordinator.configuration;
+      });
+      return success;
+    } finally {
+      pendingChange = null;
+      _notify();
+    }
   }
 
   String _changeLabel(
@@ -422,64 +437,75 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> deleteRaw(BuildContext context, CoreConfigData row) async {
-    if (coordinator.state.value.busy) return;
-    final expected = await coordinator.configuration;
-    if (!context.mounted) return;
-    final l10n = AppLocalizations.of(context)!;
-    final active =
-        expected.connection.expert && expected.connection.rawId == row.id;
-    final connected =
-        coordinator.state.value.phase == ConnectionPhase.connected;
-    final disconnect = active && connected && servers.isEmpty;
-    if (!await ContextAlert.showConfirmDialog(
-          context,
-          title: l10n.prototypeDeleteRawQuestion,
-          content:
-              '${row.name}\n\n${disconnect
-                  ? l10n.prototypeRawDeleteDisconnectNotice
-                  : active
-                  ? l10n.prototypeActiveRawDeleteNotice
-                  : l10n.prototypeRawDeleteNotice}',
-          confirmLabel: disconnect
-              ? l10n.prototypeDeleteAndDisconnect
-              : active && connected
-              ? l10n.prototypeDeleteAndReconnect
-              : l10n.prototypeDelete,
-        ) ||
-        !context.mounted) {
+    if (coordinator.state.value.busy ||
+        pendingChange != null ||
+        deletingRawIds.contains(row.id)) {
       return;
     }
-    if (!context.mounted) return;
-    await run(context, () async {
-      final current = expected;
-      await coordinator.apply(
-        ConnectionConfiguration(
-          connection: ConnectionSettings.fromJson({
-            ...current.connection.toJson(),
-            if (current.connection.rawId == row.id) ...{
-              'expert': false,
-              'rawId': null,
-            },
-          }),
-          policy: current.policy,
-        ),
-        affectsRuntime: active && !disconnect,
-        disconnect: disconnect,
-        allowReconnect: connected,
-        expectedConfiguration: expected.encode(),
-        writeAssets: () async {
-          final latest = await db.coreConfigDao.searchRow(row.id);
-          if (latest == null ||
-              latest.type != row.type ||
-              latest.data != row.data) {
-            throw StateError('Raw configuration changed before deletion');
-          }
-          await db.coreConfigDao.deleteRow(row);
-        },
-      );
-      if (active) expertView = false;
+    deletingRawIds.add(row.id);
+    _notify();
+    try {
+      final expected = await coordinator.configuration;
+      if (!context.mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      final active =
+          expected.connection.expert && expected.connection.rawId == row.id;
+      final connected =
+          coordinator.state.value.phase == ConnectionPhase.connected;
+      final disconnect = active && connected && servers.isEmpty;
+      if (!await ContextAlert.showConfirmDialog(
+            context,
+            title: l10n.prototypeDeleteRawQuestion,
+            content:
+                '${row.name}\n\n${disconnect
+                    ? l10n.prototypeRawDeleteDisconnectNotice
+                    : active
+                    ? l10n.prototypeActiveRawDeleteNotice
+                    : l10n.prototypeRawDeleteNotice}',
+            confirmLabel: disconnect
+                ? l10n.prototypeDeleteAndDisconnect
+                : active && connected
+                ? l10n.prototypeDeleteAndReconnect
+                : l10n.prototypeDelete,
+          ) ||
+          !context.mounted) {
+        return;
+      }
+      if (!context.mounted) return;
+      await run(context, () async {
+        final current = expected;
+        await coordinator.apply(
+          ConnectionConfiguration(
+            connection: ConnectionSettings.fromJson({
+              ...current.connection.toJson(),
+              if (current.connection.rawId == row.id) ...{
+                'expert': false,
+                'rawId': null,
+              },
+            }),
+            policy: current.policy,
+          ),
+          affectsRuntime: active && !disconnect,
+          disconnect: disconnect,
+          allowReconnect: connected,
+          expectedConfiguration: expected.encode(),
+          writeAssets: () async {
+            final latest = await db.coreConfigDao.searchRow(row.id);
+            if (latest == null ||
+                latest.type != row.type ||
+                latest.data != row.data) {
+              throw StateError('Raw configuration changed before deletion');
+            }
+            await db.coreConfigDao.deleteRow(row);
+          },
+        );
+        if (active) expertView = false;
+        _notify();
+      });
+    } finally {
+      deletingRawIds.remove(row.id);
       _notify();
-    });
+    }
   }
 
   Future<void> resetTraffic(BuildContext context) async {
@@ -492,29 +518,42 @@ class ConnectController extends ChangeNotifier {
 
   Widget _resetTrafficDialog(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return ConnectDialog(
-      key: const ValueKey('reset-traffic'),
-      title: l.prototypeResetTotals,
-      subtitle: l.prototypeResetTrafficNotice,
-      body: ConnectCallout(
-        icon: LucideIcons.circleAlert,
-        text: l.prototypeCannotUndo,
-        warning: true,
+    var busy = false;
+    return StatefulBuilder(
+      builder: (context, setState) => ConnectDialog(
+        key: const ValueKey('reset-traffic'),
+        title: l.prototypeResetTotals,
+        subtitle: l.prototypeResetTrafficNotice,
+        body: ConnectCallout(
+          icon: LucideIcons.circleAlert,
+          text: l.prototypeCannotUndo,
+          warning: true,
+        ),
+        expandLastAction: false,
+        actions: [
+          ConnectDialogButton(
+            label: l.prototypeCancel,
+            secondary: true,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          ConnectDialogButton(
+            label: l.prototypeResetTotals,
+            destructive: true,
+            icon: LucideIcons.rotateCcw,
+            busy: busy,
+            onPressed: busy
+                ? null
+                : () async {
+                    setState(() => busy = true);
+                    await _clearTraffic(context);
+                    if (context.mounted &&
+                        ModalRoute.of(context)?.isCurrent == true) {
+                      Navigator.of(context).pop(false);
+                    }
+                  },
+          ),
+        ],
       ),
-      expandLastAction: false,
-      actions: [
-        ConnectDialogButton(
-          label: l.prototypeCancel,
-          secondary: true,
-          onPressed: () => Navigator.of(context).pop(false),
-        ),
-        ConnectDialogButton(
-          label: l.prototypeResetTotals,
-          destructive: true,
-          icon: LucideIcons.rotateCcw,
-          onPressed: () => Navigator.of(context).pop(true),
-        ),
-      ],
     );
   }
 
@@ -540,6 +579,7 @@ class ConnectController extends ChangeNotifier {
       context.goPrimaryRoot(AppPrimaryRoute.subscriptions);
 
   Future<void> showRawActions(BuildContext context, CoreConfigData row) async {
+    if (deletingRawIds.contains(row.id)) return;
     final edit = await showConnectDialog<bool>(context, (dialogContext) {
       final l = AppLocalizations.of(dialogContext)!;
       final palette = ColorManager.palette(dialogContext);
@@ -606,7 +646,8 @@ class ConnectController extends ChangeNotifier {
           'expert': false,
         }) &&
         context.mounted &&
-        close) {
+        close &&
+        ModalRoute.of(context)?.isCurrent == true) {
       Navigator.pop(context);
     }
   }

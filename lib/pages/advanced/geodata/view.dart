@@ -6,6 +6,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:onexray/service/geo_data/model.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 
 /// Default and custom datasets share file rows, never a second detail screen
 /// embedded in the list. Only custom rows expose their dataset actions.
@@ -13,6 +14,8 @@ class GeoDataRows extends StatelessWidget {
   final List<PublishedGeoData> files;
   final bool custom;
   final bool busy;
+  final Set<int> updating;
+  final Set<int> deleting;
   final void Function(PublishedGeoData) onOpen;
   final void Function(PublishedGeoData) onUpdate;
   final void Function(PublishedGeoData) onDelete;
@@ -21,10 +24,15 @@ class GeoDataRows extends StatelessWidget {
     required this.files,
     required this.custom,
     required this.busy,
+    this.updating = const {},
+    this.deleting = const {},
     required this.onOpen,
     required this.onUpdate,
     required this.onDelete,
   });
+
+  bool _busy(PublishedGeoData file) =>
+      busy || updating.contains(file.row.id) || deleting.contains(file.row.id);
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +218,13 @@ class GeoDataRows extends StatelessWidget {
               spacing: 9,
               children: [
                 Padding(
-                  padding: EdgeInsetsDirectional.only(end: custom ? 82 : 0),
+                  padding: EdgeInsetsDirectional.only(
+                    end: custom
+                        ? updating.contains(file.row.id)
+                              ? 106
+                              : 82
+                        : 0,
+                  ),
                   child: InkWell(
                     onTap: () => onOpen(file),
                     child: Padding(
@@ -288,8 +302,11 @@ class GeoDataRows extends StatelessWidget {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.standard,
                     ),
-                    onPressed: busy ? null : () => onUpdate(file),
-                    child: Text(l.prototypeUpdate),
+                    onPressed: _busy(file) ? null : () => onUpdate(file),
+                    child: ButtonProgress(
+                      busy: updating.contains(file.row.id),
+                      child: Text(l.prototypeUpdate),
+                    ),
                   ),
                   IconButton(
                     tooltip: l.prototypeDeleteCustomDataset,
@@ -300,8 +317,10 @@ class GeoDataRows extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    onPressed: busy ? null : () => onDelete(file),
-                    icon: const Icon(LucideIcons.trash2, size: 16),
+                    onPressed: _busy(file) ? null : () => onDelete(file),
+                    icon: deleting.contains(file.row.id)
+                        ? const ButtonProgressIndicator()
+                        : const Icon(LucideIcons.trash2, size: 16),
                   ),
                 ],
               ),
@@ -331,13 +350,18 @@ class GeoDataRows extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         TextButton(
-          onPressed: busy ? null : () => onUpdate(file),
-          child: Text(l.prototypeUpdate),
+          onPressed: _busy(file) ? null : () => onUpdate(file),
+          child: ButtonProgress(
+            busy: updating.contains(file.row.id),
+            child: Text(l.prototypeUpdate),
+          ),
         ),
         IconButton(
           tooltip: l.prototypeDeleteCustomDataset,
-          onPressed: busy ? null : () => onDelete(file),
-          icon: const Icon(LucideIcons.trash2),
+          onPressed: _busy(file) ? null : () => onDelete(file),
+          icon: deleting.contains(file.row.id)
+              ? const ButtonProgressIndicator()
+              : const Icon(LucideIcons.trash2),
         ),
       ],
     );

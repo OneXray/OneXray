@@ -6,6 +6,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -17,6 +18,8 @@ class ConnectView extends StatelessWidget {
     required this.expert,
     required this.raws,
     required this.activeRawId,
+    this.pendingChange,
+    this.deletingRawIds = const {},
     required this.location,
     this.runningPath,
     this.locationDetail,
@@ -39,6 +42,8 @@ class ConnectView extends StatelessWidget {
   final bool expert;
   final List<CoreConfigData> raws;
   final int? activeRawId;
+  final String? pendingChange;
+  final Set<int> deletingRawIds;
   final String location;
   final String? runningPath;
   final String? locationDetail, locationHealth, methodDetail;
@@ -142,6 +147,7 @@ class ConnectView extends StatelessWidget {
                                   method,
                                   onMethod,
                                   detail: methodDetail,
+                                  busy: pendingChange == 'method',
                                   minHeight: 113,
                                 ),
                                 _why(context),
@@ -247,11 +253,15 @@ class ConnectView extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
+          if (pendingChange == 'expert') ...[
+            const ButtonProgressIndicator(),
+            const SizedBox(width: 8),
+          ],
           Semantics(
             label: l.prototypeExpertMode,
             child: ShadSwitch(
               value: expert,
-              enabled: !view.busy,
+              enabled: !view.busy && pendingChange == null,
               onChanged: onExpert,
             ),
           ),
@@ -458,6 +468,7 @@ class ConnectView extends StatelessWidget {
     VoidCallback onTap, {
     String? detail,
     String? meta,
+    bool busy = false,
     double minHeight = 0,
   }) {
     final palette = ColorManager.palette(context);
@@ -479,9 +490,9 @@ class ConnectView extends StatelessWidget {
           ),
           const SizedBox(height: 7),
           InkWell(
-            onTap: view.busy ? null : onTap,
+            onTap: onTap,
             child: Opacity(
-              opacity: view.busy ? .52 : 1,
+              opacity: 1,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
                   minHeight: AppLayout.connectChoiceMinHeight,
@@ -490,13 +501,16 @@ class ConnectView extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 1, bottom: 3),
                   child: Row(
                     children: [
-                      Icon(
-                        icon,
-                        size: 23,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? palette.foreground
-                            : palette.scannerBackground,
-                      ),
+                      if (busy)
+                        const ButtonProgressIndicator()
+                      else
+                        Icon(
+                          icon,
+                          size: 23,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? palette.foreground
+                              : palette.scannerBackground,
+                        ),
                       const SizedBox(width: 13),
                       Expanded(
                         child: Column(
@@ -618,7 +632,7 @@ class ConnectView extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
                       FilledButton.icon(
-                        onPressed: view.busy ? null : onRawAdd,
+                        onPressed: onRawAdd,
                         icon: const Icon(LucideIcons.plus, size: 17),
                         label: Text(l.prototypeAddRawJson),
                       ),
@@ -644,7 +658,7 @@ class ConnectView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 11),
               child: OutlinedButton.icon(
-                onPressed: view.busy ? null : onRawAdd,
+                onPressed: onRawAdd,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: palette.primary,
                   shape: AppDashedBorder(
@@ -690,7 +704,12 @@ class ConnectView extends StatelessWidget {
           children: [
             Expanded(
               child: InkWell(
-                onTap: view.busy ? null : () => onRawSelect(row),
+                onTap:
+                    view.busy ||
+                        pendingChange != null ||
+                        deletingRawIds.contains(row.id)
+                    ? null
+                    : () => onRawSelect(row),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 11,
@@ -698,11 +717,14 @@ class ConnectView extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        LucideIcons.fileJson,
-                        size: 21,
-                        color: palette.primary,
-                      ),
+                      if (pendingChange == 'raw:${row.id}')
+                        const ButtonProgressIndicator()
+                      else
+                        Icon(
+                          LucideIcons.fileJson,
+                          size: 21,
+                          color: palette.primary,
+                        ),
                       const SizedBox(width: 11),
                       Expanded(
                         child: Column(
@@ -756,8 +778,12 @@ class ConnectView extends StatelessWidget {
                   child: IconButton(
                     padding: EdgeInsets.zero,
                     tooltip: '${l.prototypeMoreActions}: ${row.name}',
-                    onPressed: () => onRawActions(row),
-                    icon: const Icon(LucideIcons.ellipsis, size: 18),
+                    onPressed: deletingRawIds.contains(row.id)
+                        ? null
+                        : () => onRawActions(row),
+                    icon: deletingRawIds.contains(row.id)
+                        ? const ButtonProgressIndicator()
+                        : const Icon(LucideIcons.ellipsis, size: 18),
                   ),
                 ),
               ),

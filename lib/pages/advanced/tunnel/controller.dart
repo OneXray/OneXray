@@ -43,7 +43,8 @@ class PolicyEditorController extends ChangeNotifier {
   ConnectionPlatform get platform => service.platform;
   bool get connected =>
       service.coordinator.state.value.phase == ConnectionPhase.connected;
-  bool get blocked => busy || service.coordinator.state.value.busy;
+  bool get blocked => busy;
+  bool get runtimeBusy => service.coordinator.state.value.busy;
   Map<String, dynamic> get value => draft!.policy;
   Map<String, dynamic> group(String key) => value[key] as Map<String, dynamic>;
   List<String> strings(String groupName, String key) =>
@@ -134,7 +135,7 @@ class PolicyEditorController extends ChangeNotifier {
       : l.prototypeSave;
 
   Future<bool> save(BuildContext context, {bool pop = true}) async {
-    if (blocked || draft == null) {
+    if (blocked || runtimeBusy || draft == null) {
       return false;
     }
     final l = AppLocalizations.of(context)!;
@@ -171,9 +172,11 @@ class PolicyEditorController extends ChangeNotifier {
             : Future.value(false),
       );
       if (saved && !_closed) {
-        if (pop && context.mounted) {
+        if (pop &&
+            context.mounted &&
+            ModalRoute.of(context)?.isCurrent == true) {
           Navigator.of(context).pop(true);
-        } else {
+        } else if (!pop) {
           draft = await service.load();
         }
       }
@@ -226,9 +229,7 @@ class PolicyEditorController extends ChangeNotifier {
   }
 
   void cancel(BuildContext context) {
-    if (!blocked) {
-      Navigator.of(context).pop();
-    }
+    Navigator.of(context).pop();
   }
 
   void discard() {
