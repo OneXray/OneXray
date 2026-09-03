@@ -36,6 +36,7 @@ Future<T?> showConnectDialog<T>(BuildContext context, WidgetBuilder builder) =>
             ),
             SafeArea(
               top: !mobile,
+              bottom: !mobile,
               child: Padding(
                 padding: mobile ? EdgeInsets.zero : const EdgeInsets.all(20),
                 child: Align(
@@ -94,110 +95,120 @@ class ConnectDialog extends StatelessWidget {
         side: BorderSide(color: palette.border),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Flexible(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    constraints: BoxConstraints(
-                      minHeight: mobile
-                          ? AppLayout.dialogMobileHeaderMinHeight
-                          : AppLayout.dialogHeaderMinHeight,
-                    ),
-                    padding: mobile
-                        ? const EdgeInsets.fromLTRB(16, 17, 16, 14)
-                        : const EdgeInsets.fromLTRB(21, 20, 21, 17),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: palette.border)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title, style: AppTypography.dialogTitle),
-                              if (subtitle != null) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  subtitle!,
-                                  style: AppTypography.dialogSubtitle.copyWith(
-                                    color: palette.mutedForeground,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        IconButton(
-                          autofocus: true,
-                          tooltip: AppLocalizations.of(context)!
-                              .prototypeCloseDialog,
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: IconButton.styleFrom(
-                            foregroundColor: palette.mutedStrong,
-                            minimumSize: const Size.square(
-                              AppLayout.dialogCloseSize,
-                            ),
-                            maximumSize: const Size.square(
-                              AppLayout.dialogCloseSize,
-                            ),
-                            padding: EdgeInsets.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          icon: const Icon(LucideIcons.x, size: 20),
-                        ),
-                      ],
-                    ),
-                  ),
-                  body,
-                ],
-              ),
-            ),
-          ),
-          if (actions.isNotEmpty)
-            Container(
-              constraints: const BoxConstraints(minHeight: 70),
-              padding: EdgeInsets.symmetric(
-                horizontal: mobile ? 16 : 20,
-                vertical: mobile ? 12 : 14,
-              ),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: palette.border)),
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+      // Extend the surface beneath system gestures; inset only its content.
+      child: SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        bottom: mobile,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (var index = 0; index < actions.length; index++) ...[
-                      if (index > 0)
-                        const SizedBox(width: AppSpacing.actionGap),
-                      if (mobile &&
-                          expandLastAction &&
-                          index == actions.length - 1)
-                        Expanded(child: actions[index])
-                      else if (mobile && expandLastAction)
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth * 0.62,
+                    Container(
+                      constraints: BoxConstraints(
+                        minHeight: mobile
+                            ? AppLayout.dialogMobileHeaderMinHeight
+                            : AppLayout.dialogHeaderMinHeight,
+                      ),
+                      padding: mobile
+                          ? const EdgeInsets.fromLTRB(16, 17, 16, 14)
+                          : const EdgeInsets.fromLTRB(21, 20, 21, 17),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: palette.border),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(title, style: AppTypography.dialogTitle),
+                                if (subtitle != null) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    subtitle!,
+                                    style: AppTypography.dialogSubtitle
+                                        .copyWith(
+                                          color: palette.mutedForeground,
+                                        ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                          child: IntrinsicWidth(child: actions[index]),
-                        )
-                      else
-                        Flexible(child: actions[index]),
-                    ],
+                          const SizedBox(width: 12),
+                          IconButton(
+                            autofocus: true,
+                            tooltip: AppLocalizations.of(context)!
+                                .prototypeCloseDialog,
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: IconButton.styleFrom(
+                              foregroundColor: palette.mutedStrong,
+                              minimumSize: const Size.square(
+                                AppLayout.dialogCloseSize,
+                              ),
+                              maximumSize: const Size.square(
+                                AppLayout.dialogCloseSize,
+                              ),
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: const Icon(LucideIcons.x, size: 20),
+                          ),
+                        ],
+                      ),
+                    ),
+                    body,
                   ],
                 ),
               ),
             ),
-        ],
+            if (actions.isNotEmpty)
+              Container(
+                constraints: const BoxConstraints(minHeight: 70),
+                padding: EdgeInsets.symmetric(
+                  horizontal: mobile ? 16 : 20,
+                  vertical: mobile ? 12 : 14,
+                ),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: palette.border)),
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      for (var index = 0; index < actions.length; index++) ...[
+                        if (index > 0)
+                          const SizedBox(width: AppSpacing.actionGap),
+                        if (mobile &&
+                            expandLastAction &&
+                            index == actions.length - 1)
+                          Expanded(child: actions[index])
+                        else if (mobile && expandLastAction)
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth * 0.62,
+                            ),
+                            child: IntrinsicWidth(child: actions[index]),
+                          )
+                        else
+                          Flexible(child: actions[index]),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
