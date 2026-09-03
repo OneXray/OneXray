@@ -54,7 +54,8 @@ void main() {
       );
       expect(stopped, isTrue);
       expect(snapshot, isNotNull);
-      final saved = sqlite.sqlite3.open(snapshot!.path);
+      expect(snapshot!.path, contains('.pre-v3-'));
+      final saved = sqlite.sqlite3.open(snapshot.path);
       try {
         expect(saved.userVersion, 2);
         expect(
@@ -89,7 +90,7 @@ void main() {
       expect(_snapshotFile(file, hasAgeKeys: false), before);
       expect(
         file.parent.listSync().where(
-          (entry) => entry.path.contains('.pre-v7-'),
+          (entry) => entry.path.contains('.pre-v3-'),
         ),
         isEmpty,
       );
@@ -97,7 +98,7 @@ void main() {
   );
 
   test(
-    'new installation creates schema 7 with empty assets and default state',
+    'new installation creates schema 3 with empty assets and default state',
     () async {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -109,7 +110,7 @@ void main() {
       expect(
         (await database.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        7,
+        3,
       );
     },
   );
@@ -143,18 +144,26 @@ void main() {
           expect(rawRows.every((row) => row.lastMeasuredAt == null), isTrue);
           expect(await database.customRoutingProfilesDao.allRows, isEmpty);
           expect((await database.connectionStateDao.read()).revision, 0);
+          expect((await database.geoDataDao.allRows).single.generation, isNull);
         } finally {
           await database.close();
         }
 
         expect(_snapshotFile(file, hasAgeKeys: true), before);
+        expect(
+          await prepareUpgradeSnapshot(
+            file,
+            stopRunning: () async => fail('Current schema must not stop VPN'),
+          ),
+          isNull,
+        );
         final reopened = AppDatabase.forTesting(NativeDatabase(file));
         try {
           expect(await reopened.coreConfigDao.allRawRowsWithData, hasLength(4));
           expect(
             (await reopened.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version'),
-            7,
+            3,
           );
         } finally {
           await reopened.close();
@@ -169,11 +178,13 @@ void main() {
         final file = await _legacyDatabase(version);
         final before = _snapshotFile(file, hasAgeKeys: version == 2);
         final conflicting = sqlite.sqlite3.open(file.path);
-        conflicting.execute('CREATE TABLE connection_state (id INTEGER)');
+        conflicting.execute(
+          'CREATE INDEX connection_state ON core_config(name)',
+        );
         conflicting.close();
 
         final failed = AppDatabase.forTesting(NativeDatabase(file));
-        await expectLater(failed.subscriptionDao.allRows, throwsStateError);
+        await expectLater(failed.subscriptionDao.allRows, throwsA(anything));
         await failed.close();
 
         final check = sqlite.sqlite3.open(file.path);
@@ -200,7 +211,7 @@ void main() {
             ),
             isEmpty,
           );
-          check.execute('DROP TABLE connection_state');
+          check.execute('DROP INDEX connection_state');
         } finally {
           check.close();
         }
@@ -226,7 +237,7 @@ void main() {
     await interrupted.close();
 
     final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 7);
+    expect(check.userVersion, 3);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
     expect(_columnNames(check, 'connection_state'), [
       'id',
@@ -266,208 +277,32 @@ void main() {
     },
   );
 
-  for (final version in [4, 5, 6]) {
-    test(
-      'schema $version keeps assets and settings but replaces recovery metadata with a plan ID',
-      () async {
-        final file = await _legacyDatabase(version);
-        final before = _versionThreeSnapshot(file);
-        final snapshot = await prepareUpgradeSnapshot(
-          file,
-          stopRunning: () async {},
-        );
-        expect(snapshot, isNotNull);
-        final saved = sqlite.sqlite3.open(snapshot!.path);
-        try {
-          expect(saved.userVersion, version);
-          expect(
-            saved
-                .select('SELECT pending_apply_json FROM connection_state')
-                .single['pending_apply_json'],
-            '{"attemptId":"unfinished"}',
-          );
-        } finally {
-          saved.close();
-        }
-        final db = AppDatabase.forTesting(NativeDatabase(file));
-        try {
-          final state = await db.connectionStateDao.read();
-          expect(state.revision, 17);
-          expect(state.settingsJson, _savedSettings);
-          expect(state.confirmedPlanId, _confirmedPlanId);
-          expect(
-            (await db.subscriptionDao.allRows).single.autoUpdate,
-            version < 5,
-          );
-          expect(
-            (await db.geoDataDao.allRows).single.generation,
-            version < 6 ? null : 'existing-generation',
-          );
-          expect(
-            (await db.customSelect('PRAGMA table_info(connection_state)').get())
-                .map((row) => row.read<String>('name')),
-            ['id', 'revision', 'settings_json', 'confirmed_plan_id'],
-          );
-          expect(
-            (await db.customSelect('PRAGMA user_version').getSingle())
-                .read<int>('user_version'),
-            7,
-          );
-        } finally {
-          await db.close();
-        }
-        expect(_versionThreeSnapshot(file), before);
-      },
-    );
-  }
-
-  for (final snapshot in [
-    null,
-    'not JSON',
-    '[]',
-    '{}',
-    '{"id":42}',
-    '{"id":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}',
-    '{"id":"aaa"}',
-    '{"id":"../outside"}',
-  ]) {
-    test(
-      'an invalid or absent old confirmed snapshot is discarded without changing assets: $snapshot',
-      () async {
-        final file = await _legacyDatabase(6);
-        final legacy = sqlite.sqlite3.open(file.path);
-        legacy.execute(
-          'UPDATE connection_state SET confirmed_snapshot_json = ?',
-          [snapshot],
-        );
-        legacy.close();
-        final before = _versionThreeSnapshot(file);
-        final db = AppDatabase.forTesting(NativeDatabase(file));
-        try {
-          final state = await db.connectionStateDao.read();
-          expect(state.revision, 17);
-          expect(state.settingsJson, _savedSettings);
-          expect(state.confirmedPlanId, isNull);
-        } finally {
-          await db.close();
-        }
-        expect(_versionThreeSnapshot(file), before);
-      },
-    );
-  }
-
-  test('schema 5 adds nullable generation without replacing data or default registration', () async {
-    final file = await _legacyDatabase(3);
-    final legacy = sqlite.sqlite3.open(file.path);
-    legacy.execute(
-      "CREATE TABLE connection_state (id INTEGER PRIMARY KEY NOT NULL, revision INTEGER NOT NULL DEFAULT 0, settings_json TEXT NOT NULL DEFAULT '{}', confirmed_snapshot_json TEXT, pending_apply_json TEXT)",
-    );
-    legacy.execute(
-      'ALTER TABLE subscription ADD COLUMN auto_update INTEGER NOT NULL DEFAULT 1',
-    );
-    legacy.execute('UPDATE subscription SET auto_update = 0');
-    legacy.userVersion = 5;
-    legacy.close();
-    final before = _versionThreeSnapshot(file);
-    final snapshot = await prepareUpgradeSnapshot(
-      file,
-      stopRunning: () async {},
-    );
-    expect(snapshot, isNotNull);
-    final db = AppDatabase.forTesting(NativeDatabase(file));
-    try {
-      final rows = await db.geoDataDao.publishedRows;
-      expect(rows, hasLength(1));
-      expect(rows.single.id, 5);
-      expect(rows.single.generation, isNull);
-      expect((await db.subscriptionDao.allRows).single.autoUpdate, isFalse);
-      expect(
-        (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
-          'user_version',
-        ),
-        7,
-      );
-    } finally {
-      await db.close();
-    }
-    expect(_versionThreeSnapshot(file), before);
-  });
-
-  test('schema 3 snapshot and upgrade retain all existing metadata and Custom data', () async {
-    final file = await _legacyDatabase(3);
-    final before = _versionThreeSnapshot(file);
-    var stopped = false;
-    final snapshot = await prepareUpgradeSnapshot(
-      file,
-      stopRunning: () async {
-        stopped = true;
-      },
-    );
-    expect(stopped, isTrue);
-    expect(snapshot!.path, contains('.pre-v7-'));
-    expect(_versionThreeSnapshot(snapshot), before);
-    final database = AppDatabase.forTesting(NativeDatabase(file));
-    try {
-      expect((await database.connectionStateDao.read()).revision, 0);
-      expect((await database.coreConfigDao.searchRow(11))!.favorite, isTrue);
-      expect(
-        (await database.subscriptionDao.allRows).single.parseFailureCount,
-        2,
-      );
-      expect((await database.customRoutingProfilesDao.allRows).single.id, 6);
-    } finally {
-      await database.close();
-    }
-    expect(_versionThreeSnapshot(file), before);
-    expect(
-      await prepareUpgradeSnapshot(
-        file,
-        stopRunning: () async {
-          fail('Current schema must not stop VPN');
-        },
-      ),
-      isNull,
-    );
-    final reopened = AppDatabase.forTesting(NativeDatabase(file));
-    try {
-      expect((await reopened.connectionStateDao.read()).settingsJson, '{}');
-      expect(
-        (await reopened.customSelect('PRAGMA user_version').getSingle())
-            .read<int>('user_version'),
-        7,
-      );
-    } finally {
-      await reopened.close();
-    }
-  });
-
   test(
-    'schema 3 state-table failure preserves metadata and version before retry',
+    'development schema is rejected without changing the original database',
     () async {
-      final file = await _legacyDatabase(3);
-      final before = _versionThreeSnapshot(file);
-      final conflicting = sqlite.sqlite3.open(file.path);
-      conflicting.execute('CREATE TABLE connection_state (id INTEGER)');
-      conflicting.close();
-      final failed = AppDatabase.forTesting(NativeDatabase(file));
-      await expectLater(failed.connectionStateDao.read(), throwsStateError);
-      await failed.close();
+      final file = await _legacyDatabase(2);
+      final legacy = sqlite.sqlite3.open(file.path);
+      legacy.userVersion = 7;
+      legacy.close();
+      final before = _snapshotFile(file, hasAgeKeys: true);
+      await expectLater(
+        prepareUpgradeSnapshot(
+          file,
+          stopRunning: () async => fail('Unsupported schema must not stop VPN'),
+        ),
+        throwsStateError,
+      );
+      final database = AppDatabase.forTesting(NativeDatabase(file));
+      await expectLater(database.subscriptionDao.allRows, throwsStateError);
+      await database.close();
+      expect(await file.exists(), isTrue);
       final check = sqlite.sqlite3.open(file.path);
       try {
-        expect(check.userVersion, 3);
-        expect(_columnNames(check, 'connection_state'), ['id']);
-        check.execute('DROP TABLE connection_state');
+        expect(check.userVersion, 7);
+        expect(_snapshot(check, hasAgeKeys: true), before);
       } finally {
         check.close();
       }
-      expect(_versionThreeSnapshot(file), before);
-      final retried = AppDatabase.forTesting(NativeDatabase(file));
-      try {
-        expect((await retried.connectionStateDao.read()).revision, 0);
-      } finally {
-        await retried.close();
-      }
-      expect(_versionThreeSnapshot(file), before);
     },
   );
 }
@@ -557,69 +392,12 @@ Future<File> _legacyDatabase(int version) async {
         (id, name, type, url, timestamp, category_count, rule_count)
       VALUES (5, 'legacy-geosite', 'domain', 'https://example.com/geo', 123, 2, 3)
     ''');
-    if (version >= 3) {
-      database.execute('ALTER TABLE core_config ADD COLUMN country_code TEXT');
-      database.execute(
-        'ALTER TABLE core_config ADD COLUMN location_source TEXT',
-      );
-      database.execute(
-        'ALTER TABLE core_config ADD COLUMN last_measured_at INTEGER',
-      );
-      database.execute(
-        'ALTER TABLE core_config ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0, 1))',
-      );
-      database.execute(
-        'ALTER TABLE subscription ADD COLUMN parse_failure_count INTEGER NOT NULL DEFAULT 0',
-      );
-      database.execute(
-        'CREATE TABLE custom_routing_profiles (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, data TEXT NOT NULL)',
-      );
-      database.execute(
-        "UPDATE core_config SET favorite = 1, country_code = 'US', location_source = 'test', last_measured_at = 123 WHERE id = 11",
-      );
-      database.execute('UPDATE subscription SET parse_failure_count = 2');
-      database.execute(
-        'INSERT INTO custom_routing_profiles (id, name, data) VALUES (6, ?, ?)',
-        ['Custom', base64Encode(utf8.encode('{"outbounds":[{}]}'))],
-      );
-    }
-    if (version >= 4) {
-      database.execute(
-        "CREATE TABLE connection_state (id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1), revision INTEGER NOT NULL DEFAULT 0, settings_json TEXT NOT NULL DEFAULT '{}', confirmed_snapshot_json TEXT, pending_apply_json TEXT)",
-      );
-      database.execute(
-        'INSERT INTO connection_state (id, revision, settings_json, confirmed_snapshot_json, pending_apply_json) VALUES (1, 17, ?, ?, ?)',
-        [
-          _savedSettings,
-          jsonEncode({
-            'id': _confirmedPlanId,
-            'configuration': {'legacy': true},
-          }),
-          '{"attemptId":"unfinished"}',
-        ],
-      );
-    }
-    if (version >= 5) {
-      database.execute(
-        'ALTER TABLE subscription ADD COLUMN auto_update INTEGER NOT NULL DEFAULT 1',
-      );
-      database.execute('UPDATE subscription SET auto_update = 0');
-    }
-    if (version >= 6) {
-      database.execute('ALTER TABLE geo_data ADD COLUMN generation TEXT');
-      database.execute(
-        "UPDATE geo_data SET generation = 'existing-generation'",
-      );
-    }
     database.execute('PRAGMA user_version = $version');
   } finally {
     database.close();
   }
   return file;
 }
-
-const _savedSettings = '{"connection":{"selection":{"kind":"source","id":7}}}';
-const _confirmedPlanId = 'abcdef0123456789abcdef0123456789';
 
 Future<Directory> _fixtureDirectory(String prefix) async {
   final fixtures = await Directory(
@@ -664,29 +442,3 @@ List<String> _columnNames(sqlite.Database database, String table) => database
     .select('PRAGMA table_info($table)')
     .map((row) => row['name'] as String)
     .toList();
-
-Map<String, List<List<Object?>>> _versionThreeSnapshot(File file) {
-  final database = sqlite.sqlite3.open(file.path);
-  try {
-    return {
-      for (final table in [
-        'core_config',
-        'subscription',
-        'geo_data',
-        'custom_routing_profiles',
-      ])
-        table: database
-            .select(
-              'SELECT ${switch (table) {
-                'subscription' => 'id, name, url, timestamp, count, expanded, age_secret_key, age_public_key, parse_failure_count',
-                'geo_data' => 'id, name, type, url, timestamp, category_count, rule_count',
-                _ => '*',
-              }} FROM $table ORDER BY id',
-            )
-            .map((row) => row.values.toList())
-            .toList(),
-    };
-  } finally {
-    database.close();
-  }
-}
