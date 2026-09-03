@@ -20,6 +20,7 @@ void main() {
       expect(material.colorScheme.onPrimary, palette.primaryForeground);
       expect(material.colorScheme.surface, palette.card);
       expect(material.colorScheme.onSurface, palette.foreground);
+      expect(material.iconTheme.color, palette.foreground);
       expect(material.colorScheme.error, palette.destructive);
       expect(material.colorScheme.outline, palette.border);
       expect(material.appBarTheme.backgroundColor, palette.header);
@@ -41,7 +42,10 @@ void main() {
         Brightness.dark,
       );
       expect(material.navigationRailTheme.backgroundColor, palette.sidebar);
-      expect(material.navigationBarTheme.height, isNull);
+      expect(
+        material.navigationBarTheme.height,
+        AppLayout.mobileNavigationHeight,
+      );
 
       expect(shad.background, palette.background);
       expect(shad.foreground, palette.foreground);
@@ -67,8 +71,12 @@ void main() {
       expect(material.brightness, Brightness.dark);
       expect(material.colorScheme.primary, palette.primary);
       expect(material.colorScheme.surface, palette.card);
+      expect(material.iconTheme.color, palette.foreground);
       expect(material.dividerTheme.color, palette.border);
-      expect(material.navigationBarTheme.backgroundColor, palette.sidebar);
+      expect(
+        material.navigationBarTheme.backgroundColor,
+        palette.card.withValues(alpha: 0.96),
+      );
       expect(
         material.appBarTheme.systemOverlayStyle?.statusBarIconBrightness,
         Brightness.light,
@@ -131,6 +139,32 @@ void main() {
         "Microsoft YaHei UI",
         "Microsoft YaHei",
       ]);
+      expect(AppFontFamily.androidSansFallback, const <String>["sans-serif"]);
+      for (final (style, size, weight) in [
+        (AppTypography.connectStatusTitle, 17, 650),
+        (AppTypography.connectButton, 16, 660),
+        (AppTypography.connectCaption, 12, 620),
+        (AppTypography.connectChoiceLabel, 11, 520),
+        (AppTypography.connectChoiceTitle, 14, 620),
+        (AppTypography.connectChoiceMeta, 10.5, 600),
+        (AppTypography.connectTrafficTitle, 15, 650),
+        (AppTypography.connectTrafficGroupTitle, 11, 520),
+        (AppTypography.connectTrafficValue, 15, 620),
+        (AppTypography.connectRawTitle, 12, 650),
+        (AppTypography.connectRawCount, 12, 610),
+        (AppTypography.dialogTitle, 18, 700),
+        (AppTypography.dialogSubtitle, 13, 400),
+      ]) {
+        expect(style.fontSize, size);
+        expect(style.fontVariations, [
+          FontVariation('wght', weight.toDouble()),
+        ]);
+      }
+      expect(AppTypography.connectStatusTitle.height, 1.3);
+      expect(AppTypography.connectChoiceTitle.height, 1.4);
+      expect(AppTypography.connectChoiceDetail.height, 1.35);
+      expect(AppTypography.connectStatusDetail.height, kTextHeightNone);
+      expect(AppTypography.connectTrafficValue.height, kTextHeightNone);
     });
 
     test(
@@ -176,6 +210,9 @@ void main() {
             material.switchTheme.trackColor!.resolve({}),
           );
           expect(shad.switchTheme.thumbColor, Colors.white);
+          expect(shad.switchTheme.width, 42);
+          expect(shad.switchTheme.height, 24);
+          expect(shad.switchTheme.margin, 2);
           expect(material.dialogTheme.barrierColor, palette.overlay);
           expect(
             material.navigationRailTheme.indicatorColor,
@@ -198,7 +235,35 @@ void main() {
       expect(material.appBarTheme.titleTextStyle!.fontSize, 21);
       expect(material.appBarTheme.titleTextStyle!.letterSpacing, 21 * -0.025);
       expect(material.appBarTheme.toolbarHeight, AppLayout.mobileHeaderHeight);
-      expect(material.appBarTheme.titleSpacing, AppSpacing.mobilePage);
+      expect(
+        material.appBarTheme.titleSpacing,
+        AppSpacing.mobileHeaderHorizontal,
+      );
+      expect(
+        material.appBarTheme.actionsPadding,
+        const EdgeInsetsDirectional.only(
+          end: AppSpacing.mobileHeaderHorizontal,
+        ),
+      );
+      final navigation = material.navigationBarTheme;
+      expect(navigation.height, 92);
+      expect(navigation.indicatorColor, Colors.transparent);
+      expect(navigation.iconTheme!.resolve({})!.size, 21);
+      expect(
+        navigation.iconTheme!.resolve({})!.color,
+        AppPalette.light.mutedStrong,
+      );
+      expect(navigation.labelTextStyle!.resolve({})!.fontSize, 10);
+      expect(
+        navigation.labelTextStyle!.resolve({})!.fontWeight,
+        FontWeight.w400,
+      );
+      expect(
+        navigation.labelTextStyle!.resolve({
+          WidgetState.selected,
+        })!.fontVariations,
+        const [FontVariation('wght', 620)],
+      );
       expect(
         material.filledButtonTheme.style!.minimumSize!.resolve({}),
         const Size.square(AppLayout.mobileButtonMinHeight),
@@ -224,6 +289,73 @@ void main() {
       expect(tokens.secondaryButtonBackground, palette.secondary);
       expect(tokens.secondaryButtonForeground, palette.secondaryForeground);
     });
+  });
+
+  testWidgets('connection button keeps prototype colors and disabled opacity', (
+    tester,
+  ) async {
+    expect(
+      const AppDashedBorder().copyWith(side: const BorderSide(width: 2)),
+      isA<AppDashedBorder>(),
+    );
+    for (final brightness in Brightness.values) {
+      final palette = AppColorTokens.fallback(brightness).palette;
+      late ButtonStyle primary;
+      late ButtonStyle destructive;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.material(brightness, mobile: true),
+          home: Builder(
+            builder: (context) {
+              primary = AppTheme.connectionButton(context, destructive: false);
+              destructive = AppTheme.connectionButton(
+                context,
+                destructive: true,
+              );
+              return Scaffold(
+                body: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    shape: AppDashedBorder(
+                      side: BorderSide(color: palette.borderStrong),
+                      borderRadius: BorderRadius.circular(AppRadii.card),
+                    ),
+                  ),
+                  child: FilledButton(
+                    onPressed: () {},
+                    style: primary,
+                    child: const Text('Connect'),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(primary.backgroundColor!.resolve({}), palette.primarySolid);
+      expect(
+        primary.backgroundColor!.resolve({WidgetState.disabled}),
+        Color.alphaBlend(
+          palette.primarySolid.withValues(alpha: 0.52),
+          palette.card,
+        ),
+      );
+      expect(
+        destructive.backgroundColor!.resolve({}),
+        palette.destructiveSolid,
+      );
+      expect(
+        destructive.backgroundColor!.resolve({WidgetState.hovered}),
+        palette.destructiveSolidHover,
+      );
+      expect(
+        primary.overlayColor!.resolve({WidgetState.pressed}),
+        Colors.transparent,
+      );
+      expect(primary.textStyle!.resolve({})!.fontSize, 16);
+      expect(tester.getSize(find.byType(FilledButton)).height, 45);
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('scaled Shad footer grows and avoids keyboard and safe area', (

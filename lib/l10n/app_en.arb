@@ -728,6 +728,8 @@
     "description": "Approved prototype copy: Cancel"
   },
   "prototypeClose": "Close",
+  "prototypeCloseDialog": "Close dialog",
+  "prototypeChooseRawConfiguration": "Choose a Raw JSON configuration",
   "@prototypeClose": {
     "description": "Approved prototype copy: Close"
   },

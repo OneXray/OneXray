@@ -39,36 +39,93 @@ class AdaptiveMainShell extends StatelessWidget {
     BuildContext context,
     bool appUpdateAvailable,
   ) {
+    final navigationTheme = NavigationBarTheme.of(context);
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar:
           GoRouterState.of(context).uri.path !=
               AppPrimaryRoute.values[navigationShell.currentIndex].rootPath
           ? null
-          : NavigationBar(
-              selectedIndex: navigationShell.currentIndex,
-              onDestinationSelected: (index) => context.goPrimary(
-                navigationShell,
-                AppPrimaryRoute.values[index],
-              ),
-              destinations: AppPrimaryRoute.values
-                  .map(
-                    (primary) => NavigationDestination(
-                      icon: _navigationIcon(
-                        context,
-                        primary,
-                        appUpdateAvailable,
+          : Material(
+              color: navigationTheme.backgroundColor,
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  key: const ValueKey('primary-mobile-navigation'),
+                  constraints: BoxConstraints(
+                    minHeight:
+                        navigationTheme.height ??
+                        AppLayout.mobileNavigationHeight,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: ColorManager.palette(context).border,
                       ),
-                      selectedIcon: _navigationIcon(
-                        context,
-                        primary,
-                        appUpdateAvailable,
-                      ),
-                      label: _label(context, primary),
                     ),
-                  )
-                  .toList(),
+                  ),
+                  // Let large system text grow the bar; normal size stays 92.
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final primary in AppPrimaryRoute.values)
+                          Expanded(
+                            child: _bottomDestination(
+                              context,
+                              primary,
+                              appUpdateAvailable,
+                              navigationTheme,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
+    );
+  }
+
+  Widget _bottomDestination(
+    BuildContext context,
+    AppPrimaryRoute primary,
+    bool appUpdateAvailable,
+    NavigationBarThemeData theme,
+  ) {
+    final selected = primary.index == navigationShell.currentIndex;
+    final states = <WidgetState>{if (selected) WidgetState.selected};
+    final label = _label(context, primary);
+    return Semantics(
+      key: ValueKey('primary-navigation-${primary.name}'),
+      label: label,
+      selected: selected,
+      button: true,
+      child: InkWell(
+        onTap: () => context.goPrimary(navigationShell, primary),
+        hoverColor: theme.overlayColor?.resolve({WidgetState.hovered}),
+        highlightColor: theme.overlayColor?.resolve({WidgetState.pressed}),
+        focusColor: Theme.of(context).focusColor,
+        splashFactory: NoSplash.splashFactory,
+        child: ExcludeSemantics(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconTheme(
+                data: theme.iconTheme?.resolve(states) ?? IconTheme.of(context),
+                child: _navigationIcon(context, primary, appUpdateAvailable),
+              ),
+              const SizedBox(height: AppSpacing.mobileNavigationGap),
+              Text(
+                label,
+                style: theme.labelTextStyle?.resolve(states),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -152,7 +209,7 @@ class AdaptiveMainShell extends StatelessWidget {
     return switch (primary) {
       AppPrimaryRoute.home => LucideIcons.link,
       AppPrimaryRoute.subscriptions => LucideIcons.layers3,
-      AppPrimaryRoute.core => LucideIcons.slidersHorizontal,
+      AppPrimaryRoute.core => LucideIcons.terminal,
       AppPrimaryRoute.settings => LucideIcons.settings,
     };
   }

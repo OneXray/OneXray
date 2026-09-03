@@ -96,7 +96,7 @@ void main() {
         // The traffic surface retains demand even when its owner is covered.
         controller.setPageVisible(false);
         expect(coordinator.visible, isTrue);
-        await tester.tap(find.text('Close'));
+        await tester.tap(find.text('Done'));
         await tester.pumpAndSettle();
         expect(coordinator.visible, isFalse);
         controller.setPageVisible(true);

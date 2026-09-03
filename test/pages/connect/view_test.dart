@@ -11,6 +11,17 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 
 void main() {
+  test('connection traffic keeps byte conversion and prototype precision', () {
+    expect(formatTraffic(0, connection: true), '0 B');
+    expect(formatTraffic(1024, connection: true), '1 KB');
+    expect(formatTraffic(1536, connection: true), '1.5 KB');
+    expect(
+      formatTraffic((2.34 * 1024 * 1024).round(), connection: true),
+      '2.34 MB',
+    );
+    expect(formatTraffic(1536), '1.5 KiB');
+  });
+
   testWidgets('JSON input stays top aligned and LTR in a Persian page', (
     tester,
   ) async {
@@ -71,8 +82,7 @@ void main() {
     onTraffic: () {},
     onRawAdd: () {},
     onRawSelect: (_) {},
-    onRawEdit: (_) {},
-    onRawDelete: (_) {},
+    onRawActions: (_) {},
   );
 
   Widget app(
@@ -87,7 +97,7 @@ void main() {
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context)
           .copyWith(textScaler: TextScaler.linear(scale)),
-      child: child!,
+      child: ShadTheme(data: AppTheme.shad(Brightness.light), child: child!),
     ),
     home: Scaffold(body: child),
   );

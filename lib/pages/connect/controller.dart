@@ -2,13 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/connect/view.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/connection/compiler.dart';
@@ -19,8 +24,8 @@ import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/manager.dart';
 import 'package:onexray/service/menu/short_cut/service.dart';
+import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/share/service.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 class ConnectController extends ChangeNotifier {
   ConnectController({AppDatabase? database, ConnectionCoordinator? coordinator})
@@ -150,25 +155,108 @@ class ConnectController extends ChangeNotifier {
   }
 
   String selectionTitle(AppLocalizations l10n) {
-    final selection = configuration.connection.selection;
-    final entryCount = runningRoute?.entryCount;
-    return switch (selection.kind) {
-      SelectionKind.automatic => switch (entryCount) {
-        1 => l10n.prototypeAutomaticOneEntry,
-        final count? => l10n.prototypeAutomaticEntries(count),
-        null => l10n.prototypeAutomaticSelection,
-      },
-      SelectionKind.region => selection.region ?? '',
-      SelectionKind.source =>
-        sources.where((row) => row.id == selection.id).firstOrNull?.name ??
-            l10n.prototypeTemporarilyUnavailable,
-      SelectionKind.server =>
-        servers
-                .where((row) => row.id == selection.id)
-                .map(serverName)
-                .firstOrNull ??
-            l10n.prototypeTemporarilyUnavailable,
-    };
+    final settings = configuration.connection;
+    if (settings.trafficMode != TrafficMode.allVpn &&
+        settings.selection.kind != SelectionKind.server) {
+      final count = runningRoute?.entryCount ?? _configuredEntryCount(settings);
+      if (count != null) {
+        return count == 1
+            ? l10n.prototypeAutomaticOneEntry
+            : l10n.prototypeAutomaticEntries(count);
+      }
+    }
+    return _selectionName(l10n, settings.selection);
+  }
+
+  String _selectionName(AppLocalizations l10n, ServerSelection selection) =>
+      switch (selection.kind) {
+        SelectionKind.automatic => l10n.prototypeAutomaticSelection,
+        SelectionKind.region => selection.region ?? '',
+        SelectionKind.source =>
+          sources.where((row) => row.id == selection.id).firstOrNull?.name ??
+              l10n.prototypeTemporarilyUnavailable,
+        SelectionKind.server =>
+          servers
+                  .where((row) => row.id == selection.id)
+                  .map(serverName)
+                  .firstOrNull ??
+              l10n.prototypeTemporarilyUnavailable,
+      };
+
+  int? _configuredEntryCount(ConnectionSettings settings) {
+    if (settings.selection.kind == SelectionKind.server ||
+        settings.trafficMode == TrafficMode.allVpn) {
+      return 1;
+    }
+    if (settings.trafficMode == TrafficMode.smart) {
+      return settings.smart.entryCount;
+    }
+    final row = customRoutes
+        .where((row) => row.id == settings.customId)
+        .firstOrNull;
+    if (row == null) return null;
+    try {
+      return CustomRoutingService.read(row).entryCount;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  String? selectionDetail(AppLocalizations l10n) =>
+      runningRoute?.path ??
+      (configuration.connection.selection.kind == SelectionKind.server
+          ? null
+          : l10n.prototypeChooseBySpeedAvailability);
+
+  // The plan chooses the node identity; the badge shows that node's latest
+  // successful probe, not a measurement of this session or a new selection.
+  String? selectionHealth(AppLocalizations l10n) {
+    final view = coordinator.state.value;
+    if (view.phase != ConnectionPhase.connected) return null;
+    final entries = view.plan?.toJson()['entries'] as List?;
+    if (entries == null || entries.isEmpty) return null;
+    final id = (entries.first as Map)['id'];
+    final row = servers.where((row) => row.id == id).firstOrNull;
+    if (row == null ||
+        row.delay <= 0 ||
+        const {
+          PingDelayConstants.unknown,
+          PingDelayConstants.error,
+          PingDelayConstants.timeout,
+        }.contains(row.delay)) {
+      return null;
+    }
+    return l10n.prototypeAvailableLatency(row.delay);
+  }
+
+  String homeMethodTitle(AppLocalizations l10n) =>
+      configuration.connection.trafficMode == TrafficMode.smart
+      ? l10n.prototypeSmartRoutingRecommended
+      : methodTitle(l10n);
+
+  int? _ruleCount(RoutingProfileData row) {
+    try {
+      return CustomRoutingService.read(row).rules.length;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  String methodDescription(AppLocalizations l10n) {
+    switch (configuration.connection.trafficMode) {
+      case TrafficMode.smart:
+        return l10n.prototypeSmartRoutingDescription;
+      case TrafficMode.allVpn:
+        return l10n.prototypeAllViaVpnDescription;
+      case TrafficMode.custom:
+        final row = customRoutes
+            .where((row) => row.id == configuration.connection.customId)
+            .firstOrNull;
+        final count = row == null ? null : _ruleCount(row);
+        return count == null
+            ? l10n.prototypeCustomRoutingDescription
+            : l10n.prototypeCustomRuleCount(count);
+    }
   }
 
   /// Only the confirmed running snapshot describes the path in use. Later
@@ -212,9 +300,13 @@ class ConnectController extends ChangeNotifier {
       coordinator.cancel();
     } else {
       if (expertView && !configuration.connection.expert) {
+        if (raws.isEmpty) {
+          await editRaw(context);
+          return;
+        }
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.prototypeAddRawJsonHint,
+          AppLocalizations.of(context)!.prototypeChooseRawConfiguration,
         );
         return;
       }
@@ -240,6 +332,7 @@ class ConnectController extends ChangeNotifier {
     BuildContext context,
     Map<String, dynamic> values, {
     Future<void> Function()? writeAssets,
+    String? label,
   }) async {
     if (coordinator.state.value.busy) return false;
     final l10n = AppLocalizations.of(context)!;
@@ -256,12 +349,31 @@ class ConnectController extends ChangeNotifier {
     final reconnect =
         coordinator.state.value.phase == ConnectionPhase.connected;
     if (reconnect &&
-        !await ContextAlert.showConfirmDialog(
-          context,
-          title: l10n.prototypeApplyChange,
-          content: l10n.prototypeReconnectNotice,
-          confirmLabel: l10n.prototypeApplyAndReconnect,
-        )) {
+        await showConnectDialog<bool>(
+              context,
+              (dialogContext) => ConnectDialog(
+                title: l10n.prototypeApplyChange,
+                subtitle: l10n.prototypeReconnectNotice,
+                body: ConnectCallout(
+                  icon: LucideIcons.refreshCw,
+                  text: l10n.prototypeWillUseName(
+                    label ?? _changeLabel(l10n, values, next.connection),
+                  ),
+                ),
+                actions: [
+                  ConnectDialogButton(
+                    label: l10n.prototypeCancel,
+                    secondary: true,
+                    onPressed: () => Navigator.of(dialogContext).pop(false),
+                  ),
+                  ConnectDialogButton(
+                    label: l10n.prototypeApplyAndReconnect,
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                  ),
+                ],
+              ),
+            ) !=
+            true) {
       return false;
     }
     if (!context.mounted) return false;
@@ -279,6 +391,30 @@ class ConnectController extends ChangeNotifier {
       configuration = await coordinator.configuration;
     });
     return success;
+  }
+
+  String _changeLabel(
+    AppLocalizations l,
+    Map<String, dynamic> values,
+    ConnectionSettings next,
+  ) {
+    if (next.expert) {
+      return raws.where((row) => row.id == next.rawId).firstOrNull?.name ??
+          'Raw JSON';
+    }
+    if (values.containsKey('selection')) {
+      return _selectionName(l, next.selection);
+    }
+    return switch (next.trafficMode) {
+      TrafficMode.smart => l.prototypeSmartRoutingRecommended,
+      TrafficMode.allVpn => l.prototypeAllViaVpn,
+      TrafficMode.custom =>
+        customRoutes
+                .where((row) => row.id == next.customId)
+                .firstOrNull
+                ?.name ??
+            l.prototypeCustomRouting,
+    };
   }
 
   Future<void> selectRaw(BuildContext context, int id) async {
@@ -347,15 +483,52 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> resetTraffic(BuildContext context) async {
-    final l10n = AppLocalizations.of(context)!;
-    if (await ContextAlert.showConfirmDialog(
-          context,
-          title: l10n.prototypeResetTotals,
-          content: l10n.prototypeResetTrafficNotice,
-          confirmLabel: l10n.prototypeResetTotals,
-        ) &&
-        context.mounted) {
-      await run(context, coordinator.resetTraffic);
+    final confirmed = await showConnectDialog<bool>(
+      context,
+      _resetTrafficDialog,
+    );
+    if (confirmed == true && context.mounted) await _clearTraffic(context);
+  }
+
+  Widget _resetTrafficDialog(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return ConnectDialog(
+      key: const ValueKey('reset-traffic'),
+      title: l.prototypeResetTotals,
+      subtitle: l.prototypeResetTrafficNotice,
+      body: ConnectCallout(
+        icon: LucideIcons.circleAlert,
+        text: l.prototypeCannotUndo,
+        warning: true,
+      ),
+      expandLastAction: false,
+      actions: [
+        ConnectDialogButton(
+          label: l.prototypeCancel,
+          secondary: true,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+        ConnectDialogButton(
+          label: l.prototypeResetTotals,
+          destructive: true,
+          icon: LucideIcons.rotateCcw,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _clearTraffic(BuildContext context) async {
+    var reset = false;
+    await run(context, () async {
+      await coordinator.resetTraffic();
+      reset = true;
+    });
+    if (reset && context.mounted) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.prototypeTrafficTotalsReset,
+      );
     }
   }
 
@@ -365,6 +538,63 @@ class ConnectController extends ChangeNotifier {
       context.pushScoped(AppSecondaryDestination.rawEditor, extra: id);
   Future<void> chooseServer(BuildContext context) =>
       context.pushScoped(AppSecondaryDestination.serverPicker);
+
+  Future<void> showRawActions(BuildContext context, CoreConfigData row) async {
+    final edit = await showConnectDialog<bool>(context, (dialogContext) {
+      final l = AppLocalizations.of(dialogContext)!;
+      final palette = ColorManager.palette(dialogContext);
+      return ConnectDialog(
+        title: row.name,
+        body: ListTileTheme(
+          data: AppTheme.actionListTile,
+          child: Column(
+            children: [
+              ListTile(
+                leading: Icon(
+                  LucideIcons.pencil,
+                  color: palette.primary,
+                  size: 20,
+                ),
+                title: Text(
+                  l.prototypeEditRawJson,
+                  style: AppTypography.dialogGroupTitle,
+                ),
+                trailing: const Icon(LucideIcons.chevronRightDir, size: 18),
+                onTap: () => Navigator.of(dialogContext).pop(true),
+              ),
+              Divider(height: 1, color: palette.border),
+              ListTile(
+                enabled: !coordinator.state.value.busy,
+                leading: Icon(
+                  LucideIcons.trash2,
+                  color: palette.destructive,
+                  size: 20,
+                ),
+                title: Text(
+                  l.prototypeDelete,
+                  style: AppTypography.dialogGroupTitle.copyWith(
+                    color: palette.destructive,
+                  ),
+                ),
+                trailing: Icon(
+                  LucideIcons.chevronRightDir,
+                  color: palette.destructive,
+                  size: 18,
+                ),
+                onTap: () => Navigator.of(dialogContext).pop(false),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+    if (!context.mounted || edit == null) return;
+    if (edit) {
+      await editRaw(context, row.id);
+    } else {
+      await deleteRaw(context, row);
+    }
+  }
 
   Future<void> selectServer(
     BuildContext context,
@@ -382,95 +612,16 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> chooseTrafficMethod(BuildContext context) async {
-    final selected =
-        await showChoiceDialog<({TrafficMode mode, int? id, bool edit})>(
-          context,
-          (context) {
-            final l = AppLocalizations.of(context)!;
-            final current = configuration.connection;
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      l.prototypeTrafficMethod,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      title: Text(l.prototypeSmartRoutingRecommended),
-                      subtitle: Text(l.prototypeSmartRoutingDescription),
-                      selected: current.trafficMode == TrafficMode.smart,
-                      trailing: IconButton(
-                        tooltip: l.prototypeEdit,
-                        icon: const Icon(LucideIcons.pencil),
-                        onPressed: () => Navigator.pop(context, (
-                          mode: TrafficMode.smart,
-                          id: null,
-                          edit: true,
-                        )),
-                      ),
-                      onTap: () => Navigator.pop(context, (
-                        mode: TrafficMode.smart,
-                        id: null,
-                        edit: false,
-                      )),
-                    ),
-                    ListTile(
-                      title: Text(l.prototypeAllViaVpn),
-                      subtitle: Text(l.prototypeAllViaVpnDescription),
-                      selected: current.trafficMode == TrafficMode.allVpn,
-                      onTap: () => Navigator.pop(context, (
-                        mode: TrafficMode.allVpn,
-                        id: null,
-                        edit: false,
-                      )),
-                    ),
-                    for (final row in customRoutes)
-                      ListTile(
-                        title: Text(row.name),
-                        subtitle: Text(l.prototypeCustomRoutingDescription),
-                        selected:
-                            current.trafficMode == TrafficMode.custom &&
-                            current.customId == row.id,
-                        trailing: IconButton(
-                          tooltip: l.prototypeEdit,
-                          icon: const Icon(LucideIcons.pencil),
-                          onPressed: () => Navigator.pop(context, (
-                            mode: TrafficMode.custom,
-                            id: row.id,
-                            edit: true,
-                          )),
-                        ),
-                        onTap: () => Navigator.pop(context, (
-                          mode: TrafficMode.custom,
-                          id: row.id,
-                          edit: false,
-                        )),
-                      ),
-                    if (customRoutes.length < 3)
-                      ListTile(
-                        leading: const Icon(LucideIcons.plus),
-                        title: Text(l.prototypeAdd),
-                        subtitle: Text(l.prototypeCustomRouting),
-                        onTap: () => Navigator.pop(context, (
-                          mode: TrafficMode.custom,
-                          id: null,
-                          edit: true,
-                        )),
-                      ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(l.prototypeCancel),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
+    final selected = await showConnectDialog<ConnectTrafficChoice>(
+      context,
+      (context) => ConnectTrafficMethodDialog(
+        current: configuration.connection,
+        customRoutes: [
+          for (final row in customRoutes)
+            (id: row.id, name: row.name, ruleCount: _ruleCount(row)),
+        ],
+      ),
+    );
     if (selected != null && context.mounted) {
       if (selected.edit) {
         await context.pushScoped(
@@ -479,7 +630,6 @@ class ConnectController extends ChangeNotifier {
               : AppSecondaryDestination.customRouting,
           extra: selected.id,
         );
-        if (context.mounted) await chooseTrafficMethod(context);
         return;
       }
       await change(context, {
@@ -491,74 +641,179 @@ class ConnectController extends ChangeNotifier {
 
   Future<void> showWhy(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    final plan = coordinator.state.value.plan?.toJson();
-    final entries = (plan?['entries'] as List?) ?? [];
-    await ContextAlert.showOKDialog(
+    final view = coordinator.state.value;
+    final connected = view.phase == ConnectionPhase.connected;
+    final plan = connected ? view.plan : null;
+    final settings = plan?.configuration.connection ?? configuration.connection;
+    final planJson = plan?.toJson();
+    final names = connected
+        ? ((planJson?['entries'] as List?) ?? [])
+              .map((entry) => (entry as Map)['name'] as String)
+              .toList()
+        : _previewEntries(settings).map((row) => serverName(row)).toList();
+    final entryNames = names.join(' + ');
+    final exit = connected
+        ? ((planJson?['finalExit'] as Map?)?['name'] as String?)
+        : servers
+              .where((row) => row.id == settings.finalExitId)
+              .map(serverName)
+              .firstOrNull;
+    final custom = customRoutes
+        .where((row) => row.id == settings.customId)
+        .firstOrNull;
+    final methodReason = names.isEmpty
+        ? l.prototypeNoAvailableEntries
+        : switch (settings.trafficMode) {
+            TrafficMode.smart =>
+              exit == null
+                  ? l.prototypeSmartConnectionReason(entryNames)
+                  : l.prototypeSmartConnectionChainReason(entryNames, exit),
+            TrafficMode.allVpn => l.prototypeAllVpnConnectionReason(entryNames),
+            TrafficMode.custom =>
+              custom == null
+                  ? l.prototypeCustomConnectionReason
+                  : l.prototypeNamedCustomConnectionReason(custom.name),
+          };
+    final selectionReason = names.isEmpty
+        ? null
+        : connected
+        ? l.prototypeRunningEntriesReason(entryNames)
+        : names.length > 1
+        ? l.prototypeMultipleEntriesReason(names.length)
+        : switch (settings.selection.kind) {
+            SelectionKind.server => l.prototypeFixedEntryReason(entryNames),
+            SelectionKind.region => l.prototypeRegionEntryReason(
+              entryNames,
+              settings.selection.region ?? '',
+            ),
+            _ => l.prototypeAutomaticEntryReason(entryNames),
+          };
+    await showConnectDialog<void>(
       context,
-      l.prototypeWhyThisConnection,
-      [
-        selectionTitle(l),
-        methodTitle(l),
-        if (entries.isNotEmpty)
-          entries.map((entry) => (entry as Map)['name']).join(' + '),
-        if (plan?['finalExit'] is Map)
-          '→ ${(plan!['finalExit'] as Map)['name']}',
-        switch (configuration.connection.trafficMode) {
-          TrafficMode.smart => l.prototypeSmartRoutingDescription,
-          TrafficMode.allVpn => l.prototypeAllViaVpnDescription,
-          TrafficMode.custom => l.prototypeCustomRoutingDescription,
-        },
-      ].join('\n\n'),
+      (dialogContext) => ConnectDialog(
+        title: l.prototypeWhyConnectionTitle,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 4),
+              child: Column(
+                children: [
+                  ConnectExplanation(
+                    icon: LucideIcons.shieldCheck,
+                    text: methodReason,
+                  ),
+                  if (selectionReason != null) ...[
+                    const SizedBox(height: 15),
+                    ConnectExplanation(
+                      icon: LucideIcons.wifi,
+                      text: selectionReason,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            ConnectCallout(
+              icon: LucideIcons.lockKeyhole,
+              text: l.prototypeNoAnalyticsLocalLogs,
+            ),
+          ],
+        ),
+        actions: [
+          ConnectDialogButton(
+            label: l.prototypeDone,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// Explain existing successful measurements without probing or selecting a
+  /// runtime plan. The actual connection still resolves through the coordinator.
+  List<CoreConfigData> _previewEntries(ConnectionSettings settings) {
+    final count = _configuredEntryCount(settings);
+    if (count == null || settings.expert) return [];
+    final rows =
+        servers.where((row) {
+          if (row.type != 'outbound' ||
+              row.id <= 0 ||
+              row.id == settings.finalExitId ||
+              row.delay < 0 ||
+              const {
+                PingDelayConstants.unknown,
+                PingDelayConstants.error,
+                PingDelayConstants.timeout,
+              }.contains(row.delay)) {
+            return false;
+          }
+          final matches = switch (settings.selection.kind) {
+            SelectionKind.automatic => true,
+            SelectionKind.region =>
+              row.countryCode?.toUpperCase() ==
+                  settings.selection.region?.toUpperCase(),
+            SelectionKind.source => row.subId == settings.selection.id,
+            SelectionKind.server => row.id == settings.selection.id,
+          };
+          if (!matches) return false;
+          try {
+            ServerSnapshot.fromRow(row);
+            return true;
+          } on FormatException {
+            return false;
+          }
+        }).toList()..sort((a, b) {
+          final delay = a.delay.compareTo(b.delay);
+          return delay == 0 ? a.id.compareTo(b.id) : delay;
+        });
+    return rows.length < count ? [] : rows.take(count).toList();
   }
 
   Future<void> showTraffic(BuildContext context) async {
     if (_closed || _trafficDialogOpen) return;
     _trafficDialogOpen = true;
     _syncTrafficVisibility();
+    bool? reset;
     try {
-      await showChoiceDialog<void>(
+      var confirmingReset = false;
+      reset = await showConnectDialog<bool>(
         context,
-        (dialogContext) => SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  AppLocalizations.of(dialogContext)!.prototypeTraffic,
-                  style: Theme.of(dialogContext).textTheme.titleLarge,
-                ),
-                ValueListenableBuilder<ConnectionView>(
+        (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setState) {
+            if (confirmingReset) return _resetTrafficDialog(dialogContext);
+            final l = AppLocalizations.of(dialogContext)!;
+            return ConnectDialog(
+              title: l.prototypeTraffic,
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: ValueListenableBuilder<ConnectionView>(
                   valueListenable: coordinator.state,
-                  builder: (_, view, _) => TrafficReadout(view: view),
+                  builder: (_, view, _) =>
+                      TrafficReadout(view: view, expandedGroups: true),
                 ),
-                Wrap(
-                  spacing: 12,
-                  children: [
-                    TextButton(
-                      onPressed: () => resetTraffic(dialogContext),
-                      child: Text(
-                        AppLocalizations.of(dialogContext)!
-                            .prototypeResetTotals,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      child: Text(
-                        AppLocalizations.of(dialogContext)!.prototypeClose,
-                      ),
-                    ),
-                  ],
+              ),
+              actions: [
+                ConnectDialogButton(
+                  label: l.prototypeResetTotals,
+                  secondary: true,
+                  icon: LucideIcons.rotateCcw,
+                  onPressed: () => setState(() => confirmingReset = true),
+                ),
+                ConnectDialogButton(
+                  label: l.prototypeDone,
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                 ),
               ],
-            ),
-          ),
+            );
+          },
         ),
       );
     } finally {
       _trafficDialogOpen = false;
       if (!_closed) _syncTrafficVisibility();
+    }
+    if (reset == true && !_closed && context.mounted) {
+      await _clearTraffic(context);
     }
   }
 

@@ -693,6 +693,8 @@
     "prototypeBack": "بازگشت",
     "prototypeCancel": "لغو",
     "prototypeClose": "بستن",
+    "prototypeCloseDialog": "بستن کادر گفتگو",
+    "prototypeChooseRawConfiguration": "یک پیکربندی JSON خام انتخاب کنید",
     "prototypeDone": "تمام",
     "prototypeSave": "ذخیره",
     "prototypeAdd": "افزودن",

@@ -693,6 +693,8 @@
   "prototypeBack": "Назад",
   "prototypeCancel": "Отмена",
   "prototypeClose": "Закрыть",
+  "prototypeCloseDialog": "Закрыть диалог",
+  "prototypeChooseRawConfiguration": "Выберите конфигурацию Raw JSON",
   "prototypeDone": "Готово",
   "prototypeSave": "Сохранить",
   "prototypeAdd": "Добавить",

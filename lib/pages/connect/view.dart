@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class ConnectView extends StatelessWidget {
   const ConnectView({
@@ -17,7 +19,10 @@ class ConnectView extends StatelessWidget {
     required this.activeRawId,
     required this.location,
     this.runningPath,
+    this.locationDetail,
+    this.locationHealth,
     required this.method,
+    this.methodDetail,
     required this.onConnection,
     required this.onAddServers,
     required this.onExpert,
@@ -27,8 +32,7 @@ class ConnectView extends StatelessWidget {
     required this.onTraffic,
     required this.onRawAdd,
     required this.onRawSelect,
-    required this.onRawEdit,
-    required this.onRawDelete,
+    required this.onRawActions,
   });
   final ConnectionView view;
   final bool hasServers;
@@ -37,6 +41,7 @@ class ConnectView extends StatelessWidget {
   final int? activeRawId;
   final String location;
   final String? runningPath;
+  final String? locationDetail, locationHealth, methodDetail;
   final String method;
   final VoidCallback onConnection,
       onAddServers,
@@ -46,7 +51,7 @@ class ConnectView extends StatelessWidget {
       onTraffic,
       onRawAdd;
   final ValueChanged<bool> onExpert;
-  final ValueChanged<CoreConfigData> onRawSelect, onRawEdit, onRawDelete;
+  final ValueChanged<CoreConfigData> onRawSelect, onRawActions;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +97,12 @@ class ConnectView extends StatelessWidget {
       );
     }
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.connectPageHorizontal,
+        AppSpacing.connectPageTop,
+        AppSpacing.connectPageHorizontal,
+        AppSpacing.connectPageBottom,
+      ),
       child: ResponsiveContent(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -100,43 +110,44 @@ class ConnectView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _status(context),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 Card(
+                  margin: EdgeInsets.zero,
+                  clipBehavior: Clip.antiAlias,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.all(1),
                     child: Column(
                       children: [
-                        SwitchListTile.adaptive(
-                          title: Text(l.prototypeExpertMode),
-                          value: expert,
-                          onChanged: view.busy ? null : onExpert,
-                        ),
-                        const Divider(),
+                        _expertSwitch(context),
                         if (expert)
                           _raws(context)
-                        else ...[
-                          _choice(
-                            context,
-                            LucideIcons.globe,
-                            l.prototypeConnectionLocation,
-                            location,
-                            onServer,
-                            detail: runningPath,
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Column(
+                              children: [
+                                _choice(
+                                  context,
+                                  LucideIcons.earth,
+                                  l.prototypeConnectionLocation,
+                                  location,
+                                  onServer,
+                                  detail: locationDetail ?? runningPath,
+                                  meta: connected ? locationHealth : null,
+                                ),
+                                _choice(
+                                  context,
+                                  LucideIcons.shieldCheck,
+                                  l.prototypeTrafficMethod,
+                                  method,
+                                  onMethod,
+                                  detail: methodDetail,
+                                  minHeight: 113,
+                                ),
+                                _why(context),
+                              ],
+                            ),
                           ),
-                          _choice(
-                            context,
-                            LucideIcons.shieldCheck,
-                            l.prototypeTrafficMethod,
-                            method,
-                            onMethod,
-                          ),
-                          ListTile(
-                            leading: const Icon(LucideIcons.circleHelp),
-                            title: Text(l.prototypeWhyThisConnection),
-                            trailing: const Icon(LucideIcons.chevronRightDir),
-                            onTap: onWhy,
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -144,18 +155,42 @@ class ConnectView extends StatelessWidget {
               ],
             );
             final traffic = Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    title: Text(
-                      l.prototypeTraffic,
-                      style: Theme.of(context).textTheme.titleMedium,
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(13, 15, 13, 1),
+                child: Column(
+                  children: [
+                    InkWell(
+                      onTap: onTraffic,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 29),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l.prototypeTraffic,
+                                style: AppTypography.connectTrafficTitle,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 3),
+                              child: Icon(
+                                LucideIcons.chevronRightDir,
+                                size: 17,
+                                color: ColorManager.palette(context)
+                                    .mutedForeground,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    trailing: const Icon(LucideIcons.chevronRightDir),
-                    onTap: onTraffic,
-                  ),
-                  TrafficReadout(view: view),
-                ],
+                    const Divider(),
+                    TrafficReadout(view: view),
+                  ],
+                ),
               ),
             );
             if (constraints.maxWidth >= 780) {
@@ -170,9 +205,81 @@ class ConnectView extends StatelessWidget {
             }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [main, const SizedBox(height: 16), traffic],
+              children: [main, const SizedBox(height: 13), traffic],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _expertSwitch(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Container(
+      constraints: const BoxConstraints(
+        minHeight: AppLayout.connectExpertRowMinHeight,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: palette.border)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    l.prototypeExpertMode,
+                    style: AppTypography.connectCaption,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                ExcludeSemantics(
+                  child: Icon(
+                    LucideIcons.info,
+                    size: 15,
+                    color: palette.mutedForeground,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Semantics(
+            label: l.prototypeExpertMode,
+            child: ShadSwitch(
+              value: expert,
+              enabled: !view.busy,
+              onChanged: onExpert,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _why(BuildContext context) {
+    final palette = ColorManager.palette(context);
+    return InkWell(
+      onTap: onWhy,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 49),
+        child: Row(
+          children: [
+            Icon(LucideIcons.circleHelp, size: 20, color: palette.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                AppLocalizations.of(context)!.prototypeWhyThisConnection,
+                style: AppTypography.connectWhy.copyWith(
+                  color: palette.primary,
+                ),
+              ),
+            ),
+            Icon(LucideIcons.chevronRightDir, size: 19, color: palette.primary),
+          ],
         ),
       ),
     );
@@ -215,88 +322,130 @@ class ConnectView extends StatelessWidget {
             ? l.prototypeVpnPermissionRequired
             : l.prototypeCheckNetwork,
     };
+    final palette = ColorManager.palette(context);
     final color = failed
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.primary;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+        ? palette.destructive
+        : connected
+        ? palette.running
+        : view.busy
+        ? palette.primary
+        : palette.mutedStrong;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: AppLayout.connectStatusMinHeight,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(15, 25, 15, 17),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(
-                connected
-                    ? LucideIcons.shieldCheck
-                    : failed
-                    ? LucideIcons.circleAlert
-                    : LucideIcons.shield,
-                color: color,
-                size: 30,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (view.busy)
+                    SizedBox.square(
+                      dimension: 24,
+                      child: MediaQuery.disableAnimationsOf(context)
+                          ? Icon(
+                              LucideIcons.loaderCircle,
+                              color: color,
+                              size: 24,
+                            )
+                          : CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: color,
+                            ),
+                    )
+                  else if (connected)
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        LucideIcons.check,
+                        size: 14,
+                        color: palette.primaryForeground,
+                      ),
+                    )
+                  else
+                    Icon(
+                      failed ? LucideIcons.circleAlert : LucideIcons.shield,
+                      color: color,
+                      size: 24,
+                    ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: AppTypography.connectStatusTitle.copyWith(
+                        color: color,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
+              const SizedBox(height: 8),
+              Text(
+                detail,
+                textAlign: TextAlign.center,
+                style: AppTypography.connectStatusDetail.copyWith(
+                  color: palette.mutedStrong,
+                ),
+              ),
+              if (view.issue == 'selectionReset')
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      l.prototypeNameActive(l.prototypeAutomaticSelection),
+                      textAlign: TextAlign.center,
+                      style: AppTypography.metadata,
+                    ),
+                  ),
+                ),
+              if (view.failed && !failed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    l.prototypeCheckNetwork,
+                    style: AppTypography.supporting.copyWith(
+                      color: palette.destructive,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: view.phase == ConnectionPhase.disconnecting
+                    ? null
+                    : onConnection,
+                style: AppTheme.connectionButton(
+                  context,
+                  destructive: connected,
+                ),
                 child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  connected
+                      ? l.prototypeDisconnect
+                      : view.phase == ConnectionPhase.disconnecting
+                      ? l.prototypePleaseWait
+                      : view.busy
+                      ? l.prototypeCancel
+                      : failed
+                      ? l.prototypeTryAgain
+                      : l.prototypeConnect,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(detail, style: Theme.of(context).textTheme.bodyMedium),
-          if (view.issue == 'selectionReset')
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(
-                  l.prototypeNameActive(l.prototypeAutomaticSelection),
-                ),
-              ),
-            ),
-          if (view.failed && !failed)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                l.prototypeCheckNetwork,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: view.phase == ConnectionPhase.disconnecting
-                ? null
-                : onConnection,
-            style: connected
-                ? FilledButton.styleFrom(
-                    backgroundColor: ColorManager.palette(context)
-                        .destructiveSolid,
-                    foregroundColor: ColorManager.palette(context)
-                        .destructiveForeground,
-                  )
-                : null,
-            icon: Icon(
-              connected
-                  ? LucideIcons.power
-                  : view.busy
-                  ? LucideIcons.x
-                  : LucideIcons.power,
-            ),
-            label: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text(
-                connected
-                    ? l.prototypeDisconnect
-                    : view.busy
-                    ? l.prototypeCancel
-                    : failed
-                    ? l.prototypeTryAgain
-                    : l.prototypeConnect,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -308,113 +457,326 @@ class ConnectView extends StatelessWidget {
     String value,
     VoidCallback onTap, {
     String? detail,
-  }) => ListTile(
-    enabled: !view.busy,
-    leading: Icon(icon),
-    title: Text(label, style: Theme.of(context).textTheme.bodySmall),
-    subtitle: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(value, style: Theme.of(context).textTheme.titleMedium),
-        if (detail != null)
-          Text(detail, style: Theme.of(context).textTheme.bodyMedium),
-      ],
-    ),
-    trailing: const Icon(LucideIcons.chevronRightDir),
-    onTap: onTap,
-  );
+    String? meta,
+    double minHeight = 0,
+  }) {
+    final palette = ColorManager.palette(context);
+    return Container(
+      constraints: BoxConstraints(minHeight: minHeight),
+      padding: const EdgeInsets.only(top: 13, bottom: 10),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: palette.border)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            label,
+            style: AppTypography.connectChoiceLabel.copyWith(
+              color: palette.mutedStrong,
+            ),
+          ),
+          const SizedBox(height: 7),
+          InkWell(
+            onTap: view.busy ? null : onTap,
+            child: Opacity(
+              opacity: view.busy ? .52 : 1,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: AppLayout.connectChoiceMinHeight,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 1, bottom: 3),
+                  child: Row(
+                    children: [
+                      Icon(
+                        icon,
+                        size: 23,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? palette.foreground
+                            : palette.scannerBackground,
+                      ),
+                      const SizedBox(width: 13),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              value,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.connectChoiceTitle,
+                            ),
+                            if (detail != null && detail.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                detail,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.connectChoiceDetail
+                                    .copyWith(color: palette.mutedForeground),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 13),
+                      if (meta != null) ...[
+                        Text(
+                          meta,
+                          style: AppTypography.connectChoiceMeta.copyWith(
+                            color: palette.running,
+                          ),
+                        ),
+                        const SizedBox(width: 13),
+                      ],
+                      const Icon(LucideIcons.chevronRightDir, size: 19),
+                      if (meta == null) const SizedBox(width: 13),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _raws(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Raw JSON',
-                  style: Theme.of(context).textTheme.titleMedium,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 47),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Raw JSON', style: AppTypography.connectRawTitle),
                 ),
-              ),
-              Text('${raws.length} / 3', textDirection: TextDirection.ltr),
-            ],
+                Text(
+                  '${raws.length} / 3',
+                  textDirection: TextDirection.ltr,
+                  style: AppTypography.connectRawCount.copyWith(
+                    color: palette.mutedForeground,
+                  ),
+                ),
+              ],
+            ),
           ),
           if (view.phase == ConnectionPhase.connected && activeRawId == null)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(l.prototypeOrdinaryConnectionRunning),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                l.prototypeOrdinaryConnectionRunning,
+                style: AppTypography.supporting.copyWith(
+                  color: palette.mutedForeground,
+                ),
+              ),
             ),
           if (raws.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
+            Card(
+              margin: EdgeInsets.zero,
+              shape: AppDashedBorder(
+                side: BorderSide(color: palette.borderStrong),
+                borderRadius: BorderRadius.circular(AppRadii.card),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 160),
+                child: Padding(
+                  padding: const EdgeInsets.all(19),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.filePlus,
+                        size: 27,
+                        color: palette.mutedStrong,
+                      ),
+                      const SizedBox(height: 11),
+                      Text(
+                        l.prototypeNoRawJson,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.connectRawEmptyTitle,
+                      ),
+                      const SizedBox(height: 9),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 270),
+                        child: Text(
+                          l.prototypeAddRawJsonHint,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.connectRawEmptyDetail.copyWith(
+                            color: palette.mutedForeground,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: view.busy ? null : onRawAdd,
+                        icon: const Icon(LucideIcons.plus, size: 17),
+                        label: Text(l.prototypeAddRawJson),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (raws.isNotEmpty)
+            Card(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
-                  const Icon(LucideIcons.fileJson, size: 32),
-                  const SizedBox(height: 12),
-                  Text(l.prototypeNoRawJson, textAlign: TextAlign.center),
-                  const SizedBox(height: 8),
-                  Text(l.prototypeAddRawJsonHint, textAlign: TextAlign.center),
+                  for (final row in raws) ...[
+                    if (row != raws.first) const Divider(),
+                    _rawRow(context, row),
+                  ],
                 ],
               ),
             ),
-          for (final row in raws)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              selected: activeRawId == row.id,
-              leading: Icon(
-                activeRawId == row.id
-                    ? LucideIcons.circleCheck
-                    : LucideIcons.circle,
-              ),
-              title: Text(row.name),
-              subtitle: Text(
-                activeRawId == row.id
-                    ? l.prototypeActiveConfiguration
-                    : l.prototypeCompleteXrayConfiguration,
-              ),
-              onTap: view.busy ? null : () => onRawSelect(row),
-              trailing: PopupMenuButton<String>(
-                tooltip: l.prototypeMoreActions,
-                icon: const Icon(LucideIcons.ellipsis),
-                onSelected: (action) =>
-                    action == 'edit' ? onRawEdit(row) : onRawDelete(row),
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    enabled: !view.busy,
-                    child: Text(l.prototypeEditRawJson),
+          if (raws.isNotEmpty && raws.length < 3)
+            Padding(
+              padding: const EdgeInsets.only(top: 11),
+              child: OutlinedButton.icon(
+                onPressed: view.busy ? null : onRawAdd,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: palette.primary,
+                  shape: AppDashedBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.control),
                   ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    enabled: !view.busy,
-                    child: Text(l.prototypeDelete),
-                  ),
-                ],
+                ),
+                icon: const Icon(LucideIcons.plus, size: 17),
+                label: Text(l.prototypeAddRawJson),
               ),
             ),
-          if (raws.length < 3)
-            OutlinedButton.icon(
-              onPressed: view.busy ? null : onRawAdd,
-              icon: const Icon(LucideIcons.plus),
-              label: Text(l.prototypeAddRawJson),
-            ),
-          const SizedBox(height: 16),
-          Text(
-            l.prototypeRawRuntimeOverrideNotice,
-            style: Theme.of(context).textTheme.bodySmall,
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(LucideIcons.info, size: 16, color: palette.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.prototypeRawRuntimeOverrideNotice,
+                  style: AppTypography.connectRawNotice.copyWith(
+                    color: palette.mutedForeground,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _rawRow(BuildContext context, CoreConfigData row) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final active = activeRawId == row.id;
+    return ColoredBox(
+      color: active
+          ? Color.lerp(palette.card, palette.selectedSurface, .6)!
+          : palette.card,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 62),
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: view.busy ? null : () => onRawSelect(row),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 9,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        LucideIcons.fileJson,
+                        size: 21,
+                        color: palette.primary,
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              row.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.connectRawRowTitle,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              active
+                                  ? l.prototypeActiveConfiguration
+                                  : l.prototypeCompleteXrayConfiguration,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.connectRawRowDetail.copyWith(
+                                color: palette.mutedForeground,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      Icon(
+                        active ? LucideIcons.check : LucideIcons.circle,
+                        size: active ? 19 : 18,
+                        color: active
+                            ? palette.primary
+                            : palette.mutedForeground,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 42,
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    border: BorderDirectional(
+                      start: BorderSide(color: palette.border),
+                    ),
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    tooltip: '${l.prototypeMoreActions}: ${row.name}',
+                    onPressed: () => onRawActions(row),
+                    icon: const Icon(LucideIcons.ellipsis, size: 18),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class TrafficReadout extends StatelessWidget {
-  const TrafficReadout({super.key, required this.view});
+  const TrafficReadout({
+    super.key,
+    required this.view,
+    this.expandedGroups = false,
+  });
   final ConnectionView view;
+  final bool expandedGroups;
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -426,24 +788,25 @@ class TrafficReadout extends StatelessWidget {
         _group(
           context,
           l.prototypeCurrentSpeed,
-          live ? '${formatTraffic(view.downloadSpeed)}/s' : '—',
-          live ? '${formatTraffic(view.uploadSpeed)}/s' : '—',
+          live
+              ? '${formatTraffic(view.downloadSpeed, connection: true)}/s'
+              : '—',
+          live ? '${formatTraffic(view.uploadSpeed, connection: true)}/s' : '—',
         ),
-        const Divider(height: 1),
         _group(
           context,
           view.phase == ConnectionPhase.connected
               ? l.prototypeThisConnection
               : l.prototypeLastConnection,
-          formatTraffic(traffic?.downlink ?? 0),
-          formatTraffic(traffic?.uplink ?? 0),
+          formatTraffic(traffic?.downlink ?? 0, connection: true),
+          formatTraffic(traffic?.uplink ?? 0, connection: true),
         ),
-        const Divider(height: 1),
         _group(
           context,
           l.prototypeTotalTraffic,
-          formatTraffic(traffic?.totalDownlink ?? 0),
-          formatTraffic(traffic?.totalUplink ?? 0),
+          formatTraffic(traffic?.totalDownlink ?? 0, connection: true),
+          formatTraffic(traffic?.totalUplink ?? 0, connection: true),
+          divider: false,
         ),
       ],
     );
@@ -453,28 +816,69 @@ class TrafficReadout extends StatelessWidget {
     BuildContext context,
     String title,
     String download,
-    String upload,
-  ) {
+    String upload, {
+    bool divider = true,
+  }) {
     final l = AppLocalizations.of(context)!;
-    return Padding(
-      padding: const EdgeInsets.all(20),
+    final palette = ColorManager.palette(context);
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: expandedGroups
+            ? 130
+            : AppLayout.connectTrafficGroupMinHeight,
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 10.5),
+      decoration: BoxDecoration(
+        border: divider
+            ? Border(bottom: BorderSide(color: palette.border))
+            : null,
+      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 24,
-            runSpacing: 12,
-            children: [
-              _metric(
-                context,
-                LucideIcons.arrowDown,
-                l.prototypeDownload,
-                download,
-              ),
-              _metric(context, LucideIcons.arrowUp, l.prototypeUpload, upload),
-            ],
+          Text(
+            title,
+            style: AppTypography.connectTrafficGroupTitle.copyWith(
+              color: palette.mutedStrong,
+            ),
+          ),
+          const SizedBox(height: 10),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _metric(
+                    context,
+                    LucideIcons.arrowDown,
+                    l.prototypeDownload,
+                    download,
+                    palette.primary,
+                  ),
+                ),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: BorderDirectional(
+                        start: BorderSide(color: palette.border),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 1),
+                      child: _metric(
+                        context,
+                        LucideIcons.arrowUp,
+                        l.prototypeUpload,
+                        upload,
+                        palette.running,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -486,38 +890,67 @@ class TrafficReadout extends StatelessWidget {
     IconData icon,
     String label,
     String value,
+    Color color,
   ) => Semantics(
     label: '$label $value',
     excludeSemantics: true,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16),
-            const SizedBox(width: 4),
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          textDirection: TextDirection.ltr,
-          style: AppTypography.numeric,
-        ),
-      ],
+    child: Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 8, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 24, bottom: 5),
+            child: Text(
+              label,
+              style: AppTypography.connectTrafficLabel.copyWith(
+                color: ColorManager.palette(context).mutedStrong,
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Icon(icon, size: 19, color: color),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  value,
+                  textDirection: TextDirection.ltr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.connectTrafficValue,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 }
 
-String formatTraffic(int bytes) {
-  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+String formatTraffic(int bytes, {bool connection = false}) {
+  // Keep the App's 1024-byte conversion. The connection UI uses the approved
+  // prototype labels and precision; other consumers retain IEC units.
+  final units = connection
+      ? const ['B', 'KB', 'MB', 'GB', 'TB']
+      : const ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
   var value = bytes.toDouble();
   var unit = 0;
   while (value >= 1024 && unit < units.length - 1) {
     value /= 1024;
     unit++;
   }
-  return '${value.toStringAsFixed(unit == 0 ? 0 : 1)} ${units[unit]}';
+  var number = value.toStringAsFixed(
+    unit == 0
+        ? 0
+        : connection
+        ? 2
+        : 1,
+  );
+  if (connection && number.contains('.')) {
+    number = number.replaceFirst(RegExp(r'\.?0+$'), '');
+  }
+  return '$number ${units[unit]}';
 }

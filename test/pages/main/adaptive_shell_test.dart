@@ -48,6 +48,12 @@ void main() {
                     path: primary.rootPath,
                     builder: (_, _) =>
                         Center(child: Text('${primary.name}-content')),
+                    routes: [
+                      GoRoute(
+                        path: 'details',
+                        builder: (_, _) => const Center(child: Text('details')),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -91,7 +97,46 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(720, 800));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationRail), findsNothing);
-    expect(find.byType(NavigationBar), findsOneWidget);
+    final navigation = find.byKey(const ValueKey('primary-mobile-navigation'));
+    final homeDestination = find.byKey(
+      const ValueKey('primary-navigation-home'),
+    );
+    expect(navigation, findsOneWidget);
+    expect(tester.getSize(navigation).height, AppLayout.mobileNavigationHeight);
+    expect(
+      tester.widget<Semantics>(homeDestination).properties.selected,
+      isTrue,
+    );
+    expect(tester.widget<Semantics>(homeDestination).properties.button, isTrue);
+    expect(find.byType(Badge), findsOneWidget);
+    final homeIcon = find.descendant(
+      of: homeDestination,
+      matching: find.byType(Icon),
+    );
+    expect(tester.getSize(homeIcon).height, AppLayout.mobileNavigationIconSize);
+    expect(
+      tester.getTopLeft(find.text('Connect')).dy -
+          tester.getBottomLeft(homeIcon).dy,
+      closeTo(AppSpacing.mobileNavigationGap, 0.001),
+    );
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/settings');
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byKey(const ValueKey('primary-navigation-settings')),
+          )
+          .properties
+          .selected,
+      isTrue,
+    );
+    router.go('/settings/details');
+    await tester.pumpAndSettle();
+    expect(navigation, findsNothing);
+    expect(find.text('details'), findsOneWidget);
+    router.go('/home');
+    await tester.pumpAndSettle();
     await tester.binding.setSurfaceSize(const Size(901, 800));
     await tester.pumpAndSettle();
     expect(
@@ -102,6 +147,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('update-dialog'), findsOneWidget);
-    expect(router.routeInformationProvider.value.uri.path, '/settings');
+    // Switching roots retains the branch's existing subpage.
+    expect(router.routeInformationProvider.value.uri.path, '/settings/details');
   });
 }

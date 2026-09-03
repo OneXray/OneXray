@@ -693,6 +693,8 @@
   "prototypeBack": "返回",
   "prototypeCancel": "取消",
   "prototypeClose": "关闭",
+  "prototypeCloseDialog": "关闭对话框",
+  "prototypeChooseRawConfiguration": "请选择一个 Raw JSON 配置",
   "prototypeDone": "完成",
   "prototypeSave": "保存",
   "prototypeAdd": "添加",

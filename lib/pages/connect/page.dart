@@ -3,6 +3,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/main/page_visibility.dart';
+import 'package:onexray/pages/widget/page_title.dart';
 
 class ConnectPage extends StatefulWidget {
   const ConnectPage({super.key});
@@ -31,7 +32,7 @@ class _ConnectPageState extends State<ConnectPage> {
     onChanged: controller.setPageVisible,
     child: Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.prototypeConnect),
+        title: PageTitle(AppLocalizations.of(context)!.prototypeConnect),
       ),
       body: SafeArea(
         child: ListenableBuilder(
@@ -67,7 +68,10 @@ class _ConnectPageState extends State<ConnectPage> {
                   : null,
               location: controller.selectionTitle(l),
               runningPath: controller.runningRoute?.path,
-              method: controller.methodTitle(l),
+              locationDetail: controller.selectionDetail(l),
+              locationHealth: controller.selectionHealth(l),
+              method: controller.homeMethodTitle(l),
+              methodDetail: controller.methodDescription(l),
               onConnection: () => controller.connectionAction(context),
               onAddServers: () => controller.addServers(context),
               onExpert: (value) => controller.toggleExpert(context, value),
@@ -77,8 +81,7 @@ class _ConnectPageState extends State<ConnectPage> {
               onTraffic: () => controller.showTraffic(context),
               onRawAdd: () => controller.editRaw(context),
               onRawSelect: (row) => controller.selectRaw(context, row.id),
-              onRawEdit: (row) => controller.editRaw(context, row.id),
-              onRawDelete: (row) => controller.deleteRaw(context, row),
+              onRawActions: (row) => controller.showRawActions(context, row),
             );
           },
         ),
