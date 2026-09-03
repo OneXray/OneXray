@@ -14,6 +14,7 @@ class PolicyDetailScaffold extends StatelessWidget {
   final PolicyEditorController controller;
   final Widget body;
   final bool canSave;
+  final EdgeInsetsGeometry contentPadding;
 
   const PolicyDetailScaffold({
     super.key,
@@ -21,6 +22,7 @@ class PolicyDetailScaffold extends StatelessWidget {
     required this.controller,
     required this.body,
     this.canSave = true,
+    this.contentPadding = const EdgeInsetsDirectional.only(bottom: 24),
   });
 
   @override
@@ -33,7 +35,9 @@ class PolicyDetailScaffold extends StatelessWidget {
           title: Text(title),
           leading: BackButton(onPressed: () => controller.cancel(context)),
         ),
-        body: SafeArea(child: SettingsPageScroll(child: body)),
+        body: SafeArea(
+          child: SettingsPageScroll(padding: contentPadding, child: body),
+        ),
         bottomNavigationBar: PolicyActions(
           controller: controller,
           canSave: canSave,

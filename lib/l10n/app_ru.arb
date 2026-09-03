@@ -1364,5 +1364,7 @@
   "prototypeAdvancedDescription": "Системная интеграция и рабочая конфигурация",
   "prototypeAboutPrivacyNotice": "OneXray не собирает и не передаёт сведения об использовании, трафике или посещённых сайтах.",
   "prototypeShareBackup": "Поделиться резервной копией",
-  "prototypeExportBackup": "Экспорт резервной копии"
+  "prototypeExportBackup": "Экспорт резервной копии",
+  "prototypeEditServerHint": "Изменить JSON исходящего подключения Xray",
+  "prototypeShareServerHint": "Передать ссылку для импорта сервера"
 }

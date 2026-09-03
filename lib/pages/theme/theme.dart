@@ -34,6 +34,7 @@ abstract final class AppTheme {
   }) => AppBarTheme(
     backgroundColor: palette.header,
     foregroundColor: palette.foreground,
+    iconTheme: IconThemeData(color: palette.mutedStrong, size: 21),
     surfaceTintColor: Colors.transparent,
     centerTitle: mobile && secondary,
     elevation: 0,
@@ -71,6 +72,17 @@ abstract final class AppTheme {
       ),
     );
   }
+
+  static ButtonStyle mobileHeaderAction(BuildContext context) =>
+      IconButton.styleFrom(
+        foregroundColor: ColorManager.palette(context).primary,
+        iconSize: 20,
+        minimumSize: const Size.square(38),
+        fixedSize: const Size.square(38),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.standard,
+      );
 
   static ThemeData pageActions(BuildContext context) {
     final theme = Theme.of(context);
@@ -241,6 +253,16 @@ abstract final class AppTheme {
         textStyle: AppTypography.control,
       ),
       inputTheme: ShadInputTheme(
+        decoration: ShadDecoration(
+          color: palette.card,
+          // Prototype :focus-visible: 3px, 30% primary, with a 2px gap.
+          secondaryFocusedBorder: ShadBorder.all(
+            color: palette.primary.withValues(alpha: .3),
+            width: 3,
+            offset: 5,
+            radius: BorderRadius.circular(AppRadii.control + 5),
+          ),
+        ),
         style: AppTypography.rowValue.copyWith(color: palette.foreground),
         placeholderStyle: AppTypography.rowValue.copyWith(
           color: palette.mutedForeground,
@@ -712,7 +734,13 @@ abstract final class AppTheme {
               : Colors.transparent,
         ),
         checkColor: WidgetStatePropertyAll(colorScheme.onPrimary),
-        side: BorderSide(color: palette.input),
+        side: WidgetStateBorderSide.resolveWith(
+          (states) => BorderSide(
+            color: states.contains(WidgetState.selected)
+                ? palette.primary
+                : palette.mutedForeground,
+          ),
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.indicator),
         ),

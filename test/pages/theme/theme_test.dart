@@ -31,7 +31,8 @@ void main() {
         material.appBarTheme.actionsPadding,
         const EdgeInsetsDirectional.only(end: AppSpacing.page),
       );
-      expect(material.appBarTheme.iconTheme, isNull);
+      expect(material.appBarTheme.iconTheme?.color, palette.mutedStrong);
+      expect(material.appBarTheme.iconTheme?.size, 21);
       expect(material.appBarTheme.actionsIconTheme, isNull);
       expect(
         material.appBarTheme.systemOverlayStyle?.statusBarColor,

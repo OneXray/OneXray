@@ -3749,5 +3749,13 @@
   "prototypeExportBackup": "Export backup",
   "@prototypeExportBackup": {
     "description": "Approved prototype copy: Export backup"
+  },
+  "prototypeEditServerHint": "Edit its Xray outbound JSON",
+  "@prototypeEditServerHint": {
+    "description": "Approved prototype copy: Edit its Xray outbound JSON"
+  },
+  "prototypeShareServerHint": "Share an importable server link",
+  "@prototypeShareServerHint": {
+    "description": "Approved prototype copy: Share an importable server link"
   }
 }

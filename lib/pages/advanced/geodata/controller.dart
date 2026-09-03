@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/dialogs.dart'
+    show ConnectCallout, ConnectDialogButton;
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/validator.dart';
@@ -164,19 +168,28 @@ class GeoDataController extends ChangeNotifier {
   Future<void> delete(BuildContext context, PublishedGeoData file) async {
     if (busy || file.builtIn) return;
     final l = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l.prototypeDeleteCustomDatasetQuestion),
-        content: Text('${file.fileName}\n\n${l.prototypeDeleteDatasetWarning}'),
+    final confirmed = await showAppDialog<bool>(
+      context,
+      (context) => AppDialog(
+        title: l.prototypeDeleteCustomDatasetQuestion,
+        subtitle: file.fileName,
+        expandLastAction: false,
+        body: ConnectCallout(
+          icon: LucideIcons.circleAlert,
+          text: l.prototypeDeleteDatasetWarning,
+          warning: true,
+        ),
         actions: [
-          TextButton(
+          ConnectDialogButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(l.prototypeCancel),
+            label: l.prototypeCancel,
+            secondary: true,
           ),
-          FilledButton(
+          ConnectDialogButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(l.prototypeDelete),
+            label: l.prototypeDelete,
+            icon: LucideIcons.trash2,
+            destructive: true,
           ),
         ],
       ),

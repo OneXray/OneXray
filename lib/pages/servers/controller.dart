@@ -226,6 +226,115 @@ class ServersController extends ConnectController {
       jsonEncode(configuration.connection.selection.toJson()) ==
           jsonEncode(selection.toJson());
 
+  // Display only: running identities come from the frozen plan. Offline
+  // previews use existing successful probes, never start a probe or select VPN.
+  ({List<String> names, CoreConfigData? first}) get _displaySelection {
+    final settings = configuration.connection;
+    if (settings.expert) return (names: [], first: null);
+    final view = coordinator.state.value;
+    if (view.phase == ConnectionPhase.connected) {
+      final plan = view.plan;
+      if (plan == null || plan.configuration.connection.expert) {
+        return (names: [], first: null);
+      }
+      final entries = (plan.toJson()['entries'] as List).cast<Map>();
+      return (
+        names: entries.map((entry) => entry['name'] as String).toList(),
+        first: servers
+            .where((row) => row.id == entries.firstOrNull?['id'])
+            .firstOrNull,
+      );
+    }
+    final selection = settings.selection;
+    final count = entryCount(selection);
+    final rows =
+        servers.where((row) {
+          if (row.id == settings.finalExitId ||
+              !ServerAssetService.healthy(row) ||
+              !ServerAssetService.selectable(row)) {
+            return false;
+          }
+          return switch (selection.kind) {
+            SelectionKind.automatic => true,
+            SelectionKind.region =>
+              row.countryCode?.toUpperCase() == selection.region?.toUpperCase(),
+            SelectionKind.source => row.subId == selection.id,
+            SelectionKind.server => row.id == selection.id,
+          };
+        }).toList()..sort((a, b) {
+          final delay = a.delay.compareTo(b.delay);
+          return delay == 0 ? a.id.compareTo(b.id) : delay;
+        });
+    if (count <= 0 || rows.length < count) return (names: [], first: null);
+    return (
+      names: rows.take(count).map(serverName).toList(),
+      first: rows.first,
+    );
+  }
+
+  String? automaticResult(AppLocalizations l) {
+    if (!selected(const ServerSelection.automatic())) return null;
+    final display = _displaySelection;
+    if (display.names.isEmpty) return null;
+    final row = display.first;
+    return l.prototypeCurrentServerLatency(
+      display.names.first,
+      row != null && ServerAssetService.healthy(row) && row.delay > 0
+          ? row.delay
+          : '—',
+    );
+  }
+
+  ({String title, String detail})? currentSelectionSummary(AppLocalizations l) {
+    final settings = configuration.connection;
+    final selection = settings.selection;
+    if (settings.expert || selection.kind == SelectionKind.automatic) {
+      return null;
+    }
+    final display = _displaySelection;
+    final row =
+        display.first ??
+        servers.where((row) => row.id == selection.id).firstOrNull;
+    final title = switch (selection.kind) {
+      SelectionKind.automatic => l.prototypeAutomaticSelection,
+      SelectionKind.region => countryName(l, selection.region),
+      SelectionKind.source =>
+        selection.id == 0
+            ? l.prototypeManualAdditions
+            : sources
+                      .where((source) => source.id == selection.id)
+                      .firstOrNull
+                      ?.name ??
+                  l.prototypeTemporarilyUnavailable,
+      SelectionKind.server =>
+        display.names.firstOrNull ??
+            (row == null ? l.prototypeTemporarilyUnavailable : serverName(row)),
+    };
+    return (
+      title: title,
+      detail: selection.kind == SelectionKind.server
+          ? row == null
+                ? ''
+                : '${countryName(l, row.countryCode)} · ${sourceName(l, row)}'
+          : '${l.prototypeAutomaticSelection}${display.names.isEmpty ? '' : ' · ${display.names.join(' + ')}'}',
+    );
+  }
+
+  String? get currentGroupId {
+    final selection = configuration.connection.selection;
+    final first = _displaySelection.first;
+    if (grouping == ServerGrouping.location) {
+      final code = selection.kind == SelectionKind.region
+          ? selection.region
+          : first?.countryCode;
+      return code == null ? null : 'location:${code.toUpperCase()}';
+    }
+    final id = selection.kind == SelectionKind.source
+        ? selection.id
+        : first?.subId;
+    return id == null ? null : 'subscription:$id';
+  }
+
   bool canChoose(CoreConfigData row, {ServerExitPickerParams? exitPicker}) =>
       ServerAssetService.selectable(row) &&
       (exitPicker == null

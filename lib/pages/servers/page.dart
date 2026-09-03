@@ -3,6 +3,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/view.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/widget/page_title.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 
 class ServersPage extends StatefulWidget {
@@ -36,29 +39,43 @@ class _ServersPageState extends State<ServersPage> {
     listenable: Listenable.merge([controller, controller.coordinator.state]),
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
+      final mobileRoot =
+          !widget.picker &&
+          widget.exitPicker == null &&
+          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return Scaffold(
         appBar: AppBar(
-          title: Text(
-            widget.exitPicker != null
-                ? l.prototypeChooseFinalExit
-                : widget.picker
-                ? l.prototypeConnectionLocation
-                : l.prototypeServers,
-          ),
+          title: mobileRoot
+              ? PageTitle(l.prototypeServers)
+              : Text(
+                  widget.exitPicker != null
+                      ? l.prototypeChooseFinalExit
+                      : widget.picker
+                      ? l.prototypeConnectionLocation
+                      : l.prototypeServers,
+                ),
           actions: [
-            IconButton(
-              tooltip: l.prototypeManageSources,
-              onPressed: controller.busy
-                  ? null
-                  : () => controller.openSources(context),
-              icon: const Icon(LucideIcons.refreshCw),
-            ),
-            IconButton(
-              tooltip: l.prototypeAddServers,
-              onPressed: controller.busy
-                  ? null
-                  : () => controller.addServers(context),
-              icon: const Icon(LucideIcons.plus),
+            if (!mobileRoot)
+              IconButton(
+                tooltip: l.prototypeManageSources,
+                onPressed: controller.busy
+                    ? null
+                    : () => controller.openSources(context),
+                icon: const Icon(LucideIcons.refreshCw),
+              ),
+            Transform.translate(
+              offset: Offset(
+                0,
+                mobileRoot ? AppSpacing.mobileHeaderContentOffset : 0,
+              ),
+              child: IconButton(
+                style: mobileRoot ? AppTheme.mobileHeaderAction(context) : null,
+                tooltip: l.prototypeAddServers,
+                onPressed: controller.busy
+                    ? null
+                    : () => controller.addServers(context),
+                icon: const Icon(LucideIcons.plus),
+              ),
             ),
           ],
         ),

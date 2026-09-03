@@ -141,6 +141,38 @@ abstract final class AppTypography {
   static final backupAction = _prototypeRole(12, 620);
   static final backupEmptyTitle = _prototypeRole(16, 700);
 
+  static final geodataIntro = _prototypeRole(9.5, 400, height: 1.45);
+  static final geodataTitle = _prototypeRole(13, 680, height: 1.3);
+  static final geodataMeta = _prototypeRole(8.5, 500);
+  static final geodataValue = _prototypeRole(10, 400);
+  static final geodataAction = _prototypeRole(10.5, 620);
+  static final geodataPrimaryAction = _prototypeRole(11, 620);
+  static final geodataField = _prototypeRole(10.5, 620);
+  static final geodataEmpty = _prototypeRole(11, 400, height: 1.5);
+  static final geodataCategory = _prototypeRole(13, 700);
+  static final geodataReference = _prototypeRole(
+    10,
+    400,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final geodataSourceUrl = _prototypeRole(
+    12,
+    400,
+  ).copyWith(fontFamily: AppFontFamily.mono);
+  static final geodataReadonly = _prototypeRole(11, 620);
+  static final geodataBody = _prototypeRole(16, 400);
+  static final geodataSourceLabel = _prototypeRole(11, 400);
+
+  static final androidTitle = _prototypeRole(19, 700, height: 1.3);
+  static final androidBody = _prototypeRole(16, 400);
+  static final androidModeTitle = _prototypeRole(13, 700);
+  static final androidModeHint = _prototypeRole(11, 400);
+  static final androidRowTitle = _prototypeRole(12, 700);
+  static final androidRowHint = _prototypeRole(10, 400);
+  static final androidPackage = _prototypeRole(9.5, 400);
+  static final androidCount = _prototypeRole(10.5, 700);
+  static final androidBadge = _prototypeRole(10, 650);
+  static final androidEmpty = _prototypeRole(12, 400);
+
   static final runtimeLabel = _prototypeRole(9.5, 400);
   static final runtimeDesktopLabel = _prototypeRole(11, 400);
   static final runtimeValue = _prototypeRole(11, 700);
@@ -168,6 +200,13 @@ abstract final class AppTypography {
   static final serverSelectionDetail = _prototypeRole(12, 400);
   static final serverUseLabel = _prototypeRole(10.5, 620);
   static final serverUseCount = _prototypeRole(14, 630, height: 1);
+  static final serverGroupCode = _prototypeRole(13, 720);
+  static final serverGroupSummary = _prototypeRole(12, 400);
+  static final serverNodeTitle = _prototypeRole(13, 700);
+  static final serverProtocol = _prototypeRole(10, 550, height: 1.4);
+  static final serverGroupAction = _prototypeRole(13, 620);
+  static final serverGroupUseCount = _prototypeRole(10, 700, height: 1);
+  static final serverConnectedBadge = _prototypeRole(10.5, 680);
 
   static final connectStatusTitle = _prototypeRole(17, 650, height: 1.3);
   static final connectStatusDetail = _prototypeRole(13, 400);
@@ -206,6 +245,8 @@ abstract final class AppTypography {
   static final confirmationDesktopTitle = _prototypeRole(20, 700, height: 1.3);
   static final confirmationSubject = _prototypeRole(14, 700, height: 1.6);
   static final confirmationBody = _prototypeRole(14, 400, height: 1.6);
+  static final serverMenuTitle = _prototypeRole(13, 700);
+  static final serverMenuHint = _prototypeRole(11, 400);
 
   static final shad = ShadTextTheme.custom(
     h1Large: pageTitle,

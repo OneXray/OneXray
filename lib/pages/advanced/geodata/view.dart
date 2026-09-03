@@ -3,6 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/view.dart' show formatTraffic;
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:onexray/service/geo_data/model.dart';
 
 /// Default and custom datasets share file rows, never a second detail screen
@@ -31,6 +33,7 @@ class GeoDataRows extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final table = constraints.maxWidth >= 850;
+        if (!table) return _mobileList(context);
         final headers = [
           l.prototypeFileName,
           l.prototypeSource,
@@ -142,6 +145,169 @@ class GeoDataRows extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Widget _mobileList(BuildContext context) {
+    final palette = ColorManager.palette(context);
+    Widget group(List<PublishedGeoData> rows) => Container(
+      decoration: BoxDecoration(
+        color: palette.card,
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var index = 0; index < rows.length; index++) ...[
+            if (index > 0) Divider(height: 0, color: palette.border),
+            _mobileRow(context, rows[index]),
+          ],
+        ],
+      ),
+    );
+    if (!custom) return group(files);
+    return Column(
+      spacing: 8,
+      children: [
+        for (final file in files) group([file]),
+      ],
+    );
+  }
+
+  Widget _mobileRow(BuildContext context, PublishedGeoData file) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final date = file.row.timestamp.toLocal();
+    Widget field(String label, String value, {bool ltr = false}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 3,
+      children: [
+        Text(
+          label,
+          style: AppTypography.geodataMeta.copyWith(
+            color: palette.mutedForeground,
+          ),
+        ),
+        Text(
+          value,
+          style: AppTypography.geodataValue,
+          textDirection: ltr ? TextDirection.ltr : null,
+        ),
+      ],
+    );
+    return Semantics(
+      container: true,
+      label: file.builtIn
+          ? l.prototypeDefaultRoutingData
+          : l.prototypeCustomRuleDataset(file.row.id),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 9,
+              children: [
+                Padding(
+                  padding: EdgeInsetsDirectional.only(end: custom ? 82 : 0),
+                  child: InkWell(
+                    onTap: () => onOpen(file),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 3,
+                        children: [
+                          Text(
+                            l.prototypeFileName,
+                            style: AppTypography.geodataMeta.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  file.fileName,
+                                  textDirection: TextDirection.ltr,
+                                  style: AppTypography.geodataValue.copyWith(
+                                    color: palette.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                LucideIcons.chevronRightDir,
+                                size: 15,
+                                color: palette.primary,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                field(l.prototypeSource, file.sourceHost, ltr: true),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 12,
+                  children: [
+                    Expanded(
+                      child: field(
+                        l.prototypeSize,
+                        formatTraffic(file.bytes),
+                        ltr: true,
+                      ),
+                    ),
+                    Expanded(
+                      child: field(
+                        l.prototypeLastSuccessfulUpdate,
+                        DateFormat.yMd(
+                          Localizations.localeOf(context).toString(),
+                        ).add_Hm().format(date),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (custom)
+            PositionedDirectional(
+              top: 7,
+              end: 8,
+              child: Row(
+                children: [
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 30),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      textStyle: AppTypography.geodataAction,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.standard,
+                    ),
+                    onPressed: busy ? null : () => onUpdate(file),
+                    child: Text(l.prototypeUpdate),
+                  ),
+                  IconButton(
+                    tooltip: l.prototypeDeleteCustomDataset,
+                    style: IconButton.styleFrom(
+                      foregroundColor: palette.destructive,
+                      minimumSize: const Size.square(30),
+                      maximumSize: const Size.square(30),
+                      padding: EdgeInsets.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: busy ? null : () => onDelete(file),
+                    icon: const Icon(LucideIcons.trash2, size: 16),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 

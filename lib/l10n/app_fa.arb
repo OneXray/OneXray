@@ -1364,5 +1364,7 @@
     "prototypeAdvancedDescription": "مدیریت یکپارچگی با سیستم و پیکربندی زمان اجرا",
     "prototypeAboutPrivacyNotice": "OneXray داده‌های استفاده، ترافیک یا مرور وب را جمع‌آوری یا بارگذاری نمی‌کند.",
     "prototypeShareBackup": "اشتراک‌گذاری نسخهٔ پشتیبان",
-    "prototypeExportBackup": "صدور نسخهٔ پشتیبان"
+    "prototypeExportBackup": "صدور نسخهٔ پشتیبان",
+    "prototypeEditServerHint": "ویرایش JSON خروجی Xray آن",
+    "prototypeShareServerHint": "اشتراک‌گذاری پیوند قابل وارد کردن سرور"
 }

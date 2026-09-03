@@ -14,7 +14,7 @@ void main() {
     addTearDown(controller.dispose);
     await controller.load();
     expect(controller.missing, ['com.example.uninstalled']);
-    controller.search('BROW');
+    controller.search('  BROW  ');
     expect(controller.visible.single.name, 'Browser');
     controller.search('org.example.mail');
     expect(controller.visible.single.name, 'Mail');

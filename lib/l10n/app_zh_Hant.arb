@@ -1364,5 +1364,7 @@
   "prototypeAdvancedDescription": "管理系統整合與執行階段設定",
   "prototypeAboutPrivacyNotice": "OneXray 不收集或上傳使用情況、流量或瀏覽資料。",
   "prototypeShareBackup": "分享備份",
-  "prototypeExportBackup": "匯出備份"
+  "prototypeExportBackup": "匯出備份",
+  "prototypeEditServerHint": "編輯 Xray outbound JSON",
+  "prototypeShareServerHint": "分享可匯入的節點連結"
 }

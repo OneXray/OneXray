@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -29,6 +30,7 @@ class PolicyEditorController extends ChangeNotifier {
   bool busy = false;
   String? error;
   bool _closed = false;
+  Map<String, String> _androidAppNames = const {};
 
   PolicyEditorController({
     PolicyEditorDraft? draft,
@@ -46,6 +48,19 @@ class PolicyEditorController extends ChangeNotifier {
   Map<String, dynamic> group(String key) => value[key] as Map<String, dynamic>;
   List<String> strings(String groupName, String key) =>
       List<String>.from(group(groupName)[key] as List);
+
+  String androidAppName(String packageName) =>
+      _androidAppNames[packageName] ?? packageName;
+
+  Future<void> loadAndroidAppNames() async {
+    final apps = await AppHostApi().getInstalledApps();
+    if (_closed) return;
+    _androidAppNames = {
+      for (final app in apps)
+        if (app.name.isNotEmpty) app.packageName: app.name,
+    };
+    notify();
+  }
 
   Future<void> load(BuildContext context) async {
     busy = true;
