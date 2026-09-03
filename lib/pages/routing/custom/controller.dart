@@ -1,9 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/settings.dart';
@@ -24,6 +27,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   final name = TextEditingController();
   final rules = <Map<String, dynamic>>[];
   final ruleKeys = <Object>[];
+  Object? selectedRuleKey;
   List<RoutingProfileData> _rows = [];
   CustomRoutingEditorDraft? original;
   Map<String, dynamic> _document = {};
@@ -35,6 +39,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
     kind: ConfigurationKind.custom,
     readText: () => previewTemplate?.encode() ?? '',
     readName: () => name.text,
+    hasContent: () => rules.isNotEmpty,
     onImport: (draft) => replaceTemplate(draft.text, name: draft.name),
   );
   bool _closed = false;
@@ -51,6 +56,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   }
 
   bool get loaded => original != null;
+  int get routeCount => _rows.length + (profileId == null ? 1 : 0);
 
   Future<void> load(BuildContext context) async {
     try {
@@ -64,6 +70,24 @@ class CustomRoutingEditorController extends ChangeNotifier {
       name.text = draft.name;
       _setTemplate(draft.template);
       if (initialText != null) replaceTemplate(initialText!, name: initialName);
+      if (profileId == null &&
+          initialText == null &&
+          name.text.isEmpty &&
+          context.mounted) {
+        final used = _rows
+            .map(
+              (row) => int.tryParse(
+                RegExp(r'(\d+)$').firstMatch(row.name)?.group(1) ?? '',
+              ),
+            )
+            .toSet();
+        var number = 1;
+        while (used.contains(number)) {
+          number++;
+        }
+        name.text =
+            '${AppLocalizations.of(context)!.prototypeCustomRouting} $number';
+      }
     } catch (_) {
       if (context.mounted) {
         error = AppLocalizations.of(context)!.prototypeCannotReadCustomRoute;
@@ -130,6 +154,9 @@ class CustomRoutingEditorController extends ChangeNotifier {
     ruleKeys
       ..clear()
       ..addAll(List.generate(rules.length, (_) => Object()));
+    selectedRuleKey = ruleKeys.isEmpty
+        ? null
+        : ruleKeys[ruleKeys.length > 1 ? 1 : 0];
   }
 
   /// Import tools stage their dependencies separately before calling this.
@@ -157,11 +184,16 @@ class CustomRoutingEditorController extends ChangeNotifier {
   ]) async {
     if (busy) return;
     final rule = index == null ? null : rules[index];
+    if (index != null) {
+      selectedRuleKey = ruleKeys[index];
+      _notify();
+    }
     final edited = await open(context, rule);
     if (_closed || edited == null) return;
     if (index == null) {
       rules.add(edited);
       ruleKeys.add(Object());
+      selectedRuleKey = ruleKeys.last;
     } else {
       rules[index] = edited;
     }
@@ -170,8 +202,14 @@ class CustomRoutingEditorController extends ChangeNotifier {
 
   void deleteRule(int index) {
     if (busy) return;
+    final selected = selectedRuleKey == ruleKeys[index];
     rules.removeAt(index);
     ruleKeys.removeAt(index);
+    if (selected) {
+      selectedRuleKey = ruleKeys.isEmpty
+          ? null
+          : ruleKeys[index.clamp(0, ruleKeys.length - 1)];
+    }
     _notify();
   }
 
@@ -185,12 +223,24 @@ class CustomRoutingEditorController extends ChangeNotifier {
   String ruleName(int index, AppLocalizations l10n) =>
       rules[index]['ruleTag'] as String? ?? l10n.prototypeNewRule;
 
-  String ruleSummary(int index) {
+  String ruleSummary(int index, AppLocalizations l10n) {
     final rule = rules[index];
+    final domains = (rule['domain'] as List?)?.cast<String>() ?? const [];
+    final ips = (rule['ip'] as List?)?.cast<String>() ?? const [];
+    if (domains.isNotEmpty) {
+      return domains.first.startsWith('geosite:')
+          ? '${l10n.prototypeWebsiteSet} · ${domains.first.substring(8)}'
+          : domains.join(', ');
+    }
+    if (ips.isNotEmpty) {
+      return ips.first.startsWith('geoip:')
+          ? '${l10n.prototypeIpSet} · ${ips.first.substring(6)}'
+          : 'IP · ${ips.join(', ')}';
+    }
     return [
-      for (final key in const ['domain', 'ip', 'port', 'network'])
+      for (final key in const ['port', 'network'])
         if (rule[key] != null)
-          rule[key] is List ? (rule[key] as List).join(', ') : '${rule[key]}',
+          '${key == 'port' ? l10n.prototypeTargetPort : l10n.prototypeNetworkType} · ${rule[key] is List ? (rule[key] as List).join(', ') : rule[key]}',
     ].join(' · ');
   }
 
@@ -248,22 +298,42 @@ class CustomRoutingEditorController extends ChangeNotifier {
     try {
       final deleted = await service.delete(
         row,
-        confirm: (selected, reconnect) => context.mounted
-            ? ContextAlert.showConfirmDialog(
-                context,
-                title: l10n.prototypeDeleteName(row.name),
-                content: reconnect
-                    ? l10n.prototypeDeletingRouteReconnectNotice
-                    : selected
-                    ? l10n.prototypeDeletedRouteSmartNotice
-                    : l10n.prototypeRemoveRouteNotice,
-                confirmLabel: reconnect
-                    ? l10n.prototypeDeleteAndReconnect
-                    : selected
-                    ? l10n.prototypeDeleteAndUseSmartRouting
-                    : l10n.prototypeDelete,
-              )
-            : Future.value(false),
+        confirm: (selected, reconnect) async =>
+            context.mounted &&
+            await showAppDialog<bool>(
+                  context,
+                  (dialogContext) => AppDialog(
+                    title: l10n.prototypeDeleteName(row.name),
+                    subtitle: reconnect
+                        ? l10n.prototypeDeletingRouteReconnectNotice
+                        : selected
+                        ? l10n.prototypeDeletedRouteSmartNotice
+                        : l10n.prototypeRemoveRouteNotice,
+                    body: ConnectCallout(
+                      icon: LucideIcons.circleAlert,
+                      text: l10n.prototypeCannotUndo,
+                      warning: true,
+                    ),
+                    actions: [
+                      ConnectDialogButton(
+                        label: l10n.prototypeCancel,
+                        secondary: true,
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                      ),
+                      ConnectDialogButton(
+                        label: reconnect
+                            ? l10n.prototypeSwitchAndReconnect
+                            : selected
+                            ? l10n.prototypeDeleteAndUseSmartRouting
+                            : l10n.prototypeDeleteRoute,
+                        destructive: true,
+                        icon: LucideIcons.trash2,
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                      ),
+                    ],
+                  ),
+                ) ==
+                true,
       );
       if (deleted && context.mounted) Navigator.of(context).pop(row.id);
     } catch (failure) {

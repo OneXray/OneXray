@@ -27,6 +27,7 @@ import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/servers/page.dart';
+import 'package:onexray/pages/servers/exit_picker.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/editor/page.dart';
 import 'package:onexray/pages/servers/import/subscription_editor.dart';
@@ -298,7 +299,7 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     (_, state) => _withExtra<ServerExitPickerParams>(
       state,
       AppSecondaryDestination.serverFinalExitPicker,
-      (params) => ServersPage(exitPicker: params),
+      (params) => ServerExitPickerPage(params: params),
     ),
   ),
   _route(

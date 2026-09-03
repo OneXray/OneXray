@@ -87,6 +87,8 @@ void main() {
       name: 'Metadata',
       text: source,
     );
+    expect(await service.sharingDataCount(source), 1);
+    expect(await service.sharingDataCount('{"outbounds":[]}'), 0);
     final links = OneXrayAppLinkParser.parseText(text);
     expect(links, hasLength(2));
     expect(links.first, isA<OneXrayGeoDataLink>());

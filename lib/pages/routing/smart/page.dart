@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/routing/checker.dart';
 import 'package:onexray/pages/routing/smart/controller.dart';
+import 'package:onexray/pages/routing/widgets.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -42,6 +45,8 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
     animation: controller,
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
+      final mobile =
+          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return PopScope(
         canPop: !controller.busy,
         child: Scaffold(
@@ -60,13 +65,25 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
                           ),
                   )
                 : SettingsPageScroll(
-                    desktopMaxWidth: 1200,
-                    padding: const EdgeInsets.all(16),
+                    desktopMaxWidth: 1220,
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                      12,
+                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                      mobile ? 18 : 42,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(l.prototypeSmartRulesMaintained),
-                        const SizedBox(height: 16),
+                        if (!mobile) ...[
+                          Text(
+                            l.prototypeSmartRulesMaintained,
+                            style: AppTypography.rowValue.copyWith(
+                              color: ColorManager.secondaryText(context),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                        ],
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final settings = _settings(context);
@@ -76,7 +93,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   settings,
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: mobile ? 12 : 16),
                                   preview,
                                 ],
                               );
@@ -84,9 +101,9 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(flex: 6, child: settings),
-                                const SizedBox(width: 20),
-                                Expanded(flex: 5, child: preview),
+                                Expanded(flex: 25, child: settings),
+                                const SizedBox(width: 16),
+                                Expanded(flex: 24, child: preview),
                               ],
                             );
                           },
@@ -114,13 +131,14 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
                 ),
               PageActionBar(
                 children: [
-                  ShadButton.outline(
-                    onPressed: controller.busy
-                        ? null
-                        : () => controller.cancel(context),
-                    child: Text(l.prototypeCancel),
-                  ),
-                  ShadButton(
+                  if (!mobile)
+                    OutlinedButton(
+                      onPressed: controller.busy
+                          ? null
+                          : () => controller.cancel(context),
+                      child: Text(l.prototypeCancel),
+                    ),
+                  FilledButton(
                     onPressed: controller.busy || controller.original == null
                         ? null
                         : () => controller.save(context),
@@ -138,127 +156,73 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
   Widget _settings(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final smart = controller.draft;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                l.prototypeSmartRoutingSettings,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _switch(
-              l.prototypeDirectPrivateAddresses,
-              l.prototypeDirectPrivateAddressesHint,
-              LucideIcons.network,
-              'directPrivate',
-              smart.directPrivate,
-            ),
-            _switch(
-              l.prototypeDirectAppleServices,
-              l.prototypeDirectAppleServicesHint,
-              LucideIcons.apple,
-              'directApple',
-              smart.directApple,
-            ),
-            _switch(
-              l.prototypeResolveUnmatchedDomains,
-              l.prototypeResolveUnmatchedDomainsHint,
-              LucideIcons.terminal,
-              'resolveIpOnNoMatch',
-              smart.resolveIpOnNoMatch,
-            ),
-            _switch(
-              l.prototypeDirectDns,
-              l.prototypeDirectDnsHint,
-              LucideIcons.globe,
-              'directDns',
-              smart.directDns,
-            ),
-            _switch(
-              l.prototypeBlockAdDomains,
-              l.prototypeBlockAdDomainsHint,
-              LucideIcons.shieldCheck,
-              'blockAds',
-              smart.blockAds,
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(LucideIcons.zap),
-              title: Text(l.prototypeAutomaticEntryServers),
-              subtitle: Text(l.prototypeAutomaticEntryServersHint),
-            ),
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final count in const [1, 2, 3])
-                    Tooltip(
-                      message: l.prototypeUseEntryServers(count),
-                      child: ChoiceChip(
-                        label: Text('$count'),
-                        selected: smart.entryCount == count,
-                        onSelected: controller.busy
-                            ? null
-                            : (_) => controller.update('entryCount', count),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(LucideIcons.globe),
-              title: Text(l.prototypeDirectRegions),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l.prototypeDirectRegionsHint),
-                  Text(
-                    controller.regionsSummary(l),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-              trailing: const Icon(LucideIcons.chevronRightDir),
-              onTap: controller.busy
-                  ? null
-                  : () => controller.chooseRegions(context, widget.openRegions),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(LucideIcons.server),
-              title: Text(l.prototypeVpnFinalExit),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l.prototypeVpnFinalExitHint),
-                  Text(
-                    smart.finalExitId == null
-                        ? l.prototypeNotSet
-                        : controller.finalExitName ??
-                              l.prototypeTemporarilyUnavailable,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-              trailing: const Icon(LucideIcons.chevronRightDir),
-              onTap: controller.busy
-                  ? null
-                  : () => controller.chooseFinalExit(
-                      context,
-                      widget.openFinalExit,
-                    ),
-            ),
-          ],
-        ),
+    return RoutingCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          RoutingCardHeader(title: l.prototypeSmartRoutingSettings),
+          _switch(
+            l.prototypeDirectPrivateAddresses,
+            l.prototypeDirectPrivateAddressesHint,
+            LucideIcons.network,
+            'directPrivate',
+            smart.directPrivate,
+          ),
+          _switch(
+            l.prototypeDirectAppleServices,
+            l.prototypeDirectAppleServicesHint,
+            LucideIcons.apple,
+            'directApple',
+            smart.directApple,
+          ),
+          _switch(
+            l.prototypeResolveUnmatchedDomains,
+            l.prototypeResolveUnmatchedDomainsHint,
+            LucideIcons.terminal,
+            'resolveIpOnNoMatch',
+            smart.resolveIpOnNoMatch,
+          ),
+          _switch(
+            l.prototypeDirectDns,
+            l.prototypeDirectDnsHint,
+            LucideIcons.earth,
+            'directDns',
+            smart.directDns,
+          ),
+          _switch(
+            l.prototypeBlockAdDomains,
+            l.prototypeBlockAdDomainsHint,
+            LucideIcons.shieldCheck,
+            'blockAds',
+            smart.blockAds,
+          ),
+          RoutingEntryCountRow(
+            value: smart.entryCount,
+            onChanged: controller.busy
+                ? null
+                : (count) => controller.update('entryCount', count),
+          ),
+          RoutingSettingRow(
+            icon: LucideIcons.earth,
+            title: l.prototypeDirectRegions,
+            description: l.prototypeDirectRegionsHint,
+            value: controller.regionsSummary(l),
+            enabled: !controller.busy,
+            onTap: () => controller.chooseRegions(context, widget.openRegions),
+          ),
+          RoutingSettingRow(
+            icon: LucideIcons.server,
+            title: l.prototypeVpnFinalExit,
+            description: l.prototypeVpnFinalExitHint,
+            value: smart.finalExitId == null
+                ? l.prototypeNotSet
+                : controller.finalExitName ?? l.prototypeTemporarilyUnavailable,
+            enabled: !controller.busy,
+            divider: false,
+            onTap: () =>
+                controller.chooseFinalExit(context, widget.openFinalExit),
+          ),
+        ],
       ),
     );
   }
@@ -269,108 +233,154 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
     IconData icon,
     String key,
     bool value,
-  ) => SwitchListTile(
-    secondary: Icon(icon),
-    title: Text(title),
-    subtitle: Text(description),
-    value: value,
-    onChanged: controller.busy
-        ? null
-        : (value) => controller.update(key, value),
+  ) => RoutingSettingRow(
+    icon: icon,
+    title: title,
+    description: description,
+    enabled: !controller.busy,
+    trailing: Semantics(
+      label: title,
+      child: ShadSwitch(
+        value: value,
+        enabled: !controller.busy,
+        onChanged: controller.busy
+            ? null
+            : (value) => controller.update(key, value),
+      ),
+    ),
   );
 
   Widget _preview(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+    final palette = ColorManager.palette(context);
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return RoutingCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          RoutingCardHeader(
+            title: l.prototypeRoutingPreview,
+            description: l.prototypeRoutingPreviewHint,
+          ),
+          _result(
+            context,
+            l.prototypeDirect,
+            controller.directPreview(l),
+            palette.runningText,
+            palette.runningSurface,
+          ),
+          _result(
+            context,
+            'VPN',
+            controller.vpnPath(l),
+            palette.primary,
+            palette.selectedSurface,
+            hint: controller.effectiveEntryCount > 1
+                ? l.prototypeDistributedEntries(controller.effectiveEntryCount)
+                : null,
+          ),
+          _result(
+            context,
+            l.prototypeBlock,
+            controller.blockPreview(l),
+            palette.destructive,
+            palette.destructiveSurface,
+          ),
+          Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: palette.border),
+              borderRadius: BorderRadius.circular(AppRadii.control),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  l.prototypeRoutingPreview,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l.prototypeRoutingPreviewHint,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-                _result(context, l.prototypeDirect, 'direct'),
-                const Divider(height: 24),
-                Text(
-                  l.prototypeUseVpn,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 6),
-                Text(controller.vpnPath(l)),
-                Text(
-                  l.prototypeWhenNoRuleMatches,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (controller.effectiveEntryCount > 1)
-                  Text(
-                    l.prototypeDistributedEntries(
-                      controller.effectiveEntryCount,
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall,
+                  l.prototypeSmartRuleSummary(
+                    controller.rulesFor('direct').length,
                   ),
-                const Divider(height: 24),
-                _result(context, l.prototypeBlock, 'block'),
-                const SizedBox(height: 16),
+                  style: AppTypography.routingPreviewMeta.copyWith(
+                    color: palette.mutedForeground,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   l.prototypeRuleOrderMaintained,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: AppTypography.routingPreviewMeta.copyWith(
+                    color: palette.mutedForeground,
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        RouteChecker(configuration: controller.checkConfiguration),
-      ],
+          RouteChecker(configuration: controller.checkConfiguration),
+          SizedBox(height: mobile ? 8 : 12),
+        ],
+      ),
     );
   }
 
-  Widget _result(BuildContext context, String title, String action) {
-    final l = AppLocalizations.of(context)!;
-    final rules = controller.rulesFor(action);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleSmall),
+  Widget _result(
+    BuildContext context,
+    String title,
+    String description,
+    Color foreground,
+    Color background, {
+    String? hint,
+  }) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return Container(
+      constraints: BoxConstraints(minHeight: mobile ? 64 : 74),
+      margin: const EdgeInsetsDirectional.fromSTEB(12, 10, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppRadii.control),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: foreground,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.routingPreviewTitle.copyWith(
+                    color: foreground,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Text(
+            description,
+            style: AppTypography.routingPreviewBody.copyWith(color: foreground),
+          ),
+          if (hint != null) ...[
+            const SizedBox(height: 5),
             Text(
-              l.prototypeRuleCount(rules.length),
-              style: Theme.of(context).textTheme.bodySmall,
+              hint,
+              style: AppTypography.routingPreviewHint.copyWith(
+                color: foreground.withValues(alpha: .8),
+              ),
             ),
           ],
-        ),
-        if (rules.isEmpty) Text(l.prototypeNone),
-        for (final rule in rules)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(controller.ruleLabel(rule, l)),
-                SelectableText(
-                  controller.ruleValues(rule),
-                  textDirection: TextDirection.ltr,
-                  style: AppTypography.code,
-                ),
-              ],
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

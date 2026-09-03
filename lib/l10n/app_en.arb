@@ -3814,5 +3814,88 @@
   "prototypeSubscriptionShareAgeHint": "Includes the name and optional Age type, never an Age secret key. The receiving app creates its own keys.",
   "@prototypeSubscriptionShareAgeHint": {
     "description": "Approved prototype copy: Includes the name and optional Age type, never an Age secret key. The receiving app creates its own keys."
+  },
+  "prototypeCheckRules": "Check rules",
+  "@prototypeCheckRules": {
+    "description": "Approved prototype copy: Check rules"
+  },
+  "prototypeWebsiteOrIpAddress": "Website or IP address",
+  "@prototypeWebsiteOrIpAddress": {
+    "description": "Approved prototype copy: Website or IP address"
+  },
+  "prototypeCustomRouteCount": "{count} of 3 custom routes",
+  "@prototypeCustomRouteCount": {
+    "description": "Approved prototype copy: {count} of 3 custom routes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeAutomaticFollowsEachRule": "Automatic · follows each rule",
+  "@prototypeAutomaticFollowsEachRule": {
+    "description": "Approved prototype copy: Automatic · follows each rule"
+  },
+  "prototypeWebsiteSet": "Website set",
+  "@prototypeWebsiteSet": {
+    "description": "Approved prototype copy: Website set"
+  },
+  "prototypeIpSet": "IP set",
+  "@prototypeIpSet": {
+    "description": "Approved prototype copy: IP set"
+  },
+  "prototypeRulePosition": "Position {number}",
+  "@prototypeRulePosition": {
+    "description": "Approved prototype copy: Position {number}",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeEntryServer": "Entry server",
+  "@prototypeEntryServer": {
+    "description": "Approved prototype copy: Entry server"
+  },
+  "prototypeFinalExitSelectionNote": "The final exit determines the public location websites see and is excluded from automatic entry selection.",
+  "@prototypeFinalExitSelectionNote": {
+    "description": "Approved prototype copy: The final exit determines the public location websites see and is excluded from automatic entry selection."
+  },
+  "prototypeNoMatchingServers": "No servers match your search.",
+  "@prototypeNoMatchingServers": {
+    "description": "Approved prototype copy: No servers match your search."
+  },
+  "prototypeSearchServers": "Search servers",
+  "@prototypeSearchServers": {
+    "description": "Approved prototype copy: Search servers"
+  },
+  "prototypeLocalNetworkPrivateAddresses": "Local network and private addresses",
+  "@prototypeLocalNetworkPrivateAddresses": {
+    "description": "Approved prototype copy: Local network and private addresses"
+  },
+  "prototypeAppleServices": "Apple services",
+  "@prototypeAppleServices": {
+    "description": "Approved prototype copy: Apple services"
+  },
+  "prototypeSmartRuleSummary": "Current: {count} direct rules · 1 VPN default rule",
+  "@prototypeSmartRuleSummary": {
+    "description": "Approved prototype copy: Current: {count} direct rules · 1 VPN default rule",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prototypeOtherTraffic": "Other traffic",
+  "@prototypeOtherTraffic": {
+    "description": "Approved prototype copy: Other traffic"
+  },
+  "prototypeRuleCheckPrivacy": "The check runs locally and is never saved or uploaded.",
+  "@prototypeRuleCheckPrivacy": {
+    "description": "Approved prototype copy: The check runs locally and is never saved or uploaded."
+  },
+  "prototypeRuleCheckScope": "Checks website, IP, port, and network conditions only.",
+  "@prototypeRuleCheckScope": {
+    "description": "Approved prototype copy: Checks website, IP, port, and network conditions only."
   }
 }

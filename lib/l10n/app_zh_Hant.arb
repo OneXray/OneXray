@@ -1379,5 +1379,22 @@
   "prototypeLinkFormat": "連結格式",
   "prototypeOriginalLink": "原始連結",
   "prototypeServerShareLink": "伺服器分享連結",
-  "prototypeSubscriptionShareAgeHint": "包含名稱和選用的 Age 類型，不包含 Age 私鑰。接收端產生自己的金鑰。"
+  "prototypeSubscriptionShareAgeHint": "包含名稱和選用的 Age 類型，不包含 Age 私鑰。接收端產生自己的金鑰。",
+  "prototypeCheckRules": "檢查規則",
+  "prototypeWebsiteOrIpAddress": "網站或 IP 位址",
+  "prototypeCustomRouteCount": "已使用 {count}/3 個自訂路由",
+  "prototypeAutomaticFollowsEachRule": "自動 · 依照每條規則",
+  "prototypeWebsiteSet": "網站集合",
+  "prototypeIpSet": "IP 集合",
+  "prototypeRulePosition": "第 {number} 位",
+  "prototypeEntryServer": "接入節點",
+  "prototypeFinalExitSelectionNote": "最終出口決定網站看到的公網位置，並會自動排除在接入節點候選之外。",
+  "prototypeNoMatchingServers": "沒有符合搜尋條件的伺服器。",
+  "prototypeSearchServers": "搜尋伺服器",
+  "prototypeLocalNetworkPrivateAddresses": "區域網路與私有位址",
+  "prototypeAppleServices": "Apple 服務",
+  "prototypeSmartRuleSummary": "目前：{count} 條直連規則 · 1 條 VPN 預設規則",
+  "prototypeOtherTraffic": "其他流量",
+  "prototypeRuleCheckPrivacy": "檢查在本機完成，不會儲存或上傳輸入內容。",
+  "prototypeRuleCheckScope": "僅檢查網站、IP、連接埠和網路類型條件。"
 }

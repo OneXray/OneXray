@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/routing/checker.dart';
 import 'package:onexray/service/routing/custom_template.dart';
@@ -20,13 +23,14 @@ class RouteChecker extends StatefulWidget {
 }
 
 class _RouteCheckerState extends State<RouteChecker> {
-  final target = TextEditingController();
+  final target = TextEditingController(text: 'github.com');
   final port = TextEditingController(text: '443');
   String network = 'tcp';
   RouteCheckOutcome? result;
   bool busy = false;
   bool failed = false;
   int revision = 0;
+  bool expanded = false;
 
   void reset() {
     revision++;
@@ -80,6 +84,7 @@ class _RouteCheckerState extends State<RouteChecker> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
     final current = result;
     final vpn =
         current != null &&
@@ -92,99 +97,256 @@ class _RouteCheckerState extends State<RouteChecker> {
       final name? => name,
       null => l.prototypeNoneDefault,
     };
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l.prototypeCheckWebsite,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: target,
-              textDirection: TextDirection.ltr,
-              decoration: InputDecoration(
-                labelText: l.prototypeDomain,
-                hintText: 'github.com',
-              ),
-              onChanged: (_) => setState(reset),
-              onSubmitted: (_) => check(),
-            ),
-            if (widget.customDraft != null) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: port,
-                keyboardType: TextInputType.number,
-                textDirection: TextDirection.ltr,
-                decoration: InputDecoration(labelText: l.prototypeTargetPort),
-                onChanged: (_) => setState(reset),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: network,
-                decoration: InputDecoration(labelText: l.prototypeNetworkType),
-                items: [
-                  for (final value in ['tcp', 'udp'])
-                    DropdownMenuItem(
-                      value: value,
-                      child: Text(value.toUpperCase()),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      network = value;
-                      reset();
-                    });
-                  }
-                },
-              ),
-            ],
-            const SizedBox(height: 12),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: OutlinedButton(
-                onPressed: busy || target.text.trim().isEmpty ? null : check,
-                child: Text(busy ? l.prototypePleaseWait : l.prototypeCheck),
-              ),
-            ),
-            if (failed)
-              Text(
-                l.prototypeCheckNetwork,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            if (current != null)
-              Semantics(
-                liveRegion: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: palette.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            expanded: expanded,
+            child: InkWell(
+              onTap: () => setState(() => expanded = !expanded),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 56),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      vpn
-                          ? l.prototypeUseVpn
-                          : current.route.outboundTag == 'direct'
-                          ? l.prototypeDirect
-                          : l.prototypeBlock,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Icon(LucideIcons.globe, size: 18, color: palette.primary),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.customDraft == null
+                                ? l.prototypeCheckWebsite
+                                : l.prototypeCheckRules,
+                            style: AppTypography.routingSelectionTitle,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            l.prototypeRuleCheckPrivacy,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.routingSelectionDescription
+                                .copyWith(color: palette.mutedForeground),
+                          ),
+                        ],
+                      ),
                     ),
-                    if (vpn)
-                      Text(current.path, textDirection: TextDirection.ltr),
-                    Text('${l.prototypeMatchedRule}: $reason'),
-                    Text(
-                      'DNS: ${current.dnsDirect == null
-                          ? '—'
-                          : current.dnsDirect!
-                          ? l.prototypeDirect
-                          : l.prototypeUseVpn}',
+                    const SizedBox(width: 11),
+                    Icon(
+                      expanded
+                          ? LucideIcons.chevronDown
+                          : LucideIcons.chevronRight,
+                      size: 18,
+                      color: palette.mutedForeground,
                     ),
                   ],
                 ),
               ),
-          ],
-        ),
+            ),
+          ),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(13, 0, 13, 13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 42,
+                          child: TextField(
+                            controller: target,
+                            textDirection: TextDirection.ltr,
+                            style: AppTypography.routingConditionInput,
+                            decoration: InputDecoration(
+                              hintText: l.prototypeWebsiteOrIpAddress,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                            ),
+                            onChanged: (_) => setState(reset),
+                            onSubmitted: (_) => check(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 42),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          textStyle: AppTypography.configurationTool,
+                        ),
+                        onPressed: busy || target.text.trim().isEmpty
+                            ? null
+                            : check,
+                        child: Text(
+                          busy ? l.prototypePleaseWait : l.prototypeCheck,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (widget.customDraft != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l.prototypeTargetPort,
+                                style: AppTypography.routeIdentityLabel
+                                    .copyWith(color: palette.mutedStrong),
+                              ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                height: 42,
+                                child: TextField(
+                                  controller: port,
+                                  keyboardType: TextInputType.number,
+                                  textDirection: TextDirection.ltr,
+                                  style: AppTypography.routingConditionInput,
+                                  decoration: const InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                  ),
+                                  onChanged: (_) => setState(reset),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l.prototypeNetworkType,
+                                style: AppTypography.routeIdentityLabel
+                                    .copyWith(color: palette.mutedStrong),
+                              ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                height: 42,
+                                child: DropdownButtonFormField<String>(
+                                  initialValue: network,
+                                  style: AppTypography.routingConditionInput
+                                      .copyWith(color: palette.foreground),
+                                  decoration: const InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                  ),
+                                  items: [
+                                    for (final value in ['tcp', 'udp'])
+                                      DropdownMenuItem(
+                                        value: value,
+                                        child: Text(value.toUpperCase()),
+                                      ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() {
+                                        network = value;
+                                        reset();
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      l.prototypeRuleCheckScope,
+                      style: AppTypography.routingRowDescription.copyWith(
+                        color: palette.mutedForeground,
+                      ),
+                    ),
+                  ],
+                  if (failed)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 9),
+                      child: Text(
+                        l.prototypeCheckNetwork,
+                        style: AppTypography.routingRowDescription.copyWith(
+                          color: palette.destructive,
+                        ),
+                      ),
+                    ),
+                  if (current != null)
+                    Semantics(
+                      liveRegion: true,
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 9),
+                        padding: const EdgeInsets.all(11),
+                        decoration: BoxDecoration(
+                          color: palette.muted,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: DefaultTextStyle(
+                          style: AppTypography.routingRowDescription.copyWith(
+                            color: palette.mutedForeground,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                vpn
+                                    ? l.prototypeUseVpn
+                                    : current.route.outboundTag == 'direct'
+                                    ? l.prototypeDirect
+                                    : l.prototypeBlock,
+                                style: AppTypography.routingSelectionTitle
+                                    .copyWith(
+                                      color: vpn
+                                          ? palette.primary
+                                          : current.route.outboundTag ==
+                                                'direct'
+                                          ? palette.running
+                                          : palette.destructive,
+                                    ),
+                              ),
+                              const SizedBox(height: 5),
+                              if (vpn)
+                                Text(
+                                  current.path,
+                                  textDirection: TextDirection.ltr,
+                                ),
+                              Text('${l.prototypeMatchedRule}: $reason'),
+                              const SizedBox(height: 5),
+                              Text(
+                                'DNS: ${current.dnsDirect == null
+                                    ? '—'
+                                    : current.dnsDirect!
+                                    ? l.prototypeDirect
+                                    : l.prototypeUseVpn}',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

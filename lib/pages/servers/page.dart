@@ -9,9 +9,8 @@ import 'package:onexray/pages/widget/page_title.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 
 class ServersPage extends StatefulWidget {
-  const ServersPage({super.key, this.picker = false, this.exitPicker});
+  const ServersPage({super.key, this.picker = false});
   final bool picker;
-  final ServerExitPickerParams? exitPicker;
   @override
   State<ServersPage> createState() => _ServersPageState();
 }
@@ -41,16 +40,13 @@ class _ServersPageState extends State<ServersPage> {
       final l = AppLocalizations.of(context)!;
       final mobileRoot =
           !widget.picker &&
-          widget.exitPicker == null &&
           MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
       return Scaffold(
         appBar: AppBar(
           title: mobileRoot
               ? PageTitle(l.prototypeServers)
               : Text(
-                  widget.exitPicker != null
-                      ? l.prototypeChooseFinalExit
-                      : widget.picker
+                  widget.picker
                       ? l.prototypeConnectionLocation
                       : l.prototypeServers,
                 ),
@@ -88,7 +84,6 @@ class _ServersPageState extends State<ServersPage> {
                 controller: controller,
                 scroll: scroll,
                 picker: widget.picker,
-                exitPicker: widget.exitPicker,
               ),
             ),
           ),
@@ -124,7 +119,6 @@ class ServerGroupPage extends StatelessWidget {
                       group: group,
                       picker: params.picker,
                       groupPage: true,
-                      exitPicker: params.exitPicker,
                     ),
             ),
           ),

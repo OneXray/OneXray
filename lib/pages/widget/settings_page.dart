@@ -508,21 +508,11 @@ class SettingsSectionNavigationItem<T extends Object> {
 class SettingsJsonEditor extends StatefulWidget {
   final TextEditingController controller;
   final int lineCount;
-  final bool valid;
-  final String validLabel;
-  final String invalidLabel;
-  final String linesLabel;
-  final String spacesLabel;
 
   const SettingsJsonEditor({
     super.key,
     required this.controller,
     required this.lineCount,
-    required this.valid,
-    required this.validLabel,
-    required this.invalidLabel,
-    required this.linesLabel,
-    required this.spacesLabel,
   });
 
   @override
@@ -561,52 +551,68 @@ class _SettingsJsonEditorState extends State<SettingsJsonEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return _SettingsJsonEditorFrame(
-      valid: widget.valid,
-      validLabel: widget.validLabel,
-      invalidLabel: widget.invalidLabel,
-      linesLabel: widget.linesLabel,
-      spacesLabel: widget.spacesLabel,
-      editor: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            width: 45,
-            color: ColorManager.tagBackground(context).withValues(alpha: 0.45),
-            child: SingleChildScrollView(
-              controller: _lineScrollController,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsetsDirectional.fromSTEB(7, 13, 7, 24),
-              child: Text(
-                List.generate(
-                  widget.lineCount,
-                  (index) => index + 1,
-                ).join("\n"),
-                textAlign: TextAlign.end,
-                style: AppTypography.code.copyWith(
-                  color: ColorManager.secondaryText(context),
+    final palette = ColorManager.palette(context);
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: palette.muted,
+          border: Border.all(color: palette.border),
+          borderRadius: BorderRadius.circular(AppRadii.card),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 47,
+              color: Color.lerp(palette.card, palette.surfaceHover, .76),
+              child: SingleChildScrollView(
+                controller: _lineScrollController,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 14,
+                ),
+                child: Text(
+                  List.generate(
+                    math.max(16, widget.lineCount),
+                    (index) => index + 1,
+                  ).join("\n"),
+                  textAlign: TextAlign.start,
+                  style: AppTypography.code.copyWith(
+                    color: ColorManager.secondaryText(context),
+                  ),
                 ),
               ),
             ),
-          ),
-          VerticalDivider(width: 1, color: ColorManager.border(context)),
-          Expanded(
-            child: TextField(
-              controller: widget.controller,
-              scrollController: _editorScrollController,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsetsDirectional.fromSTEB(13, 13, 16, 24),
+            VerticalDivider(width: 1, color: ColorManager.border(context)),
+            Expanded(
+              child: TextField(
+                controller: widget.controller,
+                scrollController: _editorScrollController,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  filled: false,
+                  contentPadding: EdgeInsets.all(14),
+                ),
+                keyboardType: TextInputType.multiline,
+                autocorrect: false,
+                enableSuggestions: false,
+                style: AppTypography.code,
+                minLines: null,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
               ),
-              keyboardType: TextInputType.multiline,
-              style: AppTypography.code,
-              minLines: null,
-              maxLines: null,
-              expands: true,
-              textAlignVertical: TextAlignVertical.top,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

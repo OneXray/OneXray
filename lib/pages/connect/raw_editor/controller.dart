@@ -19,7 +19,8 @@ class RawEditorController extends ChangeNotifier {
     RawEditorService? service,
   }) : service = service ?? RawEditorService() {
     text.addListener(_changed);
-    transfers.addListener(_notify);
+    name.addListener(_notify);
+    transfers.addListener(_transferChanged);
   }
   final name = TextEditingController();
   final text = TextEditingController();
@@ -28,13 +29,17 @@ class RawEditorController extends ChangeNotifier {
   String? error;
   bool _disposed = false;
   RawTestResult? testResult;
+  int? sharingDataCount;
+  int _textRevision = 0;
   late final transfers = ConfigurationTransferController(
     kind: ConfigurationKind.raw,
     readText: () => text.text,
     readName: () => name.text,
     onImport: (draft) {
       text.text = draft.text;
-      if (draft.name.isNotEmpty) name.text = draft.name;
+      if (name.text.trim().isEmpty && draft.name.isNotEmpty) {
+        name.text = draft.name;
+      }
       error = null;
     },
   );
@@ -42,18 +47,35 @@ class RawEditorController extends ChangeNotifier {
   bool get working => busy || transfers.busy;
 
   bool get loaded => _draft != null;
+  bool get canTest => !working && loaded && text.text.trim().isNotEmpty;
+  bool get canSave => canTest && name.text.trim().isNotEmpty;
   int get lineCount => '\n'.allMatches(text.text).length + 1;
-  bool get validJson {
-    try {
-      return jsonDecode(text.text) is Map;
-    } catch (_) {
-      return false;
-    }
-  }
-
   void _changed() {
     testResult = null;
+    _updateSharingDataCount();
     _notify();
+  }
+
+  void _transferChanged() {
+    _updateSharingDataCount();
+    _notify();
+  }
+
+  Future<void> _updateSharingDataCount() async {
+    final revision = ++_textRevision;
+    sharingDataCount = null;
+    try {
+      final count = await transfers.service.sharingDataCount(
+        text.text,
+        pending: transfers.pending,
+      );
+      if (!_disposed && revision == _textRevision) {
+        sharingDataCount = count;
+        _notify();
+      }
+    } catch (_) {
+      // Invalid or unresolved drafts cannot promise data links in a share.
+    }
   }
 
   void _notify() {
@@ -100,7 +122,7 @@ class RawEditorController extends ChangeNotifier {
   );
 
   Future<void> test(BuildContext context) async {
-    if (working || !loaded) return;
+    if (!canTest) return;
     busy = true;
     error = null;
     testResult = null;
@@ -118,7 +140,7 @@ class RawEditorController extends ChangeNotifier {
   }
 
   Future<void> save(BuildContext context) async {
-    if (working || !loaded) return;
+    if (!canSave) return;
     busy = true;
     error = null;
     _changed();

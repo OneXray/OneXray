@@ -76,19 +76,23 @@ class SmartRoutingEditorController extends ChangeNotifier {
           original!.regions,
         ).where((rule) => rule['outboundTag'] == action).toList();
 
-  String ruleLabel(Map<String, dynamic> rule, AppLocalizations l) =>
-      switch (rule['ruleTag']) {
-        'app-smart-private-domain' ||
-        'app-smart-private-ip' => l.prototypeDirectPrivateAddresses,
-        'app-smart-apple' => l.prototypeDirectAppleServices,
-        'app-smart-regions-domain' ||
-        'app-smart-regions-ip' => l.prototypeDirectRegions,
-        'app-smart-ads' => l.prototypeBlockAdDomains,
-        _ => '',
-      };
+  String directPreview(AppLocalizations l) {
+    final tags = rulesFor('direct').map((rule) => rule['ruleTag']).toSet();
+    final regions = original?.regions.regionCodes ?? const <String>[];
+    final labels = <String>{
+      if (tags.contains('app-smart-private-domain') ||
+          tags.contains('app-smart-private-ip'))
+        l.prototypeLocalNetworkPrivateAddresses,
+      if (tags.contains('app-smart-apple')) l.prototypeAppleServices,
+      for (final code in draft.directRegions)
+        if (regions.contains(code.toUpperCase()))
+          setupRegionLabel(l, code.toUpperCase()),
+    };
+    return labels.isEmpty ? l.prototypeNone : labels.join(' / ');
+  }
 
-  String ruleValues(Map<String, dynamic> rule) =>
-      ((rule['domain'] ?? rule['ip']) as List).join(' · ');
+  String blockPreview(AppLocalizations l) =>
+      rulesFor('block').isEmpty ? l.prototypeNone : l.prototypeCommonAdDomains;
 
   String regionsSummary(AppLocalizations l) {
     final names = draft.directRegions

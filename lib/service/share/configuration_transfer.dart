@@ -214,6 +214,14 @@ class ConfigurationTransferService {
     return links.join('\n');
   }
 
+  Future<int> sharingDataCount(
+    String text, {
+    GeoDataImportDraft? pending,
+  }) async => (await _dependencies(
+    jsonDecode(text) as Map<String, dynamic>,
+    pending,
+  )).length;
+
   Future<List<GeoDataInput>> _dependencies(
     Map<String, dynamic> json,
     GeoDataImportDraft? pending,

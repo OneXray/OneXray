@@ -1379,5 +1379,22 @@
     "prototypeLinkFormat": "قالب پیوند",
     "prototypeOriginalLink": "پیوند اصلی",
     "prototypeServerShareLink": "پیوند اشتراک‌گذاری سرور",
-    "prototypeSubscriptionShareAgeHint": "شامل نام و نوع اختیاری Age است، اما هرگز کلید محرمانهٔ Age را شامل نمی‌شود. برنامهٔ دریافت‌کننده کلیدهای خودش را می‌سازد."
+    "prototypeSubscriptionShareAgeHint": "شامل نام و نوع اختیاری Age است، اما هرگز کلید محرمانهٔ Age را شامل نمی‌شود. برنامهٔ دریافت‌کننده کلیدهای خودش را می‌سازد.",
+    "prototypeCheckRules": "بررسی قوانین",
+    "prototypeWebsiteOrIpAddress": "وب‌سایت یا نشانی IP",
+    "prototypeCustomRouteCount": "{count} از ۳ طرح مسیریابی سفارشی",
+    "prototypeAutomaticFollowsEachRule": "خودکار · تابع هر قانون",
+    "prototypeWebsiteSet": "مجموعهٔ وب‌سایت‌ها",
+    "prototypeIpSet": "مجموعهٔ IPها",
+    "prototypeRulePosition": "جایگاه {number}",
+    "prototypeEntryServer": "سرور ورودی",
+    "prototypeFinalExitSelectionNote": "خروجی نهایی، مکان عمومی‌ای را که وب‌سایت‌ها می‌بینند تعیین می‌کند و از انتخاب خودکار ورودی کنار گذاشته می‌شود.",
+    "prototypeNoMatchingServers": "هیچ سروری با جست‌وجوی شما مطابقت ندارد.",
+    "prototypeSearchServers": "جست‌وجوی سرورها",
+    "prototypeLocalNetworkPrivateAddresses": "شبکهٔ محلی و نشانی‌های خصوصی",
+    "prototypeAppleServices": "خدمات Apple",
+    "prototypeSmartRuleSummary": "فعلی: {count} قانون مستقیم · ۱ قانون پیش‌فرض VPN",
+    "prototypeOtherTraffic": "سایر ترافیک",
+    "prototypeRuleCheckPrivacy": "بررسی به‌صورت محلی انجام می‌شود و هرگز ذخیره یا بارگذاری نمی‌شود.",
+    "prototypeRuleCheckScope": "فقط شرایط وب‌سایت، IP، درگاه و نوع شبکه را بررسی می‌کند."
 }

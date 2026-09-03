@@ -13,13 +13,11 @@ class ServerBrowser extends StatelessWidget {
   final ServersController controller;
   final ScrollController scroll;
   final bool picker;
-  final ServerExitPickerParams? exitPicker;
   const ServerBrowser({
     super.key,
     required this.controller,
     required this.scroll,
     this.picker = false,
-    this.exitPicker,
   });
 
   @override
@@ -30,9 +28,7 @@ class ServerBrowser extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final mobile = constraints.maxWidth < 840;
-        if (constraints.maxWidth <= AppLayout.mobileBreakpoint &&
-            !picker &&
-            exitPicker == null) {
+        if (constraints.maxWidth <= AppLayout.mobileBreakpoint && !picker) {
           return _mobileBrowser(context, groups, favorites);
         }
         final selectedGroup =
@@ -44,39 +40,23 @@ class ServerBrowser extends StatelessWidget {
           controller: scroll,
           padding: const EdgeInsets.all(16),
           children: [
-            if (exitPicker != null)
-              ListTile(
-                leading: const Icon(LucideIcons.circleSlash),
-                title: Text(l.prototypeNoAdditionalExit),
-                subtitle: Text(l.prototypeEntryConnectsDirectly),
-                selected: exitPicker!.selectedId == null,
-                onTap: () => controller.chooseExit(context, null),
-              )
-            else
-              ListTile(
-                leading: const Icon(LucideIcons.sparkles),
-                title: Text(l.prototypeAutomaticRecommended),
-                subtitle: Text(l.prototypeChooseBySpeedAvailability),
-                selected: controller.selected(
-                  const ServerSelection.automatic(),
-                ),
-                onTap: controller.busy
-                    ? null
-                    : () => controller.choose(
-                        context,
-                        const ServerSelection.automatic(),
-                        picker: picker,
-                      ),
-              ),
+            ListTile(
+              leading: const Icon(LucideIcons.sparkles),
+              title: Text(l.prototypeAutomaticRecommended),
+              subtitle: Text(l.prototypeChooseBySpeedAvailability),
+              selected: controller.selected(const ServerSelection.automatic()),
+              onTap: controller.busy
+                  ? null
+                  : () => controller.choose(
+                      context,
+                      const ServerSelection.automatic(),
+                      picker: picker,
+                    ),
+            ),
             if (favorites.isNotEmpty) ...[
               ServerSectionTitle(l.prototypeFavorites),
               for (final row in favorites)
-                ServerNodeRow(
-                  controller: controller,
-                  row: row,
-                  picker: picker,
-                  exitPicker: exitPicker,
-                ),
+                ServerNodeRow(controller: controller, row: row, picker: picker),
               const SizedBox(height: 16),
             ],
             if (controller.servers.isEmpty) ...[
@@ -136,19 +116,17 @@ class ServerBrowser extends StatelessWidget {
                           group,
                           mobile: mobile,
                           picker: picker,
-                          exitPicker: exitPicker,
                         ),
                       ),
                       Wrap(
                         alignment: WrapAlignment.end,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          if (exitPicker == null)
-                            ServerUseButton(
-                              controller: controller,
-                              group: group,
-                              picker: picker,
-                            ),
+                          ServerUseButton(
+                            controller: controller,
+                            group: group,
+                            picker: picker,
+                          ),
                           if (group.source != null)
                             SourceMenu(
                               controller: controller,
@@ -237,7 +215,6 @@ class ServerBrowser extends StatelessWidget {
                                   controller: controller,
                                   group: selectedGroup,
                                   picker: picker,
-                                  exitPicker: exitPicker,
                                 ),
                         ),
                       ],
@@ -686,14 +663,12 @@ class ServerGroupView extends StatelessWidget {
   final ServerGroup group;
   final bool picker;
   final bool groupPage;
-  final ServerExitPickerParams? exitPicker;
   const ServerGroupView({
     super.key,
     required this.controller,
     required this.group,
     this.picker = false,
     this.groupPage = false,
-    this.exitPicker,
   });
 
   @override
@@ -725,13 +700,12 @@ class ServerGroupView extends StatelessWidget {
               icon: const Icon(LucideIcons.gauge),
               label: Text(l.prototypeTestServers),
             ),
-            if (exitPicker == null)
-              ServerUseButton(
-                controller: controller,
-                group: group,
-                picker: picker,
-                groupPage: groupPage,
-              ),
+            ServerUseButton(
+              controller: controller,
+              group: group,
+              picker: picker,
+              groupPage: groupPage,
+            ),
             if (group.source != null)
               SourceMenu(controller: controller, source: group.source!),
           ],
@@ -748,7 +722,6 @@ class ServerGroupView extends StatelessWidget {
             row: row,
             picker: picker,
             groupPage: groupPage,
-            exitPicker: exitPicker,
           ),
       ],
     );
@@ -861,13 +834,12 @@ class ServerGroupView extends StatelessWidget {
                               ],
                             ),
                           ),
-                          if (exitPicker == null)
-                            ServerUseButton(
-                              controller: controller,
-                              group: group,
-                              picker: picker,
-                              groupPage: groupPage,
-                            ),
+                          ServerUseButton(
+                            controller: controller,
+                            group: group,
+                            picker: picker,
+                            groupPage: groupPage,
+                          ),
                           if (group.source != null)
                             SizedBox(
                               width: 36,
@@ -901,7 +873,6 @@ class ServerGroupView extends StatelessWidget {
                     row: row,
                     picker: picker,
                     groupPage: groupPage,
-                    exitPicker: exitPicker,
                     detail: group.country != null
                         ? controller.sourceName(l, row)
                         : controller.countryName(l, row.countryCode),
@@ -1057,7 +1028,6 @@ class ServerNodeRow extends StatelessWidget {
   final CoreConfigData row;
   final bool picker;
   final bool groupPage;
-  final ServerExitPickerParams? exitPicker;
   final String? detail;
   final bool showDivider;
   const ServerNodeRow({
@@ -1066,7 +1036,6 @@ class ServerNodeRow extends StatelessWidget {
     required this.row,
     this.picker = false,
     this.groupPage = false,
-    this.exitPicker,
     this.detail,
     this.showDivider = true,
   });
@@ -1075,8 +1044,8 @@ class ServerNodeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final running = controller.runningEntries.contains(row.id);
-    final chosen = controller.chosen(row, exitPicker: exitPicker);
-    final enabled = controller.canChoose(row, exitPicker: exitPicker);
+    final chosen = controller.chosen(row);
+    final enabled = controller.canChoose(row);
     final colors = Theme.of(context).colorScheme;
     final protocol = controller.protocol(row);
     if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
@@ -1110,7 +1079,6 @@ class ServerNodeRow extends StatelessWidget {
                         row,
                         picker: picker,
                         groupPage: groupPage,
-                        exitPicker: exitPicker,
                       ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -1157,7 +1125,7 @@ class ServerNodeRow extends StatelessWidget {
                               : colors.onSurfaceVariant,
                         ),
                       ),
-                      if (controller.exitConflict(row, exitPicker: exitPicker))
+                      if (controller.exitConflict(row))
                         Text(
                           l.prototypeFinalExitEntryConflict,
                           style: Theme.of(context).textTheme.bodySmall,
@@ -1199,7 +1167,7 @@ class ServerNodeRow extends StatelessWidget {
   }) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
-    final conflict = controller.exitConflict(row, exitPicker: exitPicker);
+    final conflict = controller.exitConflict(row);
     final rowDetail = detail ?? controller.countryName(l, row.countryCode);
     return Container(
       foregroundDecoration: running
@@ -1260,7 +1228,6 @@ class ServerNodeRow extends StatelessWidget {
                                     row,
                                     picker: picker,
                                     groupPage: groupPage,
-                                    exitPicker: exitPicker,
                                   )
                                 : () =>
                                       ServerMenu.open(context, controller, row),

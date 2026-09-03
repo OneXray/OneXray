@@ -35,15 +35,7 @@ void main() {
           child: Directionality(
             textDirection: TextDirection.rtl,
             child: Scaffold(
-              body: SettingsJsonEditor(
-                controller: controller,
-                lineCount: 3,
-                valid: true,
-                validLabel: 'valid',
-                invalidLabel: 'invalid',
-                linesLabel: '3',
-                spacesLabel: '2',
-              ),
+              body: SettingsJsonEditor(controller: controller, lineCount: 3),
             ),
           ),
         ),

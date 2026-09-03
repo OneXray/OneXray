@@ -1379,5 +1379,22 @@
   "prototypeLinkFormat": "Формат ссылки",
   "prototypeOriginalLink": "Исходная ссылка",
   "prototypeServerShareLink": "Ссылка на сервер",
-  "prototypeSubscriptionShareAgeHint": "Содержит название и при необходимости тип Age, но не закрытый ключ. Получающее приложение создаёт собственные ключи."
+  "prototypeSubscriptionShareAgeHint": "Содержит название и при необходимости тип Age, но не закрытый ключ. Получающее приложение создаёт собственные ключи.",
+  "prototypeCheckRules": "Проверить правила",
+  "prototypeWebsiteOrIpAddress": "Сайт или IP-адрес",
+  "prototypeCustomRouteCount": "Маршрутов: {count} из 3",
+  "prototypeAutomaticFollowsEachRule": "Автоматически · по каждому правилу",
+  "prototypeWebsiteSet": "Набор сайтов",
+  "prototypeIpSet": "Набор IP",
+  "prototypeRulePosition": "Позиция {number}",
+  "prototypeEntryServer": "Входной узел",
+  "prototypeFinalExitSelectionNote": "Конечный выход определяет расположение, которое видят сайты, и исключается из автовыбора входных узлов.",
+  "prototypeNoMatchingServers": "Серверы не найдены.",
+  "prototypeSearchServers": "Поиск серверов",
+  "prototypeLocalNetworkPrivateAddresses": "Локальная сеть и частные адреса",
+  "prototypeAppleServices": "Службы Apple",
+  "prototypeSmartRuleSummary": "Сейчас: прямых правил — {count} · 1 правило VPN по умолчанию",
+  "prototypeOtherTraffic": "Остальной трафик",
+  "prototypeRuleCheckPrivacy": "Проверка выполняется локально, её результат не сохраняется и не отправляется.",
+  "prototypeRuleCheckScope": "Проверяются только условия сайта, IP, порта и типа сети."
 }

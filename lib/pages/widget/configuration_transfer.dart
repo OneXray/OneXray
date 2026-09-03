@@ -7,6 +7,7 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
@@ -17,6 +18,7 @@ class ConfigurationTransferController extends ChangeNotifier {
   final ConfigurationKind kind;
   final String Function() readText;
   final String Function() readName;
+  final bool Function()? hasContent;
   final void Function(ConfigurationImportDraft) onImport;
   final ConfigurationTransferService service;
   ConfigurationImportDraft? _draft;
@@ -29,6 +31,7 @@ class ConfigurationTransferController extends ChangeNotifier {
     required this.readText,
     required this.readName,
     required this.onImport,
+    this.hasContent,
     ConfigurationTransferService? service,
   }) : service = service ?? ConfigurationTransferService();
 
@@ -48,7 +51,7 @@ class ConfigurationTransferController extends ChangeNotifier {
       if (input == null || !context.mounted || _disposed) return;
       // Parse before asking to replace anything, and download only after consent.
       ConfigurationTransferService.read(input, kind);
-      if (readText().trim().isNotEmpty &&
+      if ((hasContent?.call() ?? readText().trim().isNotEmpty) &&
           !await ContextAlert.showConfirmDialog(
             context,
             title: kind == ConfigurationKind.raw
@@ -195,40 +198,53 @@ class ConfigurationTransferTools extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: busy
-                    ? null
-                    : () => controller.import(context, clipboard: false),
-                icon: const Icon(LucideIcons.fileInput, size: 16),
-                label: Text(l10n.prototypeImportFile),
+          OutlinedButtonTheme(
+            data: OutlinedButtonThemeData(
+              style: Theme.of(context).outlinedButtonTheme.style?.copyWith(
+                minimumSize: const WidgetStatePropertyAll(Size(0, 36)),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 10),
+                ),
+                textStyle: WidgetStatePropertyAll(
+                  AppTypography.configurationTool,
+                ),
               ),
-              OutlinedButton.icon(
-                onPressed: busy
-                    ? null
-                    : () => controller.import(context, clipboard: true),
-                icon: const Icon(LucideIcons.clipboardPaste, size: 16),
-                label: Text(l10n.prototypeReadClipboard),
-              ),
-              OutlinedButton.icon(
-                onPressed: busy || empty
-                    ? null
-                    : () => controller.export(context, share: false),
-                icon: const Icon(LucideIcons.fileOutput, size: 16),
-                label: Text(l10n.prototypeExportJson),
-              ),
-              OutlinedButton.icon(
-                onPressed: busy || empty
-                    ? null
-                    : () => controller.export(context, share: true),
-                icon: const Icon(LucideIcons.share2, size: 16),
-                label: Text(l10n.prototypeShare),
-              ),
-              ...children,
-            ],
+            ),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () => controller.import(context, clipboard: false),
+                  icon: const Icon(LucideIcons.upload, size: 16),
+                  label: Text(l10n.prototypeImportFile),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () => controller.import(context, clipboard: true),
+                  icon: const Icon(LucideIcons.clipboard, size: 16),
+                  label: Text(l10n.prototypeReadClipboard),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy || empty
+                      ? null
+                      : () => controller.export(context, share: false),
+                  icon: const Icon(LucideIcons.download, size: 16),
+                  label: Text(l10n.prototypeExportJson),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy || empty
+                      ? null
+                      : () => controller.export(context, share: true),
+                  icon: const Icon(LucideIcons.share2, size: 16),
+                  label: Text(l10n.prototypeShare),
+                ),
+                ...children,
+              ],
+            ),
           ),
           if (controller.notice != null)
             Padding(

@@ -39,13 +39,7 @@ class ServerGroupParams {
   final ServersController controller;
   final String groupId;
   final bool picker;
-  final ServerExitPickerParams? exitPicker;
-  const ServerGroupParams(
-    this.controller,
-    this.groupId, {
-    this.picker = false,
-    this.exitPicker,
-  });
+  const ServerGroupParams(this.controller, this.groupId, {this.picker = false});
 }
 
 class ServerGroup {
@@ -345,16 +339,11 @@ class ServersController extends ConnectController {
                 configuration.connection.smart.finalExitId == row.id)
           : !exitPicker.excludedIds.contains(row.id));
 
-  bool exitConflict(CoreConfigData row, {ServerExitPickerParams? exitPicker}) =>
-      exitPicker != null
-      ? exitPicker.excludedIds.contains(row.id)
-      : configuration.connection.trafficMode == TrafficMode.smart &&
-            configuration.connection.smart.finalExitId == row.id;
+  bool exitConflict(CoreConfigData row) =>
+      configuration.connection.trafficMode == TrafficMode.smart &&
+      configuration.connection.smart.finalExitId == row.id;
 
-  bool chosen(CoreConfigData row, {ServerExitPickerParams? exitPicker}) =>
-      exitPicker == null
-      ? selected(ServerSelection.server(row.id))
-      : exitPicker.selectedId == row.id;
+  bool chosen(CoreConfigData row) => selected(ServerSelection.server(row.id));
 
   String protocol(CoreConfigData row) => ServerAssetService.protocolLabel(row);
 
@@ -363,19 +352,14 @@ class ServersController extends ConnectController {
     CoreConfigData row, {
     bool picker = false,
     bool groupPage = false,
-    ServerExitPickerParams? exitPicker,
   }) {
-    if (!canChoose(row, exitPicker: exitPicker)) return;
-    if (exitPicker != null) {
-      chooseExit(context, row.id);
-    } else {
-      choose(
-        context,
-        ServerSelection.server(row.id),
-        picker: picker,
-        groupPage: groupPage,
-      );
-    }
+    if (!canChoose(row)) return;
+    choose(
+      context,
+      ServerSelection.server(row.id),
+      picker: picker,
+      groupPage: groupPage,
+    );
   }
 
   Set<int> get runningEntries =>
@@ -414,23 +398,15 @@ class ServersController extends ConnectController {
     ServerGroup group, {
     required bool mobile,
     bool picker = false,
-    ServerExitPickerParams? exitPicker,
   }) async {
     activeGroupId = group.id;
     changed();
     if (mobile) {
       final choice = await context.pushScoped<Object>(
         AppSecondaryDestination.serverGroup,
-        extra: ServerGroupParams(
-          this,
-          group.id,
-          picker: picker,
-          exitPicker: exitPicker,
-        ),
+        extra: ServerGroupParams(this, group.id, picker: picker),
       );
-      if (context.mounted &&
-          ((exitPicker != null && choice is ServerExitChoice) ||
-              (picker && choice == true))) {
+      if (context.mounted && picker && choice == true) {
         Navigator.of(context).pop(choice);
       }
     }
@@ -621,5 +597,51 @@ class ServersController extends ConnectController {
     _disposed = true;
     search.dispose();
     super.dispose();
+  }
+}
+
+/// Final-exit selection is a local draft; only Done returns a choice.
+class ServerExitPickerController extends ServersController {
+  ServerExitPickerController(this.params, {super.database, super.coordinator})
+    : selectedId = params.selectedId;
+
+  final ServerExitPickerParams params;
+  int? selectedId;
+
+  @override
+  void groupBy(ServerGrouping value) {
+    grouping = value;
+    changed();
+  }
+
+  List<ServerGroup> selectionGroups(AppLocalizations l) =>
+      groups(l).where((group) => group.visibleRows.isNotEmpty).toList();
+
+  bool canSelect(CoreConfigData row) => canChoose(row, exitPicker: params);
+
+  void selectDraft(CoreConfigData? row) {
+    if (busy || !ready || (row != null && !canSelect(row))) return;
+    selectedId = row?.id;
+    changed();
+  }
+
+  String exitRowDetail(AppLocalizations l, CoreConfigData row) {
+    if (params.excludedIds.contains(row.id)) return l.prototypeEntryServer;
+    if (!canSelect(row)) return l.prototypeTemporarilyUnavailable;
+    final context = grouping == ServerGrouping.location
+        ? sourceName(l, row)
+        : countryName(l, row.countryCode);
+    return '$context · ${health(l, row)}';
+  }
+
+  bool get canFinish =>
+      ready &&
+      !failed &&
+      !busy &&
+      (selectedId == null ||
+          servers.any((row) => row.id == selectedId && canSelect(row)));
+
+  void complete(BuildContext context) {
+    if (canFinish) chooseExit(context, selectedId);
   }
 }
