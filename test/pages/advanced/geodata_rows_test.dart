@@ -241,7 +241,7 @@ class _PendingGeoDataService implements GeoDataService {
   final pending = <int, Completer<void>>{};
 
   @override
-  Future<void> ensureInstalled() async {}
+  Future<void> ensureInstalled({bool resetOrphanedFiles = false}) async {}
 
   @override
   Stream<List<PublishedGeoData>> watchPublished() => Stream.value(files);

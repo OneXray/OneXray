@@ -11,6 +11,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:path/path.dart' as p;
 
 class AppHostApi {
   Future<AppleVpnCapabilities> appleVpnCapabilities() =>
@@ -36,21 +37,29 @@ class AppHostApi {
 
   Future<void> initTunFilesDir() async {
     if (AppPlatform.isLinux) {
-      _tunFilesDir = await LinuxFfiApi().getTunFilesDir();
+      _setTunFilesDir(await LinuxFfiApi().getTunFilesDir());
     } else if (AppPlatform.isWindows) {
       try {
         final environment = await _windows.getEnvironment();
-        _tunFilesDir = environment.packageLocalDataDir;
+        _setTunFilesDir(environment.packageLocalDataDir);
         WindowsFfiApi().usePackageLocalDataDir(_tunFilesDir);
         _windowsPackageAvailable = true;
       } catch (error, stackTrace) {
         _windowsPackageAvailable = false;
         _reportUnexpected('getWindowsEnvironment', error, stackTrace);
-        _tunFilesDir = await WindowsFfiApi().getTunFilesDir();
+        _setTunFilesDir(await WindowsFfiApi().getTunFilesDir());
       }
     } else {
-      _tunFilesDir = await _api.getTunFilesDir();
+      _setTunFilesDir(await _api.getTunFilesDir());
     }
+  }
+
+  void _setTunFilesDir(String value) {
+    if (value.isEmpty || !p.isAbsolute(value)) {
+      _tunFilesDir = '';
+      throw StateError('VPN data directory is unavailable');
+    }
+    _tunFilesDir = p.normalize(value);
   }
 
   Future<bool?> cleanupStaleDesktopCore() async {

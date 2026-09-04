@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -187,7 +186,10 @@ class PreferencesController extends PageCubit<PreferencesPageState> {
       }
       if (await AppDataCleanupService().clearFromSettings()) {
         AppStartupService().suppressConnectOnAppLaunch();
-        if (context.mounted) context.go('/setup');
+        emit(state.copyWith(connectOnLaunch: false));
+        if (context.mounted) {
+          context.goPrimaryRoot(AppPrimaryDestination.connect);
+        }
       } else if (context.mounted) {
         _showUnavailable(context);
       }

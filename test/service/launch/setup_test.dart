@@ -145,6 +145,30 @@ void main() {
     },
   );
 
+  test(
+    'default setup save writes configuration without runtime startup',
+    () async {
+      final direct = SetupService(
+        database: db,
+        platform: ConnectionPlatform.ios,
+        prepareLocal: () async {},
+        permission: (_) async => PlatformPermissionResult(
+          kind: PlatformPermissionKind.appleVpn,
+          state: PlatformPermissionState.granted,
+        ),
+        readRegionCodes: () async => ['CN', 'RU'],
+      );
+
+      await direct.acceptPrivacy();
+      await direct.continueSystem('');
+      await direct.continueRegion('RU');
+
+      expect((await direct.configuration()).connection.smart.directRegions, [
+        'RU',
+      ]);
+    },
+  );
+
   test('revoked permission does not write completion and returns to required preparation', () async {
     await setup.acceptPrivacy();
     await setup.continueSystem('');

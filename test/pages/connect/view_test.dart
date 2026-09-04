@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -242,6 +243,48 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Use a complete Raw JSON configuration'));
     expect(switched, isTrue);
+  });
+
+  testWidgets('platform errors are not presented as permission requests', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        screen(
+          view: ConnectionView(
+            phase: ConnectionPhase.failed,
+            issue: 'nativeStatusFailed',
+            permission: PlatformPermissionResult(
+              kind: PlatformPermissionKind.appleVpn,
+              state: PlatformPermissionState.failed,
+            ),
+          ),
+        ),
+      ),
+    );
+    final l = AppLocalizations.of(tester.element(find.byType(ConnectView)))!;
+
+    expect(find.text(l.prototypeCheckNetwork), findsOneWidget);
+    expect(find.text(l.prototypeVpnPermissionRequired), findsNothing);
+  });
+
+  testWidgets('missing desktop interface shows the interface prompt', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        screen(
+          view: const ConnectionView(
+            phase: ConnectionPhase.disconnected,
+            issue: 'interfaceRequired',
+          ),
+        ),
+      ),
+    );
+    final l = AppLocalizations.of(tester.element(find.byType(ConnectView)))!;
+
+    expect(find.text(l.prototypeChooseInterfaceNotice), findsOneWidget);
+    expect(find.text(l.prototypeCheckNetwork), findsNothing);
   });
 
   testWidgets(

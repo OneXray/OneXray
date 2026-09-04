@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,7 @@ import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/auto_update/state.dart';
+import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
@@ -54,7 +56,9 @@ class SubscriptionService {
   SubscriptionService._internal()
     : _databaseOverride = null,
       _loadRowsOverride = null,
-      _pingOverride = null;
+      _pingOverride = null {
+    referenceReader = _storedReferences;
+  }
 
   @visibleForTesting
   SubscriptionService.forTesting({
@@ -66,7 +70,7 @@ class SubscriptionService {
   }) : _databaseOverride = database,
        _loadRowsOverride = loadRows,
        _pingOverride = schedulePing {
-    referenceReader = readReferences ?? _uninitializedReferences;
+    referenceReader = readReferences ?? _storedReferences;
   }
 
   final AppDatabase? _databaseOverride;
@@ -77,14 +81,27 @@ class SubscriptionService {
   final _refreshes = <int, Future<SubscriptionRefreshResult>>{};
   var _nextGeneration = 0;
 
-  /// The coordinator supplies running and persisted fixed/final-exit references.
+  /// The database protects persisted selections before connection initialization.
+  /// The coordinator replaces this reader to also protect live/prepared nodes.
   /// Favorites are checked in the same database transaction as replacement.
-  SubscriptionReferenceReader referenceReader = _uninitializedReferences;
+  late SubscriptionReferenceReader referenceReader;
 
   AppDatabase get _database => _databaseOverride ?? AppDatabase();
 
-  static SubscriptionNodeReferences _uninitializedReferences() =>
-      throw StateError('Connection reference protection is not initialized');
+  Future<SubscriptionNodeReferences> _storedReferences() async {
+    final value = jsonDecode(
+      (await _database.connectionConfigDao.read()).configurationJson,
+    ) as Map<String, dynamic>;
+    final settings = ConnectionSettings.fromJson(
+      value['connection'] as Map<String, dynamic>? ?? {},
+    );
+    return SubscriptionNodeReferences(
+      fixedId: settings.selection.kind == SelectionKind.server
+          ? settings.selection.id
+          : null,
+      finalExitId: settings.smart.finalExitId,
+    );
+  }
 
   void _schedulePing(int subId) {
     final schedule = _pingOverride;

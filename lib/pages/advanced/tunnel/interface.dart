@@ -7,11 +7,11 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
-import 'package:onexray/service/launch/setup.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class OutboundInterfaceController extends PolicyEditorController {
-  final Future<List<SetupInterface>> Function()? loadInterfaces;
+  final Future<List<OutboundInterfaceOption>> Function()? loadInterfaces;
 
   OutboundInterfaceController({
     required PolicyEditorDraft draft,
@@ -19,7 +19,7 @@ class OutboundInterfaceController extends PolicyEditorController {
     this.loadInterfaces,
   }) : super(draft: draft);
 
-  List<SetupInterface> get interfaces => state.interfaces;
+  List<OutboundInterfaceOption> get interfaces => state.interfaces;
   bool get loading => state.interfacesLoading;
   bool get failed => state.interfacesFailed;
 
@@ -27,8 +27,7 @@ class OutboundInterfaceController extends PolicyEditorController {
     emit(state.copyWith(interfacesLoading: true, interfacesFailed: false));
     try {
       final values =
-          await (loadInterfaces?.call() ??
-              SetupService(platform: platform).interfaces());
+          await (loadInterfaces?.call() ?? queryXrayOutboundInterfaces());
       emit(state.copyWith(interfaces: values));
     } catch (_) {
       emit(state.copyWith(interfacesFailed: true));
@@ -184,7 +183,7 @@ class _InterfaceRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final SetupInterface value;
+  final OutboundInterfaceOption value;
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;

@@ -32,6 +32,163 @@ void main() {
     expect(coordinator.state.value.runtime, isNull);
   });
 
+  test('initialization exposes a missing platform permission', () async {
+    final permission = PlatformPermissionResult(
+      kind: PlatformPermissionKind.androidVpn,
+      state: PlatformPermissionState.denied,
+    );
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async =>
+            HostConnection(VpnStatus.disconnected, permission: permission),
+      ),
+    );
+
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.issue, 'permissionRequired');
+    expect(coordinator.state.value.permission, permission);
+  });
+
+  test(
+    'foreground reconciliation clears a resolved permission issue',
+    () async {
+      var permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.androidVpn,
+        state: PlatformPermissionState.denied,
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => null,
+          inspect: (_) async =>
+              HostConnection(VpnStatus.disconnected, permission: permission),
+        ),
+      );
+      expect(coordinator.state.value.issue, 'permissionRequired');
+
+      permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.androidVpn,
+        state: PlatformPermissionState.granted,
+      );
+      await coordinator.refresh();
+
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, isNull);
+      expect(coordinator.state.value.permission, isNull);
+    },
+  );
+
+  test('foreground reconciliation exposes a revoked permission', () async {
+    var permission = PlatformPermissionResult(
+      kind: PlatformPermissionKind.appleVpn,
+      state: PlatformPermissionState.granted,
+    );
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async =>
+            HostConnection(VpnStatus.disconnected, permission: permission),
+      ),
+    );
+    expect(coordinator.state.value.issue, isNull);
+
+    permission = PlatformPermissionResult(
+      kind: PlatformPermissionKind.appleVpn,
+      state: PlatformPermissionState.denied,
+    );
+    await coordinator.refresh();
+
+    expect(coordinator.state.value.issue, 'permissionRequired');
+    expect(coordinator.state.value.permission, permission);
+  });
+
+  test('disconnected actions preserve a missing permission', () async {
+    final permission = PlatformPermissionResult(
+      kind: PlatformPermissionKind.androidVpn,
+      state: PlatformPermissionState.denied,
+    );
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async =>
+            HostConnection(VpnStatus.disconnected, permission: permission),
+        resetTraffic: (_) async => null,
+      ),
+    );
+
+    await coordinator.apply(ConnectionConfiguration(), affectsRuntime: false);
+
+    expect(coordinator.state.value.issue, 'permissionRequired');
+    expect(coordinator.state.value.permission, permission);
+
+    await coordinator.resetTraffic();
+
+    expect(coordinator.state.value.issue, 'permissionRequired');
+    expect(coordinator.state.value.permission, permission);
+  });
+
+  test(
+    'initialization does not report a platform error as missing permission',
+    () async {
+      final permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.appleVpn,
+        state: PlatformPermissionState.failed,
+        message: 'load failed',
+      );
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async => throw ConnectionHostException(
+          'nativeStatusFailed',
+          permission: permission,
+        ),
+      );
+      addTearDown(coordinator.dispose);
+
+      await expectLater(
+        coordinator.initialize(poll: false, registerReferences: false),
+        throwsA(isA<ConnectionHostException>()),
+      );
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect(coordinator.state.value.issue, 'nativeStatusFailed');
+      expect(coordinator.state.value.permission, permission);
+    },
+  );
+
+  test(
+    'a successful initialization retry clears its previous failure',
+    () async {
+      var fail = true;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async {
+          if (fail) {
+            throw const ConnectionHostException('nativeStatusFailed');
+          }
+          return const HostConnection(VpnStatus.disconnected);
+        },
+      );
+      addTearDown(coordinator.dispose);
+
+      await expectLater(
+        coordinator.initialize(poll: false, registerReferences: false),
+        throwsA(isA<ConnectionHostException>()),
+      );
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+
+      fail = false;
+      await coordinator.initialize(poll: false, registerReferences: false);
+
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, isNull);
+    },
+  );
+
   test('connect prepares, starts and commits selected settings', () async {
     final next = _runtime('b', entryIds: const [2]);
     var status = VpnStatus.disconnected;
@@ -67,6 +224,30 @@ void main() {
       (await coordinator.configuration).encode(),
       next.configuration.encode(),
     );
+  });
+
+  test('preparation validation failure never starts the VPN host', () async {
+    var starts = 0;
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        prepare: (_, _) async =>
+            throw const FormatException('Xray configuration validation failed'),
+        start: (_) async {
+          starts++;
+          throw StateError('must not start');
+        },
+      ),
+    );
+
+    await expectLater(
+      coordinator.apply(ConnectionConfiguration(), connect: true),
+      throwsFormatException,
+    );
+
+    expect(starts, 0);
   });
 
   test('active node IDs protect subscription replacement', () async {
@@ -140,6 +321,8 @@ void main() {
     'preparation failure leaves an untouched running connection active',
     () async {
       final old = _runtime('a');
+      var starts = 0;
+      var stops = 0;
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
@@ -147,7 +330,14 @@ void main() {
           inspect: (_) async =>
               HostConnection(VpnStatus.connected, runtime: old),
           prepare: (_, _) async => throw const FormatException('bad input'),
-          stop: () async => throw StateError('must not stop'),
+          start: (_) async {
+            starts++;
+            throw StateError('must not start');
+          },
+          stop: () async {
+            stops++;
+            throw StateError('must not stop');
+          },
         ),
       );
 
@@ -158,6 +348,8 @@ void main() {
 
       expect(coordinator.state.value.phase, ConnectionPhase.connected);
       expect(coordinator.state.value.runtime?.identity, old.identity);
+      expect(starts, 0);
+      expect(stops, 0);
     },
   );
 }

@@ -7,11 +7,11 @@ import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/service/launch/setup.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SetupInterfaceParams {
-  final List<SetupInterface> interfaces;
+  final List<OutboundInterfaceOption> interfaces;
   final String selected;
   const SetupInterfaceParams(this.interfaces, this.selected);
 }

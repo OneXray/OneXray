@@ -4,19 +4,15 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/ffi/linux_ffi_api.dart';
-import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
-import 'package:onexray/service/connection/preparation.dart';
+import 'package:onexray/service/connection/platform_requirements.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/launch/storage_preparation.dart';
 import 'package:onexray/service/routing/geodata_suggestions.dart';
 import 'package:onexray/service/tun_settings/interface.dart';
-import 'package:path/path.dart' as p;
 
 enum SetupStep { welcome, system, region, servers, complete }
 
@@ -24,13 +20,6 @@ class SetupFailure implements Exception {
   final String component;
   final PlatformPermissionResult? permission;
   const SetupFailure(this.component, {this.permission});
-}
-
-class SetupInterface {
-  final String name;
-  final List<String> addresses;
-  final bool currentInternet;
-  const SetupInterface(this.name, this.addresses, this.currentInternet);
 }
 
 /// Setup prepares existing infrastructure. It never compiles a connection,
@@ -80,8 +69,10 @@ class SetupService {
     }
     final prepare = _prepareLocal;
     if (prepare != null) return prepare();
-    await StoragePreparation.ensureReady();
-    await GeoDataService().ensureInstalled();
+    final databaseWasMissing = await StoragePreparation.ensureReady();
+    await GeoDataService().ensureInstalled(
+      resetOrphanedFiles: databaseWasMissing,
+    );
     await regionCodes();
   }
 
@@ -94,7 +85,7 @@ class SetupService {
   Future<void> _save(ConnectionConfiguration value) async {
     final save = _saveConfiguration;
     if (save != null) return save(value);
-    await ConnectionCoordinator.instance.apply(value, affectsRuntime: false);
+    await _db.connectionConfigDao.commit(configurationJson: value.encode());
   }
 
   Future<PlatformPermissionResult> checkPermission({
@@ -102,16 +93,12 @@ class SetupService {
   }) async {
     final permission = _permission;
     if (permission != null) return permission(request);
-    await _checkDesktopComponents();
-    final host = AppHostApi();
-    final current = await host.queryPlatformPermission();
-    if (!request || permissionReady(current)) return current;
-    return host.requestPlatformPermission();
+    return ConnectionPlatformRequirements(platform: platform)
+        .check(request: request);
   }
 
   static bool permissionReady(PlatformPermissionResult value) =>
-      value.state == PlatformPermissionState.granted ||
-      value.state == PlatformPermissionState.notRequired;
+      ConnectionPlatformRequirements.permissionReady(value);
 
   Future<void> continueSystem(String interfaceName) async {
     await prepareLocal();
@@ -220,86 +207,8 @@ class SetupService {
     }
   }
 
-  Future<List<SetupInterface>> interfaces() async {
+  Future<List<OutboundInterfaceOption>> interfaces() async {
     if (!requiresInterface) return const [];
-    final rows = await queryInterfaceList();
-    final current = await _currentInternetInterface();
-    return [
-      for (final row in rows)
-        if (row.name != 'OneXrayTun' &&
-            !row.addresses.any(
-              (address) =>
-                  address.address == PlatformPolicy.tunIpv4Address ||
-                  address.address == PlatformPolicy.tunIpv6Address,
-            ))
-          SetupInterface(
-            row.name,
-            row.addresses.map((address) => address.address).toList(),
-            row.name == current,
-          ),
-    ];
-  }
-
-  Future<String?> _currentInternetInterface() async {
-    try {
-      if (Platform.isLinux) {
-        final routes =
-            (await File('/proc/net/route').readAsLines())
-                .skip(1)
-                .map((line) => line.trim().split(RegExp(r'\s+')))
-                .where((parts) => parts.length > 7 && parts[1] == '00000000')
-                .toList()
-              ..sort(
-                (a, b) => (int.tryParse(a[6]) ?? 0).compareTo(
-                  int.tryParse(b[6]) ?? 0,
-                ),
-              );
-        return routes.isEmpty ? null : routes.first.first;
-      }
-      if (Platform.isWindows) {
-        final result = await Process.run('powershell.exe', [
-          '-NoProfile',
-          '-NonInteractive',
-          '-Command',
-          '(Get-NetRoute -DestinationPrefix "0.0.0.0/0" | Sort-Object RouteMetric | Select-Object -First 1).InterfaceAlias',
-        ]).timeout(const Duration(seconds: 5));
-        return result.exitCode == 0 ? '${result.stdout}'.trim() : null;
-      }
-    } on Exception {
-      // The hint is optional; it never selects the first interface for the user.
-    }
-    return null;
-  }
-
-  Future<void> _checkDesktopComponents() async {
-    if (platform == ConnectionPlatform.windows) {
-      if (!AppHostApi().windowsPackageAvailable ||
-          !await File(
-            p.join(p.dirname(Platform.resolvedExecutable), 'OneXrayCore.exe'),
-          ).exists()) {
-        throw const SetupFailure('OneXrayCore / VCore');
-      }
-    } else if (platform == ConnectionPlatform.linux) {
-      final file = File(LinuxFfiApi().corePath);
-      if (!await file.exists() ||
-          ((await file.stat()).mode & 0x49) == 0 ||
-          !await File('/dev/net/tun').exists()) {
-        throw const SetupFailure('OneXrayCore / TUN');
-      }
-      final status = await File('/proc/self/status').readAsString();
-      if (RegExp(r'^Uid:\s+0\s+0\s+0\s+0$', multiLine: true).hasMatch(status)) {
-        return;
-      }
-      final result = await Process.run('getcap', [
-        file.path,
-      ]).timeout(const Duration(seconds: 5));
-      final capabilities = '${result.stdout}';
-      if (result.exitCode != 0 ||
-          !capabilities.contains('cap_net_admin') ||
-          !capabilities.contains('cap_net_raw') ||
-          !RegExp(r'=[eip]*e[eip]*\s*$').hasMatch(capabilities)) {
-        throw const SetupFailure('cap_net_admin / cap_net_raw');
-      }
-    }
+    return queryXrayOutboundInterfaces();
   }
 }

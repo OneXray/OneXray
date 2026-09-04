@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/notification/service.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
 
@@ -57,7 +58,14 @@ final class ShortCutService {
     try {
       switch (key) {
         case _ShortCutKey.startVpn:
-          await ConnectionCoordinator.instance.connect();
+          try {
+            await ConnectionCoordinator.instance.connect();
+          } catch (_) {
+            await NotificationService().pushNotification(
+              appLocalizationsNoContext().prototypeConnectionFailed,
+            );
+            rethrow;
+          }
           break;
         case _ShortCutKey.stopVpn:
           await ConnectionCoordinator.instance.disconnect();

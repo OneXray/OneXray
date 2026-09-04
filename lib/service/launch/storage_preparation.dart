@@ -8,17 +8,21 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 
 /// Runs before business services, keeping migration and background writes apart.
 class StoragePreparation {
-  static Future<void>? _pending;
+  static Future<bool>? _pending;
 
-  static Future<void> ensureReady() => _pending ??= _prepare();
+  /// Whether this process opened a missing database file as a new database.
+  static Future<bool> ensureReady() => _pending ??= _prepare();
 
-  static Future<void> _prepare() async {
+  static Future<bool> _prepare() async {
     try {
+      final databaseFile = await AppDatabase.databaseFile;
+      final databaseWasMissing = !await databaseFile.exists();
       await prepareUpgradeSnapshot(
-        await AppDatabase.databaseFile,
+        databaseFile,
         stopRunning: _stopBeforeUpgrade,
       );
       await AppDatabase().customSelect('SELECT 1').get();
+      return databaseWasMissing;
     } catch (_) {
       _pending = null;
       await AppDatabase.resetAfterOpenFailure();

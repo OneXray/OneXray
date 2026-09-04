@@ -100,6 +100,10 @@ Raw 真实测试通过 libXray 临时实例执行 DNS、路由与 URL 探测，�
 节点所需的配置及节点信息。不创建 `ConnectionPlan`、`run/plans/<id>`、`confirmedPlanId`
 或跨进程提交日志。
 
+准备阶段先完成 Windows/Linux 出口网卡存在性检查，再对最终配置执行一次
+`libXray.testXray(buildOnly: true)` 构建校验；两者均发生在停止旧运行或启动原生 VPN 之前。
+build-only 校验只提前发现配置构建错误，不保证所有平台资源、端口或 handler 运行时错误。
+
 准备失败且尚未触碰宿主时，当前运行不变。一旦已请求停止或启动原生 VPN，后续启动、确认、
 资产写入或数据库提交失败时，协调器尽力停止本次运行并进入 `failed`；不重新启动旧连接，
 也不恢复旧输入。若停止无法确认，原生状态仍是 VPN 状态依据，并继续显示能够确认的实际

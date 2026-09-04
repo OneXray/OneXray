@@ -24,7 +24,7 @@ class _ServersPageState extends State<ServersPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) controller.initialize(context, services: false);
+      if (mounted) controller.initialize();
     });
   }
 
@@ -157,7 +157,7 @@ class ServerLoadState extends StatelessWidget {
     if (controller.failed) {
       return Center(
         child: FilledButton(
-          onPressed: () => controller.initialize(context, services: false),
+          onPressed: () => controller.initialize(),
           child: Text(l.prototypeRetry),
         ),
       );

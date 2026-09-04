@@ -16,7 +16,11 @@ final class NotificationService {
     const initializationSettingsAndroid = AndroidInitializationSettings(
       'ic_launcher',
     );
-    final initializationSettingsDarwin = DarwinInitializationSettings();
+    const initializationSettingsDarwin = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestSoundPermission: false,
+      requestBadgePermission: false,
+    );
     final initializationSettingsLinux = LinuxInitializationSettings(
       defaultActionName: 'Open notification',
     );
@@ -55,5 +59,41 @@ final class NotificationService {
     if (payload != null) {
       ygLogger(payload);
     }
+  }
+
+  Future<void> pushNotification(String message) async {
+    if (AppPlatform.isIOS) {
+      await _localNotification
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true);
+    } else if (AppPlatform.isMacOS) {
+      await _localNotification
+          .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true);
+    }
+
+    if (AppPlatform.isAndroid) {
+      const details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          'net.yuandev.onexray',
+          'OneXray',
+          channelDescription: 'OneXray',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          ticker: 'OneXray',
+        ),
+      );
+      await _localNotification.show(
+        id: 0,
+        title: message,
+        notificationDetails: details,
+      );
+      return;
+    }
+    await _localNotification.show(id: 0, title: message);
   }
 }

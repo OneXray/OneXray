@@ -90,6 +90,12 @@ final class AppStartupService {
       return;
     }
 
+    if (ConnectionCoordinator.instance.state.value.issue ==
+        'permissionRequired') {
+      await showMainWindow();
+      return;
+    }
+
     try {
       await ConnectionCoordinator.instance.connect();
       if (ConnectionCoordinator.instance.state.value.phase !=

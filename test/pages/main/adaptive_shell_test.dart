@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -61,8 +63,10 @@ void main() {
           builder: (_, _) => const Center(child: Text('update-dialog')),
         ),
         StatefulShellRoute.indexedStack(
-          builder: (_, _, navigationShell) =>
-              AdaptiveMainShell(navigationShell: navigationShell),
+          builder: (_, _, navigationShell) => AdaptiveMainShell(
+            navigationShell: navigationShell,
+            initializeServices: (_) async {},
+          ),
           branches: [
             for (final primary in AppPrimaryDestination.values)
               StatefulShellBranch(
@@ -237,5 +241,92 @@ void main() {
 
     expect(find.text('update-dialog'), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.path, '/settings');
+  });
+
+  testWidgets('business pages wait for services and allow a local retry', (
+    tester,
+  ) async {
+    var attempts = 0;
+    final ready = Completer<void>();
+    final eventBus = AppEventBus();
+    addTearDown(eventBus.close);
+    final router = GoRouter(
+      initialLocation: AppPrimaryDestination.connect.rootPath,
+      routes: [
+        StatefulShellRoute.indexedStack(
+          builder: (_, _, navigationShell) => AdaptiveMainShell(
+            navigationShell: navigationShell,
+            initializeServices: (_) {
+              attempts++;
+              if (attempts == 1) {
+                return Future<void>.error(StateError('fixture'));
+              }
+              return ready.future;
+            },
+          ),
+          branches: [
+            for (final primary in AppPrimaryDestination.values)
+              StatefulShellBranch(
+                routes: [
+                  GoRoute(
+                    path: primary.rootPath,
+                    builder: (_, _) => Text('${primary.name}-content'),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      BlocProvider.value(
+        value: eventBus,
+        child: MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('connect-content'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('primary-mobile-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-desktop-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('service-initialization-retry')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('service-initialization-retry')),
+    );
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('connect-content'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('primary-mobile-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('primary-desktop-navigation')),
+      findsNothing,
+    );
+
+    ready.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('connect-content'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('primary-desktop-navigation')),
+      findsOneWidget,
+    );
+    expect(attempts, 2);
   });
 }

@@ -8,6 +8,8 @@ import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/compiler.dart';
+import 'package:onexray/service/connection/platform_policy.dart';
+import 'package:onexray/service/connection/platform_requirements.dart';
 import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
@@ -15,15 +17,6 @@ import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
 import 'package:onexray/service/routing/state.dart';
 import 'package:path/path.dart' as p;
-
-ConnectionPlatform get connectionPlatform => switch (Platform.operatingSystem) {
-  'ios' => ConnectionPlatform.ios,
-  'macos' => ConnectionPlatform.macos,
-  'android' => ConnectionPlatform.android,
-  'windows' => ConnectionPlatform.windows,
-  'linux' => ConnectionPlatform.linux,
-  _ => throw UnsupportedError('Unsupported platform'),
-};
 
 String newRuntimeToken() {
   final random = Random.secure();
@@ -86,6 +79,8 @@ class ConnectionPreparation {
     var settings = input.connection;
     final policy = input.policy;
     final platform = connectionPlatform;
+    await ConnectionPlatformRequirements(platform: platform)
+        .ensureOutboundInterface(policy.xrayOutboundInterfaceName);
     final tun = policy.toTun(platform);
     String? raw = rawDraft;
     RoutingProfileState? custom = customDraft;

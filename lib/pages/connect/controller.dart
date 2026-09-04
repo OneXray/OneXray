@@ -16,19 +16,14 @@ import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/app_update/service.dart';
-import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connection/platform_requirements.dart';
+import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/connection/resolver.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/manager.dart';
-import 'package:onexray/service/menu/short_cut/service.dart';
 import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/routing/state.dart';
-import 'package:onexray/service/share/service.dart';
 
 const _unchanged = Object();
 
@@ -209,25 +204,9 @@ class ConnectController extends PageCubit<ConnectPageState> {
     isPageActive && (_pageVisible || _trafficDialogOpen),
   );
 
-  Future<void> initialize(BuildContext context, {bool services = true}) async {
+  Future<void> initialize() async {
     failed = false;
     try {
-      if (services) {
-        ShortCutService().onConnectionFailure = () {
-          if (context.mounted) {
-            context.goPrimaryRoot(AppPrimaryDestination.connect);
-          }
-        };
-        ShareService().onIncomingShare = (text) async {
-          if (context.mounted) {
-            await context.pushScoped(
-              AppSecondaryDestination.serversImport,
-              extra: text,
-            );
-          }
-        };
-        await ServiceManager.serviceInit(context);
-      }
       if (!isPageActive) return;
       configuration = await coordinator.configuration;
       if (!_viewInitialized) expertView = configuration.connection.expert;
@@ -270,30 +249,8 @@ class ConnectController extends PageCubit<ConnectPageState> {
         );
       }
       ready = true;
-      if (services) {
-        BackgroundTaskService().init();
-        unawaited(_checkUpdate());
-      }
     } catch (_) {
       failed = true;
-    }
-  }
-
-  Future<void> _checkUpdate() async {
-    try {
-      final service = AppUpdateService();
-      if (!await service.shouldRunAutomaticCheck()) return;
-      await service.recordAutomaticCheck();
-      final result = await service.checkForUpdate();
-      if (result.status == AppUpdateCheckStatus.upToDate) {
-        AppEventBus.instance.updateAppUpdateInfo(null);
-      } else if (result.updateInfo case final update?) {
-        AppEventBus.instance.updateAppUpdateInfo(
-          await service.shouldShowAutomaticReminder(update) ? update : null,
-        );
-      }
-    } catch (_) {
-      /* Update checks never block connection readiness. */
     }
   }
 
@@ -450,7 +407,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
         return;
       }
       await run(context, () async {
-        if (view.permission != null) {
+        if (view.issue == 'permissionRequired' && view.permission != null) {
           await AppHostApi().requestPlatformPermission();
         }
         await coordinator.connect();
@@ -965,7 +922,9 @@ class ConnectController extends PageCubit<ConnectPageState> {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          error is ConnectionResolutionException
+          error is ConnectionPlatformRequirementException
+              ? AppLocalizations.of(context)!.prototypeChooseInterfaceNotice
+              : error is ConnectionResolutionException
               ? AppLocalizations.of(context)!.prototypeNotEnoughServers
               : AppLocalizations.of(context)!.prototypeCheckNetwork,
         );

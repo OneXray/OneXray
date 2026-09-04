@@ -19,7 +19,7 @@ class _ConnectPageState extends State<ConnectPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) controller.initialize(context);
+      if (mounted) controller.initialize();
     });
   }
 
@@ -45,7 +45,7 @@ class _ConnectPageState extends State<ConnectPage> {
               if (state.failed) {
                 return Center(
                   child: FilledButton(
-                    onPressed: () => controller.initialize(context),
+                    onPressed: () => controller.initialize(),
                     child: Text(l.prototypeRetry),
                   ),
                 );

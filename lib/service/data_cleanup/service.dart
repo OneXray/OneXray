@@ -5,11 +5,10 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/core/pigeon/constants.dart';
-import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -22,7 +21,15 @@ final class AppDataCleanupService {
 
   AppDataCleanupService._internal();
 
-  Future<bool> clearFromSettings() => DataMaintenance.exclusive(_clear);
+  Future<bool> clearFromSettings() async {
+    try {
+      await DataMaintenance.exclusive(_clear);
+      return true;
+    } catch (e, stackTrace) {
+      ygLogger("clear app data error: $e\n$stackTrace");
+      return false;
+    }
+  }
 
   Future<bool> prepareForBackupRestore() async {
     try {
@@ -35,22 +42,16 @@ final class AppDataCleanupService {
     }
   }
 
-  Future<bool> _clear() async {
-    try {
-      await ConnectionCoordinator.instance.stopForMaintenance();
-      await AppStartupService().unregisterForDataCleanup();
-      await PreferencesKey().clearUserDataPreferences();
-      await NetClient().updateUserAgentMode(DownloadUserAgentMode.defaultMode);
-      await _clearDatabase();
-      await _clearRuntimeFiles();
-      ConnectionCoordinator.instance.clearTrafficView();
-      await _resetDatDir();
-      await _clearCache();
-      return true;
-    } catch (e, stackTrace) {
-      ygLogger("clear app data error: $e\n$stackTrace");
-      return false;
-    }
+  Future<void> _clear() async {
+    await ConnectionCoordinator.instance.stopForMaintenance();
+    await AppStartupService().unregisterForDataCleanup();
+    await PreferencesKey().clearUserDataPreferences();
+    await NetClient().updateUserAgentMode(DownloadUserAgentMode.defaultMode);
+    await _clearDatabase();
+    await _clearRuntimeFiles();
+    ConnectionCoordinator.instance.clearTrafficView();
+    await GeoDataService().resetAfterDataClear();
+    await _clearCache();
   }
 
   Future<void> _clearDatabase() async {
@@ -78,13 +79,6 @@ final class AppDataCleanupService {
       }
       await entry.delete(recursive: true);
     }
-  }
-
-  Future<void> _resetDatDir() async {
-    final datPath = VpnConstants.datDir;
-    await FileTool.deleteDirIfExists(datPath);
-    await FileTool.checkDir(datPath);
-    await FileTool.copyAssets(Assets.dat.values, datPath);
   }
 
   Future<void> _clearCache() async {

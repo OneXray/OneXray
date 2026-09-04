@@ -100,28 +100,41 @@ class GeoDataService {
   Future<T> _cleanup<T>(Future<T> Function() action) =>
       DataMaintenance.cleanup(() => _commands.run((_) => action()));
 
-  Future<void> ensureInstalled() => _maintain(_ensureInstalled);
+  Future<void> ensureInstalled({bool resetOrphanedFiles = false}) =>
+      _maintain(() => _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles));
 
-  Future<void> _ensureInstalled() async {
+  /// App data cleanup already owns [DataMaintenance.exclusive].
+  Future<void> resetAfterDataClear() =>
+      _commands.run((_) => _ensureInstalled(resetOrphanedFiles: true));
+
+  Future<void> _ensureInstalled({bool resetOrphanedFiles = false}) async {
+    final root = Directory(_root);
+    final rootWasMissing = !await root.exists();
     await _ensureRoot();
+    final existing = await _flatNames(root);
     final rows = await _db.geoDataDao.publishedRows;
     _checkDefaultRows(rows);
-    final defaults = rows.where((row) => row.id < 0).toList();
-    if (defaults.isNotEmpty) {
-      await _readAll(defaults);
-      return;
+    final resetPublication =
+        rootWasMissing ||
+        (existing.isEmpty && rows.isNotEmpty) ||
+        (resetOrphanedFiles && rows.isEmpty);
+    if (!resetPublication) {
+      final defaults = rows.where((row) => row.id < 0).toList();
+      if (defaults.isNotEmpty) {
+        await _readAll(defaults);
+        return;
+      }
+
+      if (rows.isNotEmpty) {
+        throw StateError('Default routing data is incomplete');
+      }
+      if (existing.any((name) => !_bundledNames.contains(name))) {
+        throw StateError('Unregistered routing data is present');
+      }
     }
 
-    if (rows.isNotEmpty) {
-      throw StateError('Default routing data is incomplete');
-    }
-    final existing = await _flatNames(Directory(_root));
-    if (existing.any((name) => !_bundledNames.contains(name))) {
-      throw StateError('Unregistered routing data is present');
-    }
-
-    // No same-version migration or generation merge: a missing publication is
-    // installed from bundled data as a new flat baseline.
+    // A missing root or database has no recoverable custom publication. Reset
+    // the pair to bundled defaults instead of merging untrusted orphan files.
     final stage = await _newStage('install-');
     _FlatFileChange? change;
     try {
@@ -130,15 +143,21 @@ class GeoDataService {
         await _index(stage.path, source.name, source.type);
       }
       final timestamp = await _assetTimestamp(stage.path);
-      change = await _applyFiles(await _stageFiles(stage));
+      change = resetPublication
+          ? await _replaceAll(stage)
+          : await _applyFiles(await _stageFiles(stage));
       try {
         await _db.transaction(() async {
-          final current = await _db.geoDataDao.publishedRows;
-          _checkDefaultRows(current);
-          if (current.any((row) => row.id < 0)) {
-            throw StateError(
-              'Default routing data changed during installation',
-            );
+          if (resetPublication) {
+            await _db.geoDataDao.clear();
+          } else {
+            final current = await _db.geoDataDao.publishedRows;
+            _checkDefaultRows(current);
+            if (current.any((row) => row.id < 0)) {
+              throw StateError(
+                'Default routing data changed during installation',
+              );
+            }
           }
           await _publishDefaults(_root, timestamp);
         });

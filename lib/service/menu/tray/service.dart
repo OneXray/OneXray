@@ -6,6 +6,7 @@ import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/app_startup/service.dart';
+import 'package:onexray/service/notification/service.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -143,7 +144,14 @@ final class TrayService with TrayListener {
     try {
       switch (key) {
         case _TrayMenuKey.startVpn:
-          await ConnectionCoordinator.instance.connect();
+          try {
+            await ConnectionCoordinator.instance.connect();
+          } catch (_) {
+            await NotificationService().pushNotification(
+              appLocalizationsNoContext().prototypeConnectionFailed,
+            );
+            rethrow;
+          }
           break;
         case _TrayMenuKey.stopVpn:
           await ConnectionCoordinator.instance.disconnect();

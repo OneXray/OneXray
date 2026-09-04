@@ -7,6 +7,7 @@ import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/connection/preparation.dart';
+import 'package:onexray/service/connection/platform_requirements.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
@@ -163,7 +164,15 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           if (poll) {
             _statusSubscription ??= _statusEvents.listen(_onNativeStatus);
           }
-          _publish(await _inspect(await _known()));
+          final current = await _inspect(await _known());
+          final permission = current.permission;
+          final permissionRequired = _permissionRequired(permission);
+          _failureLatched = false;
+          _publish(
+            current,
+            issue: permissionRequired ? 'permissionRequired' : null,
+            permission: permissionRequired ? permission : null,
+          );
           _ready = true;
           if (poll) {
             WidgetsBinding.instance.addObserver(this);
@@ -535,6 +544,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           ? 'cancelled'
           : error is ConnectionHostException
           ? error.reason
+          : error is ConnectionPlatformRequirementException
+          ? error.reason
           : 'changeFailed';
       if (touchedHost) {
         final status = failed?.status;
@@ -636,6 +647,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         current.status,
         runtime: current.runtime,
         traffic: traffic ?? previous?.withTotals(uplink: 0, downlink: 0),
+        permission: current.permission,
       ),
     );
   });
@@ -668,6 +680,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     bool liveTraffic = false,
   }) {
     final old = state.value;
+    final checkedPermission = current.permission;
+    final permissionRequired = _permissionRequired(checkedPermission);
+    if (permissionRequired) {
+      issue = 'permissionRequired';
+      permission = checkedPermission;
+    }
     // Query replies also travel through the event stream. Consume only the
     // matching reply; a newer, different native status must still be reconciled.
     if (_pendingStatus == current.status) _pendingStatus = null;
@@ -675,7 +693,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     if (keepResult) {
       // Reconciliation/sampling does not replace the last command's result.
       // A newly successful system connection resolves an old disconnected error.
-      if (!(current.connected && old.phase != ConnectionPhase.connected)) {
+      final permissionResolved =
+          checkedPermission != null &&
+          !permissionRequired &&
+          old.issue == 'permissionRequired';
+      if (!(current.connected && old.phase != ConnectionPhase.connected) &&
+          !permissionResolved) {
         if (old.issue != 'runtimeUnavailable') issue ??= old.issue;
         permission ??= old.permission;
       }
@@ -741,6 +764,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     );
     _syncPolling();
   }
+
+  static bool _permissionRequired(PlatformPermissionResult? permission) =>
+      permission?.state == PlatformPermissionState.notDetermined ||
+      permission?.state == PlatformPermissionState.awaitingUserApproval ||
+      permission?.state == PlatformPermissionState.denied;
 
   void clearTrafficView() {
     _commandGeneration++;

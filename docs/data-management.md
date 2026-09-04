@@ -9,6 +9,10 @@
 开发者在停止 App/VPN 后删除旧数据库文件或卸载 App 重建；App 不自动删库，不尝试
 降级或修补开发库。
 
+数据库文件在冷启动前已不存在时不属于版本迁移：`StoragePreparation` 直接创建 schema 3，
+并向 Geodata 发布流程传递明确的“数据库本次启动前不存在”信号。该信号只用于收敛文件与
+新数据库状态，不增加 migration 分支。
+
 首次业务访问前先停止旧运行、暂停写入并保留升级前 SQLite 备份。结构修改与版本提升
 在同一事务完成；已有 ID、订阅关系、Base64 内容及 Age 密钥保持不变，不做全量编码转换。
 `setting/full` 退休行不进入新业务；所有旧 Raw 保留，包括超过新增上限的情况。
@@ -38,6 +42,19 @@ macOS System Extension 是唯一明确例外：由于跨容器边界，允许沿
 传输 Geodata。该传输只属于原生平台桥接，不引入 generation、每次连接副本或第二套 App
 侧读写目录；真实按需启动及扩展消息链路的设备验收与普通文件事务测试分开记录。
 
+### 冷启动重建
+
+- 数据库文件丢失后新建 schema 3 时，旧平铺目录中的文件已经失去 manifest。删除这些
+  orphan 文件，并从 App 资源重新发布默认 `geoip.dat` / `geosite.dat` 组；不尝试推断或
+  合并自定义数据。
+- 整个 `dat` 根目录缺失，或目录为空但数据库仍有发布元数据时，清除不可恢复的 Geodata
+  元数据并重新发布默认组。
+- 部分文件损坏、默认组不完整、存在嵌套文件，或者数据库仍存在且没有明确丢失信号时出现
+  orphan 文件，均保持失败。此类状态需要显式处理，不能通过启动流程静默合并或清理。
+
+上述恢复只处理完整存储单元丢失，使用内置资源且不发起下载。自定义 Geodata 无法从已丢失
+的数据库 manifest 或已删除的数据目录恢复。
+
 ## 自动更新
 
 数据更新位于高级的 Xray 运行与诊断，订阅与 Geodata 分别保存自动开关和 24/72/168 小时
@@ -63,10 +80,12 @@ ZIP 未加密，可能包含节点凭据、订阅 URL 与 Age 私钥，必须提
 不新增恢复后的全量后台任务，也不按旧测量时间判断缓存有效性。
 已删除的位置来源、测量时间与识别失败数字段不再导出。
 清理全部数据前先取消平台登录项，失败则不继续破坏性清理。
+清理完成前必须重新发布内置 Geodata 文件及数据库元数据，随后直接返回连接首页；清理不重置隐私和首次初始化标记，也不依赖 Setup 补做运行时恢复。
 
 ## 实现入口
 
-- 升级与维护门：`lib/service/launch/storage_preparation.dart`、`lib/service/maintenance/`
+- 启动存储准备与缺库信号：`lib/service/launch/storage_preparation.dart`
+- 升级与维护门：`lib/service/maintenance/`
 - 数据发布：`lib/service/geo_data/service.dart`
 - 更新：`lib/service/background_task/service.dart`、`lib/service/data_update/service.dart`
 - ZIP：`lib/service/share/backup.dart`、`backup_archive.dart`、`backup_database.dart`

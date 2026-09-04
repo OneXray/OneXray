@@ -14,24 +14,96 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
+import 'package:onexray/service/manager.dart';
+import 'package:onexray/service/menu/short_cut/service.dart';
+import 'package:onexray/service/share/service.dart';
 
-class AdaptiveMainShell extends StatelessWidget {
-  const AdaptiveMainShell({super.key, required this.navigationShell});
+class AdaptiveMainShell extends StatefulWidget {
+  const AdaptiveMainShell({
+    super.key,
+    required this.navigationShell,
+    this.initializeServices,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final Future<void> Function(BuildContext context)? initializeServices;
+
+  @override
+  State<AdaptiveMainShell> createState() => _AdaptiveMainShellState();
+}
+
+class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
+  Future<void>? _servicesReady;
+
+  StatefulNavigationShell get navigationShell => widget.navigationShell;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _servicesReady ??= _initializeServices();
+  }
+
+  Future<void> _initializeServices() {
+    ShortCutService().onConnectionFailure = () {
+      if (mounted) {
+        context.goPrimaryRoot(AppPrimaryDestination.connect);
+      }
+    };
+    ShareService().onIncomingShare = (text) async {
+      if (mounted) {
+        await context.pushScoped(
+          AppSecondaryDestination.serversImport,
+          extra: text,
+        );
+      }
+    };
+    return (widget.initializeServices ?? ServiceManager.serviceInit)(context);
+  }
+
+  void _retry() {
+    final servicesReady = _initializeServices();
+    setState(() {
+      _servicesReady = servicesReady;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<AppEventBus, AppEventBusState, AppUpdateInfo?>(
-      selector: (state) => state.appUpdateInfo,
-      builder: (context, appUpdateInfo) => LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > AppLayout.mobileBreakpoint) {
-            return _railScaffold(context, constraints.maxWidth, appUpdateInfo);
-          }
-          return _bottomNavigationScaffold(context, appUpdateInfo != null);
-        },
-      ),
+    return FutureBuilder<void>(
+      future: _servicesReady,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: FilledButton(
+                key: const ValueKey('service-initialization-retry'),
+                onPressed: _retry,
+                child: Text(AppLocalizations.of(context)!.buttonRetry),
+              ),
+            ),
+          );
+        }
+        return BlocSelector<AppEventBus, AppEventBusState, AppUpdateInfo?>(
+          selector: (state) => state.appUpdateInfo,
+          builder: (context, appUpdateInfo) => LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > AppLayout.mobileBreakpoint) {
+                return _railScaffold(
+                  context,
+                  constraints.maxWidth,
+                  appUpdateInfo,
+                );
+              }
+              return _bottomNavigationScaffold(context, appUpdateInfo != null);
+            },
+          ),
+        );
+      },
     );
   }
 

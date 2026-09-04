@@ -13,7 +13,7 @@ import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/launch/setup.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 PolicyEditorService _service(ConnectionPlatform platform) {
@@ -193,11 +193,11 @@ void main() {
           loadInterfaces: () async {
             if (fail) throw StateError('interface read failed');
             return const [
-              SetupInterface('Wi-Fi (en0)', [
+              OutboundInterfaceOption('Wi-Fi (en0)', [
                 '192.0.2.10',
                 '2001:db8::10',
               ], true),
-              SetupInterface('Ethernet', ['192.0.2.20'], false),
+              OutboundInterfaceOption('Ethernet', ['192.0.2.20'], false),
             ];
           },
         );

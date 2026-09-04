@@ -19,29 +19,39 @@ void main() {
   });
 
   test(
-    'refresh preserves nodes until reference protection is installed',
+    'refresh before coordinator initialization protects persisted selections',
     () async {
       final source = await _source(database);
-      final id = await database.coreConfigDao.insertRow(
-        _node('Protected until ready', subId: source.id),
+      final fixedId = await database.coreConfigDao.insertRow(
+        _node('Fixed', subId: source.id),
       );
-      final original = await database.coreConfigDao.searchRow(id);
+      final exitId = await database.coreConfigDao.insertRow(
+        _node('Exit', subId: source.id),
+      );
+      await database.connectionConfigDao.commit(
+        configurationJson: jsonEncode({
+          'connection': {
+            'selection': {'kind': 'server', 'id': fixedId},
+            'smart': {'finalExitId': exitId},
+          },
+        }),
+      );
       final service = SubscriptionService.forTesting(
         database: database,
         loadRows: (_) async => SubscriptionLoadResult(
           status: SubscriptionUpdateResult.success,
           rows: [_node('Replacement')],
         ),
-        schedulePing: (_) =>
-            fail('Failed replacement must not schedule a ping'),
+        schedulePing: (_) {},
       );
 
       final result = await service.refreshSubscriptionResult(source, false);
-      expect(result.status, SubscriptionUpdateResult.writeFailed);
-      expect(await database.coreConfigDao.searchRow(id), original);
+      expect(result.status, SubscriptionUpdateResult.success);
+      expect(await database.coreConfigDao.searchRow(fixedId), isNotNull);
+      expect(await database.coreConfigDao.searchRow(exitId), isNotNull);
       expect(
         await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id),
-        hasLength(1),
+        hasLength(3),
       );
     },
   );

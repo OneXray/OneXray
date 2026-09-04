@@ -633,8 +633,11 @@ class ConnectView extends StatelessWidget {
             : l.prototypeProtectedHoursMinutes(elapsed ~/ 60, elapsed % 60),
       ConnectionPhase.disconnecting => l.prototypeFinishingConnection,
       ConnectionPhase.failed =>
-        view.permission != null
+        view.issue == 'permissionRequired'
             ? l.prototypeVpnPermissionRequired
+            : view.issue == 'interfaceRequired' ||
+                  view.issue == 'interfaceUnavailable'
+            ? l.prototypeChooseInterfaceNotice
             : l.prototypeCheckNetwork,
     };
     final palette = ColorManager.palette(context);

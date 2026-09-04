@@ -26,7 +26,13 @@ class HostConnection {
   final VpnStatus status;
   final ConnectionRuntime? runtime;
   final RuntimeSnapshot? traffic;
-  const HostConnection(this.status, {this.runtime, this.traffic});
+  final PlatformPermissionResult? permission;
+  const HostConnection(
+    this.status, {
+    this.runtime,
+    this.traffic,
+    this.permission,
+  });
   bool get connected => status == VpnStatus.connected;
 }
 
@@ -79,10 +85,15 @@ class ConnectionRuntimeHost {
     readRuntimeSnapshot: _state,
   );
 
-  Future<VpnStatus> _status() async {
+  Future<({VpnStatus status, PlatformPermissionResult? permission})>
+  _status() async {
     final readStatus = _readStatus;
-    if (readStatus != null) return readStatus();
-    if (IOSDebugProxy().running) return VpnStatus.connected;
+    if (readStatus != null) {
+      return (status: await readStatus(), permission: null);
+    }
+    if (IOSDebugProxy().running) {
+      return (status: VpnStatus.connected, permission: null);
+    }
     final event = AppFlutterApi().vpnStatusController.stream.first.timeout(
       const Duration(seconds: 5),
     );
@@ -94,7 +105,7 @@ class ConnectionRuntimeHost {
         permission: result.permission,
       );
     }
-    return event;
+    return (status: await event, permission: result.permission);
   }
 
   Future<RuntimeSnapshot?> _state() async {
@@ -278,7 +289,10 @@ class ConnectionRuntimeHost {
     VpnStatus? observedStatus,
     bool readMetrics = false,
   }) async {
-    final status = observedStatus ?? await _status();
+    final platform = observedStatus == null
+        ? await _status()
+        : (status: observedStatus, permission: null);
+    final status = platform.status;
     _runtimeOnline = status != VpnStatus.disconnected;
     RuntimeSnapshot? saved;
     try {
@@ -287,7 +301,11 @@ class ConnectionRuntimeHost {
       // Native status remains authoritative when counters are unavailable.
     }
     if (status == VpnStatus.disconnected) {
-      return HostConnection(status, traffic: saved);
+      return HostConnection(
+        status,
+        traffic: saved,
+        permission: platform.permission,
+      );
     }
 
     final candidates = <ConnectionRuntime>[
@@ -313,6 +331,7 @@ class ConnectionRuntimeHost {
           status,
           runtime: runtime,
           traffic: await query(runtime),
+          permission: platform.permission,
         );
       } on Exception {
         // A saved counter is not a successful live sample.
@@ -321,6 +340,7 @@ class ConnectionRuntimeHost {
     return HostConnection(
       status,
       runtime: runtime,
+      permission: platform.permission,
       traffic: saved?.withCounters(
         uplink: saved.uplink,
         downlink: saved.downlink,
@@ -401,8 +421,8 @@ class ConnectionRuntimeHost {
     }
     final deadline = DateTime.now().add(stopTimeout);
     while (DateTime.now().isBefore(deadline)) {
-      final status = await _status();
-      if (status == VpnStatus.disconnected) {
+      final platform = await _status();
+      if (platform.status == VpnStatus.disconnected) {
         _runtimeOnline = false;
         RuntimeSnapshot? saved;
         try {
@@ -410,7 +430,11 @@ class ConnectionRuntimeHost {
         } on Exception {
           // Native shutdown does not depend on traffic persistence.
         }
-        return HostConnection(status, traffic: saved);
+        return HostConnection(
+          platform.status,
+          traffic: saved,
+          permission: platform.permission,
+        );
       }
       await Future<void>.delayed(pollInterval);
     }

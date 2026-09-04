@@ -5,6 +5,15 @@ import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/service/connection/settings.dart';
 
+ConnectionPlatform get connectionPlatform => switch (Platform.operatingSystem) {
+  'ios' => ConnectionPlatform.ios,
+  'macos' => ConnectionPlatform.macos,
+  'android' => ConnectionPlatform.android,
+  'windows' => ConnectionPlatform.windows,
+  'linux' => ConnectionPlatform.linux,
+  _ => throw UnsupportedError('Unsupported platform'),
+};
+
 /// User policy is a value snapshot, not the mutable native TunJson or old prefs.
 final class PlatformPolicy {
   final String _json;

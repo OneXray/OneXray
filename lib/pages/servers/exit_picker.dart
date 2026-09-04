@@ -30,7 +30,7 @@ class _ServerExitPickerPageState extends State<ServerExitPickerPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) controller.initialize(context, services: false);
+      if (mounted) controller.initialize();
     });
   }
 

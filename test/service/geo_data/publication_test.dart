@@ -8,6 +8,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/geo_data/service.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -15,6 +16,7 @@ void main() {
   late Directory datRoot;
   late AppDatabase db;
   late GeoDataService service;
+  var dbClosed = false;
   var revision = 'one';
   String? failDownload;
   String? failIndex;
@@ -62,7 +64,10 @@ void main() {
     datRoot = Directory(p.join(workspace.path, 'dat'));
     addTearDown(() => workspace.delete(recursive: true));
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(db.close);
+    dbClosed = false;
+    addTearDown(() async {
+      if (!dbClosed) await db.close();
+    });
     revision = 'one';
     failDownload = null;
     failIndex = null;
@@ -92,6 +97,23 @@ void main() {
     type: GeoDataType.domain,
     url: 'https://example.com/$name',
   );
+
+  GeoDataService createService(AppDatabase database) =>
+      GeoDataService.forTesting(
+        database: database,
+        directory: datRoot.path,
+        download: (url, file) async {
+          downloads++;
+          await file.writeAsString(revision);
+        },
+        count: count,
+        copyBundled: (path) async {
+          for (final name in ['geoip', 'geosite']) {
+            await File(p.join(path, '$name.dat')).writeAsString('bundled');
+          }
+          await File(p.join(path, 'timestamp.txt')).writeAsString('123');
+        },
+      );
 
   test(
     'local install creates both bundled defaults in the flat root',
@@ -131,6 +153,71 @@ void main() {
       );
     },
   );
+
+  test('deleted dat directory rebuilds a clean default publication', () async {
+    await service.ensureInstalled();
+    await service.add(input());
+    await datRoot.delete(recursive: true);
+
+    await service.ensureInstalled();
+
+    expect((await db.geoDataDao.publishedRows).map((row) => row.id).toSet(), {
+      -2,
+      -1,
+    });
+    expect((await service.publishedFiles()).length, 2);
+    expect(await File(p.join(datRoot.path, 'geoip.dat')).exists(), isTrue);
+    expect(await File(p.join(datRoot.path, 'geosite.dat')).exists(), isTrue);
+    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
+    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isFalse);
+  });
+
+  test('deleted database file discards orphaned dat files', () async {
+    await db.close();
+    dbClosed = true;
+    final databaseFile = File(p.join(workspace.path, 'db.sqlite'));
+    var database = AppDatabase.forTesting(NativeDatabase(databaseFile));
+    final installed = createService(database);
+    await installed.ensureInstalled();
+    await installed.add(input());
+    await database.connectionConfigDao.commit(
+      configurationJson: '{"connection":{"expert":true}}',
+    );
+    await database.close();
+    await databaseFile.delete();
+
+    database = AppDatabase.forTesting(NativeDatabase(databaseFile));
+    addTearDown(database.close);
+    final recreated = createService(database);
+    await recreated.ensureInstalled(resetOrphanedFiles: true);
+
+    expect(
+      (await database.geoDataDao.publishedRows).map((row) => row.id).toSet(),
+      {-2, -1},
+    );
+    expect((await recreated.publishedFiles()).length, 2);
+    expect((await database.connectionConfigDao.read()).configurationJson, '{}');
+    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
+    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isFalse);
+  });
+
+  test('in-process data clear republishes bundled defaults', () async {
+    await service.ensureInstalled();
+    await service.add(input());
+
+    await DataMaintenance.exclusive(() async {
+      await db.geoDataDao.clear();
+      await service.resetAfterDataClear();
+    });
+
+    expect((await db.geoDataDao.publishedRows).map((row) => row.id).toSet(), {
+      -2,
+      -1,
+    });
+    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
+    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isFalse);
+    await expectFlatRoot();
+  });
 
   test('nested entries are rejected instead of being merged', () async {
     await Directory(p.join(datRoot.path, 'nested')).create(recursive: true);

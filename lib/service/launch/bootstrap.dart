@@ -1,7 +1,6 @@
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/launch/storage_preparation.dart';
 
 enum LaunchDestination { privacy, firstRun, connect }
 
@@ -26,7 +25,6 @@ class LaunchBootstrapService {
       await appStartup.showMainWindow();
       return LaunchDestination.firstRun;
     }
-    await StoragePreparation.ensureReady();
     return LaunchDestination.connect;
   }
 

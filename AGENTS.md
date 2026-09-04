@@ -35,7 +35,7 @@ For refactor scope, phase gates, and platform verification limits, read `../refe
 
 # Runtime Flow
 
-`SetupService` prepares storage, VPN authorization and required platform settings before Home; optional region and server steps never start VPN. `ServiceManager` initializes `ConnectionCoordinator`.
+`LaunchBootstrapService` only prepares launch routing: privacy, first-run Setup, or Connect. The native bridge must establish an absolute data root before storage access. `ServiceManager` owns every normal startup: prepare storage, reconcile Geodata, check platform runtime prerequisites, then initialize `ConnectionCoordinator`; its initial native status read also queries VPN / System Extension permission without prompting. `SetupService` reuses the same preparation and permission capabilities for first-run configuration, but normal startup must not depend on Setup. Read `docs/app-startup.md` before changing startup recovery or permission checks.
 
 `lib/service/connection/` owns preparation, in-memory compiled connections, the single current startup record, cancellation, commit and failure state. Normal mode always uses the `proxy` balancer with complete node tags, including a single node. Raw retains its source text and extra inbounds; App-managed runtime fields are applied by `ConnectionCompiler`. New page actions, shortcuts and tray actions must use the coordinator, not compose runtime JSON themselves. A failed start stays failed and never restores the previous connection.
 

@@ -8,7 +8,7 @@ import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/launch/setup.dart';
+import 'package:onexray/service/tun_settings/interface.dart';
 
 enum TunnelDestination { apple, android, windows, interface }
 
@@ -38,7 +38,7 @@ class PolicyEditorPageState {
   final ConnectionView connection;
   final AppleVpnCapabilities? appleCapabilities;
   final bool appleCapabilitiesLoading;
-  final List<SetupInterface> interfaces;
+  final List<OutboundInterfaceOption> interfaces;
   final bool interfacesLoading;
   final bool interfacesFailed;
 
@@ -50,11 +50,11 @@ class PolicyEditorPageState {
     this.connection = const ConnectionView(),
     this.appleCapabilities,
     this.appleCapabilitiesLoading = false,
-    List<SetupInterface> interfaces = const [],
+    List<OutboundInterfaceOption> interfaces = const [],
     this.interfacesLoading = true,
     this.interfacesFailed = false,
   }) : androidAppNames = Map<String, String>.unmodifiable(androidAppNames),
-       interfaces = List<SetupInterface>.unmodifiable(interfaces);
+       interfaces = List<OutboundInterfaceOption>.unmodifiable(interfaces);
 
   PolicyEditorPageState copyWith({
     Object? draft = _notProvided,
@@ -64,7 +64,7 @@ class PolicyEditorPageState {
     ConnectionView? connection,
     Object? appleCapabilities = _notProvided,
     bool? appleCapabilitiesLoading,
-    List<SetupInterface>? interfaces,
+    List<OutboundInterfaceOption>? interfaces,
     bool? interfacesLoading,
     bool? interfacesFailed,
   }) => PolicyEditorPageState(
