@@ -1286,9 +1286,9 @@
   "@prototypeRawManagedSettingsNotice": {
     "description": "Approved prototype copy: This complete configuration controls servers, routing, and Xray DNS when selected. TUN, interface, and logging remain managed by OneXray."
   },
-  "prototypeRawAdditionalSettingsNotice": "Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and pingIn entries and other App-managed runtime settings cannot be overridden.",
+  "prototypeRawAdditionalSettingsNotice": "Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and other App-managed runtime settings cannot be overridden.",
   "@prototypeRawAdditionalSettingsNotice": {
-    "description": "Approved prototype copy: Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and pingIn entries and other App-managed runtime settings cannot be overridden."
+    "description": "Approved prototype copy: Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and other App-managed runtime settings cannot be overridden."
   },
   "prototypeRawJsonLimit": "You can save up to 3 Raw JSON configurations",
   "@prototypeRawJsonLimit": {
@@ -1351,9 +1351,9 @@
   "@prototypeCompleteXrayConfiguration": {
     "description": "Approved prototype copy: Complete Xray configuration"
   },
-  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, pingIn, IPv6, and related runtime features in Raw JSON do not take effect.",
+  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, IPv6, and related runtime features in Raw JSON do not take effect.",
   "@prototypeRawRuntimeOverrideNotice": {
-    "description": "Approved prototype copy: A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, pingIn, IPv6, and related runtime features in Raw JSON do not take effect."
+    "description": "Approved prototype copy: A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, IPv6, and related runtime features in Raw JSON do not take effect."
   },
   "prototypeAddServersToOneXray": "Add servers to OneXray",
   "@prototypeAddServersToOneXray": {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -28,6 +30,41 @@ class PingBatchResult {
 
   factory PingBatchResult.failed([String error = ""]) =>
       PingBatchResult(false, PingDelayConstants.error, error);
+
+  factory PingBatchResult.fromResponse(PingBatchItemResponse response) {
+    if (response.delay == null) {
+      return PingBatchResult.failed(response.error ?? "");
+    }
+
+    String? countryCode;
+    var locationError = response.locationError;
+    if (response.locationJson != null) {
+      try {
+        final location = jsonDecode(response.locationJson!);
+        final country = location is Map<String, dynamic>
+            ? location['country']
+            : null;
+        final normalized = country is String
+            ? country.trim().toUpperCase()
+            : '';
+        if (RegExp(r'^[A-Z]{2}$').hasMatch(normalized)) {
+          countryCode = normalized;
+        } else {
+          locationError = 'invalid location response';
+        }
+      } on FormatException {
+        locationError = 'invalid location response';
+      }
+    }
+
+    return PingBatchResult(
+      response.success ?? false,
+      response.delay!,
+      response.error ?? "",
+      countryCode: countryCode,
+      locationError: locationError,
+    );
+  }
 }
 
 class PingBatchRunner {
@@ -72,17 +109,7 @@ class PingBatchRunner {
     }
 
     return responseResults
-        .map(
-          (result) => result.delay == null
-              ? PingBatchResult.failed(result.error ?? "")
-              : PingBatchResult(
-                  result.success ?? false,
-                  result.delay!,
-                  result.error ?? "",
-                  countryCode: result.location?.countryCode,
-                  locationError: result.locationError,
-                ),
-        )
+        .map(PingBatchResult.fromResponse)
         .toList(growable: false);
   }
 

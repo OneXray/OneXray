@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/compiler.dart';
@@ -294,8 +293,6 @@ ConnectionPlan _plan(String digit, ConnectionConfiguration configuration) {
     request: StartVpnRequest(
       configuration.policy.toTun(ConnectionPlatform.android),
       null,
-      '18002',
-      XrayInboundAccount('fixture', 'fixture'),
       '18003',
       jsonEncode(
         LibXrayInvokeRequest(

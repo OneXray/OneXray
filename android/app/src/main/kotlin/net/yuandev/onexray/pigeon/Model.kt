@@ -44,17 +44,9 @@ data class TunJson(
 )
 
 @Serializable
-data class XrayInboundAccount(
-    val user: String?,
-    val pass: String?,
-)
-
-@Serializable
 data class StartVpnRequest(
     val tun: TunJson?,
     val socksPort: String? = null,
-    val pingPort: String?,
-    val pingAuth: XrayInboundAccount?,
     val metricsPort: String?,
     val coreInvokeText: String?,
     val configId: Long? = null,

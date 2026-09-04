@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/runtime_network_policy.dart';
 import 'package:onexray/service/connection/settings.dart';
@@ -33,17 +32,15 @@ CompiledConnection compileRaw(
     platform: ConnectionPlatform.android,
     assetDirectory: '/fixture/assets',
     sessionDirectory: '/fixture/session',
-    pingPort: 18001,
     metricsPort: 18002,
     socksPort: 18003,
-    pingAuth: XrayInboundAccount('fixture', 'fixture'),
     ipv6: false,
     bootstrapAddresses: hosts,
   ),
 );
 
 void main() {
-  test('IPv6 block precedes Raw ping and user rules', () {
+  test('IPv6 block precedes Raw user rules', () {
     final plan = compileRaw({
       'outbounds': [
         {'tag': 'direct', 'protocol': 'freedom'},
@@ -57,8 +54,7 @@ void main() {
     final rules = plan.config['routing']['rules'] as List;
     expect(rules[0]['ruleTag'], ConnectionCompiler.ipv6Block);
     expect(rules[0]['ip'], ['::/0']);
-    expect(rules[1]['ruleTag'], 'app-ping');
-    expect(rules[2]['outboundTag'], 'direct');
+    expect(rules[1]['outboundTag'], 'direct');
   });
 
   test('WireGuard extraction preserves standard endpoints and rejects malformed ones', () {

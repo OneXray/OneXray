@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:onexray/core/model/xray_inbound_account.dart';
 
 part 'xray_json.g.dart';
 
@@ -239,19 +238,6 @@ class XrayInboundSocksSettings {
       _$XrayInboundSocksSettingsFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayInboundSocksSettingsToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class XrayInboundHttpSettings {
-  bool? allowTransparent;
-  List<XrayInboundAccount>? users;
-
-  XrayInboundHttpSettings({this.allowTransparent, this.users});
-
-  factory XrayInboundHttpSettings.fromJson(Map<String, dynamic> json) =>
-      _$XrayInboundHttpSettingsFromJson(json);
-
-  Map<String, dynamic> toJson() => _$XrayInboundHttpSettingsToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

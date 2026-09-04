@@ -65,18 +65,6 @@ void main() {
           'settings': {'auth': 'noauth', 'udp': true},
           'tag': 'socksIn',
         },
-        {
-          'listen': '127.0.0.1',
-          'port': '1081',
-          'protocol': 'http',
-          'settings': {
-            'allowTransparent': false,
-            'users': [
-              {'user': 'fixture', 'pass': 'fixture'},
-            ],
-          },
-          'tag': 'pingIn',
-        },
       ],
       'outbounds': [
         {'tag': 'app-entry-0', 'protocol': 'freedom'},
@@ -190,16 +178,8 @@ void main() {
       'autoOutboundsInterface': 'en0',
     };
     final socks = {'auth': 'noauth', 'udp': true};
-    final http = {
-      'allowTransparent': false,
-      'users': [
-        {'user': 'fixture', 'pass': 'fixture'},
-      ],
-    };
-
     expect(XrayInboundTunSettings.fromJson(tun).toJson(), tun);
     expect(XrayInboundSocksSettings.fromJson(socks).toJson(), socks);
-    expect(XrayInboundHttpSettings.fromJson(http).toJson(), http);
   });
 
   test('round-trips the three App-managed system outbounds', () {

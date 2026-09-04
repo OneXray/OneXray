@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -40,9 +39,9 @@ Future<List<int>> allocateRuntimePorts(
 }) async {
   final allocate = getFreePorts ?? AppHostApi().getFreePorts;
   for (var attempt = 0; attempt < 5; attempt++) {
-    final candidates = await allocate(4);
-    if (candidates.length == 4 &&
-        candidates.toSet().length == 4 &&
+    final candidates = await allocate(3);
+    if (candidates.length == 3 &&
+        candidates.toSet().length == 3 &&
         candidates.every((port) => port > 0 && port <= 65535) &&
         !rawInbounds.any(
           (entry) =>
@@ -211,7 +210,6 @@ class ConnectionPreparation {
               .toList();
         }
       }
-      final auth = XrayInboundAccountFactory.random();
       final compiled = ConnectionCompiler.compile(
         settings: settings,
         entries: entries,
@@ -224,9 +222,7 @@ class ConnectionPreparation {
           assetDirectory: assets.path,
           sessionDirectory: directory.path,
           socksPort: ports[0],
-          pingPort: ports[1],
-          metricsPort: ports[2],
-          pingAuth: auth,
+          metricsPort: ports[1],
           ipv6: policy.ipv6Enabled,
           interfaceName: policy.xrayOutboundInterfaceName,
           logEnabled: policy.logEnabled,
@@ -258,7 +254,7 @@ class ConnectionPreparation {
       final runtime = ManagedRuntimeRequest(
         statePath: p.join(VpnConstants.runDir, 'runtime.json'),
         planId: id,
-        listen: '127.0.0.1:${ports[3]}',
+        listen: '127.0.0.1:${ports[2]}',
         token: newPlanId(),
       );
       final request = StartVpnRequest(
@@ -268,8 +264,6 @@ class ConnectionPreparation {
             ? '${ports[0]}'
             : null,
         '${ports[1]}',
-        auth,
-        '${ports[2]}',
         jsonEncode(
           LibXrayInvokeRequest(
             method: LibXrayMethod.runXray,

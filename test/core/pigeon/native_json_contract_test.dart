@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/model/tun_json.dart';
-import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
 
@@ -36,8 +35,6 @@ void main() {
     final request = StartVpnRequest(
       tun,
       '11999',
-      '12000',
-      XrayInboundAccount('user', 'pass'),
       '12001',
       '{"apiVersion":3,"method":"runXray"}',
       configId: 7,
@@ -69,8 +66,6 @@ void main() {
     expect(request.toJson().keys.toSet(), {
       'tun',
       'socksPort',
-      'pingPort',
-      'pingAuth',
       'metricsPort',
       'coreInvokeText',
       'configId',

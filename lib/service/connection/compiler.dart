@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/runtime_network_policy.dart';
 import 'package:onexray/service/routing/custom_template.dart';
@@ -51,10 +50,8 @@ class RuntimeOptions {
   final ConnectionPlatform platform;
   final String assetDirectory;
   final String sessionDirectory;
-  final int pingPort;
   final int metricsPort;
   final int socksPort;
-  final XrayInboundAccount pingAuth;
   final bool ipv6;
   final String interfaceName;
   final bool logEnabled;
@@ -68,10 +65,8 @@ class RuntimeOptions {
     required this.platform,
     required this.assetDirectory,
     required this.sessionDirectory,
-    required this.pingPort,
     required this.metricsPort,
     required this.socksPort,
-    required this.pingAuth,
     this.ipv6 = true,
     this.interfaceName = '',
     this.logEnabled = false,
@@ -85,13 +80,13 @@ class RuntimeOptions {
            (key, value) => MapEntry(key, List<String>.unmodifiable(value)),
          ),
        ) {
-    for (final port in [pingPort, metricsPort, socksPort]) {
+    for (final port in [metricsPort, socksPort]) {
       if (port < 1 || port > 65535) {
         throw const FormatException('Invalid runtime port');
       }
     }
-    if ({pingPort, metricsPort, socksPort}.length != 3 || !pingAuth.isValid) {
-      throw const FormatException('Runtime ports/auth are invalid');
+    if (metricsPort == socksPort) {
+      throw const FormatException('Runtime ports are invalid');
     }
     if ((platform == ConnectionPlatform.windows ||
             platform == ConnectionPlatform.linux) &&
@@ -334,7 +329,7 @@ class ConnectionCompiler {
           'rules': [
             {
               'ruleTag': 'app-default',
-              'inboundTag': ['pingIn', dnsProxy],
+              'inboundTag': [dnsProxy],
               'balancerTag': 'proxy',
             },
             {
@@ -438,12 +433,11 @@ class ConnectionCompiler {
       if (tag != null && (tag is! String || !inboundTags.add(tag))) {
         throw const FormatException('Duplicate or invalid inbound tag');
       }
-      if (tag == 'tunIn' || tag == 'pingIn') continue;
+      if (tag == 'tunIn') continue;
       if (inbound['protocol'] == 'tun') {
         throw const FormatException('Use the App-managed tunIn tunnel');
       }
-      if (portIncludes(inbound['port'], options.pingPort) ||
-          portIncludes(inbound['port'], options.metricsPort) ||
+      if (portIncludes(inbound['port'], options.metricsPort) ||
           (options.platform == ConnectionPlatform.windows &&
               portIncludes(inbound['port'], options.socksPort))) {
         throw const FormatException(
@@ -451,9 +445,7 @@ class ConnectionCompiler {
         );
       }
     }
-    inbounds.removeWhere(
-      (inbound) => inbound['tag'] == 'tunIn' || inbound['tag'] == 'pingIn',
-    );
+    inbounds.removeWhere((inbound) => inbound['tag'] == 'tunIn');
     final tun = options.platform == ConnectionPlatform.windows
         ? createSocksInboundMap('${options.socksPort}')
         : createTunInboundMap();
@@ -465,11 +457,7 @@ class ConnectionCompiler {
         'autoOutboundsInterface': options.interfaceName,
       });
     }
-    config['inbounds'] = [
-      tun,
-      ...inbounds,
-      createPingInboundMap(port: '${options.pingPort}', auth: options.pingAuth),
-    ];
+    config['inbounds'] = [tun, ...inbounds];
     final env = _object(config, 'env');
     env['xray.location.asset'] = options.assetDirectory;
     env['xray.location.cert'] = options.assetDirectory;
@@ -571,26 +559,6 @@ class ConnectionCompiler {
     }
     final routing = _object(config, 'routing');
     final rules = _objects(routing, 'rules');
-    if (raw) {
-      const pingRule = 'app-ping';
-      if (rules.any((rule) => rule['ruleTag'] == pingRule)) {
-        throw const FormatException('Reserved ping rule conflict');
-      }
-      var firstTag = outbounds.first['tag'] as String?;
-      if (firstTag == null || firstTag.isEmpty) {
-        firstTag = 'app-raw-default';
-        if (tags.contains(firstTag)) {
-          throw const FormatException('Reserved default tag conflict');
-        }
-        outbounds.first['tag'] = firstTag;
-      }
-      rules.insert(0, {
-        'ruleTag': pingRule,
-        'inboundTag': ['pingIn'],
-        'outboundTag': firstTag,
-      });
-    }
-    // Global IPv6 policy must precede even the App-owned Raw ping rule.
     if (!options.ipv6) {
       var blockTag = 'block';
       if (raw) {

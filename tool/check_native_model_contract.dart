@@ -61,8 +61,6 @@ const _contracts = [
     {
       'tun',
       'socksPort',
-      'pingPort',
-      'pingAuth',
       'metricsPort',
       'coreInvokeText',
       'configId',
@@ -71,8 +69,6 @@ const _contracts = [
     {
       'tun',
       'socksPort',
-      'pingPort',
-      'pingAuth',
       'metricsPort',
       'coreInvokeText',
       'configId',

@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/tools/json.dart';
 
@@ -9,8 +8,6 @@ part 'model.g.dart';
 class StartVpnRequest {
   TunJson? tun;
   String? socksPort;
-  String? pingPort;
-  XrayInboundAccount? pingAuth;
   String? metricsPort;
   String? coreInvokeText;
   int? configId;
@@ -19,8 +16,6 @@ class StartVpnRequest {
   StartVpnRequest(
     this.tun,
     this.socksPort,
-    this.pingPort,
-    this.pingAuth,
     this.metricsPort,
     this.coreInvokeText, {
     this.configId,
@@ -110,14 +105,14 @@ class PingBatchItemResponse {
   bool? success;
   int? delay;
   String? error;
-  PingLocationResponse? location;
+  String? locationJson;
   String? locationError;
 
   PingBatchItemResponse(
     this.success,
     this.delay,
     this.error, {
-    this.location,
+    this.locationJson,
     this.locationError,
   });
 
@@ -125,16 +120,6 @@ class PingBatchItemResponse {
       _$PingBatchItemResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$PingBatchItemResponseToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class PingLocationResponse {
-  final String? ip;
-  final String? countryCode;
-  const PingLocationResponse({this.ip, this.countryCode});
-  factory PingLocationResponse.fromJson(Map<String, dynamic> json) =>
-      _$PingLocationResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$PingLocationResponseToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

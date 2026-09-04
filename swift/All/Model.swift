@@ -82,16 +82,9 @@ struct TunJson: Codable {
     var disallowAppList: [String]?
 }
 
-struct XrayInboundAccount: Codable {
-    var user: String?
-    var pass: String?
-}
-
 struct StartVpnRequest: Codable {
     var tun: TunJson?
     var socksPort: String?
-    var pingPort: String?
-    var pingAuth: XrayInboundAccount?
     var metricsPort: String?
     var coreInvokeText: String?
     var configId: Int64?

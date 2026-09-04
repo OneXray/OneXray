@@ -193,7 +193,7 @@ void main() {
           'stats': {
             'inbound': {
               'tunIn': {'uplink': up, 'downlink': up * 2},
-              'pingIn': {'uplink': 999, 'downlink': 999},
+              'otherIn': {'uplink': 999, 'downlink': 999},
             },
           },
         }),
@@ -620,7 +620,7 @@ NativeVpnCommandResult _success() =>
     NativeVpnCommandResult(state: NativeVpnCommandState.success);
 
 XrayMetricsVars _metrics(int up, int down) => XrayMetricsVars(
-  XrayMetricsStats(XrayMetricsInboundStats(XrayTrafficCounter(up, down), null)),
+  XrayMetricsStats(XrayMetricsInboundStats(XrayTrafficCounter(up, down))),
 );
 
 RuntimeSnapshot _snapshot(
@@ -672,8 +672,6 @@ ConnectionPlan _plan({
       'platform': platform,
       'configuration': ConnectionConfiguration().toJson(),
       'request': StartVpnRequest(
-        null,
-        null,
         null,
         null,
         '$port',

@@ -77,7 +77,6 @@ class IOSDebugProxy {
         port == null ||
         port < 1 ||
         port > 65535 ||
-        port == int.tryParse(request.pingPort ?? '') ||
         port == int.tryParse(request.metricsPort ?? '') ||
         request.coreInvokeText == null) {
       throw const FormatException('Invalid iOS Debug proxy plan');

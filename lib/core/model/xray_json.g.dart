@@ -240,22 +240,6 @@ Map<String, dynamic> _$XrayInboundSocksSettingsToJson(
   XrayInboundSocksSettings instance,
 ) => <String, dynamic>{'auth': ?instance.auth, 'udp': ?instance.udp};
 
-XrayInboundHttpSettings _$XrayInboundHttpSettingsFromJson(
-  Map<String, dynamic> json,
-) => XrayInboundHttpSettings(
-  allowTransparent: json['allowTransparent'] as bool?,
-  users: (json['users'] as List<dynamic>?)
-      ?.map((e) => XrayInboundAccount.fromJson(e as Map<String, dynamic>))
-      .toList(),
-);
-
-Map<String, dynamic> _$XrayInboundHttpSettingsToJson(
-  XrayInboundHttpSettings instance,
-) => <String, dynamic>{
-  'allowTransparent': ?instance.allowTransparent,
-  'users': ?instance.users?.map((e) => e.toJson()).toList(),
-};
-
 XrayInboundSniffing _$XrayInboundSniffingFromJson(Map<String, dynamic> json) =>
     XrayInboundSniffing(
       enabled: json['enabled'] as bool?,

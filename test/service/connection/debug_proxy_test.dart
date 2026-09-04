@@ -45,8 +45,8 @@ void main() {
     expect(plan.encode(), original);
   });
 
-  test('conversion rejects missing, invalid, or occupied managed ports', () {
-    for (final port in [null, '', '0', '65536', 'invalid', '18002', '18003']) {
+  test('conversion rejects missing, invalid, or occupied metrics ports', () {
+    for (final port in [null, '', '0', '65536', 'invalid', '18003']) {
       expect(
         () => IOSDebugProxy.buildInvoke(_plan(port: port)),
         throwsFormatException,
@@ -77,7 +77,6 @@ ConnectionPlan _plan({
           'protocol': 'tun',
           'settings': {'name': 'OneXrayTun'},
         },
-      {'tag': 'pingIn', 'protocol': 'http', 'port': 18002},
       {'tag': 'rawInbound', 'protocol': 'http', 'port': 18004},
     ],
     'metrics': {'listen': '127.0.0.1:18003'},
@@ -118,8 +117,6 @@ ConnectionPlan _plan({
       'request': StartVpnRequest(
         null,
         port,
-        '18002',
-        null,
         '18003',
         jsonEncode(invoke.toJson()),
       ).toJson(),

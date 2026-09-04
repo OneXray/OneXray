@@ -17,17 +17,26 @@ void main() {
           {
             'success': true,
             'delay': 0,
-            'location': {'ip': '203.0.113.1', 'countryCode': 'US'},
+            'locationJson': '{"ip_address":"203.0.113.1","country":"US"}',
           },
           {'success': true, 'delay': 20, 'locationError': 'unavailable'},
+          {
+            'success': true,
+            'delay': 30,
+            'location': {'countryCode': 'JP'},
+          },
         ],
       }).results!;
       expect(results[0].delay, 0);
-      expect(results[0].location?.countryCode, 'US');
+      expect(
+        results[0].locationJson,
+        '{"ip_address":"203.0.113.1","country":"US"}',
+      );
       expect(results[1].success, isTrue);
       expect(results[1].delay, 20);
-      expect(results[1].location, isNull);
+      expect(results[1].locationJson, isNull);
       expect(results[1].locationError, 'unavailable');
+      expect(results[2].locationJson, isNull);
     },
   );
   test('ping batch request uses the libXray wire model', () {

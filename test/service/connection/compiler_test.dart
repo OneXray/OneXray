@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/settings.dart';
@@ -34,10 +33,8 @@ RuntimeOptions options({
   platform: platform,
   assetDirectory: '${Directory.current.path}/assets/dat',
   sessionDirectory: '/unused-session',
-  pingPort: 18185,
   metricsPort: 18186,
   socksPort: 18187,
-  pingAuth: XrayInboundAccount('p2', 'fixture-only'),
   ipv6: ipv6,
   interfaceName: interfaceName,
 );
@@ -111,17 +108,7 @@ void main() {
           )['settings'],
           {'name': 'OneXrayTun', 'mtu': 1500},
         );
-        expect(
-          inbounds.singleWhere(
-            (inbound) => inbound['tag'] == 'pingIn',
-          )['settings'],
-          {
-            'allowTransparent': false,
-            'users': [
-              {'user': 'p2', 'pass': 'fixture-only'},
-            ],
-          },
-        );
+        expect(inbounds, hasLength(1));
         config['outbounds'].clear();
         expect(plan.config['outbounds'], isNotEmpty);
         expect(
@@ -369,7 +356,7 @@ void main() {
 
   test('Raw keeps source/additional inbound/policy/DNS/routing but overrides runtime fields', () {
     const source = ''' {"inbounds":[{"tag":"tunIn","protocol":"tun","settings":{"name":"ignored"}},
-      {"tag":"extra","protocol":"socks","listen":"127.0.0.1","port":18188}],
+      {"tag":"extra","protocol":"socks","listen":"127.0.0.1","port":18185}],
       "outbounds":[{"tag":"custom-direct","protocol":"freedom","streamSettings":{"sockopt":{"domainStrategy":"UseIPv4"}}}],
       "routing":{"rules":[{"type":"field","domain":["full:example.test"],"outboundTag":"custom-direct","futureRule":{"keep":true}}]},
       "dns":{"hosts":{"example.test":"127.0.0.1"},"servers":["localhost"],"futureDns":{"keep":true}},
@@ -440,9 +427,26 @@ void main() {
     expect(semantic('one'), isNot(semantic('two')));
   });
 
+  test('Raw keeps the default outbound and routing untouched', () {
+    final plan = ConnectionCompiler.compile(
+      settings: ConnectionSettings(expert: true),
+      entries: [],
+      raw: {
+        'outbounds': [
+          {'protocol': 'freedom'},
+        ],
+      },
+      regions: catalog,
+      options: options(),
+    );
+
+    expect(plan.config['outbounds'].first.containsKey('tag'), false);
+    expect(plan.config['routing']['rules'], isEmpty);
+  });
+
   test('Raw reserved tags/ports conflict clearly, rather than renaming user references', () {
     for (final inbound in [
-      {'tag': 'extra', 'protocol': 'socks', 'port': '18184-18187'},
+      {'tag': 'extra', 'protocol': 'socks', 'port': '18186-18187'},
       {'tag': 'extra-tun', 'protocol': 'tun'},
     ]) {
       expect(

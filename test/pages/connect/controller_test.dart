@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
@@ -418,8 +417,6 @@ ConnectionPlan _plan({bool expert = false}) {
     request: StartVpnRequest(
       configuration.policy.toTun(ConnectionPlatform.android),
       null,
-      '18002',
-      XrayInboundAccount('fixture', 'fixture'),
       '18003',
       jsonEncode(invoke.toJson()),
     ),

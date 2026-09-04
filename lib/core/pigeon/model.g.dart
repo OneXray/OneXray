@@ -12,12 +12,6 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
           ? null
           : TunJson.fromJson(json['tun'] as Map<String, dynamic>),
       json['socksPort'] as String?,
-      json['pingPort'] as String?,
-      json['pingAuth'] == null
-          ? null
-          : XrayInboundAccount.fromJson(
-              json['pingAuth'] as Map<String, dynamic>,
-            ),
       json['metricsPort'] as String?,
       json['coreInvokeText'] as String?,
       configId: (json['configId'] as num?)?.toInt(),
@@ -28,8 +22,6 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
     <String, dynamic>{
       'tun': ?instance.tun?.toJson(),
       'socksPort': ?instance.socksPort,
-      'pingPort': ?instance.pingPort,
-      'pingAuth': ?instance.pingAuth?.toJson(),
       'metricsPort': ?instance.metricsPort,
       'coreInvokeText': ?instance.coreInvokeText,
       'configId': ?instance.configId,
@@ -90,9 +82,7 @@ PingBatchItemResponse _$PingBatchItemResponseFromJson(
   json['success'] as bool?,
   (json['delay'] as num?)?.toInt(),
   json['error'] as String?,
-  location: json['location'] == null
-      ? null
-      : PingLocationResponse.fromJson(json['location'] as Map<String, dynamic>),
+  locationJson: json['locationJson'] as String?,
   locationError: json['locationError'] as String?,
 );
 
@@ -102,22 +92,8 @@ Map<String, dynamic> _$PingBatchItemResponseToJson(
   'success': ?instance.success,
   'delay': ?instance.delay,
   'error': ?instance.error,
-  'location': ?instance.location?.toJson(),
+  'locationJson': ?instance.locationJson,
   'locationError': ?instance.locationError,
-};
-
-PingLocationResponse _$PingLocationResponseFromJson(
-  Map<String, dynamic> json,
-) => PingLocationResponse(
-  ip: json['ip'] as String?,
-  countryCode: json['countryCode'] as String?,
-);
-
-Map<String, dynamic> _$PingLocationResponseToJson(
-  PingLocationResponse instance,
-) => <String, dynamic>{
-  'ip': ?instance.ip,
-  'countryCode': ?instance.countryCode,
 };
 
 XrayVersionResponse _$XrayVersionResponseFromJson(Map<String, dynamic> json) =>

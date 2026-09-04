@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/connection/compiler.dart';
@@ -249,10 +248,8 @@ class RawEditorService {
       sessionDirectory: plan == null
           ? VpnConstants.runDir
           : p.dirname(plan.runtime.statePath),
-      pingPort: int.tryParse(request?.pingPort ?? '') ?? 65533,
       metricsPort: int.tryParse(request?.metricsPort ?? '') ?? 65534,
       socksPort: int.tryParse(request?.socksPort ?? '') ?? 65535,
-      pingAuth: request?.pingAuth ?? XrayInboundAccount('editor', 'editor'),
       ipv6: policy.ipv6Enabled,
       interfaceName: policy.xrayOutboundInterfaceName,
       logEnabled: policy.logEnabled,

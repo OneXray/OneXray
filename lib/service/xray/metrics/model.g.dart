@@ -34,17 +34,11 @@ XrayMetricsInboundStats _$XrayMetricsInboundStatsFromJson(
   json['tunIn'] == null
       ? null
       : XrayTrafficCounter.fromJson(json['tunIn'] as Map<String, dynamic>),
-  json['pingIn'] == null
-      ? null
-      : XrayTrafficCounter.fromJson(json['pingIn'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$XrayMetricsInboundStatsToJson(
   XrayMetricsInboundStats instance,
-) => <String, dynamic>{
-  'tunIn': ?instance.tunIn?.toJson(),
-  'pingIn': ?instance.pingIn?.toJson(),
-};
+) => <String, dynamic>{'tunIn': ?instance.tunIn?.toJson()};
 
 XrayTrafficCounter _$XrayTrafficCounterFromJson(Map<String, dynamic> json) =>
     XrayTrafficCounter(

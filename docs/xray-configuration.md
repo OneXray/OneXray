@@ -73,7 +73,7 @@ geoip/geosite。导入先校验、下载并生成索引，文件名冲突拒绝�
 
 Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或测试改写原始 inbounds。
 运行时直接解析为 Map 并在深副本上应用 App 策略。运行副本保留用户
-额外入站，但 App 接管 `tunIn`、`pingIn`、metrics、统计、日志、IPv6、运行路径及适用
+额外入站，但 App 接管 `tunIn`、metrics、统计、日志、IPv6、运行路径及适用
 平台的出口网卡；额外 TUN、保留端口冲突或无法满足平台网络策略的配置明确失败。
 
 Windows 的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore Provider/Session Host 转交；

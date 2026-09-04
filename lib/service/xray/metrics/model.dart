@@ -31,9 +31,8 @@ class XrayMetricsStats {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayMetricsInboundStats {
   final XrayTrafficCounter? tunIn;
-  final XrayTrafficCounter? pingIn;
 
-  const XrayMetricsInboundStats(this.tunIn, this.pingIn);
+  const XrayMetricsInboundStats(this.tunIn);
 
   factory XrayMetricsInboundStats.fromJson(Map<String, dynamic> json) =>
       _$XrayMetricsInboundStatsFromJson(json);
