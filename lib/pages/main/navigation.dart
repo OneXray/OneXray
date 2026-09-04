@@ -7,23 +7,24 @@ abstract final class AppDialogRoutePath {
   static const appUpdate = "/app-update";
 }
 
-enum AppPrimaryRoute {
-  home("/home"),
-  subscriptions("/subscriptions"),
-  core("/core"),
+enum AppPrimaryDestination {
+  connect("/connect"),
+  servers("/servers"),
+  advanced("/advanced"),
   settings("/settings");
 
   final String rootPath;
 
-  const AppPrimaryRoute(this.rootPath);
+  const AppPrimaryDestination(this.rootPath);
 
-  static AppPrimaryRoute fromPath(String path) {
-    for (final primary in values) {
-      if (path == primary.rootPath || path.startsWith("${primary.rootPath}/")) {
-        return primary;
+  static AppPrimaryDestination fromPath(String path) {
+    for (final destination in values) {
+      if (path == destination.rootPath ||
+          path.startsWith("${destination.rootPath}/")) {
+        return destination;
       }
     }
-    return home;
+    return connect;
   }
 }
 
@@ -66,29 +67,29 @@ enum AppSecondaryDestination {
 }
 
 extension AppNavigationContext on BuildContext {
-  AppPrimaryRoute get currentPrimaryRoute {
+  AppPrimaryDestination get currentPrimaryDestination {
     final path = GoRouterState.of(this).uri.path;
-    return AppPrimaryRoute.fromPath(path);
+    return AppPrimaryDestination.fromPath(path);
   }
 
   String scopedPath(AppSecondaryDestination destination) {
-    final primary = currentPrimaryRoute;
+    final primary = currentPrimaryDestination;
     return "${primary.rootPath}/${destination.segment}";
   }
 
   void goPrimary(
     StatefulNavigationShell navigationShell,
-    AppPrimaryRoute primary,
+    AppPrimaryDestination destination,
   ) {
-    final index = AppPrimaryRoute.values.indexOf(primary);
+    final index = AppPrimaryDestination.values.indexOf(destination);
     navigationShell.goBranch(
       index,
       initialLocation: navigationShell.currentIndex == index,
     );
   }
 
-  void goPrimaryRoot(AppPrimaryRoute primary) {
-    go(primary.rootPath);
+  void goPrimaryRoot(AppPrimaryDestination destination) {
+    go(destination.rootPath);
   }
 
   Future<T?> pushScoped<T>(

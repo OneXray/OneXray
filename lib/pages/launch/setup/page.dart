@@ -22,7 +22,7 @@ class SetupPage extends StatelessWidget {
       listenWhen: (previous, next) => previous.step != next.step,
       listener: (context, state) {
         if (state.step == SetupStep.complete) {
-          context.read<SetupController>().goHome(context);
+          context.read<SetupController>().goConnect(context);
         }
       },
       builder: (context, state) {

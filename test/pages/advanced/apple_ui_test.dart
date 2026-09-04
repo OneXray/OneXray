@@ -58,7 +58,7 @@ PolicyEditorController _controller({
     service: PolicyEditorService(coordinator: coordinator, platform: platform),
   );
   addTearDown(() async {
-    controller.dispose();
+    await controller.close();
     coordinator.dispose();
     await db.close();
   });

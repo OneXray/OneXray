@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class AppUpdateDialogController {
+enum AppUpdateDialogAction { skip }
+
+class AppUpdateDialogController extends PageCubit<AppUpdateDialogAction?> {
   final AppUpdateInfo updateInfo;
 
-  const AppUpdateDialogController(this.updateInfo);
+  AppUpdateDialogController(this.updateInfo) : super(null);
 
   void later(BuildContext context) {
     Navigator.pop(context);
   }
 
   Future<void> skip(BuildContext context) async {
-    await AppUpdateService().skipVersion(updateInfo);
-    AppEventBus.instance.updateAppUpdateInfo(null);
-    if (context.mounted) {
-      Navigator.pop(context);
+    if (state != null) return;
+    emit(AppUpdateDialogAction.skip);
+    try {
+      await AppUpdateService().skipVersion(updateInfo);
+      AppEventBus.instance.updateAppUpdateInfo(null);
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+    } finally {
+      emit(null);
     }
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -20,11 +22,8 @@ class ServerSourcesDialog extends StatelessWidget {
     return AppDialog(
       title: l.prototypeManageSources,
       subtitle: l.prototypeSourceUpdateGuard,
-      body: ListenableBuilder(
-        listenable: Listenable.merge([
-          controller,
-          controller.coordinator.state,
-        ]),
+      body: BlocBuilder<ServersController, ConnectPageState>(
+        bloc: controller,
         builder: (context, _) {
           final material = MaterialLocalizations.of(context);
           final localCount = controller.sourceCount(0);

@@ -1,8 +1,9 @@
 import 'package:drift/native.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/advanced/controller.dart';
+import 'package:onexray/pages/advanced/tab_visibility.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/traffic_accounting.dart';
 
@@ -58,6 +59,68 @@ void main() {
       await db.close();
     },
   );
+
+  testWidgets('xray uptime stops after switching to the tunnel tab', (
+    tester,
+  ) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final coordinator = ConnectionCoordinator(database: db);
+    var now = DateTime(2026, 9, 3);
+    coordinator.state.value = ConnectionView(
+      phase: ConnectionPhase.connected,
+      traffic: RuntimeSnapshot(
+        sessionId: 'session',
+        startedAtMs: now.millisecondsSinceEpoch - 60000,
+        endedAtMs: 0,
+        uplink: 0,
+        downlink: 0,
+        available: true,
+        sampledAtMs: now.millisecondsSinceEpoch,
+        savedAtMs: now.millisecondsSinceEpoch,
+        error: '',
+      ),
+    );
+    final controller = _AdvancedController(
+      coordinator: coordinator,
+      now: () => now,
+    );
+    late BuildContext tabsContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DefaultTabController(
+          length: 2,
+          initialIndex: 1,
+          child: Builder(
+            builder: (context) {
+              tabsContext = context;
+              return AdvancedTabVisibility(
+                tabIndex: 1,
+                onChanged: controller.setVisible,
+                child: const SizedBox(),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(controller.state.uptime, '0:01:00');
+
+    now = now.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(controller.state.uptime, '0:01:01');
+
+    DefaultTabController.of(tabsContext).animateTo(0, duration: Duration.zero);
+    await tester.pump();
+    now = now.add(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 3));
+    expect(controller.state.uptime, '0:01:01');
+
+    await tester.pumpWidget(const SizedBox());
+    await controller.close();
+    coordinator.dispose();
+    await db.close();
+  });
 }
 
 class _AdvancedController extends AdvancedController {

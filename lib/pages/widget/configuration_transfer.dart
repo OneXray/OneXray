@@ -1,12 +1,13 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/assets/import.dart';
@@ -17,7 +18,37 @@ import 'package:share_plus/share_plus.dart';
 
 enum ConfigurationTransferAction { file, clipboard, export, share }
 
-class ConfigurationTransferController extends ChangeNotifier {
+class ConfigurationTransferState {
+  final bool busy;
+  final ConfigurationTransferAction? action;
+  final String? notice;
+  final GeoDataImportDraft? pending;
+
+  const ConfigurationTransferState({
+    this.busy = false,
+    this.action,
+    this.notice,
+    this.pending,
+  });
+
+  ConfigurationTransferState copyWith({
+    bool? busy,
+    ConfigurationTransferAction? action,
+    bool clearAction = false,
+    String? notice,
+    bool clearNotice = false,
+    GeoDataImportDraft? pending,
+    bool clearPending = false,
+  }) => ConfigurationTransferState(
+    busy: busy ?? this.busy,
+    action: clearAction ? null : action ?? this.action,
+    notice: clearNotice ? null : notice ?? this.notice,
+    pending: clearPending ? null : pending ?? this.pending,
+  );
+}
+
+class ConfigurationTransferController
+    extends PageCubit<ConfigurationTransferState> {
   final ConfigurationKind kind;
   final String Function() readText;
   final String Function() readName;
@@ -25,10 +56,6 @@ class ConfigurationTransferController extends ChangeNotifier {
   final void Function(ConfigurationImportDraft) onImport;
   final ConfigurationTransferService service;
   ConfigurationImportDraft? _draft;
-  bool busy = false;
-  ConfigurationTransferAction? action;
-  bool _disposed = false;
-  String? notice;
 
   ConfigurationTransferController({
     required this.kind,
@@ -37,25 +64,32 @@ class ConfigurationTransferController extends ChangeNotifier {
     required this.onImport,
     this.hasContent,
     ConfigurationTransferService? service,
-  }) : service = service ?? ConfigurationTransferService();
+  }) : service = service ?? ConfigurationTransferService(),
+       super(const ConfigurationTransferState());
 
-  GeoDataImportDraft? get pending => _draft?.geodata;
+  bool get busy => state.busy;
+  ConfigurationTransferAction? get action => state.action;
+  String? get notice => state.notice;
+  GeoDataImportDraft? get pending => state.pending;
 
   Future<void> import(BuildContext context, {required bool clipboard}) async {
     if (busy) return;
     final l10n = AppLocalizations.of(context)!;
-    busy = true;
-    action = clipboard
-        ? ConfigurationTransferAction.clipboard
-        : ConfigurationTransferAction.file;
-    notice = null;
-    _notify();
+    emit(
+      state.copyWith(
+        busy: true,
+        action: clipboard
+            ? ConfigurationTransferAction.clipboard
+            : ConfigurationTransferAction.file,
+        clearNotice: true,
+      ),
+    );
     ConfigurationImportDraft? next;
     try {
       final input = clipboard
           ? await ServerImportService.readClipboard()
           : await ServerImportService.pickTextFile(jsonOnly: true);
-      if (input == null || !context.mounted || _disposed) return;
+      if (input == null || !context.mounted || !isPageActive) return;
       // Parse before asking to replace anything, and download only after consent.
       ConfigurationTransferService.read(input, kind);
       if ((hasContent?.call() ?? readText().trim().isNotEmpty) &&
@@ -70,39 +104,57 @@ class ConfigurationTransferController extends ChangeNotifier {
           )) {
         return;
       }
-      if (!context.mounted || _disposed) return;
+      if (!context.mounted || !isPageActive) return;
       next = await service.import(input, kind);
-      if (!context.mounted || _disposed) return;
+      if (!context.mounted || !isPageActive) return;
       onImport(next);
       final previous = _draft;
       _draft = next;
       next = null;
       await previous?.dispose();
-      notice = kind == ConfigurationKind.raw
-          ? l10n.prototypeJsonImportedIntoEditor
-          : l10n.prototypeCustomImportedIntoEditor;
+      emit(
+        state.copyWith(
+          notice: kind == ConfigurationKind.raw
+              ? l10n.prototypeJsonImportedIntoEditor
+              : l10n.prototypeCustomImportedIntoEditor,
+          pending: _draft?.geodata,
+          clearPending: _draft?.geodata == null,
+        ),
+      );
     } catch (_) {
-      notice = kind == ConfigurationKind.raw
-          ? l10n.prototypeCannotReadContent
-          : l10n.prototypeCannotReadCustomRoute;
+      emit(
+        state.copyWith(
+          notice: kind == ConfigurationKind.raw
+              ? l10n.prototypeCannotReadContent
+              : l10n.prototypeCannotReadCustomRoute,
+        ),
+      );
     } finally {
       await next?.dispose();
-      busy = false;
-      action = null;
-      if (_disposed) await _draft?.dispose();
-      _notify();
+      if (!isPageActive) await _disposeDraft();
+      emit(
+        state.copyWith(
+          busy: false,
+          clearAction: true,
+          pending: _draft?.geodata,
+          clearPending: _draft?.geodata == null,
+        ),
+      );
     }
   }
 
   Future<void> export(BuildContext context, {required bool share}) async {
     if (busy) return;
     final l10n = AppLocalizations.of(context)!;
-    busy = true;
-    action = share
-        ? ConfigurationTransferAction.share
-        : ConfigurationTransferAction.export;
-    notice = null;
-    _notify();
+    emit(
+      state.copyWith(
+        busy: true,
+        action: share
+            ? ConfigurationTransferAction.share
+            : ConfigurationTransferAction.export,
+        clearNotice: true,
+      ),
+    );
     try {
       if (!await ContextAlert.showConfirmDialog(
             context,
@@ -115,7 +167,7 @@ class ConfigurationTransferController extends ChangeNotifier {
                 : l10n.prototypeExportJson,
           ) ||
           !context.mounted ||
-          _disposed) {
+          !isPageActive) {
         return;
       }
       final name = readName();
@@ -127,10 +179,10 @@ class ConfigurationTransferController extends ChangeNotifier {
           text: text,
           pending: pending,
         );
-        if (!context.mounted || _disposed) return;
+        if (!context.mounted || !isPageActive) return;
         if (AppPlatform.isLinux) {
           await Clipboard.setData(ClipboardData(text: links));
-          notice = l10n.prototypeConfigurationLinksCopied;
+          emit(state.copyWith(notice: l10n.prototypeConfigurationLinksCopied));
         } else {
           final box = context.findRenderObject() as RenderBox?;
           final result = await SharePlus.instance.share(
@@ -144,9 +196,11 @@ class ConfigurationTransferController extends ChangeNotifier {
           );
           if (result.status == ShareResultStatus.unavailable) {
             await Clipboard.setData(ClipboardData(text: links));
-            notice = l10n.prototypeConfigurationLinksCopied;
+            emit(
+              state.copyWith(notice: l10n.prototypeConfigurationLinksCopied),
+            );
           } else if (result.status == ShareResultStatus.success) {
-            notice = l10n.prototypeShareSheetOpened;
+            emit(state.copyWith(notice: l10n.prototypeShareSheetOpened));
           }
         }
       } else {
@@ -156,7 +210,7 @@ class ConfigurationTransferController extends ChangeNotifier {
           text: text,
           pending: pending,
         );
-        if (_disposed || !context.mounted) return;
+        if (!isPageActive || !context.mounted) return;
         final basename = name.trim().replaceAll(
           RegExp(r'[\\/:*?"<>|\x00-\x1f]'),
           '_',
@@ -166,30 +220,32 @@ class ConfigurationTransferController extends ChangeNotifier {
           '${basename.isEmpty ? 'xray' : basename}.json',
           'json',
         )) {
-          notice = kind == ConfigurationKind.raw
-              ? l10n.prototypeOriginalJsonExported
-              : l10n.prototypeCustomJsonExported;
+          emit(
+            state.copyWith(
+              notice: kind == ConfigurationKind.raw
+                  ? l10n.prototypeOriginalJsonExported
+                  : l10n.prototypeCustomJsonExported,
+            ),
+          );
         }
       }
     } catch (_) {
-      notice = l10n.prototypeCannotShareConfiguration;
+      emit(state.copyWith(notice: l10n.prototypeCannotShareConfiguration));
     } finally {
-      busy = false;
-      action = null;
-      if (_disposed) await _draft?.dispose();
-      _notify();
+      if (!isPageActive) await _disposeDraft();
+      emit(state.copyWith(busy: false, clearAction: true));
     }
   }
 
-  void _notify() {
-    if (!_disposed) notifyListeners();
+  Future<void> _disposeDraft() async {
+    final draft = _draft;
+    _draft = null;
+    await draft?.dispose();
   }
 
   @override
-  void dispose() {
-    _disposed = true;
-    if (!busy) unawaited(_draft?.dispose());
-    super.dispose();
+  Future<void> disposePageResources() async {
+    if (!state.busy) await _disposeDraft();
   }
 }
 
@@ -205,85 +261,86 @@ class ConfigurationTransferTools extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l10n = AppLocalizations.of(context)!;
-      final busy = disabled || controller.busy;
-      final empty = controller.readText().trim().isEmpty;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          OutlinedButtonTheme(
-            data: OutlinedButtonThemeData(
-              style: Theme.of(context).outlinedButtonTheme.style?.copyWith(
-                minimumSize: const WidgetStatePropertyAll(Size(0, 36)),
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 10),
+  Widget build(BuildContext context) =>
+      BlocBuilder<ConfigurationTransferController, ConfigurationTransferState>(
+        bloc: controller,
+        builder: (context, state) {
+          final l10n = AppLocalizations.of(context)!;
+          final busy = disabled || state.busy;
+          final empty = controller.readText().trim().isEmpty;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OutlinedButtonTheme(
+                data: OutlinedButtonThemeData(
+                  style: Theme.of(context).outlinedButtonTheme.style?.copyWith(
+                    minimumSize: const WidgetStatePropertyAll(Size(0, 36)),
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    textStyle: WidgetStatePropertyAll(
+                      AppTypography.configurationTool,
+                    ),
+                  ),
                 ),
-                textStyle: WidgetStatePropertyAll(
-                  AppTypography.configurationTool,
-                ),
-              ),
-            ),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => controller.import(context, clipboard: false),
-                  icon: controller.action == ConfigurationTransferAction.file
-                      ? const ButtonProgressIndicator()
-                      : const Icon(LucideIcons.upload, size: 16),
-                  label: Text(l10n.prototypeImportFile),
-                ),
-                OutlinedButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => controller.import(context, clipboard: true),
-                  icon:
-                      controller.action == ConfigurationTransferAction.clipboard
-                      ? const ButtonProgressIndicator()
-                      : const Icon(LucideIcons.clipboard, size: 16),
-                  label: Text(l10n.prototypeReadClipboard),
-                ),
-                OutlinedButton.icon(
-                  onPressed: busy || empty
-                      ? null
-                      : () => controller.export(context, share: false),
-                  icon: controller.action == ConfigurationTransferAction.export
-                      ? const ButtonProgressIndicator()
-                      : const Icon(LucideIcons.download, size: 16),
-                  label: Text(l10n.prototypeExportJson),
-                ),
-                OutlinedButton.icon(
-                  onPressed: busy || empty
-                      ? null
-                      : () => controller.export(context, share: true),
-                  icon: controller.action == ConfigurationTransferAction.share
-                      ? const ButtonProgressIndicator()
-                      : const Icon(LucideIcons.share2, size: 16),
-                  label: Text(l10n.prototypeShare),
-                ),
-                ...children,
-              ],
-            ),
-          ),
-          if (controller.notice != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(
-                  controller.notice!,
-                  style: Theme.of(context).textTheme.bodySmall,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => controller.import(context, clipboard: false),
+                      icon: state.action == ConfigurationTransferAction.file
+                          ? const ButtonProgressIndicator()
+                          : const Icon(LucideIcons.upload, size: 16),
+                      label: Text(l10n.prototypeImportFile),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => controller.import(context, clipboard: true),
+                      icon:
+                          state.action == ConfigurationTransferAction.clipboard
+                          ? const ButtonProgressIndicator()
+                          : const Icon(LucideIcons.clipboard, size: 16),
+                      label: Text(l10n.prototypeReadClipboard),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: busy || empty
+                          ? null
+                          : () => controller.export(context, share: false),
+                      icon: state.action == ConfigurationTransferAction.export
+                          ? const ButtonProgressIndicator()
+                          : const Icon(LucideIcons.download, size: 16),
+                      label: Text(l10n.prototypeExportJson),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: busy || empty
+                          ? null
+                          : () => controller.export(context, share: true),
+                      icon: state.action == ConfigurationTransferAction.share
+                          ? const ButtonProgressIndicator()
+                          : const Icon(LucideIcons.share2, size: 16),
+                      label: Text(l10n.prototypeShare),
+                    ),
+                    ...children,
+                  ],
                 ),
               ),
-            ),
-        ],
+              if (state.notice != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      state.notice!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       );
-    },
-  );
 }

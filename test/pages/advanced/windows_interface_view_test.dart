@@ -55,7 +55,7 @@ void main() {
         draft: PolicyEditorDraft(original),
         service: _service(ConnectionPlatform.windows),
       );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       var openedInterfaces = 0;
       await tester.pumpWidget(
         _app(
@@ -137,7 +137,7 @@ void main() {
         draft: PolicyEditorDraft(ConnectionConfiguration()),
         service: _service(ConnectionPlatform.windows),
       );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       controller.update('excludedCidrs', [
         ...List.generate(63, (index) => '192.168.$index.0/24'),
         ' ',
@@ -186,20 +186,23 @@ void main() {
       (tester) async {
         _viewport(tester);
         final original = ConnectionConfiguration();
-        final controller =
-            OutboundInterfaceController(
-                draft: PolicyEditorDraft(original),
-                service: _service(platform),
-              )
-              ..interfaces = const [
-                SetupInterface('Wi-Fi (en0)', [
-                  '192.0.2.10',
-                  '2001:db8::10',
-                ], true),
-                SetupInterface('Ethernet', ['192.0.2.20'], false),
-              ]
-              ..loading = false;
-        addTearDown(controller.dispose);
+        var fail = false;
+        final controller = OutboundInterfaceController(
+          draft: PolicyEditorDraft(original),
+          service: _service(platform),
+          loadInterfaces: () async {
+            if (fail) throw StateError('interface read failed');
+            return const [
+              SetupInterface('Wi-Fi (en0)', [
+                '192.0.2.10',
+                '2001:db8::10',
+              ], true),
+              SetupInterface('Ethernet', ['192.0.2.20'], false),
+            ];
+          },
+        );
+        await controller.readInterfaces();
+        addTearDown(controller.close);
         var retries = 0;
         await tester.pumpWidget(
           _app(
@@ -243,8 +246,8 @@ void main() {
         expect(controller.value['xrayOutboundInterfaceName'], 'Ethernet');
         expect(save().onPressed, isNotNull);
         expect(original.policy.xrayOutboundInterfaceName, isEmpty);
-        controller.failed = true;
-        controller.notify();
+        fail = true;
+        await controller.readInterfaces();
         await tester.pumpAndSettle();
         expect(save().onPressed, isNull);
         await tester.tap(find.text(l.prototypeRetry));

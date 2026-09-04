@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/runtime.dart';
@@ -17,51 +18,95 @@ typedef OpenFinalExit = Future<ServerExitChoice?> Function(
   ServerExitPickerParams params,
 );
 
-class SmartRoutingEditorController extends ChangeNotifier {
+const _unchangedSmartRoutingValue = Object();
+
+class SmartRoutingEditorState {
+  final SmartRoutingEditorDraft? original;
+  final SmartRoutingSettings draft;
+  final String? finalExitName;
+  final String? error;
+  final bool busy;
+
+  SmartRoutingEditorState({
+    this.original,
+    SmartRoutingSettings? draft,
+    this.finalExitName,
+    this.error,
+    this.busy = true,
+  }) : draft = draft ?? SmartRoutingSettings();
+
+  SmartRoutingEditorState copyWith({
+    SmartRoutingEditorDraft? original,
+    SmartRoutingSettings? draft,
+    Object? finalExitName = _unchangedSmartRoutingValue,
+    Object? error = _unchangedSmartRoutingValue,
+    bool? busy,
+  }) => SmartRoutingEditorState(
+    original: original ?? this.original,
+    draft: draft ?? this.draft,
+    finalExitName: identical(finalExitName, _unchangedSmartRoutingValue)
+        ? this.finalExitName
+        : finalExitName as String?,
+    error: identical(error, _unchangedSmartRoutingValue)
+        ? this.error
+        : error as String?,
+    busy: busy ?? this.busy,
+  );
+}
+
+class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
   final SmartRoutingEditorService service;
-  SmartRoutingEditorDraft? original;
-  SmartRoutingSettings draft = SmartRoutingSettings();
-  String? finalExitName;
-  String? error;
-  bool busy = true;
-  bool _closed = false;
 
   SmartRoutingEditorController({SmartRoutingEditorService? service})
-    : service = service ?? SmartRoutingEditorService();
+    : service = service ?? SmartRoutingEditorService(),
+      super(SmartRoutingEditorState());
 
   Future<void> load(BuildContext context) async {
-    busy = true;
-    error = null;
-    _notify();
+    emit(state.copyWith(busy: true, error: null));
     try {
       final value = await service.load();
-      if (_closed) return;
-      original = value;
-      draft = value.configuration.connection.smart;
-      finalExitName = value.finalExitName;
+      if (!isPageActive) return;
+      emit(
+        SmartRoutingEditorState(
+          original: value,
+          draft: value.configuration.connection.smart,
+          finalExitName: value.finalExitName,
+          busy: false,
+        ),
+      );
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeTemporarilyUnavailable;
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!
+                .prototypeTemporarilyUnavailable,
+          ),
+        );
       }
     } finally {
-      busy = false;
-      _notify();
+      emit(state.copyWith(busy: false));
     }
   }
 
   void update(String key, Object? value) {
-    if (original == null) return;
-    draft = SmartRoutingSettings.fromJson({...draft.toJson(), key: value});
-    error = null;
-    _notify();
+    if (state.original == null) return;
+    emit(
+      state.copyWith(
+        draft: SmartRoutingSettings.fromJson({
+          ...state.draft.toJson(),
+          key: value,
+        }),
+        error: null,
+      ),
+    );
   }
 
   ConnectionConfiguration get checkConfiguration {
-    final current = original!.configuration;
+    final current = state.original!.configuration;
     return ConnectionConfiguration(
       connection: ConnectionSettings.fromJson({
         ...current.connection.toJson(),
-        'smart': draft.toJson(),
+        'smart': state.draft.toJson(),
         'expert': false,
         'trafficMode': TrafficMode.smart.name,
       }),
@@ -69,22 +114,22 @@ class SmartRoutingEditorController extends ChangeNotifier {
     );
   }
 
-  List<Map<String, dynamic>> rulesFor(String action) => original == null
+  List<Map<String, dynamic>> rulesFor(String action) => state.original == null
       ? []
       : ConnectionCompiler.smartRules(
-          draft,
-          original!.regions,
+          state.draft,
+          state.original!.regions,
         ).where((rule) => rule['outboundTag'] == action).toList();
 
   String directPreview(AppLocalizations l) {
     final tags = rulesFor('direct').map((rule) => rule['ruleTag']).toSet();
-    final regions = original?.regions.regionCodes ?? const <String>[];
+    final regions = state.original?.regions.regionCodes ?? const <String>[];
     final labels = <String>{
       if (tags.contains('app-smart-private-domain') ||
           tags.contains('app-smart-private-ip'))
         l.prototypeLocalNetworkPrivateAddresses,
       if (tags.contains('app-smart-apple')) l.prototypeAppleServices,
-      for (final code in draft.directRegions)
+      for (final code in state.draft.directRegions)
         if (regions.contains(code.toUpperCase()))
           setupRegionLabel(l, code.toUpperCase()),
     };
@@ -95,7 +140,7 @@ class SmartRoutingEditorController extends ChangeNotifier {
       rulesFor('block').isEmpty ? l.prototypeNone : l.prototypeCommonAdDomains;
 
   String regionsSummary(AppLocalizations l) {
-    final names = draft.directRegions
+    final names = state.draft.directRegions
         .map((code) => setupRegionLabel(l, code))
         .toList();
     if (names.isEmpty) return l.prototypeNoDirectRegions;
@@ -104,12 +149,13 @@ class SmartRoutingEditorController extends ChangeNotifier {
   }
 
   int get effectiveEntryCount =>
-      original?.configuration.connection.selection.kind == SelectionKind.server
+      state.original?.configuration.connection.selection.kind ==
+          SelectionKind.server
       ? 1
-      : draft.entryCount;
+      : state.draft.entryCount;
 
   String vpnPath(AppLocalizations l) {
-    final selection = original!.configuration.connection.selection;
+    final selection = state.original!.configuration.connection.selection;
     final entry = switch (selection.kind) {
       SelectionKind.automatic => l.prototypeAutomaticEntries(
         effectiveEntryCount,
@@ -117,80 +163,103 @@ class SmartRoutingEditorController extends ChangeNotifier {
       SelectionKind.region =>
         '${setupRegionLabel(l, selection.region!)} · ${l.prototypeAutomaticEntries(effectiveEntryCount)}',
       SelectionKind.source =>
-        '${original!.selectionName ?? l.prototypeTemporarilyUnavailable} · ${l.prototypeUseEntryServers(effectiveEntryCount)}',
+        '${state.original!.selectionName ?? l.prototypeTemporarilyUnavailable} · ${l.prototypeUseEntryServers(effectiveEntryCount)}',
       SelectionKind.server =>
-        original!.selectionName ?? l.prototypeTemporarilyUnavailable,
+        state.original!.selectionName ?? l.prototypeTemporarilyUnavailable,
     };
-    return draft.finalExitId == null
+    return state.draft.finalExitId == null
         ? entry
-        : '$entry → ${finalExitName ?? l.prototypeTemporarilyUnavailable}';
+        : '$entry → ${state.finalExitName ?? l.prototypeTemporarilyUnavailable}';
   }
 
   Future<void> chooseRegions(
     BuildContext context,
     OpenDirectRegions open,
   ) async {
-    if (busy) return;
-    final selected = await open(context, List.of(draft.directRegions));
-    if (_closed || selected == null) return;
+    if (state.busy) return;
+    final selected = await open(context, List.of(state.draft.directRegions));
+    if (!isPageActive || selected == null) return;
     try {
       final regions = await service.regions();
-      if (_closed) return;
-      final previous = original!;
-      original = SmartRoutingEditorDraft(
+      if (!isPageActive) return;
+      final previous = state.original!;
+      final original = SmartRoutingEditorDraft(
         configuration: previous.configuration,
         regions: regions,
         selectionName: previous.selectionName,
         finalExitName: previous.finalExitName,
       );
-      update('directRegions', selected);
+      emit(
+        state.copyWith(
+          original: original,
+          draft: SmartRoutingSettings.fromJson({
+            ...state.draft.toJson(),
+            'directRegions': selected,
+          }),
+          error: null,
+        ),
+      );
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeTemporarilyUnavailable;
-        _notify();
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!
+                .prototypeTemporarilyUnavailable,
+          ),
+        );
       }
     }
   }
 
   Future<void> chooseFinalExit(BuildContext context, OpenFinalExit open) async {
-    if (busy || original == null) return;
-    final selection = original!.configuration.connection.selection;
+    if (state.busy || state.original == null) return;
+    final selection = state.original!.configuration.connection.selection;
     final choice = await open(
       context,
       ServerExitPickerParams(
-        selectedId: draft.finalExitId,
+        selectedId: state.draft.finalExitId,
         excludedIds: {
           if (selection.kind == SelectionKind.server) selection.id!,
         },
       ),
     );
-    if (_closed || choice == null) return;
+    if (!isPageActive || choice == null) return;
     try {
       final name = await service.serverName(choice.id);
-      if (_closed) return;
+      if (!isPageActive) return;
       if (choice.id != null && name == null) {
         throw const FormatException('Final exit is missing');
       }
-      finalExitName = name;
-      update('finalExitId', choice.id);
+      emit(
+        state.copyWith(
+          finalExitName: name,
+          draft: SmartRoutingSettings.fromJson({
+            ...state.draft.toJson(),
+            'finalExitId': choice.id,
+          }),
+          error: null,
+        ),
+      );
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeTemporarilyUnavailable;
-        _notify();
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!
+                .prototypeTemporarilyUnavailable,
+          ),
+        );
       }
     }
   }
 
   Future<void> save(BuildContext context) async {
-    if (busy || original == null) return;
+    if (state.busy || state.original == null) return;
     final l = AppLocalizations.of(context)!;
-    busy = true;
-    error = null;
-    _notify();
+    emit(state.copyWith(busy: true, error: null));
     try {
       final saved = await service.save(
-        original: original!.configuration,
-        smart: draft,
+        original: state.original!.configuration,
+        smart: state.draft,
         confirmReconnect: () => context.mounted
             ? showApplyAndReconnectDialog(
                 context,
@@ -204,24 +273,13 @@ class SmartRoutingEditorController extends ChangeNotifier {
         Navigator.of(context).pop(true);
       }
     } catch (_) {
-      error = l.buttonSaveFailed;
+      emit(state.copyWith(error: l.buttonSaveFailed));
     } finally {
-      busy = false;
-      _notify();
+      emit(state.copyWith(busy: false));
     }
   }
 
   void cancel(BuildContext context) {
     Navigator.of(context).pop();
-  }
-
-  void _notify() {
-    if (!_closed) notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _closed = true;
-    super.dispose();
   }
 }

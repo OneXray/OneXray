@@ -24,7 +24,7 @@ void main() {
     final coordinator = ConnectionCoordinator(database: db);
     controller = ServersController(database: db, coordinator: coordinator);
     addTearDown(() async {
-      controller.dispose();
+      await controller.close();
       coordinator.dispose();
       await db.close();
     });

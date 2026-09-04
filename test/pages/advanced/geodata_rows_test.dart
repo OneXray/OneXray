@@ -18,9 +18,11 @@ void main() {
   testWidgets(
     'Geodata updates guard only the same file and release on failure',
     (tester) async {
-      final service = _PendingGeoDataService();
+      final first = _file(42, 'first', 100);
+      final second = _file(43, 'second', 100);
+      final service = _PendingGeoDataService([first, second]);
       final controller = GeoDataController(service: service);
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       late BuildContext context;
       await tester.pumpWidget(
         MaterialApp(
@@ -36,28 +38,27 @@ void main() {
           ),
         ),
       );
-      final first = _file(42, 'first', 100);
-      final second = _file(43, 'second', 100);
-      controller.files = [first, second];
+      await controller.initialize();
+      await tester.pump();
       final firstUpdate = controller.update(context, first);
       await controller.update(context, first);
       final secondUpdate = controller.update(context, second);
       await controller.updateAll(context);
       expect(service.calls, [42, 43]);
-      expect(controller.fileBusy(42), isTrue);
-      expect(controller.fileBusy(43), isTrue);
-      expect(controller.fileBusy(-1), isFalse);
-      expect(controller.formBusy, isFalse);
-      expect(controller.canUpdateAll, isFalse);
+      expect(controller.state.fileBusy(42), isTrue);
+      expect(controller.state.fileBusy(43), isTrue);
+      expect(controller.state.fileBusy(-1), isFalse);
+      expect(controller.state.formBusy, isFalse);
+      expect(controller.state.canUpdateAll, isFalse);
       service.pending[42]!.complete();
       await firstUpdate;
-      expect(controller.fileBusy(42), isFalse);
-      expect(controller.fileBusy(43), isTrue);
+      expect(controller.state.fileBusy(42), isFalse);
+      expect(controller.state.fileBusy(43), isTrue);
       service.pending[43]!.completeError(StateError('download failed'));
       await secondUpdate;
-      expect(controller.errors[43], isNotNull);
-      expect(controller.fileBusy(43), isFalse);
-      expect(controller.canUpdateAll, isTrue);
+      expect(controller.state.errors[43], isNotNull);
+      expect(controller.state.fileBusy(43), isFalse);
+      expect(controller.state.canUpdateAll, isTrue);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -233,8 +234,17 @@ void main() {
 }
 
 class _PendingGeoDataService implements GeoDataService {
+  _PendingGeoDataService(this.files);
+
+  final List<PublishedGeoData> files;
   final calls = <int>[];
   final pending = <int, Completer<void>>{};
+
+  @override
+  Future<void> ensureInstalled() async {}
+
+  @override
+  Stream<List<PublishedGeoData>> watchPublished() => Stream.value(files);
 
   @override
   Future<void> updateCustom(GeoDataData original, {bool downloading = true}) {

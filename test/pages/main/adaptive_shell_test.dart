@@ -13,6 +13,25 @@ import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
 void main() {
+  test('primary destinations use product names and URLs', () {
+    expect(AppPrimaryDestination.values.map((route) => route.name), [
+      'connect',
+      'servers',
+      'advanced',
+      'settings',
+    ]);
+    expect(AppPrimaryDestination.values.map((route) => route.rootPath), [
+      '/connect',
+      '/servers',
+      '/advanced',
+      '/settings',
+    ]);
+    expect(
+      AppPrimaryDestination.fromPath('/advanced/routing-data'),
+      AppPrimaryDestination.advanced,
+    );
+  });
+
   testWidgets('shared navigation breakpoints preserve the update flow', (
     tester,
   ) async {
@@ -35,7 +54,7 @@ void main() {
     final rootKey = GlobalKey<NavigatorState>();
     final router = GoRouter(
       navigatorKey: rootKey,
-      initialLocation: AppPrimaryRoute.home.rootPath,
+      initialLocation: AppPrimaryDestination.connect.rootPath,
       routes: [
         GoRoute(
           path: AppDialogRoutePath.appUpdate,
@@ -45,7 +64,7 @@ void main() {
           builder: (_, _, navigationShell) =>
               AdaptiveMainShell(navigationShell: navigationShell),
           branches: [
-            for (final primary in AppPrimaryRoute.values)
+            for (final primary in AppPrimaryDestination.values)
               StatefulShellBranch(
                 routes: [
                   GoRoute(
@@ -103,17 +122,22 @@ void main() {
     final desktopNavigation = find.byKey(
       const ValueKey('primary-desktop-navigation'),
     );
-    expect(find.text('home-content'), findsOneWidget);
+    expect(find.text('connect-content'), findsOneWidget);
     expect(find.text('OneXray'), findsOneWidget);
     expect(
       tester.getSize(desktopNavigation).width,
       AppLayout.desktopSidebarWidth,
     );
-    final desktopHome = find.byKey(const ValueKey('primary-navigation-home'));
-    expect(tester.widget<Semantics>(desktopHome).properties.selected, isTrue);
-    expect(tester.getSize(desktopHome).height, AppSpacing.sidebarRowHeight);
+    final desktopConnect = find.byKey(
+      const ValueKey('primary-navigation-connect'),
+    );
     expect(
-      tester.getSize(desktopHome).width,
+      tester.widget<Semantics>(desktopConnect).properties.selected,
+      isTrue,
+    );
+    expect(tester.getSize(desktopConnect).height, AppSpacing.sidebarRowHeight);
+    expect(
+      tester.getSize(desktopConnect).width,
       AppLayout.desktopSidebarWidth - AppSpacing.sidebarHorizontal * 2 - 1,
     );
     for (final width in [900.0, 721.0]) {
@@ -130,38 +154,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(desktopNavigation, findsNothing);
     final navigation = find.byKey(const ValueKey('primary-mobile-navigation'));
-    final homeDestination = find.byKey(
-      const ValueKey('primary-navigation-home'),
+    final connectDestination = find.byKey(
+      const ValueKey('primary-navigation-connect'),
     );
     expect(navigation, findsOneWidget);
-    expect(tester.getSize(navigation).height, AppLayout.mobileNavigationHeight);
-    expect(
-      tester.widget<Semantics>(homeDestination).properties.selected,
-      isTrue,
+    final navigationBar = tester.widget<NavigationBar>(
+      find.byType(NavigationBar),
     );
-    expect(tester.widget<Semantics>(homeDestination).properties.button, isTrue);
+    expect(navigationBar.height, isNull);
+    expect(navigationBar.selectedIndex, AppPrimaryDestination.connect.index);
+    expect(
+      navigationBar.destinations,
+      hasLength(AppPrimaryDestination.values.length),
+    );
+    expect(
+      tester.widget<NavigationDestination>(connectDestination).label,
+      'Connect',
+    );
     expect(find.byType(Badge), findsOneWidget);
-    final homeIcon = find.descendant(
-      of: homeDestination,
-      matching: find.byType(Icon),
-    );
-    expect(tester.getSize(homeIcon).height, AppLayout.mobileNavigationIconSize);
-    expect(
-      tester.getTopLeft(find.text('Connect')).dy -
-          tester.getBottomLeft(homeIcon).dy,
-      closeTo(AppSpacing.mobileNavigationGap, 0.001),
-    );
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, '/settings');
     expect(
-      tester
-          .widget<Semantics>(
-            find.byKey(const ValueKey('primary-navigation-settings')),
-          )
-          .properties
-          .selected,
-      isTrue,
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      AppPrimaryDestination.settings.index,
     );
     for (final path in ['/settings', '/settings/details']) {
       router.go(path);
@@ -208,7 +224,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(navigation, findsNothing);
     expect(find.text('details'), findsOneWidget);
-    router.go('/home');
+    router.go('/connect');
     await tester.pumpAndSettle();
     await tester.binding.setSurfaceSize(const Size(901, 800));
     await tester.pumpAndSettle();

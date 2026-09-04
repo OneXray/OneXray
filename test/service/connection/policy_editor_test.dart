@@ -65,8 +65,7 @@ void main() {
         draft: original,
         service: service,
       );
-      addTearDown(controller.dispose);
-      controller.error = 'previous error';
+      addTearDown(controller.close);
 
       controller.restoreDefaults();
 

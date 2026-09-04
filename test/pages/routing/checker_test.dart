@@ -7,6 +7,26 @@ import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/routing/state.dart';
 
 void main() {
+  test('checker input and disclosure are Cubit state', () {
+    final controller = RouteCheckerCubit(
+      configuration: ConnectionConfiguration(),
+    );
+    addTearDown(controller.close);
+
+    expect(controller.state.target, 'github.com');
+    expect(controller.state.expanded, isFalse);
+    controller.target.text = 'example.com';
+    controller.port.text = '8443';
+    controller.updateNetwork('udp');
+    controller.toggleExpanded();
+
+    expect(controller.state.target, 'example.com');
+    expect(controller.state.port, '8443');
+    expect(controller.state.network, 'udp');
+    expect(controller.state.revision, 3);
+    expect(controller.state.expanded, isTrue);
+  });
+
   for (final locale in AppLocalizations.supportedLocales) {
     testWidgets('rule check is folded and keeps custom conditions in $locale', (
       tester,

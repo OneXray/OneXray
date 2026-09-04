@@ -193,14 +193,11 @@ class ServerBrowser extends StatelessWidget {
           initialIndex: controller.grouping.index,
           child: TabBar(
             onTap: (index) => controller.groupBy(ServerGrouping.values[index]),
-            labelStyle: AppTypography.selectedAdvancedTab,
-            unselectedLabelStyle: AppTypography.advancedTab,
             unselectedLabelColor: palette.mutedStrong,
             labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-            indicatorSize: TabBarIndicatorSize.tab,
             tabs: [
-              Tab(height: 38, text: l.prototypeByNodeLocation),
-              Tab(height: 38, text: l.prototypeBySubscription),
+              Tab(text: l.prototypeByNodeLocation),
+              Tab(text: l.prototypeBySubscription),
             ],
           ),
         ),

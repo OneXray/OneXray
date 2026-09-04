@@ -5,6 +5,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/tun/app_icon/controller.dart';
 import 'package:onexray/pages/core/tun/app_icon/view.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -12,34 +13,61 @@ import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-class AndroidAppsController extends ChangeNotifier {
+@immutable
+class AndroidAppsPageState {
   final Set<String> selected;
+  final List<AndroidAppInfo> apps;
+  final bool loading;
+  final bool failed;
+  final String query;
+
+  AndroidAppsPageState({
+    Set<String> selected = const {},
+    List<AndroidAppInfo> apps = const [],
+    this.loading = true,
+    this.failed = false,
+    this.query = '',
+  }) : selected = Set<String>.unmodifiable(selected),
+       apps = List<AndroidAppInfo>.unmodifiable(apps);
+
+  AndroidAppsPageState copyWith({
+    Set<String>? selected,
+    List<AndroidAppInfo>? apps,
+    bool? loading,
+    bool? failed,
+    String? query,
+  }) => AndroidAppsPageState(
+    selected: selected ?? this.selected,
+    apps: apps ?? this.apps,
+    loading: loading ?? this.loading,
+    failed: failed ?? this.failed,
+    query: query ?? this.query,
+  );
+}
+
+class AndroidAppsController extends PageCubit<AndroidAppsPageState> {
   final Future<List<AndroidAppInfo>> Function() loadApps;
-  List<AndroidAppInfo> apps = [];
-  bool loading = true;
-  bool failed = false;
-  String query = '';
-  bool _closed = false;
   AndroidAppsController(
     List<String> selected, {
     Future<List<AndroidAppInfo>> Function()? loadApps,
-  }) : selected = selected.toSet(),
-       loadApps = loadApps ?? AppHostApi().getInstalledApps;
+  }) : loadApps = loadApps ?? AppHostApi().getInstalledApps,
+       super(AndroidAppsPageState(selected: selected.toSet()));
+
+  Set<String> get selected => state.selected;
+  List<AndroidAppInfo> get apps => state.apps;
+  bool get loading => state.loading;
+  bool get failed => state.failed;
+  String get query => state.query;
 
   Future<void> load() async {
-    loading = true;
-    failed = false;
-    notify();
+    emit(state.copyWith(loading: true, failed: false));
     try {
       final result = await loadApps();
-      if (!_closed) {
-        apps = result;
-      }
+      emit(state.copyWith(apps: result));
     } catch (_) {
-      failed = true;
+      emit(state.copyWith(failed: true));
     } finally {
-      loading = false;
-      notify();
+      emit(state.copyWith(loading: false));
     }
   }
 
@@ -61,34 +89,23 @@ class AndroidAppsController extends ChangeNotifier {
       .toList();
 
   void search(String value) {
-    query = value.trim().toLowerCase();
-    notify();
+    emit(state.copyWith(query: value.trim().toLowerCase()));
   }
 
   void toggle(String id) {
+    final selected = state.selected.toSet();
     if (!selected.remove(id)) {
       selected.add(id);
     }
-    notify();
+    emit(state.copyWith(selected: selected));
   }
 
   void finish(BuildContext context) =>
       Navigator.of(context).pop(selected.toList());
   void cancel(BuildContext context) => Navigator.of(context).pop();
-  void notify() {
-    if (!_closed) {
-      notifyListeners();
-    }
-  }
-
-  @override
-  void dispose() {
-    _closed = true;
-    super.dispose();
-  }
 }
 
-class AndroidAppsPage extends StatefulWidget {
+class AndroidAppsPage extends StatelessWidget {
   final String mode;
   final List<String> selected;
   const AndroidAppsPage({
@@ -97,23 +114,14 @@ class AndroidAppsPage extends StatefulWidget {
     required this.selected,
   });
   @override
-  State<AndroidAppsPage> createState() => _AndroidAppsPageState();
-}
-
-class _AndroidAppsPageState extends State<AndroidAppsPage> {
-  late final controller = AndroidAppsController(widget.selected)..load();
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => BlocProvider(
-    create: (_) => TunAppIconController(),
-    child: AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
+  Widget build(BuildContext context) => MultiBlocProvider(
+    providers: [
+      BlocProvider(create: (_) => AndroidAppsController(selected)..load()),
+      BlocProvider(create: (_) => TunAppIconController()),
+    ],
+    child: BlocBuilder<AndroidAppsController, AndroidAppsPageState>(
+      builder: (context, state) {
+        final controller = context.read<AndroidAppsController>();
         final l = AppLocalizations.of(context)!;
         final palette = ColorManager.palette(context);
         final rows = controller.visible;
@@ -133,7 +141,7 @@ class _AndroidAppsPageState extends State<AndroidAppsPage> {
                           Semantics(
                             header: true,
                             child: Text(
-                              widget.mode == 'included'
+                              mode == 'included'
                                   ? l.prototypeChooseAppsUseVpn
                                   : l.prototypeChooseAppsBypassVpn,
                               style: AppTypography.androidTitle,

@@ -11,7 +11,7 @@ void main() {
         AndroidAppInfo(name: 'Mail', packageName: 'org.example.mail'),
       ],
     );
-    addTearDown(controller.dispose);
+    addTearDown(controller.close);
     await controller.load();
     expect(controller.missing, ['com.example.uninstalled']);
     controller.search('  BROW  ');

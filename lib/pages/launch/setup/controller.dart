@@ -261,7 +261,7 @@ class SetupController extends PageCubit<SetupPageState>
     emit(state.copyWith(step: SetupStep.complete));
   }
 
-  void goHome(BuildContext context) => context.go(RouterPath.home);
+  void goConnect(BuildContext context) => context.go(RouterPath.connect);
 
   String failureText(AppLocalizations l10n) =>
       switch (state.failure?.component) {

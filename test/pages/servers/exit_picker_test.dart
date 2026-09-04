@@ -61,7 +61,7 @@ void main() {
   });
 
   tearDown(() async {
-    controller.dispose();
+    await controller.close();
     coordinator.dispose();
     await db.close();
   });

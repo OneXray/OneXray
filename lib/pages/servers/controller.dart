@@ -71,22 +71,37 @@ class ServersController extends ConnectController {
   }) {
     this.assets =
         assets ?? ServerAssetService(database: db, coordinator: coordinator);
+    search.addListener(_searchChanged);
   }
   late final ServerAssetService assets;
   final search = TextEditingController();
-  ServerGrouping grouping = ServerGrouping.location;
-  String? activeGroupId;
-  final Set<String> _pending = {};
-  final Set<int> testingIds = {};
-  final Set<int> favoritingIds = {};
-  ServerSelection? selecting;
-  bool _disposed = false;
-  final Map<int, String> sourceErrors = {};
+  ServerGrouping get grouping =>
+      ServerGrouping.values[state.serverGroupingIndex];
+  set grouping(ServerGrouping value) =>
+      emit(state.copyWith(serverGroupingIndex: value.index));
+  String? get activeGroupId => state.activeServerGroupId;
+  set activeGroupId(String? value) =>
+      emit(state.copyWith(activeServerGroupId: value));
+  Set<String> get _pending => state.pendingServerActions;
+  Set<int> get testingIds => state.testingServerIds;
+  Set<int> get favoritingIds => state.favoritingServerIds;
+  ServerSelection? get selecting => state.selectingServers;
+  set selecting(ServerSelection? value) =>
+      emit(state.copyWith(selectingServers: value));
+  Map<int, String> get sourceErrors => state.sourceErrors;
+
+  void setSourceError(int id, String? error) {
+    final next = {...sourceErrors};
+    if (error == null) {
+      next.remove(id);
+    } else {
+      next[id] = error;
+    }
+    emit(state.copyWith(sourceErrors: next));
+  }
 
   bool get busy =>
-      selecting != null ||
-      pendingChange != null ||
-      coordinator.state.value.busy;
+      selecting != null || pendingChange != null || connectionView.busy;
   bool serverBusy(CoreConfigData row) =>
       _pending.contains('server:${row.id}') ||
       _pending.contains('source:${row.subId}');
@@ -100,11 +115,15 @@ class ServersController extends ConnectController {
   bool selectingGroup(ServerSelection value) =>
       selecting != null &&
       jsonEncode(selecting!.toJson()) == jsonEncode(value.toJson());
-  void changed() {
-    if (!_disposed) notifyListeners();
+  void changed() => emit(state.copyWith(serverSearchQuery: search.text));
+
+  void _searchChanged() => searchChanged(search.text);
+  void searchChanged(String value) {
+    if (value != state.serverSearchQuery) {
+      emit(state.copyWith(serverSearchQuery: value));
+    }
   }
 
-  void searchChanged(String value) => changed();
   void groupBy(ServerGrouping value) {
     grouping = value;
     activeGroupId = null;
@@ -238,7 +257,7 @@ class ServersController extends ConnectController {
   ({List<String> names, CoreConfigData? first}) get _displaySelection {
     final settings = configuration.connection;
     if (settings.expert) return (names: [], first: null);
-    final view = coordinator.state.value;
+    final view = connectionView;
     if (view.phase == ConnectionPhase.connected) {
       final runtime = view.runtime;
       if (runtime == null || runtime.configuration.connection.expert) {
@@ -363,11 +382,10 @@ class ServersController extends ConnectController {
   }
 
   Set<int> get runningEntries =>
-      coordinator.state.value.phase == ConnectionPhase.connected
+      connectionView.phase == ConnectionPhase.connected
       ? {
           for (final entry
-              in coordinator.state.value.runtime?.entries ??
-                  const <RuntimeNode>[])
+              in connectionView.runtime?.entries ?? const <RuntimeNode>[])
             entry.id,
         }
       : {};
@@ -446,13 +464,15 @@ class ServersController extends ConnectController {
 
   Future<void> toggleFavorite(BuildContext context, CoreConfigData row) =>
       perform(context, () async {
-        favoritingIds.add(row.id);
-        changed();
+        emit(state.copyWith(favoritingServerIds: {...favoritingIds, row.id}));
         try {
           await assets.favorite(row.id, !row.favorite);
         } finally {
-          favoritingIds.remove(row.id);
-          changed();
+          emit(
+            state.copyWith(
+              favoritingServerIds: {...favoritingIds}..remove(row.id),
+            ),
+          );
         }
       }, ids: {row.id});
 
@@ -460,13 +480,11 @@ class ServersController extends ConnectController {
     final ids = rows.map((row) => row.id).toSet();
     if (ids.isEmpty) return;
     await perform(context, () async {
-      testingIds.addAll(ids);
-      changed();
+      emit(state.copyWith(testingServerIds: {...testingIds, ...ids}));
       try {
         await PingService().pingConfigIds(ids.toList(), force: true);
       } finally {
-        testingIds.removeAll(ids);
-        changed();
+        emit(state.copyWith(testingServerIds: {...testingIds}..removeAll(ids)));
       }
     }, ids: ids);
   }
@@ -516,7 +534,7 @@ class ServersController extends ConnectController {
           if (!context.mounted) return;
           final l = AppLocalizations.of(context)!;
           if (result.success) {
-            sourceErrors.remove(source.id);
+            setSourceError(source.id, null);
             ContextAlert.showToast(
               context,
               result.parseFailureCount == null
@@ -528,7 +546,7 @@ class ServersController extends ConnectController {
                     ),
             );
           } else {
-            sourceErrors[source.id] = l.prototypeSubscriptionUpdateFailed;
+            setSourceError(source.id, l.prototypeSubscriptionUpdateFailed);
             final navigator = Navigator.of(context);
             final closeSources = ModalRoute.of(context) is PopupRoute;
             final dialogContext = navigator.context;
@@ -611,13 +629,13 @@ class ServersController extends ConnectController {
       (_) => ServerSourcesDialog(controller: this),
       desktopMaxWidth: AppLayout.sourcesDialogWidth,
     );
-    if (source == null || !context.mounted || _disposed) return;
+    if (source == null || !context.mounted || !isPageActive) return;
     final action = await showSourceActionsMenu(
       context,
       name: source.name,
       count: sourceCount(source.id),
     );
-    if (action != null && context.mounted && !_disposed) {
+    if (action != null && context.mounted && isPageActive) {
       await sourceAction(context, source, action);
     }
   }
@@ -627,7 +645,7 @@ class ServersController extends ConnectController {
       context,
       (_) => ServerHelpDialog(canScanQr: AppPlatform.isMobile),
     );
-    if (add == true && context.mounted && !_disposed) {
+    if (add == true && context.mounted && isPageActive) {
       await addServers(context);
     }
   }
@@ -650,31 +668,33 @@ class ServersController extends ConnectController {
         )) {
       return;
     }
-    _pending.addAll(keys);
-    changed();
+    emit(state.copyWith(pendingServerActions: {..._pending, ...keys}));
     try {
       await run(context, action);
     } finally {
-      _pending.removeAll(keys);
-      changed();
+      emit(
+        state.copyWith(pendingServerActions: {..._pending}..removeAll(keys)),
+      );
     }
   }
 
   @override
-  void dispose() {
-    _disposed = true;
+  Future<void> disposePageResources() async {
+    search.removeListener(_searchChanged);
     search.dispose();
-    super.dispose();
+    await super.disposePageResources();
   }
 }
 
 /// Final-exit selection is a local draft; only Done returns a choice.
 class ServerExitPickerController extends ServersController {
-  ServerExitPickerController(this.params, {super.database, super.coordinator})
-    : selectedId = params.selectedId;
+  ServerExitPickerController(this.params, {super.database, super.coordinator}) {
+    selectedId = params.selectedId;
+  }
 
   final ServerExitPickerParams params;
-  int? selectedId;
+  int? get selectedId => state.selectedExitId;
+  set selectedId(int? value) => emit(state.copyWith(selectedExitId: value));
 
   @override
   void groupBy(ServerGrouping value) {

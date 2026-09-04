@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/raw_editor/controller.dart';
 import 'package:onexray/pages/routing/widgets.dart';
@@ -45,170 +48,172 @@ class _RawEditorPageState extends State<RawEditorPage> {
 
   @override
   void dispose() {
-    controller.dispose();
+    unawaited(controller.close());
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l10n = AppLocalizations.of(context)!;
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      final palette = ColorManager.palette(context);
-      final gap = mobile ? 16.0 : 20.0;
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.rawId == null
-                ? l10n.prototypeAddRawJson
-                : l10n.prototypeEditRawJson,
-          ),
-          leading: BackButton(onPressed: () => controller.closePage(context)),
-        ),
-        body: SafeArea(
-          bottom: false,
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              mobile ? 14 : AppSpacing.page,
-              mobile ? 12 : AppSpacing.desktopPageTop,
-              mobile ? 14 : AppSpacing.page,
-              mobile ? 12 : AppSpacing.desktopPageBottom,
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<RawEditorController, RawEditorPageState>(
+      builder: (context, state) {
+        final l10n = AppLocalizations.of(context)!;
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        final palette = ColorManager.palette(context);
+        final gap = mobile ? 16.0 : 20.0;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              widget.rawId == null
+                  ? l10n.prototypeAddRawJson
+                  : l10n.prototypeEditRawJson,
             ),
-            child: ResponsiveContent(
-              desktopMaxWidth: 900,
-              child: RoutingCard(
-                padding: EdgeInsets.symmetric(
-                  horizontal: mobile ? 12 : 20,
-                  vertical: mobile ? 14 : 20,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ConfigurationTransferTools(
-                      controller: controller.transfers,
-                      disabled: controller.busy || !controller.loaded,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: controller.canTest
-                              ? () => controller.test(context)
-                              : null,
-                          icon: controller.action == RawEditorAction.test
-                              ? const ButtonProgressIndicator()
-                              : const Icon(LucideIcons.zap, size: 16),
-                          label: Text(l10n.prototypeTestConfiguration),
-                        ),
-                      ],
-                    ),
-                    if (controller.testResult case final result?)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            '${result.delay} ms · ${result.url} · ${l10n.prototypeSeconds(result.timeout)}',
-                            textDirection: TextDirection.ltr,
-                            style: AppTypography.rawNote,
+            leading: BackButton(onPressed: () => controller.closePage(context)),
+          ),
+          body: SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                mobile ? 14 : AppSpacing.page,
+                mobile ? 12 : AppSpacing.desktopPageTop,
+                mobile ? 14 : AppSpacing.page,
+                mobile ? 12 : AppSpacing.desktopPageBottom,
+              ),
+              child: ResponsiveContent(
+                desktopMaxWidth: 900,
+                child: RoutingCard(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: mobile ? 12 : 20,
+                    vertical: mobile ? 14 : 20,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ConfigurationTransferTools(
+                        controller: controller.transfers,
+                        disabled: state.busy || !state.loaded,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: controller.canTest
+                                ? () => controller.test(context)
+                                : null,
+                            icon: controller.action == RawEditorAction.test
+                                ? const ButtonProgressIndicator()
+                                : const Icon(LucideIcons.zap, size: 16),
+                            label: Text(l10n.prototypeTestConfiguration),
+                          ),
+                        ],
+                      ),
+                      if (state.testResult case final result?)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              '${result.delay} ms · ${result.url} · ${l10n.prototypeSeconds(result.timeout)}',
+                              textDirection: TextDirection.ltr,
+                              style: AppTypography.rawNote,
+                            ),
                           ),
                         ),
-                      ),
-                    if (controller.sharingDataCount case final count?
-                        when count > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: _RawNote(
-                          l10n.prototypeSharingDataSourceLinks(count),
-                        ),
-                      ),
-                    SizedBox(height: gap),
-                    Text(
-                      l10n.prototypeConfigurationName,
-                      style: AppTypography.rawField.copyWith(
-                        color: palette.mutedStrong,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 42,
-                      child: TextField(
-                        controller: controller.name,
-                        maxLength: 32,
-                        enabled: controller.loaded,
-                        style: AppTypography.rawField,
-                        decoration: InputDecoration(
-                          hintText: l10n.prototypeConfigurationName,
-                          hintStyle: AppTypography.rawField.copyWith(
-                            color: palette.mutedForeground,
-                          ),
-                          counterText: '',
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
+                      if (state.sharingDataCount case final count?
+                          when count > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: _RawNote(
+                            l10n.prototypeSharingDataSourceLinks(count),
                           ),
                         ),
+                      SizedBox(height: gap),
+                      Text(
+                        l10n.prototypeConfigurationName,
+                        style: AppTypography.rawField.copyWith(
+                          color: palette.mutedStrong,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: gap),
-                    Text(
-                      l10n.prototypeCompleteXrayConfiguration,
-                      style: AppTypography.rawField.copyWith(
-                        color: palette.mutedStrong,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: mobile ? 392 : 412,
-                      child: AbsorbPointer(
-                        absorbing: !controller.loaded,
-                        child: AppJsonEditor(controller: controller.text),
-                      ),
-                    ),
-                    SizedBox(height: gap),
-                    _RawNote(l10n.prototypeRawManagedSettingsNotice),
-                    SizedBox(height: gap),
-                    _RawNote(l10n.prototypeRawAdditionalSettingsNotice),
-                    if (!controller.loaded && controller.busy)
-                      const LinearProgressIndicator(),
-                    if (controller.error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            controller.error!,
-                            style: AppTypography.rawNote.copyWith(
-                              color: palette.destructive,
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 42,
+                        child: TextField(
+                          controller: controller.name,
+                          maxLength: 32,
+                          enabled: state.loaded,
+                          style: AppTypography.rawField,
+                          decoration: InputDecoration(
+                            hintText: l10n.prototypeConfigurationName,
+                            hintStyle: AppTypography.rawField.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                            counterText: '',
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
                             ),
                           ),
                         ),
                       ),
-                  ],
+                      SizedBox(height: gap),
+                      Text(
+                        l10n.prototypeCompleteXrayConfiguration,
+                        style: AppTypography.rawField.copyWith(
+                          color: palette.mutedStrong,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: mobile ? 392 : 412,
+                        child: AbsorbPointer(
+                          absorbing: !state.loaded,
+                          child: AppJsonEditor(controller: controller.text),
+                        ),
+                      ),
+                      SizedBox(height: gap),
+                      _RawNote(l10n.prototypeRawManagedSettingsNotice),
+                      SizedBox(height: gap),
+                      _RawNote(l10n.prototypeRawAdditionalSettingsNotice),
+                      if (!state.loaded && state.busy)
+                        const LinearProgressIndicator(),
+                      if (state.error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              state.error!,
+                              style: AppTypography.rawNote.copyWith(
+                                color: palette.destructive,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        bottomNavigationBar: PageActionBar(
-          children: [
-            if (!mobile)
-              ShadButton.outline(
-                onPressed: () => controller.closePage(context),
-                child: Text(l10n.prototypeCancel),
+          bottomNavigationBar: PageActionBar(
+            children: [
+              if (!mobile)
+                ShadButton.outline(
+                  onPressed: () => controller.closePage(context),
+                  child: Text(l10n.prototypeCancel),
+                ),
+              ShadButton(
+                enabled: controller.canSave,
+                onPressed: controller.canSave
+                    ? () => controller.save(context)
+                    : null,
+                child: ButtonProgress(
+                  busy: controller.action == RawEditorAction.save,
+                  child: Text(l10n.prototypeSave),
+                ),
               ),
-            ShadButton(
-              enabled: controller.canSave,
-              onPressed: controller.canSave
-                  ? () => controller.save(context)
-                  : null,
-              child: ButtonProgress(
-                busy: controller.action == RawEditorAction.save,
-                child: Text(l10n.prototypeSave),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
+            ],
+          ),
+        );
+      },
+    ),
   );
 }
 

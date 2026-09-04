@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/subscriptions/widget/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
@@ -9,58 +11,60 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
   late TextEditingController name, url, secret, public;
+  late ServerImportController controller;
   late List<AgeKeyType> generated;
   late int revealed;
 
   setUp(() {
-    name = TextEditingController();
-    url = TextEditingController();
-    secret = TextEditingController();
-    public = TextEditingController();
+    controller = ServerImportController(loadSubscription: (_) async => null);
+    name = controller.name;
+    url = controller.url;
+    secret = controller.secretKey;
+    public = controller.publicKey;
     generated = [];
     revealed = 0;
   });
 
-  tearDown(() {
-    name.dispose();
-    url.dispose();
-    secret.dispose();
-    public.dispose();
-  });
+  tearDown(() => controller.close());
 
   Widget form({AgeKeyType? generatingKey, bool obscure = true}) =>
-      SubscriptionFormView(
-        supportText: 'Supported formats',
-        nameLabel: 'Name',
-        nameHint: 'Example Service',
-        nameController: name,
-        urlLabel: 'URL',
-        urlController: url,
-        urlHint: 'https://provider.example/subscription',
-        urlHelper: 'HTTPS only',
-        encryptionTitle: 'Encryption',
-        ageProviderSupportTitle: 'Provider support required',
-        ageProviderSupportDescription: 'Enter Age keys only when your provider supports encrypted subscriptions.',
-        ageSecretKeyLabel: 'Age Secret Key',
-        ageSecretKeyHint: 'AGE-SECRET-KEY-1...',
-        ageSecretKeyController: secret,
-        agePublicKeyLabel: 'Age Public Key',
-        agePublicKeyHint: 'age1...',
-        agePublicKeyController: public,
-        obscureAgeSecretKey: obscure,
-        revealAgeSecretKeyLabel: 'Reveal',
-        hideAgeSecretKeyLabel: 'Hide',
-        generateAgeKeyLabel: 'Generate',
-        generateAgeX25519KeyLabel: 'X25519',
-        generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
-        clearAgeKeyLabel: 'Clear',
-        onToggleAgeSecretKeyVisibility: () => revealed++,
-        onGenerateAgeKey: generated.add,
-        onClearAgeKey: () {
-          secret.clear();
-          public.clear();
-        },
-        generatingAgeKeyType: generatingKey,
+      BlocProvider.value(
+        value: controller,
+        child: BlocBuilder<ServerImportController, ServerImportPageState>(
+          builder: (context, state) => SubscriptionFormView(
+            supportText: 'Supported formats',
+            nameLabel: 'Name',
+            nameHint: 'Example Service',
+            nameController: name,
+            urlLabel: 'URL',
+            urlController: url,
+            urlHint: 'https://provider.example/subscription',
+            urlHelper: 'HTTPS only',
+            encryptionTitle: 'Encryption',
+            ageProviderSupportTitle: 'Provider support required',
+            ageProviderSupportDescription: 'Enter Age keys only when your provider supports encrypted subscriptions.',
+            ageSecretKeyLabel: 'Age Secret Key',
+            ageSecretKeyHint: 'AGE-SECRET-KEY-1...',
+            ageSecretKeyController: secret,
+            agePublicKeyLabel: 'Age Public Key',
+            agePublicKeyHint: 'age1...',
+            agePublicKeyController: public,
+            obscureAgeSecretKey: obscure,
+            revealAgeSecretKeyLabel: 'Reveal',
+            hideAgeSecretKeyLabel: 'Hide',
+            generateAgeKeyLabel: 'Generate',
+            generateAgeX25519KeyLabel: 'X25519',
+            generateAgeHybridKeyLabel: 'Hybrid (ML-KEM-768 + X25519)',
+            clearAgeKeyLabel: 'Clear',
+            onToggleAgeSecretKeyVisibility: () => revealed++,
+            onGenerateAgeKey: generated.add,
+            onClearAgeKey: controller.clearKeys,
+            generatingAgeKeyType: generatingKey,
+            hasAgeKeys: state.hasAgeKeys,
+            ageExpanded: state.ageExpanded,
+            onToggleAgeExpanded: controller.toggleAgeExpanded,
+          ),
+        ),
       );
 
   Widget app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
@@ -183,7 +187,9 @@ void main() {
 
         // Editing can load keys after the content has already mounted.
         secret.text = 'AGE-SECRET-KEY-1LOADED';
-        await tester.pump();
+        expect(controller.state.hasAgeKeys, isTrue);
+        expect(controller.state.ageExpanded, isTrue);
+        await tester.pumpAndSettle();
         expect(find.byType(ShadInput), findsNWidgets(4));
         for (final controller in [url, secret, public]) {
           final input = find.byWidgetPredicate(
@@ -210,12 +216,12 @@ void main() {
         // Either key can reveal a loaded draft; changing a nonempty key does not
         // override a later manual collapse.
         public.text = 'age1loaded';
-        await tester.pump();
+        await tester.pumpAndSettle();
         expect(find.byType(ShadInput), findsNWidgets(4));
         await tester.tap(find.text('Encryption'));
-        await tester.pump();
+        await tester.pumpAndSettle();
         public.text = 'age1changed';
-        await tester.pump();
+        await tester.pumpAndSettle();
         expect(find.byType(ShadInput), findsNWidgets(2));
         expect(public.text, 'age1changed');
         await tester.tap(find.text('Encryption'));

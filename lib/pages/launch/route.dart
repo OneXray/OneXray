@@ -7,8 +7,8 @@ extension LaunchDestinationRoute on LaunchDestination {
       case LaunchDestination.privacy:
       case LaunchDestination.firstRun:
         return RouterPath.setup;
-      case LaunchDestination.home:
-        return RouterPath.home;
+      case LaunchDestination.connect:
+        return RouterPath.connect;
     }
   }
 }

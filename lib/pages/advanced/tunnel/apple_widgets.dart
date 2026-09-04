@@ -529,17 +529,49 @@ class AppleWifiEditorSection extends StatefulWidget {
 }
 
 class _AppleWifiEditorSectionState extends State<AppleWifiEditorSection> {
-  late final fields = widget.values
+  late final List<TextEditingController> fields = widget.values
       .map((value) => TextEditingController(text: value))
       .toList();
-  final _retired = <TextEditingController>[];
 
   void _publish() =>
       widget.onChanged(fields.map((field) => field.text).toList());
 
+  void _add() {
+    fields.add(TextEditingController());
+    _publish();
+  }
+
+  void _remove(int index) {
+    _retire(fields.removeAt(index));
+    _publish();
+  }
+
+  void _retire(TextEditingController field) =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => field.dispose());
+
+  @override
+  void didUpdateWidget(AppleWifiEditorSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    while (fields.length > widget.values.length) {
+      _retire(fields.removeLast());
+    }
+    while (fields.length < widget.values.length) {
+      fields.add(TextEditingController());
+    }
+    for (var index = 0; index < widget.values.length; index++) {
+      final value = widget.values[index];
+      if (fields[index].text != value) {
+        fields[index].value = TextEditingValue(
+          text: value,
+          selection: TextSelection.collapsed(offset: value.length),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
-    for (final field in [...fields, ..._retired]) {
+    for (final field in fields) {
       field.dispose();
     }
     super.dispose();
@@ -578,7 +610,7 @@ class _AppleWifiEditorSectionState extends State<AppleWifiEditorSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (var index = 0; index < fields.length; index++) ...[
+              for (var index = 0; index < widget.values.length; index++) ...[
                 _WifiInputRow(
                   key: ObjectKey(fields[index]),
                   controller: fields[index],
@@ -586,23 +618,15 @@ class _AppleWifiEditorSectionState extends State<AppleWifiEditorSection> {
                   removeLabel: '${l.prototypeRemoveWifi} ${index + 1}',
                   enabled: widget.enabled,
                   conflict:
-                      fields[index].text.trim().isNotEmpty &&
-                      widget.otherValues.contains(fields[index].text),
+                      widget.values[index].trim().isNotEmpty &&
+                      widget.otherValues.contains(widget.values[index]),
                   onChanged: (_) => _publish(),
-                  onRemove: () {
-                    setState(() => _retired.add(fields.removeAt(index)));
-                    _publish();
-                  },
+                  onRemove: () => _remove(index),
                 ),
                 SizedBox(height: mobile ? 9 : 12),
               ],
               OutlinedButton(
-                onPressed: widget.enabled
-                    ? () {
-                        setState(() => fields.add(TextEditingController()));
-                        _publish();
-                      }
-                    : null,
+                onPressed: widget.enabled ? _add : null,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: palette.primary,
                   side: BorderSide(color: palette.primary),
@@ -636,7 +660,7 @@ class _AppleWifiEditorSectionState extends State<AppleWifiEditorSection> {
   }
 }
 
-class _WifiInputRow extends StatefulWidget {
+class _WifiInputRow extends StatelessWidget {
   const _WifiInputRow({
     super.key,
     required this.controller,
@@ -656,87 +680,81 @@ class _WifiInputRow extends StatefulWidget {
   final VoidCallback onRemove;
 
   @override
-  State<_WifiInputRow> createState() => _WifiInputRowState();
-}
-
-class _WifiInputRowState extends State<_WifiInputRow> {
-  bool focused = false;
-
-  @override
   Widget build(BuildContext context) {
     final mobile = _mobile(context);
     final palette = ColorManager.palette(context);
-    return Container(
-      constraints: BoxConstraints(minHeight: mobile ? 48 : 58),
-      padding: EdgeInsetsDirectional.only(
-        start: mobile ? 10 : 16,
-        end: mobile ? 6 : 10,
-      ),
-      decoration: BoxDecoration(
-        color: palette.card,
-        border: Border.all(
-          color: widget.conflict
-              ? palette.destructive
-              : focused
-              ? palette.primary
-              : palette.border,
-        ),
-        borderRadius: BorderRadius.circular(AppRadii.control),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            LucideIcons.wifi,
-            size: mobile ? 17 : 19,
-            color: palette.mutedStrong,
+    return Focus(
+      child: Builder(
+        builder: (context) => Container(
+          constraints: BoxConstraints(minHeight: mobile ? 48 : 58),
+          padding: EdgeInsetsDirectional.only(
+            start: mobile ? 10 : 16,
+            end: mobile ? 6 : 10,
           ),
-          SizedBox(width: mobile ? 9 : 12),
-          Expanded(
-            child: Focus(
-              onFocusChange: (value) => setState(() => focused = value),
-              child: Semantics(
-                label: widget.label,
-                child: TextField(
-                  controller: widget.controller,
-                  enabled: widget.enabled,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  style: mobile
-                      ? AppTypography.appleWifiInput
-                      : AppTypography.appleWifiInputDesktop,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    filled: false,
+          decoration: BoxDecoration(
+            color: palette.card,
+            border: Border.all(
+              color: conflict
+                  ? palette.destructive
+                  : Focus.of(context).hasFocus
+                  ? palette.primary
+                  : palette.border,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.control),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                LucideIcons.wifi,
+                size: mobile ? 17 : 19,
+                color: palette.mutedStrong,
+              ),
+              SizedBox(width: mobile ? 9 : 12),
+              Expanded(
+                child: Semantics(
+                  label: label,
+                  child: TextField(
+                    controller: controller,
+                    enabled: enabled,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    style: mobile
+                        ? AppTypography.appleWifiInput
+                        : AppTypography.appleWifiInputDesktop,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      filled: false,
+                    ),
+                    onChanged: onChanged,
                   ),
-                  onChanged: widget.onChanged,
                 ),
               ),
-            ),
+              SizedBox(width: mobile ? 9 : 12),
+              IconButton(
+                onPressed: enabled ? onRemove : null,
+                tooltip: removeLabel,
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints.tightFor(
+                  width: mobile ? 34 : 36,
+                  height: mobile ? 34 : 36,
+                ),
+                style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: Icon(
+                  LucideIcons.circleX,
+                  size: 18,
+                  color: palette.mutedForeground,
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: mobile ? 9 : 12),
-          IconButton(
-            onPressed: widget.enabled ? widget.onRemove : null,
-            tooltip: widget.removeLabel,
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints.tightFor(
-              width: mobile ? 34 : 36,
-              height: mobile ? 34 : 36,
-            ),
-            style: IconButton.styleFrom(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            icon: Icon(
-              LucideIcons.circleX,
-              size: 18,
-              color: palette.mutedForeground,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

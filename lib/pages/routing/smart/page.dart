@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/routing/checker.dart';
 import 'package:onexray/pages/routing/smart/controller.dart';
@@ -37,103 +40,112 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
 
   @override
   void dispose() {
-    controller.dispose();
+    unawaited(controller.close());
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l = AppLocalizations.of(context)!;
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(l.prototypeSmartRouting),
-          leading: BackButton(onPressed: () => controller.cancel(context)),
-        ),
-        body: SafeArea(
-          child: controller.original == null
-              ? Center(
-                  child: controller.busy
-                      ? const CircularProgressIndicator()
-                      : TextButton(
-                          onPressed: () => controller.load(context),
-                          child: Text(l.prototypeRetry),
-                        ),
-                )
-              : SettingsPageScroll(
-                  desktopMaxWidth: AppLayout.routingMaxWidth,
-                  padding: EdgeInsetsDirectional.fromSTEB(
-                    mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                    mobile ? 12 : AppSpacing.desktopPageTop,
-                    mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                    mobile ? 18 : AppSpacing.desktopPageBottom,
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<SmartRoutingEditorController, SmartRoutingEditorState>(
+      builder: (context, state) {
+        final l = AppLocalizations.of(context)!;
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(l.prototypeSmartRouting),
+            leading: BackButton(onPressed: () => controller.cancel(context)),
+          ),
+          body: SafeArea(
+            child: state.original == null
+                ? Center(
+                    child: state.busy
+                        ? const CircularProgressIndicator()
+                        : TextButton(
+                            onPressed: () => controller.load(context),
+                            child: Text(l.prototypeRetry),
+                          ),
+                  )
+                : SettingsPageScroll(
+                    desktopMaxWidth: AppLayout.routingMaxWidth,
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                      mobile ? 12 : AppSpacing.desktopPageTop,
+                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                      mobile ? 18 : AppSpacing.desktopPageBottom,
+                    ),
+                    child:
+                        MediaQuery.sizeOf(context).width <=
+                            AppLayout.compactDesktopBreakpoint
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _settings(context, state),
+                              SizedBox(height: mobile ? 12 : 16),
+                              _preview(context, state),
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 25,
+                                child: _settings(context, state),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 24,
+                                child: _preview(context, state),
+                              ),
+                            ],
+                          ),
                   ),
-                  child:
-                      MediaQuery.sizeOf(context).width <=
-                          AppLayout.compactDesktopBreakpoint
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _settings(context),
-                            SizedBox(height: mobile ? 12 : 16),
-                            _preview(context),
-                          ],
-                        )
-                      : Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 25, child: _settings(context)),
-                            const SizedBox(width: 16),
-                            Expanded(flex: 24, child: _preview(context)),
-                          ],
-                        ),
-                ),
-        ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (controller.error case final error?)
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    error,
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: Theme.of(context).colorScheme.error),
+          ),
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (state.error case final error?)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      error,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                   ),
                 ),
+              PageActionBar(
+                children: [
+                  if (!mobile)
+                    OutlinedButton(
+                      onPressed: () => controller.cancel(context),
+                      child: Text(l.prototypeCancel),
+                    ),
+                  FilledButton(
+                    onPressed: state.busy || state.original == null
+                        ? null
+                        : () => controller.save(context),
+                    child: ButtonProgress(
+                      busy: state.busy && state.original != null,
+                      child: Text(l.prototypeSave),
+                    ),
+                  ),
+                ],
               ),
-            PageActionBar(
-              children: [
-                if (!mobile)
-                  OutlinedButton(
-                    onPressed: () => controller.cancel(context),
-                    child: Text(l.prototypeCancel),
-                  ),
-                FilledButton(
-                  onPressed: controller.busy || controller.original == null
-                      ? null
-                      : () => controller.save(context),
-                  child: ButtonProgress(
-                    busy: controller.busy && controller.original != null,
-                    child: Text(l.prototypeSave),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
+            ],
+          ),
+        );
+      },
+    ),
   );
 
-  Widget _settings(BuildContext context) {
+  Widget _settings(BuildContext context, SmartRoutingEditorState state) {
     final l = AppLocalizations.of(context)!;
-    final smart = controller.draft;
+    final smart = state.draft;
     return RoutingCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -145,6 +157,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             LucideIcons.network,
             'directPrivate',
             smart.directPrivate,
+            state,
           ),
           _switch(
             l.prototypeDirectAppleServices,
@@ -152,6 +165,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             LucideIcons.apple,
             'directApple',
             smart.directApple,
+            state,
           ),
           _switch(
             l.prototypeResolveUnmatchedDomains,
@@ -159,6 +173,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             LucideIcons.terminal,
             'resolveIpOnNoMatch',
             smart.resolveIpOnNoMatch,
+            state,
           ),
           _switch(
             l.prototypeDirectDns,
@@ -166,6 +181,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             LucideIcons.earth,
             'directDns',
             smart.directDns,
+            state,
           ),
           _switch(
             l.prototypeBlockAdDomains,
@@ -173,6 +189,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             LucideIcons.shieldCheck,
             'blockAds',
             smart.blockAds,
+            state,
           ),
           RoutingEntryCountRow(
             value: smart.entryCount,
@@ -183,7 +200,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             title: l.prototypeDirectRegions,
             description: l.prototypeDirectRegionsHint,
             value: controller.regionsSummary(l),
-            enabled: !controller.busy,
+            enabled: !state.busy,
             onTap: () => controller.chooseRegions(context, widget.openRegions),
           ),
           RoutingSettingRow(
@@ -192,8 +209,8 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             description: l.prototypeVpnFinalExitHint,
             value: smart.finalExitId == null
                 ? l.prototypeNotSet
-                : controller.finalExitName ?? l.prototypeTemporarilyUnavailable,
-            enabled: !controller.busy,
+                : state.finalExitName ?? l.prototypeTemporarilyUnavailable,
+            enabled: !state.busy,
             divider: false,
             onTap: () =>
                 controller.chooseFinalExit(context, widget.openFinalExit),
@@ -209,22 +226,23 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
     IconData icon,
     String key,
     bool value,
+    SmartRoutingEditorState state,
   ) => RoutingSettingRow(
     icon: icon,
     title: title,
     description: description,
-    enabled: controller.original != null,
+    enabled: state.original != null,
     trailing: Semantics(
       label: title,
       child: ShadSwitch(
         value: value,
-        enabled: controller.original != null,
+        enabled: state.original != null,
         onChanged: (value) => controller.update(key, value),
       ),
     ),
   );
 
-  Widget _preview(BuildContext context) {
+  Widget _preview(BuildContext context, SmartRoutingEditorState state) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final mobile =

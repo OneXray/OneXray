@@ -22,7 +22,7 @@ void main() {
         );
         late StatefulNavigationShell shell;
         final router = GoRouter(
-          initialLocation: '/home',
+          initialLocation: '/connect',
           routes: [
             StatefulShellRoute.indexedStack(
               builder: (_, _, navigationShell) {
@@ -33,7 +33,7 @@ void main() {
                 StatefulShellBranch(
                   routes: [
                     GoRoute(
-                      path: '/home',
+                      path: '/connect',
                       builder: (context, _) => PageVisibility(
                         onChanged: controller.setPageVisible,
                         child: Scaffold(
@@ -83,7 +83,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(coordinator.visible, isTrue);
 
-        router.push('/home/edit');
+        router.push('/connect/edit');
         await tester.pumpAndSettle();
         expect(coordinator.visible, isFalse);
         router.pop();
@@ -109,7 +109,7 @@ void main() {
         await tester.pumpWidget(const SizedBox());
         expect(coordinator.visible, isFalse);
         expect(tester.takeException(), isNull);
-        controller.dispose();
+        await controller.close();
         coordinator.dispose();
         router.dispose();
         await coordinator.db.close();

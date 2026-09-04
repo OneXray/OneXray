@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
@@ -10,56 +11,46 @@ import 'package:onexray/service/launch/setup.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class OutboundInterfaceController extends PolicyEditorController {
-  List<SetupInterface> interfaces = [];
-  bool loading = true;
-  bool failed = false;
-  bool _disposed = false;
-  OutboundInterfaceController({required PolicyEditorDraft draft, super.service})
-    : super(draft: draft);
+  final Future<List<SetupInterface>> Function()? loadInterfaces;
+
+  OutboundInterfaceController({
+    required PolicyEditorDraft draft,
+    super.service,
+    this.loadInterfaces,
+  }) : super(draft: draft);
+
+  List<SetupInterface> get interfaces => state.interfaces;
+  bool get loading => state.interfacesLoading;
+  bool get failed => state.interfacesFailed;
 
   Future<void> readInterfaces() async {
-    loading = true;
-    failed = false;
-    notify();
+    emit(state.copyWith(interfacesLoading: true, interfacesFailed: false));
     try {
-      final values = await SetupService(platform: platform).interfaces();
-      if (!_disposed) {
-        interfaces = values;
-      }
+      final values =
+          await (loadInterfaces?.call() ??
+              SetupService(platform: platform).interfaces());
+      emit(state.copyWith(interfaces: values));
     } catch (_) {
-      failed = true;
+      emit(state.copyWith(interfacesFailed: true));
     } finally {
-      loading = false;
-      notify();
+      emit(state.copyWith(interfacesLoading: false));
     }
   }
-
-  @override
-  void dispose() {
-    _disposed = true;
-    super.dispose();
-  }
 }
 
-class OutboundInterfacePage extends StatefulWidget {
+class OutboundInterfacePage extends StatelessWidget {
   final PolicyEditorDraft draft;
   const OutboundInterfacePage({super.key, required this.draft});
-  @override
-  State<OutboundInterfacePage> createState() => _OutboundInterfacePageState();
-}
-
-class _OutboundInterfacePageState extends State<OutboundInterfacePage> {
-  late final controller = OutboundInterfaceController(draft: widget.draft)
-    ..readInterfaces();
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
 
   @override
-  Widget build(BuildContext context) =>
-      OutboundInterfaceView(controller: controller);
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => OutboundInterfaceController(draft: draft)..readInterfaces(),
+    child: Builder(
+      builder: (context) => OutboundInterfaceView(
+        controller: context.read<OutboundInterfaceController>(),
+      ),
+    ),
+  );
 }
 
 class OutboundInterfaceView extends StatelessWidget {
@@ -73,9 +64,11 @@ class OutboundInterfaceView extends StatelessWidget {
   final VoidCallback? onRetry;
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
+  Widget build(
+    BuildContext context,
+  ) => BlocBuilder<OutboundInterfaceController, PolicyEditorPageState>(
+    bloc: controller,
+    builder: (context, state) {
       final l = AppLocalizations.of(context)!;
       final palette = ColorManager.palette(context);
       final width = MediaQuery.sizeOf(context).width;

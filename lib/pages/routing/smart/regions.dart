@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/routing/widgets.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -12,42 +16,75 @@ import 'package:onexray/service/routing/geodata_suggestions.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-class DirectRegionsController extends ChangeNotifier {
-  final Future<RegionCatalog> Function()? loadRegions;
+class DirectRegionsState {
+  final List<String> codes;
   final Set<String> selected;
-  List<String> codes = [];
-  String query = '';
-  bool busy = true;
-  bool failed = false;
-  bool _closed = false;
+  final String query;
+  final bool busy;
+  final bool failed;
+
+  DirectRegionsState({
+    Iterable<String> codes = const [],
+    Iterable<String> selected = const [],
+    this.query = '',
+    this.busy = true,
+    this.failed = false,
+  }) : codes = List.unmodifiable(codes),
+       selected = Set.unmodifiable(selected);
+
+  DirectRegionsState copyWith({
+    Iterable<String>? codes,
+    Iterable<String>? selected,
+    String? query,
+    bool? busy,
+    bool? failed,
+  }) => DirectRegionsState(
+    codes: codes ?? this.codes,
+    selected: selected ?? this.selected,
+    query: query ?? this.query,
+    busy: busy ?? this.busy,
+    failed: failed ?? this.failed,
+  );
+}
+
+class DirectRegionsController extends PageCubit<DirectRegionsState> {
+  final Future<RegionCatalog> Function()? loadRegions;
 
   DirectRegionsController(List<String> selectedCodes, {this.loadRegions})
-    : selected = selectedCodes.toSet();
+    : super(DirectRegionsState(selected: selectedCodes));
+
+  List<String> get codes => state.codes;
+  Set<String> get selected => state.selected;
+  String get query => state.query;
+  bool get busy => state.busy;
+  bool get failed => state.failed;
 
   Future<void> load() async {
-    busy = true;
-    failed = false;
-    _notify();
+    emit(state.copyWith(busy: true, failed: false));
     try {
       final regions =
           await (loadRegions?.call() ??
               RoutingGeodataIndex.load().then(
                 (index) => index.regionCatalog(),
               ));
-      if (_closed) return;
-      codes = regions.regionCodes;
-      selected.removeWhere((code) => !codes.contains(code));
+      if (!isPageActive) return;
+      final codes = regions.regionCodes;
+      emit(
+        state.copyWith(
+          codes: codes,
+          selected: state.selected.where(codes.contains),
+        ),
+      );
     } catch (_) {
-      failed = true;
+      emit(state.copyWith(failed: true));
     } finally {
-      busy = false;
-      _notify();
+      emit(state.copyWith(busy: false));
     }
   }
 
   List<String> visibleCodes(AppLocalizations l) {
-    final value = query.trim().toLowerCase();
-    return codes
+    final value = state.query.trim().toLowerCase();
+    return state.codes
         .where(
           (code) => '$code ${setupRegionLabel(l, code)} ${englishName(code)}'
               .toLowerCase()
@@ -65,34 +102,23 @@ class DirectRegionsController extends ChangeNotifier {
   }
 
   void search(String value) {
-    query = value;
-    _notify();
+    emit(state.copyWith(query: value));
   }
 
   void toggle(String code) {
-    if (!codes.contains(code)) return;
+    if (!state.codes.contains(code)) return;
+    final selected = state.selected.toSet();
     if (!selected.remove(code)) selected.add(code);
-    _notify();
+    emit(state.copyWith(selected: selected));
   }
 
-  void clear() {
-    selected.clear();
-    _notify();
-  }
+  void clear() => emit(state.copyWith(selected: const []));
 
   void cancel(BuildContext context) => Navigator.of(context).pop();
   void save(BuildContext context) {
-    if (!busy && !failed) Navigator.of(context).pop(selected.toList());
-  }
-
-  void _notify() {
-    if (!_closed) notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _closed = true;
-    super.dispose();
+    if (!state.busy && !state.failed) {
+      Navigator.of(context).pop(state.selected.toList());
+    }
   }
 }
 
@@ -113,152 +139,162 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
 
   @override
   void dispose() {
-    controller.dispose();
+    unawaited(controller.close());
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l = AppLocalizations.of(context)!;
-      final visible = controller.visibleCodes(l);
-      final palette = ColorManager.palette(context);
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      return Scaffold(
-        appBar: AppBar(title: Text(l.prototypeDirectRegions)),
-        body: SafeArea(
-          child: ResponsiveContent(
-            desktopMaxWidth:
-                AppLayout.routingEditorMaxWidth + AppSpacing.page * 2,
-            child: Semantics(
-              label: l.prototypeSupportedRegions,
-              child: CustomScrollView(
-                semanticChildCount: visible.length,
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsetsDirectional.fromSTEB(
-                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                      mobile ? 12 : AppSpacing.desktopPageTop,
-                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                      mobile ? 18 : AppSpacing.desktopPageBottom,
-                    ),
-                    sliver: DecoratedSliver(
-                      decoration: BoxDecoration(
-                        color: palette.card,
-                        border: Border.all(color: palette.border),
-                        borderRadius: BorderRadius.circular(AppRadii.card),
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<DirectRegionsController, DirectRegionsState>(
+      builder: (context, state) {
+        final l = AppLocalizations.of(context)!;
+        final visible = controller.visibleCodes(l);
+        final palette = ColorManager.palette(context);
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        return Scaffold(
+          appBar: AppBar(title: Text(l.prototypeDirectRegions)),
+          body: SafeArea(
+            child: ResponsiveContent(
+              desktopMaxWidth:
+                  AppLayout.routingEditorMaxWidth + AppSpacing.page * 2,
+              child: Semantics(
+                label: l.prototypeSupportedRegions,
+                child: CustomScrollView(
+                  semanticChildCount: visible.length,
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                        mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                        mobile ? 12 : AppSpacing.desktopPageTop,
+                        mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                        mobile ? 18 : AppSpacing.desktopPageBottom,
                       ),
-                      sliver: SliverPadding(
-                        padding: const EdgeInsets.all(1),
-                        sliver: SliverMainAxisGroup(
-                          slivers: [
-                            SliverToBoxAdapter(child: _search(context, mobile)),
-                            if (controller.busy)
-                              const SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: EdgeInsets.all(28),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                              )
-                            else if (controller.failed)
+                      sliver: DecoratedSliver(
+                        decoration: BoxDecoration(
+                          color: palette.card,
+                          border: Border.all(color: palette.border),
+                          borderRadius: BorderRadius.circular(AppRadii.card),
+                        ),
+                        sliver: SliverPadding(
+                          padding: const EdgeInsets.all(1),
+                          sliver: SliverMainAxisGroup(
+                            slivers: [
                               SliverToBoxAdapter(
-                                child: Center(
-                                  child: TextButton(
-                                    onPressed: controller.load,
-                                    child: Text(l.prototypeRetry),
-                                  ),
-                                ),
-                              )
-                            else if (visible.isEmpty)
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 28,
-                                  ),
-                                  child: Text(
-                                    l.prototypeNoRegionsFound,
-                                    style: AppTypography.routingSelectionInput
-                                        .copyWith(
-                                          color: palette.mutedForeground,
-                                        ),
-                                  ),
-                                ),
-                              )
-                            else
-                              SliverList.builder(
-                                itemCount: mobile
-                                    ? visible.length
-                                    : (visible.length / 2).ceil(),
-                                itemBuilder: (context, index) {
-                                  if (mobile) {
-                                    return _region(context, visible[index]);
-                                  }
-                                  final first = index * 2;
-                                  return IntrinsicHeight(
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Expanded(
-                                          child: _region(
-                                            context,
-                                            visible[first],
-                                          ),
-                                        ),
-                                        VerticalDivider(
-                                          width: 1,
-                                          color: palette.border,
-                                        ),
-                                        Expanded(
-                                          child: first + 1 < visible.length
-                                              ? _region(
-                                                  context,
-                                                  visible[first + 1],
-                                                )
-                                              : const SizedBox.shrink(),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
+                                child: _search(context, mobile, state),
                               ),
-                            SliverToBoxAdapter(child: _note(context, mobile)),
-                          ],
+                              if (state.busy)
+                                const SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(28),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                )
+                              else if (state.failed)
+                                SliverToBoxAdapter(
+                                  child: Center(
+                                    child: TextButton(
+                                      onPressed: controller.load,
+                                      child: Text(l.prototypeRetry),
+                                    ),
+                                  ),
+                                )
+                              else if (visible.isEmpty)
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 28,
+                                    ),
+                                    child: Text(
+                                      l.prototypeNoRegionsFound,
+                                      style: AppTypography.routingSelectionInput
+                                          .copyWith(
+                                            color: palette.mutedForeground,
+                                          ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                SliverList.builder(
+                                  itemCount: mobile
+                                      ? visible.length
+                                      : (visible.length / 2).ceil(),
+                                  itemBuilder: (context, index) {
+                                    if (mobile) {
+                                      return _region(
+                                        context,
+                                        visible[index],
+                                        state,
+                                      );
+                                    }
+                                    final first = index * 2;
+                                    return IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            child: _region(
+                                              context,
+                                              visible[first],
+                                              state,
+                                            ),
+                                          ),
+                                          VerticalDivider(
+                                            width: 1,
+                                            color: palette.border,
+                                          ),
+                                          Expanded(
+                                            child: first + 1 < visible.length
+                                                ? _region(
+                                                    context,
+                                                    visible[first + 1],
+                                                    state,
+                                                  )
+                                                : const SizedBox.shrink(),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              SliverToBoxAdapter(child: _note(context, mobile)),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        bottomNavigationBar: PageActionBar(
-          maxWidth: AppLayout.routingEditorMaxWidth,
-          children: [
-            if (!mobile)
-              OutlinedButton(
-                onPressed: () => controller.cancel(context),
-                child: Text(l.prototypeCancel),
+          bottomNavigationBar: PageActionBar(
+            maxWidth: AppLayout.routingEditorMaxWidth,
+            children: [
+              if (!mobile)
+                OutlinedButton(
+                  onPressed: () => controller.cancel(context),
+                  child: Text(l.prototypeCancel),
+                ),
+              FilledButton(
+                onPressed: state.busy || state.failed
+                    ? null
+                    : () => controller.save(context),
+                child: Text(l.prototypeDone),
               ),
-            FilledButton(
-              onPressed: controller.busy || controller.failed
-                  ? null
-                  : () => controller.save(context),
-              child: Text(l.prototypeDone),
-            ),
-          ],
-        ),
-      );
-    },
+            ],
+          ),
+        );
+      },
+    ),
   );
 
-  Widget _search(BuildContext context, bool mobile) {
+  Widget _search(BuildContext context, bool mobile, DirectRegionsState state) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     return Column(
@@ -303,7 +339,7 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
             children: [
               Expanded(
                 child: Text(
-                  l.prototypeSelectedCount(controller.selected.length),
+                  l.prototypeSelectedCount(state.selected.length),
                   style: AppTypography.routingSelectionCount.copyWith(
                     color: palette.mutedStrong,
                   ),
@@ -311,9 +347,7 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
               ),
               const SizedBox(width: 12),
               TextButton(
-                onPressed: controller.selected.isEmpty
-                    ? null
-                    : controller.clear,
+                onPressed: state.selected.isEmpty ? null : controller.clear,
                 style: TextButton.styleFrom(
                   minimumSize: const Size(0, 32),
                   padding: EdgeInsets.zero,
@@ -329,12 +363,12 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
     );
   }
 
-  Widget _region(BuildContext context, String code) {
+  Widget _region(BuildContext context, String code, DirectRegionsState state) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final mobile =
         MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-    final selected = controller.selected.contains(code);
+    final selected = state.selected.contains(code);
     return Semantics(
       checked: selected,
       child: Material(

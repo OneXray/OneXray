@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -20,138 +21,81 @@ class GeoDataPage extends StatefulWidget {
 }
 
 class _GeoDataPageState extends State<GeoDataPage> {
-  final controller = GeoDataController();
   final scroll = ScrollController();
-  @override
-  void initState() {
-    super.initState();
-    controller.initialize();
-  }
 
   @override
   void dispose() {
     scroll.dispose();
-    controller.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller,
-    builder: (context, _) {
-      final l = AppLocalizations.of(context)!;
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      final palette = ColorManager.palette(context);
-      return Scaffold(
-        appBar: AppBar(title: Text(l.prototypeRoutingData)),
-        body: SafeArea(
-          child: ResponsiveContent(
-            desktopMaxWidth: AppLayout.advancedMaxWidth,
-            child: controller.loading
-                ? const Center(child: CircularProgressIndicator())
-                : controller.failed
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(l.prototypeRoutingFileUnavailable),
-                        TextButton(
-                          onPressed: controller.initialize,
-                          child: Text(l.prototypeRetry),
-                        ),
-                      ],
-                    ),
-                  )
-                : Scrollbar(
-                    controller: scroll,
-                    child: ListView(
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => GeoDataController()..initialize(),
+    child: BlocBuilder<GeoDataController, GeoDataPageState>(
+      builder: (context, state) {
+        final controller = context.read<GeoDataController>();
+        final l = AppLocalizations.of(context)!;
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        final palette = ColorManager.palette(context);
+        return Scaffold(
+          appBar: AppBar(title: Text(l.prototypeRoutingData)),
+          body: SafeArea(
+            child: ResponsiveContent(
+              desktopMaxWidth: AppLayout.advancedMaxWidth,
+              child: state.loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : state.failed
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(l.prototypeRoutingFileUnavailable),
+                          TextButton(
+                            onPressed: controller.initialize,
+                            child: Text(l.prototypeRetry),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Scrollbar(
                       controller: scroll,
-                      padding: mobile
-                          ? const EdgeInsets.fromLTRB(14, 10, 14, 18)
-                          : EdgeInsets.fromLTRB(
-                              AppSpacing.advancedDesktopGutter(
-                                MediaQuery.sizeOf(context).width,
+                      child: ListView(
+                        controller: scroll,
+                        padding: mobile
+                            ? const EdgeInsets.fromLTRB(14, 10, 14, 18)
+                            : EdgeInsets.fromLTRB(
+                                AppSpacing.advancedDesktopGutter(
+                                  MediaQuery.sizeOf(context).width,
+                                ),
+                                54,
+                                AppSpacing.advancedDesktopGutter(
+                                  MediaQuery.sizeOf(context).width,
+                                ),
+                                28,
                               ),
-                              54,
-                              AppSpacing.advancedDesktopGutter(
-                                MediaQuery.sizeOf(context).width,
-                              ),
-                              28,
+                        children: [
+                          _intro(context, state, controller),
+                          SizedBox(height: mobile ? 7 : 16),
+                          _heading(
+                            context,
+                            l.prototypeDefaultRoutingData,
+                            OutlinedButton.icon(
+                              style: _headingButtonStyle(context),
+                              onPressed: state.fileBusy(-1)
+                                  ? null
+                                  : () => controller.update(context, null),
+                              icon: state.updating.contains(-1)
+                                  ? const ButtonProgressIndicator()
+                                  : const Icon(LucideIcons.refreshCw, size: 16),
+                              label: Text(l.prototypeUpdate),
                             ),
-                      children: [
-                        _intro(context),
-                        SizedBox(height: mobile ? 7 : 16),
-                        _heading(
-                          context,
-                          l.prototypeDefaultRoutingData,
-                          OutlinedButton.icon(
-                            style: _headingButtonStyle(context),
-                            onPressed: controller.fileBusy(-1)
-                                ? null
-                                : () => controller.update(context, null),
-                            icon: controller.updating.contains(-1)
-                                ? const ButtonProgressIndicator()
-                                : const Icon(LucideIcons.refreshCw, size: 16),
-                            label: Text(l.prototypeUpdate),
                           ),
-                        ),
-                        GeoDataRows(
-                          files: controller.defaults,
-                          custom: false,
-                          busy: controller.updatingAll,
-                          onOpen: (file) =>
-                              widget.openFile(context, file.row.id),
-                          onUpdate: (file) => controller.update(context, file),
-                          onDelete: (file) => controller.delete(context, file),
-                        ),
-                        if (controller.errors[-1] != null)
-                          _error(context, controller.errors[-1]!),
-                        SizedBox(height: mobile ? 18 : 24),
-                        _heading(
-                          context,
-                          l.prototypeCustomRoutingData,
-                          OutlinedButton.icon(
-                            style: _headingButtonStyle(context),
-                            onPressed: controller.formBusy
-                                ? null
-                                : controller.toggleAdd,
-                            icon: const Icon(LucideIcons.plus, size: 16),
-                            label: Text(l.prototypeAddDataSource),
-                          ),
-                        ),
-                        if (controller.adding) _form(context),
-                        if (controller.custom.isEmpty)
-                          Container(
-                            constraints: const BoxConstraints(minHeight: 72),
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: palette.border),
-                                bottom: BorderSide(color: palette.border),
-                              ),
-                            ),
-                            child: Text(
-                              l.prototypeNoCustomRoutingData,
-                              textAlign: TextAlign.center,
-                              style:
-                                  (mobile
-                                          ? AppTypography.settingsDetailNote
-                                          : AppTypography.geodataTableBody)
-                                      .copyWith(color: palette.mutedForeground),
-                            ),
-                          )
-                        else
                           GeoDataRows(
-                            files: controller.custom,
-                            custom: true,
-                            busy: controller.updatingAll,
-                            updating: controller.updating,
-                            deleting: controller.deleting,
+                            files: state.defaults,
+                            custom: false,
+                            busy: state.updatingAll,
                             onOpen: (file) =>
                                 widget.openFile(context, file.row.id),
                             onUpdate: (file) =>
@@ -159,22 +103,83 @@ class _GeoDataPageState extends State<GeoDataPage> {
                             onDelete: (file) =>
                                 controller.delete(context, file),
                           ),
-                        for (final file in controller.custom)
-                          if (controller.errors[file.row.id] != null)
-                            _error(
-                              context,
-                              '${file.fileName}: ${controller.errors[file.row.id]}',
+                          if (state.errors[-1] != null)
+                            _error(context, state.errors[-1]!),
+                          SizedBox(height: mobile ? 18 : 24),
+                          _heading(
+                            context,
+                            l.prototypeCustomRoutingData,
+                            OutlinedButton.icon(
+                              style: _headingButtonStyle(context),
+                              onPressed: state.formBusy
+                                  ? null
+                                  : controller.toggleAdd,
+                              icon: const Icon(LucideIcons.plus, size: 16),
+                              label: Text(l.prototypeAddDataSource),
                             ),
-                      ],
+                          ),
+                          if (state.adding) _form(context, state, controller),
+                          if (state.custom.isEmpty)
+                            Container(
+                              constraints: const BoxConstraints(minHeight: 72),
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(color: palette.border),
+                                  bottom: BorderSide(color: palette.border),
+                                ),
+                              ),
+                              child: Text(
+                                l.prototypeNoCustomRoutingData,
+                                textAlign: TextAlign.center,
+                                style:
+                                    (mobile
+                                            ? AppTypography.settingsDetailNote
+                                            : AppTypography.geodataTableBody)
+                                        .copyWith(
+                                          color: palette.mutedForeground,
+                                        ),
+                              ),
+                            )
+                          else
+                            GeoDataRows(
+                              files: state.custom,
+                              custom: true,
+                              busy: state.updatingAll,
+                              updating: state.updating,
+                              deleting: state.deleting,
+                              onOpen: (file) =>
+                                  widget.openFile(context, file.row.id),
+                              onUpdate: (file) =>
+                                  controller.update(context, file),
+                              onDelete: (file) =>
+                                  controller.delete(context, file),
+                            ),
+                          for (final file in state.custom)
+                            if (state.errors[file.row.id] != null)
+                              _error(
+                                context,
+                                '${file.fileName}: ${state.errors[file.row.id]}',
+                              ),
+                        ],
+                      ),
                     ),
-                  ),
+            ),
           ),
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 
-  Widget _intro(BuildContext context) {
+  Widget _intro(
+    BuildContext context,
+    GeoDataPageState state,
+    GeoDataController controller,
+  ) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final mobile =
@@ -202,10 +207,10 @@ class _GeoDataPageState extends State<GeoDataPage> {
                   textStyle: AppTypography.geodataPrimaryAction,
                 )
               : FilledButton.styleFrom(minimumSize: const Size(132, 42)),
-          onPressed: !controller.canUpdateAll
+          onPressed: !state.canUpdateAll
               ? null
               : () => controller.updateAll(context),
-          icon: controller.updatingAll
+          icon: state.updatingAll
               ? const ButtonProgressIndicator(size: 15)
               : const Icon(LucideIcons.refreshCw, size: 15),
           label: Text(l.prototypeUpdateAll),
@@ -277,7 +282,11 @@ class _GeoDataPageState extends State<GeoDataPage> {
     ),
   );
 
-  Widget _form(BuildContext context) {
+  Widget _form(
+    BuildContext context,
+    GeoDataPageState state,
+    GeoDataController controller,
+  ) {
     final viewport = MediaQuery.sizeOf(context).width;
     final mobile = viewport <= AppLayout.mobileBreakpoint;
     final l = AppLocalizations.of(context)!;
@@ -306,13 +315,13 @@ class _GeoDataPageState extends State<GeoDataPage> {
       SizedBox(
         width: double.infinity,
         child: SettingSelect<GeoDataType>(
-          value: controller.type,
+          value: state.type,
           entries: const {
             GeoDataType.ip: 'GeoIP',
             GeoDataType.domain: 'GeoSite',
           },
           textStyle: AppTypography.geodataField,
-          onChanged: controller.formBusy ? null : controller.changeType,
+          onChanged: state.formBusy ? null : controller.changeType,
         ),
       ),
     );
@@ -320,7 +329,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
       l.prototypeSavedFileName,
       ShadInput(
         controller: controller.name,
-        enabled: !controller.formBusy,
+        enabled: !state.formBusy,
         autofocus: true,
         autocorrect: false,
         textDirection: TextDirection.ltr,
@@ -331,7 +340,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
           color: palette.mutedForeground,
         ),
         placeholder: Text(
-          controller.type == GeoDataType.ip ? 'geoip.dat' : 'geosite.dat',
+          state.type == GeoDataType.ip ? 'geoip.dat' : 'geosite.dat',
         ),
       ),
     );
@@ -339,7 +348,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
       l.prototypeHttpsDownloadAddress,
       ShadInput(
         controller: controller.url,
-        enabled: !controller.formBusy,
+        enabled: !state.formBusy,
         keyboardType: TextInputType.url,
         autocorrect: false,
         textDirection: TextDirection.ltr,
@@ -360,18 +369,16 @@ class _GeoDataPageState extends State<GeoDataPage> {
         Flexible(
           child: OutlinedButton(
             style: buttonStyle,
-            onPressed: controller.formBusy ? null : controller.toggleAdd,
+            onPressed: state.formBusy ? null : controller.toggleAdd,
             child: Text(l.prototypeCancel),
           ),
         ),
         Flexible(
           child: FilledButton(
             style: buttonStyle,
-            onPressed: controller.formBusy
-                ? null
-                : () => controller.add(context),
+            onPressed: state.formBusy ? null : () => controller.add(context),
             child: ButtonProgress(
-              busy: controller.formBusy,
+              busy: state.formBusy,
               child: Text(l.prototypeAdd),
             ),
           ),
@@ -421,8 +428,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
                 actions,
               ],
             ),
-          if (controller.formError != null)
-            _error(context, controller.formError!),
+          if (state.formError != null) _error(context, state.formError!),
         ],
       ),
     );

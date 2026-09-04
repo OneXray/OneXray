@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/app_update/controller.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -15,19 +17,28 @@ class AppUpdateDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = AppUpdateDialogController(params.updateInfo);
-    return AppUpdateDialogView(
-      updateInfo: params.updateInfo,
-      onLater: () => controller.later(context),
-      onSkip: () => controller.skip(context),
-      onUpdate: () => controller.update(context),
-      onOpenLink: controller.openLink,
+    return BlocProvider(
+      create: (_) => AppUpdateDialogController(params.updateInfo),
+      child: BlocBuilder<AppUpdateDialogController, AppUpdateDialogAction?>(
+        builder: (context, action) {
+          final controller = context.read<AppUpdateDialogController>();
+          return AppUpdateDialogView(
+            updateInfo: params.updateInfo,
+            action: action,
+            onLater: () => controller.later(context),
+            onSkip: () => controller.skip(context),
+            onUpdate: () => controller.update(context),
+            onOpenLink: controller.openLink,
+          );
+        },
+      ),
     );
   }
 }
 
 class AppUpdateDialogView extends StatelessWidget {
   final AppUpdateInfo updateInfo;
+  final AppUpdateDialogAction? action;
   final VoidCallback onLater;
   final VoidCallback onSkip;
   final VoidCallback onUpdate;
@@ -36,6 +47,7 @@ class AppUpdateDialogView extends StatelessWidget {
   const AppUpdateDialogView({
     super.key,
     required this.updateInfo,
+    this.action,
     required this.onLater,
     required this.onSkip,
     required this.onUpdate,
@@ -120,6 +132,7 @@ class AppUpdateDialogView extends StatelessWidget {
                 laterLabel: l10n.appUpdateLater,
                 skipLabel: l10n.appUpdateSkipVersion,
                 updateLabel: l10n.appUpdateOpen,
+                action: action,
                 onLater: onLater,
                 onSkip: onSkip,
                 onUpdate: onUpdate,
@@ -173,6 +186,7 @@ class _UpdateActions extends StatelessWidget {
   final String laterLabel;
   final String skipLabel;
   final String updateLabel;
+  final AppUpdateDialogAction? action;
   final VoidCallback onLater;
   final VoidCallback onSkip;
   final VoidCallback onUpdate;
@@ -181,6 +195,7 @@ class _UpdateActions extends StatelessWidget {
     required this.laterLabel,
     required this.skipLabel,
     required this.updateLabel,
+    required this.action,
     required this.onLater,
     required this.onSkip,
     required this.onUpdate,
@@ -202,8 +217,12 @@ class _UpdateActions extends StatelessWidget {
             ),
             ShadButton.outline(
               height: 40,
-              onPressed: onSkip,
-              child: Text(skipLabel),
+              enabled: action != AppUpdateDialogAction.skip,
+              onPressed: action == AppUpdateDialogAction.skip ? null : onSkip,
+              child: ButtonProgress(
+                busy: action == AppUpdateDialogAction.skip,
+                child: Text(skipLabel),
+              ),
             ),
             ShadButton(onPressed: onUpdate, child: Text(updateLabel)),
           ];

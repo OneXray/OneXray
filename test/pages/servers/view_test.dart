@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/view.dart';
@@ -79,7 +81,7 @@ void main() {
 
   tearDown(() async {
     scroll.dispose();
-    controller.dispose();
+    await controller.close();
     coordinator.dispose();
     await db.close();
   });
@@ -111,8 +113,8 @@ void main() {
                 ),
               Expanded(
                 child: ResponsiveContent(
-                  child: ListenableBuilder(
-                    listenable: controller,
+                  child: BlocBuilder<_Controller, ConnectPageState>(
+                    bloc: controller,
                     builder: (context, _) =>
                         ServerBrowser(controller: controller, scroll: scroll),
                   ),

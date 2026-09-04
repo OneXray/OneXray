@@ -7,6 +7,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/controller.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/runtime.dart';
@@ -14,32 +15,96 @@ import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/runtime_files.dart';
 import 'package:onexray/service/xray/runtime_settings.dart';
 
-class XrayRuntimeController extends ChangeNotifier {
+const _notProvided = Object();
+
+@immutable
+class XrayRuntimePageState {
+  final ConnectionConfiguration? base;
+  final ConnectionRuntime? runtime;
+  final ConnectionView connection;
+  final Map<String, dynamic> log;
+  final double pingTimeout;
+  final PingUrl pingUrl;
+  final String xrayVersion;
+  final String uptime;
+  final bool loading;
+  final bool failed;
+  final bool saving;
+  final bool systemExtension;
+
+  XrayRuntimePageState({
+    this.base,
+    this.runtime,
+    this.connection = const ConnectionView(),
+    Map<String, dynamic> log = const {},
+    this.pingTimeout = PingTimeout.defaultValue,
+    this.pingUrl = PingUrl.cloudflare,
+    this.xrayVersion = '—',
+    this.uptime = '—',
+    this.loading = true,
+    this.failed = false,
+    this.saving = false,
+    this.systemExtension = false,
+  }) : log = Map<String, dynamic>.unmodifiable(log);
+
+  XrayRuntimePageState copyWith({
+    Object? base = _notProvided,
+    Object? runtime = _notProvided,
+    ConnectionView? connection,
+    Map<String, dynamic>? log,
+    double? pingTimeout,
+    PingUrl? pingUrl,
+    String? xrayVersion,
+    String? uptime,
+    bool? loading,
+    bool? failed,
+    bool? saving,
+    bool? systemExtension,
+  }) => XrayRuntimePageState(
+    base: identical(base, _notProvided)
+        ? this.base
+        : base as ConnectionConfiguration?,
+    runtime: identical(runtime, _notProvided)
+        ? this.runtime
+        : runtime as ConnectionRuntime?,
+    connection: connection ?? this.connection,
+    log: log ?? this.log,
+    pingTimeout: pingTimeout ?? this.pingTimeout,
+    pingUrl: pingUrl ?? this.pingUrl,
+    xrayVersion: xrayVersion ?? this.xrayVersion,
+    uptime: uptime ?? this.uptime,
+    loading: loading ?? this.loading,
+    failed: failed ?? this.failed,
+    saving: saving ?? this.saving,
+    systemExtension: systemExtension ?? this.systemExtension,
+  );
+}
+
+class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   XrayRuntimeController({ConnectionCoordinator? coordinator})
-    : coordinator = coordinator ?? ConnectionCoordinator.instance {
-    reader = AdvancedController(coordinator: this.coordinator);
-    _subscription = reader.stream.listen((_) {
-      if (reader.state.runtime.runtime != null) {
-        runtime = reader.state.runtime.runtime;
-      }
-      _changed();
-    });
+    : this._(coordinator ?? ConnectionCoordinator.instance);
+
+  XrayRuntimeController._(this.coordinator)
+    : reader = AdvancedController(coordinator: coordinator),
+      super(XrayRuntimePageState()) {
+    _subscription = reader.stream.listen(_advancedChanged);
+    _advancedChanged(reader.state);
     load();
   }
   final ConnectionCoordinator coordinator;
-  late final AdvancedController reader;
+  final AdvancedController reader;
   late final StreamSubscription<AdvancedPageState> _subscription;
-  ConnectionConfiguration? base;
-  ConnectionRuntime? runtime;
-  Map<String, dynamic> log = {};
-  PingState ping = PingState();
-  bool loading = true;
-  bool failed = false;
-  bool saving = false;
-  bool _systemExtension = false;
-  bool _disposed = false;
-  bool get busy => saving;
-  bool get runtimeBusy => reader.state.runtime.busy;
+
+  ConnectionConfiguration? get base => state.base;
+  ConnectionRuntime? get runtime => state.runtime;
+  Map<String, dynamic> get log => state.log;
+  bool get loading => state.loading;
+  bool get failed => state.failed;
+  bool get saving => state.saving;
+  String get xrayVersion => state.xrayVersion;
+  String get uptime => state.uptime;
+  bool get busy => state.saving;
+  bool get runtimeBusy => state.connection.busy;
   bool get dirty =>
       base != null &&
       jsonEncode(log) != jsonEncode(base!.policy.toJson()['log']);
@@ -47,46 +112,61 @@ class XrayRuntimeController extends ChangeNotifier {
   bool get recordDns => log['recordDns'] == true;
   bool get maskIp => log['maskIp'] == true;
   String get level => log['level'] as String? ?? 'warning';
-  bool get connected => reader.state.runtime.phase == ConnectionPhase.connected;
+  bool get connected => state.connection.phase == ConnectionPhase.connected;
   String speedSummary(AppLocalizations l) =>
-      '${l.prototypeSeconds(ping.timeout.round())} · ${ping.url == PingUrl.custom ? l.prototypeCustomUrl : ping.url.name}';
+      '${l.prototypeSeconds(state.pingTimeout.round())} · ${state.pingUrl == PingUrl.custom ? l.prototypeCustomUrl : state.pingUrl.name}';
+  String statusLabel(AppLocalizations l) => switch (state.connection.phase) {
+    ConnectionPhase.disconnected => l.prototypeDisconnected,
+    ConnectionPhase.preparing ||
+    ConnectionPhase.connecting => l.prototypeConnecting,
+    ConnectionPhase.connected => l.prototypeConnected,
+    ConnectionPhase.disconnecting => l.prototypeDisconnecting,
+    ConnectionPhase.failed => l.prototypeConnectionFailed,
+  };
   String? logPath(bool access) =>
       RuntimeDiagnosticFiles.logPath(runtime, access: access);
 
-  void _changed() {
-    if (!_disposed) notifyListeners();
+  void _advancedChanged(AdvancedPageState advanced) {
+    emit(
+      state.copyWith(
+        connection: advanced.runtime,
+        runtime: advanced.runtime.runtime ?? state.runtime,
+        xrayVersion: advanced.xrayVersion,
+        uptime: advanced.uptime,
+      ),
+    );
   }
 
   Future<void> load({bool showLoading = true}) async {
-    loading = showLoading;
-    failed = false;
-    _changed();
+    emit(state.copyWith(loading: showLoading, failed: false));
     try {
       final configuration = await coordinator.configuration;
       final currentRuntime = await coordinator.readCurrentRuntime();
       final systemExtension = await AppHostApi().useSystemExtension();
       final preferences = PingState();
       await preferences.readFromPreferences();
-      if (_disposed) return;
-      base = configuration;
-      log = Map<String, dynamic>.from(
-        configuration.policy.toJson()['log'] as Map,
+      emit(
+        state.copyWith(
+          base: configuration,
+          log: Map<String, dynamic>.from(
+            configuration.policy.toJson()['log'] as Map,
+          ),
+          systemExtension: systemExtension,
+          pingTimeout: preferences.timeout,
+          pingUrl: preferences.url,
+          runtime: reader.state.runtime.runtime ?? currentRuntime,
+        ),
       );
-      _systemExtension = systemExtension;
-      ping = preferences;
-      runtime = reader.state.runtime.runtime ?? currentRuntime;
     } catch (_) {
-      failed = true;
+      emit(state.copyWith(failed: true));
     } finally {
-      loading = false;
-      _changed();
+      emit(state.copyWith(loading: false));
     }
   }
 
   void setLog(String key, Object value) {
     if (busy) return;
-    log = {...log, key: value};
-    _changed();
+    emit(state.copyWith(log: {...log, key: value}));
   }
 
   void setLevel(String? value) {
@@ -95,18 +175,19 @@ class XrayRuntimeController extends ChangeNotifier {
 
   void restoreDefaults() {
     if (busy) return;
-    log = Map<String, dynamic>.from(
-      PlatformPolicy.defaults().toJson()['log'] as Map,
+    emit(
+      state.copyWith(
+        log: Map<String, dynamic>.from(
+          PlatformPolicy.defaults().toJson()['log'] as Map,
+        ),
+      ),
     );
-    _changed();
   }
 
   Future<void> save(BuildContext context) async {
     if (busy || runtimeBusy || !dirty || base == null) return;
     final l = AppLocalizations.of(context)!;
-    saving = true;
-    failed = false;
-    _changed();
+    emit(state.copyWith(saving: true, failed: false));
     try {
       final saved = await saveRuntimeLogPolicy(
         coordinator: coordinator,
@@ -132,7 +213,7 @@ class XrayRuntimeController extends ChangeNotifier {
             ) ==
             true,
       );
-      if (saved && !_disposed) {
+      if (saved && isPageActive) {
         await load(showLoading: false);
         if (context.mounted) {
           ScaffoldMessenger.of(context)
@@ -140,10 +221,9 @@ class XrayRuntimeController extends ChangeNotifier {
         }
       }
     } catch (_) {
-      failed = true;
+      emit(state.copyWith(failed: true));
     } finally {
-      saving = false;
-      _changed();
+      emit(state.copyWith(saving: false));
     }
   }
 
@@ -160,7 +240,7 @@ class XrayRuntimeController extends ChangeNotifier {
       LogFileViewerParams(
         title: access ? l.prototypeAccessLog : l.prototypeErrorLog,
         path: path,
-        systemExtension: _systemExtension,
+        systemExtension: state.systemExtension,
         access: access,
       ),
     );
@@ -183,10 +263,8 @@ class XrayRuntimeController extends ChangeNotifier {
   }
 
   @override
-  void dispose() {
-    _disposed = true;
-    unawaited(_subscription.cancel());
-    unawaited(reader.close());
-    super.dispose();
+  Future<void> disposePageResources() async {
+    await _subscription.cancel();
+    await reader.close();
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -9,6 +10,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -28,46 +30,193 @@ import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/routing/state.dart';
 import 'package:onexray/service/share/service.dart';
 
-class ConnectController extends ChangeNotifier {
+const _unchanged = Object();
+
+class ConnectPageState {
+  ConnectPageState({
+    ConnectionConfiguration? configuration,
+    this.connectionView = const ConnectionView(),
+    List<CoreConfigData> servers = const [],
+    List<CoreConfigData> raws = const [],
+    List<RoutingProfileState> customRoutes = const [],
+    List<SubscriptionData> sources = const [],
+    this.expertView = false,
+    this.ready = false,
+    this.failed = false,
+    this.pendingChange,
+    this.trafficResetConfirming = false,
+    this.trafficResetBusy = false,
+    Set<int> deletingRawIds = const {},
+    this.serverGroupingIndex = 0,
+    this.activeServerGroupId,
+    this.serverSearchQuery = '',
+    Set<String> pendingServerActions = const {},
+    Set<int> testingServerIds = const {},
+    Set<int> favoritingServerIds = const {},
+    this.selectingServers,
+    Map<int, String> sourceErrors = const {},
+    this.selectedExitId,
+  }) : configuration = configuration ?? ConnectionConfiguration(),
+       servers = List.unmodifiable(servers),
+       raws = List.unmodifiable(raws),
+       customRoutes = List.unmodifiable(customRoutes),
+       sources = List.unmodifiable(sources),
+       deletingRawIds = Set.unmodifiable(deletingRawIds),
+       pendingServerActions = Set.unmodifiable(pendingServerActions),
+       testingServerIds = Set.unmodifiable(testingServerIds),
+       favoritingServerIds = Set.unmodifiable(favoritingServerIds),
+       sourceErrors = Map.unmodifiable(sourceErrors);
+
+  final ConnectionConfiguration configuration;
+  final ConnectionView connectionView;
+  final List<CoreConfigData> servers;
+  final List<CoreConfigData> raws;
+  final List<RoutingProfileState> customRoutes;
+  final List<SubscriptionData> sources;
+  final bool expertView;
+  final bool ready;
+  final bool failed;
+  final String? pendingChange;
+  final bool trafficResetConfirming;
+  final bool trafficResetBusy;
+  final Set<int> deletingRawIds;
+
+  // ServersController extends ConnectController, so its page state lives in the
+  // same Cubit state instead of introducing another notifier.
+  final int serverGroupingIndex;
+  final String? activeServerGroupId;
+  final String serverSearchQuery;
+  final Set<String> pendingServerActions;
+  final Set<int> testingServerIds;
+  final Set<int> favoritingServerIds;
+  final ServerSelection? selectingServers;
+  final Map<int, String> sourceErrors;
+  final int? selectedExitId;
+
+  ConnectPageState copyWith({
+    ConnectionConfiguration? configuration,
+    ConnectionView? connectionView,
+    List<CoreConfigData>? servers,
+    List<CoreConfigData>? raws,
+    List<RoutingProfileState>? customRoutes,
+    List<SubscriptionData>? sources,
+    bool? expertView,
+    bool? ready,
+    bool? failed,
+    Object? pendingChange = _unchanged,
+    bool? trafficResetConfirming,
+    bool? trafficResetBusy,
+    Set<int>? deletingRawIds,
+    int? serverGroupingIndex,
+    Object? activeServerGroupId = _unchanged,
+    String? serverSearchQuery,
+    Set<String>? pendingServerActions,
+    Set<int>? testingServerIds,
+    Set<int>? favoritingServerIds,
+    Object? selectingServers = _unchanged,
+    Map<int, String>? sourceErrors,
+    Object? selectedExitId = _unchanged,
+  }) => ConnectPageState(
+    configuration: configuration ?? this.configuration,
+    connectionView: connectionView ?? this.connectionView,
+    servers: servers ?? this.servers,
+    raws: raws ?? this.raws,
+    customRoutes: customRoutes ?? this.customRoutes,
+    sources: sources ?? this.sources,
+    expertView: expertView ?? this.expertView,
+    ready: ready ?? this.ready,
+    failed: failed ?? this.failed,
+    pendingChange: identical(pendingChange, _unchanged)
+        ? this.pendingChange
+        : pendingChange as String?,
+    trafficResetConfirming:
+        trafficResetConfirming ?? this.trafficResetConfirming,
+    trafficResetBusy: trafficResetBusy ?? this.trafficResetBusy,
+    deletingRawIds: deletingRawIds ?? this.deletingRawIds,
+    serverGroupingIndex: serverGroupingIndex ?? this.serverGroupingIndex,
+    activeServerGroupId: identical(activeServerGroupId, _unchanged)
+        ? this.activeServerGroupId
+        : activeServerGroupId as String?,
+    serverSearchQuery: serverSearchQuery ?? this.serverSearchQuery,
+    pendingServerActions: pendingServerActions ?? this.pendingServerActions,
+    testingServerIds: testingServerIds ?? this.testingServerIds,
+    favoritingServerIds: favoritingServerIds ?? this.favoritingServerIds,
+    selectingServers: identical(selectingServers, _unchanged)
+        ? this.selectingServers
+        : selectingServers as ServerSelection?,
+    sourceErrors: sourceErrors ?? this.sourceErrors,
+    selectedExitId: identical(selectedExitId, _unchanged)
+        ? this.selectedExitId
+        : selectedExitId as int?,
+  );
+}
+
+class ConnectController extends PageCubit<ConnectPageState> {
   ConnectController({AppDatabase? database, ConnectionCoordinator? coordinator})
     : db = database ?? AppDatabase(),
-      coordinator = coordinator ?? ConnectionCoordinator.instance;
+      coordinator = coordinator ?? ConnectionCoordinator.instance,
+      super(ConnectPageState()) {
+    this.coordinator.state.addListener(_connectionChanged);
+    _connectionChanged();
+  }
 
   final AppDatabase db;
   final ConnectionCoordinator coordinator;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
-  ConnectionConfiguration configuration = ConnectionConfiguration();
-  List<CoreConfigData> servers = [];
-  List<CoreConfigData> raws = [];
-  List<RoutingProfileState> customRoutes = [];
-  List<SubscriptionData> sources = [];
-  bool expertView = false;
-  bool ready = false;
-  bool failed = false;
-  bool _closed = false;
   bool _viewInitialized = false;
   bool _pageVisible = false;
   bool _trafficDialogOpen = false;
-  String? pendingChange;
-  final Set<int> deletingRawIds = {};
+
+  ConnectionConfiguration get configuration => state.configuration;
+  set configuration(ConnectionConfiguration value) =>
+      emit(state.copyWith(configuration: value));
+  ConnectionView get connectionView => state.connectionView;
+  List<CoreConfigData> get servers => state.servers;
+  set servers(List<CoreConfigData> value) =>
+      emit(state.copyWith(servers: value));
+  List<CoreConfigData> get raws => state.raws;
+  set raws(List<CoreConfigData> value) => emit(state.copyWith(raws: value));
+  List<RoutingProfileState> get customRoutes => state.customRoutes;
+  set customRoutes(List<RoutingProfileState> value) =>
+      emit(state.copyWith(customRoutes: value));
+  List<SubscriptionData> get sources => state.sources;
+  set sources(List<SubscriptionData> value) =>
+      emit(state.copyWith(sources: value));
+  bool get expertView => state.expertView;
+  set expertView(bool value) => emit(state.copyWith(expertView: value));
+  bool get ready => state.ready;
+  set ready(bool value) => emit(state.copyWith(ready: value));
+  bool get failed => state.failed;
+  set failed(bool value) => emit(state.copyWith(failed: value));
+  String? get pendingChange => state.pendingChange;
+  set pendingChange(String? value) =>
+      emit(state.copyWith(pendingChange: value));
+  Set<int> get deletingRawIds => state.deletingRawIds;
+
+  void _connectionChanged() {
+    if (isPageActive) {
+      emit(state.copyWith(connectionView: coordinator.state.value));
+    }
+  }
 
   void setPageVisible(bool visible) {
-    if (_closed || _pageVisible == visible) return;
+    if (!isPageActive || _pageVisible == visible) return;
     _pageVisible = visible;
     _syncTrafficVisibility();
   }
 
   void _syncTrafficVisibility() => coordinator.setTrafficVisible(
-    !_closed && (_pageVisible || _trafficDialogOpen),
+    isPageActive && (_pageVisible || _trafficDialogOpen),
   );
 
   Future<void> initialize(BuildContext context, {bool services = true}) async {
     failed = false;
-    _notify();
     try {
       if (services) {
         ShortCutService().onConnectionFailure = () {
-          if (context.mounted) context.goPrimaryRoot(AppPrimaryRoute.home);
+          if (context.mounted) {
+            context.goPrimaryRoot(AppPrimaryDestination.connect);
+          }
         };
         ShareService().onIncomingShare = (text) async {
           if (context.mounted) {
@@ -79,7 +228,7 @@ class ConnectController extends ChangeNotifier {
         };
         await ServiceManager.serviceInit(context);
       }
-      if (_closed) return;
+      if (!isPageActive) return;
       configuration = await coordinator.configuration;
       if (!_viewInitialized) expertView = configuration.connection.expert;
       _viewInitialized = true;
@@ -89,7 +238,6 @@ class ConnectController extends ChangeNotifier {
             configuration = ConnectionConfiguration.fromJson(
               jsonDecode(row.configurationJson) as Map<String, dynamic>,
             );
-            _notify();
           }, onError: _readFailed),
         );
         _subscriptions.add(
@@ -98,13 +246,11 @@ class ConnectController extends ChangeNotifier {
               .watch()
               .listen((rows) {
                 servers = rows;
-                _notify();
               }, onError: _readFailed),
         );
         _subscriptions.add(
           db.coreConfigDao.allRawRowsWithDataStream.listen((rows) {
             raws = rows;
-            _notify();
           }, onError: _readFailed),
         );
         _subscriptions.add(
@@ -115,13 +261,11 @@ class ConnectController extends ChangeNotifier {
               _readFailed(error);
               return;
             }
-            _notify();
           }, onError: _readFailed),
         );
         _subscriptions.add(
           db.select(db.subscription).watch().listen((rows) {
             sources = rows;
-            _notify();
           }, onError: _readFailed),
         );
       }
@@ -133,7 +277,6 @@ class ConnectController extends ChangeNotifier {
     } catch (_) {
       failed = true;
     }
-    _notify();
   }
 
   Future<void> _checkUpdate() async {
@@ -214,7 +357,7 @@ class ConnectController extends ChangeNotifier {
   // The runtime chooses the node identity; the badge shows that node's latest
   // successful probe, not a measurement of this session or a new selection.
   String? selectionHealth(AppLocalizations l10n) {
-    final view = coordinator.state.value;
+    final view = connectionView;
     if (view.phase != ConnectionPhase.connected) return null;
     final entries = view.runtime?.entries;
     if (entries == null || entries.isEmpty) return null;
@@ -259,7 +402,7 @@ class ConnectController extends ChangeNotifier {
   /// Only the active runtime metadata describes the path in use. Later
   /// asset renames, probes and subscription updates cannot change these labels.
   ({int entryCount, String path})? get runningRoute {
-    final view = coordinator.state.value;
+    final view = connectionView;
     final runtime = view.runtime;
     if (view.phase != ConnectionPhase.connected ||
         runtime == null ||
@@ -289,7 +432,7 @@ class ConnectController extends ChangeNotifier {
       };
 
   Future<void> connectionAction(BuildContext context) async {
-    final view = coordinator.state.value;
+    final view = connectionView;
     if (view.phase == ConnectionPhase.connected) {
       await run(context, coordinator.disconnect);
     } else if (view.busy) {
@@ -316,12 +459,11 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> toggleExpert(BuildContext context, bool value) async {
-    if (coordinator.state.value.busy || pendingChange != null) return;
+    if (connectionView.busy || pendingChange != null) return;
     if (!value && configuration.connection.expert) {
       if (!await change(context, {'expert': false})) return;
     }
     expertView = value;
-    _notify();
   }
 
   Future<bool> change(
@@ -330,7 +472,7 @@ class ConnectController extends ChangeNotifier {
     Future<void> Function()? writeAssets,
     String? label,
   }) async {
-    if (coordinator.state.value.busy || pendingChange != null) return false;
+    if (connectionView.busy || pendingChange != null) return false;
     pendingChange = values.containsKey('rawId')
         ? 'raw:${values['rawId']}'
         : values.containsKey('selection')
@@ -338,7 +480,6 @@ class ConnectController extends ChangeNotifier {
         : values.containsKey('trafficMode')
         ? 'method'
         : 'expert';
-    _notify();
     try {
       final l10n = AppLocalizations.of(context)!;
       final current = await coordinator.configuration;
@@ -351,8 +492,7 @@ class ConnectController extends ChangeNotifier {
       );
       if (next.encode() == current.encode() && writeAssets == null) return true;
       if (!context.mounted) return false;
-      final reconnect =
-          coordinator.state.value.phase == ConnectionPhase.connected;
+      final reconnect = connectionView.phase == ConnectionPhase.connected;
       if (reconnect &&
           !await showApplyAndReconnectDialog(
             context,
@@ -377,7 +517,6 @@ class ConnectController extends ChangeNotifier {
       return success;
     } finally {
       pendingChange = null;
-      _notify();
     }
   }
 
@@ -410,21 +549,19 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> deleteRaw(BuildContext context, CoreConfigData row) async {
-    if (coordinator.state.value.busy ||
+    if (connectionView.busy ||
         pendingChange != null ||
         deletingRawIds.contains(row.id)) {
       return;
     }
-    deletingRawIds.add(row.id);
-    _notify();
+    emit(state.copyWith(deletingRawIds: {...deletingRawIds, row.id}));
     try {
       final expected = await coordinator.configuration;
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
       final active =
           expected.connection.expert && expected.connection.rawId == row.id;
-      final connected =
-          coordinator.state.value.phase == ConnectionPhase.connected;
+      final connected = connectionView.phase == ConnectionPhase.connected;
       final disconnect = active && connected && servers.isEmpty;
       if (!await showDestructiveConfirmationDialog(
             context,
@@ -473,64 +610,52 @@ class ConnectController extends ChangeNotifier {
           },
         );
         if (active) expertView = false;
-        _notify();
       });
     } finally {
-      deletingRawIds.remove(row.id);
-      _notify();
+      emit(state.copyWith(deletingRawIds: {...deletingRawIds}..remove(row.id)));
     }
   }
 
-  Future<void> resetTraffic(BuildContext context) async {
-    final confirmed = await showConnectDialog<bool>(
-      context,
-      _resetTrafficDialog,
-    );
-    if (confirmed == true && context.mounted) await _clearTraffic(context);
-  }
-
-  Widget _resetTrafficDialog(BuildContext context) {
+  Widget _resetTrafficDialog(BuildContext context, {required bool busy}) {
     final l = AppLocalizations.of(context)!;
-    var busy = false;
-    return StatefulBuilder(
-      builder: (context, setState) => ConnectDialog(
-        key: const ValueKey('reset-traffic'),
-        title: l.prototypeResetTotals,
-        subtitle: l.prototypeResetTrafficNotice,
-        body: ConnectCallout(
-          icon: LucideIcons.circleAlert,
-          text: l.prototypeCannotUndo,
-          warning: true,
-        ),
-        expandLastAction: false,
-        actions: [
-          ConnectDialogButton(
-            label: l.prototypeCancel,
-            secondary: true,
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
-          ConnectDialogButton(
-            label: l.prototypeResetTotals,
-            destructive: true,
-            icon: LucideIcons.rotateCcw,
-            busy: busy,
-            onPressed: busy
-                ? null
-                : () async {
-                    setState(() => busy = true);
-                    await _clearTraffic(context);
-                    if (context.mounted &&
-                        ModalRoute.of(context)?.isCurrent == true) {
-                      Navigator.of(context).pop(false);
-                    }
-                  },
-          ),
-        ],
+    return ConnectDialog(
+      key: const ValueKey('reset-traffic'),
+      title: l.prototypeResetTotals,
+      subtitle: l.prototypeResetTrafficNotice,
+      body: ConnectCallout(
+        icon: LucideIcons.circleAlert,
+        text: l.prototypeCannotUndo,
+        warning: true,
       ),
+      expandLastAction: false,
+      actions: [
+        ConnectDialogButton(
+          label: l.prototypeCancel,
+          secondary: true,
+          onPressed: busy ? null : () => Navigator.of(context).pop(),
+        ),
+        ConnectDialogButton(
+          label: l.prototypeResetTotals,
+          destructive: true,
+          icon: LucideIcons.rotateCcw,
+          busy: busy,
+          onPressed: busy
+              ? null
+              : () => unawaited(_resetTrafficInDialog(context)),
+        ),
+      ],
     );
   }
 
-  Future<void> _clearTraffic(BuildContext context) async {
+  Future<void> _resetTrafficInDialog(BuildContext context) async {
+    if (state.trafficResetBusy) return;
+    emit(state.copyWith(trafficResetBusy: true));
+    final reset = await _clearTraffic(context);
+    if (reset && context.mounted) Navigator.of(context).pop();
+    emit(state.copyWith(trafficResetBusy: false));
+  }
+
+  Future<bool> _clearTraffic(BuildContext context) async {
     var reset = false;
     await run(context, () async {
       await coordinator.resetTraffic();
@@ -542,6 +667,7 @@ class ConnectController extends ChangeNotifier {
         AppLocalizations.of(context)!.prototypeTrafficTotalsReset,
       );
     }
+    return reset;
   }
 
   Future<void> addServers(BuildContext context) =>
@@ -549,7 +675,7 @@ class ConnectController extends ChangeNotifier {
   Future<void> editRaw(BuildContext context, [int? id]) =>
       context.pushScoped(AppSecondaryDestination.rawEditor, extra: id);
   void chooseServer(BuildContext context) =>
-      context.goPrimaryRoot(AppPrimaryRoute.subscriptions);
+      context.goPrimaryRoot(AppPrimaryDestination.servers);
 
   Future<void> showRawActions(BuildContext context, CoreConfigData row) async {
     if (deletingRawIds.contains(row.id)) return;
@@ -577,7 +703,7 @@ class ConnectController extends ChangeNotifier {
               ),
               Divider(height: 1, color: palette.border),
               ListTile(
-                enabled: !coordinator.state.value.busy,
+                enabled: !connectionView.busy,
                 leading: Icon(
                   LucideIcons.trash2,
                   color: palette.destructive,
@@ -643,7 +769,7 @@ class ConnectController extends ChangeNotifier {
 
   Future<void> showWhy(BuildContext context) async {
     final l = AppLocalizations.of(context)!;
-    final view = coordinator.state.value;
+    final view = connectionView;
     final connected = view.phase == ConnectionPhase.connected;
     final runtime = connected ? view.runtime : null;
     final settings =
@@ -772,26 +898,32 @@ class ConnectController extends ChangeNotifier {
   }
 
   Future<void> showTraffic(BuildContext context) async {
-    if (_closed || _trafficDialogOpen) return;
+    if (!isPageActive || _trafficDialogOpen) return;
     _trafficDialogOpen = true;
+    emit(
+      state.copyWith(trafficResetConfirming: false, trafficResetBusy: false),
+    );
     _syncTrafficVisibility();
-    bool? reset;
     try {
-      var confirmingReset = false;
-      reset = await showConnectDialog<bool>(
+      await showConnectDialog<void>(
         context,
-        (dialogContext) => StatefulBuilder(
-          builder: (dialogContext, setState) {
-            if (confirmingReset) return _resetTrafficDialog(dialogContext);
+        (dialogContext) => BlocBuilder<ConnectController, ConnectPageState>(
+          bloc: this,
+          builder: (_, state) {
+            if (state.trafficResetConfirming) {
+              return _resetTrafficDialog(
+                dialogContext,
+                busy: state.trafficResetBusy,
+              );
+            }
             final l = AppLocalizations.of(dialogContext)!;
             return ConnectDialog(
               title: l.prototypeTraffic,
               body: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: ValueListenableBuilder<ConnectionView>(
-                  valueListenable: coordinator.state,
-                  builder: (_, view, _) =>
-                      TrafficReadout(view: view, expandedGroups: true),
+                child: TrafficReadout(
+                  view: state.connectionView,
+                  expandedGroups: true,
                 ),
               ),
               actions: [
@@ -799,7 +931,8 @@ class ConnectController extends ChangeNotifier {
                   label: l.prototypeResetTotals,
                   secondary: true,
                   icon: LucideIcons.rotateCcw,
-                  onPressed: () => setState(() => confirmingReset = true),
+                  onPressed: () =>
+                      emit(state.copyWith(trafficResetConfirming: true)),
                 ),
                 ConnectDialogButton(
                   label: l.prototypeDone,
@@ -812,10 +945,15 @@ class ConnectController extends ChangeNotifier {
       );
     } finally {
       _trafficDialogOpen = false;
-      if (!_closed) _syncTrafficVisibility();
-    }
-    if (reset == true && !_closed && context.mounted) {
-      await _clearTraffic(context);
+      if (isPageActive) {
+        emit(
+          state.copyWith(
+            trafficResetConfirming: false,
+            trafficResetBusy: false,
+          ),
+        );
+        _syncTrafficVisibility();
+      }
     }
   }
 
@@ -823,7 +961,7 @@ class ConnectController extends ChangeNotifier {
     try {
       await action();
     } catch (error) {
-      if (coordinator.state.value.issue == 'cancelled') return;
+      if (connectionView.issue == 'cancelled') return;
       if (context.mounted) {
         ContextAlert.showToast(
           context,
@@ -837,20 +975,14 @@ class ConnectController extends ChangeNotifier {
 
   void _readFailed(Object error) {
     failed = true;
-    _notify();
-  }
-
-  void _notify() {
-    if (!_closed) notifyListeners();
   }
 
   @override
-  void dispose() {
-    _closed = true;
+  Future<void> disposePageResources() async {
     _syncTrafficVisibility();
+    coordinator.state.removeListener(_connectionChanged);
     for (final subscription in _subscriptions) {
-      unawaited(subscription.cancel());
+      await subscription.cancel();
     }
-    super.dispose();
   }
 }

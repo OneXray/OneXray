@@ -11,9 +11,6 @@ abstract final class AppLayout {
   static const routingMaxWidth = 1220.0;
   static const routingEditorMaxWidth = 760.0;
   static const contentBreakpoint = 840.0;
-  static const navigationTabsHeight = 44.0;
-  static const mobileNavigationHeight = 92.0;
-  static const mobileNavigationIconSize = 21.0;
   static const pageActionMinHeight = 72.0;
   static const mobilePageActionMinHeight = 64.0;
   static const pageActionButtonMinHeight = 46.0;
@@ -69,7 +66,6 @@ abstract final class AppSpacing {
   static const sidebarRowGap = 7.0;
   static const mobilePage = 14.0;
   static const mobileHeaderHorizontal = 16.0;
-  static const mobileNavigationGap = 6.0;
   static const connectPageHorizontal = 15.0;
   static const connectPageTop = 4.0;
   static const connectPageBottom = 22.0;

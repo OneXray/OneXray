@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
@@ -9,7 +10,7 @@ import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-class WindowsVpnPage extends StatefulWidget {
+class WindowsVpnPage extends StatelessWidget {
   final PolicyEditorDraft draft;
   final OpenPolicyChild openInterface;
   const WindowsVpnPage({
@@ -18,21 +19,14 @@ class WindowsVpnPage extends StatefulWidget {
     required this.openInterface,
   });
   @override
-  State<WindowsVpnPage> createState() => _WindowsVpnPageState();
-}
-
-class _WindowsVpnPageState extends State<WindowsVpnPage> {
-  late final controller = PolicyEditorController(draft: widget.draft);
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => WindowsVpnView(
-    controller: controller,
-    openInterface: widget.openInterface,
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => PolicyEditorController(draft: draft),
+    child: Builder(
+      builder: (context) => WindowsVpnView(
+        controller: context.read<PolicyEditorController>(),
+        openInterface: openInterface,
+      ),
+    ),
   );
 }
 
@@ -47,9 +41,11 @@ class WindowsVpnView extends StatelessWidget {
   final OpenPolicyChild openInterface;
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
+  Widget build(
+    BuildContext context,
+  ) => BlocBuilder<PolicyEditorController, PolicyEditorPageState>(
+    bloc: controller,
+    builder: (context, state) {
       final l = AppLocalizations.of(context)!;
       final palette = ColorManager.palette(context);
       final width = MediaQuery.sizeOf(context).width;
@@ -244,24 +240,46 @@ class _WindowsNetworksState extends State<_WindowsNetworks> {
   late final fields = widget.values
       .map((value) => TextEditingController(text: value))
       .toList();
-  final _retired = <TextEditingController>[];
 
   void _publish() =>
       widget.onChanged(fields.map((field) => field.text).toList());
 
   void _add() {
-    setState(() => fields.add(TextEditingController()));
+    fields.add(TextEditingController());
     _publish();
   }
 
   void _remove(int index) {
-    setState(() => _retired.add(fields.removeAt(index)));
+    _retire(fields.removeAt(index));
     _publish();
+  }
+
+  void _retire(TextEditingController field) =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => field.dispose());
+
+  @override
+  void didUpdateWidget(_WindowsNetworks oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    while (fields.length > widget.values.length) {
+      _retire(fields.removeLast());
+    }
+    while (fields.length < widget.values.length) {
+      fields.add(TextEditingController());
+    }
+    for (var index = 0; index < widget.values.length; index++) {
+      final value = widget.values[index];
+      if (fields[index].text != value) {
+        fields[index].value = TextEditingValue(
+          text: value,
+          selection: TextSelection.collapsed(offset: value.length),
+        );
+      }
+    }
   }
 
   @override
   void dispose() {
-    for (final field in [...fields, ..._retired]) {
+    for (final field in fields) {
       field.dispose();
     }
     super.dispose();
@@ -274,7 +292,7 @@ class _WindowsNetworksState extends State<_WindowsNetworks> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var index = 0; index < fields.length; index++) ...[
+        for (var index = 0; index < widget.values.length; index++) ...[
           Focus(
             key: ObjectKey(fields[index]),
             child: Builder(
@@ -343,7 +361,7 @@ class _WindowsNetworksState extends State<_WindowsNetworks> {
           ),
           const SizedBox(height: 10),
         ],
-        if (fields.isEmpty) ...[
+        if (widget.values.isEmpty) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
             decoration: ShapeDecoration(
@@ -363,7 +381,7 @@ class _WindowsNetworksState extends State<_WindowsNetworks> {
           const SizedBox(height: 10),
         ],
         OutlinedButton(
-          onPressed: widget.enabled && fields.length < 64 ? _add : null,
+          onPressed: widget.enabled && widget.values.length < 64 ? _add : null,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

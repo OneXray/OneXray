@@ -39,7 +39,6 @@ class AdaptiveMainShell extends StatelessWidget {
     BuildContext context,
     bool appUpdateAvailable,
   ) {
-    final navigationTheme = NavigationBarTheme.of(context);
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar:
@@ -49,88 +48,37 @@ class AdaptiveMainShell extends StatelessWidget {
                   .matches
                   .last
                   .matchedLocation !=
-              AppPrimaryRoute.values[navigationShell.currentIndex].rootPath
+              AppPrimaryDestination
+                  .values[navigationShell.currentIndex]
+                  .rootPath
           ? null
-          : Material(
-              color: navigationTheme.backgroundColor,
-              child: SafeArea(
-                top: false,
-                child: Container(
-                  key: const ValueKey('primary-mobile-navigation'),
-                  constraints: BoxConstraints(
-                    minHeight:
-                        navigationTheme.height ??
-                        AppLayout.mobileNavigationHeight,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: ColorManager.palette(context).border,
-                      ),
-                    ),
-                  ),
-                  // Let large system text grow the bar; normal size stays 92.
-                  child: IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final primary in AppPrimaryRoute.values)
-                          Expanded(
-                            child: _bottomDestination(
-                              context,
-                              primary,
-                              appUpdateAvailable,
-                              navigationTheme,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+          : DecoratedBox(
+              key: const ValueKey('primary-mobile-navigation'),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: ColorManager.palette(context).border),
                 ),
               ),
+              child: NavigationBar(
+                selectedIndex: navigationShell.currentIndex,
+                onDestinationSelected: (index) => context.goPrimary(
+                  navigationShell,
+                  AppPrimaryDestination.values[index],
+                ),
+                destinations: [
+                  for (final primary in AppPrimaryDestination.values)
+                    NavigationDestination(
+                      key: ValueKey('primary-navigation-${primary.name}'),
+                      icon: _navigationIcon(
+                        context,
+                        primary,
+                        appUpdateAvailable,
+                      ),
+                      label: _label(context, primary),
+                    ),
+                ],
+              ),
             ),
-    );
-  }
-
-  Widget _bottomDestination(
-    BuildContext context,
-    AppPrimaryRoute primary,
-    bool appUpdateAvailable,
-    NavigationBarThemeData theme,
-  ) {
-    final selected = primary.index == navigationShell.currentIndex;
-    final states = <WidgetState>{if (selected) WidgetState.selected};
-    final label = _label(context, primary);
-    return Semantics(
-      key: ValueKey('primary-navigation-${primary.name}'),
-      label: label,
-      selected: selected,
-      button: true,
-      child: InkWell(
-        onTap: () => context.goPrimary(navigationShell, primary),
-        hoverColor: theme.overlayColor?.resolve({WidgetState.hovered}),
-        highlightColor: theme.overlayColor?.resolve({WidgetState.pressed}),
-        focusColor: Theme.of(context).focusColor,
-        splashFactory: NoSplash.splashFactory,
-        child: ExcludeSemantics(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconTheme(
-                data: theme.iconTheme?.resolve(states) ?? IconTheme.of(context),
-                child: _navigationIcon(context, primary, appUpdateAvailable),
-              ),
-              const SizedBox(height: AppSpacing.mobileNavigationGap),
-              Text(
-                label,
-                style: theme.labelTextStyle?.resolve(states),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -184,7 +132,7 @@ class AdaptiveMainShell extends StatelessWidget {
                         ),
                       ),
                     ),
-                    for (final primary in AppPrimaryRoute.values) ...[
+                    for (final primary in AppPrimaryDestination.values) ...[
                       if (primary.index > 0)
                         const SizedBox(height: AppSpacing.sidebarRowGap),
                       _desktopDestination(context, primary),
@@ -205,7 +153,10 @@ class AdaptiveMainShell extends StatelessWidget {
     );
   }
 
-  Widget _desktopDestination(BuildContext context, AppPrimaryRoute primary) {
+  Widget _desktopDestination(
+    BuildContext context,
+    AppPrimaryDestination primary,
+  ) {
     final palette = ColorManager.palette(context);
     final selected = primary.index == navigationShell.currentIndex;
     final label = _label(context, primary);
@@ -261,7 +212,7 @@ class AdaptiveMainShell extends StatelessWidget {
   }
 
   void _showDesktopUpdate(BuildContext context, AppUpdateInfo updateInfo) {
-    context.goPrimaryRoot(AppPrimaryRoute.settings);
+    context.goPrimaryRoot(AppPrimaryDestination.settings);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (context.mounted) {
         context.pushAppUpdateDialog(updateInfo);
@@ -271,32 +222,32 @@ class AdaptiveMainShell extends StatelessWidget {
 
   Widget _navigationIcon(
     BuildContext context,
-    AppPrimaryRoute primary,
+    AppPrimaryDestination primary,
     bool appUpdateAvailable,
   ) {
     final icon = Icon(_icon(primary));
-    if (primary != AppPrimaryRoute.settings || !appUpdateAvailable) {
+    if (primary != AppPrimaryDestination.settings || !appUpdateAvailable) {
       return icon;
     }
     return _UpdateBadge(child: icon);
   }
 
-  IconData _icon(AppPrimaryRoute primary) {
+  IconData _icon(AppPrimaryDestination primary) {
     return switch (primary) {
-      AppPrimaryRoute.home => LucideIcons.link,
-      AppPrimaryRoute.subscriptions => LucideIcons.layers3,
-      AppPrimaryRoute.core => LucideIcons.terminal,
-      AppPrimaryRoute.settings => LucideIcons.settings,
+      AppPrimaryDestination.connect => LucideIcons.link,
+      AppPrimaryDestination.servers => LucideIcons.layers3,
+      AppPrimaryDestination.advanced => LucideIcons.terminal,
+      AppPrimaryDestination.settings => LucideIcons.settings,
     };
   }
 
-  String _label(BuildContext context, AppPrimaryRoute primary) {
+  String _label(BuildContext context, AppPrimaryDestination primary) {
     final localizations = AppLocalizations.of(context)!;
     return switch (primary) {
-      AppPrimaryRoute.home => localizations.prototypeConnect,
-      AppPrimaryRoute.subscriptions => localizations.prototypeServers,
-      AppPrimaryRoute.core => localizations.prototypeAdvanced,
-      AppPrimaryRoute.settings => localizations.prototypeSettings,
+      AppPrimaryDestination.connect => localizations.prototypeConnect,
+      AppPrimaryDestination.servers => localizations.prototypeServers,
+      AppPrimaryDestination.advanced => localizations.prototypeAdvanced,
+      AppPrimaryDestination.settings => localizations.prototypeSettings,
     };
   }
 }
@@ -369,15 +320,15 @@ class _UpdateBadge extends StatelessWidget {
 class PrimaryRootContent extends StatelessWidget {
   const PrimaryRootContent({super.key, required this.primary});
 
-  final AppPrimaryRoute primary;
+  final AppPrimaryDestination primary;
 
   @override
   Widget build(BuildContext context) {
     return switch (primary) {
-      AppPrimaryRoute.home => const ConnectPage(),
-      AppPrimaryRoute.subscriptions => const ServersPage(),
-      AppPrimaryRoute.core => const AdvancedRootPage(),
-      AppPrimaryRoute.settings => const PreferencesPage(),
+      AppPrimaryDestination.connect => const ConnectPage(),
+      AppPrimaryDestination.servers => const ServersPage(),
+      AppPrimaryDestination.advanced => const AdvancedRootPage(),
+      AppPrimaryDestination.settings => const PreferencesPage(),
     };
   }
 }

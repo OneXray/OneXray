@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
@@ -55,84 +58,86 @@ class _ServersImportPageState extends State<ServersImportPage> {
 
   @override
   void dispose() {
-    controller.dispose();
+    unawaited(controller.close());
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l10n = AppLocalizations.of(context)!;
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      return PopScope(
-        canPop: controller.canClose,
-        child: AppDialog(
-          title: l10n.prototypeAddServersToOneXray,
-          subtitle: l10n.prototypeChooseAddMethod,
-          onClose: () => controller.closeFlow(context),
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.all(mobile ? 14 : 20),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = mobile
-                        ? constraints.maxWidth
-                        : (constraints.maxWidth - 10) / 2;
-                    return Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        if (controller.supportsScan)
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<ServerImportController, ServerImportPageState>(
+      builder: (context, state) {
+        final l10n = AppLocalizations.of(context)!;
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        return PopScope(
+          canPop: state.canClose,
+          child: AppDialog(
+            title: l10n.prototypeAddServersToOneXray,
+            subtitle: l10n.prototypeChooseAddMethod,
+            onClose: () => controller.closeFlow(context),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(mobile ? 14 : 20),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = mobile
+                          ? constraints.maxWidth
+                          : (constraints.maxWidth - 10) / 2;
+                      return Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          if (controller.supportsScan)
+                            _choice(
+                              context,
+                              width,
+                              ServerImportAction.scan,
+                              LucideIcons.qrCode,
+                              l10n.prototypeScanQrCode,
+                            ),
                           _choice(
                             context,
                             width,
-                            ServerImportAction.scan,
-                            LucideIcons.qrCode,
-                            l10n.prototypeScanQrCode,
+                            ServerImportAction.paste,
+                            LucideIcons.clipboard,
+                            l10n.prototypePasteLink,
                           ),
-                        _choice(
-                          context,
-                          width,
-                          ServerImportAction.paste,
-                          LucideIcons.clipboard,
-                          l10n.prototypePasteLink,
-                        ),
-                        _choice(
-                          context,
-                          width,
-                          ServerImportAction.subscription,
-                          LucideIcons.link,
-                          l10n.prototypeAddSubscription,
-                        ),
-                        _choice(
-                          context,
-                          width,
-                          ServerImportAction.file,
-                          LucideIcons.fileInput,
-                          l10n.prototypeImportFile,
-                        ),
-                        _choice(
-                          context,
-                          width,
-                          ServerImportAction.json,
-                          LucideIcons.fileJson,
-                          l10n.prototypeAddManually,
-                        ),
-                      ],
-                    );
-                  },
+                          _choice(
+                            context,
+                            width,
+                            ServerImportAction.subscription,
+                            LucideIcons.link,
+                            l10n.prototypeAddSubscription,
+                          ),
+                          _choice(
+                            context,
+                            width,
+                            ServerImportAction.file,
+                            LucideIcons.fileInput,
+                            l10n.prototypeImportFile,
+                          ),
+                          _choice(
+                            context,
+                            width,
+                            ServerImportAction.json,
+                            LucideIcons.fileJson,
+                            l10n.prototypeAddManually,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-              _ImportFeedback(controller: controller),
-            ],
+                _ImportFeedback(state: state),
+              ],
+            ),
           ),
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 
   Widget _choice(
@@ -146,7 +151,7 @@ class _ServersImportPageState extends State<ServersImportPage> {
     return SizedBox(
       width: width,
       child: OutlinedButton(
-        onPressed: controller.busy
+        onPressed: controller.state.busy
             ? null
             : () => controller.open(context, action),
         style:
@@ -180,7 +185,7 @@ class _ServersImportPageState extends State<ServersImportPage> {
             ),
         child: Row(
           children: [
-            if (controller.openingAction == action)
+            if (controller.state.openingAction == action)
               const ButtonProgressIndicator(size: 22)
             else
               Icon(icon, size: 22),
@@ -209,80 +214,82 @@ class ServerImportFormPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l10n = AppLocalizations.of(context)!;
-      final subscription = action == ServerImportAction.subscription;
-      final manual = action == ServerImportAction.json;
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      return PopScope(
-        canPop: controller.canClose,
-        child: AppDialog(
-          title: subscription
-              ? controller.editingSubscription
-                    ? l10n.prototypeEditSubscription
-                    : l10n.prototypeAddSubscription
-              : manual
-              ? l10n.prototypeAddManually
-              : l10n.prototypePasteLink,
-          subtitle: controller.editingSubscription
-              ? l10n.prototypeChangesApplyToFutureUpdates
-              : null,
-          onBack: onBack,
-          onClose: onClose ?? () => controller.closeFlow(context),
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (subscription)
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    mobile ? 16 : 20,
-                    20,
-                    mobile ? 16 : 20,
-                    0,
-                  ),
-                  child: _subscription(context),
-                )
-              else if (manual)
-                _manual(context, mobile: mobile)
-              else
-                _paste(context),
-              _ImportFeedback(controller: controller),
-              ConnectCallout(
-                icon: LucideIcons.lockKeyhole,
-                text: l10n.prototypeLocalInputPrivacy,
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<ServerImportController, ServerImportPageState>(
+      builder: (context, state) {
+        final l10n = AppLocalizations.of(context)!;
+        final subscription = action == ServerImportAction.subscription;
+        final manual = action == ServerImportAction.json;
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        return PopScope(
+          canPop: state.canClose,
+          child: AppDialog(
+            title: subscription
+                ? controller.editingSubscription
+                      ? l10n.prototypeEditSubscription
+                      : l10n.prototypeAddSubscription
+                : manual
+                ? l10n.prototypeAddManually
+                : l10n.prototypePasteLink,
+            subtitle: controller.editingSubscription
+                ? l10n.prototypeChangesApplyToFutureUpdates
+                : null,
+            onBack: onBack,
+            onClose: onClose ?? () => controller.closeFlow(context),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (subscription)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      mobile ? 16 : 20,
+                      20,
+                      mobile ? 16 : 20,
+                      0,
+                    ),
+                    child: _subscription(context),
+                  )
+                else if (manual)
+                  _manual(context, mobile: mobile)
+                else
+                  _paste(context),
+                _ImportFeedback(state: state),
+                ConnectCallout(
+                  icon: LucideIcons.lockKeyhole,
+                  text: l10n.prototypeLocalInputPrivacy,
+                ),
+              ],
+            ),
+            actions: [
+              ConnectDialogButton(
+                label: l10n.prototypeCancel,
+                secondary: true,
+                onPressed: !state.canClose
+                    ? null
+                    : onClose ?? () => controller.closeFlow(context),
+              ),
+              ConnectDialogButton(
+                label: subscription
+                    ? controller.editingSubscription
+                          ? l10n.prototypeSave
+                          : l10n.prototypeAddSubscription
+                    : manual
+                    ? l10n.prototypeDetect
+                    : l10n.prototypeImportLinks,
+                busy: state.submitting,
+                onPressed: !controller.canSubmit(action)
+                    ? null
+                    : () => subscription
+                          ? controller.subscribe(context)
+                          : controller.detect(context, action),
               ),
             ],
           ),
-          actions: [
-            ConnectDialogButton(
-              label: l10n.prototypeCancel,
-              secondary: true,
-              onPressed: !controller.canClose
-                  ? null
-                  : onClose ?? () => controller.closeFlow(context),
-            ),
-            ConnectDialogButton(
-              label: subscription
-                  ? controller.editingSubscription
-                        ? l10n.prototypeSave
-                        : l10n.prototypeAddSubscription
-                  : manual
-                  ? l10n.prototypeDetect
-                  : l10n.prototypeImportLinks,
-              busy: controller.submitting,
-              onPressed: !controller.canSubmit(action)
-                  ? null
-                  : () => subscription
-                        ? controller.subscribe(context)
-                        : controller.detect(context, action),
-            ),
-          ],
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 
   Widget _paste(BuildContext context) {
@@ -387,11 +394,10 @@ class ServerImportFormPage extends StatelessWidget {
       agePublicKeyLabel: l10n.prototypeAgePublicKey,
       agePublicKeyHint: 'age1...',
       agePublicKeyController: controller.publicKey,
-      ageKeyPairErrorText: controller.incompleteKeys
+      ageKeyPairErrorText: controller.state.incompleteKeys
           ? l10n.prototypeAgeBothKeysRequired
           : null,
-      onAgeKeyChanged: controller.ageChanged,
-      obscureAgeSecretKey: controller.obscureSecret,
+      obscureAgeSecretKey: controller.state.obscureSecret,
       revealAgeSecretKeyLabel: l10n.prototypeRevealKey,
       hideAgeSecretKeyLabel: l10n.prototypeHideKey,
       generateAgeKeyLabel: l10n.subscriptionGenerateAgeKey,
@@ -401,8 +407,12 @@ class ServerImportFormPage extends StatelessWidget {
       onToggleAgeSecretKeyVisibility: controller.toggleSecret,
       onGenerateAgeKey: (type) => controller.generateKeys(context, type),
       onClearAgeKey: controller.clearKeys,
-      generatingAgeKeyType: controller.generatingAgeKeyType,
-      ageKeyActionsEnabled: !controller.busy && !controller.loadFailed,
+      generatingAgeKeyType: controller.state.generatingAgeKeyType,
+      ageKeyActionsEnabled:
+          !controller.state.busy && !controller.state.loadFailed,
+      hasAgeKeys: controller.state.hasAgeKeys,
+      ageExpanded: controller.state.ageExpanded,
+      onToggleAgeExpanded: controller.toggleAgeExpanded,
     );
   }
 }
@@ -421,176 +431,178 @@ class ServerImportPreviewPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l10n = AppLocalizations.of(context)!;
-      final palette = ColorManager.palette(context);
-      final committed = controller.committedResult;
-      final itemCount =
-          preview.rows.length +
-          preview.customRoutes.length +
-          preview.geoData.length +
-          (preview.dependencies?.inputs.length ?? 0);
-      return PopScope(
-        canPop: !controller.busy && committed == null,
-        onPopInvokedWithResult: (didPop, result) {
-          if (!didPop && !controller.busy && committed != null) {
-            controller.closeFlow(context);
-          }
-        },
-        child: AppDialog(
-          title: l10n.prototypeImportPreview,
-          onBack: committed == null ? onBack : null,
-          onClose: onClose ?? () => controller.closeFlow(context),
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                margin: const EdgeInsets.all(20),
-                padding: const EdgeInsets.all(17),
-                decoration: BoxDecoration(
-                  color: palette.runningSurface,
-                  borderRadius: BorderRadius.circular(AppRadii.card),
-                ),
-                child: Row(
-                  spacing: 13,
-                  children: [
-                    Icon(
-                      LucideIcons.circleCheck,
-                      size: 26,
-                      color: palette.running,
-                    ),
-                    Expanded(
-                      child: Column(
-                        spacing: 3,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.prototypeImportedLinks,
-                            style: AppTypography.importSummary,
-                          ),
-                          Text(
-                            l10n.prototypeItemCount(itemCount),
-                            style: AppTypography.importSummaryMeta.copyWith(
-                              color: palette.mutedForeground,
-                            ),
-                          ),
-                          if (committed != null && preview.count > 0)
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<ServerImportController, ServerImportPageState>(
+      builder: (context, state) {
+        final l10n = AppLocalizations.of(context)!;
+        final palette = ColorManager.palette(context);
+        final committed = state.committedResult;
+        final itemCount =
+            preview.rows.length +
+            preview.customRoutes.length +
+            preview.geoData.length +
+            (preview.dependencies?.inputs.length ?? 0);
+        return PopScope(
+          canPop: !state.busy && committed == null,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && !state.busy && committed != null) {
+              controller.closeFlow(context);
+            }
+          },
+          child: AppDialog(
+            title: l10n.prototypeImportPreview,
+            onBack: committed == null ? onBack : null,
+            onClose: onClose ?? () => controller.closeFlow(context),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  margin: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(17),
+                  decoration: BoxDecoration(
+                    color: palette.runningSurface,
+                    borderRadius: BorderRadius.circular(AppRadii.card),
+                  ),
+                  child: Row(
+                    spacing: 13,
+                    children: [
+                      Icon(
+                        LucideIcons.circleCheck,
+                        size: 26,
+                        color: palette.running,
+                      ),
+                      Expanded(
+                        child: Column(
+                          spacing: 3,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              l10n.prototypeServersAdded,
+                              l10n.prototypeImportedLinks,
+                              style: AppTypography.importSummary,
+                            ),
+                            Text(
+                              l10n.prototypeItemCount(itemCount),
                               style: AppTypography.importSummaryMeta.copyWith(
-                                color: palette.running,
+                                color: palette.mutedForeground,
                               ),
                             ),
-                        ],
+                            if (committed != null && preview.count > 0)
+                              Text(
+                                l10n.prototypeServersAdded,
+                                style: AppTypography.importSummaryMeta.copyWith(
+                                  color: palette.running,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              if (preview.hasItems)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
-                  child: Column(
-                    children: [
-                      for (final row in preview.rows)
-                        _PreviewItem(
-                          name: row.name.value,
-                          description: committed != null
-                              ? l10n.prototypeNameSaved(row.name.value)
-                              : row.type.value == 'raw'
-                              ? l10n.xrayRawPageTitle
-                              : l10n.prototypeLocalServer,
-                        ),
-                      for (final route in preview.customRoutes)
-                        _PreviewItem(
-                          name: route.name,
-                          description: committed == null
-                              ? l10n.prototypeCustomRouting
-                              : l10n.prototypeNameSaved(route.name),
-                        ),
-                      for (final dependency
-                          in preview.dependencies?.inputs ?? const [])
-                        _PreviewItem(
-                          name: dependency.fileName,
-                          description: l10n.prototypeDataSource,
-                        ),
-                      for (final source in preview.geoData)
-                        _PreviewItem(
-                          name: source.name,
-                          description: committed == null
-                              ? l10n.prototypeDataSource
-                              : committed.failedGeoData.contains(source)
-                              ? l10n.prototypeCannotReadContent
-                              : l10n.prototypeGeodataAdded,
-                          failed:
-                              committed?.failedGeoData.contains(source) ??
-                              false,
-                        ),
                     ],
                   ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Text(
-                    l10n.prototypeNoSupportedLinks,
-                    style: AppTypography.importHint.copyWith(
-                      color: palette.destructive,
+                ),
+                if (preview.hasItems)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 12),
+                    child: Column(
+                      children: [
+                        for (final row in preview.rows)
+                          _PreviewItem(
+                            name: row.name.value,
+                            description: committed != null
+                                ? l10n.prototypeNameSaved(row.name.value)
+                                : row.type.value == 'raw'
+                                ? l10n.xrayRawPageTitle
+                                : l10n.prototypeLocalServer,
+                          ),
+                        for (final route in preview.customRoutes)
+                          _PreviewItem(
+                            name: route.name,
+                            description: committed == null
+                                ? l10n.prototypeCustomRouting
+                                : l10n.prototypeNameSaved(route.name),
+                          ),
+                        for (final dependency
+                            in preview.dependencies?.inputs ?? const [])
+                          _PreviewItem(
+                            name: dependency.fileName,
+                            description: l10n.prototypeDataSource,
+                          ),
+                        for (final source in preview.geoData)
+                          _PreviewItem(
+                            name: source.name,
+                            description: committed == null
+                                ? l10n.prototypeDataSource
+                                : committed.failedGeoData.contains(source)
+                                ? l10n.prototypeCannotReadContent
+                                : l10n.prototypeGeodataAdded,
+                            failed:
+                                committed?.failedGeoData.contains(source) ??
+                                false,
+                          ),
+                      ],
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Text(
+                      l10n.prototypeNoSupportedLinks,
+                      style: AppTypography.importHint.copyWith(
+                        color: palette.destructive,
+                      ),
                     ),
                   ),
-                ),
-              _ImportFeedback(controller: controller),
-              if (preview.count > 0 || (preview.failureCount ?? 0) > 0)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 8,
-                    children: [
-                      Expanded(
-                        child: _stat(
-                          context,
-                          l10n.prototypeUsableNodes(preview.count),
-                        ),
-                      ),
-                      if (preview.failureCount case final failureCount?)
+                _ImportFeedback(state: state),
+                if (preview.count > 0 || (preview.failureCount ?? 0) > 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 8,
+                      children: [
                         Expanded(
                           child: _stat(
                             context,
-                            l10n.prototypeUnrecognizedNodes(failureCount),
-                            warning: failureCount > 0,
+                            l10n.prototypeUsableNodes(preview.count),
                           ),
                         ),
-                    ],
+                        if (preview.failureCount case final failureCount?)
+                          Expanded(
+                            child: _stat(
+                              context,
+                              l10n.prototypeUnrecognizedNodes(failureCount),
+                              warning: failureCount > 0,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
+              ],
+            ),
+            actions: [
+              ConnectDialogButton(
+                label: committed == null
+                    ? l10n.prototypeCancel
+                    : l10n.prototypeClose,
+                secondary: true,
+                onPressed: state.busy
+                    ? null
+                    : onClose ?? () => controller.closeFlow(context),
+              ),
+              ConnectDialogButton(
+                label: committed == null
+                    ? l10n.prototypeConfirmAdd
+                    : l10n.prototypeDone,
+                busy: state.submitting,
+                onPressed: state.busy || !preview.hasItems
+                    ? null
+                    : () => controller.confirm(context, preview),
+              ),
             ],
           ),
-          actions: [
-            ConnectDialogButton(
-              label: committed == null
-                  ? l10n.prototypeCancel
-                  : l10n.prototypeClose,
-              secondary: true,
-              onPressed: controller.busy
-                  ? null
-                  : onClose ?? () => controller.closeFlow(context),
-            ),
-            ConnectDialogButton(
-              label: committed == null
-                  ? l10n.prototypeConfirmAdd
-                  : l10n.prototypeDone,
-              busy: controller.submitting,
-              onPressed: controller.busy || !preview.hasItems
-                  ? null
-                  : () => controller.confirm(context, preview),
-            ),
-          ],
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 
   Widget _stat(BuildContext context, String text, {bool warning = false}) {
@@ -650,58 +662,47 @@ class _PreviewItem extends StatelessWidget {
   }
 }
 
-class ServerImportScannerPage extends StatefulWidget {
+class ServerImportScannerPage extends StatelessWidget {
+  final ServerImportController controller;
   final void Function(BarcodeCapture) onDetect;
   final Future<void> Function() onPickImage;
   const ServerImportScannerPage({
     super.key,
+    required this.controller,
     required this.onDetect,
     required this.onPickImage,
   });
 
   @override
-  State<ServerImportScannerPage> createState() =>
-      _ServerImportScannerPageState();
-}
-
-class _ServerImportScannerPageState extends State<ServerImportScannerPage> {
-  bool _pickingImage = false;
-
-  Future<void> _pickImage() async {
-    if (_pickingImage) return;
-    setState(() => _pickingImage = true);
-    try {
-      await widget.onPickImage();
-    } finally {
-      if (mounted) setState(() => _pickingImage = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(AppLocalizations.of(context)!.prototypeScanQrCode),
-      actions: [
-        IconButton(
-          tooltip: AppLocalizations.of(context)!.menuPickImage,
-          onPressed: _pickingImage ? null : _pickImage,
-          icon: _pickingImage
-              ? const ButtonProgressIndicator()
-              : const Icon(LucideIcons.image),
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<ServerImportController, ServerImportPageState>(
+      builder: (context, state) => Scaffold(
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context)!.prototypeScanQrCode),
+          actions: [
+            IconButton(
+              tooltip: AppLocalizations.of(context)!.menuPickImage,
+              onPressed: state.scannerPickingImage ? null : onPickImage,
+              icon: state.scannerPickingImage
+                  ? const ButtonProgressIndicator()
+                  : const Icon(LucideIcons.image),
+            ),
+          ],
         ),
-      ],
+        body: SafeArea(child: MobileScanner(onDetect: onDetect)),
+      ),
     ),
-    body: SafeArea(child: MobileScanner(onDetect: widget.onDetect)),
   );
 }
 
 class _ImportFeedback extends StatelessWidget {
-  final ServerImportController controller;
-  const _ImportFeedback({required this.controller});
+  final ServerImportPageState state;
+  const _ImportFeedback({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    if (controller.subscriptionImports.isEmpty && controller.error == null) {
+    if (state.subscriptionImports.isEmpty && state.error == null) {
       return const SizedBox.shrink();
     }
     final l10n = AppLocalizations.of(context)!;
@@ -712,16 +713,16 @@ class _ImportFeedback extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 8,
         children: [
-          if (controller.importedSubscriptionCount > 0)
+          if (state.importedSubscriptionCount > 0)
             Text(
               l10n.prototypeSubscriptionsImported(
-                controller.importedSubscriptionCount,
+                state.importedSubscriptionCount,
               ),
               style: AppTypography.importHint.copyWith(
                 color: palette.mutedForeground,
               ),
             ),
-          for (final item in controller.subscriptionImports)
+          for (final item in state.subscriptionImports)
             Text(
               item.result.success
                   ? item.result.parseFailureCount == null
@@ -738,7 +739,7 @@ class _ImportFeedback extends StatelessWidget {
                     : palette.destructive,
               ),
             ),
-          if (controller.error case final error?)
+          if (state.error case final error?)
             Semantics(
               liveRegion: true,
               child: Text(

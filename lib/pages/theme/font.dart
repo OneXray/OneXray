@@ -14,7 +14,6 @@ abstract final class AppTypography {
     fontWeight: FontWeight.values[weight ~/ 100 - 1],
   );
 
-  static final navigationTitle = _style(20, 600);
   static final pageTitle = _style(31, 700);
   static final panelTitle = _style(19, 700);
   static final sectionTitle = _style(14, 700);
@@ -29,15 +28,7 @@ abstract final class AppTypography {
   static final code = _style(12);
   static final metric = _style(20, 600);
 
-  static final mobileNavigationLabel = _style(12, 400);
-  static final selectedMobileNavigationLabel = _style(12, 600);
-
   static final pageAction = _style(12, 600);
-  static final advancedTab = _style(13, 600);
-  static final selectedAdvancedTab = _style(13, 600);
-  static final desktopAdvancedTab = _style(14, 600);
-  static final selectedDesktopAdvancedTab = _style(14, 600);
-
   static final settingsSectionTitle = _style(14, 700);
   static final settingsSectionDesktopTitle = _style(16, 700);
   static final settingsRow = _style(14, 600);

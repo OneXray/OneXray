@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/pages/widget/configuration_transfer.dart';
@@ -18,68 +21,164 @@ typedef OpenCustomRule = Future<RoutingRuleState?> Function(
   RoutingRuleState? rule,
 );
 
-class CustomRoutingEditorController extends ChangeNotifier {
+const _unchangedCustomRoutingValue = Object();
+
+class CustomRoutingEditorState {
+  final CustomRoutingEditorDraft? original;
+  final ConnectionConfiguration configuration;
+  final List<RoutingProfileData> profiles;
+  final String name;
+  final List<RoutingRuleState> rules;
+  final List<Object> ruleKeys;
+  final Object? selectedRuleKey;
+  final int entryCount;
+  final String domainStrategy;
+  final bool processing;
+  final bool transferBusy;
+  final bool saving;
+  final bool deleting;
+  final bool inlineEditing;
+  final String? error;
+
+  CustomRoutingEditorState({
+    this.original,
+    ConnectionConfiguration? configuration,
+    Iterable<RoutingProfileData> profiles = const [],
+    this.name = '',
+    Iterable<RoutingRuleState> rules = const [],
+    Iterable<Object> ruleKeys = const [],
+    this.selectedRuleKey,
+    this.entryCount = 1,
+    this.domainStrategy = 'AsIs',
+    this.processing = true,
+    this.transferBusy = false,
+    this.saving = false,
+    this.deleting = false,
+    this.inlineEditing = false,
+    this.error,
+  }) : configuration = configuration ?? ConnectionConfiguration(),
+       profiles = List.unmodifiable(profiles),
+       rules = List.unmodifiable(rules),
+       ruleKeys = List.unmodifiable(ruleKeys);
+
+  bool get loaded => original != null;
+  bool get busy => processing || transferBusy;
+  bool get editingBlocked => deleting || transferBusy;
+
+  CustomRoutingEditorState copyWith({
+    Object? original = _unchangedCustomRoutingValue,
+    ConnectionConfiguration? configuration,
+    Iterable<RoutingProfileData>? profiles,
+    String? name,
+    Iterable<RoutingRuleState>? rules,
+    Iterable<Object>? ruleKeys,
+    Object? selectedRuleKey = _unchangedCustomRoutingValue,
+    int? entryCount,
+    String? domainStrategy,
+    bool? processing,
+    bool? transferBusy,
+    bool? saving,
+    bool? deleting,
+    bool? inlineEditing,
+    Object? error = _unchangedCustomRoutingValue,
+  }) => CustomRoutingEditorState(
+    original: identical(original, _unchangedCustomRoutingValue)
+        ? this.original
+        : original as CustomRoutingEditorDraft?,
+    configuration: configuration ?? this.configuration,
+    profiles: profiles ?? this.profiles,
+    name: name ?? this.name,
+    rules: rules ?? this.rules,
+    ruleKeys: ruleKeys ?? this.ruleKeys,
+    selectedRuleKey: identical(selectedRuleKey, _unchangedCustomRoutingValue)
+        ? this.selectedRuleKey
+        : selectedRuleKey,
+    entryCount: entryCount ?? this.entryCount,
+    domainStrategy: domainStrategy ?? this.domainStrategy,
+    processing: processing ?? this.processing,
+    transferBusy: transferBusy ?? this.transferBusy,
+    saving: saving ?? this.saving,
+    deleting: deleting ?? this.deleting,
+    inlineEditing: inlineEditing ?? this.inlineEditing,
+    error: identical(error, _unchangedCustomRoutingValue)
+        ? this.error
+        : error as String?,
+  );
+}
+
+class CustomRoutingEditorController
+    extends PageCubit<CustomRoutingEditorState> {
   final int? profileId;
   final String? initialText;
   final String? initialName;
   final CustomRoutingEditorService service;
   final name = TextEditingController();
-  final rules = <RoutingRuleState>[];
-  final ruleKeys = <Object>[];
-  Object? selectedRuleKey;
   CustomRoutingRuleController? inlineRule;
   Object? _inlineRuleKey;
-  bool _inlineEditing = false;
-  List<RoutingProfileData> _rows = [];
-  CustomRoutingEditorDraft? original;
-  ConnectionConfiguration configuration = ConnectionConfiguration();
-  int entryCount = 1;
-  String domainStrategy = 'AsIs';
-  bool _busy = true;
-  bool saving = false;
-  bool deleting = false;
-  bool get busy => _busy || transfer.busy;
-  bool get editingBlocked => deleting || transfer.busy;
-  late final transfer = ConfigurationTransferController(
-    kind: ConfigurationKind.custom,
-    readText: () => previewState?.encode() ?? '',
-    readName: () => name.text,
-    hasContent: () => rules.isNotEmpty,
-    onImport: (draft) => replaceTemplate(draft.text, name: draft.name),
-  );
-  bool _closed = false;
-  String? error;
+  StreamSubscription<CustomRoutingRuleState>? _inlineRuleSubscription;
+  late final ConfigurationTransferController transfer;
+  late final StreamSubscription<ConfigurationTransferState>
+  _transferSubscription;
+  bool _syncingName = false;
 
   CustomRoutingEditorController({
     this.profileId,
     this.initialText,
     this.initialName,
     CustomRoutingEditorService? service,
-  }) : service = service ?? CustomRoutingEditorService() {
-    name.addListener(_notify);
-    transfer.addListener(_notify);
+  }) : service = service ?? CustomRoutingEditorService(),
+       super(CustomRoutingEditorState()) {
+    name.addListener(_nameChanged);
+    transfer = ConfigurationTransferController(
+      kind: ConfigurationKind.custom,
+      readText: () => previewState?.encode() ?? '',
+      readName: () => state.name,
+      hasContent: () => state.rules.isNotEmpty,
+      onImport: (draft) => replaceTemplate(draft.text, name: draft.name),
+    );
+    _transferSubscription = transfer.stream.listen(_transferChanged);
   }
 
-  bool get loaded => original != null;
-  int get routeCount => _rows.length + (profileId == null ? 1 : 0);
+  int get routeCount => state.profiles.length + (profileId == null ? 1 : 0);
+
+  void _nameChanged() {
+    if (_syncingName) return;
+    emit(state.copyWith(name: name.text));
+  }
+
+  void _setName(String value) {
+    _syncingName = true;
+    name.text = value;
+    _syncingName = false;
+  }
+
+  void _transferChanged(ConfigurationTransferState transferState) {
+    emit(state.copyWith(transferBusy: transferState.busy));
+  }
 
   Future<void> load(BuildContext context) async {
+    emit(state.copyWith(processing: true, error: null));
     try {
       final draft = await service.load(profileId);
       final rows = await service.rows;
       final settings = await service.coordinator.configuration;
-      if (_closed) return;
-      original = draft;
-      _rows = rows;
-      configuration = settings;
-      name.text = draft.state.name;
-      _setState(draft.state);
-      if (initialText != null) replaceTemplate(initialText!, name: initialName);
+      if (!isPageActive) return;
+      var value = draft.state;
+      var valueName = value.name;
+      if (initialText != null) {
+        final document = RoutingProfileDocument.parse(initialText!);
+        if (document.assets.isNotEmpty) {
+          throw const CustomRoutingEditorException('assets');
+        }
+        value = document.state;
+        valueName =
+            initialName ?? (value.name.isEmpty ? valueName : value.name);
+      }
       if (profileId == null &&
           initialText == null &&
-          name.text.isEmpty &&
+          valueName.isEmpty &&
           context.mounted) {
-        final used = _rows
+        final used = rows
             .map(
               (row) => int.tryParse(
                 RegExp(r'(\d+)$').firstMatch(row.name)?.group(1) ?? '',
@@ -90,26 +189,48 @@ class CustomRoutingEditorController extends ChangeNotifier {
         while (used.contains(number)) {
           number++;
         }
-        name.text =
+        valueName =
             '${AppLocalizations.of(context)!.prototypeCustomRouting} $number';
       }
+      final keys = List<Object>.generate(value.rules.length, (_) => Object());
+      final selected = keys.isEmpty ? null : keys[keys.length > 1 ? 1 : 0];
+      _setName(valueName);
+      emit(
+        CustomRoutingEditorState(
+          original: draft,
+          configuration: settings,
+          profiles: rows,
+          name: valueName,
+          rules: value.rules,
+          ruleKeys: keys,
+          selectedRuleKey: selected,
+          entryCount: value.entryCount,
+          domainStrategy: value.domainStrategy,
+          processing: false,
+          transferBusy: transfer.state.busy,
+          inlineEditing: state.inlineEditing,
+        ),
+      );
+      _syncInlineRule();
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeCannotReadCustomRoute;
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!.prototypeCannotReadCustomRoute,
+          ),
+        );
       }
     } finally {
-      _busy = false;
-      if (_closed) transfer.dispose();
-      _notify();
+      emit(state.copyWith(processing: false));
     }
   }
 
   String? nameError(AppLocalizations l10n) {
-    final value = name.text.trim();
+    final value = state.name.trim();
     if (value.isEmpty || value.runes.length > 32) {
       return l10n.prototypeRouteNameRequired;
     }
-    if (_rows.any(
+    if (state.profiles.any(
       (row) =>
           row.id != profileId &&
           row.name.trim().toLowerCase() == value.toLowerCase(),
@@ -119,17 +240,17 @@ class CustomRoutingEditorController extends ChangeNotifier {
     return null;
   }
 
-  RoutingProfileState get state => RoutingProfileState(
+  RoutingProfileState get profileState => RoutingProfileState(
     id: profileId,
-    name: name.text.trim(),
-    entryCount: entryCount,
-    domainStrategy: domainStrategy,
-    rules: rules,
+    name: state.name.trim(),
+    entryCount: state.entryCount,
+    domainStrategy: state.domainStrategy,
+    rules: state.rules,
   );
 
   RoutingProfileState? get previewState {
     try {
-      final value = state;
+      final value = profileState;
       value.validate();
       return value;
     } on FormatException {
@@ -139,59 +260,86 @@ class CustomRoutingEditorController extends ChangeNotifier {
 
   ConnectionConfiguration get checkConfiguration => ConnectionConfiguration(
     connection: ConnectionSettings.fromJson({
-      ...configuration.connection.toJson(),
+      ...state.configuration.connection.toJson(),
       'expert': false,
       'trafficMode': TrafficMode.custom.name,
       'customId': profileId,
     }),
-    policy: configuration.policy,
+    policy: state.configuration.policy,
   );
 
-  void _setState(RoutingProfileState value) {
-    entryCount = value.entryCount;
-    domainStrategy = value.domainStrategy;
-    rules
-      ..clear()
-      ..addAll(value.rules);
-    ruleKeys
-      ..clear()
-      ..addAll(List.generate(rules.length, (_) => Object()));
-    selectedRuleKey = ruleKeys.isEmpty
-        ? null
-        : ruleKeys[ruleKeys.length > 1 ? 1 : 0];
+  void _replaceProfileState(RoutingProfileState value, {String? name}) {
+    final keys = List<Object>.generate(value.rules.length, (_) => Object());
+    final selected = keys.isEmpty ? null : keys[keys.length > 1 ? 1 : 0];
+    final nextName = name ?? state.name;
+    _setName(nextName);
+    emit(
+      state.copyWith(
+        name: nextName,
+        entryCount: value.entryCount,
+        domainStrategy: value.domainStrategy,
+        rules: value.rules,
+        ruleKeys: keys,
+        selectedRuleKey: selected,
+        error: null,
+      ),
+    );
     _syncInlineRule();
   }
 
   void setInlineEditing(bool value) {
-    if (_inlineEditing == value) return;
-    _inlineEditing = value;
+    if (state.inlineEditing == value) return;
+    _flushInlineRule();
+    emit(state.copyWith(inlineEditing: value));
     _syncInlineRule();
-    _notify();
+  }
+
+  void _flushInlineRule() {
+    final source = inlineRule;
+    final key = _inlineRuleKey;
+    final index = key == null ? -1 : state.ruleKeys.indexOf(key);
+    if (source == null || index < 0) return;
+    final rules = state.rules.toList();
+    rules[index] = source.draftRule;
+    emit(state.copyWith(rules: rules));
   }
 
   void _syncInlineRule({bool refresh = false}) {
-    final key = _inlineEditing ? selectedRuleKey : null;
+    final key = state.inlineEditing ? state.selectedRuleKey : null;
     if (_inlineRuleKey == key && !refresh) return;
     final previous = inlineRule;
-    previous?.removeListener(_inlineRuleChanged);
+    final previousSubscription = _inlineRuleSubscription;
+    _inlineRuleSubscription = null;
+    if (previousSubscription != null) {
+      unawaited(previousSubscription.cancel());
+    }
     _inlineRuleKey = key;
-    final index = key == null ? -1 : ruleKeys.indexOf(key);
-    inlineRule = index < 0
+    final index = key == null ? -1 : state.ruleKeys.indexOf(key);
+    final next = index < 0
         ? null
-        : (CustomRoutingRuleController(rule: rules[index])
-            ..addListener(_inlineRuleChanged));
+        : CustomRoutingRuleController(rule: state.rules[index]);
+    inlineRule = next;
+    if (next != null) {
+      _inlineRuleSubscription = next.stream.listen(
+        (_) => _inlineRuleChanged(next),
+      );
+    }
     // Inputs from the previous rule unmount on the next frame.
     if (previous != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => unawaited(previous.close()),
+      );
     }
   }
 
-  void _inlineRuleChanged() {
+  void _inlineRuleChanged(CustomRoutingRuleController source) {
+    if (!identical(inlineRule, source)) return;
     final key = _inlineRuleKey;
-    final index = key == null ? -1 : ruleKeys.indexOf(key);
-    if (_closed || index < 0 || inlineRule == null) return;
-    rules[index] = inlineRule!.draftRule;
-    _notify();
+    final index = key == null ? -1 : state.ruleKeys.indexOf(key);
+    if (!isPageActive || index < 0) return;
+    final rules = state.rules.toList();
+    rules[index] = source.draftRule;
+    emit(state.copyWith(rules: rules));
   }
 
   /// Import tools stage their dependencies separately before calling this.
@@ -201,17 +349,14 @@ class CustomRoutingEditorController extends ChangeNotifier {
     if (document.assets.isNotEmpty) {
       throw const CustomRoutingEditorException('assets');
     }
-    _setState(document.state);
-    this.name.text =
+    final nextName =
         name ??
-        (document.state.name.isEmpty ? this.name.text : document.state.name);
-    error = null;
-    _notify();
+        (document.state.name.isEmpty ? state.name : document.state.name);
+    _replaceProfileState(document.state, name: nextName);
   }
 
   void setEntryCount(int value) {
-    entryCount = value;
-    _notify();
+    emit(state.copyWith(entryCount: value));
   }
 
   Future<void> editRule(
@@ -219,69 +364,87 @@ class CustomRoutingEditorController extends ChangeNotifier {
     OpenCustomRule open, [
     int? index,
   ]) async {
-    if (!loaded || editingBlocked) return;
-    if (_inlineEditing) {
+    if (!state.loaded || state.editingBlocked) return;
+    _flushInlineRule();
+    if (state.inlineEditing) {
+      final rules = state.rules.toList();
+      final keys = state.ruleKeys.toList();
+      Object selected;
       if (index == null) {
         rules.add(
           RoutingRuleState(
             ruleTag: AppLocalizations.of(context)!.prototypeNewRule,
           ),
         );
-        ruleKeys.add(Object());
-        selectedRuleKey = ruleKeys.last;
+        keys.add(Object());
+        selected = keys.last;
       } else {
-        selectedRuleKey = ruleKeys[index];
+        selected = keys[index];
       }
+      emit(
+        state.copyWith(rules: rules, ruleKeys: keys, selectedRuleKey: selected),
+      );
       _syncInlineRule();
-      _notify();
       return;
     }
-    final rule = index == null ? null : rules[index];
+    final rule = index == null ? null : state.rules[index];
     if (index != null) {
-      selectedRuleKey = ruleKeys[index];
-      _notify();
+      emit(state.copyWith(selectedRuleKey: state.ruleKeys[index]));
     }
     final edited = await open(context, rule);
-    if (_closed || edited == null) return;
+    if (!isPageActive || edited == null) return;
+    final rules = state.rules.toList();
+    final keys = state.ruleKeys.toList();
+    Object selected;
     if (index == null) {
       rules.add(edited);
-      ruleKeys.add(Object());
-      selectedRuleKey = ruleKeys.last;
+      keys.add(Object());
+      selected = keys.last;
     } else {
       rules[index] = edited;
+      selected = keys[index];
     }
+    emit(
+      state.copyWith(rules: rules, ruleKeys: keys, selectedRuleKey: selected),
+    );
     _syncInlineRule(refresh: true);
-    _notify();
   }
 
   void deleteRule(int index) {
-    if (!loaded || editingBlocked) return;
-    final selected = selectedRuleKey == ruleKeys[index];
+    if (!state.loaded || state.editingBlocked) return;
+    _flushInlineRule();
+    final rules = state.rules.toList();
+    final keys = state.ruleKeys.toList();
+    final wasSelected = state.selectedRuleKey == keys[index];
     rules.removeAt(index);
-    ruleKeys.removeAt(index);
-    if (selected) {
-      selectedRuleKey = ruleKeys.isEmpty
-          ? null
-          : ruleKeys[index.clamp(0, ruleKeys.length - 1)];
+    keys.removeAt(index);
+    var selected = state.selectedRuleKey;
+    if (wasSelected) {
+      selected = keys.isEmpty ? null : keys[index.clamp(0, keys.length - 1)];
     }
+    emit(
+      state.copyWith(rules: rules, ruleKeys: keys, selectedRuleKey: selected),
+    );
     _syncInlineRule();
-    _notify();
   }
 
   void reorder(int from, int to) {
-    if (!loaded || editingBlocked) return;
+    if (!state.loaded || state.editingBlocked) return;
+    _flushInlineRule();
+    final rules = state.rules.toList();
+    final keys = state.ruleKeys.toList();
     rules.insert(to, rules.removeAt(from));
-    ruleKeys.insert(to, ruleKeys.removeAt(from));
-    _notify();
+    keys.insert(to, keys.removeAt(from));
+    emit(state.copyWith(rules: rules, ruleKeys: keys));
   }
 
   String ruleName(int index, AppLocalizations l10n) =>
-      rules[index].ruleTag.isEmpty
+      state.rules[index].ruleTag.isEmpty
       ? l10n.prototypeNewRule
-      : rules[index].ruleTag;
+      : state.rules[index].ruleTag;
 
   String ruleSummary(int index, AppLocalizations l10n) {
-    final rule = rules[index];
+    final rule = state.rules[index];
     final domains = rule.domain;
     final ips = rule.ip;
     if (domains.isNotEmpty) {
@@ -304,29 +467,30 @@ class CustomRoutingEditorController extends ChangeNotifier {
   }
 
   String ruleAction(int index, AppLocalizations l10n) =>
-      switch (rules[index].action) {
+      switch (state.rules[index].action) {
         RoutingRuleAction.direct => l10n.prototypeDirect,
         RoutingRuleAction.block => l10n.prototypeBlock,
         RoutingRuleAction.proxy => l10n.prototypeUseVpn,
       };
 
-  void close(BuildContext context) {
+  void cancel(BuildContext context) {
     Navigator.of(context).pop();
   }
 
   Future<void> save(BuildContext context) async {
-    if (busy || original == null) return;
+    if (state.busy || state.original == null) return;
+    _flushInlineRule();
     final l10n = AppLocalizations.of(context)!;
     if (nameError(l10n) != null) return;
-    _busy = true;
-    saving = true;
-    error = null;
-    _notify();
+    emit(state.copyWith(processing: true, saving: true, error: null));
     try {
       final id = await service.save(
-        CustomRoutingEditorDraft(original: original!.original, state: state),
+        CustomRoutingEditorDraft(
+          original: state.original!.original,
+          state: profileState,
+        ),
         confirmReconnect: () => context.mounted
-            ? showApplyAndReconnectDialog(context, label: name.text.trim())
+            ? showApplyAndReconnectDialog(context, label: state.name.trim())
             : Future.value(false),
         geodata: transfer.pending,
       );
@@ -336,23 +500,18 @@ class CustomRoutingEditorController extends ChangeNotifier {
         Navigator.of(context).pop(id);
       }
     } catch (failure) {
-      error = _failureMessage(l10n, failure);
+      emit(state.copyWith(error: _failureMessage(l10n, failure)));
     } finally {
-      _busy = false;
-      saving = false;
-      if (_closed) transfer.dispose();
-      _notify();
+      if (!isPageActive) await transfer.close();
+      emit(state.copyWith(processing: false, saving: false));
     }
   }
 
   Future<void> delete(BuildContext context) async {
-    final row = original?.original;
-    if (busy || row == null) return;
+    final row = state.original?.original;
+    if (state.busy || row == null) return;
     final l10n = AppLocalizations.of(context)!;
-    _busy = true;
-    deleting = true;
-    error = null;
-    _notify();
+    emit(state.copyWith(processing: true, deleting: true, error: null));
     try {
       final deleted = await service.delete(
         row,
@@ -399,12 +558,9 @@ class CustomRoutingEditorController extends ChangeNotifier {
         Navigator.of(context).pop(row.id);
       }
     } catch (failure) {
-      error = _failureMessage(l10n, failure);
+      emit(state.copyWith(error: _failureMessage(l10n, failure)));
     } finally {
-      _busy = false;
-      deleting = false;
-      if (_closed) transfer.dispose();
-      _notify();
+      emit(state.copyWith(processing: false, deleting: false));
     }
   }
 
@@ -419,18 +575,12 @@ class CustomRoutingEditorController extends ChangeNotifier {
         _ => l10n.buttonSaveFailed,
       };
 
-  void _notify() {
-    if (!_closed) notifyListeners();
-  }
-
   @override
-  void dispose() {
-    _closed = true;
-    inlineRule?.removeListener(_inlineRuleChanged);
-    inlineRule?.dispose();
-    transfer.removeListener(_notify);
-    if (!_busy) transfer.dispose();
+  Future<void> disposePageResources() async {
+    await _transferSubscription.cancel();
+    await _inlineRuleSubscription?.cancel();
+    await inlineRule?.close();
+    if (!state.saving) await transfer.close();
     name.dispose();
-    super.dispose();
   }
 }

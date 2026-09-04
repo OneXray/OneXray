@@ -23,16 +23,16 @@ void main() {
         geoipCodes: available,
       ),
     );
-    addTearDown(controller.dispose);
+    addTearDown(controller.close);
     await controller.load();
-    expect(controller.codes, ['CN', 'JP', 'RU', 'US']);
-    expect(controller.selected, {'CN'});
+    expect(controller.state.codes, ['CN', 'JP', 'RU', 'US']);
+    expect(controller.state.selected, {'CN'});
     for (final code in ['RU', 'US', 'JP']) {
       controller.toggle(code);
     }
-    expect(controller.selected.length, 4);
+    expect(controller.state.selected.length, 4);
     controller.toggle('IR');
-    expect(controller.selected.contains('IR'), false);
+    expect(controller.state.selected.contains('IR'), false);
     controller.search('russia');
     expect(controller.visibleCodes(AppLocalizationsEn()), ['RU']);
     expect(controller.visibleCodes(AppLocalizationsZh()), ['RU']);
@@ -41,10 +41,10 @@ void main() {
     controller.search('us');
     expect(controller.visibleCodes(AppLocalizationsEn()), ['RU', 'US']);
     controller.clear();
-    expect(controller.selected, isEmpty);
+    expect(controller.state.selected, isEmpty);
     expect(selected, ['CN', 'IR']);
     available = ['US'];
     await controller.load();
-    expect(controller.codes, ['US']);
+    expect(controller.state.codes, ['US']);
   });
 }

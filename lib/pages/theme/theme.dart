@@ -33,18 +33,14 @@ abstract final class AppTheme {
   }) => AppBarTheme(
     backgroundColor: palette.header,
     foregroundColor: palette.foreground,
-    iconTheme: IconThemeData(color: palette.mutedStrong, size: 21),
+    iconTheme: IconThemeData(color: palette.mutedStrong),
     surfaceTintColor: Colors.transparent,
     centerTitle: false,
     elevation: 0,
     scrolledUnderElevation: 0,
-    toolbarHeight: kToolbarHeight,
     titleSpacing: mobile ? AppSpacing.mobileHeaderHorizontal : AppSpacing.page,
     actionsPadding: EdgeInsetsDirectional.only(
       end: mobile ? AppSpacing.mobileHeaderHorizontal : AppSpacing.page,
-    ),
-    titleTextStyle: AppTypography.navigationTitle.copyWith(
-      color: palette.foreground,
     ),
     systemOverlayStyle: SystemUiOverlayStyle(
       statusBarColor: palette.header,
@@ -66,17 +62,6 @@ abstract final class AppTheme {
       ),
     );
   }
-
-  static ButtonStyle mobileHeaderAction(BuildContext context) =>
-      IconButton.styleFrom(
-        foregroundColor: ColorManager.palette(context).primary,
-        iconSize: 20,
-        minimumSize: const Size.square(38),
-        fixedSize: const Size.square(38),
-        padding: EdgeInsets.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.standard,
-      );
 
   static ThemeData pageActions(BuildContext context) {
     final theme = Theme.of(context);
@@ -669,8 +654,8 @@ abstract final class AppTheme {
       tabBarTheme: TabBarThemeData(
         labelColor: palette.primary,
         unselectedLabelColor: palette.mutedForeground,
-        labelStyle: AppTypography.control,
-        unselectedLabelStyle: AppTypography.control,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
         indicatorColor: palette.primary,
         dividerColor: palette.border,
         overlayColor: WidgetStatePropertyAll(
@@ -678,7 +663,6 @@ abstract final class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: AppLayout.mobileNavigationHeight,
         backgroundColor: palette.card.withValues(alpha: 0.96),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -686,22 +670,20 @@ abstract final class AppTheme {
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            size: AppLayout.mobileNavigationIconSize,
             color: states.contains(WidgetState.selected)
                 ? palette.sidebarPrimary
                 : palette.mutedStrong,
           ),
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) =>
-              (states.contains(WidgetState.selected)
-                      ? AppTypography.selectedMobileNavigationLabel
-                      : AppTypography.mobileNavigationLabel)
-                  .copyWith(
-                    color: states.contains(WidgetState.selected)
-                        ? palette.primary
-                        : palette.mutedStrong,
-                  ),
+          (states) => TextStyle(
+            color: states.contains(WidgetState.selected)
+                ? palette.primary
+                : palette.mutedStrong,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w600
+                : FontWeight.w400,
+          ),
         ),
       ),
       navigationRailTheme: NavigationRailThemeData(

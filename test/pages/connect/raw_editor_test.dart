@@ -22,7 +22,7 @@ void main() {
     final service = _PendingRawTest(database: db, coordinator: coordinator);
     final controller = RawEditorController(rawId: null, service: service);
     addTearDown(() async {
-      controller.dispose();
+      await controller.close();
       coordinator.dispose();
       await db.close();
     });
@@ -54,7 +54,7 @@ void main() {
         service: RawEditorService(database: db, coordinator: coordinator),
       );
       addTearDown(() async {
-        controller.dispose();
+        await controller.close();
         coordinator.dispose();
         await db.close();
       });
@@ -68,22 +68,54 @@ void main() {
       await controller.load(tester.element(find.text('Draft')));
       expect(controller.canTest, isTrue);
       expect(controller.canSave, isFalse);
-      var notified = 0;
-      controller.addListener(() => notified++);
+      final changed = controller.stream.firstWhere(
+        (state) => state.name == 'Private configuration',
+      );
       controller.name.text = 'Private configuration';
-      expect(notified, greaterThan(0));
+      await changed;
       expect(controller.canSave, isTrue);
       controller.text.text = '';
       expect(controller.canTest, isFalse);
       expect(controller.canSave, isFalse);
       controller.text.text = '{}';
-      controller.busy = true;
-      expect(controller.canSave, isFalse);
-      controller.busy = false;
       expect(controller.canSave, isTrue);
       expect(await db.coreConfigDao.allRawRowsWithData, isEmpty);
     },
   );
+
+  testWidgets('Raw save retains transfer resources until the save finishes', (
+    tester,
+  ) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final coordinator = ConnectionCoordinator(database: db);
+    final service = _PendingRawSave(database: db, coordinator: coordinator);
+    final controller = RawEditorController(rawId: null, service: service);
+    addTearDown(() async {
+      coordinator.dispose();
+      await db.close();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: Text('Draft')),
+      ),
+    );
+    final context = tester.element(find.text('Draft'));
+    await controller.load(context);
+    controller.name.text = 'Private configuration';
+
+    final saving = controller.save(context);
+    await service.started.future;
+    unawaited(controller.close());
+    await tester.pump();
+    expect(controller.transfers.isClosed, isFalse);
+
+    service.result.complete(1);
+    await saving;
+    await tester.pump();
+    expect(controller.transfers.isClosed, isTrue);
+  });
 
   testWidgets('plain JSON editor scrolls long content without a second frame', (
     tester,
@@ -137,4 +169,25 @@ class _PendingRawTest extends RawEditorService {
     RawEditorDraft draft, {
     GeoDataImportDraft? geodata,
   }) => result.future;
+}
+
+class _PendingRawSave extends RawEditorService {
+  _PendingRawSave({super.database, super.coordinator});
+
+  final started = Completer<void>();
+  final result = Completer<int?>();
+
+  @override
+  Future<RawEditorDraft> load(int? id) async =>
+      const RawEditorDraft(name: '', text: '{}');
+
+  @override
+  Future<int?> save(
+    RawEditorDraft draft, {
+    required Future<bool> Function() confirmReconnect,
+    GeoDataImportDraft? geodata,
+  }) {
+    started.complete();
+    return result.future;
+  }
 }

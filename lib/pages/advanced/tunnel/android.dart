@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
@@ -26,162 +29,166 @@ class _AndroidVpnPageState extends State<AndroidVpnPage> {
     ..loadAndroidAppNames();
   @override
   void dispose() {
-    controller.dispose();
+    unawaited(controller.close());
     AppIconService().clear();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l = AppLocalizations.of(context)!;
-      final palette = ColorManager.palette(context);
-      final mode = controller.group('android')['appScope'] as String;
-      final included = mode == 'included';
-      final names = controller.strings(
-        'android',
-        included ? 'includedAppPackageNames' : 'excludedAppPackageNames',
-      );
-      return PolicyDetailScaffold(
-        title: l.prototypeAndroidSystemVpn,
-        controller: controller,
-        contentPadding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                l.prototypeVpnAppScope,
-                style: AppTypography.androidTitle,
-              ),
-            ),
-            Text(
-              l.prototypeChooseAndroidApps,
-              style: AppTypography.androidBody,
-            ),
-            const SizedBox(height: 12),
-            ShadRadioGroup<String>(
-              axis: Axis.horizontal,
-              initialValue: mode,
-              enabled: !controller.blocked,
-              onChanged: (value) {
-                if (value != null) {
-                  controller.update('appScope', value, section: 'android');
-                }
-              },
-              items: [
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: palette.border)),
-                  ),
-                  child: Column(
-                    children: [
-                      for (final choice in ['all', 'included', 'excluded'])
-                        _AndroidModeRow(
-                          value: choice,
-                          title: switch (choice) {
-                            'all' => l.prototypeAllApps,
-                            'included' => l.prototypeOnlySelectedApps,
-                            _ => l.prototypeAllExceptSelectedApps,
-                          },
-                          description: switch (choice) {
-                            'all' => l.prototypeAllAppsUseVpn,
-                            'included' => l.prototypeOnlySelectedAppsUseVpn,
-                            _ => l.prototypeSelectedAppsBypassVpn,
-                          },
-                          selected: mode == choice,
-                          enabled: !controller.blocked,
-                          onTap: () => controller.update(
-                            'appScope',
-                            choice,
-                            section: 'android',
-                          ),
-                        ),
-                    ],
-                  ),
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<PolicyEditorController, PolicyEditorPageState>(
+      builder: (context, state) {
+        final l = AppLocalizations.of(context)!;
+        final palette = ColorManager.palette(context);
+        final mode = controller.group('android')['appScope'] as String;
+        final included = mode == 'included';
+        final names = controller.strings(
+          'android',
+          included ? 'includedAppPackageNames' : 'excludedAppPackageNames',
+        );
+        return PolicyDetailScaffold(
+          title: l.prototypeAndroidSystemVpn,
+          controller: controller,
+          contentPadding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  l.prototypeVpnAppScope,
+                  style: AppTypography.androidTitle,
                 ),
-              ],
-            ),
-            if (mode != 'all') ...[
+              ),
+              Text(
+                l.prototypeChooseAndroidApps,
+                style: AppTypography.androidBody,
+              ),
               const SizedBox(height: 12),
-              Material(
-                color: palette.card,
-                child: InkWell(
-                  onTap: controller.blocked
-                      ? null
-                      : () => controller.selectApps(context, widget.openApps),
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 64),
-                    padding: const EdgeInsets.all(10),
+              ShadRadioGroup<String>(
+                axis: Axis.horizontal,
+                initialValue: mode,
+                enabled: !controller.blocked,
+                onChanged: (value) {
+                  if (value != null) {
+                    controller.update('appScope', value, section: 'android');
+                  }
+                },
+                items: [
+                  Container(
+                    width: double.infinity,
                     decoration: BoxDecoration(
-                      border: Border.symmetric(
-                        horizontal: BorderSide(color: palette.border),
-                      ),
+                      border: Border(top: BorderSide(color: palette.border)),
                     ),
-                    child: Row(
-                      spacing: 11,
+                    child: Column(
                       children: [
-                        Icon(
-                          LucideIcons.appWindow,
-                          size: 19,
-                          color: palette.primary,
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                included
-                                    ? l.prototypeAppsUsingVpn
-                                    : l.prototypeAppsBypassingVpn,
-                                style: AppTypography.androidRowTitle,
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                names.isEmpty
-                                    ? l.prototypeNoAppsSelected
-                                    : names
-                                          .map(controller.androidAppName)
-                                          .join(', '),
-                                style: AppTypography.androidRowHint.copyWith(
-                                  color: palette.mutedForeground,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          constraints: const BoxConstraints(minWidth: 26),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: palette.selectedSurface,
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                          ),
-                          child: Text(
-                            '${names.length}',
-                            textAlign: TextAlign.center,
-                            style: AppTypography.androidBadge.copyWith(
-                              color: palette.primary,
+                        for (final choice in ['all', 'included', 'excluded'])
+                          _AndroidModeRow(
+                            value: choice,
+                            title: switch (choice) {
+                              'all' => l.prototypeAllApps,
+                              'included' => l.prototypeOnlySelectedApps,
+                              _ => l.prototypeAllExceptSelectedApps,
+                            },
+                            description: switch (choice) {
+                              'all' => l.prototypeAllAppsUseVpn,
+                              'included' => l.prototypeOnlySelectedAppsUseVpn,
+                              _ => l.prototypeSelectedAppsBypassVpn,
+                            },
+                            selected: mode == choice,
+                            enabled: !controller.blocked,
+                            onTap: () => controller.update(
+                              'appScope',
+                              choice,
+                              section: 'android',
                             ),
                           ),
-                        ),
-                        const Icon(LucideIcons.chevronRightDir, size: 18),
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
+              if (mode != 'all') ...[
+                const SizedBox(height: 12),
+                Material(
+                  color: palette.card,
+                  child: InkWell(
+                    onTap: controller.blocked
+                        ? null
+                        : () => controller.selectApps(context, widget.openApps),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 64),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        border: Border.symmetric(
+                          horizontal: BorderSide(color: palette.border),
+                        ),
+                      ),
+                      child: Row(
+                        spacing: 11,
+                        children: [
+                          Icon(
+                            LucideIcons.appWindow,
+                            size: 19,
+                            color: palette.primary,
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  included
+                                      ? l.prototypeAppsUsingVpn
+                                      : l.prototypeAppsBypassingVpn,
+                                  style: AppTypography.androidRowTitle,
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  names.isEmpty
+                                      ? l.prototypeNoAppsSelected
+                                      : names
+                                            .map(controller.androidAppName)
+                                            .join(', '),
+                                  style: AppTypography.androidRowHint.copyWith(
+                                    color: palette.mutedForeground,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            constraints: const BoxConstraints(minWidth: 26),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: palette.selectedSurface,
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
+                            ),
+                            child: Text(
+                              '${names.length}',
+                              textAlign: TextAlign.center,
+                              style: AppTypography.androidBadge.copyWith(
+                                color: palette.primary,
+                              ),
+                            ),
+                          ),
+                          const Icon(LucideIcons.chevronRightDir, size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
-        ),
-      );
-    },
+          ),
+        );
+      },
+    ),
   );
 }
 

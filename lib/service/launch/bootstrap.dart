@@ -3,7 +3,7 @@ import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/launch/storage_preparation.dart';
 
-enum LaunchDestination { privacy, firstRun, home }
+enum LaunchDestination { privacy, firstRun, connect }
 
 class LaunchBootstrapService {
   Future<LaunchDestination> resolveDestination() async {
@@ -27,7 +27,7 @@ class LaunchBootstrapService {
       return LaunchDestination.firstRun;
     }
     await StoragePreparation.ensureReady();
-    return LaunchDestination.home;
+    return LaunchDestination.connect;
   }
 
   Future<void> _initTheme() async {

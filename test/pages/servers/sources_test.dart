@@ -66,7 +66,7 @@ void main() {
   });
 
   tearDown(() async {
-    controller.dispose();
+    await controller.close();
     coordinator.dispose();
     await db.close();
   });
@@ -125,7 +125,7 @@ void main() {
   ) async {
     controller.sources = [_source];
     controller.servers = [_server(1, source: 7), _server(2, source: 7)];
-    controller.sourceErrors[7] = 'Stored update failure';
+    controller.setSourceError(7, 'Stored update failure');
     await pumpSources(tester);
     final context = tester.element(find.byType(ServerSourcesDialog));
     final l = AppLocalizations.of(context)!;

@@ -29,7 +29,7 @@ For refactor scope, phase gates, and platform verification limits, read `../refe
 
 `lib/service` is the business layer. It contains subscriptions, sharing, backup, GeoData, Ping, platform preparation, configuration compilation, and connection coordination.
 
-`lib/pages` is the UI and routing layer. It is organized by page domain. Page controllers and cubits should handle UI state and page actions only; non-trivial business logic should live in `lib/service`.
+`lib/pages` is the UI and routing layer, organized by page domain. Every custom page controller must extend `PageCubit`; widgets read observable page state through Bloc, including dialog, loading and expansion state. Flutter and third-party text, scroll, focus, tab, menu, scanner and editor controllers are imperative UI resources only and must feed user changes into their Cubit. Non-trivial business logic belongs in `lib/service`.
 
 `lib/gen` and `lib/l10n` contain generated output. Do not edit generated files in these directories manually.
 

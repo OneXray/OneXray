@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/routing/widgets.dart';
@@ -36,7 +39,7 @@ class _CustomRoutingRulePageState extends State<CustomRoutingRulePage> {
 
   @override
   void dispose() {
-    controller.dispose();
+    unawaited(controller.close());
     super.dispose();
   }
 
@@ -45,33 +48,36 @@ class _CustomRoutingRulePageState extends State<CustomRoutingRulePage> {
     final l = AppLocalizations.of(context)!;
     final mobile =
         MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-    return Scaffold(
-      appBar: AppBar(title: Text(l.prototypeEditRule)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            mobile ? 14 : 28,
-            12,
-            mobile ? 14 : 28,
-            18,
-          ),
-          child: ResponsiveContent(
-            desktopMaxWidth: 800,
-            child: CustomRoutingRuleForm(controller: controller),
+    return BlocProvider.value(
+      value: controller,
+      child: Scaffold(
+        appBar: AppBar(title: Text(l.prototypeEditRule)),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              mobile ? 14 : 28,
+              12,
+              mobile ? 14 : 28,
+              18,
+            ),
+            child: ResponsiveContent(
+              desktopMaxWidth: 800,
+              child: CustomRoutingRuleForm(controller: controller),
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: PageActionBar(
-        children: [
-          ShadButton.outline(
-            onPressed: () => controller.cancel(context),
-            child: Text(l.prototypeCancel),
-          ),
-          ShadButton(
-            onPressed: () => controller.save(context),
-            child: Text(l.prototypeSave),
-          ),
-        ],
+        bottomNavigationBar: PageActionBar(
+          children: [
+            ShadButton.outline(
+              onPressed: () => controller.cancel(context),
+              child: Text(l.prototypeCancel),
+            ),
+            ShadButton(
+              onPressed: () => controller.save(context),
+              child: Text(l.prototypeSave),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -83,324 +89,335 @@ class CustomRoutingRuleForm extends StatelessWidget {
   const CustomRoutingRuleForm({super.key, required this.controller});
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (context, _) {
-      final l = AppLocalizations.of(context)!;
-      final palette = ColorManager.palette(context);
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      return RoutingCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!mobile)
-              RoutingCardHeader(
-                title: l.prototypeEditRule,
-                description: l.prototypeRuleEditHint,
-              ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: palette.border)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 7,
-                children: [
-                  Text(
-                    l.prototypeRuleName,
-                    style: AppTypography.routeIdentityLabel.copyWith(
-                      color: palette.mutedStrong,
-                    ),
+  Widget build(BuildContext context) =>
+      BlocBuilder<CustomRoutingRuleController, CustomRoutingRuleState>(
+        bloc: controller,
+        builder: (context, state) {
+          final l = AppLocalizations.of(context)!;
+          final palette = ColorManager.palette(context);
+          final mobile =
+              MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+          return RoutingCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!mobile)
+                  RoutingCardHeader(
+                    title: l.prototypeEditRule,
+                    description: l.prototypeRuleEditHint,
                   ),
-                  ShadInput(
-                    controller: controller.name,
-                    constraints: const BoxConstraints(minHeight: 40),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    style: AppTypography.routeIdentityLabel,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                mobile ? 12 : 16,
-                14,
-                mobile ? 12 : 16,
-                0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l.prototypeMatchWhen,
-                    style: AppTypography.conditionTitle.copyWith(
-                      color: palette.mutedStrong,
-                    ),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: palette.border)),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: palette.border),
-                      borderRadius: BorderRadius.circular(AppRadii.control),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _conditions(context, domain: true),
-                        const Divider(),
-                        _conditions(context, domain: false),
-                        const Divider(),
-                        ValueListenableBuilder(
-                          valueListenable: controller.port,
-                          builder: (context, value, _) => _ConditionField(
-                            icon: LucideIcons.terminal,
-                            title: l.prototypeTargetPort,
-                            summary: value.text.trim().isEmpty
-                                ? l.prototypeNotSet
-                                : value.text,
-                            child: _input(
-                              context,
-                              controller: controller.port,
-                              hint: '80, 443, 1000-2000',
-                            ),
-                          ),
-                        ),
-                        const Divider(),
-                        _ConditionField(
-                          icon: LucideIcons.wifi,
-                          title: l.prototypeNetworkType,
-                          summary: controller.network == 'any'
-                              ? l.prototypeAny
-                              : controller.network.toUpperCase(),
-                          child: _network(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     spacing: 7,
                     children: [
-                      Icon(
-                        LucideIcons.info,
-                        size: 14,
-                        color: palette.mutedForeground,
-                      ),
-                      Expanded(
-                        child: Text(
-                          l.prototypeRuleConditionsHint,
-                          style: AppTypography.conditionRelation.copyWith(
-                            color: palette.mutedForeground,
-                          ),
+                      Text(
+                        l.prototypeRuleName,
+                        style: AppTypography.routeIdentityLabel.copyWith(
+                          color: palette.mutedStrong,
                         ),
+                      ),
+                      ShadInput(
+                        controller: controller.name,
+                        constraints: const BoxConstraints(minHeight: 40),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        style: AppTypography.routeIdentityLabel,
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                mobile ? 12 : 16,
-                14,
-                mobile ? 12 : 16,
-                0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l.prototypeThen,
-                    style: AppTypography.conditionTitle.copyWith(
-                      color: palette.mutedStrong,
-                    ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    mobile ? 12 : 16,
+                    14,
+                    mobile ? 12 : 16,
+                    0,
                   ),
-                  const SizedBox(height: 8),
-                  _actions(context),
-                  if (controller.action == RoutingRuleAction.proxy)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 9),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        l.prototypeMatchWhen,
+                        style: AppTypography.conditionTitle.copyWith(
+                          color: palette.mutedStrong,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: palette.border),
+                          borderRadius: BorderRadius.circular(AppRadii.control),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _conditions(context, state, domain: true),
+                            const Divider(),
+                            _conditions(context, state, domain: false),
+                            const Divider(),
+                            _ConditionField(
+                              icon: LucideIcons.terminal,
+                              title: l.prototypeTargetPort,
+                              summary: state.port.trim().isEmpty
+                                  ? l.prototypeNotSet
+                                  : state.port,
+                              open: state.expandedConditions.contains(
+                                RoutingRuleCondition.port,
+                              ),
+                              onToggle: () => controller.toggleCondition(
+                                RoutingRuleCondition.port,
+                              ),
+                              child: _input(
+                                context,
+                                controller: controller.port,
+                                hint: '80, 443, 1000-2000',
+                              ),
+                            ),
+                            const Divider(),
+                            _ConditionField(
+                              icon: LucideIcons.wifi,
+                              title: l.prototypeNetworkType,
+                              summary: state.network == 'any'
+                                  ? l.prototypeAny
+                                  : state.network.toUpperCase(),
+                              open: state.expandedConditions.contains(
+                                RoutingRuleCondition.network,
+                              ),
+                              onToggle: () => controller.toggleCondition(
+                                RoutingRuleCondition.network,
+                              ),
+                              child: _network(context, state),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 7,
+                        children: [
+                          Icon(
+                            LucideIcons.info,
+                            size: 14,
+                            color: palette.mutedForeground,
+                          ),
+                          Expanded(
+                            child: Text(
+                              l.prototypeRuleConditionsHint,
+                              style: AppTypography.conditionRelation.copyWith(
+                                color: palette.mutedForeground,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    mobile ? 12 : 16,
+                    14,
+                    mobile ? 12 : 16,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        l.prototypeThen,
+                        style: AppTypography.conditionTitle.copyWith(
+                          color: palette.mutedStrong,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _actions(context, state),
+                      if (state.action == RoutingRuleAction.proxy)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 9),
+                          child: Text(
+                            l.prototypeVpnRuleHint,
+                            style: AppTypography.actionHelp.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (state.error case final error?)
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Semantics(
+                      liveRegion: true,
                       child: Text(
-                        l.prototypeVpnRuleHint,
+                        error,
                         style: AppTypography.actionHelp.copyWith(
-                          color: palette.mutedForeground,
+                          color: palette.destructive,
                         ),
                       ),
                     ),
-                ],
-              ),
-            ),
-            if (controller.error case final error?)
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    error,
-                    style: AppTypography.actionHelp.copyWith(
-                      color: palette.destructive,
-                    ),
                   ),
-                ),
-              ),
-          ],
-        ),
+              ],
+            ),
+          );
+        },
       );
-    },
-  );
 
-  Widget _conditions(BuildContext context, {required bool domain}) {
+  Widget _conditions(
+    BuildContext context,
+    CustomRoutingRuleState state, {
+    required bool domain,
+  }) {
     final l = AppLocalizations.of(context)!;
     final entries = domain ? controller.domains : controller.ips;
+    final stateValues = domain ? state.domains : state.ips;
     final title = domain
         ? l.prototypeWebsitesDomains
         : l.prototypeIpAddressesRanges;
-    return AnimatedBuilder(
-      animation: Listenable.merge(entries.map((entry) => entry.text).toList()),
-      builder: (context, _) {
-        final values = entries
-            .map((entry) => entry.text.text.trim())
-            .where((value) => value.isNotEmpty)
-            .join(', ');
-        return _ConditionField(
-          icon: domain ? LucideIcons.globe : LucideIcons.network,
-          title: title,
-          summary: values.isEmpty ? l.prototypeNotSet : values,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 7,
-            children: [
-              for (final entry in entries)
-                Row(
-                  key: ObjectKey(entry),
-                  spacing: 7,
-                  children: [
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => RawAutocomplete<String>(
-                          textEditingController: entry.text,
-                          focusNode: entry.focus,
-                          optionsBuilder: (value) =>
-                              controller.suggestions(value.text, domain),
-                          fieldViewBuilder: (context, text, focus, submit) =>
-                              Semantics(
-                                label: '$title ${entries.indexOf(entry) + 1}',
-                                child: _input(
-                                  context,
-                                  controller: text,
-                                  focus: focus,
-                                  hint: domain
-                                      ? l.prototypeDomainGeositeRule
-                                      : l.prototypeIpCidrGeoipRule,
-                                  onSubmitted: (_) => submit(),
-                                ),
-                              ),
-                          optionsViewBuilder: (context, select, options) => Align(
-                            alignment: AlignmentDirectional.topStart,
-                            child: Material(
-                              elevation: 4,
-                              color: ColorManager.palette(context).card,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.control,
-                                ),
-                                side: BorderSide(
-                                  color: ColorManager.palette(context).border,
-                                ),
-                              ),
-                              child: SizedBox(
-                                width: constraints.maxWidth,
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 240,
-                                  ),
-                                  child: ListView(
-                                    padding: EdgeInsets.zero,
-                                    shrinkWrap: true,
-                                    children: [
-                                      for (final (index, option)
-                                          in options.indexed)
-                                        InkWell(
-                                          onTap: () => select(option),
-                                          child: ColoredBox(
-                                            color:
-                                                AutocompleteHighlightedOption.of(
-                                                      context,
-                                                    ) ==
-                                                    index
-                                                ? ColorManager.palette(context)
-                                                      .selectedSurface
-                                                : ColorManager.palette(context)
-                                                      .card,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 8,
-                                                  ),
-                                              child: Text(
-                                                option,
-                                                textDirection:
-                                                    TextDirection.ltr,
-                                                style:
-                                                    AppTypography.routingInput,
-                                              ),
-                                            ),
+    final values = stateValues
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .join(', ');
+    final condition = domain
+        ? RoutingRuleCondition.domains
+        : RoutingRuleCondition.ips;
+    return _ConditionField(
+      icon: domain ? LucideIcons.globe : LucideIcons.network,
+      title: title,
+      summary: values.isEmpty ? l.prototypeNotSet : values,
+      open: state.expandedConditions.contains(condition),
+      onToggle: () => controller.toggleCondition(condition),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 7,
+        children: [
+          for (final (entryIndex, entry) in entries.indexed)
+            Row(
+              key: ObjectKey(entry),
+              spacing: 7,
+              children: [
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => RawAutocomplete<String>(
+                      textEditingController: entry.text,
+                      focusNode: entry.focus,
+                      optionsBuilder: (value) =>
+                          controller.suggestions(value.text, domain),
+                      fieldViewBuilder: (context, text, focus, submit) =>
+                          Semantics(
+                            label: '$title ${entryIndex + 1}',
+                            child: _input(
+                              context,
+                              controller: text,
+                              focus: focus,
+                              hint: domain
+                                  ? l.prototypeDomainGeositeRule
+                                  : l.prototypeIpCidrGeoipRule,
+                              onSubmitted: (_) => submit(),
+                            ),
+                          ),
+                      optionsViewBuilder: (context, select, options) => Align(
+                        alignment: AlignmentDirectional.topStart,
+                        child: Material(
+                          elevation: 4,
+                          color: ColorManager.palette(context).card,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppRadii.control,
+                            ),
+                            side: BorderSide(
+                              color: ColorManager.palette(context).border,
+                            ),
+                          ),
+                          child: SizedBox(
+                            width: constraints.maxWidth,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 240),
+                              child: ListView(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                children: [
+                                  for (final (index, option) in options.indexed)
+                                    InkWell(
+                                      onTap: () => select(option),
+                                      child: ColoredBox(
+                                        color:
+                                            AutocompleteHighlightedOption.of(
+                                                  context,
+                                                ) ==
+                                                index
+                                            ? ColorManager.palette(context)
+                                                  .selectedSurface
+                                            : ColorManager.palette(context)
+                                                  .card,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 8,
+                                          ),
+                                          child: Text(
+                                            option,
+                                            textDirection: TextDirection.ltr,
+                                            style: AppTypography.routingInput,
                                           ),
                                         ),
-                                    ],
-                                  ),
-                                ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    if (entries.length > 1 || entry.text.text.isNotEmpty)
-                      SizedBox(
-                        width: 34,
-                        height: 34,
-                        child: IconButton(
-                          tooltip: l.prototypeRemoveEntry,
-                          onPressed: () =>
-                              controller.removeValue(domain, entry),
-                          style: IconButton.styleFrom(
-                            minimumSize: const Size.square(34),
-                            padding: EdgeInsets.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            foregroundColor: ColorManager.palette(context)
-                                .mutedForeground,
-                          ),
-                          icon: const Icon(LucideIcons.trash2, size: 15),
-                        ),
-                      )
-                    else
-                      const SizedBox(width: 34),
-                  ],
+                  ),
                 ),
-              TextButton.icon(
-                onPressed: () => controller.addValue(domain),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 30),
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: AppTypography.actionHelp,
-                ),
-                icon: const Icon(LucideIcons.plus, size: 15),
-                label: Text(l.prototypeAddAnother),
-              ),
-            ],
+                if (entries.length > 1 || stateValues[entryIndex].isNotEmpty)
+                  SizedBox(
+                    width: 34,
+                    height: 34,
+                    child: IconButton(
+                      tooltip: l.prototypeRemoveEntry,
+                      onPressed: () => controller.removeValue(domain, entry),
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size.square(34),
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: ColorManager.palette(context)
+                            .mutedForeground,
+                      ),
+                      icon: const Icon(LucideIcons.trash2, size: 15),
+                    ),
+                  )
+                else
+                  const SizedBox(width: 34),
+              ],
+            ),
+          TextButton.icon(
+            onPressed: () => controller.addValue(domain),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 30),
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: AppTypography.actionHelp,
+            ),
+            icon: const Icon(LucideIcons.plus, size: 15),
+            label: Text(l.prototypeAddAnother),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -428,7 +445,7 @@ class CustomRoutingRuleForm extends StatelessWidget {
     ),
   );
 
-  Widget _network(BuildContext context) {
+  Widget _network(BuildContext context, CustomRoutingRuleState state) {
     final l = AppLocalizations.of(context)!;
     final labels = {'any': l.prototypeAny, 'tcp': 'TCP', 'udp': 'UDP'};
     return AppMenuButton<String>(
@@ -446,9 +463,7 @@ class CustomRoutingRuleForm extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(
-              child: Text(labels[controller.network] ?? controller.network),
-            ),
+            Expanded(child: Text(labels[state.network] ?? state.network)),
             const Icon(LucideIcons.chevronDown, size: 16),
           ],
         ),
@@ -456,7 +471,7 @@ class CustomRoutingRuleForm extends StatelessWidget {
     );
   }
 
-  Widget _actions(BuildContext context) {
+  Widget _actions(BuildContext context, CustomRoutingRuleState state) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final actions = {
@@ -478,7 +493,7 @@ class CustomRoutingRuleForm extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   button: true,
-                  selected: controller.action == action.key,
+                  selected: state.action == action.key,
                   child: InkWell(
                     onTap: () => controller.setAction(action.key),
                     child: Container(
@@ -489,10 +504,10 @@ class CustomRoutingRuleForm extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: controller.action == action.key
+                        color: state.action == action.key
                             ? palette.selectedSurface
                             : palette.muted,
-                        border: controller.action == action.key
+                        border: state.action == action.key
                             ? Border.all(color: palette.primary)
                             : null,
                       ),
@@ -500,11 +515,11 @@ class CustomRoutingRuleForm extends StatelessWidget {
                         action.value,
                         textAlign: TextAlign.center,
                         style:
-                            (controller.action == action.key
+                            (state.action == action.key
                                     ? AppTypography.selectedActionOption
                                     : AppTypography.actionOption)
                                 .copyWith(
-                                  color: controller.action == action.key
+                                  color: state.action == action.key
                                       ? palette.primary
                                       : palette.foreground,
                                 ),
@@ -521,24 +536,21 @@ class CustomRoutingRuleForm extends StatelessWidget {
   }
 }
 
-class _ConditionField extends StatefulWidget {
+class _ConditionField extends StatelessWidget {
   const _ConditionField({
     required this.icon,
     required this.title,
     required this.summary,
+    required this.open,
+    required this.onToggle,
     required this.child,
   });
   final IconData icon;
   final String title;
   final String summary;
+  final bool open;
+  final VoidCallback onToggle;
   final Widget child;
-
-  @override
-  State<_ConditionField> createState() => _ConditionFieldState();
-}
-
-class _ConditionFieldState extends State<_ConditionField> {
-  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
@@ -548,26 +560,26 @@ class _ConditionFieldState extends State<_ConditionField> {
       children: [
         Semantics(
           button: true,
-          expanded: _open,
+          expanded: open,
           child: InkWell(
-            onTap: () => setState(() => _open = !_open),
+            onTap: onToggle,
             child: Container(
               constraints: const BoxConstraints(minHeight: 56),
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-              color: _open ? palette.surfaceHover : palette.card,
+              color: open ? palette.surfaceHover : palette.card,
               child: Row(
                 spacing: 10,
                 children: [
-                  Icon(widget.icon, size: 18, color: palette.mutedStrong),
+                  Icon(icon, size: 18, color: palette.mutedStrong),
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       spacing: 3,
                       children: [
-                        Text(widget.title, style: AppTypography.conditionTitle),
+                        Text(title, style: AppTypography.conditionTitle),
                         Text(
-                          widget.summary,
+                          summary,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.conditionSummary.copyWith(
@@ -578,7 +590,7 @@ class _ConditionFieldState extends State<_ConditionField> {
                     ),
                   ),
                   Icon(
-                    _open
+                    open
                         ? LucideIcons.chevronDown
                         : LucideIcons.chevronRightDir,
                     size: 17,
@@ -589,10 +601,10 @@ class _ConditionFieldState extends State<_ConditionField> {
             ),
           ),
         ),
-        if (_open)
+        if (open)
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(39, 0, 10, 10),
-            child: widget.child,
+            child: child,
           ),
       ],
     );

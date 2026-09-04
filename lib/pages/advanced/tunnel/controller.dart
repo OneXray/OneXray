@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/launch/setup.dart';
 
 enum TunnelDestination { apple, android, windows, interface }
 
@@ -24,71 +27,143 @@ typedef OpenAndroidApps = Future<List<String>?> Function(
   List<String> selected,
 );
 
-class PolicyEditorController extends ChangeNotifier {
+const _notProvided = Object();
+
+@immutable
+class PolicyEditorPageState {
+  final PolicyEditorDraft? draft;
+  final bool busy;
+  final String? error;
+  final Map<String, String> androidAppNames;
+  final ConnectionView connection;
+  final AppleVpnCapabilities? appleCapabilities;
+  final bool appleCapabilitiesLoading;
+  final List<SetupInterface> interfaces;
+  final bool interfacesLoading;
+  final bool interfacesFailed;
+
+  PolicyEditorPageState({
+    this.draft,
+    this.busy = false,
+    this.error,
+    Map<String, String> androidAppNames = const {},
+    this.connection = const ConnectionView(),
+    this.appleCapabilities,
+    this.appleCapabilitiesLoading = false,
+    List<SetupInterface> interfaces = const [],
+    this.interfacesLoading = true,
+    this.interfacesFailed = false,
+  }) : androidAppNames = Map<String, String>.unmodifiable(androidAppNames),
+       interfaces = List<SetupInterface>.unmodifiable(interfaces);
+
+  PolicyEditorPageState copyWith({
+    Object? draft = _notProvided,
+    bool? busy,
+    Object? error = _notProvided,
+    Map<String, String>? androidAppNames,
+    ConnectionView? connection,
+    Object? appleCapabilities = _notProvided,
+    bool? appleCapabilitiesLoading,
+    List<SetupInterface>? interfaces,
+    bool? interfacesLoading,
+    bool? interfacesFailed,
+  }) => PolicyEditorPageState(
+    draft: identical(draft, _notProvided)
+        ? this.draft
+        : draft as PolicyEditorDraft?,
+    busy: busy ?? this.busy,
+    error: identical(error, _notProvided) ? this.error : error as String?,
+    androidAppNames: androidAppNames ?? this.androidAppNames,
+    connection: connection ?? this.connection,
+    appleCapabilities: identical(appleCapabilities, _notProvided)
+        ? this.appleCapabilities
+        : appleCapabilities as AppleVpnCapabilities?,
+    appleCapabilitiesLoading:
+        appleCapabilitiesLoading ?? this.appleCapabilitiesLoading,
+    interfaces: interfaces ?? this.interfaces,
+    interfacesLoading: interfacesLoading ?? this.interfacesLoading,
+    interfacesFailed: interfacesFailed ?? this.interfacesFailed,
+  );
+}
+
+class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
   final PolicyEditorService service;
-  PolicyEditorDraft? draft;
-  bool busy = false;
-  String? error;
-  bool _closed = false;
-  Map<String, String> _androidAppNames = const {};
 
   PolicyEditorController({
     PolicyEditorDraft? draft,
     PolicyEditorService? service,
-  }) : draft = draft?.copy(),
-       service = service ?? PolicyEditorService() {
-    this.service.coordinator.state.addListener(notify);
+  }) : this._(draft, service ?? PolicyEditorService());
+
+  PolicyEditorController._(PolicyEditorDraft? draft, this.service)
+    : super(
+        PolicyEditorPageState(
+          draft: draft?.copy(),
+          connection: service.coordinator.state.value,
+        ),
+      ) {
+    service.coordinator.state.addListener(_connectionChanged);
   }
 
   ConnectionPlatform get platform => service.platform;
-  bool get connected =>
-      service.coordinator.state.value.phase == ConnectionPhase.connected;
-  bool get blocked => busy;
-  bool get runtimeBusy => service.coordinator.state.value.busy;
-  Map<String, dynamic> get value => draft!.policy;
+  PolicyEditorDraft? get draft => state.draft;
+  bool get busy => state.busy;
+  String? get error => state.error;
+  bool get connected => state.connection.phase == ConnectionPhase.connected;
+  bool get blocked => state.busy;
+  bool get runtimeBusy => state.connection.busy;
+  Map<String, dynamic> get value => state.draft!.policy;
   Map<String, dynamic> group(String key) => value[key] as Map<String, dynamic>;
   List<String> strings(String groupName, String key) =>
-      List<String>.from(group(groupName)[key] as List);
+      List<String>.unmodifiable(
+        List<String>.from(group(groupName)[key] as List),
+      );
 
   String androidAppName(String packageName) =>
-      _androidAppNames[packageName] ?? packageName;
+      state.androidAppNames[packageName] ?? packageName;
 
   Future<void> loadAndroidAppNames() async {
     final apps = await AppHostApi().getInstalledApps();
-    if (_closed) return;
-    _androidAppNames = {
-      for (final app in apps)
-        if (app.name.isNotEmpty) app.packageName: app.name,
-    };
-    notify();
+    if (!isPageActive) return;
+    emit(
+      state.copyWith(
+        androidAppNames: {
+          for (final app in apps)
+            if (app.name.isNotEmpty) app.packageName: app.name,
+        },
+      ),
+    );
   }
 
   Future<void> load(BuildContext context) async {
-    busy = true;
-    error = null;
-    notify();
+    emit(state.copyWith(busy: true, error: null));
     try {
       final loaded = await service.load();
-      if (!_closed) {
-        draft = loaded;
-      }
+      emit(state.copyWith(draft: loaded));
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeTemporarilyUnavailable;
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!
+                .prototypeTemporarilyUnavailable,
+          ),
+        );
       }
     } finally {
-      busy = false;
-      notify();
+      emit(state.copyWith(busy: false));
     }
   }
 
   void update(String key, Object value, {String? section}) {
-    if (blocked) {
+    final current = state.draft;
+    if (blocked || current == null) {
       return;
     }
-    (section == null ? this.value : group(section))[key] = value;
-    error = null;
-    notify();
+    final next = current.copy();
+    final target = section == null
+        ? next.policy
+        : next.policy[section] as Map<String, dynamic>;
+    target[key] = value;
+    emit(state.copyWith(draft: next, error: null));
   }
 
   bool get emptyIncluded =>
@@ -135,29 +210,32 @@ class PolicyEditorController extends ChangeNotifier {
       : l.prototypeSave;
 
   Future<bool> save(BuildContext context, {bool pop = true}) async {
-    if (blocked || runtimeBusy || draft == null) {
+    final current = state.draft;
+    if (blocked || runtimeBusy || current == null) {
       return false;
     }
     final l = AppLocalizations.of(context)!;
-    error = validationHint(l);
-    if (error != null) {
-      notify();
+    final hint = validationHint(l);
+    if (hint != null) {
+      emit(state.copyWith(error: hint));
       return false;
     }
     try {
-      service.validate(draft!);
+      service.validate(current);
     } on FormatException {
-      error = platform == ConnectionPlatform.windows
-          ? l.prototypeBypassNetworkInputHint
-          : l.buttonSaveFailed;
-      notify();
+      emit(
+        state.copyWith(
+          error: platform == ConnectionPlatform.windows
+              ? l.prototypeBypassNetworkInputHint
+              : l.buttonSaveFailed,
+        ),
+      );
       return false;
     }
-    busy = true;
-    notify();
+    emit(state.copyWith(busy: true, error: null));
     try {
       final saved = await service.save(
-        draft: draft!,
+        draft: current,
         confirm: (disconnect) => context.mounted
             ? ContextAlert.showConfirmDialog(
                 context,
@@ -171,22 +249,21 @@ class PolicyEditorController extends ChangeNotifier {
               )
             : Future.value(false),
       );
-      if (saved && !_closed) {
+      if (saved && isPageActive) {
         if (pop &&
             context.mounted &&
             ModalRoute.of(context)?.isCurrent == true) {
           Navigator.of(context).pop(true);
         } else if (!pop) {
-          draft = await service.load();
+          emit(state.copyWith(draft: await service.load()));
         }
       }
       return saved;
     } catch (_) {
-      error = l.buttonSaveFailed;
+      emit(state.copyWith(error: l.buttonSaveFailed));
       return false;
     } finally {
-      busy = false;
-      notify();
+      emit(state.copyWith(busy: false));
     }
   }
 
@@ -209,7 +286,7 @@ class PolicyEditorController extends ChangeNotifier {
       return;
     }
     final saved = await open(context, destination, draft!.copy());
-    if (saved == true && context.mounted && !_closed) {
+    if (saved == true && context.mounted && isPageActive) {
       await load(context);
     }
   }
@@ -223,7 +300,7 @@ class PolicyEditorController extends ChangeNotifier {
         ? 'includedAppPackageNames'
         : 'excludedAppPackageNames';
     final selected = await open(context, mode, strings('android', key));
-    if (!_closed && selected != null) {
+    if (isPageActive && selected != null) {
       update(key, selected, section: 'android');
     }
   }
@@ -233,25 +310,25 @@ class PolicyEditorController extends ChangeNotifier {
   }
 
   void restoreDefaults() {
-    if (blocked || draft == null) return;
-    draft = PolicyEditorDraft(
-      draft!.original,
-      PlatformPolicy.defaults().toJson(),
+    final current = state.draft;
+    if (blocked || current == null) return;
+    emit(
+      state.copyWith(
+        draft: PolicyEditorDraft(
+          current.original,
+          PlatformPolicy.defaults().toJson(),
+        ),
+        error: null,
+      ),
     );
-    error = null;
-    notify();
   }
 
-  void notify() {
-    if (!_closed) {
-      notifyListeners();
-    }
+  void _connectionChanged() {
+    emit(state.copyWith(connection: service.coordinator.state.value));
   }
 
   @override
-  void dispose() {
-    _closed = true;
-    service.coordinator.state.removeListener(notify);
-    super.dispose();
+  void disposePageResources() {
+    service.coordinator.state.removeListener(_connectionChanged);
   }
 }

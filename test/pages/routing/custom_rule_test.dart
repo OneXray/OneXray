@@ -12,7 +12,7 @@ void main() {
         domain: const ['old.example'],
       );
       final controller = CustomRoutingRuleController(rule: original);
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       controller.name.text = ' Renamed ';
       controller.domains.single.text.text = ' geosite:CN ';
       controller.addValue(true);
@@ -38,7 +38,7 @@ void main() {
 
   test('new empty rule cannot save; explicit tcp/udp condition remains expressible', () {
     final empty = CustomRoutingRuleController();
-    addTearDown(empty.dispose);
+    addTearDown(empty.close);
     expect(empty.buildRule, throwsFormatException);
     final both = CustomRoutingRuleController(
       rule: RoutingRuleState(
@@ -46,7 +46,7 @@ void main() {
         action: RoutingRuleAction.block,
       ),
     );
-    addTearDown(both.dispose);
+    addTearDown(both.close);
     expect(both.buildRule().network, ['tcp', 'udp']);
     final duplicate = CustomRoutingRuleController(
       rule: RoutingRuleState(
@@ -55,8 +55,8 @@ void main() {
         action: RoutingRuleAction.direct,
       ),
     );
-    addTearDown(duplicate.dispose);
-    expect(duplicate.network, 'tcp');
+    addTearDown(duplicate.close);
+    expect(duplicate.state.network, 'tcp');
     expect(duplicate.buildRule().port, 443);
   });
 
@@ -74,7 +74,7 @@ void main() {
     final controller = CustomRoutingRuleController(
       loadIndex: () async => index,
     );
-    addTearDown(controller.dispose);
+    addTearDown(controller.close);
     expect(await controller.suggestions('cn', true), [
       'ext:other.dat:CN',
       'geosite:CN',

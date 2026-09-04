@@ -3,28 +3,32 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/assets/server.dart';
 import 'package:re_editor/re_editor.dart';
 
-class ServerEditorController extends ChangeNotifier {
-  final int serverId;
-  final ServerAssetService service;
-  ServerEditorController(this.serverId, {ServerAssetService? service})
-    : service = service ?? ServerAssetService() {
-    text.addListener(_changed);
-  }
-  final text = CodeLineEditingController();
-  ServerEditDraft? _draft;
-  bool busy = false;
-  bool loading = true;
-  String? error;
-  bool _disposed = false;
-  bool get loaded => _draft != null;
-  String? get name => _draft?.original.name;
-  bool get fromSubscription => _draft != null && _draft!.original.subId != 0;
+@immutable
+class ServerEditorPageState {
+  const ServerEditorPageState({
+    this.draft,
+    this.jsonText = '',
+    this.busy = false,
+    this.loading = true,
+    this.error,
+  });
+
+  final ServerEditDraft? draft;
+  final String jsonText;
+  final bool busy;
+  final bool loading;
+  final String? error;
+
+  bool get loaded => draft != null;
+  String? get name => draft?.original.name;
+  bool get fromSubscription => draft != null && draft!.original.subId != 0;
   bool get validJson {
     try {
-      final value = jsonDecode(text.text);
+      final value = jsonDecode(jsonText);
       return value is Map &&
           value['tag'] is String &&
           (value['tag'] as String).trim().isNotEmpty &&
@@ -35,41 +39,67 @@ class ServerEditorController extends ChangeNotifier {
     }
   }
 
-  void _changed() {
-    if (!_disposed) notifyListeners();
+  ServerEditorPageState copyWith({
+    ServerEditDraft? draft,
+    String? jsonText,
+    bool? busy,
+    bool? loading,
+    String? error,
+    bool clearError = false,
+  }) => ServerEditorPageState(
+    draft: draft ?? this.draft,
+    jsonText: jsonText ?? this.jsonText,
+    busy: busy ?? this.busy,
+    loading: loading ?? this.loading,
+    error: clearError ? null : error ?? this.error,
+  );
+}
+
+class ServerEditorController extends PageCubit<ServerEditorPageState> {
+  ServerEditorController(this.serverId, {ServerAssetService? service})
+    : service = service ?? ServerAssetService(),
+      super(const ServerEditorPageState()) {
+    text.addListener(_textChanged);
   }
 
-  void close(BuildContext context) {
-    if (!busy) Navigator.of(context).pop();
+  final int serverId;
+  final ServerAssetService service;
+  final text = CodeLineEditingController();
+
+  void _textChanged() => emit(state.copyWith(jsonText: text.text));
+
+  void closePage(BuildContext context) {
+    if (!state.busy) Navigator.of(context).pop();
   }
 
   Future<void> load(BuildContext context) async {
     final initialText = text.text;
     try {
       final draft = await service.load(serverId);
-      if (_disposed) return;
-      _draft = draft;
+      if (!isPageActive) return;
+      emit(state.copyWith(draft: draft));
       if (text.text == initialText) text.text = draft.text;
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeCannotReadContent;
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+          ),
+        );
       }
     } finally {
-      loading = false;
-      _changed();
+      emit(state.copyWith(loading: false));
     }
   }
 
   Future<void> save(BuildContext context) async {
-    if (_disposed || busy || loading || !loaded) return;
+    if (state.busy || state.loading || !state.loaded) return;
     final l = AppLocalizations.of(context)!;
-    busy = true;
-    error = null;
-    _changed();
+    emit(state.copyWith(busy: true, clearError: true));
     try {
       final saved = await service.save(
-        ServerEditDraft(_draft!.original, text.text),
-        confirmReconnect: () => !_disposed && context.mounted
+        ServerEditDraft(state.draft!.original, state.jsonText),
+        confirmReconnect: () => isPageActive && context.mounted
             ? ContextAlert.showConfirmDialog(
                 context,
                 title: l.prototypeApplyChange,
@@ -78,23 +108,21 @@ class ServerEditorController extends ChangeNotifier {
               )
             : Future.value(false),
       );
-      if (saved && !_disposed && context.mounted) {
+      if (saved && isPageActive && context.mounted) {
         Navigator.of(context).pop(serverId);
       }
     } on FormatException {
-      error = l.validationJsonInvalid;
+      emit(state.copyWith(error: l.validationJsonInvalid));
     } catch (_) {
-      error = l.buttonSaveFailed;
+      emit(state.copyWith(error: l.buttonSaveFailed));
     } finally {
-      busy = false;
-      _changed();
+      emit(state.copyWith(busy: false));
     }
   }
 
   @override
-  void dispose() {
-    _disposed = true;
+  void disposePageResources() {
+    text.removeListener(_textChanged);
     text.dispose();
-    super.dispose();
   }
 }

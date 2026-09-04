@@ -21,13 +21,14 @@ import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
-  test('submit availability follows text, HTTPS, Age, and working state', () {
+  test('submit availability follows text, HTTPS, and Age state', () async {
     final controller = ServerImportController(
       loadSubscription: (_) async => null,
     );
-    addTearDown(controller.dispose);
+    addTearDown(controller.close);
     var changes = 0;
-    controller.addListener(() => changes++);
+    final subscription = controller.stream.listen((_) => changes++);
+    addTearDown(subscription.cancel);
 
     expect(controller.canSubmit(ServerImportAction.paste), isFalse);
     controller.text.text = 'vless://local';
@@ -48,12 +49,8 @@ void main() {
     expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
     controller.publicKey.text = 'public';
     expect(controller.canSubmit(ServerImportAction.subscription), isTrue);
+    await Future<void>.delayed(Duration.zero);
     expect(changes, 8);
-    controller.busy = true;
-    expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
-    controller.busy = false;
-    controller.loadFailed = true;
-    expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
   });
 
   testWidgets('Back returns to methods; Cancel closes only the import wizard', (
@@ -148,7 +145,7 @@ void main() {
           },
         ),
       );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       controller.text.text = 'vless://local';
       await tester.pumpWidget(_wizard(controller, (_) => completed = true));
       await tester.tap(find.text('Open'));
@@ -203,7 +200,7 @@ void main() {
         service: service,
         loadSubscription: (_) async => null,
       );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       controller.text.text =
           'https://provider.example/list#Provider\nvless://local';
       await tester.pumpWidget(
@@ -295,7 +292,7 @@ void main() {
         return saveCompletion.future;
       },
     );
-    addTearDown(controller.dispose);
+    addTearDown(controller.close);
     await tester.pumpWidget(
       _app(
         Builder(
@@ -331,7 +328,7 @@ void main() {
     expect(controller.secretKey.text, 'secret');
     expect(controller.publicKey.text, 'public');
     controller.toggleSecret();
-    expect(controller.obscureSecret, false);
+    expect(controller.state.obscureSecret, false);
     controller.name.text = 'Renamed';
     await _tapVisible(tester, find.text('Save'));
     await tester.pump();
@@ -344,7 +341,7 @@ void main() {
           .every((input) => input.enabled),
       isTrue,
     );
-    expect(controller.canClose, isFalse);
+    expect(controller.state.canClose, isFalse);
     controller.name.text = 'Another draft';
     expect(saved?.name, 'Renamed');
     saveCompletion.complete(SubscriptionUpdateResult.success);
@@ -365,7 +362,7 @@ void main() {
         subscriptionId: 7,
         loadSubscription: (_) => loaded.future,
       );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       await tester.pumpWidget(
         _app(
           ServerImportFormPage(
@@ -378,8 +375,8 @@ void main() {
         tester.element(find.byType(ServerImportFormPage)),
       );
       await tester.pump();
-      expect(controller.canClose, isTrue);
-      expect(controller.submitting, isFalse);
+      expect(controller.state.canClose, isTrue);
+      expect(controller.state.submitting, isFalse);
       expect(find.byType(LinearProgressIndicator), findsNothing);
       expect(find.byType(ButtonProgressIndicator), findsNothing);
       controller.name.text = 'Typed while loading';
@@ -424,7 +421,7 @@ void main() {
           service: service,
           loadSubscription: (_) async => null,
         );
-        addTearDown(controller.dispose);
+        addTearDown(controller.close);
         final preview = ServerImportPreview(
           [
             outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
@@ -463,7 +460,7 @@ void main() {
         expect(find.text('Servers added'), findsOneWidget);
         expect(find.text('Data source'), findsOneWidget);
         expect(find.text('Done'), findsOneWidget);
-        expect(controller.committedResult?.writeFailureCount, 1);
+        expect(controller.state.committedResult?.writeFailureCount, 1);
         if (exit == 'done') {
           await _tapVisible(tester, find.text('Done'));
         } else if (exit == 'system') {

@@ -8,127 +8,159 @@ import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart'
     show ConnectCallout, ConnectDialogButton;
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/geo_data/validator.dart';
 
-class GeoDataController extends ChangeNotifier {
-  GeoDataController({GeoDataService? service})
-    : service = service ?? GeoDataService();
-  final GeoDataService service;
-  final name = TextEditingController();
-  final url = TextEditingController();
-  GeoDataType type = GeoDataType.ip;
-  List<PublishedGeoData> files = const [];
-  final Map<int, String> errors = {};
-  String? formError;
-  bool loading = true;
-  bool failed = false;
-  bool formBusy = false;
-  bool updatingAll = false;
-  final Set<int> updating = {};
-  final Set<int> deleting = {};
-  bool adding = false;
-  bool _disposed = false;
-  StreamSubscription<List<PublishedGeoData>>? _subscription;
+@immutable
+class GeoDataPageState {
+  GeoDataPageState({
+    List<PublishedGeoData> files = const [],
+    Map<int, String> errors = const {},
+    this.formError,
+    this.type = GeoDataType.ip,
+    this.loading = true,
+    this.failed = false,
+    this.formBusy = false,
+    this.updatingAll = false,
+    Set<int> updating = const {},
+    Set<int> deleting = const {},
+    this.adding = false,
+  }) : files = List.unmodifiable(files),
+       errors = Map.unmodifiable(errors),
+       updating = Set.unmodifiable(updating),
+       deleting = Set.unmodifiable(deleting);
+
+  final List<PublishedGeoData> files;
+  final Map<int, String> errors;
+  final String? formError;
+  final GeoDataType type;
+  final bool loading;
+  final bool failed;
+  final bool formBusy;
+  final bool updatingAll;
+  final Set<int> updating;
+  final Set<int> deleting;
+  final bool adding;
 
   List<PublishedGeoData> get defaults =>
-      files.where((file) => file.builtIn).toList();
+      files.where((file) => file.builtIn).toList(growable: false);
   List<PublishedGeoData> get custom =>
-      files.where((file) => !file.builtIn).toList();
-
+      files.where((file) => !file.builtIn).toList(growable: false);
   bool get canUpdateAll => !updatingAll && updating.isEmpty && deleting.isEmpty;
   bool fileBusy(int id) =>
       updatingAll || updating.contains(id) || deleting.contains(id);
 
-  void _changed() {
-    if (!_disposed) notifyListeners();
-  }
+  GeoDataPageState copyWith({
+    List<PublishedGeoData>? files,
+    Map<int, String>? errors,
+    String? formError,
+    bool clearFormError = false,
+    GeoDataType? type,
+    bool? loading,
+    bool? failed,
+    bool? formBusy,
+    bool? updatingAll,
+    Set<int>? updating,
+    Set<int>? deleting,
+    bool? adding,
+  }) => GeoDataPageState(
+    files: files ?? this.files,
+    errors: errors ?? this.errors,
+    formError: clearFormError ? null : formError ?? this.formError,
+    type: type ?? this.type,
+    loading: loading ?? this.loading,
+    failed: failed ?? this.failed,
+    formBusy: formBusy ?? this.formBusy,
+    updatingAll: updatingAll ?? this.updatingAll,
+    updating: updating ?? this.updating,
+    deleting: deleting ?? this.deleting,
+    adding: adding ?? this.adding,
+  );
+}
+
+class GeoDataController extends PageCubit<GeoDataPageState> {
+  GeoDataController({GeoDataService? service})
+    : service = service ?? GeoDataService(),
+      super(GeoDataPageState());
+
+  final GeoDataService service;
+  final name = TextEditingController();
+  final url = TextEditingController();
+  StreamSubscription<List<PublishedGeoData>>? _subscription;
 
   Future<void> initialize() async {
-    loading = true;
-    failed = false;
-    _changed();
+    emit(state.copyWith(loading: true, failed: false));
     try {
       await service.ensureInstalled();
-      if (_disposed) return;
+      if (!isPageActive) return;
       await _subscription?.cancel();
+      if (!isPageActive) return;
       _subscription = service.watchPublished().listen(
-        (value) {
-          files = value;
-          loading = false;
-          failed = false;
-          _changed();
-        },
-        onError: (_) {
-          loading = false;
-          failed = true;
-          _changed();
-        },
+        (files) =>
+            emit(state.copyWith(files: files, loading: false, failed: false)),
+        onError: (_) => emit(state.copyWith(loading: false, failed: true)),
       );
     } catch (_) {
-      loading = false;
-      failed = true;
-      _changed();
+      emit(state.copyWith(loading: false, failed: true));
     }
   }
 
   void toggleAdd() {
-    if (formBusy) return;
-    adding = !adding;
-    formError = null;
+    if (state.formBusy) return;
+    final adding = !state.adding;
     if (!adding) {
       name.clear();
       url.clear();
     }
-    _changed();
+    emit(state.copyWith(adding: adding, clearFormError: true));
   }
 
   void changeType(GeoDataType? value) {
-    if (value == null || formBusy) return;
-    type = value;
-    _changed();
+    if (value == null || state.formBusy) return;
+    emit(state.copyWith(type: value));
   }
 
   Future<void> add(BuildContext context) async {
-    if (formBusy) return;
+    if (state.formBusy) return;
     final l = AppLocalizations.of(context)!;
-    final input = GeoDataInput(fileName: name.text, type: type, url: url.text);
-    formBusy = true;
-    formError = null;
-    _changed();
+    final input = GeoDataInput(
+      fileName: name.text,
+      type: state.type,
+      url: url.text,
+    );
+    emit(state.copyWith(formBusy: true, clearFormError: true));
     try {
       final validation = await GeoDataValidator.validate(
         input.fileName.trim(),
         input.url.trim(),
       );
-      if (_disposed) return;
+      if (!isPageActive) return;
       if (!validation.item1) {
-        formError = validation.item2;
+        emit(state.copyWith(formError: validation.item2));
         return;
       }
       await service.add(input);
-      if (_disposed) return;
-      adding = false;
+      if (!isPageActive) return;
       name.clear();
       url.clear();
+      emit(state.copyWith(adding: false));
       if (context.mounted) _message(context, l.prototypeGeodataAdded);
     } catch (_) {
-      formError = l.prototypeCheckNetwork;
+      emit(state.copyWith(formError: l.prototypeCheckNetwork));
     } finally {
-      formBusy = false;
-      _changed();
+      emit(state.copyWith(formBusy: false));
     }
   }
 
   Future<void> update(BuildContext context, PublishedGeoData? file) async {
     final key = file == null || file.builtIn ? -1 : file.row.id;
-    if (fileBusy(key)) return;
+    if (state.fileBusy(key)) return;
     final l = AppLocalizations.of(context)!;
-    updating.add(key);
-    errors.remove(key);
-    _changed();
+    final errors = {...state.errors}..remove(key);
+    emit(state.copyWith(updating: {...state.updating, key}, errors: errors));
     try {
       if (file == null || file.builtIn) {
         await service.updateDefaults();
@@ -137,20 +169,21 @@ class GeoDataController extends ChangeNotifier {
       }
       if (context.mounted) _message(context, l.prototypeGeodataUpdated);
     } catch (_) {
-      errors[key] = l.prototypeCheckNetwork;
+      emit(
+        state.copyWith(errors: {...state.errors, key: l.prototypeCheckNetwork}),
+      );
     } finally {
-      updating.remove(key);
-      _changed();
+      final updating = {...state.updating}..remove(key);
+      emit(state.copyWith(updating: updating));
     }
   }
 
   Future<void> updateAll(BuildContext context) async {
-    if (!canUpdateAll) return;
+    if (!state.canUpdateAll) return;
     final l = AppLocalizations.of(context)!;
-    final targets = custom.toList();
-    updatingAll = true;
-    errors.clear();
-    _changed();
+    final targets = state.custom;
+    final errors = <int, String>{};
+    emit(state.copyWith(updatingAll: true, errors: const {}));
     try {
       try {
         await service.updateDefaults();
@@ -168,16 +201,14 @@ class GeoDataController extends ChangeNotifier {
         _message(context, l.prototypeAllGeodataUpdated);
       }
     } finally {
-      updatingAll = false;
-      _changed();
+      emit(state.copyWith(updatingAll: false, errors: errors));
     }
   }
 
   Future<void> delete(BuildContext context, PublishedGeoData file) async {
-    if (fileBusy(file.row.id) || file.builtIn) return;
+    if (state.fileBusy(file.row.id) || file.builtIn) return;
     final l = AppLocalizations.of(context)!;
-    deleting.add(file.row.id);
-    _changed();
+    emit(state.copyWith(deleting: {...state.deleting, file.row.id}));
     try {
       final confirmed = await showAppDialog<bool>(
         context,
@@ -205,14 +236,19 @@ class GeoDataController extends ChangeNotifier {
           ],
         ),
       );
-      if (confirmed != true || _disposed) return;
-      errors.remove(file.row.id);
+      if (confirmed != true || !isPageActive) return;
+      final errors = {...state.errors}..remove(file.row.id);
+      emit(state.copyWith(errors: errors));
       await service.deleteGeoDat(file.row);
     } catch (_) {
-      errors[file.row.id] = l.prototypeCheckNetwork;
+      emit(
+        state.copyWith(
+          errors: {...state.errors, file.row.id: l.prototypeCheckNetwork},
+        ),
+      );
     } finally {
-      deleting.remove(file.row.id);
-      _changed();
+      final deleting = {...state.deleting}..remove(file.row.id);
+      emit(state.copyWith(deleting: deleting));
     }
   }
 
@@ -220,53 +256,74 @@ class GeoDataController extends ChangeNotifier {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
   @override
-  void dispose() {
-    _disposed = true;
-    unawaited(_subscription?.cancel());
+  Future<void> disposePageResources() async {
+    await _subscription?.cancel();
     name.dispose();
     url.dispose();
-    super.dispose();
   }
 }
 
-class GeoDataFileController extends ChangeNotifier {
-  GeoDataFileController(this.fileId, {GeoDataService? service})
-    : service = service ?? GeoDataService();
-  final int fileId;
-  final GeoDataService service;
-  final search = TextEditingController();
-  PublishedGeoData? file;
-  bool loading = true;
-  bool failed = false;
-  bool _disposed = false;
-  StreamSubscription<List<PublishedGeoData>>? _subscription;
+@immutable
+class GeoDataFilePageState {
+  const GeoDataFilePageState({
+    this.file,
+    this.query = '',
+    this.loading = true,
+    this.failed = false,
+  });
+
+  final PublishedGeoData? file;
+  final String query;
+  final bool loading;
+  final bool failed;
 
   List<XrayGeoListCodes> get codes {
-    final query = search.text.trim().toLowerCase();
-    return (file?.index.codes ?? [])
-        .where((entry) => entry.code!.toLowerCase().contains(query))
-        .toList();
-  }
-
-  void _changed() {
-    if (!_disposed) notifyListeners();
-  }
-
-  void searchChanged(String _) => _changed();
-  void initialize() {
-    _subscription = service.watchPublished().listen(
-      (value) {
-        file = value.where((item) => item.row.id == fileId).firstOrNull;
-        loading = false;
-        failed = false;
-        _changed();
-      },
-      onError: (_) {
-        loading = false;
-        failed = true;
-        _changed();
-      },
+    final normalizedQuery = query.trim().toLowerCase();
+    return List.unmodifiable(
+      (file?.index.codes ?? const <XrayGeoListCodes>[]).where(
+        (entry) => entry.code!.toLowerCase().contains(normalizedQuery),
+      ),
     );
+  }
+
+  GeoDataFilePageState copyWith({
+    PublishedGeoData? file,
+    bool clearFile = false,
+    String? query,
+    bool? loading,
+    bool? failed,
+  }) => GeoDataFilePageState(
+    file: clearFile ? null : file ?? this.file,
+    query: query ?? this.query,
+    loading: loading ?? this.loading,
+    failed: failed ?? this.failed,
+  );
+}
+
+class GeoDataFileController extends PageCubit<GeoDataFilePageState> {
+  GeoDataFileController(this.fileId, {GeoDataService? service})
+    : service = service ?? GeoDataService(),
+      super(const GeoDataFilePageState());
+
+  final int fileId;
+  final GeoDataService service;
+  StreamSubscription<List<PublishedGeoData>>? _subscription;
+
+  void searchChanged(String value) => emit(state.copyWith(query: value));
+
+  void initialize() {
+    emit(state.copyWith(loading: true, failed: false));
+    _subscription = service.watchPublished().listen((files) {
+      final file = files.where((item) => item.row.id == fileId).firstOrNull;
+      emit(
+        state.copyWith(
+          file: file,
+          clearFile: file == null,
+          loading: false,
+          failed: false,
+        ),
+      );
+    }, onError: (_) => emit(state.copyWith(loading: false, failed: true)));
   }
 
   Future<void> copy(BuildContext context, String value, String success) async {
@@ -282,10 +339,7 @@ class GeoDataFileController extends ChangeNotifier {
   }
 
   @override
-  void dispose() {
-    _disposed = true;
-    unawaited(_subscription?.cancel());
-    search.dispose();
-    super.dispose();
+  Future<void> disposePageResources() async {
+    await _subscription?.cancel();
   }
 }

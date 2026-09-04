@@ -57,7 +57,7 @@ abstract final class RouterPath {
   static const privacy = "/privacy";
   static const firstRun = "/firstRun";
   static const setup = "/setup";
-  static const home = "/home";
+  static const connect = "/connect";
 
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -120,18 +120,20 @@ abstract final class RouterPath {
         builder: (_, _, navigationShell) {
           return AdaptiveMainShell(navigationShell: navigationShell);
         },
-        branches: AppPrimaryRoute.values.map(_buildPrimaryBranch).toList(),
+        branches: AppPrimaryDestination.values
+            .map(_buildPrimaryBranch)
+            .toList(),
       ),
     ],
   );
 }
 
 final _primaryNavigatorKeys = {
-  for (final primary in AppPrimaryRoute.values)
+  for (final primary in AppPrimaryDestination.values)
     primary: GlobalKey<NavigatorState>(debugLabel: "${primary.name}Branch"),
 };
 
-StatefulShellBranch _buildPrimaryBranch(AppPrimaryRoute primary) {
+StatefulShellBranch _buildPrimaryBranch(AppPrimaryDestination primary) {
   return StatefulShellBranch(
     navigatorKey: _primaryNavigatorKeys[primary],
     routes: [

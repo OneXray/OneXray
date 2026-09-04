@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/routing/widgets.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/page.dart';
@@ -32,7 +36,7 @@ class _ServerExitPickerPageState extends State<ServerExitPickerPage> {
 
   @override
   void dispose() {
-    controller.dispose();
+    unawaited(controller.close());
     super.dispose();
   }
 
@@ -47,133 +51,138 @@ class ServerExitPickerView extends StatelessWidget {
   final ServerExitPickerController controller;
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([controller, controller.coordinator.state]),
-    builder: (context, _) {
-      final l = AppLocalizations.of(context)!;
-      final palette = ColorManager.palette(context);
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      final groups = controller.selectionGroups(l);
-      return Scaffold(
-        appBar: AppBar(title: Text(l.prototypeVpnFinalExit)),
-        body: SafeArea(
-          child: ServerLoadState(
-            controller: controller,
-            child: ResponsiveContent(
-              desktopMaxWidth:
-                  AppLayout.routingEditorMaxWidth + AppSpacing.page * 2,
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                  mobile ? 12 : AppSpacing.desktopPageTop,
-                  mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                  mobile ? 18 : AppSpacing.desktopPageBottom,
-                ),
-                children: [
-                  RoutingCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _SelectionRow(
-                          icon: LucideIcons.shield,
-                          title: l.prototypeNoAdditionalExit,
-                          detail: l.prototypeEntryConnectsDirectly,
-                          selected: controller.selectedId == null,
-                          onTap: controller.busy
-                              ? null
-                              : () => controller.selectDraft(null),
-                        ),
-                        _search(context, mobile),
-                        _grouping(context, mobile),
-                        for (final group in groups) ...[
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 7),
-                            color: palette.muted,
-                            child: Text(
-                              group.name.toUpperCase(),
-                              style: AppTypography.routingSelectionGroup
-                                  .copyWith(color: palette.mutedForeground),
-                            ),
-                          ),
-                          for (final row in group.visibleRows)
-                            _SelectionRow(
-                              key: ValueKey('final-exit:${row.id}'),
-                              icon: LucideIcons.server,
-                              title: controller.serverName(row),
-                              detail: controller.exitRowDetail(l, row),
-                              protocol: controller.protocol(row),
-                              selected: controller.selectedId == row.id,
-                              onTap:
-                                  controller.busy || !controller.canSelect(row)
-                                  ? null
-                                  : () => controller.selectDraft(row),
-                            ),
-                        ],
-                        if (groups.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 28,
-                            ),
-                            child: Text(
-                              l.prototypeNoMatchingServers,
-                              textAlign: TextAlign.center,
-                              style: AppTypography.routingSelectionInput
-                                  .copyWith(color: palette.mutedForeground),
-                            ),
-                          ),
-                        Container(
-                          constraints: const BoxConstraints(minHeight: 52),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: mobile ? 12 : 14,
-                            vertical: 10,
-                          ),
-                          color: palette.muted,
-                          child: Row(
-                            children: [
-                              Icon(
-                                LucideIcons.info,
-                                size: 17,
-                                color: palette.mutedForeground,
-                              ),
-                              const SizedBox(width: 9),
-                              Expanded(
-                                child: Text(
-                                  l.prototypeFinalExitSelectionNote,
-                                  style: AppTypography.routingSelectionNote
-                                      .copyWith(color: palette.mutedForeground),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<ServerExitPickerController, ConnectPageState>(
+      builder: (context, _) {
+        final l = AppLocalizations.of(context)!;
+        final palette = ColorManager.palette(context);
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        final groups = controller.selectionGroups(l);
+        return Scaffold(
+          appBar: AppBar(title: Text(l.prototypeVpnFinalExit)),
+          body: SafeArea(
+            child: ServerLoadState(
+              controller: controller,
+              child: ResponsiveContent(
+                desktopMaxWidth:
+                    AppLayout.routingEditorMaxWidth + AppSpacing.page * 2,
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                    mobile ? 12 : AppSpacing.desktopPageTop,
+                    mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                    mobile ? 18 : AppSpacing.desktopPageBottom,
                   ),
-                ],
+                  children: [
+                    RoutingCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _SelectionRow(
+                            icon: LucideIcons.shield,
+                            title: l.prototypeNoAdditionalExit,
+                            detail: l.prototypeEntryConnectsDirectly,
+                            selected: controller.selectedId == null,
+                            onTap: controller.busy
+                                ? null
+                                : () => controller.selectDraft(null),
+                          ),
+                          _search(context, mobile),
+                          _grouping(context, mobile),
+                          for (final group in groups) ...[
+                            Container(
+                              padding: const EdgeInsets.fromLTRB(14, 10, 14, 7),
+                              color: palette.muted,
+                              child: Text(
+                                group.name.toUpperCase(),
+                                style: AppTypography.routingSelectionGroup
+                                    .copyWith(color: palette.mutedForeground),
+                              ),
+                            ),
+                            for (final row in group.visibleRows)
+                              _SelectionRow(
+                                key: ValueKey('final-exit:${row.id}'),
+                                icon: LucideIcons.server,
+                                title: controller.serverName(row),
+                                detail: controller.exitRowDetail(l, row),
+                                protocol: controller.protocol(row),
+                                selected: controller.selectedId == row.id,
+                                onTap:
+                                    controller.busy ||
+                                        !controller.canSelect(row)
+                                    ? null
+                                    : () => controller.selectDraft(row),
+                              ),
+                          ],
+                          if (groups.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 28,
+                              ),
+                              child: Text(
+                                l.prototypeNoMatchingServers,
+                                textAlign: TextAlign.center,
+                                style: AppTypography.routingSelectionInput
+                                    .copyWith(color: palette.mutedForeground),
+                              ),
+                            ),
+                          Container(
+                            constraints: const BoxConstraints(minHeight: 52),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: mobile ? 12 : 14,
+                              vertical: 10,
+                            ),
+                            color: palette.muted,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.info,
+                                  size: 17,
+                                  color: palette.mutedForeground,
+                                ),
+                                const SizedBox(width: 9),
+                                Expanded(
+                                  child: Text(
+                                    l.prototypeFinalExitSelectionNote,
+                                    style: AppTypography.routingSelectionNote
+                                        .copyWith(
+                                          color: palette.mutedForeground,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        bottomNavigationBar: PageActionBar(
-          maxWidth: AppLayout.routingEditorMaxWidth,
-          children: [
-            if (!mobile)
-              OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l.prototypeCancel),
+          bottomNavigationBar: PageActionBar(
+            maxWidth: AppLayout.routingEditorMaxWidth,
+            children: [
+              if (!mobile)
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l.prototypeCancel),
+                ),
+              FilledButton(
+                onPressed: controller.canFinish
+                    ? () => controller.complete(context)
+                    : null,
+                child: Text(l.prototypeDone),
               ),
-            FilledButton(
-              onPressed: controller.canFinish
-                  ? () => controller.complete(context)
-                  : null,
-              child: Text(l.prototypeDone),
-            ),
-          ],
-        ),
-      );
-    },
+            ],
+          ),
+        );
+      },
+    ),
   );
 
   Widget _search(BuildContext context, bool mobile) {

@@ -3,11 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/controller.dart';
+import 'package:onexray/pages/advanced/tab_visibility.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/page.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
-import 'package:onexray/pages/main/page_visibility.dart';
-import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
@@ -29,34 +28,17 @@ class AdvancedPage extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             title: Text(l.prototypeAdvanced),
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(
-                AppLayout.navigationTabsHeight,
+            bottom: TabBar(
+              isScrollable: !mobile,
+              tabAlignment: mobile ? TabAlignment.fill : TabAlignment.start,
+              padding: EdgeInsets.symmetric(
+                horizontal: mobile ? AppSpacing.mobilePage : AppSpacing.page,
               ),
-              child: SizedBox(
-                height: AppLayout.navigationTabsHeight,
-                child: TabBar(
-                  isScrollable: !mobile,
-                  tabAlignment: mobile ? TabAlignment.fill : TabAlignment.start,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: mobile
-                        ? AppSpacing.mobilePage
-                        : AppSpacing.page,
-                  ),
-                  labelStyle: mobile
-                      ? AppTypography.selectedAdvancedTab
-                      : AppTypography.selectedDesktopAdvancedTab,
-                  unselectedLabelStyle: mobile
-                      ? AppTypography.advancedTab
-                      : AppTypography.desktopAdvancedTab,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  tabs: [
-                    Tab(height: 42, text: l.prototypeVpnTunnel),
-                    Tab(height: 42, text: l.prototypeXrayRuntimeDiagnostics),
-                  ],
-                ),
-              ),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+              tabs: [
+                Tab(text: l.prototypeVpnTunnel),
+                Tab(text: l.prototypeXrayRuntimeDiagnostics),
+              ],
             ),
           ),
           body: SafeArea(
@@ -64,17 +46,7 @@ class AdvancedPage extends StatelessWidget {
             child: TabBarView(
               children: [
                 VpnTunnelPane(openTunnel: openTunnel),
-                Builder(
-                  builder: (context) {
-                    final tabs = DefaultTabController.of(context);
-                    return ListenableBuilder(
-                      listenable: tabs,
-                      builder: (_, child) =>
-                          TickerMode(enabled: tabs.index == 1, child: child!),
-                      child: Builder(builder: xrayBuilder ?? _runtimeSummary),
-                    );
-                  },
-                ),
+                Builder(builder: xrayBuilder ?? _runtimeSummary),
               ],
             ),
           ),
@@ -88,7 +60,8 @@ class AdvancedPage extends StatelessWidget {
         builder: (context, state) {
           final l = AppLocalizations.of(context)!;
           final controller = context.read<AdvancedController>();
-          return PageVisibility(
+          return AdvancedTabVisibility(
+            tabIndex: 1,
             onChanged: controller.setVisible,
             child: SettingsPageScroll(
               child: SettingSection(

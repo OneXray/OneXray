@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/advanced/tab_visibility.dart';
 import 'package:onexray/pages/advanced/xray/controller.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
-import 'package:onexray/pages/main/page_visibility.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -14,7 +15,7 @@ import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 /// Embedded in the root Advanced tab. Child details use the root router.
-class XrayRuntimePage extends StatefulWidget {
+class XrayRuntimePage extends StatelessWidget {
   const XrayRuntimePage({
     super.key,
     required this.onGeodata,
@@ -29,264 +30,256 @@ class XrayRuntimePage extends StatefulWidget {
   final void Function(BuildContext, LogFileViewerParams) onLog;
   final void Function(BuildContext, ConfigFileViewerParams) onConfig;
   @override
-  State<XrayRuntimePage> createState() => _XrayRuntimePageState();
-}
-
-class _XrayRuntimePageState extends State<XrayRuntimePage> {
-  final controller = XrayRuntimeController();
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => PageVisibility(
-    onChanged: controller.reader.setVisible,
-    child: ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => XrayRuntimeController(),
+    child: BlocBuilder<XrayRuntimeController, XrayRuntimePageState>(
+      builder: (context, state) {
+        final controller = context.read<XrayRuntimeController>();
         final l = AppLocalizations.of(context)!;
         final disabled = controller.busy;
         final width = MediaQuery.sizeOf(context).width;
         final mobile = width <= AppLayout.mobileBreakpoint;
         final gutter = mobile ? 15.0 : AppSpacing.advancedDesktopGutter(width);
-        return Scaffold(
-          bottomNavigationBar: controller.base == null
-              ? null
-              : PageActionBar(
-                  maxWidth: AppLayout.advancedMaxWidth,
-                  expandDesktop: true,
-                  horizontalPadding: gutter,
-                  spacing: 13,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: disabled ? null : controller.restoreDefaults,
-                      icon: const Icon(LucideIcons.rotateCcw, size: 16),
-                      label: Text(l.prototypeRestoreDefaults),
-                    ),
-                    FilledButton(
-                      onPressed: disabled || controller.runtimeBusy
-                          ? null
-                          : () => controller.save(context),
-                      child: ButtonProgress(
-                        busy: controller.saving,
-                        child: Text(
-                          controller.connected
-                              ? l.prototypeSaveAndReconnect
-                              : l.prototypeSave,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-          body: controller.loading
-              ? const Center(child: CircularProgressIndicator())
-              : controller.base == null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+        return AdvancedTabVisibility(
+          tabIndex: 1,
+          onChanged: controller.reader.setVisible,
+          child: Scaffold(
+            bottomNavigationBar: controller.base == null
+                ? null
+                : PageActionBar(
+                    maxWidth: AppLayout.advancedMaxWidth,
+                    expandDesktop: true,
+                    horizontalPadding: gutter,
+                    spacing: 13,
                     children: [
-                      Text(l.prototypeTemporarilyUnavailable),
-                      TextButton(
-                        onPressed: controller.load,
-                        child: Text(l.prototypeRetry),
+                      OutlinedButton.icon(
+                        onPressed: disabled ? null : controller.restoreDefaults,
+                        icon: const Icon(LucideIcons.rotateCcw, size: 16),
+                        label: Text(l.prototypeRestoreDefaults),
+                      ),
+                      FilledButton(
+                        onPressed: disabled || controller.runtimeBusy
+                            ? null
+                            : () => controller.save(context),
+                        child: ButtonProgress(
+                          busy: controller.saving,
+                          child: Text(
+                            controller.connected
+                                ? l.prototypeSaveAndReconnect
+                                : l.prototypeSave,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                )
-              : SettingsPageScroll(
-                  desktopMaxWidth: AppLayout.advancedMaxWidth,
-                  padding: EdgeInsets.zero,
-                  child: Padding(
-                    padding: EdgeInsetsDirectional.fromSTEB(
-                      gutter,
-                      mobile ? 22 : 54,
-                      gutter,
-                      mobile ? 24 : 28,
-                    ),
+            body: controller.loading
+                ? const Center(child: CircularProgressIndicator())
+                : controller.base == null
+                ? Center(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: mobile ? 25 : 28,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _section(
-                          icon: LucideIcons.activity,
-                          title: l.prototypeRuntimeStatus,
-                          children: [_runtimeCard(context, l, mobile)],
+                        Text(l.prototypeTemporarilyUnavailable),
+                        TextButton(
+                          onPressed: controller.load,
+                          child: Text(l.prototypeRetry),
                         ),
-                        _section(
-                          icon: LucideIcons.hardDrive,
-                          title: l.prototypeRoutingData,
-                          children: [
-                            SettingRow(
-                              title: l.prototypeRoutingDataSummary,
-                              minHeight: mobile ? 43 : 56,
-                              titleStyle: AppTypography.settingsRow,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: mobile ? 13 : 14,
-                              ),
-                              trailing: _chevron(context),
-                              onTap: () => widget.onGeodata(context),
-                            ),
-                          ],
-                        ),
-                        _section(
-                          icon: LucideIcons.refreshCw,
-                          title: l.prototypeDataUpdates,
-                          children: [
-                            SettingRow(
-                              title: l.prototypeDataUpdateIntervals,
-                              minHeight: mobile ? 43 : 56,
-                              titleStyle: AppTypography.settingsRow,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: mobile ? 13 : 14,
-                              ),
-                              trailing: _chevron(context),
-                              onTap: () => widget.onUpdates(context),
-                            ),
-                          ],
-                        ),
-                        _section(
-                          icon: LucideIcons.zap,
-                          title: l.prototypeSpeedTest,
-                          children: [
-                            SettingRow(
-                              title: l.prototypeSpeedTestSummary,
-                              minHeight: 64,
-                              titleStyle: AppTypography.settingsRow,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: mobile ? 13 : 14,
-                                vertical: 12,
-                              ),
-                              subtitleWidget: Text(
-                                controller.speedSummary(l),
-                                style: AppTypography.runtimeNavigationHint
-                                    .copyWith(
-                                      color: ColorManager.secondaryText(
-                                        context,
-                                      ),
-                                    ),
-                              ),
-                              trailing: _chevron(context),
-                              onTap: () => widget.onSpeedTest(context),
-                            ),
-                          ],
-                        ),
-                        _section(
-                          icon: LucideIcons.fileText,
-                          title: l.prototypeLogs,
-                          description: l.prototypeManagedLogNotice,
-                          children: [
-                            _logToggle(
-                              title: l.prototypeRecordXrayLogs,
-                              field: 'enabled',
-                              value: controller.logsEnabled,
-                              mobile: mobile,
-                            ),
-                            if (controller.logsEnabled) ...[
-                              SettingRow(
-                                title: l.prototypeErrorLogLevel,
-                                titleStyle: mobile
-                                    ? AppTypography.settingsFieldTitle
-                                    : AppTypography.settingsRow,
-                                minHeight: mobile ? 52 : 56,
-                                trailing: SizedBox(
-                                  width: mobile
-                                      ? (MediaQuery.sizeOf(context).width * .48)
-                                            .clamp(0.0, 190.0)
-                                            .toDouble()
-                                      : 190,
-                                  child: SettingSelect<String>(
-                                    value: controller.level,
-                                    minHeight: mobile ? 36 : 38,
-                                    textStyle: mobile
-                                        ? AppTypography.runtimeSelector
-                                        : AppTypography.runtimeDesktopSelector,
-                                    entries: {
-                                      'error': l.prototypeErrorsOnly,
-                                      'warning': l.prototypeWarning,
-                                      'info': 'Info',
-                                      'debug': 'Debug',
-                                    },
-                                    onChanged: disabled
-                                        ? null
-                                        : controller.setLevel,
-                                  ),
-                                ),
-                              ),
-                              _logToggle(
-                                title: l.prototypeRecordDnsQueries,
-                                field: 'recordDns',
-                                value: controller.recordDns,
-                                mobile: mobile,
-                              ),
-                              _logToggle(
-                                title: l.prototypeHideLogIpAddresses,
-                                field: 'maskIp',
-                                value: controller.maskIp,
-                                mobile: mobile,
-                              ),
-                            ],
-                            _pushRow(
-                              context,
-                              mobile: mobile,
-                              title: l.prototypeAccessLog,
-                              subtitle: l.prototypeAccessLogHint,
-                              icon: LucideIcons.fileText,
-                              enabled: controller.logPath(true) != null,
-                              onTap: () => controller.openLog(
-                                context,
-                                true,
-                                widget.onLog,
-                              ),
-                            ),
-                            _pushRow(
-                              context,
-                              mobile: mobile,
-                              title: l.prototypeErrorLog,
-                              subtitle: l.prototypeErrorLogHint,
-                              icon: LucideIcons.terminal,
-                              enabled: controller.logPath(false) != null,
-                              onTap: () => controller.openLog(
-                                context,
-                                false,
-                                widget.onLog,
-                              ),
-                            ),
-                          ],
-                        ),
-                        _section(
-                          icon: LucideIcons.fileJson,
-                          title: l.prototypeRuntimeConfiguration,
-                          children: [
-                            _pushRow(
-                              context,
-                              mobile: mobile,
-                              title: l.prototypeRecentXrayConfiguration,
-                              subtitle: l.prototypeReadOnlyRuntimeConfiguration,
-                              icon: LucideIcons.fileJson,
-                              enabled: controller.runtime != null,
-                              onTap: () => controller.openConfig(
-                                context,
-                                widget.onConfig,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (controller.failed)
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text(
-                              l.prototypeTemporarilyUnavailable,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
+                  )
+                : SettingsPageScroll(
+                    desktopMaxWidth: AppLayout.advancedMaxWidth,
+                    padding: EdgeInsets.zero,
+                    child: Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                        gutter,
+                        mobile ? 22 : 54,
+                        gutter,
+                        mobile ? 24 : 28,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: mobile ? 25 : 28,
+                        children: [
+                          _section(
+                            icon: LucideIcons.activity,
+                            title: l.prototypeRuntimeStatus,
+                            children: [
+                              _runtimeCard(context, controller, l, mobile),
+                            ],
+                          ),
+                          _section(
+                            icon: LucideIcons.hardDrive,
+                            title: l.prototypeRoutingData,
+                            children: [
+                              SettingRow(
+                                title: l.prototypeRoutingDataSummary,
+                                minHeight: mobile ? 43 : 56,
+                                titleStyle: AppTypography.settingsRow,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: mobile ? 13 : 14,
+                                ),
+                                trailing: _chevron(context),
+                                onTap: () => onGeodata(context),
+                              ),
+                            ],
+                          ),
+                          _section(
+                            icon: LucideIcons.refreshCw,
+                            title: l.prototypeDataUpdates,
+                            children: [
+                              SettingRow(
+                                title: l.prototypeDataUpdateIntervals,
+                                minHeight: mobile ? 43 : 56,
+                                titleStyle: AppTypography.settingsRow,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: mobile ? 13 : 14,
+                                ),
+                                trailing: _chevron(context),
+                                onTap: () => onUpdates(context),
+                              ),
+                            ],
+                          ),
+                          _section(
+                            icon: LucideIcons.zap,
+                            title: l.prototypeSpeedTest,
+                            children: [
+                              SettingRow(
+                                title: l.prototypeSpeedTestSummary,
+                                minHeight: 64,
+                                titleStyle: AppTypography.settingsRow,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: mobile ? 13 : 14,
+                                  vertical: 12,
+                                ),
+                                subtitleWidget: Text(
+                                  controller.speedSummary(l),
+                                  style: AppTypography.runtimeNavigationHint
+                                      .copyWith(
+                                        color: ColorManager.secondaryText(
+                                          context,
+                                        ),
+                                      ),
+                                ),
+                                trailing: _chevron(context),
+                                onTap: () => onSpeedTest(context),
+                              ),
+                            ],
+                          ),
+                          _section(
+                            icon: LucideIcons.fileText,
+                            title: l.prototypeLogs,
+                            description: l.prototypeManagedLogNotice,
+                            children: [
+                              _logToggle(
+                                controller: controller,
+                                title: l.prototypeRecordXrayLogs,
+                                field: 'enabled',
+                                value: controller.logsEnabled,
+                                mobile: mobile,
+                              ),
+                              if (controller.logsEnabled) ...[
+                                SettingRow(
+                                  title: l.prototypeErrorLogLevel,
+                                  titleStyle: mobile
+                                      ? AppTypography.settingsFieldTitle
+                                      : AppTypography.settingsRow,
+                                  minHeight: mobile ? 52 : 56,
+                                  trailing: SizedBox(
+                                    width: mobile
+                                        ? (MediaQuery.sizeOf(context).width *
+                                                  .48)
+                                              .clamp(0.0, 190.0)
+                                              .toDouble()
+                                        : 190,
+                                    child: SettingSelect<String>(
+                                      value: controller.level,
+                                      minHeight: mobile ? 36 : 38,
+                                      textStyle: mobile
+                                          ? AppTypography.runtimeSelector
+                                          : AppTypography
+                                                .runtimeDesktopSelector,
+                                      entries: {
+                                        'error': l.prototypeErrorsOnly,
+                                        'warning': l.prototypeWarning,
+                                        'info': 'Info',
+                                        'debug': 'Debug',
+                                      },
+                                      onChanged: disabled
+                                          ? null
+                                          : controller.setLevel,
+                                    ),
+                                  ),
+                                ),
+                                _logToggle(
+                                  controller: controller,
+                                  title: l.prototypeRecordDnsQueries,
+                                  field: 'recordDns',
+                                  value: controller.recordDns,
+                                  mobile: mobile,
+                                ),
+                                _logToggle(
+                                  controller: controller,
+                                  title: l.prototypeHideLogIpAddresses,
+                                  field: 'maskIp',
+                                  value: controller.maskIp,
+                                  mobile: mobile,
+                                ),
+                              ],
+                              _pushRow(
+                                context,
+                                mobile: mobile,
+                                title: l.prototypeAccessLog,
+                                subtitle: l.prototypeAccessLogHint,
+                                icon: LucideIcons.fileText,
+                                enabled: controller.logPath(true) != null,
+                                onTap: () =>
+                                    controller.openLog(context, true, onLog),
+                              ),
+                              _pushRow(
+                                context,
+                                mobile: mobile,
+                                title: l.prototypeErrorLog,
+                                subtitle: l.prototypeErrorLogHint,
+                                icon: LucideIcons.terminal,
+                                enabled: controller.logPath(false) != null,
+                                onTap: () =>
+                                    controller.openLog(context, false, onLog),
+                              ),
+                            ],
+                          ),
+                          _section(
+                            icon: LucideIcons.fileJson,
+                            title: l.prototypeRuntimeConfiguration,
+                            children: [
+                              _pushRow(
+                                context,
+                                mobile: mobile,
+                                title: l.prototypeRecentXrayConfiguration,
+                                subtitle:
+                                    l.prototypeReadOnlyRuntimeConfiguration,
+                                icon: LucideIcons.fileJson,
+                                enabled: controller.runtime != null,
+                                onTap: () =>
+                                    controller.openConfig(context, onConfig),
+                              ),
+                            ],
+                          ),
+                          if (controller.failed)
+                            Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Text(
+                                l.prototypeTemporarilyUnavailable,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+          ),
         );
       },
     ),
@@ -307,7 +300,12 @@ class _XrayRuntimePageState extends State<XrayRuntimePage> {
     children: children,
   );
 
-  Widget _runtimeCard(BuildContext context, AppLocalizations l, bool mobile) {
+  Widget _runtimeCard(
+    BuildContext context,
+    XrayRuntimeController controller,
+    AppLocalizations l,
+    bool mobile,
+  ) {
     Widget metric(
       String label,
       String value, {
@@ -378,24 +376,17 @@ class _XrayRuntimePageState extends State<XrayRuntimePage> {
               l.prototypeXrayCore,
               controller.connected
                   ? l.prototypeRunningNormally
-                  : controller.reader.statusLabel(l),
+                  : controller.statusLabel(l),
               first: true,
             ),
           ),
           Expanded(
             flex: mobile ? 72 : 80,
-            child: metric(
-              l.prototypeVersion,
-              controller.reader.state.xrayVersion,
-            ),
+            child: metric(l.prototypeVersion, controller.xrayVersion),
           ),
           Expanded(
             flex: mobile ? 85 : 90,
-            child: metric(
-              l.prototypeUptime,
-              controller.reader.state.uptime,
-              last: true,
-            ),
+            child: metric(l.prototypeUptime, controller.uptime, last: true),
           ),
         ],
       ),
@@ -403,6 +394,7 @@ class _XrayRuntimePageState extends State<XrayRuntimePage> {
   }
 
   Widget _logToggle({
+    required XrayRuntimeController controller,
     required String title,
     required String field,
     required bool value,

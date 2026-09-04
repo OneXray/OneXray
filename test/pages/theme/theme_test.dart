@@ -25,16 +25,16 @@ void main() {
       expect(material.colorScheme.outline, palette.border);
       expect(material.appBarTheme.backgroundColor, palette.header);
       expect(material.appBarTheme.foregroundColor, palette.foreground);
-      expect(material.appBarTheme.toolbarHeight, kToolbarHeight);
+      expect(material.appBarTheme.toolbarHeight, isNull);
       expect(material.appBarTheme.centerTitle, isFalse);
-      expect(material.appBarTheme.titleTextStyle!.fontSize, 20);
+      expect(material.appBarTheme.titleTextStyle, isNull);
       expect(material.appBarTheme.titleSpacing, AppSpacing.page);
       expect(
         material.appBarTheme.actionsPadding,
         const EdgeInsetsDirectional.only(end: AppSpacing.page),
       );
       expect(material.appBarTheme.iconTheme?.color, palette.mutedStrong);
-      expect(material.appBarTheme.iconTheme?.size, 21);
+      expect(material.appBarTheme.iconTheme?.size, isNull);
       expect(material.appBarTheme.actionsIconTheme, isNull);
       expect(
         material.appBarTheme.systemOverlayStyle?.statusBarColor,
@@ -45,10 +45,9 @@ void main() {
         Brightness.dark,
       );
       expect(material.navigationRailTheme.backgroundColor, palette.sidebar);
-      expect(
-        material.navigationBarTheme.height,
-        AppLayout.mobileNavigationHeight,
-      );
+      expect(material.navigationBarTheme.height, isNull);
+      expect(material.tabBarTheme.labelStyle?.fontSize, isNull);
+      expect(material.tabBarTheme.unselectedLabelStyle?.fontSize, isNull);
 
       expect(shad.background, palette.background);
       expect(shad.foreground, palette.foreground);
@@ -119,7 +118,6 @@ void main() {
         (AppTypography.connectButton, 16, FontWeight.w700),
         (AppTypography.connectCaption, 12, FontWeight.w600),
         (AppTypography.connectChoiceLabel, 12, FontWeight.w500),
-        (AppTypography.advancedTab, 13, FontWeight.w600),
         (AppTypography.connectChoiceTitle, 14, FontWeight.w600),
         (AppTypography.connectChoiceMeta, 12, FontWeight.w600),
         (AppTypography.connectTrafficTitle, 15, FontWeight.w700),
@@ -202,14 +200,12 @@ void main() {
       },
     );
 
-    test('mobile theme uses shared header, gutter and button sizes', () {
+    test('mobile theme uses native navigation sizes and shared gutters', () {
       final material = AppTheme.material(Brightness.light, mobile: true);
       final shad = AppTheme.shad(Brightness.light, mobile: true);
-      expect(material.appBarTheme.titleTextStyle!.fontSize, 20);
-      expect(material.appBarTheme.titleTextStyle!.fontWeight, FontWeight.w600);
-      expect(material.appBarTheme.titleTextStyle!.letterSpacing, isNull);
+      expect(material.appBarTheme.titleTextStyle, isNull);
       expect(material.appBarTheme.centerTitle, isFalse);
-      expect(material.appBarTheme.toolbarHeight, kToolbarHeight);
+      expect(material.appBarTheme.toolbarHeight, isNull);
       expect(
         material.appBarTheme.titleSpacing,
         AppSpacing.mobileHeaderHorizontal,
@@ -221,14 +217,14 @@ void main() {
         ),
       );
       final navigation = material.navigationBarTheme;
-      expect(navigation.height, 92);
+      expect(navigation.height, isNull);
       expect(navigation.indicatorColor, Colors.transparent);
-      expect(navigation.iconTheme!.resolve({})!.size, 21);
+      expect(navigation.iconTheme!.resolve({})!.size, isNull);
       expect(
         navigation.iconTheme!.resolve({})!.color,
         AppPalette.light.mutedStrong,
       );
-      expect(navigation.labelTextStyle!.resolve({})!.fontSize, 12);
+      expect(navigation.labelTextStyle!.resolve({})!.fontSize, isNull);
       expect(
         navigation.labelTextStyle!.resolve({})!.fontWeight,
         FontWeight.w400,

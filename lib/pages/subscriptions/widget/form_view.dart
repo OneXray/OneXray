@@ -6,7 +6,7 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-class SubscriptionFormView extends StatefulWidget {
+class SubscriptionFormView extends StatelessWidget {
   const SubscriptionFormView({
     super.key,
     required this.supportText,
@@ -27,7 +27,6 @@ class SubscriptionFormView extends StatefulWidget {
     required this.agePublicKeyHint,
     required this.agePublicKeyController,
     this.ageKeyPairErrorText,
-    this.onAgeKeyChanged,
     required this.obscureAgeSecretKey,
     required this.revealAgeSecretKeyLabel,
     required this.hideAgeSecretKeyLabel,
@@ -40,6 +39,9 @@ class SubscriptionFormView extends StatefulWidget {
     required this.onClearAgeKey,
     this.generatingAgeKeyType,
     this.ageKeyActionsEnabled = true,
+    required this.hasAgeKeys,
+    required this.ageExpanded,
+    required this.onToggleAgeExpanded,
   });
 
   final String supportText;
@@ -60,7 +62,6 @@ class SubscriptionFormView extends StatefulWidget {
   final String agePublicKeyHint;
   final TextEditingController agePublicKeyController;
   final String? ageKeyPairErrorText;
-  final ValueChanged<String>? onAgeKeyChanged;
   final bool obscureAgeSecretKey;
   final String revealAgeSecretKeyLabel;
   final String hideAgeSecretKeyLabel;
@@ -73,57 +74,10 @@ class SubscriptionFormView extends StatefulWidget {
   final VoidCallback onClearAgeKey;
   final AgeKeyType? generatingAgeKeyType;
   final bool ageKeyActionsEnabled;
+  final bool hasAgeKeys;
+  final bool ageExpanded;
+  final VoidCallback onToggleAgeExpanded;
   bool get generatingAgeKey => generatingAgeKeyType != null;
-
-  @override
-  State<SubscriptionFormView> createState() => _SubscriptionFormViewState();
-}
-
-class _SubscriptionFormViewState extends State<SubscriptionFormView> {
-  late bool _hasKeys;
-  late bool _expanded;
-
-  bool get _readHasKeys =>
-      widget.ageSecretKeyController.text.trim().isNotEmpty ||
-      widget.agePublicKeyController.text.trim().isNotEmpty;
-
-  @override
-  void initState() {
-    super.initState();
-    _hasKeys = _readHasKeys;
-    _expanded = _hasKeys;
-    widget.ageSecretKeyController.addListener(_keysChanged);
-    widget.agePublicKeyController.addListener(_keysChanged);
-  }
-
-  @override
-  void didUpdateWidget(SubscriptionFormView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.ageSecretKeyController != widget.ageSecretKeyController ||
-        oldWidget.agePublicKeyController != widget.agePublicKeyController) {
-      oldWidget.ageSecretKeyController.removeListener(_keysChanged);
-      oldWidget.agePublicKeyController.removeListener(_keysChanged);
-      widget.ageSecretKeyController.addListener(_keysChanged);
-      widget.agePublicKeyController.addListener(_keysChanged);
-      _keysChanged();
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.ageSecretKeyController.removeListener(_keysChanged);
-    widget.agePublicKeyController.removeListener(_keysChanged);
-    super.dispose();
-  }
-
-  void _keysChanged() {
-    final hasKeys = _readHasKeys;
-    if (hasKeys == _hasKeys) return;
-    setState(() {
-      _hasKeys = hasKeys;
-      if (hasKeys) _expanded = true;
-    });
-  }
 
   @override
   Widget build(BuildContext context) => Column(
@@ -138,7 +92,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
               ? 4
               : 0,
         ).copyWith(top: 12),
-        child: _notice(context, widget.supportText),
+        child: _notice(context, supportText),
       ),
       const SizedBox(height: 14),
       _encryptionCard(context),
@@ -149,16 +103,16 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
     final fields = [
       _editableField(
         context,
-        label: widget.nameLabel,
-        controller: widget.nameController,
-        hintText: widget.nameHint ?? widget.nameLabel,
+        label: nameLabel,
+        controller: nameController,
+        hintText: nameHint ?? nameLabel,
       ),
       _editableField(
         context,
-        label: widget.urlLabel,
-        controller: widget.urlController,
-        hintText: widget.urlHint,
-        helperText: widget.urlHelper,
+        label: urlLabel,
+        controller: urlController,
+        hintText: urlHint,
+        helperText: urlHelper,
         textDirection: TextDirection.ltr,
         keyboardType: TextInputType.url,
       ),
@@ -227,10 +181,10 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
         children: [
           Semantics(
             button: true,
-            expanded: _expanded,
+            expanded: ageExpanded,
             child: InkWell(
               borderRadius: BorderRadius.circular(AppRadii.card),
-              onTap: () => setState(() => _expanded = !_expanded),
+              onTap: onToggleAgeExpanded,
               child: Container(
                 constraints: const BoxConstraints(minHeight: 58),
                 padding: const EdgeInsets.symmetric(
@@ -246,11 +200,11 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.encryptionTitle,
+                            encryptionTitle,
                             style: AppTypography.subscriptionAgeTitle,
                           ),
                           Text(
-                            widget.ageProviderSupportTitle,
+                            ageProviderSupportTitle,
                             style: AppTypography.subscriptionAgeOptional
                                 .copyWith(color: palette.mutedForeground),
                           ),
@@ -258,7 +212,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                       ),
                     ),
                     Icon(
-                      _expanded
+                      ageExpanded
                           ? LucideIcons.arrowDown
                           : LucideIcons.arrowRightDir,
                       size: 18,
@@ -269,7 +223,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
               ),
             ),
           ),
-          if (_expanded) ...[
+          if (ageExpanded) ...[
             Divider(height: 0, color: palette.border),
             Padding(
               padding: const EdgeInsets.all(13),
@@ -279,33 +233,32 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                 children: [
                   _notice(
                     context,
-                    widget.ageProviderSupportDescription,
+                    ageProviderSupportDescription,
                     warning: true,
                   ),
                   Column(
                     spacing: 7,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _fieldLabel(context, widget.ageSecretKeyLabel),
+                      _fieldLabel(context, ageSecretKeyLabel),
                       Row(
                         spacing: 6,
                         children: [
                           Expanded(
                             child: _input(
                               context,
-                              controller: widget.ageSecretKeyController,
-                              hintText: widget.ageSecretKeyHint,
-                              obscureText: widget.obscureAgeSecretKey,
-                              onChanged: widget.onAgeKeyChanged,
-                              enabled: !widget.generatingAgeKey,
+                              controller: ageSecretKeyController,
+                              hintText: ageSecretKeyHint,
+                              obscureText: obscureAgeSecretKey,
+                              enabled: !generatingAgeKey,
                               textDirection: TextDirection.ltr,
                             ),
                           ),
                           IconButton(
-                            tooltip: widget.obscureAgeSecretKey
-                                ? widget.revealAgeSecretKeyLabel
-                                : widget.hideAgeSecretKeyLabel,
-                            onPressed: widget.onToggleAgeSecretKeyVisibility,
+                            tooltip: obscureAgeSecretKey
+                                ? revealAgeSecretKeyLabel
+                                : hideAgeSecretKeyLabel,
+                            onPressed: onToggleAgeSecretKeyVisibility,
                             style: IconButton.styleFrom(
                               foregroundColor: palette.mutedStrong,
                               minimumSize: const Size.square(36),
@@ -314,7 +267,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: Icon(
-                              widget.obscureAgeSecretKey
+                              obscureAgeSecretKey
                                   ? LucideIcons.eye
                                   : LucideIcons.eyeOff,
                               size: 17,
@@ -326,16 +279,15 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                   ),
                   _editableField(
                     context,
-                    label: widget.agePublicKeyLabel,
-                    controller: widget.agePublicKeyController,
-                    hintText: widget.agePublicKeyHint,
-                    onChanged: widget.onAgeKeyChanged,
-                    enabled: !widget.generatingAgeKey,
+                    label: agePublicKeyLabel,
+                    controller: agePublicKeyController,
+                    hintText: agePublicKeyHint,
+                    enabled: !generatingAgeKey,
                     textDirection: TextDirection.ltr,
                   ),
-                  if (widget.ageKeyPairErrorText != null)
+                  if (ageKeyPairErrorText != null)
                     Text(
-                      widget.ageKeyPairErrorText!,
+                      ageKeyPairErrorText!,
                       style: AppTypography.subscriptionAgeWarning.copyWith(
                         color: palette.destructive,
                       ),
@@ -361,10 +313,10 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.standard,
       ),
-      onPressed: widget.generatingAgeKey || !widget.ageKeyActionsEnabled
+      onPressed: generatingAgeKey || !ageKeyActionsEnabled
           ? null
-          : () => widget.onGenerateAgeKey(type),
-      icon: widget.generatingAgeKeyType == type
+          : () => onGenerateAgeKey(type),
+      icon: generatingAgeKeyType == type
           ? const ButtonProgressIndicator()
           : const Icon(LucideIcons.keyRound, size: 16),
       label: Text(label),
@@ -373,27 +325,26 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        generate(AgeKeyType.x25519, widget.generateAgeX25519KeyLabel),
-        generate(AgeKeyType.hybrid, widget.generateAgeHybridKeyLabel),
+        generate(AgeKeyType.x25519, generateAgeX25519KeyLabel),
+        generate(AgeKeyType.hybrid, generateAgeHybridKeyLabel),
       ],
     );
     final clear = TextButton(
-      onPressed:
-          widget.generatingAgeKey || !widget.ageKeyActionsEnabled || !_hasKeys
+      onPressed: generatingAgeKey || !ageKeyActionsEnabled || !hasAgeKeys
           ? null
-          : widget.onClearAgeKey,
+          : onClearAgeKey,
       style: TextButton.styleFrom(
         minimumSize: const Size(0, 38),
         padding: const EdgeInsets.symmetric(horizontal: 8),
         textStyle: AppTypography.subscriptionClear,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      child: Text(widget.clearAgeKeyLabel),
+      child: Text(clearAgeKeyLabel),
     );
     return Semantics(
       container: true,
       explicitChildNodes: true,
-      label: widget.generateAgeKeyLabel,
+      label: generateAgeKeyLabel,
       child: LayoutBuilder(
         builder: (context, constraints) => constraints.maxWidth < 400
             ? Column(

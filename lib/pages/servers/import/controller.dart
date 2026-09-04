@@ -6,6 +6,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/assets/import.dart';
@@ -18,7 +19,109 @@ import 'package:re_editor/re_editor.dart';
 
 enum ServerImportAction { scan, paste, subscription, file, json }
 
-class ServerImportController extends ChangeNotifier {
+@immutable
+class ServerImportPageState {
+  static const _unset = Object();
+
+  ServerImportPageState({
+    this.inputText = '',
+    this.jsonInput = '',
+    this.name = '',
+    this.url = '',
+    this.secretKey = '',
+    this.publicKey = '',
+    this.busy = false,
+    this.loadingSubscription = false,
+    this.openingAction,
+    this.generatingAgeKeyType,
+    this.obscureSecret = true,
+    this.loadFailed = false,
+    this.error,
+    List<ServerSubscriptionImport> subscriptionImports = const [],
+    this.committedResult,
+    this.ageExpanded = false,
+    this.hasAgeKeys = false,
+    this.scannerPickingImage = false,
+  }) : subscriptionImports = List.unmodifiable(subscriptionImports);
+
+  final String inputText;
+  final String jsonInput;
+  final String name;
+  final String url;
+  final String secretKey;
+  final String publicKey;
+  final bool busy;
+  final bool loadingSubscription;
+  final ServerImportAction? openingAction;
+  final AgeKeyType? generatingAgeKeyType;
+  final bool obscureSecret;
+  final bool loadFailed;
+  final String? error;
+  final List<ServerSubscriptionImport> subscriptionImports;
+  final ServerImportResult? committedResult;
+  final bool ageExpanded;
+  final bool hasAgeKeys;
+  final bool scannerPickingImage;
+
+  bool get generatingAgeKey => generatingAgeKeyType != null;
+  bool get submitting => busy && !loadingSubscription && openingAction == null;
+  bool get canClose => !busy || loadingSubscription || openingAction != null;
+  bool get incompleteKeys =>
+      secretKey.trim().isEmpty != publicKey.trim().isEmpty;
+  int get importedSubscriptionCount =>
+      subscriptionImports.where((item) => item.result.success).length;
+  int get importedSubscriptionNodes => subscriptionImports
+      .where((item) => item.result.success)
+      .fold(0, (total, item) => total + item.result.count);
+
+  ServerImportPageState copyWith({
+    String? inputText,
+    String? jsonInput,
+    String? name,
+    String? url,
+    String? secretKey,
+    String? publicKey,
+    bool? busy,
+    bool? loadingSubscription,
+    Object? openingAction = _unset,
+    Object? generatingAgeKeyType = _unset,
+    bool? obscureSecret,
+    bool? loadFailed,
+    Object? error = _unset,
+    List<ServerSubscriptionImport>? subscriptionImports,
+    Object? committedResult = _unset,
+    bool? ageExpanded,
+    bool? hasAgeKeys,
+    bool? scannerPickingImage,
+  }) => ServerImportPageState(
+    inputText: inputText ?? this.inputText,
+    jsonInput: jsonInput ?? this.jsonInput,
+    name: name ?? this.name,
+    url: url ?? this.url,
+    secretKey: secretKey ?? this.secretKey,
+    publicKey: publicKey ?? this.publicKey,
+    busy: busy ?? this.busy,
+    loadingSubscription: loadingSubscription ?? this.loadingSubscription,
+    openingAction: identical(openingAction, _unset)
+        ? this.openingAction
+        : openingAction as ServerImportAction?,
+    generatingAgeKeyType: identical(generatingAgeKeyType, _unset)
+        ? this.generatingAgeKeyType
+        : generatingAgeKeyType as AgeKeyType?,
+    obscureSecret: obscureSecret ?? this.obscureSecret,
+    loadFailed: loadFailed ?? this.loadFailed,
+    error: identical(error, _unset) ? this.error : error as String?,
+    subscriptionImports: subscriptionImports ?? this.subscriptionImports,
+    committedResult: identical(committedResult, _unset)
+        ? this.committedResult
+        : committedResult as ServerImportResult?,
+    ageExpanded: ageExpanded ?? this.ageExpanded,
+    hasAgeKeys: hasAgeKeys ?? this.hasAgeKeys,
+    scannerPickingImage: scannerPickingImage ?? this.scannerPickingImage,
+  );
+}
+
+class ServerImportController extends PageCubit<ServerImportPageState> {
   final ServerImportService service;
   final int? subscriptionId;
   final Future<SubscriptionData?> Function(int) _loadSubscription;
@@ -46,7 +149,8 @@ class ServerImportController extends ChangeNotifier {
                excludingId: id,
              );
              return result.item1 ? null : result.item2;
-           }) {
+           }),
+       super(ServerImportPageState()) {
     jsonText.addListener(_changed);
     for (final field in [text, name, url, secretKey, publicKey]) {
       field.addListener(_changed);
@@ -59,58 +163,50 @@ class ServerImportController extends ChangeNotifier {
   final url = TextEditingController();
   final secretKey = TextEditingController();
   final publicKey = TextEditingController();
-  bool busy = false;
-  bool loadingSubscription = false;
-  ServerImportAction? openingAction;
-  AgeKeyType? generatingAgeKeyType;
-  bool get generatingAgeKey => generatingAgeKeyType != null;
-  bool get submitting => busy && !loadingSubscription && openingAction == null;
-  // A committing import owns its preview files and must return partial writes.
-  bool get canClose => !busy || loadingSubscription || openingAction != null;
-  bool obscureSecret = true;
-  bool loadFailed = false;
-  String? error;
-  bool _disposed = false;
   bool _closingFlow = false;
   bool _previewOpen = false;
   final _completedSubscriptions = <String, ServerSubscriptionImport>{};
   AgeKeyType? _linkAgeType;
-  List<ServerSubscriptionImport> subscriptionImports = const [];
-  ServerImportResult? committedResult;
-  int get importedSubscriptionCount =>
-      subscriptionImports.where((item) => item.result.success).length;
-  int get importedSubscriptionNodes => subscriptionImports
-      .where((item) => item.result.success)
-      .fold(0, (total, item) => total + item.result.count);
 
   bool get supportsScan => AppPlatform.isMobile;
   bool get editingSubscription => subscriptionId != null;
-  bool get incompleteKeys =>
-      secretKey.text.trim().isEmpty != publicKey.text.trim().isEmpty;
   bool canSubmit(ServerImportAction action) {
-    if (busy || generatingAgeKey || loadFailed) return false;
+    if (state.busy || state.generatingAgeKey || state.loadFailed) return false;
     if (action == ServerImportAction.subscription) {
-      final uri = Uri.tryParse(SubscriptionUrl.normalize(url.text));
-      return name.text.trim().isNotEmpty &&
+      final uri = Uri.tryParse(SubscriptionUrl.normalize(state.url));
+      return state.name.trim().isNotEmpty &&
           uri != null &&
           NetClient.isHttpsDownloadUri(uri) &&
-          !incompleteKeys;
+          !state.incompleteKeys;
     }
     return action == ServerImportAction.file ||
         action == ServerImportAction.scan ||
-        (action == ServerImportAction.json ? jsonText.text : text.text)
+        (action == ServerImportAction.json ? state.jsonInput : state.inputText)
             .trim()
             .isNotEmpty;
   }
 
   void _changed() {
-    if (!_disposed) notifyListeners();
+    final hasAgeKeys =
+        secretKey.text.trim().isNotEmpty || publicKey.text.trim().isNotEmpty;
+    emit(
+      state.copyWith(
+        inputText: text.text,
+        jsonInput: jsonText.text,
+        name: name.text,
+        url: url.text,
+        secretKey: secretKey.text,
+        publicKey: publicKey.text,
+        hasAgeKeys: hasAgeKeys,
+        ageExpanded: state.ageExpanded || (hasAgeKeys && !state.hasAgeKeys),
+      ),
+    );
   }
 
   void closePage(BuildContext context) {
-    if (!canClose) return;
+    if (!state.canClose) return;
     // A completed preview must not become an editable, repeatable import again.
-    if (_previewOpen && committedResult != null) {
+    if (_previewOpen && state.committedResult != null) {
       closeFlow(context);
     } else {
       Navigator.of(context).pop();
@@ -118,30 +214,30 @@ class ServerImportController extends ChangeNotifier {
   }
 
   void closeFlow(BuildContext context) {
-    if (!canClose) return;
+    if (!state.canClose) return;
     _closingFlow = true;
-    Navigator.of(context)
-        .pop(committedResult ?? (_previewOpen ? null : _subscriptionResult));
+    Navigator.of(
+      context,
+    ).pop(state.committedResult ?? (_previewOpen ? null : _subscriptionResult));
   }
 
-  ServerImportResult? get _subscriptionResult => importedSubscriptionCount == 0
+  ServerImportResult? get _subscriptionResult =>
+      state.importedSubscriptionCount == 0
       ? null
       : ServerImportResult(
-          count: importedSubscriptionNodes,
-          subscriptionCount: importedSubscriptionCount,
+          count: state.importedSubscriptionNodes,
+          subscriptionCount: state.importedSubscriptionCount,
         );
 
   Future<void> loadSubscription(BuildContext context) async {
     final id = subscriptionId;
-    if (id == null || busy) return;
+    if (id == null || state.busy) return;
     final fields = [name, url, secretKey, publicKey];
     final initialValues = fields.map((field) => field.text).toList();
-    busy = true;
-    loadingSubscription = true;
-    _changed();
+    emit(state.copyWith(busy: true, loadingSubscription: true));
     try {
       final row = await _loadSubscription(id);
-      if (_disposed) return;
+      if (!isPageActive) return;
       if (row == null) throw StateError('Subscription no longer exists');
       final loadedValues = [
         row.name,
@@ -155,49 +251,46 @@ class ServerImportController extends ChangeNotifier {
         }
       }
     } catch (_) {
-      loadFailed = true;
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.buttonSaveFailed;
+        emit(
+          state.copyWith(
+            loadFailed: true,
+            error: AppLocalizations.of(context)!.buttonSaveFailed,
+          ),
+        );
       }
     } finally {
-      busy = false;
-      loadingSubscription = false;
-      _changed();
+      emit(state.copyWith(busy: false, loadingSubscription: false));
     }
   }
 
   Future<void> open(BuildContext context, ServerImportAction action) async {
-    if (busy) return;
+    if (state.busy) return;
     _closingFlow = false;
-    error = null;
-    committedResult = null;
-    _changed();
+    emit(state.copyWith(error: null, committedResult: null));
     ServerImportResult? result;
     if (action == ServerImportAction.file ||
         action == ServerImportAction.scan) {
       String? input;
-      busy = true;
-      openingAction = action;
-      _changed();
+      emit(state.copyWith(busy: true, openingAction: action));
       try {
         input = action == ServerImportAction.file
             ? await ServerImportService.pickTextFile()
             : await _scan(context);
-        busy = false;
-        openingAction = null;
-        _changed();
-        if (input != null && !_disposed && context.mounted) {
+        emit(state.copyWith(busy: false, openingAction: null));
+        if (input != null && isPageActive && context.mounted) {
           result = await _importText(context, input);
         }
       } catch (_) {
         if (context.mounted) {
-          error = AppLocalizations.of(context)!.prototypeCannotReadContent;
+          emit(
+            state.copyWith(
+              error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+            ),
+          );
         }
-        _changed();
       } finally {
-        busy = false;
-        openingAction = null;
-        _changed();
+        emit(state.copyWith(busy: false, openingAction: null));
       }
     } else {
       if (action == ServerImportAction.json && jsonText.text.isEmpty) {
@@ -215,7 +308,7 @@ class ServerImportController extends ChangeNotifier {
     }
     if ((result != null || _closingFlow) && context.mounted) {
       Navigator.of(context)
-          .pop(result ?? committedResult ?? _subscriptionResult);
+          .pop(result ?? state.committedResult ?? _subscriptionResult);
     }
   }
 
@@ -224,7 +317,7 @@ class ServerImportController extends ChangeNotifier {
     final result = await _importText(context, input);
     if ((result != null || _closingFlow) && context.mounted) {
       Navigator.of(context)
-          .pop(result ?? committedResult ?? _subscriptionResult);
+          .pop(result ?? state.committedResult ?? _subscriptionResult);
     }
   }
 
@@ -237,15 +330,18 @@ class ServerImportController extends ChangeNotifier {
       detection = service.detect(input);
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeCannotReadContent;
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+          ),
+        );
       }
-      _changed();
       return null;
     }
     final link = ServerImportService.singleLink(input);
-    committedResult = null;
+    emit(state.copyWith(committedResult: null));
     if (link is OneXraySubscriptionLink) {
-      subscriptionImports = const [];
+      emit(state.copyWith(subscriptionImports: const []));
       name.text = link.name;
       url.text = link.url;
       secretKey.clear();
@@ -261,10 +357,9 @@ class ServerImportController extends ChangeNotifier {
         ),
       );
     }
-    busy = true;
-    error = null;
-    subscriptionImports = const [];
-    _changed();
+    emit(
+      state.copyWith(busy: true, error: null, subscriptionImports: const []),
+    );
     try {
       // Back only reopens the local draft; successful subscriptions are not
       // downloaded and inserted again when Detect is pressed a second time.
@@ -277,42 +372,43 @@ class ServerImportController extends ChangeNotifier {
           _completedSubscriptions[pending[index].url] = results[index];
         }
       }
-      subscriptionImports = [
-        ..._completedSubscriptions.values,
-        ...results.where((item) => !item.result.success),
-      ];
+      emit(
+        state.copyWith(
+          subscriptionImports: [
+            ..._completedSubscriptions.values,
+            ...results.where((item) => !item.result.success),
+          ],
+        ),
+      );
     } finally {
-      busy = false;
-      _changed();
+      emit(state.copyWith(busy: false));
     }
     if (!context.mounted) return null;
     ServerImportResult? local;
     if (detection.localText.trim().isNotEmpty) {
       local = await _preview(context, detection.localText);
     }
-    if (local == null && importedSubscriptionCount == 0) return null;
+    if (local == null && state.importedSubscriptionCount == 0) return null;
     final result = ServerImportResult(
-      count: importedSubscriptionNodes + (local?.count ?? 0),
+      count: state.importedSubscriptionNodes + (local?.count ?? 0),
       rawCount: local?.rawCount ?? 0,
       customCount: local?.customCount ?? 0,
       geoDataCount: local?.geoDataCount ?? 0,
-      subscriptionCount: importedSubscriptionCount,
+      subscriptionCount: state.importedSubscriptionCount,
       failureCount: local?.failureCount,
       failedGeoData: local?.failedGeoData ?? const [],
     );
     if (detection.localText.trim().isNotEmpty &&
         local == null &&
         !_closingFlow) {
-      committedResult = result;
-      _changed();
+      emit(state.copyWith(committedResult: result));
       return null;
     }
     if (detection.localText.trim().isEmpty) {
-      if (subscriptionImports.any((item) => !item.result.success)) {
+      if (state.subscriptionImports.any((item) => !item.result.success)) {
         // Keep failures visible and the original input available for retry.
         // Closing this input still reports subscriptions already imported.
-        committedResult = result;
-        _changed();
+        emit(state.copyWith(committedResult: result));
         return null;
       }
       if (context.mounted) {
@@ -334,24 +430,29 @@ class ServerImportController extends ChangeNotifier {
       return null;
     }
     var completed = false;
-    var pickingImage = false;
     return Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (scannerContext) => ServerImportScannerPage(
+          controller: this,
           onDetect: (capture) {
             final value = capture.barcodes.firstOrNull?.rawValue;
-            if (completed || pickingImage || value == null) return;
+            if (completed || state.scannerPickingImage || value == null) {
+              return;
+            }
             completed = true;
             Navigator.of(scannerContext).pop(value);
           },
           onPickImage: () async {
-            if (completed || pickingImage) return;
-            pickingImage = true;
-            final value = await pickQrImage(scannerContext);
-            pickingImage = false;
-            if (completed || value == null || !scannerContext.mounted) return;
-            completed = true;
-            Navigator.of(scannerContext).pop(value);
+            if (completed || state.scannerPickingImage) return;
+            emit(state.copyWith(scannerPickingImage: true));
+            try {
+              final value = await pickQrImage(scannerContext);
+              if (completed || value == null || !scannerContext.mounted) return;
+              completed = true;
+              Navigator.of(scannerContext).pop(value);
+            } finally {
+              emit(state.copyWith(scannerPickingImage: false));
+            }
           },
         ),
       ),
@@ -375,26 +476,29 @@ class ServerImportController extends ChangeNotifier {
   Future<void> readClipboard(BuildContext context) async {
     try {
       final input = await ServerImportService.readClipboard();
-      if (_disposed) return;
+      if (!isPageActive) return;
       if (input == null) throw const FormatException('Empty clipboard');
       text.text = input;
-      error = null;
+      emit(state.copyWith(error: null));
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.prototypeCannotReadContent;
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+          ),
+        );
       }
     }
-    _changed();
   }
 
   Future<void> detect(BuildContext context, ServerImportAction action) async {
-    if (busy) return;
+    if (state.busy) return;
     final result = action == ServerImportAction.json
-        ? await _preview(context, jsonText.text, manual: true)
-        : await _importText(context, text.text);
+        ? await _preview(context, state.jsonInput, manual: true)
+        : await _importText(context, state.inputText);
     if ((result != null || _closingFlow) && context.mounted) {
       Navigator.of(context)
-          .pop(result ?? committedResult ?? _subscriptionResult);
+          .pop(result ?? state.committedResult ?? _subscriptionResult);
     }
   }
 
@@ -403,23 +507,23 @@ class ServerImportController extends ChangeNotifier {
     String input, {
     bool manual = false,
   }) async {
-    busy = true;
-    error = null;
-    committedResult = null;
-    _changed();
+    emit(state.copyWith(busy: true, error: null, committedResult: null));
     ServerImportPreview? preview;
     try {
       preview = await service.preview(input, manual: manual);
     } catch (_) {
       if (context.mounted) {
         final l10n = AppLocalizations.of(context)!;
-        error = manual
-            ? l10n.prototypeNodeJsonHint
-            : l10n.prototypeNoSupportedLinks;
+        emit(
+          state.copyWith(
+            error: manual
+                ? l10n.prototypeNodeJsonHint
+                : l10n.prototypeNoSupportedLinks,
+          ),
+        );
       }
     } finally {
-      busy = false;
-      _changed();
+      emit(state.copyWith(busy: false));
     }
     if (preview == null) return null;
     if (!context.mounted) {
@@ -448,20 +552,18 @@ class ServerImportController extends ChangeNotifier {
     BuildContext context,
     ServerImportPreview preview,
   ) async {
-    if (busy) return;
-    if (committedResult != null) {
-      Navigator.of(context).pop(committedResult);
+    if (state.busy) return;
+    if (state.committedResult != null) {
+      Navigator.of(context).pop(state.committedResult);
       return;
     }
-    busy = true;
-    error = null;
-    _changed();
+    emit(state.copyWith(busy: true, error: null));
     try {
       final result = await service.commit(preview);
       if (context.mounted) {
         final l10n = AppLocalizations.of(context)!;
         if (result.writeFailureCount > 0) {
-          committedResult = result;
+          emit(state.copyWith(committedResult: result));
           return;
         }
         ContextAlert.showToast(
@@ -485,19 +587,18 @@ class ServerImportController extends ChangeNotifier {
       }
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.buttonAddFailed;
+        emit(
+          state.copyWith(error: AppLocalizations.of(context)!.buttonAddFailed),
+        );
       }
     } finally {
-      busy = false;
-      _changed();
+      emit(state.copyWith(busy: false));
     }
   }
 
   Future<void> subscribe(BuildContext context) async {
-    if (busy || generatingAgeKey || loadFailed) return;
-    busy = true;
-    error = null;
-    _changed();
+    if (state.busy || state.generatingAgeKey || state.loadFailed) return;
+    emit(state.copyWith(busy: true, error: null));
     try {
       if (_linkAgeType != null &&
           secretKey.text.trim().isEmpty &&
@@ -505,7 +606,7 @@ class ServerImportController extends ChangeNotifier {
         final pair = await AppHostApi().generateAgeKeyPair(
           keyType: _linkAgeType!,
         );
-        if (_disposed) return;
+        if (!isPageActive) return;
         secretKey.text = pair.secretKey ?? '';
         publicKey.text = pair.publicKey ?? '';
         if (secretKey.text.isEmpty || publicKey.text.isEmpty) {
@@ -513,20 +614,24 @@ class ServerImportController extends ChangeNotifier {
         }
       }
       final input = SubscriptionInput(
-        name: name.text.trim(),
-        url: SubscriptionUrl.normalize(url.text),
-        ageSecretKey: secretKey.text,
-        agePublicKey: publicKey.text,
+        name: state.name.trim(),
+        url: SubscriptionUrl.normalize(state.url),
+        ageSecretKey: state.secretKey,
+        agePublicKey: state.publicKey,
       );
       if (input.hasIncompleteAgeKeyPair) {
         if (!context.mounted) return;
-        error = AppLocalizations.of(context)!.prototypeAgeBothKeysRequired;
+        emit(
+          state.copyWith(
+            error: AppLocalizations.of(context)!.prototypeAgeBothKeysRequired,
+          ),
+        );
         return;
       }
       final problem = await _validateSubscription(input, subscriptionId);
-      if (_disposed || !context.mounted) return;
+      if (!isPageActive || !context.mounted) return;
       if (problem != null) {
-        error = problem;
+        emit(state.copyWith(error: problem));
         return;
       }
       if (subscriptionId != null) {
@@ -539,7 +644,11 @@ class ServerImportController extends ChangeNotifier {
           );
           Navigator.of(context).pop(subscriptionId);
         } else {
-          error = subscriptionError(AppLocalizations.of(context)!, status);
+          emit(
+            state.copyWith(
+              error: subscriptionError(AppLocalizations.of(context)!, status),
+            ),
+          );
         }
         return;
       }
@@ -550,7 +659,7 @@ class ServerImportController extends ChangeNotifier {
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
       if (!result.success) {
-        error = subscriptionError(l10n, result.status);
+        emit(state.copyWith(error: subscriptionError(l10n, result.status)));
         return;
       }
       ContextAlert.showToast(
@@ -572,11 +681,12 @@ class ServerImportController extends ChangeNotifier {
       );
     } catch (_) {
       if (context.mounted) {
-        error = AppLocalizations.of(context)!.buttonAddFailed;
+        emit(
+          state.copyWith(error: AppLocalizations.of(context)!.buttonAddFailed),
+        );
       }
     } finally {
-      busy = false;
-      _changed();
+      emit(state.copyWith(busy: false));
     }
   }
 
@@ -597,25 +707,24 @@ class ServerImportController extends ChangeNotifier {
     _ => l10n.buttonSaveFailed,
   };
 
-  void ageChanged(String _) => _changed();
   void toggleSecret() {
-    obscureSecret = !obscureSecret;
-    _changed();
+    emit(state.copyWith(obscureSecret: !state.obscureSecret));
+  }
+
+  void toggleAgeExpanded() {
+    emit(state.copyWith(ageExpanded: !state.ageExpanded));
   }
 
   void clearKeys() {
-    if (busy || generatingAgeKey) return;
+    if (state.busy || state.generatingAgeKey) return;
     secretKey.clear();
     publicKey.clear();
-    _changed();
   }
 
   Future<void> generateKeys(BuildContext context, AgeKeyType type) async {
-    if (busy || generatingAgeKey || _disposed) return;
+    if (state.busy || state.generatingAgeKey || !isPageActive) return;
     final l10n = AppLocalizations.of(context)!;
-    generatingAgeKeyType = type;
-    error = null;
-    _changed();
+    emit(state.copyWith(generatingAgeKeyType: type, error: null));
     try {
       if (secretKey.text.isNotEmpty || publicKey.text.isNotEmpty) {
         if (!await ContextAlert.showConfirmDialog(
@@ -624,31 +733,30 @@ class ServerImportController extends ChangeNotifier {
               content: l10n.subscriptionReplaceAgeKeyMessage,
               confirmLabel: l10n.subscriptionGenerateAgeKey,
             ) ||
-            _disposed ||
+            !isPageActive ||
             !context.mounted) {
           return;
         }
       }
       final pair = await AppHostApi().generateAgeKeyPair(keyType: type);
-      if (!_disposed) {
+      if (isPageActive) {
         secretKey.text = pair.secretKey ?? '';
         publicKey.text = pair.publicKey ?? '';
       }
     } catch (_) {
-      error = l10n.subscriptionGenerateAgeKeyFailed;
+      emit(state.copyWith(error: l10n.subscriptionGenerateAgeKeyFailed));
     } finally {
-      generatingAgeKeyType = null;
-      _changed();
+      emit(state.copyWith(generatingAgeKeyType: null));
     }
   }
 
   @override
-  void dispose() {
-    _disposed = true;
+  void disposePageResources() {
+    jsonText.removeListener(_changed);
     jsonText.dispose();
     for (final controller in [text, name, url, secretKey, publicKey]) {
+      controller.removeListener(_changed);
       controller.dispose();
     }
-    super.dispose();
   }
 }

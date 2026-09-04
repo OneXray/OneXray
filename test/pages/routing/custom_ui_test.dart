@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -10,6 +11,7 @@ import 'package:onexray/pages/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/routing/custom/rule_page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/routing/custom_editor.dart';
 import 'package:onexray/service/routing/geodata_suggestions.dart';
 import 'package:onexray/service/routing/state.dart';
@@ -57,7 +59,7 @@ void main() {
           ipFiles: {},
         ),
       );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       await tester.pumpWidget(
         _app(
           Scaffold(
@@ -109,7 +111,7 @@ void main() {
           loadIndex: () async =>
               const RoutingGeodataIndex(domainFiles: {}, ipFiles: {}),
         );
-        addTearDown(controller.dispose);
+        addTearDown(controller.close);
         await tester.pumpWidget(
           _app(
             Scaffold(
@@ -230,7 +232,7 @@ void main() {
           coordinator: coordinator,
         ),
       );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       addTearDown(coordinator.dispose);
       addTearDown(db.close);
       late BuildContext context;
@@ -255,10 +257,10 @@ void main() {
         );
         await controller.load(context);
       });
-      expect(controller.loaded, isTrue);
+      expect(controller.state.loaded, isTrue);
       expect(controller.routeCount, 2);
       expect(controller.name.text, 'Custom Routing 2');
-      expect(controller.rules, isEmpty);
+      expect(controller.state.rules, isEmpty);
       controller.replaceTemplate(
         jsonEncode({
           'outbounds': [{}],
@@ -274,19 +276,23 @@ void main() {
           },
         }),
       );
-      final selected = controller.selectedRuleKey;
+      final selected = controller.state.selectedRuleKey;
       controller.reorder(1, 0);
-      expect(controller.rules.map((rule) => rule.ruleTag), ['B', 'A', 'C']);
-      expect(controller.selectedRuleKey, selected);
+      expect(controller.state.rules.map((rule) => rule.ruleTag), [
+        'B',
+        'A',
+        'C',
+      ]);
+      expect(controller.state.selectedRuleKey, selected);
       controller.deleteRule(0);
-      expect(controller.rules.map((rule) => rule.ruleTag), ['A', 'C']);
-      expect(controller.selectedRuleKey, controller.ruleKeys.first);
+      expect(controller.state.rules.map((rule) => rule.ruleTag), ['A', 'C']);
+      expect(controller.state.selectedRuleKey, controller.state.ruleKeys.first);
       controller.setInlineEditing(true);
       expect(controller.inlineRule!.name.text, 'A');
       controller.inlineRule!.name.text = 'A edited';
       controller.inlineRule!.domains.single.text.text = 'edited.example';
       controller.inlineRule!.port.text = '65536';
-      expect(controller.previewState, isNull);
+      // Parent operations must synchronously flush the inline Cubit draft.
       Future<RoutingRuleState?> unexpectedNavigation(
         BuildContext _,
         RoutingRuleState? _,
@@ -294,22 +300,36 @@ void main() {
           throw StateError('Desktop must keep the editor beside the list');
       await controller.editRule(context, unexpectedNavigation, 1);
       expect(controller.inlineRule!.name.text, 'C');
-      expect(controller.rules.first.port, '65536');
+      expect(controller.state.rules.first.port, '65536');
+      expect(controller.previewState, isNull);
       await controller.editRule(context, unexpectedNavigation, 0);
       expect(controller.inlineRule!.domains.single.text.text, 'edited.example');
       expect(controller.inlineRule!.port.text, '65536');
       controller.inlineRule!.port.text = '443';
       controller.reorder(0, 1);
-      expect(controller.rules.last.ruleTag, 'A edited');
+      expect(controller.state.rules.last.ruleTag, 'A edited');
+      expect(controller.state.rules.last.port, '443');
       controller.inlineRule!.setAction(RoutingRuleAction.direct);
-      expect(controller.rules.last.action, RoutingRuleAction.direct);
       await controller.editRule(context, unexpectedNavigation);
+      expect(
+        controller.state.rules
+            .singleWhere((rule) => rule.ruleTag == 'A edited')
+            .action,
+        RoutingRuleAction.direct,
+      );
       expect(controller.inlineRule!.name.text, 'New rule');
       expect(controller.previewState, isNull);
       controller.inlineRule!.domains.single.text.text = 'new.example';
-      expect(controller.previewState!.rules, hasLength(3));
-      controller.deleteRule(2);
+      controller.deleteRule(0);
+      expect(controller.previewState!.rules, hasLength(2));
+      expect(controller.state.rules.last.domain, ['new.example']);
+      expect(controller.inlineRule!.name.text, 'New rule');
+      controller.deleteRule(1);
       expect(controller.inlineRule!.name.text, 'A edited');
+      controller.inlineRule!.port.text = '65536';
+      await controller.save(context);
+      expect(controller.state.error, isNotNull);
+      controller.inlineRule!.port.text = '443';
       controller.setInlineEditing(false);
       expect(controller.inlineRule, isNull);
       var mobileOpened = false;
@@ -318,9 +338,9 @@ void main() {
         final current = rule!;
         expect(current.ruleTag, 'A edited');
         return current.copyWith(ruleTag: 'Mobile edit');
-      }, 1);
+      }, 0);
       expect(mobileOpened, isTrue);
-      expect(controller.rules.last.ruleTag, 'Mobile edit');
+      expect(controller.state.rules.last.ruleTag, 'Mobile edit');
       await tester.pump();
       expect(
         await tester.runAsync(() => db.routingProfileDao.allRows),
@@ -329,4 +349,64 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('route save retains transfer resources until save finishes', (
+    tester,
+  ) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final coordinator = ConnectionCoordinator(database: db);
+    final service = _PendingCustomSave(database: db, coordinator: coordinator);
+    final controller = CustomRoutingEditorController(service: service);
+    addTearDown(() async {
+      coordinator.dispose();
+      await db.close();
+    });
+    late BuildContext context;
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (value) {
+            context = value;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    await controller.load(context);
+
+    final saving = controller.save(context);
+    await service.started.future;
+    unawaited(controller.close());
+    await tester.pump();
+    expect(controller.transfer.isClosed, isFalse);
+
+    service.result.complete(1);
+    await saving;
+    await tester.pump();
+    expect(controller.transfer.isClosed, isTrue);
+  });
+}
+
+class _PendingCustomSave extends CustomRoutingEditorService {
+  _PendingCustomSave({required super.database, required super.coordinator});
+
+  final started = Completer<void>();
+  final result = Completer<int?>();
+
+  @override
+  Future<CustomRoutingEditorDraft> load(int? id) async =>
+      CustomRoutingEditorDraft(state: RoutingProfileState(name: 'Work'));
+
+  @override
+  Future<List<RoutingProfileData>> get rows async => const [];
+
+  @override
+  Future<int?> save(
+    CustomRoutingEditorDraft draft, {
+    required Future<bool> Function() confirmReconnect,
+    GeoDataImportDraft? geodata,
+  }) {
+    started.complete();
+    return result.future;
+  }
 }

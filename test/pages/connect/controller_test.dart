@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/runtime.dart';
@@ -28,7 +30,7 @@ void main() {
                 smart: SmartRoutingSettings(entryCount: 3),
               ),
             );
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       addTearDown(coordinator.dispose);
       addTearDown(coordinator.db.close);
       await tester.pumpWidget(_testApp(const Scaffold(body: SizedBox())));
@@ -74,13 +76,13 @@ void main() {
         controller.selectionDetail(l),
         'Singapore 03 + Japan 02 → United States 01',
       );
-      controller.servers.removeAt(0);
+      controller.servers = controller.servers.sublist(1);
       expect(controller.selectionHealth(l), isNull);
     },
   );
 
   testWidgets(
-    'home actions use editors, dialogs and the shared server root navigation',
+    'connect actions use editors, dialogs and shared server navigation',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -95,10 +97,10 @@ void main() {
         coordinator: coordinator,
       );
       final router = GoRouter(
-        initialLocation: '/home',
+        initialLocation: '/connect',
         routes: [
           GoRoute(
-            path: '/home',
+            path: '/connect',
             builder: (context, _) => Scaffold(
               body: Column(
                 children: [
@@ -134,10 +136,10 @@ void main() {
             ],
           ),
           GoRoute(
-            path: '/subscriptions',
+            path: '/servers',
             builder: (context, _) => Scaffold(
               body: TextButton(
-                onPressed: () => context.push('/subscriptions/server-group'),
+                onPressed: () => context.push('/servers/server-group'),
                 child: const Text('servers-root'),
               ),
             ),
@@ -158,8 +160,8 @@ void main() {
           ),
         ],
       );
-      addTearDown(controller.dispose);
-      addTearDown(servers.dispose);
+      addTearDown(controller.close);
+      addTearDown(servers.close);
       addTearDown(coordinator.dispose);
       addTearDown(coordinator.db.close);
       addTearDown(router.dispose);
@@ -170,6 +172,10 @@ void main() {
           locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
+          builder: (_, child) => ShadTheme(
+            data: AppTheme.shad(Brightness.light, mobile: true),
+            child: ShadToaster(child: child!),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -201,6 +207,19 @@ void main() {
       expect(find.text('connection-home'), findsOneWidget);
       expect(find.text('Current speed'), findsNothing);
       expect(coordinator.resetCount, 0);
+      await tester.tap(find.text('traffic-action'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reset totals'));
+      await tester.pumpAndSettle();
+      coordinator.resetCompletion = Completer<void>();
+      await tester.tap(find.widgetWithText(FilledButton, 'Reset totals'));
+      await tester.pump();
+      expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+      expect(find.text('This change cannot be undone.'), findsOneWidget);
+      coordinator.resetCompletion!.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Current speed'), findsNothing);
+      expect(coordinator.resetCount, 1);
       // The backdrop remains a dismiss target outside the compact dialog.
       await tester.tap(find.text('methods-action'));
       await tester.pumpAndSettle();
@@ -209,7 +228,7 @@ void main() {
       expect(find.text('Choose a traffic method'), findsNothing);
       await tester.tap(find.text('location-action'));
       await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/subscriptions');
+      expect(router.routeInformationProvider.value.uri.path, '/servers');
       expect(find.text('servers-root'), findsOneWidget);
       expect(router.canPop(), false);
       await tester.tap(find.text('servers-root'));
@@ -218,13 +237,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         GoRouterState.of(tester.element(find.text('use-group'))).uri.path,
-        '/subscriptions/server-group',
+        '/servers/server-group',
       );
       expect(find.text('use-group'), findsOneWidget);
       expect(coordinator.saved.connection.expert, false);
       router.pop();
       await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/subscriptions');
+      expect(router.routeInformationProvider.value.uri.path, '/servers');
       expect(tester.takeException(), isNull);
     },
   );
@@ -238,7 +257,7 @@ void main() {
           ConnectController(database: coordinator.db, coordinator: coordinator)
             ..expertView = true
             ..configuration = coordinator.saved;
-      addTearDown(controller.dispose);
+      addTearDown(controller.close);
       addTearDown(coordinator.dispose);
       addTearDown(coordinator.db.close);
       await tester.pumpWidget(
@@ -279,7 +298,7 @@ void main() {
       database: coordinator.db,
       coordinator: coordinator,
     );
-    addTearDown(controller.dispose);
+    addTearDown(controller.close);
     addTearDown(coordinator.dispose);
     addTearDown(coordinator.db.close);
     final runtime = _runtime();
@@ -324,10 +343,12 @@ class _Coordinator extends ConnectionCoordinator {
   }
   final bool fail;
   int resetCount = 0;
+  Completer<void>? resetCompletion;
 
   @override
   Future<void> resetTraffic() async {
     resetCount++;
+    await resetCompletion?.future;
   }
 
   ConnectionConfiguration saved = ConnectionConfiguration(
