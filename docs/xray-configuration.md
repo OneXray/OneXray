@@ -12,7 +12,8 @@
 - Custom 使用新表保存原生 Xray JSON；`outbounds` 中 1–3 个空对象表示接入数量。
 - Custom 最多三份、名称唯一；Raw 新增最多三份，旧库超过三份不裁剪、不隐藏旧行。
 - 连接选择、Smart、隧道和日志策略在同一数据库事务提交；外观等非运行偏好仍可用 Preferences。
-  `ConnectionState` 只保存当前设置 JSON，不保存 `confirmedPlanId`、运行快照或提交日志。
+  `ConnectionConfig` 只保存当前连接配置 JSON，不保存 VPN 状态、`confirmedPlanId`、运行快照
+  或提交日志。
   配置写入经协调器串行执行，保留旧草稿内容校验与独占维护门，不额外保存提交修订号。
 
 ## 普通配置编译

@@ -87,7 +87,7 @@ class SetupService {
 
   Future<ConnectionConfiguration> configuration() async =>
       ConnectionConfiguration.fromJson(
-        jsonDecode((await _db.connectionStateDao.read()).settingsJson)
+        jsonDecode((await _db.connectionConfigDao.read()).configurationJson)
             as Map<String, dynamic>,
       );
 

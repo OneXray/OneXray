@@ -101,7 +101,6 @@ class RuntimeOptions {
 
 class CompiledConnection {
   final String xrayJson;
-  final String settingsJson;
   final List<ResolvedServer> entries;
   final ResolvedServer? finalExit;
   final Map<String, int> nodeTags;
@@ -111,7 +110,6 @@ class CompiledConnection {
 
   CompiledConnection({
     required this.xrayJson,
-    required this.settingsJson,
     required Iterable<ResolvedServer> entries,
     required this.finalExit,
     required Map<String, int> nodeTags,
@@ -352,7 +350,6 @@ class ConnectionCompiler {
     }
     return CompiledConnection(
       xrayJson: jsonEncode(config),
-      settingsJson: jsonEncode(settings.toJson()),
       entries: entries,
       finalExit: finalExit,
       nodeTags: nodeTags,

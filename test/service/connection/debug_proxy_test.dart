@@ -119,7 +119,6 @@ ConnectionRuntime _runtime({
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: config,
-      settingsJson: jsonEncode(configuration.connection.toJson()),
       entries: const [],
       finalExit: null,
       nodeTags: const {},

@@ -1,10 +1,11 @@
 import 'package:drift/drift.dart';
 
-class ConnectionState extends Table {
+class ConnectionConfig extends Table {
   IntColumn get id => integer().withDefault(const Constant(1))();
 
-  // App state metadata, not an encoded Xray asset. Validation belongs to service.
-  TextColumn get settingsJson => text().withDefault(const Constant('{}'))();
+  // App connection configuration, not native VPN runtime state.
+  TextColumn get configurationJson =>
+      text().withDefault(const Constant('{}'))();
 
   @override
   Set<Column> get primaryKey => {id};

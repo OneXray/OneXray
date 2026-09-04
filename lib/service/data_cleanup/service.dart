@@ -60,7 +60,7 @@ final class AppDataCleanupService {
       await db.coreConfigDao.clear();
       await db.subscriptionDao.clear();
       await db.routingProfileDao.clear();
-      await db.connectionStateDao.reset();
+      await db.connectionConfigDao.reset();
     });
   }
 

@@ -45,7 +45,7 @@ void main() {
         customId: 7,
       ),
     );
-    await db.connectionStateDao.commit(settingsJson: original.encode());
+    await db.connectionConfigDao.commit(configurationJson: original.encode());
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
@@ -96,7 +96,7 @@ void main() {
     () async {
       final original = ConnectionConfiguration();
       final old = _runtime('a', original);
-      await db.connectionStateDao.commit(settingsJson: original.encode());
+      await db.connectionConfigDao.commit(configurationJson: original.encode());
       var host = HostConnection(VpnStatus.connected, runtime: old);
       final calls = <String>[];
       final coordinator = await _initialize(
@@ -129,7 +129,7 @@ void main() {
         false,
       );
       expect(calls, isEmpty);
-      final before = (await db.connectionStateDao.read()).toJson();
+      final before = (await db.connectionConfigDao.read()).toJson();
       await expectLater(
         service.save(
           original: original,
@@ -138,7 +138,7 @@ void main() {
         ),
         throwsA(isA<ConnectionHostException>()),
       );
-      expect((await db.connectionStateDao.read()).toJson(), before);
+      expect((await db.connectionConfigDao.read()).toJson(), before);
       expect(calls, ['stop', 'start:b', 'stop']);
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
       expect(coordinator.state.value.runtime, isNull);
@@ -264,7 +264,6 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
-      settingsJson: jsonEncode(configuration.connection.toJson()),
       entries: [],
       finalExit: null,
       nodeTags: {},

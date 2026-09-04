@@ -56,7 +56,7 @@ void main() {
       readRegionCodes: () async => ['CN', 'RU', 'US'],
       saveConfiguration: (value) async {
         writes++;
-        await db.connectionStateDao.commit(settingsJson: value.encode());
+        await db.connectionConfigDao.commit(configurationJson: value.encode());
       },
     );
   });
@@ -96,7 +96,7 @@ void main() {
     final expert = ConnectionConfiguration(
       connection: ConnectionSettings(expert: true, rawId: 7),
     );
-    await db.connectionStateDao.commit(settingsJson: expert.encode());
+    await db.connectionConfigDao.commit(configurationJson: expert.encode());
     await setup.continueRegion('RU');
     final saved = await setup.configuration();
     expect(saved.connection.smart.directRegions, ['RU']);

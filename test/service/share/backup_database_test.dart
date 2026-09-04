@@ -20,8 +20,8 @@ void main() {
     'v5 restores retained assets and canonicalizes RoutingProfile data',
     () async {
       await _seedAssets(database);
-      await database.connectionStateDao.commit(
-        settingsJson: '{"connection":{"rawId":30}}',
+      await database.connectionConfigDao.commit(
+        configurationJson: '{"connection":{"rawId":30}}',
       );
       final before = await BackupDatabaseContents.read(database);
       final payload = _roundTrip(before);
@@ -63,8 +63,8 @@ void main() {
       expect(routingJson, isNot(contains('name')));
       expect(routingJson, isNot(contains('geodata')));
       expect(await database.coreConfigDao.searchRow(99), isNull);
-      final reset = await database.connectionStateDao.read();
-      expect(reset.settingsJson, '{}');
+      final reset = await database.connectionConfigDao.read();
+      expect(reset.configurationJson, '{}');
     },
   );
 
@@ -264,8 +264,10 @@ void main() {
     'restore failure rolls all tables back after replacement starts',
     () async {
       await _seedAssets(database);
-      await database.connectionStateDao.commit(settingsJson: '{"old":true}');
-      final stateBefore = await database.connectionStateDao.read();
+      await database.connectionConfigDao.commit(
+        configurationJson: '{"old":true}',
+      );
+      final configBefore = await database.connectionConfigDao.read();
       final before = await BackupDatabaseContents.read(database);
       await database.customStatement('''
       CREATE TRIGGER fail_custom_restore BEFORE INSERT ON routing_profile
@@ -275,7 +277,7 @@ void main() {
       await expectLater(before.restore(database), throwsA(isA<Exception>()));
       expect(_json(await BackupDatabaseContents.read(database)), _json(before));
       expect(await database.coreConfigDao.searchRow(99), isNotNull);
-      expect(await database.connectionStateDao.read(), stateBefore);
+      expect(await database.connectionConfigDao.read(), configBefore);
     },
   );
 

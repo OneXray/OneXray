@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'package:onexray/core/db/dao/connection_state.dart';
+import 'package:onexray/core/db/dao/connection_config.dart';
 import 'package:onexray/core/db/dao/core_config.dart';
 import 'package:onexray/core/db/dao/geo_data.dart';
 import 'package:onexray/core/db/dao/routing_profile.dart';
 import 'package:onexray/core/db/dao/subscription.dart';
 import 'package:onexray/core/db/database/constants.dart';
-import 'package:onexray/core/db/table/connection_state.dart';
+import 'package:onexray/core/db/table/connection_config.dart';
 import 'package:onexray/core/db/table/core_config.dart';
 import 'package:onexray/core/db/table/geo_data.dart';
 import 'package:onexray/core/db/table/routing_profile.dart';
@@ -21,13 +21,13 @@ import 'package:path/path.dart' as p;
 part 'database.g.dart';
 
 @DriftDatabase(
-  tables: [CoreConfig, Subscription, GeoData, RoutingProfile, ConnectionState],
+  tables: [CoreConfig, Subscription, GeoData, RoutingProfile, ConnectionConfig],
   daos: [
     CoreConfigDao,
     SubscriptionDao,
     GeoDataDao,
     RoutingProfileDao,
-    ConnectionStateDao,
+    ConnectionConfigDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -78,7 +78,7 @@ class AppDatabase extends _$AppDatabase {
       await migrator.addColumn(coreConfig, coreConfig.countryCode);
       await migrator.addColumn(coreConfig, coreConfig.favorite);
       await migrator.createTable(routingProfile);
-      await migrator.createTable(connectionState);
+      await migrator.createTable(connectionConfig);
 
       // Old delays are not a health result for the new measurement flow.
       await (update(

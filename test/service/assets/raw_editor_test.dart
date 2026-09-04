@@ -29,7 +29,9 @@ void main() {
         selection: const ServerSelection.server(77),
       ),
     );
-    await db.connectionStateDao.commit(settingsJson: configuration.encode());
+    await db.connectionConfigDao.commit(
+      configurationJson: configuration.encode(),
+    );
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
@@ -78,7 +80,9 @@ void main() {
       connection: ConnectionSettings(expert: true, rawId: rawId),
     );
     final old = _runtime('a', configuration, _text);
-    await db.connectionStateDao.commit(settingsJson: configuration.encode());
+    await db.connectionConfigDao.commit(
+      configurationJson: configuration.encode(),
+    );
     var host = HostConnection(VpnStatus.connected, runtime: old);
     final calls = <String>[];
     final coordinator = await _initialize(
@@ -119,7 +123,7 @@ void main() {
       name: renamed.name,
       text: renamed.text.replaceFirst('freedom', 'blackhole'),
     );
-    final before = await db.connectionStateDao.read();
+    final before = await db.connectionConfigDao.read();
     expect(
       await service.save(changed, confirmReconnect: () async => false),
       isNull,
@@ -137,7 +141,7 @@ void main() {
       (await db.coreConfigDao.searchRow(rawId))!.data,
       renamed.original!.data,
     );
-    expect((await db.connectionStateDao.read()).toJson(), before.toJson());
+    expect((await db.connectionConfigDao.read()).toJson(), before.toJson());
     expect(coordinator.state.value.phase, ConnectionPhase.failed);
     expect(coordinator.state.value.runtime, isNull);
   });
@@ -171,7 +175,6 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
-      settingsJson: jsonEncode(configuration.connection.toJson()),
       entries: [],
       finalExit: null,
       nodeTags: {},

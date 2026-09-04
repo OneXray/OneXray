@@ -30,7 +30,7 @@ class AdvancedPageState {
 class AdvancedController extends PageCubit<AdvancedPageState>
     with WidgetsBindingObserver {
   final ConnectionCoordinator coordinator;
-  StreamSubscription<ConnectionStateData>? _subscription;
+  StreamSubscription<ConnectionConfigData>? _subscription;
   PlatformPolicy? _policy;
   String _version = '—';
   bool _failed = false;
@@ -69,11 +69,11 @@ class AdvancedController extends PageCubit<AdvancedPageState>
   Future<void> reload() async {
     await _subscription?.cancel();
     if (!isPageActive) return;
-    _subscription = coordinator.db.connectionStateDao.watch().listen(
+    _subscription = coordinator.db.connectionConfigDao.watch().listen(
       (row) {
         try {
           _policy = ConnectionConfiguration.fromJson(
-            jsonDecode(row.settingsJson) as Map<String, dynamic>,
+            jsonDecode(row.configurationJson) as Map<String, dynamic>,
           ).policy;
           _failed = false;
         } catch (_) {

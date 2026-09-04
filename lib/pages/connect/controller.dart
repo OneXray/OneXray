@@ -85,9 +85,9 @@ class ConnectController extends ChangeNotifier {
       _viewInitialized = true;
       if (_subscriptions.isEmpty) {
         _subscriptions.add(
-          db.connectionStateDao.watch().listen((row) {
+          db.connectionConfigDao.watch().listen((row) {
             configuration = ConnectionConfiguration.fromJson(
-              jsonDecode(row.settingsJson) as Map<String, dynamic>,
+              jsonDecode(row.configurationJson) as Map<String, dynamic>,
             );
             _notify();
           }, onError: _readFailed),

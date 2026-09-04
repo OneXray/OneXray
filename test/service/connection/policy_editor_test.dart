@@ -60,7 +60,7 @@ void main() {
         confirm: (_) async => throw StateError('Must not confirm'),
       );
       final original = await service.load();
-      final stored = (await db.connectionStateDao.read()).settingsJson;
+      final stored = (await db.connectionConfigDao.read()).configurationJson;
       final controller = PolicyEditorController(
         draft: original,
         service: service,
@@ -74,7 +74,7 @@ void main() {
       expect(controller.draft!.original, same(original.original));
       expect(original.policy, original.original.policy.toJson());
       expect(controller.error, isNull);
-      expect((await db.connectionStateDao.read()).settingsJson, stored);
+      expect((await db.connectionConfigDao.read()).configurationJson, stored);
       expect(stops, 0);
       expect(host.status, VpnStatus.disconnected);
     },
@@ -246,7 +246,6 @@ ConnectionRuntime _runtime(ConnectionConfiguration configuration) {
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
-      settingsJson: jsonEncode(configuration.connection.toJson()),
       entries: [],
       finalExit: null,
       nodeTags: {},

@@ -174,7 +174,7 @@ final class BackupDatabaseContents {
       await db.subscriptionDao.clear();
       await db.geoDataDao.clear();
       await db.routingProfileDao.clear();
-      await db.connectionStateDao.reset();
+      await db.connectionConfigDao.reset();
 
       for (final row in subscriptions) {
         await db.subscriptionDao.insertRow(

@@ -12,50 +12,51 @@ void main() {
   });
 
   test('read/watch defaults and singleton constraint', () async {
-    final dao = db.connectionStateDao;
+    final dao = db.connectionConfigDao;
     final initial = await dao.read();
     expect(initial.id, 1);
-    expect(initial.settingsJson, '{}');
+    expect(initial.configurationJson, '{}');
     expect(await dao.watch().first, initial);
     await expectLater(
-      db.customStatement('INSERT INTO connection_state (id) VALUES (2)'),
+      db.customStatement('INSERT INTO connection_config (id) VALUES (2)'),
       throwsA(anything),
     );
   });
 
-  test('settings, policy and assets commit as one value', () async {
-    final dao = db.connectionStateDao;
-    const settings = '{"connection":{"expert":true},"policy":{"ipv6":false}}';
+  test('connection configuration and assets commit as one value', () async {
+    final dao = db.connectionConfigDao;
+    const configuration =
+        '{"connection":{"expert":true},"policy":{"ipv6":false}}';
     await dao.commit(
-      settingsJson: settings,
+      configurationJson: configuration,
       writeAssets: () async {
         await db.coreConfigDao.insertAssetRow(_asset);
       },
     );
     final saved = await dao.watch().first;
-    expect(saved.settingsJson, settings);
+    expect(saved.configurationJson, configuration);
     expect(
       (await db.coreConfigDao.allRawRowsWithData).single.data,
       'eyJmb28iOjF9',
     );
 
-    await dao.commit(settingsJson: '{"updated":true}');
+    await dao.commit(configurationJson: '{"updated":true}');
     final updated = await dao.read();
-    expect(updated.settingsJson, '{"updated":true}');
-    expect(await db.select(db.connectionState).get(), [updated]);
+    expect(updated.configurationJson, '{"updated":true}');
+    expect(await db.select(db.connectionConfig).get(), [updated]);
     await dao.reset();
     expect(await dao.watch().first, await dao.read());
-    expect((await dao.read()).settingsJson, '{}');
+    expect((await dao.read()).configurationJson, '{}');
     expect(await db.coreConfigDao.allRawRowsWithData, hasLength(1));
   });
 
-  test('asset failure leaves saved settings intact', () async {
-    final dao = db.connectionStateDao;
-    await dao.commit(settingsJson: '{"old":true}');
+  test('asset failure leaves saved configuration intact', () async {
+    final dao = db.connectionConfigDao;
+    await dao.commit(configurationJson: '{"old":true}');
     final before = await dao.read();
     await expectLater(
       dao.commit(
-        settingsJson: '{"new":true}',
+        configurationJson: '{"new":true}',
         writeAssets: () async {
           await db.coreConfigDao.insertAssetRow(_asset);
           throw StateError('asset write failed');
@@ -67,25 +68,28 @@ void main() {
     expect(await dao.read(), before);
   });
 
-  test('state write failure also rolls back already-written assets', () async {
-    final dao = db.connectionStateDao;
-    final before = await dao.read();
-    await db.customStatement('''
-      CREATE TRIGGER fail_connection_commit BEFORE UPDATE OF settings_json ON connection_state
+  test(
+    'configuration write failure rolls back already-written assets',
+    () async {
+      final dao = db.connectionConfigDao;
+      final before = await dao.read();
+      await db.customStatement('''
+      CREATE TRIGGER fail_connection_commit BEFORE UPDATE OF configuration_json ON connection_config
       BEGIN SELECT RAISE(ABORT, 'test commit failure'); END
     ''');
-    await expectLater(
-      dao.commit(
-        settingsJson: '{"new":true}',
-        writeAssets: () async {
-          await db.coreConfigDao.insertAssetRow(_asset);
-        },
-      ),
-      throwsA(anything),
-    );
-    expect(await db.coreConfigDao.allRawRowsWithData, isEmpty);
-    expect(await dao.read(), before);
-  });
+      await expectLater(
+        dao.commit(
+          configurationJson: '{"new":true}',
+          writeAssets: () async {
+            await db.coreConfigDao.insertAssetRow(_asset);
+          },
+        ),
+        throwsA(anything),
+      );
+      expect(await db.coreConfigDao.allRawRowsWithData, isEmpty);
+      expect(await dao.read(), before);
+    },
+  );
 }
 
 final _asset = CoreConfigCompanion.insert(

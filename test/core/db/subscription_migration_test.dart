@@ -98,44 +98,41 @@ void main() {
     },
   );
 
-  test(
-    'new installation creates schema 3 with empty assets and default state',
-    () async {
-      final database = AppDatabase.forTesting(NativeDatabase.memory());
-      addTearDown(database.close);
+  test('new installation creates schema 3 with empty assets and default connection configuration', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
 
-      expect(await database.coreConfigDao.allRawRowsWithData, isEmpty);
-      expect(await database.routingProfileDao.allRows, isEmpty);
-      expect(await database.subscriptionDao.allRows, isEmpty);
-      expect((await database.connectionStateDao.read()).settingsJson, '{}');
-      final routingTables = await database.customSelect('''
+    expect(await database.coreConfigDao.allRawRowsWithData, isEmpty);
+    expect(await database.routingProfileDao.allRows, isEmpty);
+    expect(await database.subscriptionDao.allRows, isEmpty);
+    expect((await database.connectionConfigDao.read()).configurationJson, '{}');
+    final routingTables = await database.customSelect('''
         SELECT name FROM sqlite_master
         WHERE type = 'table' AND name IN ('routing_profile', 'custom_routing_profiles')
       ''').get();
-      expect(routingTables.map((row) => row.read<String>('name')), [
-        'routing_profile',
-      ]);
-      for (final entry in {
-        'core_config': ['location_source', 'last_measured_at'],
-        'subscription': ['parse_failure_count', 'auto_update'],
-        'geo_data': ['generation'],
-        'connection_state': ['revision'],
-      }.entries) {
-        final columns = await database
-            .customSelect('PRAGMA table_info(${entry.key})')
-            .get();
-        expect(
-          columns.map((row) => row.read<String>('name')),
-          isNot(anyElement(isIn(entry.value))),
-        );
-      }
+    expect(routingTables.map((row) => row.read<String>('name')), [
+      'routing_profile',
+    ]);
+    for (final entry in {
+      'core_config': ['location_source', 'last_measured_at'],
+      'subscription': ['parse_failure_count', 'auto_update'],
+      'geo_data': ['generation'],
+      'connection_config': ['revision'],
+    }.entries) {
+      final columns = await database
+          .customSelect('PRAGMA table_info(${entry.key})')
+          .get();
       expect(
-        (await database.customSelect('PRAGMA user_version').getSingle())
-            .read<int>('user_version'),
-        3,
+        columns.map((row) => row.read<String>('name')),
+        isNot(anyElement(isIn(entry.value))),
       );
-    },
-  );
+    }
+    expect(
+      (await database.customSelect('PRAGMA user_version').getSingle())
+          .read<int>('user_version'),
+      3,
+    );
+  });
 
   for (final version in [1, 2]) {
     test(
@@ -175,7 +172,10 @@ void main() {
           expect(rawRows.every((row) => !row.favorite), isTrue);
           expect(rawRows.every((row) => row.countryCode == null), isTrue);
           expect(await database.routingProfileDao.allRows, isEmpty);
-          expect((await database.connectionStateDao.read()).settingsJson, '{}');
+          expect(
+            (await database.connectionConfigDao.read()).configurationJson,
+            '{}',
+          );
           final routingTables = await database.customSelect('''
             SELECT name FROM sqlite_master
             WHERE type = 'table' AND name IN ('routing_profile', 'custom_routing_profiles')
@@ -217,7 +217,7 @@ void main() {
         final before = _snapshotFile(file, hasAgeKeys: version == 2);
         final conflicting = sqlite.sqlite3.open(file.path);
         conflicting.execute(
-          'CREATE INDEX connection_state ON core_config(name)',
+          'CREATE INDEX connection_config ON core_config(name)',
         );
         conflicting.close();
 
@@ -245,7 +245,7 @@ void main() {
             ),
             isEmpty,
           );
-          check.execute('DROP INDEX connection_state');
+          check.execute('DROP INDEX connection_config');
         } finally {
           check.close();
         }
@@ -254,7 +254,10 @@ void main() {
         try {
           expect(await retried.subscriptionDao.allRows, hasLength(1));
           expect(await retried.routingProfileDao.allRows, isEmpty);
-          expect((await retried.connectionStateDao.read()).settingsJson, '{}');
+          expect(
+            (await retried.connectionConfigDao.read()).configurationJson,
+            '{}',
+          );
         } finally {
           await retried.close();
         }
@@ -273,7 +276,10 @@ void main() {
     final check = sqlite.sqlite3.open(file.path);
     expect(check.userVersion, 3);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
-    expect(_columnNames(check, 'connection_state'), ['id', 'settings_json']);
+    expect(_columnNames(check, 'connection_config'), [
+      'id',
+      'configuration_json',
+    ]);
     check.close();
 
     final retried = AppDatabase.forTesting(NativeDatabase(file));

@@ -139,7 +139,6 @@ ConnectionRuntime _runtime() {
   const xrayJson = '{"outbounds":[]}';
   final compiled = CompiledConnection(
     xrayJson: xrayJson,
-    settingsJson: jsonEncode(configuration.connection.toJson()),
     entries: [server],
     finalExit: null,
     nodeTags: const {},

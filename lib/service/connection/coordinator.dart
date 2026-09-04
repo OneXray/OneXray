@@ -142,7 +142,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<ConnectionConfiguration> get configuration async =>
       ConnectionConfiguration.fromJson(
-        jsonDecode((await db.connectionStateDao.read()).settingsJson)
+        jsonDecode((await db.connectionConfigDao.read()).configurationJson)
             as Map<String, dynamic>,
       );
 
@@ -454,8 +454,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       throw const ConnectionHostException('reconnectRequired');
     }
     if (!shouldStart && !shouldStop) {
-      await db.connectionStateDao.commit(
-        settingsJson: next.encode(),
+      await db.connectionConfigDao.commit(
+        configurationJson: next.encode(),
         writeAssets: writeAssets,
       );
       _publish(current);
@@ -507,8 +507,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           throw const ConnectionHostException('startNotConfirmed');
         }
       }
-      await db.connectionStateDao.commit(
-        settingsJson: (runtime?.configuration ?? next).encode(),
+      await db.connectionConfigDao.commit(
+        configurationJson: (runtime?.configuration ?? next).encode(),
         writeAssets: () async {
           await writeAssets?.call();
           _checkCancelled(cancellation);

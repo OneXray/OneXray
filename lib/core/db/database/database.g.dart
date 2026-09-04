@@ -1752,12 +1752,12 @@ class RoutingProfileCompanion extends UpdateCompanion<RoutingProfileData> {
   }
 }
 
-class $ConnectionStateTable extends ConnectionState
-    with TableInfo<$ConnectionStateTable, ConnectionStateData> {
+class $ConnectionConfigTable extends ConnectionConfig
+    with TableInfo<$ConnectionConfigTable, ConnectionConfigData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $ConnectionStateTable(this.attachedDatabase, [this._alias]);
+  $ConnectionConfigTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -1768,28 +1768,29 @@ class $ConnectionStateTable extends ConnectionState
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
-  static const VerificationMeta _settingsJsonMeta = const VerificationMeta(
-    'settingsJson',
+  static const VerificationMeta _configurationJsonMeta = const VerificationMeta(
+    'configurationJson',
   );
   @override
-  late final GeneratedColumn<String> settingsJson = GeneratedColumn<String>(
-    'settings_json',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('{}'),
-  );
+  late final GeneratedColumn<String> configurationJson =
+      GeneratedColumn<String>(
+        'configuration_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('{}'),
+      );
   @override
-  List<GeneratedColumn> get $columns => [id, settingsJson];
+  List<GeneratedColumn> get $columns => [id, configurationJson];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'connection_state';
+  static const String $name = 'connection_config';
   @override
   VerificationContext validateIntegrity(
-    Insertable<ConnectionStateData> instance, {
+    Insertable<ConnectionConfigData> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -1797,12 +1798,12 @@ class $ConnectionStateTable extends ConnectionState
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('settings_json')) {
+    if (data.containsKey('configuration_json')) {
       context.handle(
-        _settingsJsonMeta,
-        settingsJson.isAcceptableOrUnknown(
-          data['settings_json']!,
-          _settingsJsonMeta,
+        _configurationJsonMeta,
+        configurationJson.isAcceptableOrUnknown(
+          data['configuration_json']!,
+          _configurationJsonMeta,
         ),
       );
     }
@@ -1812,54 +1813,57 @@ class $ConnectionStateTable extends ConnectionState
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  ConnectionStateData map(Map<String, dynamic> data, {String? tablePrefix}) {
+  ConnectionConfigData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return ConnectionStateData(
+    return ConnectionConfigData(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      settingsJson: attachedDatabase.typeMapping.read(
+      configurationJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}settings_json'],
+        data['${effectivePrefix}configuration_json'],
       )!,
     );
   }
 
   @override
-  $ConnectionStateTable createAlias(String alias) {
-    return $ConnectionStateTable(attachedDatabase, alias);
+  $ConnectionConfigTable createAlias(String alias) {
+    return $ConnectionConfigTable(attachedDatabase, alias);
   }
 }
 
-class ConnectionStateData extends DataClass
-    implements Insertable<ConnectionStateData> {
+class ConnectionConfigData extends DataClass
+    implements Insertable<ConnectionConfigData> {
   final int id;
-  final String settingsJson;
-  const ConnectionStateData({required this.id, required this.settingsJson});
+  final String configurationJson;
+  const ConnectionConfigData({
+    required this.id,
+    required this.configurationJson,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['settings_json'] = Variable<String>(settingsJson);
+    map['configuration_json'] = Variable<String>(configurationJson);
     return map;
   }
 
-  ConnectionStateCompanion toCompanion(bool nullToAbsent) {
-    return ConnectionStateCompanion(
+  ConnectionConfigCompanion toCompanion(bool nullToAbsent) {
+    return ConnectionConfigCompanion(
       id: Value(id),
-      settingsJson: Value(settingsJson),
+      configurationJson: Value(configurationJson),
     );
   }
 
-  factory ConnectionStateData.fromJson(
+  factory ConnectionConfigData.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return ConnectionStateData(
+    return ConnectionConfigData(
       id: serializer.fromJson<int>(json['id']),
-      settingsJson: serializer.fromJson<String>(json['settingsJson']),
+      configurationJson: serializer.fromJson<String>(json['configurationJson']),
     );
   }
   @override
@@ -1867,71 +1871,71 @@ class ConnectionStateData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'settingsJson': serializer.toJson<String>(settingsJson),
+      'configurationJson': serializer.toJson<String>(configurationJson),
     };
   }
 
-  ConnectionStateData copyWith({int? id, String? settingsJson}) =>
-      ConnectionStateData(
+  ConnectionConfigData copyWith({int? id, String? configurationJson}) =>
+      ConnectionConfigData(
         id: id ?? this.id,
-        settingsJson: settingsJson ?? this.settingsJson,
+        configurationJson: configurationJson ?? this.configurationJson,
       );
-  ConnectionStateData copyWithCompanion(ConnectionStateCompanion data) {
-    return ConnectionStateData(
+  ConnectionConfigData copyWithCompanion(ConnectionConfigCompanion data) {
+    return ConnectionConfigData(
       id: data.id.present ? data.id.value : this.id,
-      settingsJson: data.settingsJson.present
-          ? data.settingsJson.value
-          : this.settingsJson,
+      configurationJson: data.configurationJson.present
+          ? data.configurationJson.value
+          : this.configurationJson,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('ConnectionStateData(')
+    return (StringBuffer('ConnectionConfigData(')
           ..write('id: $id, ')
-          ..write('settingsJson: $settingsJson')
+          ..write('configurationJson: $configurationJson')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, settingsJson);
+  int get hashCode => Object.hash(id, configurationJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ConnectionStateData &&
+      (other is ConnectionConfigData &&
           other.id == this.id &&
-          other.settingsJson == this.settingsJson);
+          other.configurationJson == this.configurationJson);
 }
 
-class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
+class ConnectionConfigCompanion extends UpdateCompanion<ConnectionConfigData> {
   final Value<int> id;
-  final Value<String> settingsJson;
-  const ConnectionStateCompanion({
+  final Value<String> configurationJson;
+  const ConnectionConfigCompanion({
     this.id = const Value.absent(),
-    this.settingsJson = const Value.absent(),
+    this.configurationJson = const Value.absent(),
   });
-  ConnectionStateCompanion.insert({
+  ConnectionConfigCompanion.insert({
     this.id = const Value.absent(),
-    this.settingsJson = const Value.absent(),
+    this.configurationJson = const Value.absent(),
   });
-  static Insertable<ConnectionStateData> custom({
+  static Insertable<ConnectionConfigData> custom({
     Expression<int>? id,
-    Expression<String>? settingsJson,
+    Expression<String>? configurationJson,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (settingsJson != null) 'settings_json': settingsJson,
+      if (configurationJson != null) 'configuration_json': configurationJson,
     });
   }
 
-  ConnectionStateCompanion copyWith({
+  ConnectionConfigCompanion copyWith({
     Value<int>? id,
-    Value<String>? settingsJson,
+    Value<String>? configurationJson,
   }) {
-    return ConnectionStateCompanion(
+    return ConnectionConfigCompanion(
       id: id ?? this.id,
-      settingsJson: settingsJson ?? this.settingsJson,
+      configurationJson: configurationJson ?? this.configurationJson,
     );
   }
 
@@ -1941,17 +1945,17 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (settingsJson.present) {
-      map['settings_json'] = Variable<String>(settingsJson.value);
+    if (configurationJson.present) {
+      map['configuration_json'] = Variable<String>(configurationJson.value);
     }
     return map;
   }
 
   @override
   String toString() {
-    return (StringBuffer('ConnectionStateCompanion(')
+    return (StringBuffer('ConnectionConfigCompanion(')
           ..write('id: $id, ')
-          ..write('settingsJson: $settingsJson')
+          ..write('configurationJson: $configurationJson')
           ..write(')'))
         .toString();
   }
@@ -1964,7 +1968,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SubscriptionTable subscription = $SubscriptionTable(this);
   late final $GeoDataTable geoData = $GeoDataTable(this);
   late final $RoutingProfileTable routingProfile = $RoutingProfileTable(this);
-  late final $ConnectionStateTable connectionState = $ConnectionStateTable(
+  late final $ConnectionConfigTable connectionConfig = $ConnectionConfigTable(
     this,
   );
   late final CoreConfigDao coreConfigDao = CoreConfigDao(this as AppDatabase);
@@ -1975,7 +1979,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final RoutingProfileDao routingProfileDao = RoutingProfileDao(
     this as AppDatabase,
   );
-  late final ConnectionStateDao connectionStateDao = ConnectionStateDao(
+  late final ConnectionConfigDao connectionConfigDao = ConnectionConfigDao(
     this as AppDatabase,
   );
   @override
@@ -1987,7 +1991,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     subscription,
     geoData,
     routingProfile,
-    connectionState,
+    connectionConfig,
   ];
 }
 
@@ -2933,20 +2937,20 @@ typedef $$RoutingProfileTableProcessedTableManager =
       RoutingProfileData,
       PrefetchHooks Function()
     >;
-typedef $$ConnectionStateTableCreateCompanionBuilder =
-    ConnectionStateCompanion Function({
+typedef $$ConnectionConfigTableCreateCompanionBuilder =
+    ConnectionConfigCompanion Function({
       Value<int> id,
-      Value<String> settingsJson,
+      Value<String> configurationJson,
     });
-typedef $$ConnectionStateTableUpdateCompanionBuilder =
-    ConnectionStateCompanion Function({
+typedef $$ConnectionConfigTableUpdateCompanionBuilder =
+    ConnectionConfigCompanion Function({
       Value<int> id,
-      Value<String> settingsJson,
+      Value<String> configurationJson,
     });
 
-class $$ConnectionStateTableFilterComposer
-    extends Composer<_$AppDatabase, $ConnectionStateTable> {
-  $$ConnectionStateTableFilterComposer({
+class $$ConnectionConfigTableFilterComposer
+    extends Composer<_$AppDatabase, $ConnectionConfigTable> {
+  $$ConnectionConfigTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -2958,15 +2962,15 @@ class $$ConnectionStateTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get settingsJson => $composableBuilder(
-    column: $table.settingsJson,
+  ColumnFilters<String> get configurationJson => $composableBuilder(
+    column: $table.configurationJson,
     builder: (column) => ColumnFilters(column),
   );
 }
 
-class $$ConnectionStateTableOrderingComposer
-    extends Composer<_$AppDatabase, $ConnectionStateTable> {
-  $$ConnectionStateTableOrderingComposer({
+class $$ConnectionConfigTableOrderingComposer
+    extends Composer<_$AppDatabase, $ConnectionConfigTable> {
+  $$ConnectionConfigTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -2978,15 +2982,15 @@ class $$ConnectionStateTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get settingsJson => $composableBuilder(
-    column: $table.settingsJson,
+  ColumnOrderings<String> get configurationJson => $composableBuilder(
+    column: $table.configurationJson,
     builder: (column) => ColumnOrderings(column),
   );
 }
 
-class $$ConnectionStateTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ConnectionStateTable> {
-  $$ConnectionStateTableAnnotationComposer({
+class $$ConnectionConfigTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ConnectionConfigTable> {
+  $$ConnectionConfigTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -2996,69 +3000,73 @@ class $$ConnectionStateTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get settingsJson => $composableBuilder(
-    column: $table.settingsJson,
+  GeneratedColumn<String> get configurationJson => $composableBuilder(
+    column: $table.configurationJson,
     builder: (column) => column,
   );
 }
 
-class $$ConnectionStateTableTableManager
+class $$ConnectionConfigTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $ConnectionStateTable,
-          ConnectionStateData,
-          $$ConnectionStateTableFilterComposer,
-          $$ConnectionStateTableOrderingComposer,
-          $$ConnectionStateTableAnnotationComposer,
-          $$ConnectionStateTableCreateCompanionBuilder,
-          $$ConnectionStateTableUpdateCompanionBuilder,
+          $ConnectionConfigTable,
+          ConnectionConfigData,
+          $$ConnectionConfigTableFilterComposer,
+          $$ConnectionConfigTableOrderingComposer,
+          $$ConnectionConfigTableAnnotationComposer,
+          $$ConnectionConfigTableCreateCompanionBuilder,
+          $$ConnectionConfigTableUpdateCompanionBuilder,
           (
-            ConnectionStateData,
+            ConnectionConfigData,
             BaseReferences<
               _$AppDatabase,
-              $ConnectionStateTable,
-              ConnectionStateData
+              $ConnectionConfigTable,
+              ConnectionConfigData
             >,
           ),
-          ConnectionStateData,
+          ConnectionConfigData,
           PrefetchHooks Function()
         > {
-  $$ConnectionStateTableTableManager(
+  $$ConnectionConfigTableTableManager(
     _$AppDatabase db,
-    $ConnectionStateTable table,
+    $ConnectionConfigTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$ConnectionStateTableFilterComposer($db: db, $table: table),
+              $$ConnectionConfigTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$ConnectionStateTableOrderingComposer($db: db, $table: table),
+              $$ConnectionConfigTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$ConnectionStateTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> settingsJson = const Value.absent(),
-          }) => ConnectionStateCompanion(id: id, settingsJson: settingsJson),
+              $$ConnectionConfigTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> configurationJson = const Value.absent(),
+              }) => ConnectionConfigCompanion(
+                id: id,
+                configurationJson: configurationJson,
+              ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> settingsJson = const Value.absent(),
-              }) => ConnectionStateCompanion.insert(
+                Value<String> configurationJson = const Value.absent(),
+              }) => ConnectionConfigCompanion.insert(
                 id: id,
-                settingsJson: settingsJson,
+                configurationJson: configurationJson,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$ConnectionStateTable, ConnectionStateData>(
+                  e.readTable<$ConnectionConfigTable, ConnectionConfigData>(
                     table,
                   ),
                   BaseReferences<
                     _$AppDatabase,
-                    $ConnectionStateTable,
-                    ConnectionStateData
+                    $ConnectionConfigTable,
+                    ConnectionConfigData
                   >(db, table, e),
                 ),
               )
@@ -3068,25 +3076,25 @@ class $$ConnectionStateTableTableManager
       );
 }
 
-typedef $$ConnectionStateTableProcessedTableManager =
+typedef $$ConnectionConfigTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $ConnectionStateTable,
-      ConnectionStateData,
-      $$ConnectionStateTableFilterComposer,
-      $$ConnectionStateTableOrderingComposer,
-      $$ConnectionStateTableAnnotationComposer,
-      $$ConnectionStateTableCreateCompanionBuilder,
-      $$ConnectionStateTableUpdateCompanionBuilder,
+      $ConnectionConfigTable,
+      ConnectionConfigData,
+      $$ConnectionConfigTableFilterComposer,
+      $$ConnectionConfigTableOrderingComposer,
+      $$ConnectionConfigTableAnnotationComposer,
+      $$ConnectionConfigTableCreateCompanionBuilder,
+      $$ConnectionConfigTableUpdateCompanionBuilder,
       (
-        ConnectionStateData,
+        ConnectionConfigData,
         BaseReferences<
           _$AppDatabase,
-          $ConnectionStateTable,
-          ConnectionStateData
+          $ConnectionConfigTable,
+          ConnectionConfigData
         >,
       ),
-      ConnectionStateData,
+      ConnectionConfigData,
       PrefetchHooks Function()
     >;
 
@@ -3101,6 +3109,6 @@ class $AppDatabaseManager {
       $$GeoDataTableTableManager(_db, _db.geoData);
   $$RoutingProfileTableTableManager get routingProfile =>
       $$RoutingProfileTableTableManager(_db, _db.routingProfile);
-  $$ConnectionStateTableTableManager get connectionState =>
-      $$ConnectionStateTableTableManager(_db, _db.connectionState);
+  $$ConnectionConfigTableTableManager get connectionConfig =>
+      $$ConnectionConfigTableTableManager(_db, _db.connectionConfig);
 }

@@ -115,7 +115,9 @@ void main() {
         ),
       );
       final old = _runtime('a', configuration);
-      await db.connectionStateDao.commit(settingsJson: configuration.encode());
+      await db.connectionConfigDao.commit(
+        configurationJson: configuration.encode(),
+      );
       var host = HostConnection(VpnStatus.connected, runtime: old);
       final calls = <String>[];
       final coordinator = await _initialize(
@@ -157,7 +159,7 @@ void main() {
         isNull,
       );
       expect(calls, isEmpty);
-      final before = (await db.connectionStateDao.read()).toJson();
+      final before = (await db.connectionConfigDao.read()).toJson();
       await expectLater(
         service.save(changed, confirmReconnect: () async => true),
         throwsA(isA<ConnectionHostException>()),
@@ -166,7 +168,7 @@ void main() {
         (await db.routingProfileDao.searchRow(id))!.data,
         renamed.original!.data,
       );
-      expect((await db.connectionStateDao.read()).toJson(), before);
+      expect((await db.connectionConfigDao.read()).toJson(), before);
       expect(calls, ['stop', 'start:b', 'stop']);
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
       expect(coordinator.state.value.runtime, isNull);
@@ -182,7 +184,9 @@ void main() {
       ),
     );
     final old = _runtime('a', configuration);
-    await db.connectionStateDao.commit(settingsJson: configuration.encode());
+    await db.connectionConfigDao.commit(
+      configurationJson: configuration.encode(),
+    );
     var host = HostConnection(VpnStatus.connected, runtime: old);
     final calls = <String>[];
     final coordinator = await _initialize(
@@ -294,7 +298,6 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
-      settingsJson: jsonEncode(configuration.connection.toJson()),
       entries: [],
       finalExit: null,
       nodeTags: {},

@@ -7,8 +7,8 @@
 
 ## 当前运行合同
 
-- `ConnectionState` 只保存设置 JSON。App 不保存 `confirmedPlanId`、`ConnectionPlan`、
-  `run/plans/<id>`、运行历史或跨进程提交 journal。
+- `ConnectionConfig` 只保存连接配置 JSON。App 不保存 VPN 状态、`confirmedPlanId`、
+  `ConnectionPlan`、`run/plans/<id>`、运行历史或跨进程提交 journal。
 - 配置在内存中准备和校验。`run/start.json` 是唯一原生启动请求，并携带 App 重开后识别
   当前运行所需的最小 `metadataJson`；原生 VPN 状态始终是连接状态事实源。
 - 准备失败且未触碰宿主时不影响当前连接。一旦已请求停止或启动原生 VPN，后续失败必须

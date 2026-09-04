@@ -110,12 +110,6 @@ void main() {
         expect(inbounds, hasLength(1));
         config['outbounds'].clear();
         expect(plan.config['outbounds'], isNotEmpty);
-        expect(
-          ConnectionSettings.fromJson(jsonDecode(plan.settingsJson))
-              .smart
-              .entryCount,
-          count,
-        );
         _fixture('normal-$count', plan);
       }
     },

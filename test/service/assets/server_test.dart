@@ -55,8 +55,8 @@ void main() {
             smart: SmartRoutingSettings(finalExitId: exit.id),
           ),
         );
-        await db.connectionStateDao.commit(
-          settingsJson: configuration.encode(),
+        await db.connectionConfigDao.commit(
+          configurationJson: configuration.encode(),
         );
         final live = _runtime('b', configuration, [
           ResolvedServer.fromRow(unused),
@@ -125,7 +125,9 @@ void main() {
           smart: SmartRoutingSettings(finalExitId: exit.id),
         ),
       );
-      await db.connectionStateDao.commit(settingsJson: configuration.encode());
+      await db.connectionConfigDao.commit(
+        configurationJson: configuration.encode(),
+      );
       final coordinator = await initialize(
         ConnectionCoordinator(
           database: db,
@@ -206,7 +208,9 @@ void main() {
       connection: ConnectionSettings(selection: ServerSelection.server(row.id)),
     );
     final old = _runtime('a', configuration, [ResolvedServer.fromRow(row)]);
-    await db.connectionStateDao.commit(settingsJson: configuration.encode());
+    await db.connectionConfigDao.commit(
+      configurationJson: configuration.encode(),
+    );
     var host = HostConnection(VpnStatus.connected, runtime: old);
     final calls = <String>[];
     final coordinator = await initialize(
@@ -278,7 +282,9 @@ void main() {
         smart: SmartRoutingSettings(finalExitId: row.id),
       ),
     );
-    await db.connectionStateDao.commit(settingsJson: configuration.encode());
+    await db.connectionConfigDao.commit(
+      configurationJson: configuration.encode(),
+    );
     final coordinator = await initialize(
       ConnectionCoordinator(
         database: db,
@@ -328,7 +334,6 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
-      settingsJson: jsonEncode(configuration.connection.toJson()),
       entries: entries,
       finalExit: null,
       nodeTags: {},

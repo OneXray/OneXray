@@ -201,7 +201,6 @@ ConnectionRuntime _runtime(
   });
   final compiled = CompiledConnection(
     xrayJson: xrayJson,
-    settingsJson: jsonEncode(configuration.connection.toJson()),
     entries: entries,
     finalExit: finalExit,
     nodeTags: const {},
