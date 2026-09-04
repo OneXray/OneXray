@@ -2,9 +2,10 @@ import 'dart:convert';
 
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/geo_data/service.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/document.dart';
 import 'package:onexray/service/share/app_link_generator.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/app_link_parser.dart';
@@ -104,9 +105,13 @@ class ConfigurationTransferService {
     final references = geoDataReferences(json);
     final assets = <GeoDataInput>[];
     if (kind == ConfigurationKind.custom) {
-      final template = CustomRoutingTemplate.parse(text);
-      text = template.encode();
-      for (final asset in template.assets) {
+      final document = RoutingProfileDocument.parse(
+        text,
+        name: name.isEmpty ? null : name,
+      );
+      text = document.state.encode();
+      if (name.isEmpty) name = document.state.name;
+      for (final asset in document.assets) {
         final file = asset['file']!;
         final type = references[file];
         if (type == null) {
@@ -160,19 +165,19 @@ class ConfigurationTransferService {
     GeoDataImportDraft? pending,
   }) async {
     if (kind == ConfigurationKind.raw) return text;
-    final template = CustomRoutingTemplate.parse(text);
-    final assets = await _dependencies(template.toJson(), pending);
-    return const JsonEncoder.withIndent('  ').convert({
-      ...template.toJson(),
-      'name': name.trim(),
-      if (assets.isNotEmpty)
-        'geodata': {
-          'assets': [
-            for (final asset in assets)
-              {'file': asset.fileName, 'url': asset.url},
-          ],
-        },
-    });
+    final state = RoutingProfileDocument.parse(text, name: name).state;
+    final assets = await _dependencies(state.xrayJson.toJson(), pending);
+    final xrayJson = state.xrayJson;
+    if (assets.isNotEmpty) {
+      xrayJson.geodata = XrayGeoData(
+        assets: [
+          for (final asset in assets)
+            XrayGeoDataAsset(file: asset.fileName, url: asset.url),
+        ],
+      );
+    }
+    return const JsonEncoder.withIndent('  ')
+        .convert({...xrayJson.toJson(), 'name': name.trim()});
   }
 
   Future<String> shareLinks({

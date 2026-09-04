@@ -17,7 +17,7 @@ void main() {
   tearDown(() => database.close());
 
   test(
-    'v5 round trips retained assets, IDs, metadata, and encoded data',
+    'v5 restores retained assets and canonicalizes RoutingProfile data',
     () async {
       await _seedAssets(database);
       await database.connectionStateDao.commit(
@@ -32,7 +32,10 @@ void main() {
       await payload.restore(database);
       final after = await BackupDatabaseContents.read(database);
 
-      expect(_json(after), _json(before, resetMeasurements: true));
+      expect(
+        _json(after, includeRoutingProfiles: false),
+        _json(before, resetMeasurements: true, includeRoutingProfiles: false),
+      );
       final nodes = await database.coreConfigDao.allRawRowsWithData;
       expect(nodes, hasLength(4));
       expect(nodes.singleWhere((row) => row.id == 33).data, 'not base64!');
@@ -47,7 +50,19 @@ void main() {
       expect(subscription.count, 1);
       expect(subscription.ageSecretKey, 'AGE-SECRET-KEY-TEST');
       expect(subscription.agePublicKey, 'age1test');
-      expect((await database.routingProfileDao.allRows).single.id, 8);
+      final routingProfile = (await database.routingProfileDao.allRows).single;
+      expect(routingProfile.id, 8);
+      expect(routingProfile.name, 'Custom');
+      final routingJson = _decodeBase64Json(routingProfile.data);
+      expect(routingJson, {
+        'outbounds': [
+          <String, dynamic>{},
+          {'tag': 'direct', 'protocol': 'freedom'},
+          {'tag': 'block', 'protocol': 'blackhole'},
+        ],
+      });
+      expect(routingJson, isNot(contains('name')));
+      expect(routingJson, isNot(contains('geodata')));
       expect(await database.coreConfigDao.searchRow(99), isNull);
       final reset = await database.connectionStateDao.read();
       expect(reset.settingsJson, '{}');
@@ -121,27 +136,34 @@ void main() {
   });
 
   test(
-    'restore rejects uneditable Custom fields without changing assets',
+    'restore rejects non-database Custom fields without changing assets',
     () async {
       await _seedAssets(database);
       final before = await BackupDatabaseContents.read(database);
-      final payload = BackupDatabaseContents(
-        version: 5,
-        coreConfigs: before.coreConfigs,
-        subscriptions: before.subscriptions,
-        geoDataList: before.geoDataList,
-        routingProfiles: [
-          BackupRoutingProfileJson(
-            8,
-            'Invalid',
-            base64Encode(
-              utf8.encode('{"outbounds":[{}],"dns":{"servers":["localhost"]}}'),
+      for (final document in [
+        '{"outbounds":[{}],"dns":{"servers":["localhost"]}}',
+        '{"name":"Embedded","outbounds":[{}]}',
+        '{"outbounds":[{}],"geodata":{"assets":[]}}',
+      ]) {
+        final payload = BackupDatabaseContents(
+          version: 5,
+          coreConfigs: before.coreConfigs,
+          subscriptions: before.subscriptions,
+          geoDataList: before.geoDataList,
+          routingProfiles: [
+            BackupRoutingProfileJson(
+              8,
+              'Invalid',
+              base64Encode(utf8.encode(document)),
             ),
-          ),
-        ],
-      );
-      await expectLater(payload.restore(database), throwsFormatException);
-      expect(_json(await BackupDatabaseContents.read(database)), _json(before));
+          ],
+        );
+        await expectLater(payload.restore(database), throwsFormatException);
+        expect(
+          _json(await BackupDatabaseContents.read(database)),
+          _json(before),
+        );
+      }
     },
   );
 
@@ -160,7 +182,20 @@ void main() {
 
       await _roundTrip(payload).restore(database);
       final restored = await BackupDatabaseContents.read(database);
-      expect(_json(restored), _json(payload, resetMeasurements: true));
+      expect(
+        _json(restored, includeRoutingProfiles: false),
+        _json(payload, resetMeasurements: true, includeRoutingProfiles: false),
+      );
+      final routingJson = _decodeBase64Json(
+        (await database.routingProfileDao.allRows).single.data,
+      );
+      expect(routingJson, {
+        'outbounds': [
+          <String, dynamic>{},
+          {'tag': 'direct', 'protocol': 'freedom'},
+          {'tag': 'block', 'protocol': 'blackhole'},
+        ],
+      });
       final orphan = await database.coreConfigDao.searchRow(2);
       final original = before.coreConfigs.singleWhere((row) => row.id == 2);
       expect(orphan!.subId, 7);
@@ -359,6 +394,7 @@ BackupDatabaseContents _roundTrip(BackupDatabaseContents value) =>
 Map<String, Object> _json(
   BackupDatabaseContents value, {
   bool resetMeasurements = false,
+  bool includeRoutingProfiles = true,
 }) => {
   'core': [
     for (final row in value.coreConfigs)
@@ -370,5 +406,11 @@ Map<String, Object> _json(
   ],
   'subscriptions': value.subscriptions.map((row) => row.toJson()).toList(),
   'geodata': value.geoDataList.map((row) => row.toJson()).toList(),
-  'custom': value.routingProfiles.map((row) => row.toJson()).toList(),
+  'custom': [
+    if (includeRoutingProfiles)
+      for (final row in value.routingProfiles) row.toJson(),
+  ],
 };
+
+Map<String, dynamic> _decodeBase64Json(String data) =>
+    jsonDecode(utf8.decode(base64Decode(data))) as Map<String, dynamic>;

@@ -4,7 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/routing/checker.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connection/plan.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/state.dart';
 
 void main() {
   for (final locale in AppLocalizations.supportedLocales) {
@@ -24,7 +24,7 @@ void main() {
           home: Scaffold(
             body: RouteChecker(
               configuration: ConnectionConfiguration(),
-              customDraft: CustomRoutingTemplate.parse('{"outbounds":[{}]}'),
+              customDraft: RoutingProfileState(name: ''),
               prepareAssets: (_) async =>
                   throw StateError('Opening a checker must not prepare assets'),
             ),

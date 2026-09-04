@@ -9,6 +9,7 @@ part 'xray_json.g.dart';
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayJson {
   XrayEnv? env;
+  XrayGeoData? geodata;
   XrayLog? log;
   XrayDns? dns;
   XrayRouting? routing;
@@ -21,6 +22,7 @@ class XrayJson {
 
   XrayJson({
     this.env,
+    this.geodata,
     this.log,
     this.dns,
     this.routing,
@@ -36,6 +38,31 @@ class XrayJson {
       _$XrayJsonFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayJsonToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayGeoData {
+  List<XrayGeoDataAsset>? assets;
+
+  XrayGeoData({this.assets});
+
+  factory XrayGeoData.fromJson(Map<String, dynamic> json) =>
+      _$XrayGeoDataFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayGeoDataToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayGeoDataAsset {
+  String? file;
+  String? url;
+
+  XrayGeoDataAsset({this.file, this.url});
+
+  factory XrayGeoDataAsset.fromJson(Map<String, dynamic> json) =>
+      _$XrayGeoDataAssetFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayGeoDataAssetToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

@@ -6,7 +6,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/preparation.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:path/path.dart' as p;
 
 class RouteCheckOutcome {
@@ -23,7 +23,7 @@ class RouteCheckService {
   Future<RouteCheckOutcome> check(
     ConnectionConfiguration configuration,
     String target, {
-    CustomRoutingTemplate? customDraft,
+    RoutingProfileState? customDraft,
     int port = 443,
     String network = 'tcp',
     Future<void> Function(String)? prepareAssets,

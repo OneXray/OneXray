@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -11,12 +9,13 @@ import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/custom_editor.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/document.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
 
-typedef OpenCustomRule = Future<Map<String, dynamic>?> Function(
+typedef OpenCustomRule = Future<RoutingRuleState?> Function(
   BuildContext context,
-  Map<String, dynamic>? rule,
+  RoutingRuleState? rule,
 );
 
 class CustomRoutingEditorController extends ChangeNotifier {
@@ -25,7 +24,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   final String? initialName;
   final CustomRoutingEditorService service;
   final name = TextEditingController();
-  final rules = <Map<String, dynamic>>[];
+  final rules = <RoutingRuleState>[];
   final ruleKeys = <Object>[];
   Object? selectedRuleKey;
   CustomRoutingRuleController? inlineRule;
@@ -33,9 +32,9 @@ class CustomRoutingEditorController extends ChangeNotifier {
   bool _inlineEditing = false;
   List<RoutingProfileData> _rows = [];
   CustomRoutingEditorDraft? original;
-  Map<String, dynamic> _document = {};
   ConnectionConfiguration configuration = ConnectionConfiguration();
   int entryCount = 1;
+  String domainStrategy = 'AsIs';
   bool _busy = true;
   bool saving = false;
   bool deleting = false;
@@ -43,7 +42,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
   bool get editingBlocked => deleting || transfer.busy;
   late final transfer = ConfigurationTransferController(
     kind: ConfigurationKind.custom,
-    readText: () => previewTemplate?.encode() ?? '',
+    readText: () => previewState?.encode() ?? '',
     readName: () => name.text,
     hasContent: () => rules.isNotEmpty,
     onImport: (draft) => replaceTemplate(draft.text, name: draft.name),
@@ -73,8 +72,8 @@ class CustomRoutingEditorController extends ChangeNotifier {
       original = draft;
       _rows = rows;
       configuration = settings;
-      name.text = draft.name;
-      _setTemplate(draft.template);
+      name.text = draft.state.name;
+      _setState(draft.state);
       if (initialText != null) replaceTemplate(initialText!, name: initialName);
       if (profileId == null &&
           initialText == null &&
@@ -120,23 +119,19 @@ class CustomRoutingEditorController extends ChangeNotifier {
     return null;
   }
 
-  CustomRoutingTemplate get template {
-    final root = {..._document}..remove('name');
-    final routing = Map<String, dynamic>.from(root['routing'] as Map? ?? {});
-    routing['rules'] = rules;
-    root['routing'] = routing;
-    root['outbounds'] = [
-      for (var index = 0; index < entryCount; index++) <String, dynamic>{},
-      for (final outbound in _document['outbounds'] as List? ?? const [])
-        if ((outbound as Map).isNotEmpty) outbound,
-    ];
-    if (name.text.trim().isNotEmpty) root['name'] = name.text.trim();
-    return CustomRoutingTemplate.parse(jsonEncode(root));
-  }
+  RoutingProfileState get state => RoutingProfileState(
+    id: profileId,
+    name: name.text.trim(),
+    entryCount: entryCount,
+    domainStrategy: domainStrategy,
+    rules: rules,
+  );
 
-  CustomRoutingTemplate? get previewTemplate {
+  RoutingProfileState? get previewState {
     try {
-      return template;
+      final value = state;
+      value.validate();
+      return value;
     } on FormatException {
       return null;
     }
@@ -152,9 +147,9 @@ class CustomRoutingEditorController extends ChangeNotifier {
     policy: configuration.policy,
   );
 
-  void _setTemplate(CustomRoutingTemplate value) {
-    _document = value.toJson();
+  void _setState(RoutingProfileState value) {
     entryCount = value.entryCount;
+    domainStrategy = value.domainStrategy;
     rules
       ..clear()
       ..addAll(value.rules);
@@ -202,12 +197,14 @@ class CustomRoutingEditorController extends ChangeNotifier {
   /// Import tools stage their dependencies separately before calling this.
   /// Persistence remains a deliberate Save action, never activation.
   void replaceTemplate(String text, {String? name}) {
-    final value = CustomRoutingTemplate.parse(text);
-    if (value.assets.isNotEmpty) {
+    final document = RoutingProfileDocument.parse(text);
+    if (document.assets.isNotEmpty) {
       throw const CustomRoutingEditorException('assets');
     }
-    _setTemplate(value);
-    this.name.text = name ?? value.name ?? this.name.text;
+    _setState(document.state);
+    this.name.text =
+        name ??
+        (document.state.name.isEmpty ? this.name.text : document.state.name);
     error = null;
     _notify();
   }
@@ -225,10 +222,11 @@ class CustomRoutingEditorController extends ChangeNotifier {
     if (!loaded || editingBlocked) return;
     if (_inlineEditing) {
       if (index == null) {
-        rules.add({
-          'ruleTag': AppLocalizations.of(context)!.prototypeNewRule,
-          'balancerTag': 'proxy',
-        });
+        rules.add(
+          RoutingRuleState(
+            ruleTag: AppLocalizations.of(context)!.prototypeNewRule,
+          ),
+        );
         ruleKeys.add(Object());
         selectedRuleKey = ruleKeys.last;
       } else {
@@ -278,12 +276,14 @@ class CustomRoutingEditorController extends ChangeNotifier {
   }
 
   String ruleName(int index, AppLocalizations l10n) =>
-      rules[index]['ruleTag'] as String? ?? l10n.prototypeNewRule;
+      rules[index].ruleTag.isEmpty
+      ? l10n.prototypeNewRule
+      : rules[index].ruleTag;
 
   String ruleSummary(int index, AppLocalizations l10n) {
     final rule = rules[index];
-    final domains = (rule['domain'] as List?)?.cast<String>() ?? const [];
-    final ips = (rule['ip'] as List?)?.cast<String>() ?? const [];
+    final domains = rule.domain;
+    final ips = rule.ip;
     if (domains.isNotEmpty) {
       return domains.first.startsWith('geosite:')
           ? '${l10n.prototypeWebsiteSet} · ${domains.first.substring(8)}'
@@ -294,18 +294,20 @@ class CustomRoutingEditorController extends ChangeNotifier {
           ? '${l10n.prototypeIpSet} · ${ips.first.substring(6)}'
           : 'IP · ${ips.join(', ')}';
     }
+    final port = rule.port;
+    final network = rule.network;
     return [
-      for (final key in const ['port', 'network'])
-        if (rule[key] != null)
-          '${key == 'port' ? l10n.prototypeTargetPort : l10n.prototypeNetworkType} · ${rule[key] is List ? (rule[key] as List).join(', ') : rule[key]}',
+      if (port != null) '${l10n.prototypeTargetPort} · $port',
+      if (network != null)
+        '${l10n.prototypeNetworkType} · ${network is List ? network.join(', ') : network}',
     ].join(' · ');
   }
 
   String ruleAction(int index, AppLocalizations l10n) =>
-      switch (rules[index]['outboundTag']) {
-        'direct' => l10n.prototypeDirect,
-        'block' => l10n.prototypeBlock,
-        _ => l10n.prototypeUseVpn,
+      switch (rules[index].action) {
+        RoutingRuleAction.direct => l10n.prototypeDirect,
+        RoutingRuleAction.block => l10n.prototypeBlock,
+        RoutingRuleAction.proxy => l10n.prototypeUseVpn,
       };
 
   void close(BuildContext context) {
@@ -322,11 +324,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
     _notify();
     try {
       final id = await service.save(
-        CustomRoutingEditorDraft(
-          original: original!.original,
-          name: name.text,
-          template: template,
-        ),
+        CustomRoutingEditorDraft(original: original!.original, state: state),
         confirmReconnect: () => context.mounted
             ? showApplyAndReconnectDialog(context, label: name.text.trim())
             : Future.value(false),

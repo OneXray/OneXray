@@ -12,27 +12,23 @@ import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/custom_editor.dart';
 import 'package:onexray/service/routing/custom_service.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/state.dart';
 
-CustomRoutingTemplate _template({int entries = 1, String action = 'direct'}) =>
-    CustomRoutingTemplate.parse(
-      jsonEncode({
-        'outbounds': [
-          for (var i = 0; i < entries; i++) {},
-          {'tag': 'direct', 'protocol': 'freedom'},
-          {'tag': 'block', 'protocol': 'blackhole'},
-        ],
-        'routing': {
-          'rules': [
-            {
-              'ruleTag': 'Example',
-              'domain': ['domain:example.com'],
-              'outboundTag': action,
-            },
-          ],
-        },
-      }),
-    );
+RoutingProfileState _state(
+  String name, {
+  int entries = 1,
+  RoutingRuleAction action = RoutingRuleAction.direct,
+}) => RoutingProfileState(
+  name: name,
+  entryCount: entries,
+  rules: [
+    RoutingRuleState(
+      ruleTag: 'Example',
+      domain: const ['domain:example.com'],
+      action: action,
+    ),
+  ],
+);
 
 void main() {
   late AppDatabase db;
@@ -56,16 +52,14 @@ void main() {
     );
     final before = (await coordinator.configuration).encode();
     final id = await service.save(
-      CustomRoutingEditorDraft(
-        name: '  Work  ',
-        template: _template(entries: 3),
-      ),
+      CustomRoutingEditorDraft(state: _state('  Work  ', entries: 3)),
       confirmReconnect: () async => throw StateError('Unexpected confirmation'),
     );
     final row = (await db.routingProfileDao.searchRow(id!))!;
     expect(row.name, 'Work');
     final json = jsonDecode(utf8.decode(base64Decode(row.data))) as Map;
-    expect(json['name'], 'Work');
+    expect(json.containsKey('name'), false);
+    expect(json.containsKey('geodata'), false);
     expect(CustomRoutingService.read(row).entryCount, 3);
     expect((json['routing'] as Map)['rules'], [
       {
@@ -77,7 +71,7 @@ void main() {
     expect((await coordinator.configuration).encode(), before);
     await expectLater(
       service.save(
-        CustomRoutingEditorDraft(name: 'work', template: _template()),
+        CustomRoutingEditorDraft(state: _state('work')),
         confirmReconnect: () async => false,
       ),
       throwsA(
@@ -90,13 +84,13 @@ void main() {
     );
     for (final name in ['Two', 'Three']) {
       await service.save(
-        CustomRoutingEditorDraft(name: name, template: _template()),
+        CustomRoutingEditorDraft(state: _state(name)),
         confirmReconnect: () async => false,
       );
     }
     await expectLater(
       service.save(
-        CustomRoutingEditorDraft(name: 'Four', template: _template()),
+        CustomRoutingEditorDraft(state: _state('Four')),
         confirmReconnect: () async => false,
       ),
       throwsA(
@@ -111,8 +105,7 @@ void main() {
   });
 
   test('active edit and delete confirm, compensate failure, and never publish an uncommitted template', () async {
-    final id = await CustomRoutingService(db)
-        .save(name: 'Work', text: _template().encode());
+    final id = await CustomRoutingService(db).save(_state('Work'));
     final configuration = ConnectionConfiguration(
       connection: ConnectionSettings(
         trafficMode: TrafficMode.custom,
@@ -155,8 +148,7 @@ void main() {
     await service.save(
       CustomRoutingEditorDraft(
         original: initial.original,
-        name: 'Renamed',
-        template: initial.template,
+        state: initial.state.copyWith(name: 'Renamed'),
       ),
       confirmReconnect: () async =>
           throw StateError('Rename must not reconnect'),
@@ -165,8 +157,7 @@ void main() {
     final renamed = await service.load(id);
     final changed = CustomRoutingEditorDraft(
       original: renamed.original,
-      name: renamed.name,
-      template: _template(entries: 2),
+      state: _state(renamed.state.name, entries: 2),
     );
     expect(
       await service.save(changed, confirmReconnect: () async => false),
@@ -225,8 +216,7 @@ void main() {
   test(
     'unselected edits and stale drafts do not overwrite newer assets',
     () async {
-      final id = await CustomRoutingService(db)
-          .save(name: 'Work', text: _template().encode());
+      final id = await CustomRoutingService(db).save(_state('Work'));
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
@@ -243,8 +233,7 @@ void main() {
       await service.save(
         CustomRoutingEditorDraft(
           original: original.original,
-          name: 'New name',
-          template: _template(entries: 2),
+          state: _state('New name', entries: 2),
         ),
         confirmReconnect: () async =>
             throw StateError('Unexpected confirmation'),

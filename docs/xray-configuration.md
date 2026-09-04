@@ -58,6 +58,12 @@ domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段
 
 ## 自定义路由
 
+普通 Custom 的持久化链路固定为 `RoutingProfile` 表 ↔ `XrayJson` ↔
+`RoutingProfileState`：数据库适配层负责 Base64 解码、模型解析和规范化重编码，业务与 UI
+只使用 State。名称仍保存在 `RoutingProfile.name` 列，不写入配置根部。
+`XrayJson.geodata` 只承载导入所需的 `assets`，每项仅含 `file` / `url`；导入完成后保存前
+移除 `geodata`。完整 Raw JSON 使用独立 Map 链路，不经过上述转换。
+
 规则只允许域名、IP、端口、网络四类条件。不同条件为 AND，同类多值为 OR；建议只填
 一种条件。规则顺序决定匹配顺序，名称使用原生 `ruleTag`，没有启用/停用自定义字段。
 动作只允许 `balancerTag: proxy` 或 `outboundTag: direct|block`。

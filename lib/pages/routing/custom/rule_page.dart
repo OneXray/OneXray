@@ -8,10 +8,11 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class CustomRoutingRulePage extends StatefulWidget {
-  final Map<String, dynamic>? rule;
+  final RoutingRuleState? rule;
   const CustomRoutingRulePage({super.key, this.rule});
 
   @override
@@ -223,7 +224,7 @@ class CustomRoutingRuleForm extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   _actions(context),
-                  if (controller.action == 'proxy')
+                  if (controller.action == RoutingRuleAction.proxy)
                     Padding(
                       padding: const EdgeInsets.only(top: 9),
                       child: Text(
@@ -459,9 +460,9 @@ class CustomRoutingRuleForm extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final actions = {
-      'proxy': l.prototypeUseVpn,
-      'direct': l.prototypeDirect,
-      'block': l.prototypeBlock,
+      RoutingRuleAction.proxy: l.prototypeUseVpn,
+      RoutingRuleAction.direct: l.prototypeDirect,
+      RoutingRuleAction.block: l.prototypeBlock,
     };
     return Container(
       clipBehavior: Clip.antiAlias,

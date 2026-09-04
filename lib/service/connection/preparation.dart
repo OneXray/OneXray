@@ -11,8 +11,9 @@ import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:path/path.dart' as p;
 
@@ -78,7 +79,7 @@ class ConnectionPreparation {
     ConnectionConfiguration input, {
     Future<void>? cancelled,
     String? rawDraft,
-    CustomRoutingTemplate? customDraft,
+    RoutingProfileState? customDraft,
     Map<int, ServerSnapshot> serverDrafts = const {},
     void Function(Set<int>)? onResolved,
     Future<void> Function(String datDirectory)? prepareAssets,
@@ -89,7 +90,7 @@ class ConnectionPreparation {
     final platform = connectionPlatform;
     final tun = policy.toTun(platform);
     String? raw = rawDraft;
-    CustomRoutingTemplate? custom = customDraft;
+    RoutingProfileState? custom = customDraft;
     if (settings.expert && raw == null) {
       final row = settings.rawId == null
           ? null
@@ -110,7 +111,7 @@ class ConnectionPreparation {
       if (row == null) {
         throw const FormatException('Custom route is unavailable');
       }
-      custom = CustomRoutingTemplate.parse(utf8.decode(base64Decode(row.data)));
+      custom = CustomRoutingService.read(row);
     }
     String? notice;
     List<ServerSnapshot> entries;

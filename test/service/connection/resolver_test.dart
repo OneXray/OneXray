@@ -7,7 +7,7 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/state.dart';
 
 void main() {
   test('automatic, region, source and fixed selections retain distinct same-name IDs', () async {
@@ -318,12 +318,8 @@ CoreConfigData _row(
   ),
 );
 
-CustomRoutingTemplate _custom(int count) => CustomRoutingTemplate.parse(
-  jsonEncode({
-    'outbounds': List.generate(count, (_) => <String, dynamic>{}),
-    'routing': {'rules': []},
-  }),
-);
+RoutingProfileState _custom(int count) =>
+    RoutingProfileState(name: 'Custom', entryCount: count);
 
 class _Rows {
   List<CoreConfigData> current;

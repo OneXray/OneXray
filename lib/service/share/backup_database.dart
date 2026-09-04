@@ -1,11 +1,9 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 import 'package:onexray/core/db/dao/routing_profile.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/service/routing/state_db.dart';
 import 'package:onexray/service/share/backup_model.dart';
-import 'package:onexray/service/routing/custom_template.dart';
 
 /// The ZIP's database projection. Configuration data is already base64 encoded.
 final class BackupDatabaseContents {
@@ -137,14 +135,11 @@ final class BackupDatabaseContents {
       if (row.name == null || row.data == null) {
         throw const FormatException('Invalid backup custom routing profile');
       }
-      final template = CustomRoutingTemplate.parse(
-        utf8.decode(base64Decode(row.data!)),
+      RoutingProfileStateDb.readData(
+        id: row.id,
+        name: row.name!,
+        data: row.data!,
       );
-      if (template.assets.isNotEmpty) {
-        throw const FormatException(
-          'Stored custom route must not contain an import manifest',
-        );
-      }
     }
     if (!_isCurrent) {
       return;
@@ -227,11 +222,16 @@ final class BackupDatabaseContents {
         );
       }
       for (final row in routingProfiles) {
+        final state = RoutingProfileStateDb.readData(
+          id: row.id,
+          name: row.name!,
+          data: row.data!,
+        );
         await db.routingProfileDao.insertRow(
           RoutingProfileCompanion.insert(
             id: Value(row.id!),
-            name: row.name!,
-            data: row.data!,
+            name: state.name,
+            data: state.databaseData,
           ),
         );
       }

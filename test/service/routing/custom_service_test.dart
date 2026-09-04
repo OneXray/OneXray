@@ -4,7 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/routing/custom_service.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/state.dart';
 
 void main() {
   test(
@@ -13,21 +13,14 @@ void main() {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
       final service = CustomRoutingService(database);
-      const text = '{"outbounds":[{}],"routing":{"rules":[]}}';
-      final id = await service.save(name: ' Route ', text: text);
+      final id = await service.save(RoutingProfileState(name: ' Route '));
       expect((await database.routingProfileDao.searchRow(id))!.name, 'Route');
       await expectLater(
-        service.save(name: 'route', text: text),
+        service.save(RoutingProfileState(name: 'route')),
         throwsFormatException,
       );
       final name = List.filled(32, '🌐').join();
-      final unicode = CustomRoutingTemplate.parse(
-        jsonEncode({
-          'name': name,
-          'outbounds': [{}],
-        }),
-      );
-      await service.save(id: id, name: name, text: unicode.encode());
+      await service.save(RoutingProfileState(id: id, name: name));
       expect((await database.routingProfileDao.searchRow(id))!.name, name);
     },
   );
@@ -37,25 +30,36 @@ void main() {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
       final service = CustomRoutingService(database);
-      const text = '{"outbounds":[{}],"routing":{"rules":[]}}';
-      final id = await service.save(name: 'One', text: text);
+      final state = RoutingProfileState(
+        name: 'One',
+        rules: [
+          RoutingRuleState(
+            ruleTag: 'Example',
+            domain: const ['domain:example.com'],
+            action: RoutingRuleAction.direct,
+          ),
+        ],
+      );
+      final id = await service.save(state);
       final row = (await database.routingProfileDao.searchRow(id))!;
-      expect(jsonDecode(utf8.decode(base64Decode(row.data))), jsonDecode(text));
-      expect(CustomRoutingService.read(row).entryCount, 1);
-      await service.save(name: 'Two', text: text);
-      await service.save(name: 'Three', text: text);
+      final stored = jsonDecode(utf8.decode(base64Decode(row.data))) as Map;
+      expect(stored.containsKey('name'), false);
+      expect(stored.containsKey('geodata'), false);
+      final roundTrip = CustomRoutingService.read(row);
+      expect(roundTrip.id, id);
+      expect(roundTrip.name, 'One');
+      expect(roundTrip.entryCount, 1);
+      expect(roundTrip.rules.single.toJson(), state.rules.single.toJson());
+      await service.save(RoutingProfileState(name: 'Two'));
+      await service.save(RoutingProfileState(name: 'Three'));
       await expectLater(
-        service.save(name: 'Four', text: text),
+        service.save(RoutingProfileState(name: 'Four')),
         throwsStateError,
       );
-      await service.save(id: id, name: 'Edited', text: text);
+      await service.save(state.copyWith(id: id, name: 'Edited'));
       expect((await database.routingProfileDao.searchRow(id))!.name, 'Edited');
       await expectLater(
-        service.save(
-          id: id,
-          name: 'Hidden',
-          text: '{"outbounds":[{}],"inbounds":[]}',
-        ),
+        service.save(state.copyWith(id: id, name: 'Hidden', entryCount: 4)),
         throwsFormatException,
       );
       expect((await database.routingProfileDao.searchRow(id))!.name, 'Edited');

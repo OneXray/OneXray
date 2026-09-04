@@ -6,11 +6,11 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/routing/checker.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/state.dart';
 
 class RouteChecker extends StatefulWidget {
   final ConnectionConfiguration configuration;
-  final CustomRoutingTemplate? customDraft;
+  final RoutingProfileState? customDraft;
   final Future<void> Function(String)? prepareAssets;
   const RouteChecker({
     super.key,

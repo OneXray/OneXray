@@ -6,8 +6,8 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/routing/custom_template.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
+import 'package:onexray/service/routing/state.dart';
 
 final catalog = RegionCatalog.fromJson(
   {
@@ -267,31 +267,24 @@ void main() {
   );
 
   test('Custom keeps native AND rules/order, maps duplicate names, derives DNS domains only', () {
-    final template = CustomRoutingTemplate.parse(
-      jsonEncode({
-        'outbounds': [
-          {},
-          {},
-          {'tag': 'direct', 'protocol': 'freedom'},
-        ],
-        'routing': {
-          'domainStrategy': 'IPIfNonMatch',
-          'rules': [
-            {
-              'ruleTag': 'Same',
-              'domain': ['domain:example.test'],
-              'port': '443',
-              'network': 'tcp',
-              'outboundTag': 'direct',
-            },
-            {
-              'ruleTag': 'Same',
-              'ip': ['192.0.2.1/32'],
-              'outboundTag': 'block',
-            },
-          ],
-        },
-      }),
+    final template = RoutingProfileState(
+      name: 'Custom',
+      entryCount: 2,
+      domainStrategy: 'IPIfNonMatch',
+      rules: [
+        RoutingRuleState(
+          ruleTag: 'Same',
+          domain: const ['domain:example.test'],
+          port: '443',
+          network: 'tcp',
+          action: RoutingRuleAction.direct,
+        ),
+        RoutingRuleState(
+          ruleTag: 'Same',
+          ip: const ['192.0.2.1/32'],
+          action: RoutingRuleAction.block,
+        ),
+      ],
     );
     final original = template.encode();
     final plan = ConnectionCompiler.compile(

@@ -18,7 +18,6 @@ import 'package:onexray/service/assets/server.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/routing/custom_template.dart';
 import 'package:onexray/service/subscription/service.dart';
 
 enum ServerGrouping { location, subscription }
@@ -204,17 +203,11 @@ class ServersController extends ConnectController {
     });
     int? customCount;
     if (connection.trafficMode == TrafficMode.custom) {
-      final row = customRoutes
-          .where((row) => row.id == connection.customId)
+      final profile = customRoutes
+          .where((profile) => profile.id == connection.customId)
           .firstOrNull;
-      if (row == null) return 0;
-      try {
-        customCount = CustomRoutingTemplate.parse(
-          utf8.decode(base64Decode(row.data)),
-        ).entryCount;
-      } on FormatException {
-        return 0;
-      }
+      if (profile == null) return 0;
+      customCount = profile.entryCount;
     }
     return connection.requiredEntries(customEntryCount: customCount);
   }

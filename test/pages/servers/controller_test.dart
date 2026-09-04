@@ -12,6 +12,7 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 
 void main() {
@@ -215,7 +216,9 @@ void main() {
         ),
       ),
     );
-    controller.customRoutes = await db.routingProfileDao.allRows;
+    controller.customRoutes = (await db.routingProfileDao.allRows)
+        .map(CustomRoutingService.read)
+        .toList();
     controller.configuration = ConnectionConfiguration(
       connection: ConnectionSettings(
         trafficMode: TrafficMode.custom,

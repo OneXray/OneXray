@@ -18,6 +18,7 @@ import 'package:onexray/service/share/app_link_parser.dart';
 import 'package:onexray/service/share/service.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
 import 'package:onexray/service/routing/custom_service.dart';
+import 'package:onexray/service/routing/document.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/subscription/model.dart';
@@ -485,8 +486,13 @@ class ServerImportService {
         throw StateError('Incomplete asset write');
       }
       for (final custom in preview.customRoutes) {
-        await CustomRoutingService(db)
-            .save(name: custom.name, text: custom.text);
+        await CustomRoutingService(db).save(
+          RoutingProfileDocument.parse(
+            custom.text,
+            name: custom.name,
+            allowMetadata: false,
+          ).state,
+        );
       }
       return result;
     }

@@ -15,6 +15,7 @@ import 'package:onexray/pages/advanced/tunnel/interface.dart';
 import 'package:onexray/pages/advanced/geodata/page.dart';
 import 'package:onexray/pages/advanced/geodata/detail.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:onexray/pages/home/share/page.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/launch/splash/page.dart';
@@ -333,7 +334,7 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.customRouting,
     (_, state) => CustomRoutingEditorPage(
       profileId: state.extra as int?,
-      openRule: (context, rule) => context.pushScoped<Map<String, dynamic>>(
+      openRule: (context, rule) => context.pushScoped<RoutingRuleState>(
         AppSecondaryDestination.customRule,
         extra: rule,
       ),
@@ -341,8 +342,7 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   ),
   _route(
     AppSecondaryDestination.customRule,
-    (_, state) =>
-        CustomRoutingRulePage(rule: state.extra as Map<String, dynamic>?),
+    (_, state) => CustomRoutingRulePage(rule: state.extra as RoutingRuleState?),
   ),
   _route(
     AppSecondaryDestination.share,

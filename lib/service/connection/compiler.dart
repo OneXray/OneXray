@@ -5,8 +5,8 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/runtime_network_policy.dart';
-import 'package:onexray/service/routing/custom_template.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/runtime_inbounds.dart';
@@ -201,7 +201,7 @@ class ConnectionCompiler {
     required List<ServerSnapshot> entries,
     ServerSnapshot? finalExit,
     Map<String, dynamic>? raw,
-    CustomRoutingTemplate? custom,
+    RoutingProfileState? custom,
     required RegionCatalog regions,
     required RuntimeOptions options,
   }) {
@@ -251,11 +251,8 @@ class ConnectionCompiler {
         domainStrategy = custom!.domainStrategy;
         for (final (index, rule) in custom.rules.indexed) {
           final tag = 'app-custom-$index';
-          ruleTags[tag] = (
-            index: index,
-            name: rule['ruleTag'] as String? ?? '',
-          );
-          rules.add({...rule, 'ruleTag': tag});
+          ruleTags[tag] = (index: index, name: rule.ruleTag);
+          rules.add({...rule.xrayJson.toJson(), 'ruleTag': tag});
         }
       }
       final entriesOutbounds = <Map<String, dynamic>>[];

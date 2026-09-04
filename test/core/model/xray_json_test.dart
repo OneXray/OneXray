@@ -5,6 +5,11 @@ void main() {
   test('round-trips the complete regular configuration model', () {
     final source = <String, dynamic>{
       'env': {'xray.location.asset': '/assets', 'xray.location.cert': '/certs'},
+      'geodata': {
+        'assets': [
+          {'file': 'other.dat', 'url': 'https://example.com/other.dat'},
+        ],
+      },
       'log': {
         'access': '/logs/access.log',
         'error': '/logs/error.log',

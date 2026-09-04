@@ -12,6 +12,7 @@ import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/pages/widget/menu_picker.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class CustomRoutingEditorPage extends StatefulWidget {
@@ -225,12 +226,12 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                                 CrossAxisAlignment.stretch,
                                             children: [
                                               _dns(context, mobile),
-                                              if (controller.previewTemplate
-                                                  case final template?)
+                                              if (controller.previewState
+                                                  case final profile?)
                                                 RouteChecker(
                                                   configuration: controller
                                                       .checkConfiguration,
-                                                  customDraft: template,
+                                                  customDraft: profile,
                                                   prepareAssets: controller
                                                       .transfer
                                                       .pending
@@ -416,10 +417,10 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final selected = controller.selectedRuleKey == controller.ruleKeys[index];
-    final action = controller.rules[index]['outboundTag'];
-    final actionColor = action == 'direct'
+    final action = controller.rules[index].action;
+    final actionColor = action == RoutingRuleAction.direct
         ? palette.running
-        : action == 'block'
+        : action == RoutingRuleAction.block
         ? palette.destructive
         : palette.primary;
     final position = l.prototypeChangeRulePosition(

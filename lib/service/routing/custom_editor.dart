@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:collection/collection.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -8,7 +6,7 @@ import 'package:onexray/service/connection/preparation.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/routing/custom_service.dart';
-import 'package:onexray/service/routing/custom_template.dart';
+import 'package:onexray/service/routing/state.dart';
 
 class CustomRoutingEditorException implements Exception {
   final String reason;
@@ -17,13 +15,8 @@ class CustomRoutingEditorException implements Exception {
 
 class CustomRoutingEditorDraft {
   final RoutingProfileData? original;
-  final String name;
-  final CustomRoutingTemplate template;
-  const CustomRoutingEditorDraft({
-    this.original,
-    required this.name,
-    required this.template,
-  });
+  final RoutingProfileState state;
+  const CustomRoutingEditorDraft({this.original, required this.state});
 }
 
 /// Draft editing never resolves servers. Only applying an active semantic change
@@ -34,7 +27,7 @@ class CustomRoutingEditorService {
   final Future<ConnectionPlan> Function(
     ConnectionConfiguration,
     Future<void>,
-    CustomRoutingTemplate,
+    RoutingProfileState,
   )?
   prepare;
 
@@ -47,20 +40,13 @@ class CustomRoutingEditorService {
 
   Future<CustomRoutingEditorDraft> load(int? id) async {
     if (id == null) {
-      return CustomRoutingEditorDraft(
-        name: '',
-        template: CustomRoutingTemplate.parse(
-          '{"outbounds":[{}, {"tag":"direct","protocol":"freedom"},'
-          '{"tag":"block","protocol":"blackhole"}],"routing":{"rules":[]}}',
-        ),
-      );
+      return CustomRoutingEditorDraft(state: RoutingProfileState(name: ''));
     }
     final row = await db.routingProfileDao.searchRow(id);
     if (row == null) throw const CustomRoutingEditorException('missing');
     return CustomRoutingEditorDraft(
       original: row,
-      name: row.name,
-      template: CustomRoutingService.read(row),
+      state: CustomRoutingService.read(row),
     );
   }
 
@@ -71,17 +57,17 @@ class CustomRoutingEditorService {
     required Future<bool> Function() confirmReconnect,
     GeoDataImportDraft? geodata,
   }) async {
-    final name = draft.name.trim();
+    final name = draft.state.name.trim();
     if (name.isEmpty || name.runes.length > 32) {
       throw const CustomRoutingEditorException('name');
     }
-    final template = CustomRoutingTemplate.parse(
-      jsonEncode({...draft.template.toJson(), 'name': name}),
-    );
-    if (draft.template.assets.isNotEmpty) {
-      throw const CustomRoutingEditorException('assets');
-    }
     final original = draft.original;
+    final state = draft.state.copyWith(
+      id: original?.id,
+      clearId: original == null,
+      name: name,
+    );
+    state.validate();
     await _checkName(name, original?.id);
     if (original != null) await _checkOriginal(original);
     if (original == null && (await rows).length >= 3) {
@@ -103,7 +89,7 @@ class CustomRoutingEditorService {
     final affectsRuntime =
         selected &&
         !connection.expert &&
-        !sameRouting(CustomRoutingService.read(original), template);
+        !sameRouting(CustomRoutingService.read(original), state);
     var allowReconnect = false;
     if (affectsRuntime &&
         coordinator.state.value.phase == ConnectionPhase.connected) {
@@ -119,11 +105,11 @@ class CustomRoutingEditorService {
       expectedConfiguration: configuration.encode(),
       prepare: affectsRuntime
           ? (next, cancelled) =>
-                prepare?.call(next, cancelled, template) ??
+                prepare?.call(next, cancelled, state) ??
                 ConnectionPreparation(db: db).prepare(
                   next,
                   cancelled: cancelled,
-                  customDraft: template,
+                  customDraft: state,
                   prepareAssets: geodata?.copyFilesTo,
                   onResolved: coordinator.reportResolvedNodes,
                 )
@@ -133,8 +119,7 @@ class CustomRoutingEditorService {
         await _checkName(name, original?.id);
         if (original != null) await _checkOriginal(original);
         await geodata?.commit();
-        savedId = await CustomRoutingService(db)
-            .save(id: original?.id, name: name, text: template.encode());
+        savedId = await CustomRoutingService(db).save(state);
       },
     );
     return savedId;
@@ -217,14 +202,14 @@ class CustomRoutingEditorService {
       value.trafficMode == TrafficMode.custom && value.customId == id;
 
   static bool sameRouting(
-    CustomRoutingTemplate before,
-    CustomRoutingTemplate after,
+    RoutingProfileState before,
+    RoutingProfileState after,
   ) {
-    Object semantic(CustomRoutingTemplate template) => {
-      'entries': template.entryCount,
-      'strategy': template.domainStrategy,
+    Object semantic(RoutingProfileState state) => {
+      'entries': state.entryCount,
+      'strategy': state.domainStrategy,
       'rules': [
-        for (final rule in template.rules) {...rule}..remove('ruleTag'),
+        for (final rule in state.rules) {...rule.toJson()}..remove('ruleTag'),
       ],
     };
     return const DeepCollectionEquality().equals(

@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/service/routing/custom_template.dart';
 import 'package:onexray/service/routing/geodata_suggestions.dart';
+import 'package:onexray/service/routing/state.dart';
 
 class RuleValueEntry {
   final text = TextEditingController();
@@ -23,34 +21,32 @@ class CustomRoutingRuleController extends ChangeNotifier {
   final List<RuleValueEntry> domains = [];
   final List<RuleValueEntry> ips = [];
   final Future<RoutingGeodataIndex> Function() loadIndex;
-  final Map<String, dynamic> _original;
+  final RoutingRuleState _original;
   String network = 'any';
-  String action = 'proxy';
+  RoutingRuleAction action = RoutingRuleAction.proxy;
   String? error;
   bool _networkChanged = false;
   bool _closed = false;
 
   CustomRoutingRuleController({
-    Map<String, dynamic>? rule,
+    RoutingRuleState? rule,
     Future<RoutingGeodataIndex> Function()? loadIndex,
-  }) : _original = jsonDecode(
-         jsonEncode(rule ?? <String, dynamic>{}),
-       ) as Map<String, dynamic>,
+  }) : _original = rule ?? RoutingRuleState(),
        loadIndex = loadIndex ?? (() => RoutingGeodataIndex.load()) {
-    name.text = _original['ruleTag'] as String? ?? '';
-    port.text = _original['port']?.toString() ?? '';
-    final values = _original['network'];
+    name.text = _original.ruleTag;
+    port.text = _original.port?.toString() ?? '';
+    final values = _original.network;
     final networks = values is String ? values.split(',') : values as List?;
     final distinctNetworks = networks?.toSet();
     network = distinctNetworks?.length == 1
         ? distinctNetworks!.single as String
         : 'any';
-    action = _original['outboundTag'] as String? ?? 'proxy';
-    for (final value in _original['domain'] as List? ?? const []) {
-      domains.add(_entry(value as String));
+    action = _original.action;
+    for (final value in _original.domain) {
+      domains.add(_entry(value));
     }
-    for (final value in _original['ip'] as List? ?? const []) {
-      ips.add(_entry(value as String));
+    for (final value in _original.ip) {
+      ips.add(_entry(value));
     }
     if (domains.isEmpty) domains.add(_entry(''));
     if (ips.isEmpty) ips.add(_entry(''));
@@ -88,7 +84,7 @@ class CustomRoutingRuleController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAction(String value) {
+  void setAction(RoutingRuleAction value) {
     action = value;
     notifyListeners();
   }
@@ -105,40 +101,36 @@ class CustomRoutingRuleController extends ChangeNotifier {
   }
 
   /// Incomplete fields stay in the route draft while another rule is edited.
-  /// Save still validates the complete template through [buildRule].
-  Map<String, dynamic> get draftRule {
+  /// Save still validates the complete rule through [buildRule].
+  RoutingRuleState get draftRule {
     List<String> clean(List<RuleValueEntry> values) => values
         .map((entry) => entry.text.text.trim())
         .where((value) => value.isNotEmpty)
         .toList();
     final domain = clean(domains);
     final ip = clean(ips);
-    return <String, dynamic>{
-      if (name.text.trim().isNotEmpty) 'ruleTag': name.text.trim(),
-      if (domain.isNotEmpty) 'domain': domain,
-      if (ip.isNotEmpty) 'ip': ip,
-      if (port.text.trim().isNotEmpty)
-        'port': port.text.trim() == _original['port']?.toString()
-            ? _original['port']
-            : port.text.trim(),
-      if (network != 'any')
-        'network': network
-      else if (!_networkChanged && _original.containsKey('network'))
-        'network': _original['network'],
-      if (action == 'proxy') 'balancerTag': 'proxy' else 'outboundTag': action,
-    };
+    final portText = port.text.trim();
+    return RoutingRuleState(
+      ruleTag: name.text.trim(),
+      domain: domain,
+      ip: ip,
+      port: portText.isEmpty
+          ? null
+          : portText == _original.port?.toString()
+          ? _original.port
+          : portText,
+      network: network != 'any'
+          ? network
+          : !_networkChanged
+          ? _original.network
+          : null,
+      action: action,
+    );
   }
 
-  Map<String, dynamic> buildRule() {
+  RoutingRuleState buildRule() {
     final rule = draftRule;
-    CustomRoutingTemplate.parse(
-      jsonEncode({
-        'outbounds': [{}],
-        'routing': {
-          'rules': [rule],
-        },
-      }),
-    );
+    rule.validate();
     return rule;
   }
 
@@ -147,7 +139,7 @@ class CustomRoutingRuleController extends ChangeNotifier {
       Navigator.of(context).pop(buildRule());
     } on FormatException catch (failure) {
       final l10n = AppLocalizations.of(context)!;
-      error = failure.message.contains('.port')
+      error = failure.message.contains('port')
           ? l10n.validationPortInvalid
           : l10n.prototypeNoMatchConditions;
       notifyListeners();

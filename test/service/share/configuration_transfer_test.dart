@@ -7,6 +7,7 @@ import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/routing/custom_service.dart';
+import 'package:onexray/service/routing/document.dart';
 import 'package:onexray/service/share/app_link_generator.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/app_link_parser.dart';
@@ -43,7 +44,12 @@ void main() {
     expect(content.name, 'Route');
     expect(content.assets.single.fileName, 'rules.dat');
     expect(content.assets.single.type, GeoDataType.domain);
-    expect((json['outbounds'] as List), [{}, {}]);
+    expect((json['outbounds'] as List), [
+      {},
+      {},
+      {'tag': 'direct', 'protocol': 'freedom'},
+      {'tag': 'block', 'protocol': 'blackhole'},
+    ]);
     expect(
       (json['routing']['rules'] as List).single['ruleTag'],
       'Local websites',
@@ -116,7 +122,12 @@ void main() {
       expect(link.type, OneXrayConfigLinkType.custom);
       expect(link.name, 'Shared');
       expect(jsonDecode(link.xrayJson)['name'], 'Shared');
-      expect(jsonDecode(link.xrayJson)['outbounds'], [{}, {}]);
+      expect(jsonDecode(link.xrayJson)['outbounds'], [
+        {},
+        {},
+        {'tag': 'direct', 'protocol': 'freedom'},
+        {'tag': 'block', 'protocol': 'blackhole'},
+      ]);
     },
   );
 
@@ -218,8 +229,10 @@ void main() {
     expect(await db.routingProfileDao.allRows, isEmpty);
     final result = await service.commit(first);
     expect(result.customCount, 1);
-    await CustomRoutingService(db).save(name: 'Two', text: template('Two'));
-    await CustomRoutingService(db).save(name: 'Three', text: template('Three'));
+    await CustomRoutingService(db)
+        .save(RoutingProfileDocument.parse(template('Two')).state);
+    await CustomRoutingService(db)
+        .save(RoutingProfileDocument.parse(template('Three')).state);
     final next = await service.preview(template('Fourth', assets: true));
     expect(await db.geoDataDao.allRows, isEmpty);
     await expectLater(service.commit(next), throwsA(isA<StateError>()));

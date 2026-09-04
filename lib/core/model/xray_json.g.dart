@@ -10,6 +10,9 @@ XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
   env: json['env'] == null
       ? null
       : XrayEnv.fromJson(json['env'] as Map<String, dynamic>),
+  geodata: json['geodata'] == null
+      ? null
+      : XrayGeoData.fromJson(json['geodata'] as Map<String, dynamic>),
   log: json['log'] == null
       ? null
       : XrayLog.fromJson(json['log'] as Map<String, dynamic>),
@@ -41,6 +44,7 @@ XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
 
 Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'env': ?instance.env?.toJson(),
+  'geodata': ?instance.geodata?.toJson(),
   'log': ?instance.log?.toJson(),
   'dns': ?instance.dns?.toJson(),
   'routing': ?instance.routing?.toJson(),
@@ -51,6 +55,26 @@ Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'metrics': ?instance.metrics?.toJson(),
   'observatory': ?instance.observatory?.toJson(),
 };
+
+XrayGeoData _$XrayGeoDataFromJson(Map<String, dynamic> json) => XrayGeoData(
+  assets: (json['assets'] as List<dynamic>?)
+      ?.map((e) => XrayGeoDataAsset.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$XrayGeoDataToJson(XrayGeoData instance) =>
+    <String, dynamic>{
+      'assets': ?instance.assets?.map((e) => e.toJson()).toList(),
+    };
+
+XrayGeoDataAsset _$XrayGeoDataAssetFromJson(Map<String, dynamic> json) =>
+    XrayGeoDataAsset(
+      file: json['file'] as String?,
+      url: json['url'] as String?,
+    );
+
+Map<String, dynamic> _$XrayGeoDataAssetToJson(XrayGeoDataAsset instance) =>
+    <String, dynamic>{'file': ?instance.file, 'url': ?instance.url};
 
 XrayEnv _$XrayEnvFromJson(Map<String, dynamic> json) => XrayEnv(
   assetLocation: json['xray.location.asset'] as String?,

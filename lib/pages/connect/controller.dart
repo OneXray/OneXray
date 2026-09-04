@@ -25,6 +25,7 @@ import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/manager.dart';
 import 'package:onexray/service/menu/short_cut/service.dart';
 import 'package:onexray/service/routing/custom_service.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:onexray/service/share/service.dart';
 
 class ConnectController extends ChangeNotifier {
@@ -38,7 +39,7 @@ class ConnectController extends ChangeNotifier {
   ConnectionConfiguration configuration = ConnectionConfiguration();
   List<CoreConfigData> servers = [];
   List<CoreConfigData> raws = [];
-  List<RoutingProfileData> customRoutes = [];
+  List<RoutingProfileState> customRoutes = [];
   List<SubscriptionData> sources = [];
   bool expertView = false;
   bool ready = false;
@@ -108,7 +109,12 @@ class ConnectController extends ChangeNotifier {
         );
         _subscriptions.add(
           db.routingProfileDao.allRowsStream.listen((rows) {
-            customRoutes = rows;
+            try {
+              customRoutes = rows.map(CustomRoutingService.read).toList();
+            } catch (error) {
+              _readFailed(error);
+              return;
+            }
             _notify();
           }, onError: _readFailed),
         );
@@ -193,15 +199,10 @@ class ConnectController extends ChangeNotifier {
     if (settings.trafficMode == TrafficMode.smart) {
       return settings.smart.entryCount;
     }
-    final row = customRoutes
-        .where((row) => row.id == settings.customId)
+    final profile = customRoutes
+        .where((profile) => profile.id == settings.customId)
         .firstOrNull;
-    if (row == null) return null;
-    try {
-      return CustomRoutingService.read(row).entryCount;
-    } on FormatException {
-      return null;
-    }
+    return profile?.entryCount;
   }
 
   String? selectionDetail(AppLocalizations l10n) =>
@@ -236,13 +237,7 @@ class ConnectController extends ChangeNotifier {
       ? l10n.prototypeSmartRoutingRecommended
       : methodTitle(l10n);
 
-  int? _ruleCount(RoutingProfileData row) {
-    try {
-      return CustomRoutingService.read(row).rules.length;
-    } on FormatException {
-      return null;
-    }
-  }
+  int _ruleCount(RoutingProfileState profile) => profile.rules.length;
 
   String methodDescription(AppLocalizations l10n) {
     switch (configuration.connection.trafficMode) {
@@ -637,8 +632,12 @@ class ConnectController extends ChangeNotifier {
       (context) => ConnectTrafficMethodDialog(
         current: configuration.connection,
         customRoutes: [
-          for (final row in customRoutes)
-            (id: row.id, name: row.name, ruleCount: _ruleCount(row)),
+          for (final profile in customRoutes)
+            (
+              id: profile.id!,
+              name: profile.name,
+              ruleCount: _ruleCount(profile),
+            ),
         ],
       ),
     );

@@ -12,6 +12,7 @@ import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/routing/custom_editor.dart';
 import 'package:onexray/service/routing/geodata_suggestions.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void _phone(WidgetTester tester) {
@@ -42,11 +43,10 @@ void main() {
     'conditions stay collapsed with summaries and keep real completion',
     (tester) async {
       _phone(tester);
-      final original = <String, dynamic>{
-        'ruleTag': 'Sites',
-        'domain': ['geosite:CN'],
-        'balancerTag': 'proxy',
-      };
+      final original = RoutingRuleState(
+        ruleTag: 'Sites',
+        domain: const ['geosite:CN'],
+      );
       final controller = CustomRoutingRuleController(
         rule: original,
         loadIndex: () async => const RoutingGeodataIndex(
@@ -89,7 +89,7 @@ void main() {
       await tester.tap(find.text('Websites and domains'));
       await tester.pumpAndSettle();
       expect(find.byType(ShadInput), findsOneWidget);
-      expect(original['domain'], ['geosite:CN']);
+      expect(original.domain, ['geosite:CN']);
       expect(tester.takeException(), isNull);
     },
   );
@@ -149,7 +149,7 @@ void main() {
           );
           expect(tester.widget<EditableText>(editable).style.fontSize, 16);
         }
-        controller.setAction('block');
+        controller.setAction(RoutingRuleAction.block);
         await tester.pumpAndSettle();
         expect(find.text(l.prototypeVpnRuleHint), findsNothing);
         expect(tester.takeException(), isNull);
@@ -161,7 +161,7 @@ void main() {
     'new rule validates before save and cancel does not return a draft',
     (tester) async {
       _phone(tester);
-      Map<String, dynamic>? result;
+      RoutingRuleState? result;
       var completed = 0;
       await tester.pumpWidget(
         _app(
@@ -169,7 +169,7 @@ void main() {
             body: Builder(
               builder: (context) => TextButton(
                 onPressed: () async {
-                  result = await Navigator.push<Map<String, dynamic>>(
+                  result = await Navigator.push<RoutingRuleState>(
                     context,
                     MaterialPageRoute(
                       builder: (_) => const CustomRoutingRulePage(),
@@ -203,7 +203,7 @@ void main() {
       await tester.enterText(port, '443');
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
-      expect(result, {
+      expect(result?.toJson(), {
         'ruleTag': 'New rule',
         'port': '443',
         'balancerTag': 'proxy',
@@ -276,38 +276,38 @@ void main() {
       );
       final selected = controller.selectedRuleKey;
       controller.reorder(1, 0);
-      expect(controller.rules.map((rule) => rule['ruleTag']), ['B', 'A', 'C']);
+      expect(controller.rules.map((rule) => rule.ruleTag), ['B', 'A', 'C']);
       expect(controller.selectedRuleKey, selected);
       controller.deleteRule(0);
-      expect(controller.rules.map((rule) => rule['ruleTag']), ['A', 'C']);
+      expect(controller.rules.map((rule) => rule.ruleTag), ['A', 'C']);
       expect(controller.selectedRuleKey, controller.ruleKeys.first);
       controller.setInlineEditing(true);
       expect(controller.inlineRule!.name.text, 'A');
       controller.inlineRule!.name.text = 'A edited';
       controller.inlineRule!.domains.single.text.text = 'edited.example';
       controller.inlineRule!.port.text = '65536';
-      expect(controller.previewTemplate, isNull);
-      Future<Map<String, dynamic>?> unexpectedNavigation(
+      expect(controller.previewState, isNull);
+      Future<RoutingRuleState?> unexpectedNavigation(
         BuildContext _,
-        Map<String, dynamic>? _,
+        RoutingRuleState? _,
       ) async =>
           throw StateError('Desktop must keep the editor beside the list');
       await controller.editRule(context, unexpectedNavigation, 1);
       expect(controller.inlineRule!.name.text, 'C');
-      expect(controller.rules.first['port'], '65536');
+      expect(controller.rules.first.port, '65536');
       await controller.editRule(context, unexpectedNavigation, 0);
       expect(controller.inlineRule!.domains.single.text.text, 'edited.example');
       expect(controller.inlineRule!.port.text, '65536');
       controller.inlineRule!.port.text = '443';
       controller.reorder(0, 1);
-      expect(controller.rules.last['ruleTag'], 'A edited');
-      controller.inlineRule!.setAction('direct');
-      expect(controller.rules.last['outboundTag'], 'direct');
+      expect(controller.rules.last.ruleTag, 'A edited');
+      controller.inlineRule!.setAction(RoutingRuleAction.direct);
+      expect(controller.rules.last.action, RoutingRuleAction.direct);
       await controller.editRule(context, unexpectedNavigation);
       expect(controller.inlineRule!.name.text, 'New rule');
-      expect(controller.previewTemplate, isNull);
+      expect(controller.previewState, isNull);
       controller.inlineRule!.domains.single.text.text = 'new.example';
-      expect(controller.previewTemplate!.rules, hasLength(3));
+      expect(controller.previewState!.rules, hasLength(3));
       controller.deleteRule(2);
       expect(controller.inlineRule!.name.text, 'A edited');
       controller.setInlineEditing(false);
@@ -316,11 +316,11 @@ void main() {
       await controller.editRule(context, (_, rule) async {
         mobileOpened = true;
         final current = rule!;
-        expect(current['ruleTag'], 'A edited');
-        return {...current, 'ruleTag': 'Mobile edit'};
+        expect(current.ruleTag, 'A edited');
+        return current.copyWith(ruleTag: 'Mobile edit');
       }, 1);
       expect(mobileOpened, isTrue);
-      expect(controller.rules.last['ruleTag'], 'Mobile edit');
+      expect(controller.rules.last.ruleTag, 'Mobile edit');
       await tester.pump();
       expect(
         await tester.runAsync(() => db.routingProfileDao.allRows),
