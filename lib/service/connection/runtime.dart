@@ -164,9 +164,7 @@ class ConnectionRuntime {
       ),
       finalExit: metadata['finalExit'] == null
           ? null
-          : RuntimeNode.fromJson(
-              metadata['finalExit'] as Map<String, dynamic>,
-            ),
+          : RuntimeNode.fromJson(metadata['finalExit'] as Map<String, dynamic>),
       ruleTags: const {},
     );
   }

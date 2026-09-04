@@ -6,14 +6,15 @@ void main() {
   test('Android tile uses the App shortcut instead of a saved plan', () {
     const native = 'android/app/src/main/kotlin/net/yuandev/onexray';
     final controller = File('$native/vpn/VpnController.kt').readAsStringSync();
-    final tile = File(
-      '$native/tile/OneQuickSettingsTileService.kt',
-    ).readAsStringSync();
-    final shortcut = File(
-      'lib/service/menu/short_cut/service.dart',
-    ).readAsStringSync();
+    final tile = File('$native/tile/OneQuickSettingsTileService.kt')
+        .readAsStringSync();
+    final shortcut = File('lib/service/menu/short_cut/service.dart')
+        .readAsStringSync();
 
-    expect(controller, contains('getSystemService(ShortcutManager::class.java)'));
+    expect(
+      controller,
+      contains('getSystemService(ShortcutManager::class.java)'),
+    );
     expect(
       controller,
       contains('?.dynamicShortcuts?.firstOrNull { it.id == "startVpn" }'),
