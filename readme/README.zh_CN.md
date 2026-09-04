@@ -25,7 +25,7 @@
   <a href="../README.md">English</a> · 简体中文 · <a href="./README.ru.md">Русский</a>
 </p>
 
-OneXray 支持导入您自己的兼容服务器配置或 HTTPS 订阅，并通过结构化 Xray 配置与路由工具管理节点和流量。
+OneXray 支持导入您自己的兼容服务器配置或 HTTPS 订阅、管理节点、选择智能路由、全部通过 VPN 或自定义路由，并可按需使用完整 Raw JSON 配置。
 
 OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服务。App 无需账户，不包含广告、Analytics、Tracking、Telemetry 或崩溃上报服务。
 
@@ -39,9 +39,9 @@ OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服�
 
 ## 核心能力
 
-- **跨平台运行**：iOS、macOS、Android 和 Linux 使用 TUN，Windows 使用本地 SOCKS5。
-- **灵活配置**：提供简易配置、可复用 Xray 配置、多节点出站和 Raw JSON。
-- **路由控制**：可在 Home 切换规则、全局和直连模式。
+- **跨平台运行**：所有支持平台均使用系统 VPN；Windows 使用由 Xray-core 支持的 VCore VPN Provider。
+- **灵活配置**：支持单个服务器出站、HTTPS 订阅、自定义路由配置和完整 Raw JSON。
+- **路由控制**：可在“连接”页面选择智能路由、全部通过 VPN 或命名的自定义路由。
 - **导入与管理**：通过二维码、图片、文件或剪贴板导入受支持的分享链接与 HTTPS 订阅。
 - **本地工具**：节点 Ping、Xray 日志、GeoData 与规则集管理、备份和恢复。
 - **平台集成**：Android Per-App VPN、Apple On Demand、桌面托盘控制和出站网卡选择。
@@ -61,7 +61,7 @@ X25519、Mihomo 兼容的 Hybrid（`ML-KEM-768 + X25519`）密钥。OneXray 只�
 OneXray 可通过专有的 `onexray://` URL 分享和导入内容：
 
 ```text
-onexray://onexray.com/config/add?type=outbound|profile|full|raw&data=<经过百分号编码的-base64-json>#名称
+onexray://onexray.com/config/add?type=outbound|raw|custom&data=<经过百分号编码的-base64-json>#名称
 onexray://onexray.com/sub/add?url=<经过百分号编码的-https-url>[&age=x25519|hybrid]#名称
 onexray://onexray.com/dat/add?type=domain|ip&url=<经过百分号编码的-https-url>#名称
 ```
@@ -69,7 +69,7 @@ onexray://onexray.com/dat/add?type=domain|ip&url=<经过百分号编码的-https
 分享的配置引用了 OneXray 中已有的自定义 GeoData 时，对应 GeoData 链接会排列在
 配置链接之前。
 
-仅支持上面列出的类型，不接受旧版 `type=setting`、备份或其他命令。导入 age
+仅支持上面列出的类型，不接受旧版 `type=setting|profile|full`、备份或其他命令。导入 age
 订阅链接时，App 会生成一对新的本地密钥，首次下载只发送公钥，并在订阅成功
 导入后保存密钥对。
 
@@ -121,7 +121,7 @@ brew uninstall --cask onexrayse
 
 ### Windows
 
-Microsoft Store 会根据当前设备架构选择 x86_64 或 ARM64 包并负责更新。Windows 运行本地 SOCKS5 代理，当前地址显示在 Core 设置中。
+Microsoft Store 会根据当前设备架构选择 x86_64 或 ARM64 包并负责更新。打包的 VCore VPN Provider 将系统流量转发到由 Xray-core 提供支持的内部 SOCKS5 入站；该入站不会作为用户代理公开。
 
 ### Android
 

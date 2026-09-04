@@ -25,7 +25,7 @@
   English · <a href="./readme/README.zh_CN.md">简体中文</a> · <a href="./readme/README.ru.md">Русский</a>
 </p>
 
-OneXray lets you bring your own compatible server configuration or HTTPS subscription, organize nodes, and control traffic with structured Xray Profiles and routing tools.
+OneXray lets you bring your own compatible server configuration or HTTPS subscription, organize nodes, choose Smart, all-VPN, or custom routing, and use complete Raw JSON configurations when needed.
 
 OneXray is a client-only app. It does not provide VPN or proxy servers, subscriptions, or network access. It requires no account and contains no advertising, analytics, tracking, telemetry, or crash-reporting services.
 
@@ -40,8 +40,8 @@ OneXray is a client-only app. It does not provide VPN or proxy servers, subscrip
 ## Highlights
 
 - **Cross-platform runtime** — system TUN on every supported platform; Windows uses a packaged VCore VPN Provider backed by Xray-core.
-- **Flexible configuration** — Simple Profile, reusable Xray Profiles, Multi-node Outbound, and Raw JSON.
-- **Routing control** — switch between Rule, Global, and Direct behavior from Home.
+- **Flexible configuration** — individual server outbounds, HTTPS subscriptions, custom routing configurations, and complete Raw JSON.
+- **Routing control** — choose Smart Routing, All via VPN, or a named Custom Routing configuration from Connect.
 - **Import and organize** — supported share links and HTTPS subscriptions from QR codes, images, files, or the clipboard.
 - **Local tools** — node ping, Xray logs, GeoData and rule-set management, backup, and restore.
 - **Platform integration** — Android Per-App VPN, Apple On Demand, desktop tray controls, and outbound-interface selection.
@@ -63,7 +63,7 @@ carefully.
 OneXray can share and import content through its proprietary `onexray://` URLs:
 
 ```text
-onexray://onexray.com/config/add?type=outbound|profile|full|raw&data=<percent-encoded-base64-json>#Name
+onexray://onexray.com/config/add?type=outbound|raw|custom&data=<percent-encoded-base64-json>#Name
 onexray://onexray.com/sub/add?url=<percent-encoded-https-url>[&age=x25519|hybrid]#Name
 onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Name
 ```
@@ -71,8 +71,8 @@ onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Nam
 When a shared config references custom GeoData stored in OneXray, matching
 GeoData links are placed before the config link.
 
-Only the types shown above are supported. Legacy `type=setting`, backups, and
-other commands are not accepted. An age subscription link generates a new
+Only the types shown above are supported. Legacy `type=setting|profile|full`,
+backups, and other commands are not accepted. An age subscription link generates a new
 local key pair, sends only its public key for the first download, and stores
 the pair when the subscription is imported successfully.
 

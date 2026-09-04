@@ -97,31 +97,38 @@ class CustomRoutingEditorService {
       if (!allowReconnect) return null;
     }
     await _checkConfiguration(configuration);
-    int? savedId = original?.id;
-    await coordinator.apply(
-      configuration,
-      affectsRuntime: affectsRuntime,
-      allowReconnect: allowReconnect,
-      expectedConfiguration: configuration.encode(),
-      prepare: affectsRuntime
-          ? (next, cancelled) =>
-                prepare?.call(next, cancelled, state) ??
-                ConnectionPreparation(db: db).prepare(
-                  next,
-                  cancelled: cancelled,
-                  customDraft: state,
-                  onResolved: coordinator.reportResolvedNodes,
-                )
-          : null,
-      writeAssets: () async {
-        await _checkConfiguration(configuration);
-        await _checkName(name, original?.id);
-        if (original != null) await _checkOriginal(original);
-        await geodata?.commit();
-        savedId = await CustomRoutingService(db).save(state);
-      },
-    );
-    return savedId;
+    await geodata?.publish();
+    try {
+      int? savedId = original?.id;
+      await coordinator.apply(
+        configuration,
+        affectsRuntime: affectsRuntime,
+        allowReconnect: allowReconnect,
+        expectedConfiguration: configuration.encode(),
+        prepare: affectsRuntime
+            ? (next, cancelled) =>
+                  prepare?.call(next, cancelled, state) ??
+                  ConnectionPreparation(db: db).prepare(
+                    next,
+                    cancelled: cancelled,
+                    customDraft: state,
+                    onResolved: coordinator.reportResolvedNodes,
+                  )
+            : null,
+        writeAssets: () async {
+          await _checkConfiguration(configuration);
+          await _checkName(name, original?.id);
+          if (original != null) await _checkOriginal(original);
+          await geodata?.commit();
+          savedId = await CustomRoutingService(db).save(state);
+        },
+      );
+      await geodata?.complete();
+      return savedId;
+    } catch (error, stackTrace) {
+      await geodata?.rollback();
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   Future<bool> delete(

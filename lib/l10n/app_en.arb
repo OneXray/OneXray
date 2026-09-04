@@ -1746,6 +1746,10 @@
   "@prototypeDocumentation": {
     "description": "Approved prototype copy: Documentation"
   },
+  "prototypeRateOneXray": "Rate OneXray",
+  "@prototypeRateOneXray": {
+    "description": "Rate OneXray in the platform app store"
+  },
   "prototypeCommunity": "Community",
   "@prototypeCommunity": {
     "description": "Approved prototype copy: Community"

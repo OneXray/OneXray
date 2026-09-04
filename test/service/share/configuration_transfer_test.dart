@@ -203,6 +203,7 @@ void main() {
   test('common import previews Custom rather than nodes; batch limits roll back dependencies and configs', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
+    final lifecycle = <String>[];
     final service = ServerImportService(
       database: db,
       parse: (_) async => throw StateError('Custom must not reach node parser'),
@@ -210,18 +211,26 @@ void main() {
       schedule: (_) => throw StateError('Routes are not nodes'),
       transfer: ConfigurationTransferService(
         lookup: db.geoDataDao.searchRowByName,
-        prepare: (inputs) async => GeoDataImportDraft(inputs, () async {
-          await db.geoDataDao.insertRow(
-            GeoDataCompanion.insert(
-              name: 'rules',
-              type: 'domain',
-              url: inputs.single.url,
-              timestamp: DateTime(2026),
-              categoryCount: 1,
-              ruleCount: 1,
-            ),
-          );
-        }, () async {}),
+        prepare: (inputs) async => GeoDataImportDraft(
+          inputs,
+          () async {
+            lifecycle.add('commit');
+            await db.geoDataDao.insertRow(
+              GeoDataCompanion.insert(
+                name: 'rules',
+                type: 'domain',
+                url: inputs.single.url,
+                timestamp: DateTime(2026),
+                categoryCount: 1,
+                ruleCount: 1,
+              ),
+            );
+          },
+          () async {},
+          publish: () async => lifecycle.add('publish'),
+          complete: () async => lifecycle.add('complete'),
+          rollback: () async => lifecycle.add('rollback'),
+        ),
       ),
     );
     final first = await service.preview(template('One'));
@@ -238,6 +247,7 @@ void main() {
     final next = await service.preview(template('Fourth', assets: true));
     expect(await db.geoDataDao.allRows, isEmpty);
     await expectLater(service.commit(next), throwsA(isA<StateError>()));
+    expect(lifecycle, ['publish', 'commit', 'rollback']);
     expect(await db.geoDataDao.allRows, isEmpty);
     expect(await db.routingProfileDao.allRows, hasLength(3));
     await next.dispose();

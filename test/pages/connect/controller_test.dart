@@ -332,6 +332,39 @@ void main() {
     );
     expect(controller.runningRoute, isNull);
   });
+
+  testWidgets('a native stop failure still uses the disconnect action', (
+    tester,
+  ) async {
+    final coordinator = _Coordinator();
+    final controller = ConnectController(
+      database: coordinator.db,
+      coordinator: coordinator,
+    );
+    addTearDown(controller.close);
+    addTearDown(coordinator.dispose);
+    addTearDown(coordinator.db.close);
+    coordinator.state.value = ConnectionView(
+      phase: ConnectionPhase.failed,
+      issue: 'stopFailed',
+    );
+    await tester.pumpWidget(
+      _testApp(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => controller.connectionAction(context),
+            child: const Text('connection-action'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('connection-action'));
+    await tester.pumpAndSettle();
+
+    expect(coordinator.disconnectCount, 1);
+    expect(coordinator.connectCount, 0);
+  });
 }
 
 /// Exercises the controller's result handling; native transaction
@@ -342,8 +375,20 @@ class _Coordinator extends ConnectionCoordinator {
     state.value = const ConnectionView(phase: ConnectionPhase.connected);
   }
   final bool fail;
+  int connectCount = 0;
+  int disconnectCount = 0;
   int resetCount = 0;
   Completer<void>? resetCompletion;
+
+  @override
+  Future<void> connect() async {
+    connectCount++;
+  }
+
+  @override
+  Future<void> disconnect() async {
+    disconnectCount++;
+  }
 
   @override
   Future<void> resetTraffic() async {

@@ -453,7 +453,7 @@ class ServerImportService {
         (item) => item.kind == ConfigurationKind.raw,
       )) {
         final text = RawEditorService.namedText(raw.name, raw.text);
-        if (!await _validateRaw(text, draft)) {
+        if (draft == null && !await _validateRaw(text, null)) {
           throw const FormatException('Invalid Raw');
         }
         rows.add(XrayRawDb.configCompanion(raw.name.trim(), text));
@@ -475,6 +475,31 @@ class ServerImportService {
     if (!preview.hasItems) {
       throw const FormatException('No usable servers');
     }
+    final dependencies = preview.dependencies;
+    await dependencies?.publish();
+    try {
+      if (dependencies != null) {
+        for (final row in preview.rows.where(
+          (row) => row.type.value == 'raw',
+        )) {
+          final data = row.data.value;
+          if (data == null ||
+              !await _validateRaw(
+                utf8.decode(base64Decode(data)),
+                dependencies,
+              )) {
+            throw const FormatException('Invalid Raw');
+          }
+        }
+      }
+      return await _commitPreview(preview);
+    } catch (error, stackTrace) {
+      await dependencies?.rollback();
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
+  Future<ServerImportResult> _commitPreview(ServerImportPreview preview) async {
     late final db = _database ?? AppDatabase();
     Future<ConfigWriteResult?> write() async {
       await preview.dependencies?.commit();
@@ -500,6 +525,7 @@ class ServerImportService {
         preview.dependencies != null || preview.customRoutes.isNotEmpty
         ? await DataMaintenance.run(() => db.transaction(write))
         : await write();
+    await preview.dependencies?.complete();
     if (result != null) {
       _schedule([
         for (var index = 0; index < result.ids.length; index++)

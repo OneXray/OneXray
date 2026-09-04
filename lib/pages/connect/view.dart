@@ -66,7 +66,7 @@ class ConnectView extends StatelessWidget {
         !hasServers &&
         !expert &&
         activeRawId == null &&
-        !connected &&
+        !view.canDisconnect &&
         !view.busy;
     if (MediaQuery.sizeOf(context).width > AppLayout.mobileBreakpoint) {
       return _desktop(context, empty: empty);
@@ -605,6 +605,7 @@ class ConnectView extends StatelessWidget {
   Widget _status(BuildContext context, {bool desktop = false}) {
     final l = AppLocalizations.of(context)!;
     final connected = view.phase == ConnectionPhase.connected;
+    final canDisconnect = view.canDisconnect;
     final failed = view.failed && !connected;
     final presentationPhase = failed ? ConnectionPhase.failed : view.phase;
     final title = switch (presentationPhase) {
@@ -653,7 +654,10 @@ class ConnectView extends StatelessWidget {
           ? null
           : onConnection,
       style: desktop
-          ? AppTheme.connectionButton(context, destructive: connected).copyWith(
+          ? AppTheme.connectionButton(
+              context,
+              destructive: canDisconnect,
+            ).copyWith(
               minimumSize: const WidgetStatePropertyAll(
                 Size(
                   AppLayout.connectDesktopButtonWidth,
@@ -664,11 +668,11 @@ class ConnectView extends StatelessWidget {
                 AppTypography.connectDesktopAction,
               ),
             )
-          : AppTheme.connectionButton(context, destructive: connected),
+          : AppTheme.connectionButton(context, destructive: canDisconnect),
       child: ButtonProgress(
         busy: desktop && view.busy,
         child: Text(
-          connected
+          canDisconnect
               ? l.prototypeDisconnect
               : view.phase == ConnectionPhase.disconnecting
               ? l.prototypePleaseWait

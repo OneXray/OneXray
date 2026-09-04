@@ -81,17 +81,89 @@ void main() {
     }
   });
 
-  test('legacy PID-only and unreadable records stay intact instead of claiming cleanup', () async {
+  test(
+    'upgrade cleanup stops a v26.8.4 PID-only core from an old ZIP directory',
+    () async {
+      for (final deleted in [false, true]) {
+        final fixture = await _Fixture.create();
+        await fixture.writeV2684Process(42, deleted: deleted);
+        final api = fixture.api((pid, signal) {
+          fixture.signals.add((pid: pid, signal: signal));
+          Directory(p.join(fixture.proc.path, '$pid'))
+              .deleteSync(recursive: true);
+          return true;
+        });
+        await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
+        expect(await api.queryCoreRunning(), isNull);
+        expect(await api.stopCore(), isFalse);
+        expect(await api.cleanupStaleCore(), isTrue, reason: '$deleted');
+        expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
+        expect(await fixture.store.read(), isNull);
+      }
+    },
+  );
+
+  test(
+    'upgrade cleanup rejects PID-only records for another process',
+    () async {
+      for (final mismatch in [
+        'executable',
+        'argv0',
+        'config',
+        'uid',
+        'arguments',
+      ]) {
+        final fixture = await _Fixture.create();
+        final otherExecutable = File(
+          p.join(fixture.directory.path, 'other', 'OneXrayCore'),
+        );
+        await otherExecutable.parent.create();
+        await otherExecutable.writeAsString('not executed');
+        await fixture.writeV2684Process(
+          42,
+          executable: mismatch == 'executable' ? otherExecutable.path : null,
+          argv0: mismatch == 'argv0'
+              ? p.join(fixture.directory.path, 'another', 'bin', 'OneXrayCore')
+              : null,
+          configPath: mismatch == 'config' ? '${fixture.config.path}.x' : null,
+          effectiveUid: mismatch == 'uid' ? 2000 : 1000,
+          extraArgument: mismatch == 'arguments' ? '-runtime' : null,
+        );
+        final api = fixture.api((pid, signal) {
+          fixture.signals.add((pid: pid, signal: signal));
+          return true;
+        });
+        await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
+        expect(await api.cleanupStaleCore(), isFalse, reason: mismatch);
+        expect(await fixture.recordFile.exists(), isTrue, reason: mismatch);
+        expect(fixture.signals, isEmpty, reason: mismatch);
+      }
+    },
+  );
+
+  test('v26.8.4 PID reuse after SIGTERM is not escalated', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeProcess(42);
+    await fixture.writeV2684Process(42);
+    final api = fixture.api((pid, signal) {
+      fixture.signals.add((pid: pid, signal: signal));
+      File(p.join(fixture.proc.path, '$pid', 'stat')).writeAsStringSync(
+        '$pid (OneXrayCore) S ${List.filled(18, '0').join(' ')} 124',
+      );
+      return true;
+    });
+    await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
+    expect(await api.cleanupStaleCore(), isFalse);
+    expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
+    expect(await fixture.recordFile.exists(), isTrue);
+  });
+
+  test('unreadable process records stay intact', () async {
+    final fixture = await _Fixture.create();
     final api = fixture.api((pid, signal) {
       fixture.signals.add((pid: pid, signal: signal));
       return true;
     });
     await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
-    expect(await api.queryCoreRunning(), isNull);
-    expect(await api.stopCore(), isFalse);
-    expect(await fixture.recordFile.readAsString(), contains('42'));
     await fixture.recordFile.writeAsString('invalid JSON');
     expect(await api.queryCoreRunning(), isNull);
     expect(await api.cleanupStaleCore(), isFalse);
@@ -154,6 +226,7 @@ class _Fixture {
   final Directory directory;
   final Directory proc;
   final File executable;
+  final File v2684Executable;
   final File config;
   final File runtime;
   final DesktopCoreProcessStore store;
@@ -163,6 +236,7 @@ class _Fixture {
     this.directory,
     this.proc,
     this.executable,
+    this.v2684Executable,
     this.config,
     this.runtime,
   ) : store = DesktopCoreProcessStore(directory: directory.path);
@@ -177,8 +251,19 @@ class _Fixture {
     final directory = await fixtures.createTemp('onexray-linux-process-');
     addTearDown(() => directory.delete(recursive: true));
     final proc = await Directory(p.join(directory.path, 'proc')).create();
-    final executable = File(p.join(directory.path, 'OneXrayCore'));
+    final self = await Directory(p.join(proc.path, 'self')).create();
+    await File(p.join(self.path, 'status'))
+        .writeAsString('Name:\tOneXray\nUid:\t1000\t1000\t1000\t1000\n');
+    final executable = File(
+      p.join(directory.path, 'new-install', 'OneXrayCore'),
+    );
+    await executable.parent.create();
     await executable.writeAsString('not executed');
+    final v2684Executable = File(
+      p.join(directory.path, 'old-install', 'bin', 'OneXrayCore'),
+    );
+    await v2684Executable.parent.create(recursive: true);
+    await v2684Executable.writeAsString('not executed');
     final input = await Directory(
       p.join(directory.path, 'run', 'core-inputs', 'input-fixture'),
     ).create(recursive: true);
@@ -186,7 +271,14 @@ class _Fixture {
     final runtime = File(p.join(input.path, 'runtime-config.json'));
     await config.writeAsString('{}');
     await runtime.writeAsString('{}');
-    return _Fixture(directory, proc, executable, config, runtime);
+    return _Fixture(
+      directory,
+      proc,
+      executable,
+      v2684Executable,
+      config,
+      runtime,
+    );
   }
 
   LinuxFfiApi api(bool Function(int, ProcessSignal) signal) {
@@ -222,6 +314,8 @@ class _Fixture {
     await File(p.join(folder.path, 'stat')).writeAsString(
       '$pid (OneXrayCore) S ${List.filled(18, '0').join(' ')} $ticks',
     );
+    await File(p.join(folder.path, 'status'))
+        .writeAsString('Name:\tOneXrayCore\nUid:\t1000\t1000\t1000\t1000\n');
     final args = [
       this.executable.path,
       'run',
@@ -232,5 +326,41 @@ class _Fixture {
     ];
     await File(p.join(folder.path, 'cmdline'))
         .writeAsBytes(utf8.encode(args.join('\x00')));
+  }
+
+  Future<void> writeV2684Process(
+    int pid, {
+    String? executable,
+    String? argv0,
+    String? configPath,
+    int effectiveUid = 1000,
+    String? extraArgument,
+    bool deleted = false,
+  }) async {
+    final folder = await Directory(p.join(proc.path, '$pid')).create();
+    final executablePath = executable ?? v2684Executable.path;
+    await Link(p.join(folder.path, 'exe'))
+        .create(deleted ? '$executablePath (deleted)' : executablePath);
+    await File(p.join(folder.path, 'stat')).writeAsString(
+      '$pid (OneXrayCore) S ${List.filled(18, '0').join(' ')} 123',
+    );
+    await File(p.join(folder.path, 'status')).writeAsString(
+      'Name:\tOneXrayCore\n'
+      'Uid:\t$effectiveUid\t$effectiveUid\t$effectiveUid\t$effectiveUid\n',
+    );
+    final legacyConfig = p.join(directory.path, 'run', 'xray.json');
+    await File(legacyConfig).writeAsString('{}');
+    await File(p.join(folder.path, 'cmdline')).writeAsBytes(
+      utf8.encode(
+        [
+          argv0 ?? executablePath,
+          'run',
+          '-config',
+          configPath ?? legacyConfig,
+          ?extraArgument,
+          '',
+        ].join('\x00'),
+      ),
+    );
   }
 }

@@ -11,6 +11,7 @@ import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 
 const _text =
@@ -144,6 +145,45 @@ void main() {
     expect((await db.connectionConfigDao.read()).toJson(), before.toJson());
     expect(coordinator.state.value.phase, ConnectionPhase.failed);
     expect(coordinator.state.value.runtime, isNull);
+  });
+
+  test('failed Raw database save rolls staged Geodata back', () async {
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+      ),
+    );
+    final service = RawEditorService(
+      database: db,
+      coordinator: coordinator,
+      validate: (_) async => true,
+    );
+    await db.customStatement('''
+      CREATE TRIGGER fail_raw_save BEFORE INSERT ON core_config
+      WHEN NEW.type = 'raw' BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+    final lifecycle = <String>[];
+    final geodata = GeoDataImportDraft(
+      const [],
+      () async => lifecycle.add('commit'),
+      () async {},
+      publish: () async => lifecycle.add('publish'),
+      complete: () async => lifecycle.add('complete'),
+      rollback: () async => lifecycle.add('rollback'),
+    );
+
+    await expectLater(
+      service.save(
+        const RawEditorDraft(name: 'original', text: _text),
+        confirmReconnect: () async => false,
+        geodata: geodata,
+      ),
+      throwsA(anything),
+    );
+
+    expect(lifecycle, ['publish', 'commit', 'rollback']);
+    expect(await db.coreConfigDao.allRawRowsWithData, isEmpty);
   });
 }
 

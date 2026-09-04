@@ -112,6 +112,18 @@ class LinuxFfiApi extends BaseFfiApi {
     try {
       final record = _currentRecord ?? await _processStore.read();
       if (record == null) return _coreProcess == null;
+      if (_isV2684Record(record)) {
+        final processDirectory = Directory(
+          p.join(_procDirectory, '${record.pid}'),
+        );
+        if (!await processDirectory.exists()) {
+          await _processStore.clear(pid: record.pid);
+          return true;
+        }
+        final legacyRecord = await _verifyV2684Core(record);
+        if (legacyRecord == null) return false;
+        return await _stopRecordedCore(legacyRecord, v2684: true);
+      }
       // A managed session belongs to the restored coordinator, not stale cleanup.
       if (record.runtimePath != null &&
           await _coreProcessIsRunning(record) == true) {
@@ -139,10 +151,15 @@ class LinuxFfiApi extends BaseFfiApi {
     }
   }
 
-  Future<bool> _stopRecordedCore(DesktopCoreProcessRecord record) async {
-    final running = await _coreProcessIsRunning(record);
-    if (running == null) return false;
-    if (!running) {
+  Future<bool> _stopRecordedCore(
+    DesktopCoreProcessRecord record, {
+    bool v2684 = false,
+  }) async {
+    Future<bool?> running() => _coreProcessIsRunning(record, v2684: v2684);
+
+    final isRunning = await running();
+    if (isRunning == null) return false;
+    if (!isRunning) {
       if (_coreProcess?.pid == record.pid) _coreProcess = null;
       if (_currentRecord?.pid == record.pid) _currentRecord = null;
       await _processStore.clear(pid: record.pid);
@@ -151,18 +168,26 @@ class LinuxFfiApi extends BaseFfiApi {
     _stopping = true;
     try {
       if (!_signalProcess(record.pid, ProcessSignal.sigterm) &&
-          await _coreProcessIsRunning(record) != false) {
+          await running() != false) {
         return false;
       }
-      if (!await _waitForCoreExit(record, const Duration(seconds: 3))) {
+      if (!await _waitForCoreExit(
+        record,
+        const Duration(seconds: 3),
+        v2684: v2684,
+      )) {
         // Re-check the complete identity before escalating; never signal a PID
         // which was reused while waiting for the previous process to terminate.
-        if (await _coreProcessIsRunning(record) != true) return false;
+        if (await running() != true) return false;
         if (!_signalProcess(record.pid, ProcessSignal.sigkill) &&
-            await _coreProcessIsRunning(record) != false) {
+            await running() != false) {
           return false;
         }
-        if (!await _waitForCoreExit(record, const Duration(seconds: 2))) {
+        if (!await _waitForCoreExit(
+          record,
+          const Duration(seconds: 2),
+          v2684: v2684,
+        )) {
           return false;
         }
       }
@@ -193,33 +218,68 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   /// false means exited; null means ownership is unknown and must not be killed.
-  Future<bool?> _coreProcessIsRunning(DesktopCoreProcessRecord record) async {
+  Future<bool?> _coreProcessIsRunning(
+    DesktopCoreProcessRecord record, {
+    bool v2684 = false,
+  }) async {
     if (record.pid <= 0) return null;
     final processDirectory = Directory(p.join(_procDirectory, '${record.pid}'));
     if (!await processDirectory.exists()) return false;
     final configPath = record.configPath;
     if (configPath == null || record.startTicks == null) return null;
     try {
+      String? legacyExecutablePath;
       final identity = await _readStat(record.pid);
       if (identity == null || identity.startTicks != record.startTicks) {
         return null;
       }
       if (identity.stopped) return false;
-      final actualExecutable = await File(p.join(processDirectory.path, 'exe'))
-          .resolveSymbolicLinks();
-      final expectedExecutable = await File(corePath).resolveSymbolicLinks();
-      if (actualExecutable != expectedExecutable) return null;
-
-      final inputDirectory = await Directory(
-        p.join(await getTunFilesDir(), 'run', 'core-inputs'),
-      ).resolveSymbolicLinks();
-      final resolvedConfig = await File(configPath).resolveSymbolicLinks();
-      if (!p.isAbsolute(configPath) ||
-          !p.isWithin(inputDirectory, resolvedConfig)) {
-        return null;
+      if (v2684) {
+        final executableTarget = await Link(
+          p.join(processDirectory.path, 'exe'),
+        ).target();
+        const deletedSuffix = ' (deleted)';
+        legacyExecutablePath = executableTarget.endsWith(deletedSuffix)
+            ? executableTarget.substring(
+                0,
+                executableTarget.length - deletedSuffix.length,
+              )
+            : executableTarget;
+        if (!p.isAbsolute(legacyExecutablePath) ||
+            p.basename(legacyExecutablePath) != _coreBin ||
+            p.basename(p.dirname(legacyExecutablePath)) != 'bin') {
+          return null;
+        }
+        final processUid = await _effectiveUid(processDirectory.path);
+        final appUid = await _effectiveUid(p.join(_procDirectory, 'self'));
+        if (processUid == null || appUid == null || processUid != appUid) {
+          return null;
+        }
+        if (configPath != p.join(await getTunFilesDir(), 'run', 'xray.json')) {
+          return null;
+        }
+      } else {
+        final actualExecutable = await File(
+          p.join(processDirectory.path, 'exe'),
+        ).resolveSymbolicLinks();
+        final expectedExecutable = await File(corePath).resolveSymbolicLinks();
+        if (actualExecutable != expectedExecutable) return null;
+        final inputDirectory = await Directory(
+          p.join(await getTunFilesDir(), 'run', 'core-inputs'),
+        ).resolveSymbolicLinks();
+        final resolvedConfig = await File(configPath).resolveSymbolicLinks();
+        if (!p.isAbsolute(configPath) ||
+            !p.isWithin(inputDirectory, resolvedConfig)) {
+          return null;
+        }
       }
       final runtimePath = record.runtimePath;
       if (runtimePath != null) {
+        if (v2684) return null;
+        final inputDirectory = await Directory(
+          p.join(await getTunFilesDir(), 'run', 'core-inputs'),
+        ).resolveSymbolicLinks();
+        final resolvedConfig = await File(configPath).resolveSymbolicLinks();
         final resolvedRuntime = await File(runtimePath).resolveSymbolicLinks();
         if (!p.isWithin(inputDirectory, resolvedRuntime) ||
             p.dirname(resolvedRuntime) != p.dirname(resolvedConfig)) {
@@ -231,7 +291,18 @@ class LinuxFfiApi extends BaseFfiApi {
             await File(p.join(processDirectory.path, 'cmdline')).readAsBytes(),
           )
           .split('\x00');
-      if (arguments.length < 2 ||
+      if (v2684) {
+        while (arguments.isNotEmpty && arguments.last.isEmpty) {
+          arguments.removeLast();
+        }
+        if (arguments.length != 4 ||
+            arguments[0] != legacyExecutablePath ||
+            arguments[1] != 'run' ||
+            arguments[2] != '-config' ||
+            arguments[3] != configPath) {
+          return null;
+        }
+      } else if (arguments.length < 2 ||
           arguments[1] != 'run' ||
           !_matchesArgument(arguments, '-config', configPath) ||
           !_matchesArgument(arguments, '-runtime', runtimePath)) {
@@ -246,6 +317,37 @@ class LinuxFfiApi extends BaseFfiApi {
     } catch (_) {
       return await processDirectory.exists() ? null : false;
     }
+  }
+
+  static bool _isV2684Record(DesktopCoreProcessRecord record) =>
+      record.configPath == null &&
+      record.runtimePath == null &&
+      record.startTicks == null;
+
+  Future<DesktopCoreProcessRecord?> _verifyV2684Core(
+    DesktopCoreProcessRecord record,
+  ) async {
+    if (record.pid <= 0 || !_isV2684Record(record)) return null;
+    final identity = await _readStat(record.pid);
+    if (identity == null) return null;
+    final verified = DesktopCoreProcessRecord(
+      pid: record.pid,
+      configPath: p.join(await getTunFilesDir(), 'run', 'xray.json'),
+      startTicks: identity.startTicks,
+    );
+    return await _coreProcessIsRunning(verified, v2684: true) == null
+        ? null
+        : verified;
+  }
+
+  Future<int?> _effectiveUid(String processDirectory) async {
+    final lines = await File(p.join(processDirectory, 'status')).readAsLines();
+    for (final line in lines) {
+      if (!line.startsWith('Uid:')) continue;
+      final fields = line.substring(4).trim().split(RegExp(r'\s+'));
+      return fields.length < 2 ? null : int.tryParse(fields[1]);
+    }
+    return null;
   }
 
   static bool _matchesArgument(
@@ -287,11 +389,12 @@ class LinuxFfiApi extends BaseFfiApi {
 
   Future<bool> _waitForCoreExit(
     DesktopCoreProcessRecord record,
-    Duration timeout,
-  ) async {
+    Duration timeout, {
+    bool v2684 = false,
+  }) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
-      final running = await _coreProcessIsRunning(record);
+      final running = await _coreProcessIsRunning(record, v2684: v2684);
       if (running == false) return true;
       if (running == null || DateTime.now().isAfter(deadline)) return false;
       await Future.delayed(const Duration(milliseconds: 100));

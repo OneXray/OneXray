@@ -61,6 +61,7 @@ class GeoDataService {
   final Future<void> Function(String) _copyBundled;
   final void Function(bool) _setDownloading;
   final _commands = CommandSerialExecutor();
+  final _activeImportStages = <String>{};
   AppDatabase get _db => _database ?? AppDatabase();
   String get _root => _directory ?? VpnConstants.datDir;
 
@@ -111,8 +112,9 @@ class GeoDataService {
     final root = Directory(_root);
     final rootWasMissing = !await root.exists();
     await _ensureRoot();
-    final existing = await _flatNames(root);
     final rows = await _db.geoDataDao.publishedRows;
+    await _recoverImportDrafts(rows, discard: rootWasMissing);
+    final existing = await _flatNames(root);
     _checkDefaultRows(rows);
     final resetPublication =
         rootWasMissing ||
@@ -126,7 +128,28 @@ class GeoDataService {
       }
 
       if (rows.isNotEmpty) {
-        throw StateError('Default routing data is incomplete');
+        // v1/v2 stored only custom rows. Adopt that exact flat publication by
+        // adding the new built-in manifest rows without rewriting its files.
+        final expected = {
+          ..._bundledNames,
+          for (final row in rows) '${row.name}.dat',
+          for (final row in rows) '${row.name}.json',
+        };
+        if (existing.length != expected.length ||
+            !existing.containsAll(expected)) {
+          throw StateError('Default routing data is incomplete');
+        }
+        await _readAll(rows);
+        await _validateDefaultFiles(_root);
+        await _db.transaction(() async {
+          final current = await _db.geoDataDao.publishedRows;
+          _checkDefaultRows(current);
+          if (current.length != rows.length || !current.every(rows.contains)) {
+            throw StateError('Routing data changed during installation');
+          }
+          await _publishDefaults(_root, await _assetTimestamp(_root));
+        });
+        return;
       }
       if (existing.any((name) => !_bundledNames.contains(name))) {
         throw StateError('Unregistered routing data is present');
@@ -188,7 +211,9 @@ class GeoDataService {
         normalized,
       ], disposeWithinMaintenance: true);
       try {
+        await draft.publish();
         await draft.commit();
+        await draft.complete();
       } finally {
         await draft.dispose();
       }
@@ -313,7 +338,8 @@ class GeoDataService {
     }
     await _ensureRoot();
     await _checkConflicts(sources, checkFiles: true);
-    final stage = await _newStage('download-');
+    final stage = await _newStage('import-');
+    _activeImportStages.add(p.normalize(stage.path));
     final indexes = <String, XrayGeoList>{};
     try {
       for (final source in sources) {
@@ -325,33 +351,28 @@ class GeoDataService {
         );
       }
       await _checkConflicts(sources, checkFiles: true);
-      final change = await _applyFiles(await _stageFiles(stage));
-      await change.complete();
     } catch (_) {
       await _deleteStage(stage);
+      _activeImportStages.remove(p.normalize(stage.path));
       rethrow;
     }
 
+    _FlatFileChange? change;
+    var completed = false;
     var disposed = false;
-    Future<void> dispose() async {
-      if (disposed) return;
-      disposed = true;
-      final publishedNames = (await _db.geoDataDao.publishedRows)
-          .map((row) => row.name.toLowerCase())
-          .toSet();
-      for (final source in sources) {
-        if (publishedNames.contains(source.name.toLowerCase())) {
-          continue;
-        }
-        for (final suffix in ['dat', 'json']) {
-          final file = File(p.join(_root, '${source.name}.$suffix'));
-          if (await file.exists()) await file.delete();
-        }
+    Future<void> publish() async {
+      if (disposed || completed) {
+        throw StateError('Routing data draft is unavailable');
       }
+      if (change != null) return;
+      await _checkConflicts(sources, checkFiles: true);
+      change = await _applyFiles(await _stageFiles(stage), retainSources: true);
     }
 
-    return GeoDataImportDraft(sources, () async {
-      if (disposed) throw StateError('Routing data draft was disposed');
+    Future<void> commit() async {
+      if (disposed || completed || change == null) {
+        throw StateError('Routing data draft is not published');
+      }
       await _db.transaction(() async {
         await _checkConflicts(sources, checkFiles: false);
         final timestamp = DateTime.now();
@@ -371,7 +392,89 @@ class GeoDataService {
           );
         }
       });
-    }, disposeWithinMaintenance ? dispose : () => _cleanup(dispose));
+    }
+
+    Future<Set<String>> publishedNames() async =>
+        (await _db.geoDataDao.publishedRows)
+            .map((row) => row.name.toLowerCase())
+            .toSet();
+
+    Future<void> complete() async {
+      if (completed) return;
+      if (disposed || change == null) {
+        throw StateError('Routing data draft was not committed');
+      }
+      final names = await publishedNames();
+      if (!sources.every(
+        (source) => names.contains(source.name.toLowerCase()),
+      )) {
+        throw StateError('Routing data metadata was not committed');
+      }
+      final current = change!;
+      change = null;
+      completed = true;
+      _activeImportStages.remove(p.normalize(stage.path));
+      try {
+        await current.complete();
+      } catch (_) {
+        // The database publication already committed. Its retained import
+        // journal is enough for the next installation check to finish cleanup.
+      }
+    }
+
+    Future<void> rollback() async {
+      if (disposed || completed || change == null) return;
+      final names = await publishedNames();
+      if (sources.any((source) => names.contains(source.name.toLowerCase()))) {
+        throw StateError('Committed routing data cannot be rolled back');
+      }
+      await change!.rollback(preserveSources: true);
+      change = null;
+    }
+
+    Future<void> dispose() async {
+      if (disposed) return;
+      disposed = true;
+      if (completed) return;
+      final current = change;
+      if (current == null) {
+        await _deleteStage(stage);
+        _activeImportStages.remove(p.normalize(stage.path));
+        return;
+      }
+      final names = await publishedNames();
+      if (sources.every(
+        (source) => names.contains(source.name.toLowerCase()),
+      )) {
+        await current.complete();
+      } else if (sources.every(
+        (source) => !names.contains(source.name.toLowerCase()),
+      )) {
+        await current.rollback();
+      } else {
+        // Keep every file when an externally corrupted transaction exposes a
+        // partial manifest; deleting any of them would create a DB orphan.
+        await current.complete();
+        throw StateError('Routing data metadata is incomplete');
+      }
+      change = null;
+      _activeImportStages.remove(p.normalize(stage.path));
+    }
+
+    Future<void> guardedPublish() =>
+        disposeWithinMaintenance ? publish() : _maintain(publish);
+    Future<void> guardedRollback() =>
+        disposeWithinMaintenance ? rollback() : _cleanup(rollback);
+    Future<void> guardedDispose() =>
+        disposeWithinMaintenance ? dispose() : _cleanup(dispose);
+    return GeoDataImportDraft(
+      sources,
+      commit,
+      guardedDispose,
+      publish: guardedPublish,
+      complete: complete,
+      rollback: guardedRollback,
+    );
   }
 
   /// Full backup restore stages a flat replacement. [GeoDataRestoreDraft.commit]
@@ -495,6 +598,7 @@ class GeoDataService {
   }) => updateDefaults(downloading: updateDownloading);
 
   Future<void> _publishDefaults(String directory, DateTime timestamp) async {
+    await _validateDefaultFiles(directory);
     final existing = await _db.geoDataDao.publishedRows;
     _checkDefaultRows(existing);
     for (final source in _defaults) {
@@ -522,6 +626,50 @@ class GeoDataService {
       )) {
         throw StateError('Default routing data is unavailable');
       }
+    }
+  }
+
+  Future<void> _validateDefaultFiles(String directory) async {
+    for (final source in _defaults) {
+      await _regularFile(File(p.join(directory, '${source.name}.dat')));
+      await _readIndex(File(p.join(directory, '${source.name}.json')));
+    }
+  }
+
+  Future<void> _recoverImportDrafts(
+    List<GeoDataData> rows, {
+    required bool discard,
+  }) async {
+    final parent = Directory(p.dirname(_root));
+    if (!await parent.exists()) return;
+    final registered = {for (final row in rows) row.name.toLowerCase()};
+    await for (final entry in parent.list(followLinks: false)) {
+      if (entry is! Directory) continue;
+      final directoryName = p.basename(entry.path);
+      if (directoryName.startsWith('.onexray-geodata-backup-')) {
+        if ((await _flatNames(entry)).isEmpty) await _deleteStage(entry);
+        continue;
+      }
+      if (!directoryName.startsWith('.onexray-geodata-import-') ||
+          _activeImportStages.contains(p.normalize(entry.path))) {
+        continue;
+      }
+      for (final name in await _flatNames(entry)) {
+        final extension = p.extension(name).toLowerCase();
+        if (extension != '.dat' && extension != '.json') {
+          throw StateError('Invalid routing data import journal');
+        }
+        final basename = p.basenameWithoutExtension(name).toLowerCase();
+        final target = File(p.join(_root, name));
+        if (!discard && registered.contains(basename)) {
+          if (!await target.exists()) {
+            await _copyFile(File(p.join(entry.path, name)), target);
+          }
+        } else if (await target.exists()) {
+          await target.delete();
+        }
+      }
+      await _deleteStage(entry);
     }
   }
 
@@ -627,7 +775,10 @@ class GeoDataService {
     return _applyFiles(replacements);
   }
 
-  Future<_FlatFileChange> _applyFiles(Map<String, File?> replacements) async {
+  Future<_FlatFileChange> _applyFiles(
+    Map<String, File?> replacements, {
+    bool retainSources = false,
+  }) async {
     await _ensureRoot();
     final backup = await _newStage('backup-');
     final changed = _FlatFileChange(
@@ -637,6 +788,7 @@ class GeoDataService {
         for (final entry in replacements.entries)
           entry.key: entry.value?.parent,
       },
+      sourcesRetained: retainSources,
     );
     try {
       for (final entry in replacements.entries) {
@@ -655,7 +807,11 @@ class GeoDataService {
         final source = entry.value;
         if (source != null) {
           await _regularFile(source);
-          await source.rename(target.path);
+          if (retainSources) {
+            await _copyFile(source, target);
+          } else {
+            await source.rename(target.path);
+          }
           changed.installed.add(entry.key);
         }
       }
@@ -808,6 +964,7 @@ final class _FlatFileChange {
   final Directory root;
   final Directory backup;
   final Map<String, Directory?> sources;
+  final bool sourcesRetained;
   final Set<String> backedUp = {};
   final Set<String> installed = {};
   bool _finished = false;
@@ -816,14 +973,26 @@ final class _FlatFileChange {
     required this.root,
     required this.backup,
     required this.sources,
+    required this.sourcesRetained,
   });
 
-  Future<void> rollback() async {
+  Future<void> rollback({bool preserveSources = false}) async {
     if (_finished) return;
     await root.create(recursive: true);
     for (final name in installed) {
       final current = File(p.join(root.path, name));
-      if (await current.exists()) await current.delete();
+      if (!await current.exists()) continue;
+      final source = sources[name];
+      if (preserveSources && source != null) {
+        if (sourcesRetained) {
+          await current.delete();
+        } else {
+          await source.create(recursive: true);
+          await current.rename(p.join(source.path, name));
+        }
+      } else {
+        await current.delete();
+      }
     }
     for (final name in backedUp) {
       final previous = File(p.join(backup.path, name));
@@ -832,7 +1001,7 @@ final class _FlatFileChange {
       }
     }
     _finished = true;
-    await _cleanup();
+    await _cleanup(deleteSources: !preserveSources);
   }
 
   Future<void> complete() async {
@@ -841,10 +1010,12 @@ final class _FlatFileChange {
     await _cleanup();
   }
 
-  Future<void> _cleanup() async {
+  Future<void> _cleanup({bool deleteSources = true}) async {
     if (await backup.exists()) await backup.delete(recursive: true);
-    for (final directory in sources.values.whereType<Directory>().toSet()) {
-      if (await directory.exists()) await directory.delete(recursive: true);
+    if (deleteSources) {
+      for (final directory in sources.values.whereType<Directory>().toSet()) {
+        if (await directory.exists()) await directory.delete(recursive: true);
+      }
     }
   }
 }

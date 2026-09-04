@@ -21,7 +21,7 @@ class AppEventBusState {
     downloading: false,
     appUpdateInfo: null,
     themeCode: ThemeCode.system,
-    languageCode: LanguageCode.zh,
+    languageCode: LanguageCode.system,
   );
 
   AppEventBusState copyWith({

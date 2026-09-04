@@ -10,6 +10,7 @@ import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/routing/custom_editor.dart';
 import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/routing/state.dart';
@@ -268,6 +269,44 @@ void main() {
       );
     },
   );
+
+  test('failed Custom database save rolls staged Geodata back', () async {
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+      ),
+    );
+    final service = CustomRoutingEditorService(
+      database: db,
+      coordinator: coordinator,
+    );
+    await db.customStatement('''
+      CREATE TRIGGER fail_custom_save BEFORE INSERT ON routing_profile
+      BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+    final lifecycle = <String>[];
+    final geodata = GeoDataImportDraft(
+      const [],
+      () async => lifecycle.add('commit'),
+      () async {},
+      publish: () async => lifecycle.add('publish'),
+      complete: () async => lifecycle.add('complete'),
+      rollback: () async => lifecycle.add('rollback'),
+    );
+
+    await expectLater(
+      service.save(
+        CustomRoutingEditorDraft(state: _state('Work')),
+        confirmReconnect: () async => false,
+        geodata: geodata,
+      ),
+      throwsA(anything),
+    );
+
+    expect(lifecycle, ['publish', 'commit', 'rollback']);
+    expect(await db.routingProfileDao.allRows, isEmpty);
+  });
 }
 
 Future<ConnectionCoordinator> _initialize(

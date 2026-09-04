@@ -10,6 +10,8 @@ import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late AppDatabase db;
   late ShareController controller;
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:in_app_review/in_app_review.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -60,6 +61,7 @@ class PreferencesPageState {
 
 enum PreferencesLink {
   documentation,
+  review,
   community,
   feedback,
   source,
@@ -211,6 +213,7 @@ class PreferencesController extends PageCubit<PreferencesPageState> {
   Future<void> openLink(BuildContext context, PreferencesLink link) async {
     final uri = switch (link) {
       PreferencesLink.documentation => DocURLHelper.docUri(),
+      PreferencesLink.review => null,
       PreferencesLink.community => Uri.parse('https://t.me/OneXrayApp'),
       PreferencesLink.feedback => Uri.parse(
         'https://github.com/OneXray/OneXray/issues/new',
@@ -220,6 +223,11 @@ class PreferencesController extends PageCubit<PreferencesPageState> {
       PreferencesLink.privacy => DocURLHelper.privacyUri(),
     };
     try {
+      if (uri == null) {
+        final review = InAppReview.instance;
+        if (await review.isAvailable()) await review.requestReview();
+        return;
+      }
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         if (context.mounted) _showUnavailable(context);
       }

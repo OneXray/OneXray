@@ -31,7 +31,10 @@ class ConfigurationImportDraft {
   const ConfigurationImportDraft(this.content, this.geodata);
   String get text => content.text;
   String get name => content.name;
+  Future<void> publish() async => geodata?.publish();
   Future<void> commit() async => geodata?.commit();
+  Future<void> complete() async => geodata?.complete();
+  Future<void> rollback() async => geodata?.rollback();
   Future<void> dispose() async => geodata?.dispose();
 }
 

@@ -19,6 +19,27 @@ void main() {
     addTearDown(db.close);
   });
 
+  test('a failed connection with retained runtime can still be stopped', () {
+    expect(
+      ConnectionView(
+        phase: ConnectionPhase.failed,
+        runtime: _runtime('a'),
+      ).canDisconnect,
+      isTrue,
+    );
+    expect(
+      const ConnectionView(phase: ConnectionPhase.failed).canDisconnect,
+      isFalse,
+    );
+    expect(
+      const ConnectionView(
+        phase: ConnectionPhase.failed,
+        issue: 'stopFailed',
+      ).canDisconnect,
+      isTrue,
+    );
+  });
+
   test('initialization trusts native disconnected status', () async {
     final coordinator = await _initialize(
       ConnectionCoordinator(

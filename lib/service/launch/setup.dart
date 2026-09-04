@@ -202,6 +202,8 @@ class SetupService {
       final decoded = jsonDecode(utf8.decode(bytes));
       final code = decoded is Map ? decoded['country'] : null;
       return code is String ? code.toUpperCase() : null;
+    } on Exception {
+      return null;
     } finally {
       client.close(force: true);
     }

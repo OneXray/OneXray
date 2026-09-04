@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/upgrade_snapshot.dart';
+import 'package:onexray/service/geo_data/service.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
@@ -207,6 +209,49 @@ void main() {
           await reopened.close();
         }
         expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
+      },
+    );
+
+    test(
+      'schema $version custom Geodata gains the default manifest in place',
+      () async {
+        final file = await _legacyDatabase(version);
+        final datRoot = Directory(p.join(file.parent.path, 'dat'));
+        await datRoot.create();
+        for (final name in ['geoip', 'geosite', 'legacy-geosite']) {
+          await File(p.join(datRoot.path, '$name.dat')).writeAsString(name);
+          await File(p.join(datRoot.path, '$name.json')).writeAsString(
+            jsonEncode({
+              'categoryCount': 1,
+              'ruleCount': 2,
+              'codes': [
+                {'code': 'CN', 'ruleCount': 2},
+              ],
+            }),
+          );
+        }
+        await File(p.join(datRoot.path, 'timestamp.txt')).writeAsString('123');
+
+        final database = AppDatabase.forTesting(NativeDatabase(file));
+        addTearDown(database.close);
+        final service = GeoDataService.forTesting(
+          database: database,
+          directory: datRoot.path,
+          download: (_, _) async => fail('Upgrade must not download Geodata'),
+          count: (_, _, _) async => fail('Upgrade must not rebuild indexes'),
+          copyBundled: (_) async => fail('Upgrade must reuse valid files'),
+        );
+
+        await service.ensureInstalled();
+
+        final rows = await database.geoDataDao.publishedRows;
+        expect(rows.map((row) => row.id).toSet(), {-2, -1, 5});
+        expect(rows.singleWhere((row) => row.id == 5).name, 'legacy-geosite');
+        expect(
+          await File(p.join(datRoot.path, 'legacy-geosite.dat')).readAsString(),
+          'legacy-geosite',
+        );
+        expect(await service.publishedFiles(), hasLength(3));
       },
     );
 

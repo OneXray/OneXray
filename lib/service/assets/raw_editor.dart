@@ -76,6 +76,30 @@ class RawEditorService {
     required Future<bool> Function() confirmReconnect,
     GeoDataImportDraft? geodata,
   }) async {
+    await geodata?.publish();
+    try {
+      final result = await _save(
+        draft,
+        confirmReconnect: confirmReconnect,
+        geodata: geodata,
+      );
+      if (result == null) {
+        await geodata?.rollback();
+      } else {
+        await geodata?.complete();
+      }
+      return result;
+    } catch (error, stackTrace) {
+      await geodata?.rollback();
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
+  Future<int?> _save(
+    RawEditorDraft draft, {
+    required Future<bool> Function() confirmReconnect,
+    GeoDataImportDraft? geodata,
+  }) async {
     final text = namedText(draft.name, draft.text);
     if (!await validate(text)) {
       throw const RawEditorException('invalid');

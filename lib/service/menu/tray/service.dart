@@ -22,6 +22,7 @@ final class TrayService with TrayListener {
   //==========================
   var _initialized = false;
   ConnectionPhase? _lastPhase;
+  bool? _lastCanDisconnect;
 
   void init() {
     if (!AppPlatform.isDesktop || _initialized) {
@@ -40,13 +41,17 @@ final class TrayService with TrayListener {
     trayManager.removeListener(this);
     ConnectionCoordinator.instance.state.removeListener(_connectionChanged);
     _lastPhase = null;
+    _lastCanDisconnect = null;
     _initialized = false;
   }
 
   void _connectionChanged() {
-    final phase = ConnectionCoordinator.instance.state.value.phase;
-    if (_lastPhase == phase) return;
-    _lastPhase = phase;
+    final view = ConnectionCoordinator.instance.state.value;
+    if (_lastPhase == view.phase && _lastCanDisconnect == view.canDisconnect) {
+      return;
+    }
+    _lastPhase = view.phase;
+    _lastCanDisconnect = view.canDisconnect;
     unawaited(refreshTrayManager());
   }
 
@@ -56,7 +61,7 @@ final class TrayService with TrayListener {
     }
 
     final view = ConnectionCoordinator.instance.state.value;
-    final running = view.phase == ConnectionPhase.connected || view.busy;
+    final running = view.canDisconnect || view.busy;
     await _setTrayIcon(running);
 
     final items = <MenuItem>[];

@@ -65,6 +65,7 @@ dependencies:
   # markdown
   flutter_markdown_plus: ^1.0.12
   flutter_local_notifications: ^22.3.0
+  in_app_review: ^2.0.12
 
   isolate_manager: ^6.3.2
 

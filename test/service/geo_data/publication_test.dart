@@ -335,13 +335,17 @@ void main() {
   });
 
   test(
-    'import draft installs before commit and retains only committed files',
+    'import draft publishes only for commit and rolls an outer failure back',
     () async {
       await service.ensureInstalled();
       final draft = await service.prepareImports([input()]);
       final data = File(p.join(datRoot.path, 'custom.dat'));
       final index = File(p.join(datRoot.path, 'custom.json'));
       expect(await db.geoDataDao.allRows, isEmpty);
+      expect(await data.exists(), isFalse);
+      expect(await index.exists(), isFalse);
+
+      await draft.publish();
       expect(await data.readAsString(), 'one');
       expect(await index.exists(), isTrue);
       await expectFlatRoot();
@@ -353,14 +357,15 @@ void main() {
         }),
         throwsStateError,
       );
-      await draft.dispose();
+      await draft.rollback();
       expect(await db.geoDataDao.allRows, isEmpty);
       expect(await data.exists(), isFalse);
       expect(await index.exists(), isFalse);
 
-      final committed = await service.prepareImports([input()]);
-      await db.transaction(committed.commit);
-      await committed.dispose();
+      await draft.publish();
+      await db.transaction(draft.commit);
+      await draft.complete();
+      await draft.dispose();
       expect((await db.geoDataDao.allRows).single.name, 'custom');
       expect(await data.readAsString(), 'one');
       expect(await index.exists(), isTrue);
@@ -386,6 +391,7 @@ void main() {
   test('draft cleanup preserves a case-insensitive committed name', () async {
     await service.ensureInstalled();
     final draft = await service.prepareImports([input()]);
+    await draft.publish();
     await db.geoDataDao.insertRow(
       GeoDataCompanion.insert(
         name: 'CUSTOM',
@@ -400,6 +406,35 @@ void main() {
     await draft.dispose();
 
     expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
+    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isTrue);
+  });
+
+  test('startup removes an interrupted unpublished import', () async {
+    await service.ensureInstalled();
+    final draft = await service.prepareImports([input()]);
+    await draft.publish();
+    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
+
+    await createService(db).ensureInstalled();
+
+    expect(await db.geoDataDao.allRows, isEmpty);
+    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
+    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isFalse);
+  });
+
+  test('startup finishes an import committed before cleanup', () async {
+    await service.ensureInstalled();
+    final draft = await service.prepareImports([input()]);
+    await draft.publish();
+    await db.transaction(draft.commit);
+
+    await createService(db).ensureInstalled();
+
+    expect((await db.geoDataDao.allRows).single.name, 'custom');
+    expect(
+      await File(p.join(datRoot.path, 'custom.dat')).readAsString(),
+      'one',
+    );
     expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isTrue);
   });
 

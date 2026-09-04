@@ -48,6 +48,10 @@ class ConnectionView {
       phase != ConnectionPhase.connected &&
       phase != ConnectionPhase.disconnected &&
       phase != ConnectionPhase.failed;
+  bool get canDisconnect =>
+      phase == ConnectionPhase.connected ||
+      (phase == ConnectionPhase.failed &&
+          (runtime != null || issue == 'stopFailed'));
   bool get failed =>
       phase == ConnectionPhase.failed ||
       (issue != null && !const {'cancelled', 'selectionReset'}.contains(issue));
@@ -427,7 +431,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<void> _connectOnce() async {
     await initialize();
-    if (state.value.phase == ConnectionPhase.connected || state.value.busy) {
+    if (state.value.canDisconnect || state.value.busy) {
       return;
     }
     await apply(await configuration, connect: true);

@@ -390,7 +390,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
 
   Future<void> connectionAction(BuildContext context) async {
     final view = connectionView;
-    if (view.phase == ConnectionPhase.connected) {
+    if (view.canDisconnect) {
       await run(context, coordinator.disconnect);
     } else if (view.busy) {
       coordinator.cancel();

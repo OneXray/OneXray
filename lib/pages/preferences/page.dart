@@ -676,6 +676,12 @@ class AboutOneXrayPage extends StatelessWidget {
                           icon: LucideIcons.bookOpen,
                           link: PreferencesLink.documentation,
                         ),
+                        if (AppPlatform.isMobile || AppPlatform.isMacOS)
+                          _LinkRow(
+                            label: l10n.prototypeRateOneXray,
+                            icon: LucideIcons.star,
+                            link: PreferencesLink.review,
+                          ),
                         _LinkRow(
                           label: l10n.prototypeCommunity,
                           icon: LucideIcons.send,

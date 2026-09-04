@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
@@ -178,4 +180,44 @@ void main() {
     expect(await preferences.readFirstRun(), isTrue);
     expect(await setup.currentStep(), SetupStep.system);
   });
+
+  for (final failure in <(String, Object)>[
+    ('offline or DNS failure', const SocketException('Failed host lookup')),
+    ('timeout', TimeoutException('Region suggestion timed out')),
+    ('invalid JSON', const FormatException('Invalid region response')),
+  ]) {
+    test('region suggestion ${failure.$1} does not block setup', () async {
+      await setup.acceptPrivacy();
+      await setup.continueSystem('');
+
+      final suggested = await HttpOverrides.runZoned(
+        setup.suggestRegion,
+        createHttpClient: (_) => _FailingHttpClient(failure.$2),
+      );
+
+      expect(suggested, isNull);
+      expect(await setup.currentStep(), SetupStep.region);
+      await setup.continueRegion(null);
+      expect(await setup.currentStep(), SetupStep.servers);
+    });
+  }
+}
+
+class _FailingHttpClient implements HttpClient {
+  final Object failure;
+
+  _FailingHttpClient(this.failure);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #getUrl) {
+      return Future<HttpClientRequest>.error(failure);
+    }
+    if (invocation.memberName == const Symbol('connectionTimeout=') ||
+        invocation.memberName == const Symbol('findProxy=') ||
+        invocation.memberName == #close) {
+      return null;
+    }
+    return super.noSuchMethod(invocation);
+  }
 }
