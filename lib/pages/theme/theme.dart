@@ -112,7 +112,6 @@ abstract final class AppTheme {
       AppLayout.pageActionButtonMinHeight,
       MediaQuery.textScalerOf(context)
                   .scale(AppTypography.pageAction.fontSize!) *
-              AppTypography.pageAction.height! *
               2 +
           12,
     );
@@ -206,8 +205,7 @@ abstract final class AppTheme {
     // constraining larger system text to the prototype's minimum height.
     final buttonHeight = math.max(
       mobile ? AppLayout.mobileButtonMinHeight : AppLayout.buttonMinHeight,
-      textScaler.scale(AppTypography.control.fontSize!) *
-              AppTypography.control.height! +
+      textScaler.scale(AppTypography.control.fontSize!) +
           AppSpacing.controlVertical * 2,
     );
     return ShadThemeData(
@@ -295,8 +293,7 @@ abstract final class AppTheme {
         sm: ShadButtonSizeTheme(
           height: math.max(
             36,
-            textScaler.scale(AppTypography.control.fontSize!) *
-                AppTypography.control.height!,
+            textScaler.scale(AppTypography.control.fontSize!),
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.controlHorizontal,

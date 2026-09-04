@@ -95,79 +95,49 @@ void main() {
       expect(palette.foreground, const Color(0xFFF2F5F8));
     });
 
-    test('Material and Shad themes share the Geist typography system', () {
+    test('typography roles only define size and rounded weight', () {
       final material = AppTheme.light;
       final shad = AppTheme.shad(Brightness.light);
 
       expect(material.textTheme.bodyMedium?.fontFamily, AppFontFamily.sans);
-      expect(
-        material.textTheme.bodyMedium?.fontFamilyFallback,
-        AppFontFamily.sansFallback,
-      );
       expect(material.textTheme.bodyMedium?.fontSize, 13);
-      expect(material.textTheme.bodyMedium?.height, 1.5);
       expect(material.textTheme.bodySmall?.fontSize, 12);
       expect(material.textTheme.labelSmall?.fontSize, 11);
       expect(shad.textTheme.family, AppFontFamily.sans);
-      expect(
-        shad.textTheme.muted.fontFamilyFallback,
-        AppFontFamily.sansFallback,
-      );
       expect(shad.textTheme.p.fontSize, 13);
-      expect(shad.textTheme.p.height, 1.5);
       expect(shad.textTheme.small.fontSize, 13);
       expect(shad.textTheme.muted.fontSize, 12);
-      expect(shad.textTheme.muted.height, 1.5);
-      expect(shad.textTheme.h1.letterSpacing, 31 * -0.035);
-      expect(shad.textTheme.h4.letterSpacing, 0);
       expect(AppTypography.pageTitle.fontSize, 31);
       expect(AppTypography.panelTitle.fontSize, 19);
       expect(AppTypography.supporting.fontSize, 12);
       expect(AppTypography.navigationLabel.fontSize, 16);
       expect(AppTypography.badge.fontSize, 11);
-      expect(AppTypography.control.fontVariations, const [
-        FontVariation('wght', 620),
-      ]);
-      expect(AppTypography.navigationLabel.fontVariations, const [
-        FontVariation('wght', 520),
-      ]);
-      expect(AppTypography.code.fontFamily, AppFontFamily.mono);
       expect(AppTypography.code.fontSize, 12);
-      expect(AppTypography.code.height, 1.55);
       expect(AppTypography.metric.fontSize, 20);
-      expect(AppTypography.metric.fontFeatures, const [
-        FontFeature.tabularFigures(),
-      ]);
-      expect(AppFontFamily.windowsSansFallback, const <String>[
-        "Microsoft YaHei UI",
-        "Microsoft YaHei",
-      ]);
-      expect(AppFontFamily.androidSansFallback, const <String>["sans-serif"]);
       for (final (style, size, weight) in [
-        (AppTypography.connectStatusTitle, 17, 650),
-        (AppTypography.connectButton, 16, 660),
-        (AppTypography.connectCaption, 12, 620),
-        (AppTypography.connectChoiceLabel, 11, 520),
-        (AppTypography.connectChoiceTitle, 14, 620),
-        (AppTypography.connectChoiceMeta, 10.5, 600),
-        (AppTypography.connectTrafficTitle, 15, 650),
-        (AppTypography.connectTrafficGroupTitle, 11, 520),
-        (AppTypography.connectTrafficValue, 15, 620),
-        (AppTypography.connectRawTitle, 12, 650),
-        (AppTypography.connectRawCount, 12, 610),
-        (AppTypography.dialogTitle, 18, 700),
-        (AppTypography.dialogSubtitle, 13, 400),
+        (AppTypography.connectStatusTitle, 17, FontWeight.w700),
+        (AppTypography.connectButton, 16, FontWeight.w700),
+        (AppTypography.connectCaption, 12, FontWeight.w600),
+        (AppTypography.connectChoiceLabel, 11, FontWeight.w500),
+        (AppTypography.advancedTab, 12.5, FontWeight.w600),
+        (AppTypography.connectChoiceTitle, 14, FontWeight.w600),
+        (AppTypography.connectChoiceMeta, 10.5, FontWeight.w600),
+        (AppTypography.connectTrafficTitle, 15, FontWeight.w700),
+        (AppTypography.connectTrafficGroupTitle, 11, FontWeight.w500),
+        (AppTypography.connectTrafficValue, 15, FontWeight.w600),
+        (AppTypography.connectRawTitle, 12, FontWeight.w700),
+        (AppTypography.connectRawCount, 12, FontWeight.w600),
+        (AppTypography.dialogTitle, 18, FontWeight.w700),
+        (AppTypography.dialogSubtitle, 13, FontWeight.w400),
       ]) {
         expect(style.fontSize, size);
-        expect(style.fontVariations, [
-          FontVariation('wght', weight.toDouble()),
-        ]);
+        expect(style.fontWeight, weight);
+        expect(style.height, isNull);
+        expect(style.fontVariations, isNull);
+        expect(style.letterSpacing, isNull);
+        expect(style.fontFeatures, isNull);
+        expect(style.fontFamily, isNull);
       }
-      expect(AppTypography.connectStatusTitle.height, 1.3);
-      expect(AppTypography.connectChoiceTitle.height, 1.4);
-      expect(AppTypography.connectChoiceDetail.height, 1.35);
-      expect(AppTypography.connectStatusDetail.height, kTextHeightNone);
-      expect(AppTypography.connectTrafficValue.height, kTextHeightNone);
     });
 
     test(
@@ -222,8 +192,8 @@ void main() {
             palette.selectedSurface,
           );
           expect(
-            material.navigationRailTheme.selectedLabelTextStyle!.fontVariations,
-            AppTypography.selectedNavigationLabel.fontVariations,
+            material.navigationRailTheme.selectedLabelTextStyle!.fontWeight,
+            AppTypography.selectedNavigationLabel.fontWeight,
           );
           final input =
               material.inputDecorationTheme.border! as OutlineInputBorder;
@@ -237,7 +207,7 @@ void main() {
       final shad = AppTheme.shad(Brightness.light, mobile: true);
       expect(material.appBarTheme.titleTextStyle!.fontSize, 20);
       expect(material.appBarTheme.titleTextStyle!.fontWeight, FontWeight.w600);
-      expect(material.appBarTheme.titleTextStyle!.letterSpacing, 0);
+      expect(material.appBarTheme.titleTextStyle!.letterSpacing, isNull);
       expect(material.appBarTheme.centerTitle, isFalse);
       expect(material.appBarTheme.toolbarHeight, AppLayout.mobileHeaderHeight);
       expect(
@@ -264,10 +234,8 @@ void main() {
         FontWeight.w400,
       );
       expect(
-        navigation.labelTextStyle!.resolve({
-          WidgetState.selected,
-        })!.fontVariations,
-        const [FontVariation('wght', 620)],
+        navigation.labelTextStyle!.resolve({WidgetState.selected})!.fontWeight,
+        FontWeight.w600,
       );
       expect(
         material.filledButtonTheme.style!.minimumSize!.resolve({}),
@@ -363,53 +331,66 @@ void main() {
     }
   });
 
-  testWidgets('scaled Shad footer grows and avoids keyboard and safe area', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    const scale = TextScaler.linear(2);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.material(Brightness.dark, mobile: true),
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: scale,
-            padding: const EdgeInsets.only(bottom: 34),
-            viewPadding: const EdgeInsets.only(bottom: 34),
-            viewInsets: const EdgeInsets.only(bottom: 240),
-          ),
-          child: ShadTheme(
-            data: AppTheme.shad(
-              Brightness.dark,
-              mobile: true,
+  testWidgets(
+    'scaled Shad footer fits text and avoids keyboard and safe area',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      const scale = TextScaler.linear(2);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.material(Brightness.dark, mobile: true),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
               textScaler: scale,
+              padding: const EdgeInsets.only(bottom: 34),
+              viewPadding: const EdgeInsets.only(bottom: 34),
+              viewInsets: const EdgeInsets.only(bottom: 240),
             ),
-            child: child!,
+            child: ShadTheme(
+              data: AppTheme.shad(
+                Brightness.dark,
+                mobile: true,
+                textScaler: scale,
+              ),
+              child: child!,
+            ),
+          ),
+          home: Scaffold(
+            body: ListView(
+              children: List.generate(
+                30,
+                (i) => ListTile(title: Text('Row $i')),
+              ),
+            ),
+            bottomNavigationBar: PageActionBar(
+              children: [
+                ShadButton.outline(
+                  onPressed: () {},
+                  child: const Text('Cancel'),
+                ),
+                ShadButton(onPressed: () {}, child: const Text('Save')),
+              ],
+            ),
           ),
         ),
-        home: Scaffold(
-          body: ListView(
-            children: List.generate(30, (i) => ListTile(title: Text('Row $i'))),
-          ),
-          bottomNavigationBar: PageActionBar(
-            children: [
-              ShadButton.outline(onPressed: () {}, child: const Text('Cancel')),
-              ShadButton(onPressed: () {}, child: const Text('Save')),
-            ],
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final save = find.byType(ShadButton).last;
-    final rect = tester.getRect(save);
-    expect(rect.height, greaterThanOrEqualTo(59));
-    expect(rect.bottom, lessThanOrEqualTo(800 - 240 - 34));
-    expect(tester.getSize(find.text('Save')).height, greaterThan(26));
-    await tester.drag(find.byType(ListView), const Offset(0, -300));
-    await tester.pumpAndSettle();
-    expect(tester.getRect(save), rect);
-    expect(tester.takeException(), isNull);
-  });
+      );
+      await tester.pumpAndSettle();
+      final save = find.byType(ShadButton).last;
+      final rect = tester.getRect(save);
+      expect(
+        rect.height,
+        greaterThanOrEqualTo(AppLayout.pageActionButtonMinHeight),
+      );
+      expect(rect.bottom, lessThanOrEqualTo(800 - 240 - 34));
+      expect(
+        tester.getSize(find.text('Save')).height,
+        greaterThanOrEqualTo(26),
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(save), rect);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

@@ -669,7 +669,6 @@ class SettingsCodeEditor extends StatelessWidget {
         style: CodeEditorStyle(
           fontFamily: AppFontFamily.mono,
           fontSize: AppTypography.code.fontSize!,
-          fontHeight: AppTypography.code.height!,
           textColor: colorScheme.onSurface,
           backgroundColor: ColorManager.surface(context),
           selectionColor: colorScheme.primary.withValues(alpha: 0.2),

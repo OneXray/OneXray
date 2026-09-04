@@ -778,7 +778,6 @@ class _VersionRow extends StatelessWidget {
         style: (style ?? AppTypography.settingsVersion).copyWith(
           color: color,
           fontWeight: FontWeight.w600,
-          fontVariations: const [FontVariation('wght', 600)],
         ),
       ),
     );

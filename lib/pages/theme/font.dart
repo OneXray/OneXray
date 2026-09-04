@@ -1,472 +1,335 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 abstract final class AppFontFamily {
   static const sans = "packages/shadcn_ui/Geist";
   static const mono = "packages/shadcn_ui/GeistMono";
-  static const windowsSansFallback = <String>[
-    "Microsoft YaHei UI",
-    "Microsoft YaHei",
-  ];
-  // Keep Android's locale-aware CJK fallback; Apple font names are not portable.
-  // This does not claim that the browser and device render the same CJK font.
-  static const androidSansFallback = <String>["sans-serif"];
-
-  static List<String>? get sansFallback {
-    if (AppPlatform.isWindows) return windowsSansFallback;
-    if (AppPlatform.isAndroid) return androidSansFallback;
-    return null;
-  }
 }
 
 abstract final class AppTypography {
   // Semantic roles from the prototype's src/theme/tokens.json. Use logical
   // pixels and leave system text scaling and locale-specific glyphs to Flutter.
-  static TextStyle _style(
-    double size, {
-    double height = 1.5,
-    FontWeight weight = FontWeight.w400,
-    double tracking = 0,
-  }) {
-    return TextStyle(
-      fontFamily: AppFontFamily.sans,
-      fontFamilyFallback: AppFontFamily.sansFallback,
-      fontSize: size,
-      height: height,
-      fontWeight: weight,
-      letterSpacing: size * tracking,
-    );
-  }
+  static TextStyle _style(double size, [int weight = 400]) => TextStyle(
+    fontSize: size,
+    fontWeight: FontWeight.values[weight ~/ 100 - 1],
+  );
 
-  static final navigationTitle = _style(
-    20,
-    height: 1.3,
-    weight: FontWeight.w600,
-  );
-  static final pageTitle = _style(
-    31,
-    height: 1.18,
-    weight: FontWeight.w700,
-    tracking: -0.035,
-  );
-  static final panelTitle = _style(19, height: 1.3, weight: FontWeight.w700);
-  static final sectionTitle = _style(14, height: 1.35, weight: FontWeight.w700);
-  static final listSectionTitle = _style(16, weight: FontWeight.w600);
-  static final rowTitle = _style(13, weight: FontWeight.w700);
+  static final navigationTitle = _style(20, 600);
+  static final pageTitle = _style(31, 700);
+  static final panelTitle = _style(19, 700);
+  static final sectionTitle = _style(14, 700);
+  static final listSectionTitle = _style(16, 600);
+  static final rowTitle = _style(13, 700);
   static final rowValue = _style(13);
   static final supporting = _style(12);
-  static final metadata = _style(11, height: 1.4);
-  static final control = _style(
-    13,
-    weight: FontWeight.w600,
-  ).copyWith(fontVariations: const [FontVariation('wght', 620)]);
-  static final navigationLabel = _style(
-    16,
-    weight: FontWeight.w500,
-  ).copyWith(fontVariations: const [FontVariation('wght', 520)]);
-  static final selectedNavigationLabel = navigationLabel.copyWith(
-    fontWeight: FontWeight.w600,
-    fontVariations: const [FontVariation('wght', 620)],
-  );
-  static final badge = metadata.copyWith(fontWeight: FontWeight.w600);
-  static final code = _style(
-    12,
-    height: 1.55,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final metric = _style(20, weight: FontWeight.w600).copyWith(
-    fontVariations: const [FontVariation('wght', 620)],
-    fontFeatures: const [FontFeature.tabularFigures()],
-  );
-  static final numeric = rowValue.copyWith(
-    fontFeatures: const [FontFeature.tabularFigures()],
-  );
+  static final metadata = _style(11);
+  static final control = _style(13, 600);
+  static final navigationLabel = _style(16, 500);
+  static final selectedNavigationLabel = _style(16, 600);
+  static final badge = _style(11, 600);
+  static final code = _style(12);
+  static final metric = _style(20, 600);
+  static final numeric = rowValue;
 
-  // CSS `normal` uses font metrics. kTextHeightNone prevents a surrounding
-  // DefaultTextStyle from replacing it with the general body's 1.5 multiplier.
-  static TextStyle _prototypeRole(
-    double size,
-    double weight, {
-    double height = kTextHeightNone,
-  }) => _style(
-    size,
-    height: height,
-    weight: FontWeight.values[(weight / 100).round() - 1],
-  ).copyWith(fontVariations: [FontVariation('wght', weight)]);
+  static final mobileNavigationLabel = _style(10, 400);
+  static final selectedMobileNavigationLabel = _style(10, 600);
 
-  static final mobileNavigationLabel = _prototypeRole(10, 400);
-  static final selectedMobileNavigationLabel = _prototypeRole(10, 620);
+  static final pageAction = _style(12, 600);
+  static final advancedTab = _style(12.5, 600);
+  static final selectedAdvancedTab = _style(12.5, 600);
+  static final desktopAdvancedTab = _style(14, 600);
+  static final selectedDesktopAdvancedTab = _style(14, 600);
 
-  static final pageAction = _prototypeRole(12, 620, height: 1.4);
-  static final advancedTab = _prototypeRole(12.5, 560);
-  static final selectedAdvancedTab = _prototypeRole(12.5, 620);
-  static final desktopAdvancedTab = _prototypeRole(14, 560);
-  static final selectedDesktopAdvancedTab = _prototypeRole(14, 620);
+  static final settingsSectionTitle = _style(14, 700);
+  static final settingsSectionDesktopTitle = _style(16, 700);
+  static final settingsRow = _style(14, 600);
+  static final settingsFieldTitle = _style(13.5, 600);
+  static final settingsValueLabel = _style(12.5, 400);
+  static final settingsValue = _style(12.5, 500);
+  static final settingsStatus = _style(12.5, 600);
+  static final desktopSettingsValueLabel = _style(13, 400);
+  static final desktopSettingsValue = _style(13, 500);
+  static final desktopSettingsStatus = _style(13, 600);
+  static final desktopSettingsRowValue = _style(13, 400);
+  static final desktopSettingsVersion = _style(13.5, 400);
+  static final desktopSettingsHint = _style(11.5, 400);
+  static final desktopSettingsNote = _style(11.5, 400);
+  static final desktopSettingsDanger = _style(14, 600);
+  static final settingsHint = _style(10.5, 400);
+  static final settingsThemeOption = _style(14, 400);
+  static final settingsThemeOptionMobile = _style(12.5, 400);
+  static final settingsVersion = _style(12.5, 400);
+  static final settingsNote = _style(10.5, 400);
+  static final settingsDetailNote = _style(12, 400);
+  static final settingsSelect = _style(14, 400);
+  static final settingsInput = _style(13, 400);
+  static final routingCardTitle = _style(15, 700);
+  static final routingCardDescription = _style(11, 400);
+  static final routingRowTitle = _style(13, 700);
+  static final routingRowTitleMobile = _style(12, 700);
+  static final routingRowDescription = _style(10.5, 400);
+  static final routingRowValue = _style(11, 600);
+  static final routingCount = _style(12, 700);
+  static final routingPreviewTitle = _style(13, 700);
+  static final routingPreviewBody = _style(11, 400);
+  static final routingPreviewHint = _style(10, 400);
+  static final routingPreviewMeta = _style(10.5, 400);
+  static final routingSelectionTitle = _style(12, 700);
+  static final routingSelectionDescription = _style(10, 400);
+  static final routingSelectionGroup = _style(10, 700);
+  static final routingSelectionInput = _style(12, 400);
+  static final routingSelectionCount = _style(11, 600);
+  static final routingSelectionNote = _style(10.5, 400);
+  static final routingRegionCode = _style(11, 700);
+  static final routeIdentityLabel = _style(10.5, 600);
+  static final routeCount = _style(10.5, 400);
+  static final ruleTitleMobile = _style(11.5, 700);
+  static final ruleTitleDesktop = _style(12.5, 700);
+  static final ruleSummaryDesktop = _style(10, 400);
+  static final ruleSummary = _style(10.5, 400);
+  static final ruleAction = _style(10.5, 700);
+  static final ruleNumber = _style(11, 400);
+  static final conditionTitle = _style(11, 700);
+  static final conditionSummary = _style(9.5, 400);
+  static final routingInput = _style(16, 400);
+  static final conditionRelation = _style(10, 400);
+  static final actionOption = _style(11, 400);
+  static final selectedActionOption = _style(11, 700);
+  static final actionHelp = _style(10.5, 400);
+  static final ruleAdd = _style(12, 600);
+  static final configurationTool = _style(12, 600);
+  static final rawField = _style(12, 600);
+  static final rawNote = _style(11, 400);
+  static final runtimeCodePill = _style(11, 600);
+  static final runtimeCodeAction = _style(11, 600);
+  static final runtimeCodeMobile = _style(10.5, 400);
+  static final runtimeCodeDesktop = _style(12, 400);
+  static final runtimeCodeNote = _style(10, 400);
+  static final runtimeCodeDesktopNote = _style(11, 400);
+  static final routingConditionInput = _style(16, 400);
+  static final subscriptionField = _style(12, 600);
+  static final subscriptionInfo = _style(12, 400);
+  static final subscriptionAgeTitle = _style(13, 700);
+  static final subscriptionAgeOptional = _style(11, 500);
+  static final subscriptionAgeWarning = _style(11, 400);
+  static final subscriptionAgeAction = _style(11, 600);
+  static final subscriptionClear = _style(13, 600);
+  static final importMethod = _style(16, 400);
+  static final importField = _style(13, 600);
+  static final importHint = _style(10.83, 500);
+  static final importJson = _style(11.5, 400);
+  static final importJsonHint = _style(10, 500);
+  static final importSummary = _style(16, 700);
+  static final importSummaryMeta = _style(12, 400);
+  static final importStat = _style(12, 400);
+  static final dialogBack = _style(13, 400);
+  static final shareLink = _style(11, 400);
+  static final shareQr = _style(13, 400);
+  static final shareHint = _style(11, 400);
+  static final aboutBrandTitle = _style(19, 700);
+  static final aboutBrandDescription = _style(12, 400);
+  static final settingsChoiceTitle = _style(14, 600);
+  static final settingsChoiceDetail = _style(11, 400);
+  static final iconPreviewBrand = _style(16, 700);
+  static final iconChoice = _style(13, 400);
+  static final iconPreviewCaption = _style(12, 400);
+  static final platformDetailTitle = _style(19, 700);
+  static final platformDetailBody = _style(16, 400);
+  static final platformChoiceTitle = _style(13, 700);
+  static final platformChoiceHint = _style(11, 400);
+  static final windowsPolicyHint = _style(12, 400);
+  static final windowsNetworkTitle = _style(15, 700);
+  static final windowsNetworkMeta = _style(12, 400);
+  static final windowsNetworkInput = _style(13, 400);
+  static final windowsNetworkNote = _style(11, 400);
+  static final setupBrand = _style(19, 700);
+  static final setupTitle = _style(27, 700);
+  static final setupDesktopTitle = _style(40, 700);
+  static final setupWelcomeTitle = _style(25, 700);
+  static final setupSubtitle = _style(14, 400);
+  static final setupDesktopSubtitle = _style(16, 400);
+  static final setupPoint = _style(13, 400);
+  static final setupDesktopPoint = _style(14, 400);
+  static final setupProgress = _style(14, 700);
+  static final setupStepLabel = _style(14, 400);
+  static final setupStepActive = _style(14, 600);
+  static final setupReady = _style(16, 600);
+  static final setupDesktopReady = _style(17, 400);
+  static final setupPermission = _style(16, 400);
+  static final setupStatus = _style(13, 400);
+  static final setupHint = _style(12, 400);
+  static final setupSkipNote = _style(12, 400);
+  static final setupRowTitle = _style(16, 600);
+  static final setupDesktopRowTitle = _style(19, 600);
+  static final setupDesktopRowDetail = _style(16, 400);
+  static final setupDesktopTrailing = _style(14, 400);
+  static final setupImport = _style(14, 400);
+  static final setupDesktopImport = _style(15, 400);
+  static final setupAction = _style(16, 600);
+  static final setupDesktopAction = _style(17, 600);
+  static final setupChildTitle = _style(23, 700);
+  static final setupSelectorTitle = _style(15, 600);
+  static final setupSelectorDetail = _style(13, 400);
+  static final setupSearch = _style(15, 400);
+  static final setupError = _style(13, 400);
+  static final setupPrivacyLink = _style(14, 600);
+  static final appleSettingTitle = _style(12, 700);
+  static final appleSettingTitleDesktop = _style(13, 700);
+  static final appleSettingHint = _style(10, 400);
+  static final appleSettingHintDesktop = _style(11, 400);
+  static final appleAutoTitle = _style(14, 700);
+  static final appleAutoTitleDesktop = _style(15, 700);
+  static final appleRuleTitle = _style(11, 700);
+  static final appleRuleTitleDesktop = _style(12, 700);
+  static final appleRuleHint = _style(10, 400);
+  static final appleRuleHintDesktop = _style(11, 400);
+  static final appleWifiToken = _style(11, 600);
+  static final appleWifiTokenDesktop = _style(12, 600);
+  static final appleNetworkAction = _style(10.5, 600);
+  static final appleNetworkActionDesktop = _style(11, 600);
+  static final appleFallbackPill = _style(10, 600);
+  static final appleFallbackPillDesktop = _style(11, 600);
+  static final appleWifiEdit = _style(11, 700);
+  static final appleWifiEditDesktop = _style(12, 700);
+  static final appleWifiHeading = _style(15, 700);
+  static final appleWifiHeadingDesktop = _style(18, 700);
+  static final appleWifiDescription = _style(11, 400);
+  static final appleWifiDescriptionDesktop = _style(13, 400);
+  static final appleWifiInput = _style(12, 400);
+  static final appleWifiInputDesktop = _style(16, 400);
+  static final appleWifiAdd = _style(12, 700);
+  static final appleWifiAddDesktop = _style(13, 700);
+  static final appleWifiMatchNote = _style(10.5, 400);
+  static final appleWifiMatchNoteDesktop = _style(12, 400);
+  static final updateTitle = _style(18, 600);
+  static final updateVersionLabel = _style(13, 400);
+  static final updateVersion = _style(12, 400);
+  static final updateNotesHeading = _style(14, 700);
+  static final updateNotes = _style(13, 400);
+  static final settingsDanger = _style(13.5, 600);
+  static final backupBody = _style(14, 400);
+  static final backupScopeHint = _style(12, 400);
+  static final backupAction = _style(12, 600);
+  static final backupEmptyTitle = _style(16, 700);
 
-  static final settingsSectionTitle = _prototypeRole(14, 650, height: 1.3);
-  static final settingsSectionDesktopTitle = _prototypeRole(
-    16,
-    650,
-    height: 1.3,
-  );
-  static final settingsRow = _prototypeRole(14, 560);
-  static final settingsFieldTitle = _prototypeRole(13.5, 560);
-  static final settingsValueLabel = _prototypeRole(12.5, 400);
-  static final settingsValue = _prototypeRole(12.5, 520);
-  static final settingsStatus = _prototypeRole(12.5, 620);
-  static final desktopSettingsValueLabel = _prototypeRole(13, 400);
-  static final desktopSettingsValue = _prototypeRole(13, 520);
-  static final desktopSettingsStatus = _prototypeRole(13, 620);
-  static final desktopSettingsRowValue = _prototypeRole(13, 400);
-  static final desktopSettingsVersion = _prototypeRole(13.5, 400);
-  static final desktopSettingsHint = _prototypeRole(11.5, 400, height: 1.5);
-  static final desktopSettingsNote = _prototypeRole(11.5, 400);
-  static final desktopSettingsDanger = _prototypeRole(14, 570);
-  static final settingsHint = _prototypeRole(10.5, 400, height: 1.5);
-  static final settingsThemeOption = _prototypeRole(14, 400);
-  static final settingsThemeOptionMobile = _prototypeRole(12.5, 400);
-  static final settingsVersion = _prototypeRole(12.5, 400);
-  static final settingsNote = _prototypeRole(10.5, 400, height: 1.45);
-  static final settingsDetailNote = _prototypeRole(12, 400, height: 1.6);
-  static final settingsSelect = _prototypeRole(14, 400, height: 1.4);
-  static final settingsInput = _prototypeRole(13, 400);
-  static final routingCardTitle = _prototypeRole(15, 700, height: 1.3);
-  static final routingCardDescription = _prototypeRole(11, 400, height: 1.45);
-  static final routingRowTitle = _prototypeRole(13, 700);
-  static final routingRowTitleMobile = _prototypeRole(12, 700);
-  static final routingRowDescription = _prototypeRole(10.5, 400, height: 1.4);
-  static final routingRowValue = _prototypeRole(11, 620);
-  static final routingCount = _prototypeRole(12, 650);
-  static final routingPreviewTitle = _prototypeRole(13, 700);
-  static final routingPreviewBody = _prototypeRole(11, 400, height: 1.45);
-  static final routingPreviewHint = _prototypeRole(10, 400, height: 1.4);
-  static final routingPreviewMeta = _prototypeRole(10.5, 400);
-  static final routingSelectionTitle = _prototypeRole(12, 700);
-  static final routingSelectionDescription = _prototypeRole(10, 400);
-  static final routingSelectionGroup = _prototypeRole(10, 650, height: 1.35);
-  static final routingSelectionInput = _prototypeRole(12, 400);
-  static final routingSelectionCount = _prototypeRole(11, 620);
-  static final routingSelectionNote = _prototypeRole(10.5, 400, height: 1.45);
-  static final routingRegionCode = _prototypeRole(11, 720);
-  static final routeIdentityLabel = _prototypeRole(10.5, 620);
-  static final routeCount = _prototypeRole(10.5, 400);
-  static final ruleTitleMobile = _prototypeRole(11.5, 700, height: 1.4);
-  static final ruleTitleDesktop = _prototypeRole(12.5, 700, height: 1.4);
-  static final ruleSummaryDesktop = _prototypeRole(10, 400);
-  static final ruleSummary = _prototypeRole(10.5, 400);
-  static final ruleAction = _prototypeRole(10.5, 650);
-  static final ruleNumber = _prototypeRole(11, 400);
-  static final conditionTitle = _prototypeRole(11, 700);
-  static final conditionSummary = _prototypeRole(9.5, 400);
-  static final routingInput = _prototypeRole(16, 400);
-  static final conditionRelation = _prototypeRole(10, 400, height: 1.45);
-  static final actionOption = _prototypeRole(11, 400);
-  static final selectedActionOption = _prototypeRole(11, 650);
-  static final actionHelp = _prototypeRole(10.5, 400, height: 1.45);
-  static final ruleAdd = _prototypeRole(12, 620);
-  static final configurationTool = _prototypeRole(12, 620);
-  static final rawField = _prototypeRole(12, 620);
-  static final rawNote = _prototypeRole(11, 400, height: 1.45);
-  static final runtimeCodePill = _prototypeRole(11, 620);
-  static final runtimeCodeAction = _prototypeRole(11, 600);
-  static final runtimeCodeMobile = _prototypeRole(
-    10.5,
-    400,
-    height: 1.65,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final runtimeCodeDesktop = _prototypeRole(
-    12,
-    400,
-    height: 1.75,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final runtimeCodeNote = _prototypeRole(10, 400, height: 1.45);
-  static final runtimeCodeDesktopNote = _prototypeRole(11, 400, height: 1.45);
-  static final routingConditionInput = _prototypeRole(16, 400);
-  static final subscriptionField = _prototypeRole(12, 610);
-  static final subscriptionInfo = _prototypeRole(12, 400, height: 1.45);
-  static final subscriptionAgeTitle = _prototypeRole(13, 700);
-  static final subscriptionAgeOptional = _prototypeRole(11, 450);
-  static final subscriptionAgeWarning = _prototypeRole(11, 400, height: 1.45);
-  static final subscriptionAgeAction = _prototypeRole(11, 620);
-  static final subscriptionClear = _prototypeRole(13, 620);
-  static final importMethod = _prototypeRole(16, 400);
-  static final importField = _prototypeRole(13, 610);
-  static final importHint = _prototypeRole(10.83, 450, height: 1.4);
-  static final importJson = _prototypeRole(
-    11.5,
-    400,
-    height: 1.55,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final importJsonHint = _prototypeRole(10, 450, height: 1.45);
-  static final importSummary = _prototypeRole(16, 700);
-  static final importSummaryMeta = _prototypeRole(12, 400);
-  static final importStat = _prototypeRole(12, 400);
-  static final dialogBack = _prototypeRole(13, 400);
-  static final shareLink = _prototypeRole(
-    11,
-    400,
-    height: 1.45,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final shareQr = _prototypeRole(13, 400);
-  static final shareHint = _prototypeRole(11, 400, height: 1.6);
-  static final aboutBrandTitle = _prototypeRole(19, 700, height: 1.3);
-  static final aboutBrandDescription = _prototypeRole(12, 400, height: 1.375);
-  static final settingsChoiceTitle = _prototypeRole(14, 570);
-  static final settingsChoiceDetail = _prototypeRole(11, 400, height: 1.5);
-  static final iconPreviewBrand = _prototypeRole(16, 700);
-  static final iconChoice = _prototypeRole(13, 400);
-  static final iconPreviewCaption = _prototypeRole(12, 400);
-  static final platformDetailTitle = _prototypeRole(19, 700, height: 1.3);
-  static final platformDetailBody = _prototypeRole(16, 400);
-  static final platformChoiceTitle = _prototypeRole(13, 700);
-  static final platformChoiceHint = _prototypeRole(11, 400);
-  static final windowsPolicyHint = _prototypeRole(12, 400, height: 1.6);
-  static final windowsNetworkTitle = _prototypeRole(15, 700, height: 1.3);
-  static final windowsNetworkMeta = _prototypeRole(12, 400);
-  static final windowsNetworkInput = _prototypeRole(13, 400);
-  static final windowsNetworkNote = _prototypeRole(11, 400, height: 1.6);
-  static final setupBrand = _prototypeRole(
-    19,
-    720,
-  ).copyWith(letterSpacing: 19 * -0.04);
-  static final setupTitle = _prototypeRole(
-    27,
-    680,
-    height: 1.4,
-  ).copyWith(letterSpacing: 27 * -0.035);
-  static final setupDesktopTitle = _prototypeRole(
-    40,
-    680,
-    height: 1.3,
-  ).copyWith(letterSpacing: 40 * -0.035);
-  static final setupWelcomeTitle = _prototypeRole(
-    25,
-    680,
-    height: 1.4,
-  ).copyWith(letterSpacing: 25 * -0.035);
-  static final setupSubtitle = _prototypeRole(14, 400, height: 1.65);
-  static final setupDesktopSubtitle = _prototypeRole(16, 400, height: 1.65);
-  static final setupPoint = _prototypeRole(13, 400, height: 1.65);
-  static final setupDesktopPoint = _prototypeRole(14, 400, height: 1.65);
-  static final setupProgress = _prototypeRole(14, 700, height: 1.5);
-  static final setupStepLabel = _prototypeRole(14, 400, height: 1.4);
-  static final setupStepActive = _prototypeRole(14, 600, height: 1.4);
-  static final setupReady = _prototypeRole(16, 550, height: 1.6);
-  static final setupDesktopReady = _prototypeRole(17, 400, height: 1.6);
-  static final setupPermission = _prototypeRole(16, 400, height: 1.5);
-  static final setupStatus = _prototypeRole(13, 400);
-  static final setupHint = _prototypeRole(12, 400, height: 1.65);
-  static final setupSkipNote = _prototypeRole(12, 400, height: 1.6);
-  static final setupRowTitle = _prototypeRole(16, 600, height: 1.5);
-  static final setupDesktopRowTitle = _prototypeRole(19, 600, height: 1.5);
-  static final setupDesktopRowDetail = _prototypeRole(16, 400, height: 1.5);
-  static final setupDesktopTrailing = _prototypeRole(14, 400);
-  static final setupImport = _prototypeRole(14, 400);
-  static final setupDesktopImport = _prototypeRole(15, 400);
-  static final setupAction = _prototypeRole(16, 620, height: 1.4);
-  static final setupDesktopAction = _prototypeRole(17, 620, height: 1.4);
-  static final setupChildTitle = _prototypeRole(
-    23,
-    700,
-    height: 1.35,
-  ).copyWith(letterSpacing: 23 * -0.035);
-  static final setupSelectorTitle = _prototypeRole(15, 600, height: 1.5);
-  static final setupSelectorDetail = _prototypeRole(13, 400, height: 1.5);
-  static final setupSearch = _prototypeRole(15, 400);
-  static final setupError = _prototypeRole(13, 400, height: 1.6);
-  static final setupPrivacyLink = _prototypeRole(14, 620);
-  static final appleSettingTitle = _prototypeRole(12, 700);
-  static final appleSettingTitleDesktop = _prototypeRole(13, 700);
-  static final appleSettingHint = _prototypeRole(10, 400, height: 1.4);
-  static final appleSettingHintDesktop = _prototypeRole(11, 400, height: 1.4);
-  static final appleAutoTitle = _prototypeRole(14, 680, height: 1.3);
-  static final appleAutoTitleDesktop = _prototypeRole(15, 680, height: 1.3);
-  static final appleRuleTitle = _prototypeRole(11, 700);
-  static final appleRuleTitleDesktop = _prototypeRole(12, 700);
-  static final appleRuleHint = _prototypeRole(10, 400);
-  static final appleRuleHintDesktop = _prototypeRole(11, 400);
-  static final appleWifiToken = _prototypeRole(11, 560);
-  static final appleWifiTokenDesktop = _prototypeRole(12, 560);
-  static final appleNetworkAction = _prototypeRole(10.5, 620);
-  static final appleNetworkActionDesktop = _prototypeRole(11, 620);
-  static final appleFallbackPill = _prototypeRole(10, 560);
-  static final appleFallbackPillDesktop = _prototypeRole(11, 560);
-  static final appleWifiEdit = _prototypeRole(11, 650);
-  static final appleWifiEditDesktop = _prototypeRole(12, 650);
-  static final appleWifiHeading = _prototypeRole(15, 700, height: 1.3);
-  static final appleWifiHeadingDesktop = _prototypeRole(18, 700, height: 1.3);
-  static final appleWifiDescription = _prototypeRole(11, 400);
-  static final appleWifiDescriptionDesktop = _prototypeRole(13, 400);
-  static final appleWifiInput = _prototypeRole(12, 400);
-  static final appleWifiInputDesktop = _prototypeRole(16, 400);
-  static final appleWifiAdd = _prototypeRole(12, 650);
-  static final appleWifiAddDesktop = _prototypeRole(13, 650);
-  static final appleWifiMatchNote = _prototypeRole(10.5, 400);
-  static final appleWifiMatchNoteDesktop = _prototypeRole(12, 400);
-  static final updateTitle = _prototypeRole(18, 600, height: 1.3);
-  static final updateVersionLabel = _prototypeRole(13, 400);
-  static final updateVersion = _prototypeRole(
-    12,
-    400,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final updateNotesHeading = _prototypeRole(14, 700, height: 1.3);
-  static final updateNotes = _prototypeRole(13, 400, height: 1.65);
-  static final settingsDanger = _prototypeRole(13.5, 570);
-  static final backupBody = _prototypeRole(14, 400, height: 1.65);
-  static final backupScopeHint = _prototypeRole(12, 400, height: 1.65);
-  static final backupAction = _prototypeRole(12, 620);
-  static final backupEmptyTitle = _prototypeRole(16, 700);
+  static final geodataIntro = _style(9.5, 400);
+  static final geodataDesktopIntro = _style(11, 400);
+  static final geodataDesktopTitle = _style(14, 700);
+  static final geodataTableHeading = _style(10.5, 400);
+  static final geodataTableBody = _style(12, 400);
+  static final geodataDesktopAction = _style(11, 700);
+  static final geodataTitle = _style(13, 700);
+  static final geodataMeta = _style(8.5, 500);
+  static final geodataValue = _style(10, 400);
+  static final geodataAction = _style(10.5, 600);
+  static final geodataPrimaryAction = _style(11, 600);
+  static final geodataField = _style(10.5, 600);
+  static final geodataEmpty = _style(11, 400);
+  static final geodataCategory = _style(13, 700);
+  static final geodataReference = _style(10, 400);
+  static final geodataSourceUrl = _style(12, 400);
+  static final geodataReadonly = _style(11, 600);
+  static final geodataBody = _style(16, 400);
+  static final geodataSourceLabel = _style(11, 400);
 
-  static final geodataIntro = _prototypeRole(9.5, 400, height: 1.45);
-  static final geodataDesktopIntro = _prototypeRole(11, 400, height: 1.45);
-  static final geodataDesktopTitle = _prototypeRole(14, 680, height: 1.3);
-  static final geodataTableHeading = _prototypeRole(10.5, 400);
-  static final geodataTableBody = _prototypeRole(12, 400);
-  static final geodataDesktopAction = _prototypeRole(11, 650);
-  static final geodataTitle = _prototypeRole(13, 680, height: 1.3);
-  static final geodataMeta = _prototypeRole(8.5, 500);
-  static final geodataValue = _prototypeRole(10, 400);
-  static final geodataAction = _prototypeRole(10.5, 620);
-  static final geodataPrimaryAction = _prototypeRole(11, 620);
-  static final geodataField = _prototypeRole(10.5, 620);
-  static final geodataEmpty = _prototypeRole(11, 400, height: 1.5);
-  static final geodataCategory = _prototypeRole(13, 700);
-  static final geodataReference = _prototypeRole(
-    10,
-    400,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final geodataSourceUrl = _prototypeRole(
-    12,
-    400,
-  ).copyWith(fontFamily: AppFontFamily.mono);
-  static final geodataReadonly = _prototypeRole(11, 620);
-  static final geodataBody = _prototypeRole(16, 400);
-  static final geodataSourceLabel = _prototypeRole(11, 400);
+  static final androidTitle = _style(19, 700);
+  static final androidBody = _style(16, 400);
+  static final androidModeTitle = _style(13, 700);
+  static final androidModeHint = _style(11, 400);
+  static final androidRowTitle = _style(12, 700);
+  static final androidRowHint = _style(10, 400);
+  static final androidPackage = _style(9.5, 400);
+  static final androidCount = _style(10.5, 700);
+  static final androidBadge = _style(10, 700);
+  static final androidEmpty = _style(12, 400);
 
-  static final androidTitle = _prototypeRole(19, 700, height: 1.3);
-  static final androidBody = _prototypeRole(16, 400);
-  static final androidModeTitle = _prototypeRole(13, 700);
-  static final androidModeHint = _prototypeRole(11, 400);
-  static final androidRowTitle = _prototypeRole(12, 700);
-  static final androidRowHint = _prototypeRole(10, 400);
-  static final androidPackage = _prototypeRole(9.5, 400);
-  static final androidCount = _prototypeRole(10.5, 700);
-  static final androidBadge = _prototypeRole(10, 650);
-  static final androidEmpty = _prototypeRole(12, 400);
+  static final runtimeLabel = _style(9.5, 400);
+  static final runtimeDesktopLabel = _style(11, 400);
+  static final runtimeValue = _style(11, 700);
+  static final runtimeDesktopValue = _style(13, 700);
+  static final runtimeNavigationHint = _style(11.5, 400);
+  static final runtimePushHint = _style(10, 400);
+  static final runtimeDesktopPushHint = _style(11, 400);
+  static final runtimeSelector = _style(12, 400);
+  static final runtimeDesktopSelector = _style(14, 400);
 
-  static final runtimeLabel = _prototypeRole(9.5, 400);
-  static final runtimeDesktopLabel = _prototypeRole(11, 400);
-  static final runtimeValue = _prototypeRole(11, 700);
-  static final runtimeDesktopValue = _prototypeRole(13, 700);
-  static final runtimeNavigationHint = _prototypeRole(11.5, 400);
-  static final runtimePushHint = _prototypeRole(10, 400);
-  static final runtimeDesktopPushHint = _prototypeRole(11, 400);
-  static final runtimeSelector = _prototypeRole(12, 400);
-  static final runtimeDesktopSelector = _prototypeRole(14, 400);
-
-  static final serverBody = _prototypeRole(16, 400);
-  static final serverTitle = _prototypeRole(14, 630);
+  static final serverBody = _style(16, 400);
+  static final serverTitle = _style(14, 600);
   // HTML small inherits 5/6 of the prototype's 16px body text.
-  static final serverDetail = _prototypeRole(16 * 5 / 6, 400);
-  static final serverGroupDetail = _prototypeRole(16 * 5 / 6, 400, height: 1.4);
-  static final serverSectionTitle = _prototypeRole(
-    12,
-    650,
-    height: 1.3,
-  ).copyWith(letterSpacing: 12 * 0.035);
-  static final serverRegionCode = _prototypeRole(11, 720);
-  static final serverSelectionHealth = _prototypeRole(11, 620);
-  static final serverSelectionLabel = _prototypeRole(11, 400);
-  static final serverSelectionTitle = _prototypeRole(14, 700);
-  static final serverSelectionDetail = _prototypeRole(12, 400);
-  static final serverUseLabel = _prototypeRole(10.5, 620);
-  static final serverUseCount = _prototypeRole(14, 630, height: 1);
-  static final serverGroupCode = _prototypeRole(13, 720);
-  static final serverGroupTitle = _prototypeRole(18, 700, height: 1.3);
-  static final serverGroupSummary = _prototypeRole(12, 400);
-  static final serverNodeTitle = _prototypeRole(13, 700);
-  static final serverProtocol = _prototypeRole(10, 550, height: 1.4);
-  static final serverGroupAction = _prototypeRole(13, 620);
-  static final serverGroupUseCount = _prototypeRole(10, 700, height: 1);
-  static final serverConnectedBadge = _prototypeRole(10.5, 680);
+  static final serverDetail = _style(16 * 5 / 6, 400);
+  static final serverGroupDetail = _style(16 * 5 / 6, 400);
+  static final serverSectionTitle = _style(12, 700);
+  static final serverRegionCode = _style(11, 700);
+  static final serverSelectionHealth = _style(11, 600);
+  static final serverSelectionLabel = _style(11, 400);
+  static final serverSelectionTitle = _style(14, 700);
+  static final serverSelectionDetail = _style(12, 400);
+  static final serverUseLabel = _style(10.5, 600);
+  static final serverUseCount = _style(14, 600);
+  static final serverGroupCode = _style(13, 700);
+  static final serverGroupTitle = _style(18, 700);
+  static final serverGroupSummary = _style(12, 400);
+  static final serverNodeTitle = _style(13, 700);
+  static final serverProtocol = _style(10, 600);
+  static final serverGroupAction = _style(13, 600);
+  static final serverGroupUseCount = _style(10, 700);
+  static final serverConnectedBadge = _style(10.5, 700);
 
-  static final connectStatusTitle = _prototypeRole(17, 650, height: 1.3);
-  static final connectStatusDetail = _prototypeRole(13, 400);
-  static final connectButton = _prototypeRole(16, 660);
-  static final connectCaption = _prototypeRole(12, 620);
-  static final connectChoiceLabel = _prototypeRole(11, 520);
-  static final connectChoiceTitle = _prototypeRole(14, 620, height: 1.4);
-  static final connectChoiceDetail = _prototypeRole(10.5, 400, height: 1.35);
-  static final connectChoiceMeta = _prototypeRole(10.5, 600);
-  static final connectWhy = _prototypeRole(14, 570);
-  static final connectTrafficTitle = _prototypeRole(15, 650);
-  static final connectTrafficGroupTitle = _prototypeRole(11, 520, height: 1.35);
-  static final connectTrafficLabel = _prototypeRole(10, 400);
-  static final connectTrafficValue = _prototypeRole(
-    15,
-    620,
-  ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
-  static final connectRawTitle = _prototypeRole(12, 650);
-  static final connectRawCount = _prototypeRole(12, 610);
-  static final connectRawEmptyTitle = _prototypeRole(12, 700);
-  static final connectRawEmptyDetail = _prototypeRole(10, 400, height: 1.45);
-  static final connectRawNotice = _prototypeRole(10, 400, height: 1.4);
-  static final connectRawRowTitle = _prototypeRole(13, 630);
-  static final connectRawRowDetail = _prototypeRole(10.5, 400);
+  static final connectStatusTitle = _style(17, 700);
+  static final connectStatusDetail = _style(13, 400);
+  static final connectButton = _style(16, 700);
+  static final connectCaption = _style(12, 600);
+  static final connectChoiceLabel = _style(11, 500);
+  static final connectChoiceTitle = _style(14, 600);
+  static final connectChoiceDetail = _style(10.5, 400);
+  static final connectChoiceMeta = _style(10.5, 600);
+  static final connectWhy = _style(14, 600);
+  static final connectTrafficTitle = _style(15, 700);
+  static final connectTrafficGroupTitle = _style(11, 500);
+  static final connectTrafficLabel = _style(10, 400);
+  static final connectTrafficValue = _style(15, 600);
+  static final connectRawTitle = _style(12, 700);
+  static final connectRawCount = _style(12, 600);
+  static final connectRawEmptyTitle = _style(12, 700);
+  static final connectRawEmptyDetail = _style(10, 400);
+  static final connectRawNotice = _style(10, 400);
+  static final connectRawRowTitle = _style(13, 600);
+  static final connectRawRowDetail = _style(10.5, 400);
 
-  static final desktopBrand = _prototypeRole(
-    25,
-    720,
-  ).copyWith(letterSpacing: -1);
-  static final desktopUpdateLabel = _prototypeRole(13, 550);
-  static final connectDesktopStatusTitle = _prototypeRole(21, 650, height: 1.3);
-  static final connectDesktopStatusDetail = _prototypeRole(15, 400);
-  static final connectDesktopEmptyDetail = _prototypeRole(
-    16,
-    400,
-    height: 1.55,
-  );
-  static final connectDesktopAction = _prototypeRole(20, 660);
-  static final connectDesktopCaption = _prototypeRole(14, 620);
-  static final connectDesktopChoiceLabel = _prototypeRole(16, 520);
-  static final connectDesktopChoiceTitle = _prototypeRole(16, 620);
-  static final connectDesktopChoiceDetail = _prototypeRole(
-    12,
-    400,
-    height: 1.35,
-  );
-  static final connectDesktopChoiceMeta = _prototypeRole(13, 600);
-  static final connectDesktopWhy = _prototypeRole(16, 570);
-  static final connectDesktopTrafficTitle = _prototypeRole(20, 650);
-  static final connectDesktopTrafficGroupTitle = _prototypeRole(
-    15,
-    520,
-    height: 1.35,
-  );
-  static final connectDesktopTrafficLabel = _prototypeRole(13, 400);
-  static final connectDesktopRawTitle = _prototypeRole(15, 650);
-  static final connectDesktopRawEmptyTitle = _prototypeRole(14, 700);
-  static final connectDesktopRawEmptyDetail = _prototypeRole(
-    11,
-    400,
-    height: 1.45,
-  );
+  static final desktopBrand = _style(25, 700);
+  static final desktopUpdateLabel = _style(13, 600);
+  static final connectDesktopStatusTitle = _style(21, 700);
+  static final connectDesktopStatusDetail = _style(15, 400);
+  static final connectDesktopEmptyDetail = _style(16, 400);
+  static final connectDesktopAction = _style(20, 700);
+  static final connectDesktopCaption = _style(14, 600);
+  static final connectDesktopChoiceLabel = _style(16, 500);
+  static final connectDesktopChoiceTitle = _style(16, 600);
+  static final connectDesktopChoiceDetail = _style(12, 400);
+  static final connectDesktopChoiceMeta = _style(13, 600);
+  static final connectDesktopWhy = _style(16, 600);
+  static final connectDesktopTrafficTitle = _style(20, 700);
+  static final connectDesktopTrafficGroupTitle = _style(15, 500);
+  static final connectDesktopTrafficLabel = _style(13, 400);
+  static final connectDesktopRawTitle = _style(15, 700);
+  static final connectDesktopRawEmptyTitle = _style(14, 700);
+  static final connectDesktopRawEmptyDetail = _style(11, 400);
 
-  static final dialogTitle = _prototypeRole(18, 700, height: 1.3);
-  static final dialogSubtitle = _prototypeRole(13, 400, height: 1.45);
-  static final dialogBody = _prototypeRole(14, 400, height: 1.55);
-  static final dialogCallout = _prototypeRole(13, 400, height: 1.45);
-  static final dialogOptionTitle = _prototypeRole(14, 700);
-  static final dialogOptionDescription = _prototypeRole(12, 400, height: 1.4);
-  static final dialogOptionEdit = _prototypeRole(12, 650);
-  static final dialogGroupTitle = _prototypeRole(13, 700);
-  static final dialogGroupMeta = _prototypeRole(10.5, 400);
-  static final dialogAddAction = _prototypeRole(12, 620);
-  static final confirmationDesktopTitle = _prototypeRole(20, 700, height: 1.3);
-  static final confirmationSubject = _prototypeRole(14, 700, height: 1.6);
-  static final confirmationBody = _prototypeRole(14, 400, height: 1.6);
-  static final serverMenuTitle = _prototypeRole(13, 700);
-  static final serverMenuHint = _prototypeRole(11, 400);
+  static final dialogTitle = _style(18, 700);
+  static final dialogSubtitle = _style(13, 400);
+  static final dialogBody = _style(14, 400);
+  static final dialogCallout = _style(13, 400);
+  static final dialogOptionTitle = _style(14, 700);
+  static final dialogOptionDescription = _style(12, 400);
+  static final dialogOptionEdit = _style(12, 700);
+  static final dialogGroupTitle = _style(13, 700);
+  static final dialogGroupMeta = _style(10.5, 400);
+  static final dialogAddAction = _style(12, 600);
+  static final confirmationDesktopTitle = _style(20, 700);
+  static final confirmationSubject = _style(14, 700);
+  static final confirmationBody = _style(14, 400);
+  static final serverMenuTitle = _style(13, 700);
+  static final serverMenuHint = _style(11, 400);
 
   static final shad = ShadTextTheme.custom(
     h1Large: pageTitle,
