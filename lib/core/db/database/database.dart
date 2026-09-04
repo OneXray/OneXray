@@ -77,7 +77,6 @@ class AppDatabase extends _$AppDatabase {
       }
       await migrator.addColumn(coreConfig, coreConfig.countryCode);
       await migrator.addColumn(coreConfig, coreConfig.favorite);
-      await migrator.addColumn(geoData, geoData.generation);
       await migrator.createTable(routingProfile);
       await migrator.createTable(connectionState);
 

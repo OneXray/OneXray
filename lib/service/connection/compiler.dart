@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/runtime_network_policy.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
@@ -12,24 +13,24 @@ import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/runtime_inbounds.dart';
 import 'package:onexray/service/xray/runtime_outbounds.dart';
 
-class ServerSnapshot {
+class ResolvedServer {
   final int id;
   final int sourceId;
   final String name;
   final String outboundJson;
 
-  ServerSnapshot({
+  ResolvedServer({
     required this.id,
     required this.sourceId,
     required Map<String, dynamic> outbound,
   }) : name = outboundDisplayName(outbound),
        outboundJson = jsonEncode(outbound);
 
-  factory ServerSnapshot.fromRow(CoreConfigData row) {
+  factory ResolvedServer.fromRow(CoreConfigData row) {
     if (row.type != 'outbound') {
       throw const FormatException('A server must be an outbound');
     }
-    return ServerSnapshot(
+    return ResolvedServer(
       id: row.id,
       sourceId: row.subId,
       outbound: readOutboundFromDbData(row),
@@ -48,7 +49,6 @@ class ServerSnapshot {
 
 class RuntimeOptions {
   final ConnectionPlatform platform;
-  final String assetDirectory;
   final String sessionDirectory;
   final int metricsPort;
   final int socksPort;
@@ -63,7 +63,6 @@ class RuntimeOptions {
 
   RuntimeOptions({
     required this.platform,
-    required this.assetDirectory,
     required this.sessionDirectory,
     required this.metricsPort,
     required this.socksPort,
@@ -103,22 +102,20 @@ class RuntimeOptions {
 class CompiledConnection {
   final String xrayJson;
   final String settingsJson;
-  final List<ServerSnapshot> entries;
-  final ServerSnapshot? finalExit;
+  final List<ResolvedServer> entries;
+  final ResolvedServer? finalExit;
   final Map<String, int> nodeTags;
 
   /// Runtime rule identity -> original array position/name or Smart reason key.
   final Map<String, ({int? index, String name})> ruleTags;
-  final String assetDirectory;
 
   CompiledConnection({
     required this.xrayJson,
     required this.settingsJson,
-    required Iterable<ServerSnapshot> entries,
+    required Iterable<ResolvedServer> entries,
     required this.finalExit,
     required Map<String, int> nodeTags,
     required Map<String, ({int? index, String name})> ruleTags,
-    required this.assetDirectory,
   }) : entries = List.unmodifiable(entries),
        nodeTags = Map.unmodifiable(nodeTags),
        ruleTags = Map.unmodifiable(ruleTags);
@@ -138,7 +135,7 @@ class ConnectionCompiler {
     return value;
   }
 
-  /// Compare editor drafts through the same runtime overrides as real Raw plans.
+  /// Compare editor drafts through the same overrides as a real Raw runtime.
   /// The caller supplies identical options for both drafts; no files are written.
   static Map<String, dynamic> rawSemanticJson(
     String text,
@@ -198,8 +195,8 @@ class ConnectionCompiler {
 
   static CompiledConnection compile({
     required ConnectionSettings settings,
-    required List<ServerSnapshot> entries,
-    ServerSnapshot? finalExit,
+    required List<ResolvedServer> entries,
+    ResolvedServer? finalExit,
     Map<String, dynamic>? raw,
     RoutingProfileState? custom,
     required RegionCatalog regions,
@@ -360,11 +357,10 @@ class ConnectionCompiler {
       finalExit: finalExit,
       nodeTags: nodeTags,
       ruleTags: ruleTags,
-      assetDirectory: options.assetDirectory,
     );
   }
 
-  static Map<String, dynamic> _node(ServerSnapshot node, String tag) {
+  static Map<String, dynamic> _node(ResolvedServer node, String tag) {
     final outbound = node.outbound;
     requireCanonicalOutbound(outbound);
     if (outboundDialerProxy(outbound)?.isNotEmpty == true ||
@@ -456,8 +452,8 @@ class ConnectionCompiler {
     }
     config['inbounds'] = [tun, ...inbounds];
     final env = _object(config, 'env');
-    env['xray.location.asset'] = options.assetDirectory;
-    env['xray.location.cert'] = options.assetDirectory;
+    env['xray.location.asset'] = VpnConstants.datDir;
+    env['xray.location.cert'] = VpnConstants.datDir;
     config.remove(
       'geodata',
     ); // App controls installed files, never core-side remote downloads.

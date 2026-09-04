@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -10,9 +12,9 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
-import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/debug_proxy.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/traffic_accounting.dart';
 import 'package:onexray/service/xray/metrics/model.dart';
@@ -20,13 +22,11 @@ import 'package:path/path.dart' as p;
 
 export 'traffic_accounting.dart' show RuntimeSnapshot;
 
-typedef RestoreReplay = Future<void> Function();
-
 class HostConnection {
   final VpnStatus status;
-  final ConnectionPlan? plan;
+  final ConnectionRuntime? runtime;
   final RuntimeSnapshot? traffic;
-  const HostConnection(this.status, {this.plan, this.traffic});
+  const HostConnection(this.status, {this.runtime, this.traffic});
   bool get connected => status == VpnStatus.connected;
 }
 
@@ -38,47 +38,50 @@ class ConnectionHostException implements Exception {
   String toString() => reason;
 }
 
-/// Native status owns VPN state. Xray metrics supplies live session counters;
-/// HTTP host snapshots supply background counters. Only the App writes totals.
+/// Native status owns VPN state. Xray metrics supplies live counters; libXray
+/// periodically exposes the same current session through authenticated HTTP.
 class ConnectionRuntimeHost {
   final AppHostApi _host = AppHostApi();
   final String? _runDirectory;
-  final RuntimeStateReader? _readState;
+  final RuntimeSnapshotReader? _readSnapshot;
   final Future<XrayMetricsVars> Function(int port)? _metrics;
   final Future<VpnStatus> Function()? _readStatus;
-  final Future<NativeVpnCommandResult> Function(ConnectionPlan plan)? _startVpn;
+  final Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
+  _startVpn;
   final Future<NativeVpnCommandResult> Function()? _stopVpn;
   final Duration startTimeout;
   final Duration stopTimeout;
   final Duration pollInterval;
-  Map<String, ConnectionPlan> _plans = {};
-  ConnectionPlan? _runtimePlan;
+  ConnectionRuntime? _runtime;
   bool _runtimeOnline = true;
 
   ConnectionRuntimeHost({
-    this._runDirectory,
-    RuntimeStateReader? readRuntimeState,
+    String? runDirectory,
+    RuntimeSnapshotReader? readRuntimeSnapshot,
     Future<XrayMetricsVars> Function(int port)? readMetrics,
-    this._readStatus,
-    this._startVpn,
-    this._stopVpn,
+    Future<VpnStatus> Function()? readStatus,
+    Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
+    startVpn,
+    Future<NativeVpnCommandResult> Function()? stopVpn,
     this.startTimeout = const Duration(seconds: 30),
     this.stopTimeout = const Duration(seconds: 15),
     this.pollInterval = const Duration(milliseconds: 200),
-  }) : _readState = readRuntimeState,
+  }) : _runDirectory = runDirectory,
+       _readSnapshot = readRuntimeSnapshot,
+       _readStatus = readStatus,
+       _startVpn = startVpn,
+       _stopVpn = stopVpn,
        _metrics = readMetrics;
 
   String get _directory => _runDirectory ?? VpnConstants.runDir;
   late final _accounting = TrafficAccounting(
     path: p.join(_directory, 'traffic-totals.json'),
-    readRuntimeState: _state,
+    readRuntimeSnapshot: _state,
   );
 
   Future<VpnStatus> _status() async {
     final readStatus = _readStatus;
-    if (readStatus != null) {
-      return readStatus();
-    }
+    if (readStatus != null) return readStatus();
     if (IOSDebugProxy().running) return VpnStatus.connected;
     final event = AppFlutterApi().vpnStatusController.stream.first.timeout(
       const Duration(seconds: 5),
@@ -94,66 +97,56 @@ class ConnectionRuntimeHost {
     return event;
   }
 
-  Future<RuntimeState> _state(List<String> removeSessionIds) async {
-    final reader = _readState;
-    if (reader != null) {
-      return reader(removeSessionIds);
-    }
+  Future<RuntimeSnapshot?> _state() async {
+    final reader = _readSnapshot;
+    if (reader != null) return reader();
     if (!_runtimeOnline) {
       throw const ConnectionHostException('runtimeStateUnavailable');
     }
-    final candidates = {
-      for (final plan in [?_runtimePlan, ..._plans.values]) plan.id: plan,
-    };
-    for (final plan in candidates.values) {
+    final candidates = <ConnectionRuntime>[?_runtime, ?await readRuntime()];
+    final tried = <String>{};
+    for (final runtime in candidates) {
+      if (!tried.add(runtime.identity)) continue;
       try {
-        final state = await _stateFor(plan, removeSessionIds);
-        _runtimePlan = plan;
-        return state;
+        final snapshot = await _stateFor(runtime);
+        _runtime = runtime;
+        return snapshot;
       } on Exception {
-        // A previous plan's endpoint may have closed during a switch.
+        // A previous endpoint may have closed during a connection switch.
       }
     }
     throw const ConnectionHostException('runtimeStateUnavailable');
   }
 
-  Future<RuntimeState> _stateFor(
-    ConnectionPlan plan,
-    List<String> removeSessionIds,
-  ) async {
-    final reader = _readState;
-    if (reader != null) return reader(removeSessionIds);
-    final runtime = plan.runtime;
+  Future<RuntimeSnapshot> _stateFor(ConnectionRuntime runtime) async {
+    final reader = _readSnapshot;
+    if (reader != null) {
+      final snapshot = await reader();
+      if (snapshot == null) {
+        throw const ConnectionHostException('runtimeStateUnavailable');
+      }
+      return snapshot;
+    }
+    final managed = runtime.managed;
     final address = RegExp(r'^127\.0\.0\.1:([0-9]{1,5})$')
-        .firstMatch(runtime.listen ?? '');
+        .firstMatch(managed.listen ?? '');
     final port = int.tryParse(address?.group(1) ?? '');
     if (port == null ||
         port < 1 ||
         port > 65535 ||
-        !_safeId.hasMatch(runtime.token ?? '')) {
+        !_safeToken.hasMatch(managed.token ?? '')) {
       throw const ConnectionHostException('runtimeStateUnavailable');
     }
-    final json = await _httpJson(
-      Uri(
-        scheme: 'http',
-        host: '127.0.0.1',
-        port: port,
-        path: removeSessionIds.isEmpty ? '/runtime' : '/runtime/ack',
+    return RuntimeSnapshot.fromJson(
+      await _httpJson(
+        Uri(scheme: 'http', host: '127.0.0.1', port: port, path: '/runtime'),
+        token: managed.token,
+        maximumBytes: 1024 * 1024,
       ),
-      token: runtime.token,
-      body: removeSessionIds.isEmpty
-          ? null
-          : {'removeSessionIds': removeSessionIds},
-      maximumBytes: 16 * 1024 * 1024,
     );
-    final state = RuntimeState.fromJson(json);
-    if (state.current?.planId != plan.id) {
-      throw const ConnectionHostException('runtimePlanMismatch');
-    }
-    return state;
   }
 
-  static final _safeId = RegExp(r'^[a-f0-9]{32}$');
+  static final _safeToken = RegExp(r'^[a-f0-9]{32}$');
 
   static Map<String, dynamic> _jsonObject(String text) {
     final json = jsonDecode(text);
@@ -163,9 +156,7 @@ class ConnectionRuntimeHost {
     return json;
   }
 
-  Future<RuntimeSnapshot?> readSavedTraffic() => _accounting.read();
-
-  Future<ConnectionPlan?> _readStartPlan() async {
+  Future<ConnectionRuntime?> readRuntime() async {
     try {
       final file = File(p.join(_directory, 'start.json'));
       if (await FileSystemEntity.type(file.path, followLinks: false) !=
@@ -173,111 +164,24 @@ class ConnectionRuntimeHost {
           await file.length() > 16 * 1024 * 1024) {
         return null;
       }
-      final request = StartVpnRequest.fromJson(
-        _jsonObject(await file.readAsString()),
+      return ConnectionRuntime.fromRequest(
+        StartVpnRequest.fromJson(_jsonObject(await file.readAsString())),
       );
-      final id = LibXrayRunConfig.fromInvokeText(request.coreInvokeText!)
-          .request
-          .runtime
-          ?.planId;
-      return await readPlan(id);
     } on Exception {
+      return null;
+    } on ArgumentError {
       return null;
     } on TypeError {
       return null;
     }
   }
 
-  /// A missing or damaged private plan is not evidence of VPN disconnection.
-  Future<ConnectionPlan?> readPlan(String? id) async {
-    if (id == null || !_safeId.hasMatch(id)) return null;
-    try {
-      final directory = p.join(_directory, 'plans', id);
-      for (final path in [_directory, p.join(_directory, 'plans'), directory]) {
-        if (await FileSystemEntity.type(path, followLinks: false) !=
-            FileSystemEntityType.directory) {
-          return null;
-        }
-      }
-      final file = File(p.join(directory, 'plan.json'));
-      if (await FileSystemEntity.type(file.path, followLinks: false) !=
-          FileSystemEntityType.file) {
-        return null;
-      }
-      final plan = ConnectionPlan.decode(await file.readAsString());
-      return plan.id == id ? plan : null;
-    } on Exception {
-      return null;
-    } on TypeError {
-      // Invalid JSON shapes may fail a typed plan field before validation.
-      return null;
-    }
-  }
+  Future<RuntimeSnapshot?> readSavedTraffic() => _accounting.read();
 
-  /// Revoke only Windows CLI input, never the plan, data or shared start file.
-  /// This protects later reads after normal cleanup, not a Core that already
-  /// read the file or an App killed before cleanup.
-  Future<RestoreReplay?> revokeReplay(ConnectionPlan? plan) async {
-    if (plan == null || plan.platform != ConnectionPlatform.windows) {
-      return null;
-    }
-    if (!_safeId.hasMatch(plan.id)) {
-      throw const FormatException('Invalid replay plan');
-    }
-    final plans = p.join(_directory, 'plans');
-    final directory = p.join(plans, plan.id);
-    for (final path in [_directory, plans, directory]) {
-      final type = await FileSystemEntity.type(path, followLinks: false);
-      if (type == FileSystemEntityType.notFound) return null;
-      if (type != FileSystemEntityType.directory) {
-        throw const FormatException('Invalid replay directory');
-      }
-    }
-    final file = File(p.join(directory, 'runtime-config.json'));
-    final type = await FileSystemEntity.type(file.path, followLinks: false);
-    if (type == FileSystemEntityType.notFound) return null;
-    if (type != FileSystemEntityType.file || await file.length() > 65536) {
-      throw const FormatException('Invalid replay metadata');
-    }
-    final text = await file.readAsString();
-    final metadata = _jsonObject(text);
-    final runtime = plan.runtime;
-    if (metadata['planId'] != plan.id ||
-        metadata['statePath'] != runtime.statePath ||
-        metadata['inboundTag'] != runtime.inboundTag ||
-        metadata['listen'] != runtime.listen ||
-        metadata['token'] != runtime.token) {
-      throw const FormatException('Replay metadata differs from its plan');
-    }
-    if (await _status() != VpnStatus.disconnected) {
-      throw const ConnectionHostException('replayPlanStillRunning');
-    }
-    await file.delete();
-    return () async {
-      final type = await FileSystemEntity.type(file.path, followLinks: false);
-      if (type != FileSystemEntityType.notFound) {
-        if (type != FileSystemEntityType.file ||
-            await file.readAsString() != text) {
-          throw const FormatException(
-            'Replay metadata changed during rollback',
-          );
-        }
-        return;
-      }
-      final staging = File('${file.path}.$pid.restore');
+  Future<RuntimeSnapshot?> resetTraffic([ConnectionRuntime? runtime]) async {
+    if (runtime != null) {
       try {
-        await staging.writeAsString(text, flush: true);
-        await staging.rename(file.path);
-      } finally {
-        if (await staging.exists()) await staging.delete();
-      }
-    };
-  }
-
-  Future<RuntimeSnapshot?> resetTraffic([ConnectionPlan? plan]) async {
-    if (plan != null) {
-      try {
-        await query(plan);
+        await query(runtime);
       } on Exception {
         // An unavailable metrics endpoint must not prevent an App-only reset.
       }
@@ -287,9 +191,7 @@ class ConnectionRuntimeHost {
 
   Future<XrayMetricsVars> _readMetrics(int port) async {
     final reader = _metrics;
-    if (reader != null) {
-      return reader(port);
-    }
+    if (reader != null) return reader(port);
     try {
       return XrayMetricsVars.fromJson(
         await _httpJson(
@@ -309,21 +211,16 @@ class ConnectionRuntimeHost {
   static Future<Map<String, dynamic>> _httpJson(
     Uri uri, {
     String? token,
-    Map<String, Object>? body,
     int maximumBytes = 1048576,
   }) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 2)
       ..findProxy = (_) => 'DIRECT';
     try {
-      final request = await client.openUrl(body == null ? 'GET' : 'POST', uri);
+      final request = await client.getUrl(uri);
       request.followRedirects = false;
       if (token != null) {
         request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
-      }
-      if (body != null) {
-        request.headers.contentType = ContentType.json;
-        request.write(jsonEncode(body));
       }
       final response = await request.close().timeout(
         const Duration(seconds: 3),
@@ -344,14 +241,14 @@ class ConnectionRuntimeHost {
     }
   }
 
-  Future<RuntimeSnapshot> query(ConnectionPlan plan) async {
-    _runtimePlan = plan;
+  Future<RuntimeSnapshot> query(ConnectionRuntime runtime) async {
+    _runtime = runtime;
     _runtimeOnline = true;
-    final before = (await _stateFor(plan, const [])).current;
-    if (before == null || before.planId != plan.id || before.endedAtMs != 0) {
-      throw const ConnectionHostException('runtimePlanMismatch');
+    final before = await _stateFor(runtime);
+    if (before.endedAtMs != 0) {
+      throw const ConnectionHostException('runtimeSessionChanged');
     }
-    final port = int.tryParse(plan.request.metricsPort ?? '');
+    final port = int.tryParse(runtime.request.metricsPort ?? '');
     if (port == null || port < 1 || port > 65535) {
       throw const ConnectionHostException('runtimeMetricsUnavailable');
     }
@@ -361,15 +258,10 @@ class ConnectionRuntimeHost {
     if (uplink == null || downlink == null || uplink < 0 || downlink < 0) {
       throw const ConnectionHostException('runtimeMetricsUnavailable');
     }
-    final after = (await _stateFor(plan, const [])).current;
-    if (after == null ||
-        after.sessionId != before.sessionId ||
-        after.planId != plan.id ||
-        after.endedAtMs != 0) {
+    final after = await _stateFor(runtime);
+    if (after.sessionId != before.sessionId || after.endedAtMs != 0) {
       throw const ConnectionHostException('runtimeSessionChanged');
     }
-    // Accounting rechecks current inside its shared queue, including when this
-    // request waited behind a reset or archive cleanup from another host object.
     return (await _accounting.read(
       live: after.withCounters(
         uplink: uplink,
@@ -381,49 +273,54 @@ class ConnectionRuntimeHost {
     ))!;
   }
 
-  /// Status reconciliation reads saved facts only. An unsolicited native event
-  /// already carries the status; querying it again would echo the same event.
   Future<HostConnection> inspect(
-    Iterable<ConnectionPlan> knownPlans, {
+    Iterable<ConnectionRuntime> knownRuntimes, {
     VpnStatus? observedStatus,
     bool readMetrics = false,
   }) async {
     final status = observedStatus ?? await _status();
     _runtimeOnline = status != VpnStatus.disconnected;
-    _plans = {for (final plan in knownPlans) plan.id: plan};
-    if (_runtimeOnline) {
-      // The App-owned startup request can name an uncommitted plan after a
-      // restart. It only locates the endpoint; HTTP must confirm the session.
-      final starting = await _readStartPlan();
-      if (starting != null) _plans[starting.id] = starting;
-    }
     RuntimeSnapshot? saved;
     try {
       saved = await readSavedTraffic();
     } on Exception {
-      // Status remains native-owned when saved statistics cannot be read.
+      // Native status remains authoritative when counters are unavailable.
     }
     if (status == VpnStatus.disconnected) {
       return HostConnection(status, traffic: saved);
     }
-    final plans = {..._plans};
-    if (saved != null && !plans.containsKey(saved.planId)) {
-      final plan = await readPlan(saved.planId);
-      if (plan != null) plans[plan.id] = plan;
-    }
-    final plan = saved?.error == 'runtimeStateUnavailable'
-        ? null
-        : plans[saved?.planId];
-    if (plan != null && readMetrics) {
+
+    final candidates = <ConnectionRuntime>[
+      ...knownRuntimes,
+      ?await readRuntime(),
+    ];
+    ConnectionRuntime? runtime;
+    final tried = <String>{};
+    for (final candidate in candidates) {
+      if (!tried.add(candidate.identity)) continue;
       try {
-        return HostConnection(status, plan: plan, traffic: await query(plan));
+        await _stateFor(candidate);
+        runtime = candidate;
+        _runtime = candidate;
+        break;
+      } on Exception {
+        // Keep trying the active start request after an in-flight switch.
+      }
+    }
+    if (runtime != null && readMetrics) {
+      try {
+        return HostConnection(
+          status,
+          runtime: runtime,
+          traffic: await query(runtime),
+        );
       } on Exception {
         // A saved counter is not a successful live sample.
       }
     }
     return HostConnection(
       status,
-      plan: plan,
+      runtime: runtime,
       traffic: saved?.withCounters(
         uplink: saved.uplink,
         downlink: saved.downlink,
@@ -434,19 +331,17 @@ class ConnectionRuntimeHost {
     );
   }
 
-  Future<NativeVpnCommandResult> _start(ConnectionPlan plan) async {
+  Future<NativeVpnCommandResult> _start(ConnectionRuntime runtime) async {
     final startVpn = _startVpn;
-    if (startVpn != null) {
-      return startVpn(plan);
-    }
-    if (IOSDebugProxy().enabled) return IOSDebugProxy().start(plan);
-    await plan.request.writeToStartFile();
-    final policy = plan.configuration.policy;
-    final windows = plan.platform == ConnectionPlatform.windows;
+    if (startVpn != null) return startVpn(runtime);
+    if (IOSDebugProxy().enabled) return IOSDebugProxy().start(runtime);
+    await runtime.request.writeToStartFile();
+    final policy = runtime.configuration.policy;
+    final windows = runtime.platform == ConnectionPlatform.windows;
     return _host.startVpn(
       windowsConfigYaml: windows
           ? buildWindowsTun2SocksConfig(
-              plan.request.socksPort!,
+              runtime.request.socksPort!,
               enableIPv6: policy.ipv6Enabled,
             )
           : null,
@@ -468,19 +363,11 @@ class ConnectionRuntimeHost {
     );
   }
 
-  Future<HostConnection> start(ConnectionPlan plan) async {
-    _plans[plan.id] = plan;
+  Future<HostConnection> start(ConnectionRuntime runtime) async {
+    _runtime = runtime;
     _runtimeOnline = true;
-    String? previousSession;
-    var previousReadable = true;
-    try {
-      previousSession = (await _state(const [])).current?.sessionId;
-    } on Exception {
-      // A stopped core cannot serve statistics until it is started.
-      previousReadable = false;
-    }
     final requestedAt = DateTime.now().millisecondsSinceEpoch;
-    final result = await _start(plan);
+    final result = await _start(runtime);
     if (result.state != NativeVpnCommandState.success) {
       throw ConnectionHostException(
         result.state == NativeVpnCommandState.waitingForPlatformPermission
@@ -491,12 +378,11 @@ class ConnectionRuntimeHost {
     }
     final deadline = DateTime.now().add(startTimeout);
     while (DateTime.now().isBefore(deadline)) {
-      final current = await inspect([plan], readMetrics: true);
+      final current = await inspect([runtime], readMetrics: true);
       if (current.connected &&
-          current.plan?.id == plan.id &&
-          current.traffic?.sessionId != previousSession &&
+          current.runtime?.identity == runtime.identity &&
           current.traffic?.available == true &&
-          (previousReadable || current.traffic!.startedAtMs >= requestedAt)) {
+          current.traffic!.startedAtMs >= requestedAt) {
         return current;
       }
       await Future<void>.delayed(pollInterval);
@@ -504,7 +390,7 @@ class ConnectionRuntimeHost {
     throw const ConnectionHostException('startTimeout');
   }
 
-  Future<HostConnection> stop(ConnectionPlan? plan) async {
+  Future<HostConnection> stop() async {
     final result =
         await (_stopVpn?.call() ??
             (IOSDebugProxy().running
@@ -522,7 +408,7 @@ class ConnectionRuntimeHost {
         try {
           saved = await readSavedTraffic();
         } on Exception {
-          // Native shutdown does not depend on statistics persistence.
+          // Native shutdown does not depend on traffic persistence.
         }
         return HostConnection(status, traffic: saved);
       }

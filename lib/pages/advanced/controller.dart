@@ -7,8 +7,8 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
+import 'package:onexray/service/connection/runtime.dart';
 
 class AdvancedPageState {
   final PlatformPolicy? policy;
@@ -143,7 +143,6 @@ class AdvancedController extends PageCubit<AdvancedPageState>
     ConnectionPhase.connecting => l10n.prototypeConnecting,
     ConnectionPhase.connected => l10n.prototypeConnected,
     ConnectionPhase.disconnecting => l10n.prototypeDisconnecting,
-    ConnectionPhase.recovering => l10n.prototypeReconnecting,
     ConnectionPhase.failed => l10n.prototypeConnectionFailed,
   };
 

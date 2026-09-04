@@ -5,7 +5,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/platform.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/xray/runtime_inbounds.dart';
 
@@ -33,11 +33,11 @@ class IOSDebugProxy {
     required bool isIOS,
   }) => debugMode && isIOS;
 
-  Future<NativeVpnCommandResult> start(ConnectionPlan plan) async {
+  Future<NativeVpnCommandResult> start(ConnectionRuntime runtime) async {
     if (!enabled) return _failed('debugProxyUnavailable');
     if (_running) return _failed('debugProxyAlreadyRunning');
     try {
-      final error = await AppHostApi().runXray(buildInvoke(plan));
+      final error = await AppHostApi().runXray(buildInvoke(runtime));
       if (error.isNotEmpty) return _failed(error);
       _running = true;
       return NativeVpnCommandResult(state: NativeVpnCommandState.success);
@@ -68,23 +68,22 @@ class IOSDebugProxy {
         message: message,
       );
 
-  /// Converts a copy of the frozen host invocation; the plan stays unchanged.
+  /// Converts a copy of the prepared host invocation; the input stays unchanged.
   /// Keeping tunIn's tag preserves routing, metrics and the managed session.
-  static String buildInvoke(ConnectionPlan plan) {
-    final request = plan.request;
+  static String buildInvoke(ConnectionRuntime runtime) {
+    final request = runtime.request;
     final port = int.tryParse(request.socksPort ?? '');
-    if (plan.platform != ConnectionPlatform.ios ||
+    if (runtime.platform != ConnectionPlatform.ios ||
         port == null ||
         port < 1 ||
         port > 65535 ||
         port == int.tryParse(request.metricsPort ?? '') ||
         request.coreInvokeText == null) {
-      throw const FormatException('Invalid iOS Debug proxy plan');
+      throw const FormatException('Invalid iOS Debug proxy runtime');
     }
     final config = LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
     if (config.invoke.method != LibXrayMethod.runXray ||
         config.request.xrayJson == null ||
-        config.request.runtime?.planId != plan.id ||
         config.request.runtime?.inboundTag != 'tunIn') {
       throw const FormatException('Invalid managed Debug invocation');
     }

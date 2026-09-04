@@ -10,7 +10,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/assets/server.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
@@ -42,16 +42,9 @@ void main() {
     return coordinator;
   }
 
-  for (final change in [
-    'entry',
-    'exit',
-    'unused',
-    'rename',
-    'live-unused',
-    'missing-plan',
-  ]) {
+  for (final change in ['entry', 'exit', 'unused', 'rename', 'live-unused']) {
     test(
-      'server edit invalidates only affected offline inputs: $change',
+      'offline or unrelated server edit does not reconnect: $change',
       () async {
         final entry = await server();
         final exit = await server();
@@ -62,35 +55,20 @@ void main() {
             smart: SmartRoutingSettings(finalExitId: exit.id),
           ),
         );
-        final old = _plan(
-          'a',
-          configuration,
-          [ServerSnapshot.fromRow(entry)],
-          platform: ConnectionPlatform.windows,
-          finalExit: ServerSnapshot.fromRow(exit),
-        );
         await db.connectionStateDao.commit(
           settingsJson: configuration.encode(),
-          confirmedPlanId: old.id,
         );
-        final live = _plan('b', configuration, [
-          ServerSnapshot.fromRow(unused),
+        final live = _runtime('b', configuration, [
+          ResolvedServer.fromRow(unused),
         ]);
-        final revoked = <String>[];
         final coordinator = await initialize(
           ConnectionCoordinator(
             database: db,
-            readPlan: (id) async =>
-                change != 'missing-plan' && id == old.id ? old : null,
             inspect: (_) async => change == 'live-unused'
-                ? HostConnection(VpnStatus.connected, plan: live)
+                ? HostConnection(VpnStatus.connected, runtime: live)
                 : const HostConnection(VpnStatus.disconnected),
             start: (_) async => throw StateError('Unexpected start'),
-            stop: (_) async => throw StateError('Unexpected stop'),
-            revokeReplay: (plan) async {
-              revoked.add(plan!.id);
-              return null;
-            },
+            stop: () async => throw StateError('Unexpected stop'),
           ),
         );
         final service = ServerAssetService(
@@ -118,10 +96,6 @@ void main() {
           ),
           true,
         );
-        final expected = change == 'entry' || change == 'exit'
-            ? [old.id]
-            : <String>[];
-        expect(revoked, expected);
         final saved = (await db.coreConfigDao.searchRow(row.id))!;
         expect(
           saved.delay,
@@ -129,72 +103,66 @@ void main() {
         );
         expect(saved.countryCode, change == 'rename' ? 'JP' : isNull);
         await service.favorite(row.id, true);
-        expect(revoked, expected);
         expect((await db.coreConfigDao.searchRow(row.id))!.favorite, true);
+        expect(
+          coordinator.state.value.phase,
+          change == 'live-unused'
+              ? ConnectionPhase.connected
+              : ConnectionPhase.disconnected,
+        );
       },
     );
   }
 
   for (final removed in ['entry', 'exit', 'unused']) {
-    test(
-      'offline deletion invalidates the last plan without reconnect UI: $removed',
-      () async {
-        final entry = await server();
-        final exit = await server();
-        final unused = await server();
-        final configuration = ConnectionConfiguration(
-          connection: ConnectionSettings(
-            selection: ServerSelection.server(entry.id),
-            smart: SmartRoutingSettings(finalExitId: exit.id),
-          ),
-        );
-        final old = _plan(
-          'a',
-          configuration,
-          [ServerSnapshot.fromRow(entry)],
-          platform: ConnectionPlatform.windows,
-          finalExit: ServerSnapshot.fromRow(exit),
-        );
-        await db.connectionStateDao.commit(
-          settingsJson: configuration.encode(),
-          confirmedPlanId: old.id,
-        );
-        final revoked = <String>[];
-        final coordinator = await initialize(
-          ConnectionCoordinator(
-            database: db,
-            readPlan: (id) async => id == old.id ? old : null,
-            inspect: (_) async => const HostConnection(VpnStatus.disconnected),
-            start: (_) async => throw StateError('Unexpected start'),
-            stop: (_) async => throw StateError('Unexpected stop'),
-            revokeReplay: (plan) async {
-              revoked.add(plan!.id);
-              return null;
-            },
-          ),
-        );
-        final service = ServerAssetService(
+    test('offline deletion clears only affected settings: $removed', () async {
+      final entry = await server();
+      final exit = await server();
+      final unused = await server();
+      final configuration = ConnectionConfiguration(
+        connection: ConnectionSettings(
+          selection: ServerSelection.server(entry.id),
+          smart: SmartRoutingSettings(finalExitId: exit.id),
+        ),
+      );
+      await db.connectionStateDao.commit(settingsJson: configuration.encode());
+      final coordinator = await initialize(
+        ConnectionCoordinator(
           database: db,
-          coordinator: coordinator,
-          validate: (_) async => '',
-          schedule: (_) {},
-          prepare: (_, _, _, _) async =>
-              throw StateError('Unexpected preparation'),
-        );
-        final row = removed == 'entry'
-            ? entry
-            : removed == 'exit'
-            ? exit
-            : unused;
-        final preview = await service.previewRemoval(ids: {row.id});
-        expect(preview.affectsRuntime, false);
-        expect(preview.disconnect, false);
-        await service.remove(preview);
-        expect(revoked, removed == 'unused' ? isEmpty : [old.id]);
-        expect(await db.coreConfigDao.searchRow(row.id), isNull);
-        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
-      },
-    );
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          start: (_) async => throw StateError('Unexpected start'),
+          stop: () async => throw StateError('Unexpected stop'),
+        ),
+      );
+      final service = ServerAssetService(
+        database: db,
+        coordinator: coordinator,
+        validate: (_) async => '',
+        schedule: (_) {},
+        prepare: (_, _, _, _) async =>
+            throw StateError('Unexpected preparation'),
+      );
+      final row = removed == 'entry'
+          ? entry
+          : removed == 'exit'
+          ? exit
+          : unused;
+      final preview = await service.previewRemoval(ids: {row.id});
+      expect(preview.affectsRuntime, false);
+      expect(preview.disconnect, false);
+      await service.remove(preview);
+      expect(await db.coreConfigDao.searchRow(row.id), isNull);
+      final next = await coordinator.configuration;
+      expect(
+        next.connection.selection.kind,
+        removed == 'entry' ? SelectionKind.automatic : SelectionKind.server,
+      );
+      expect(
+        next.connection.smart.finalExitId,
+        removed == 'exit' ? isNull : exit.id,
+      );
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    });
   }
 
   test(
@@ -206,7 +174,7 @@ void main() {
           database: db,
           inspect: (_) async => const HostConnection(VpnStatus.disconnected),
           start: (_) async => throw StateError('Unexpected start'),
-          stop: (_) async => throw StateError('Unexpected stop'),
+          stop: () async => throw StateError('Unexpected stop'),
         ),
       );
       final scheduled = <int>[];
@@ -237,26 +205,19 @@ void main() {
     final configuration = ConnectionConfiguration(
       connection: ConnectionSettings(selection: ServerSelection.server(row.id)),
     );
-    final old = _plan('a', configuration, [ServerSnapshot.fromRow(row)]);
-    await db.connectionStateDao.commit(
-      settingsJson: configuration.encode(),
-      confirmedPlanId: old.id,
-    );
-    var host = HostConnection(VpnStatus.connected, plan: old);
+    final old = _runtime('a', configuration, [ResolvedServer.fromRow(row)]);
+    await db.connectionStateDao.commit(settingsJson: configuration.encode());
+    var host = HostConnection(VpnStatus.connected, runtime: old);
     final calls = <String>[];
     final coordinator = await initialize(
       ConnectionCoordinator(
         database: db,
-        readPlan: (id) async => id == old.id ? old : null,
         inspect: (_) async => host,
-        start: (plan) async {
+        start: (_) async {
           calls.add('start');
-          if (plan.id != old.id) {
-            throw const ConnectionHostException('startFailed');
-          }
-          return host = HostConnection(VpnStatus.connected, plan: old);
+          throw const ConnectionHostException('startFailed');
         },
-        stop: (_) async {
+        stop: () async {
           calls.add('stop');
           return host = const HostConnection(VpnStatus.disconnected);
         },
@@ -268,7 +229,7 @@ void main() {
       validate: (_) async => '',
       schedule: (_) {},
       prepare: (next, _, drafts, _) async =>
-          _plan('b', next, drafts.values.toList()),
+          _runtime('b', next, drafts.values.toList()),
     );
     final draft = await service.load(row.id);
     expect(
@@ -302,7 +263,9 @@ void main() {
       (await db.coreConfigDao.searchRow(row.id))!.data,
       renamed.original.data,
     );
-    expect(coordinator.state.value.plan!.id, old.id);
+    expect(calls, ['stop', 'start', 'stop']);
+    expect(coordinator.state.value.phase, ConnectionPhase.failed);
+    expect(coordinator.state.value.runtime, isNull);
   });
 
   test('deleting an inactive fixed/final node clears references without starting VPN', () async {
@@ -321,7 +284,7 @@ void main() {
         database: db,
         inspect: (_) async => const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
-        stop: (_) async => throw StateError('Unexpected stop'),
+        stop: () async => throw StateError('Unexpected stop'),
       ),
     );
     final service = ServerAssetService(
@@ -342,19 +305,14 @@ void main() {
   });
 }
 
-ConnectionPlan _plan(
+ConnectionRuntime _runtime(
   String digit,
   ConnectionConfiguration configuration,
-  List<ServerSnapshot> entries, {
-  ConnectionPlatform platform = ConnectionPlatform.android,
-  ServerSnapshot? finalExit,
-}) {
+  List<ResolvedServer> entries,
+) {
   final id = List.filled(32, digit).join();
   final text = jsonEncode({
-    'outbounds': [
-      ...entries.map((row) => row.outbound),
-      if (finalExit != null) finalExit.outbound,
-    ],
+    'outbounds': entries.map((row) => row.outbound).toList(),
   });
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
@@ -362,23 +320,21 @@ ConnectionPlan _plan(
       text,
       runtime: ManagedRuntimeRequest(
         statePath: '/fixture/run/runtime.json',
-        planId: id,
+        token: id,
       ),
     ).toJson(),
   );
-  return ConnectionPlan.create(
-    id: id,
+  return ConnectionRuntime.create(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
       settingsJson: jsonEncode(configuration.connection.toJson()),
       entries: entries,
-      finalExit: finalExit,
+      finalExit: null,
       nodeTags: {},
       ruleTags: {},
-      assetDirectory: '/fixture/assets',
     ),
-    platform: platform,
+    platform: ConnectionPlatform.android,
     request: StartVpnRequest(
       configuration.policy.toTun(ConnectionPlatform.android),
       null,

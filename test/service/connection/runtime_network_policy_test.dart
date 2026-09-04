@@ -30,7 +30,6 @@ CompiledConnection compileRaw(
   ),
   options: RuntimeOptions(
     platform: ConnectionPlatform.android,
-    assetDirectory: '/fixture/assets',
     sessionDirectory: '/fixture/session',
     metricsPort: 18002,
     socksPort: 18003,

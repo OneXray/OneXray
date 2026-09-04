@@ -9,7 +9,7 @@ import 'package:onexray/pages/advanced/tunnel/apple_widgets.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';

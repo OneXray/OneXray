@@ -162,41 +162,43 @@ void main() {
     }
   });
 
-  test('editor dependency preparation never publishes; caller commits and disposes explicitly', () async {
-    var writes = 0;
-    var disposed = 0;
-    final service = ConfigurationTransferService(
-      lookup: (_) async => null,
-      prepare: (inputs) async => GeoDataImportDraft(
-        inputs,
-        () async {
-          writes++;
-        },
-        () async {
-          disposed++;
-        },
-        (_) async {},
-      ),
-    );
-    final draft = await service.import(
-      template('Route', assets: true),
-      ConfigurationKind.custom,
-    );
-    expect(writes, 0);
-    final exported = jsonDecode(
-      await service.exportJson(
-        kind: ConfigurationKind.custom,
-        name: draft.name,
-        text: draft.text,
-        pending: draft.geodata,
-      ),
-    );
-    expect(exported['geodata']['assets'].single['file'], 'rules.dat');
-    await draft.commit();
-    await draft.dispose();
-    expect(writes, 1);
-    expect(disposed, 1);
-  });
+  test(
+    'editor dependency metadata remains pending until caller commits',
+    () async {
+      var writes = 0;
+      var disposed = 0;
+      final service = ConfigurationTransferService(
+        lookup: (_) async => null,
+        prepare: (inputs) async => GeoDataImportDraft(
+          inputs,
+          () async {
+            writes++;
+          },
+          () async {
+            disposed++;
+          },
+        ),
+      );
+      final draft = await service.import(
+        template('Route', assets: true),
+        ConfigurationKind.custom,
+      );
+      expect(writes, 0);
+      final exported = jsonDecode(
+        await service.exportJson(
+          kind: ConfigurationKind.custom,
+          name: draft.name,
+          text: draft.text,
+          pending: draft.geodata,
+        ),
+      );
+      expect(exported['geodata']['assets'].single['file'], 'rules.dat');
+      await draft.commit();
+      await draft.dispose();
+      expect(writes, 1);
+      expect(disposed, 1);
+    },
+  );
 
   test('common import previews Custom rather than nodes; batch limits roll back dependencies and configs', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -208,23 +210,18 @@ void main() {
       schedule: (_) => throw StateError('Routes are not nodes'),
       transfer: ConfigurationTransferService(
         lookup: db.geoDataDao.searchRowByName,
-        prepare: (inputs) async => GeoDataImportDraft(
-          inputs,
-          () async {
-            await db.geoDataDao.insertRow(
-              GeoDataCompanion.insert(
-                name: 'rules',
-                type: 'domain',
-                url: inputs.single.url,
-                timestamp: DateTime(2026),
-                categoryCount: 1,
-                ruleCount: 1,
-              ),
-            );
-          },
-          () async {},
-          (_) async {},
-        ),
+        prepare: (inputs) async => GeoDataImportDraft(inputs, () async {
+          await db.geoDataDao.insertRow(
+            GeoDataCompanion.insert(
+              name: 'rules',
+              type: 'domain',
+              url: inputs.single.url,
+              timestamp: DateTime(2026),
+              categoryCount: 1,
+              ruleCount: 1,
+            ),
+          );
+        }, () async {}),
       ),
     );
     final first = await service.preview(template('One'));

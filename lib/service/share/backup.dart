@@ -166,6 +166,7 @@ class BackupService {
           await datRestore!.commit();
           return rows;
         });
+        await datRestore.complete();
         if (payload.contents.version < _backupVersion) {
           legacySubscriptions = subscriptions;
         }
@@ -325,16 +326,20 @@ class BackupService {
     String backupRoot,
     List<BackupGeoDataJson> geoDataList,
   ) async {
-    final datDir = p.join(backupRoot, _datDir);
-    for (final geoData in geoDataList) {
-      final name = geoData.name!;
-      final datFile = File(p.join(datDir, "$name.dat"));
-      final jsonFile = File(p.join(datDir, "$name.json"));
-      if (!await datFile.exists() || !await jsonFile.exists()) {
+    final expected = {
+      for (final geoData in geoDataList) '${geoData.name!}.dat',
+      for (final geoData in geoDataList) '${geoData.name!}.json',
+    };
+    final datDir = Directory(p.join(backupRoot, _datDir));
+    if (!await datDir.exists()) return expected.isEmpty;
+    await for (final entry in datDir.list(followLinks: false)) {
+      if (await FileSystemEntity.type(entry.path, followLinks: false) !=
+              FileSystemEntityType.file ||
+          !expected.remove(p.basename(entry.path))) {
         return false;
       }
     }
-    return true;
+    return expected.isEmpty;
   }
 
   Future<void> _writeManifest(String zipDir, DateTime createdAt) async {

@@ -71,7 +71,7 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
     try {
       var chunk = await RuntimeDiagnosticFiles.readLog(
         params.path,
-        planId: params.systemExtensionPlanId,
+        systemExtension: params.systemExtension,
         access: params.access,
         offset: _fileId == null ? -1 : _offset,
       );
@@ -83,7 +83,7 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
               chunk.size - _offset > _maxBufferBytes)) {
         chunk = await RuntimeDiagnosticFiles.readLog(
           params.path,
-          planId: params.systemExtensionPlanId,
+          systemExtension: params.systemExtension,
           access: params.access,
         );
         replace = true;
@@ -181,7 +181,7 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
       await RuntimeDiagnosticFiles.exportLog(
         params.path,
         p.basename(params.path),
-        planId: params.systemExtensionPlanId,
+        systemExtension: params.systemExtension,
         access: params.access,
       );
     } catch (_) {

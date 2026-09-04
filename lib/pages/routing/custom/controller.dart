@@ -6,7 +6,7 @@ import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/pages/widget/configuration_transfer.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/custom_editor.dart';
 import 'package:onexray/service/routing/document.dart';

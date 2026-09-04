@@ -17,7 +17,6 @@ void main() {
         phase: ConnectionPhase.connected,
         traffic: RuntimeSnapshot(
           sessionId: 'session',
-          planId: 'plan',
           startedAtMs: now.millisecondsSinceEpoch - 60000,
           endedAtMs: 0,
           uplink: 0,

@@ -56,14 +56,14 @@ class ConnectionResolver {
   }
 
   /// Cancellation ends only this wait. Already scheduled probes keep updating
-  /// candidate caches and cannot change the returned snapshots or a running VPN.
-  Future<List<ServerSnapshot>> resolve(
+  /// candidate caches and cannot change resolved inputs or a running VPN.
+  Future<List<ResolvedServer>> resolve(
     ConnectionSettings settings, {
     RoutingProfileState? custom,
     Future<void>? cancelled,
   }) => DataMaintenance.run(() => _resolve(settings, custom, cancelled));
 
-  Future<List<ServerSnapshot>> _resolve(
+  Future<List<ResolvedServer>> _resolve(
     ConnectionSettings settings,
     RoutingProfileState? custom,
     Future<void>? cancelled,
@@ -84,7 +84,7 @@ class ConnectionResolver {
       );
     }
 
-    final result = Completer<List<ServerSnapshot>>();
+    final result = Completer<List<ResolvedServer>>();
     StreamSubscription<List<CoreConfigData>>? subscription;
     var probeStarted = false;
 
@@ -119,7 +119,7 @@ class ConnectionResolver {
     void consider(List<CoreConfigData> rows, {required bool finalRead}) {
       if (result.isCompleted) return;
       final seen = <int>{};
-      final candidates = <({CoreConfigData row, ServerSnapshot snapshot})>[];
+      final candidates = <({CoreConfigData row, ResolvedServer server})>[];
       for (final row in rows) {
         if (row.type != 'outbound' ||
             row.id <= 0 ||
@@ -129,7 +129,7 @@ class ConnectionResolver {
           continue;
         }
         try {
-          candidates.add((row: row, snapshot: ServerSnapshot.fromRow(row)));
+          candidates.add((row: row, server: ResolvedServer.fromRow(row)));
         } on FormatException {
           // Retained malformed legacy data is repairable, not a connectable node.
         }
@@ -153,7 +153,7 @@ class ConnectionResolver {
           if (exits.isEmpty) {
             throw const FormatException('Final exit is missing');
           }
-          ServerSnapshot.fromRow(exits.first);
+          ResolvedServer.fromRow(exits.first);
         } on FormatException {
           fail(ConnectionResolutionFailure.finalExitUnavailable);
           return;
@@ -167,8 +167,8 @@ class ConnectionResolver {
             });
       if (successful.length >= required) {
         result.complete(
-          List<ServerSnapshot>.unmodifiable(
-            successful.take(required).map((candidate) => candidate.snapshot),
+          List<ResolvedServer>.unmodifiable(
+            successful.take(required).map((candidate) => candidate.server),
           ),
         );
         return;

@@ -373,24 +373,20 @@ class AppHostApi {
     return _errorResult;
   }
 
-  /// Reads only the two fixed logs inside a System Extension plan directory.
+  /// Reads only the two fixed logs inside the System Extension run directory.
   Future<NativeLogChunk?> readLog({
-    required String planId,
     required bool access,
     required int offset,
     required int limit,
   }) async {
-    if (!RegExp(r'^[0-9a-f]{32}$').hasMatch(planId) ||
-        offset < -1 ||
-        limit <= 0 ||
-        limit > 1024 * 1024) {
+    if (offset < -1 || limit <= 0 || limit > 1024 * 1024) {
       throw const FormatException('Invalid log request');
     }
     if (!AppPlatform.isMacOS) {
       throw UnsupportedError('logRequiresSystemExtension');
     }
     final chunk = await _api
-        .readLog(planId, access, offset, limit)
+        .readLog(access, offset, limit)
         .timeout(const Duration(seconds: 8));
     if (chunk != null &&
         (chunk.offset < 0 ||

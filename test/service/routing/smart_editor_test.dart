@@ -7,7 +7,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
@@ -45,16 +45,13 @@ void main() {
         customId: 7,
       ),
     );
-    await db.connectionStateDao.commit(
-      settingsJson: original.encode(),
-      confirmedPlanId: null,
-    );
+    await db.connectionStateDao.commit(settingsJson: original.encode());
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
         inspect: (_) async => const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
-        stop: (_) async => throw StateError('Unexpected stop'),
+        stop: () async => throw StateError('Unexpected stop'),
       ),
     );
     final service = SmartRoutingEditorService(
@@ -95,31 +92,23 @@ void main() {
   });
 
   test(
-    'active save cancels without writes and compensates failed reconnect',
+    'active save cancels without writes and failed reconnect is not restored',
     () async {
       final original = ConnectionConfiguration();
-      final old = _plan('a', original);
-      await db.connectionStateDao.commit(
-        settingsJson: original.encode(),
-        confirmedPlanId: old.id,
-      );
-      var host = HostConnection(VpnStatus.connected, plan: old);
-      var fail = true;
+      final old = _runtime('a', original);
+      await db.connectionStateDao.commit(settingsJson: original.encode());
+      var host = HostConnection(VpnStatus.connected, runtime: old);
       final calls = <String>[];
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          readPlan: (id) async => id == old.id ? old : null,
           inspect: (_) async => host,
-          prepare: (next, _) async => _plan('b', next),
-          start: (plan) async {
-            calls.add('start:${plan.id[0]}');
-            if (fail && plan.id != old.id) {
-              throw const ConnectionHostException('startFailed');
-            }
-            return host = HostConnection(VpnStatus.connected, plan: plan);
+          prepare: (next, _) async => _runtime('b', next),
+          start: (runtime) async {
+            calls.add('start:${runtime.identity[0]}');
+            throw const ConnectionHostException('startFailed');
           },
-          stop: (_) async {
+          stop: () async {
             calls.add('stop');
             return host = const HostConnection(VpnStatus.disconnected);
           },
@@ -150,24 +139,15 @@ void main() {
         throwsA(isA<ConnectionHostException>()),
       );
       expect((await db.connectionStateDao.read()).toJson(), before);
-      expect(coordinator.state.value.plan!.id, old.id);
-      fail = false;
-      expect(
-        await service.save(
-          original: original,
-          smart: smart,
-          confirmReconnect: () async => true,
-        ),
-        true,
-      );
-      expect((await coordinator.configuration).connection.smart.blockAds, true);
-      expect(coordinator.state.value.plan!.id, List.filled(32, 'b').join());
+      expect(calls, ['stop', 'start:b', 'stop']);
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect(coordinator.state.value.runtime, isNull);
     },
   );
 
   test('a connection that appears after refresh cannot bypass reconnect confirmation', () async {
     final original = ConnectionConfiguration();
-    final old = _plan('a', original);
+    final old = _runtime('a', original);
     var host = const HostConnection(VpnStatus.disconnected);
     final coordinator = await _initialize(
       ConnectionCoordinator(
@@ -175,14 +155,14 @@ void main() {
         inspect: (_) async => host,
         prepare: (_, _) async => throw StateError('Must not prepare'),
         start: (_) async => throw StateError('Must not start'),
-        stop: (_) async => throw StateError('Must not stop'),
+        stop: () async => throw StateError('Must not stop'),
       ),
     );
     final service = SmartRoutingEditorService(
       database: db,
       coordinator: coordinator,
       loadRegions: () async {
-        host = HostConnection(VpnStatus.connected, plan: old);
+        host = HostConnection(VpnStatus.connected, runtime: old);
         return _regions();
       },
     );
@@ -202,7 +182,7 @@ void main() {
       ),
     );
     expect((await coordinator.configuration).encode(), original.encode());
-    expect(host.plan!.id, old.id);
+    expect(host.runtime?.identity, old.identity);
   });
 
   test('Smart preview shares native rules and ignores non-semantic region/count changes', () {
@@ -274,11 +254,13 @@ Future<ConnectionCoordinator> _initialize(
   return coordinator;
 }
 
-ConnectionPlan _plan(String digit, ConnectionConfiguration configuration) {
+ConnectionRuntime _runtime(
+  String digit,
+  ConnectionConfiguration configuration,
+) {
   final id = List.filled(32, digit).join();
   const text = '{"outbounds":[{"protocol":"freedom"}]}';
-  return ConnectionPlan.create(
-    id: id,
+  return ConnectionRuntime.create(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
@@ -287,7 +269,6 @@ ConnectionPlan _plan(String digit, ConnectionConfiguration configuration) {
       finalExit: null,
       nodeTags: {},
       ruleTags: {},
-      assetDirectory: '/fixture/assets',
     ),
     platform: ConnectionPlatform.android,
     request: StartVpnRequest(
@@ -301,7 +282,7 @@ ConnectionPlan _plan(String digit, ConnectionConfiguration configuration) {
             text,
             runtime: ManagedRuntimeRequest(
               statePath: '/fixture/run/runtime.json',
-              planId: id,
+              token: id,
             ),
           ).toJson(),
         ).toJson(),

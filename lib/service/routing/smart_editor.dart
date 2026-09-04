@@ -2,7 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/geodata_suggestions.dart';
@@ -62,7 +62,7 @@ class SmartRoutingEditorService {
     if (id == null) return null;
     final row = await db.coreConfigDao.searchRow(id);
     if (row == null || row.type != 'outbound') return null;
-    return ServerSnapshot.fromRow(row).name;
+    return ResolvedServer.fromRow(row).name;
   }
 
   Future<bool> save({

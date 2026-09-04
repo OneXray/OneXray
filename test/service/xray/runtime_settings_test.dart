@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
@@ -23,7 +23,7 @@ void main() {
       database: db,
       inspect: (_) async => const HostConnection(VpnStatus.disconnected),
       start: (_) async => throw StateError('Unexpected VPN start'),
-      stop: (_) async => throw StateError('Unexpected VPN stop'),
+      stop: () async => throw StateError('Unexpected VPN stop'),
     );
     addTearDown(coordinator.dispose);
     await coordinator.initialize(poll: false, registerReferences: false);

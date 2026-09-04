@@ -33,8 +33,6 @@ class ConfigurationImportDraft {
   String get name => content.name;
   Future<void> commit() async => geodata?.commit();
   Future<void> dispose() async => geodata?.dispose();
-  Future<void> copyFilesTo(String directory) async =>
-      geodata?.copyFilesTo(directory);
 }
 
 /// Editor transfers preserve Raw source and never save a configuration. Custom

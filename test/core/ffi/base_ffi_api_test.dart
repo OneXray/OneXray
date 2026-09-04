@@ -37,8 +37,8 @@ void main() {
       desktopCoreRunArguments(
         dns: '8.8.8.8',
         interfaceName: 'eth0',
-        configPath: '/plan/xray.json',
-        runtimePath: '/plan/runtime-config.json',
+        configPath: '/runtime-input/xray.json',
+        runtimePath: '/runtime-input/runtime-config.json',
       ),
       [
         'run',
@@ -47,77 +47,77 @@ void main() {
         '-interface',
         'eth0',
         '-config',
-        '/plan/xray.json',
+        '/runtime-input/xray.json',
         '-runtime',
-        '/plan/runtime-config.json',
+        '/runtime-input/runtime-config.json',
       ],
     );
     expect(
       () => desktopCoreRunArguments(
         dns: '8.8.8.8',
         interfaceName: 'eth0',
-        configPath: '/plan/xray.json',
+        configPath: '/runtime-input/xray.json',
         runtimePath: '',
       ),
       throwsFormatException,
     );
   });
 
-  test('publishes immutable plan inputs without wrapping or losing runtime metadata', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'onexray-desktop-inputs-',
-    );
-    addTearDown(() => directory.delete(recursive: true));
-    final api = _TestFfiApi(stopResult: true, directory: directory.path);
-    addTearDown(api.stopSharedIsolate);
-    const text = '{"outbounds":[{"protocol":"freedom"}]}';
-    final runtime = ManagedRuntimeRequest(
-      statePath: p.join(directory.path, 'run', 'runtime.json'),
-      planId: '0123456789abcdef0123456789abcdef',
-      inboundTag: 'tunIn',
-    );
-    final request = _request(text, runtime);
-    final inputs = (await api.materializeRunXrayConfig(request))!;
-    expect(
-      p.dirname(inputs.configPath),
-      p.join(directory.path, 'run', 'plans', runtime.planId),
-    );
-    expect(p.dirname(inputs.runtimePath!), p.dirname(inputs.configPath));
-    expect(await File(inputs.configPath).readAsString(), text);
-    expect(
-      jsonDecode(await File(inputs.runtimePath!).readAsString()),
-      runtime.toJson(),
-    );
-    expect(await api.materializeRunXrayConfig(request), inputs);
-    await expectLater(
-      api.materializeRunXrayConfig(_request('{}', runtime)),
-      throwsFormatException,
-    );
-    expect(await File(inputs.configPath).readAsString(), text);
-    final changedRuntime = ManagedRuntimeRequest(
-      statePath: runtime.statePath,
-      planId: runtime.planId,
-      inboundTag: 'changed',
-    );
-    await expectLater(
-      api.materializeRunXrayConfig(_request(text, changedRuntime)),
-      throwsFormatException,
-    );
-    expect(
-      jsonDecode(await File(inputs.runtimePath!).readAsString()),
-      runtime.toJson(),
-    );
-    final arguments = desktopCoreRunArguments(
-      dns: '8.8.8.8',
-      interfaceName: 'eth0',
-      configPath: inputs.configPath,
-      runtimePath: inputs.runtimePath,
-    );
-    expect(arguments, isNot(contains(runtime.statePath)));
-  });
+  test(
+    'replaces old inputs with one unique immutable runtime directory',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'onexray-desktop-inputs-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final api = _TestFfiApi(stopResult: true, directory: directory.path);
+      addTearDown(api.stopSharedIsolate);
+      final stale = File(
+        p.join(directory.path, 'run', 'core-inputs', 'stale', 'xray.json'),
+      );
+      await stale.parent.create(recursive: true);
+      await stale.writeAsString('stale');
+      final sibling = File(p.join(directory.path, 'run', 'keep'));
+      await sibling.writeAsString('keep');
+      const text = '{"outbounds":[{"protocol":"freedom"}]}';
+      final runtime = ManagedRuntimeRequest(
+        statePath: p.join(directory.path, 'run', 'runtime.json'),
+        inboundTag: 'tunIn',
+      );
+      final request = _request(text, runtime);
+      final first = (await api.materializeRunXrayConfig(request))!;
+      expect(
+        p.dirname(p.dirname(first.configPath)),
+        p.join(directory.path, 'run', 'core-inputs'),
+      );
+      expect(p.dirname(first.runtimePath!), p.dirname(first.configPath));
+      expect(await stale.exists(), isFalse);
+      expect(await sibling.readAsString(), 'keep');
+      expect(await File(first.configPath).readAsString(), text);
+      expect(
+        jsonDecode(await File(first.runtimePath!).readAsString()),
+        runtime.toJson(),
+      );
+      final second = (await api.materializeRunXrayConfig(request))!;
+      expect(second.configPath, isNot(first.configPath));
+      expect(await Directory(p.dirname(first.configPath)).exists(), isFalse);
+      expect(await File(second.configPath).readAsString(), text);
+      expect(
+        jsonDecode(await File(second.runtimePath!).readAsString()),
+        runtime.toJson(),
+      );
+      final arguments = desktopCoreRunArguments(
+        dns: '8.8.8.8',
+        interfaceName: 'eth0',
+        configPath: second.configPath,
+        runtimePath: second.runtimePath,
+      );
+      expect(arguments, isNot(contains(runtime.statePath)));
+    },
+  );
 
   test(
-    'legacy inputs stay immutable and plan IDs cannot escape their directory',
+    'unmanaged inputs are unique and an invalid root is not replaced',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'onexray-desktop-legacy-',
@@ -126,23 +126,23 @@ void main() {
       final api = _TestFfiApi(stopResult: true, directory: directory.path);
       addTearDown(api.stopSharedIsolate);
       final first = (await api.materializeRunXrayConfig(_request('{"a":1}')))!;
+      expect(await File(first.configPath).readAsString(), '{"a":1}');
       final second = (await api.materializeRunXrayConfig(_request('{"a":2}')))!;
       expect(first.configPath, isNot(second.configPath));
       expect(first.runtimePath, isNull);
-      expect(await File(first.configPath).readAsString(), '{"a":1}');
+      expect(await File(first.configPath).exists(), isFalse);
+      expect(await File(second.configPath).readAsString(), '{"a":2}');
+      expect(second.runtimePath, isNull);
+      expect(await api.materializeRunXrayConfig(_request('')), isNull);
+      expect(await File(second.configPath).exists(), isFalse);
+
+      final root = Directory(p.join(directory.path, 'run', 'core-inputs'));
+      await root.delete(recursive: true);
+      await File(root.path).writeAsString('not a directory');
       await expectLater(
-        api.materializeRunXrayConfig(
-          _request(
-            '{}',
-            const ManagedRuntimeRequest(
-              statePath: '/state.json',
-              planId: '../outside',
-            ),
-          ),
-        ),
+        api.materializeRunXrayConfig(_request('{}')),
         throwsFormatException,
       );
-      expect(await api.materializeRunXrayConfig(_request('')), isNull);
     },
   );
 

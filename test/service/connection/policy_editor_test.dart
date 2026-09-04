@@ -8,7 +8,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
@@ -29,7 +29,7 @@ void main() {
       inspect: (_) async => host,
       prepare: (_, _) async => throw StateError('Must not prepare'),
       start: (_) async => throw StateError('Must not start'),
-      stop: (_) async {
+      stop: () async {
         stops++;
         return host = const HostConnection(VpnStatus.disconnected);
       },
@@ -129,7 +129,10 @@ void main() {
       );
       final draft = await service.load();
       draft.policy['android']['appScope'] = 'included';
-      host = HostConnection(VpnStatus.connected, plan: _plan(draft.original));
+      host = HostConnection(
+        VpnStatus.connected,
+        runtime: _runtime(draft.original),
+      );
       expect(
         await service.save(
           draft: draft,
@@ -236,11 +239,10 @@ void main() {
   );
 }
 
-ConnectionPlan _plan(ConnectionConfiguration configuration) {
+ConnectionRuntime _runtime(ConnectionConfiguration configuration) {
   const id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   const text = '{"outbounds":[{"protocol":"freedom"}]}';
-  return ConnectionPlan.create(
-    id: id,
+  return ConnectionRuntime.create(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
@@ -249,7 +251,6 @@ ConnectionPlan _plan(ConnectionConfiguration configuration) {
       finalExit: null,
       nodeTags: {},
       ruleTags: {},
-      assetDirectory: '/fixture/assets',
     ),
     platform: ConnectionPlatform.android,
     request: StartVpnRequest(
@@ -263,7 +264,7 @@ ConnectionPlan _plan(ConnectionConfiguration configuration) {
             text,
             runtime: ManagedRuntimeRequest(
               statePath: '/fixture/run/runtime.json',
-              planId: id,
+              token: id,
             ),
           ).toJson(),
         ).toJson(),

@@ -12,7 +12,7 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -43,7 +43,7 @@ void main() {
       expect(controller.selectionHealth(l), isNull);
       coordinator.state.value = ConnectionView(
         phase: ConnectionPhase.connected,
-        plan: _plan(),
+        runtime: _runtime(),
       );
       controller.servers = [
         CoreConfigData(
@@ -282,10 +282,10 @@ void main() {
     addTearDown(controller.dispose);
     addTearDown(coordinator.dispose);
     addTearDown(coordinator.db.close);
-    final plan = _plan();
+    final runtime = _runtime();
     coordinator.state.value = ConnectionView(
       phase: ConnectionPhase.connected,
-      plan: plan,
+      runtime: runtime,
     );
     controller.servers = [
       CoreConfigData(
@@ -304,18 +304,18 @@ void main() {
     ));
     coordinator.state.value = ConnectionView(
       phase: ConnectionPhase.disconnected,
-      plan: plan,
+      runtime: runtime,
     );
     expect(controller.runningRoute, isNull);
     coordinator.state.value = ConnectionView(
       phase: ConnectionPhase.connected,
-      plan: _plan(expert: true),
+      runtime: _runtime(expert: true),
     );
     expect(controller.runningRoute, isNull);
   });
 }
 
-/// Exercises the controller's result handling; native transaction/rollback
+/// Exercises the controller's result handling; native transaction
 /// behavior is covered by service/connection/coordinator_test.dart.
 class _Coordinator extends ConnectionCoordinator {
   _Coordinator({this.fail = false})
@@ -381,12 +381,12 @@ Widget _testApp(Widget home) => MaterialApp(
   home: home,
 );
 
-ConnectionPlan _plan({bool expert = false}) {
+ConnectionRuntime _runtime({bool expert = false}) {
   const id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   final configuration = ConnectionConfiguration(
     connection: ConnectionSettings(expert: expert),
   );
-  ServerSnapshot server(int id, String name) => ServerSnapshot(
+  ResolvedServer server(int id, String name) => ResolvedServer(
     id: id,
     sourceId: 0,
     outbound: {'protocol': 'freedom', 'tag': name},
@@ -397,12 +397,11 @@ ConnectionPlan _plan({bool expert = false}) {
       '{}',
       runtime: const ManagedRuntimeRequest(
         statePath: '/fixture/run/runtime.json',
-        planId: id,
+        token: id,
       ),
     ).toJson(),
   );
-  return ConnectionPlan.create(
-    id: id,
+  return ConnectionRuntime.create(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: '{}',
@@ -411,7 +410,6 @@ ConnectionPlan _plan({bool expert = false}) {
       finalExit: server(3, 'United States 01'),
       nodeTags: {},
       ruleTags: {},
-      assetDirectory: '/fixture/assets',
     ),
     platform: ConnectionPlatform.android,
     request: StartVpnRequest(

@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/launch/setup.dart';
 import 'package:shared_preferences/shared_preferences.dart';

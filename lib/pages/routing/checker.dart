@@ -4,19 +4,17 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/routing/checker.dart';
 import 'package:onexray/service/routing/state.dart';
 
 class RouteChecker extends StatefulWidget {
   final ConnectionConfiguration configuration;
   final RoutingProfileState? customDraft;
-  final Future<void> Function(String)? prepareAssets;
   const RouteChecker({
     super.key,
     required this.configuration,
     this.customDraft,
-    this.prepareAssets,
   });
 
   @override
@@ -68,7 +66,6 @@ class _RouteCheckerState extends State<RouteChecker> {
         widget.configuration,
         target.text,
         customDraft: widget.customDraft,
-        prepareAssets: widget.prepareAssets,
         port: widget.customDraft == null ? 443 : int.parse(port.text),
         network: network,
       );

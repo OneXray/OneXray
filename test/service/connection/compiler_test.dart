@@ -31,7 +31,6 @@ RuntimeOptions options({
   String interfaceName = '',
 }) => RuntimeOptions(
   platform: platform,
-  assetDirectory: '${Directory.current.path}/assets/dat',
   sessionDirectory: '/unused-session',
   metricsPort: 18186,
   socksPort: 18187,
@@ -39,7 +38,7 @@ RuntimeOptions options({
   interfaceName: interfaceName,
 );
 
-ServerSnapshot node(int id, {String? address}) => ServerSnapshot(
+ResolvedServer node(int id, {String? address}) => ResolvedServer(
   id: id,
   sourceId: 1,
   outbound: {
@@ -127,7 +126,7 @@ void main() {
     () {
       for (var count = 1; count <= 3; count++) {
         final entries = List.generate(count, (i) => node(i + 1));
-        final finalExit = ServerSnapshot(
+        final finalExit = ResolvedServer(
           id: 9,
           sourceId: 1,
           outbound: {
@@ -237,7 +236,7 @@ void main() {
         smart: SmartRoutingSettings(entryCount: 2),
       );
       for (final entries in [
-        <ServerSnapshot>[],
+        <ResolvedServer>[],
         [node(1)],
         [node(1), node(1)],
       ]) {
@@ -521,7 +520,7 @@ void main() {
     }
   });
 
-  test('typed route check uses the additive v3 Invoke contract', () {
+  test('typed route check uses the v4 Invoke contract', () {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.checkRoute,
       payload: const CheckRouteRequest(
@@ -531,7 +530,7 @@ void main() {
         network: 'tcp',
       ).toJson(),
     );
-    expect(request.toJson()['apiVersion'], 3);
+    expect(request.toJson()['apiVersion'], 4);
     expect(request.toJson()['method'], 'checkRoute');
     expect(request.payload!['timeout'], 5000);
     expect(request.payload!['inboundTag'], 'tunIn');

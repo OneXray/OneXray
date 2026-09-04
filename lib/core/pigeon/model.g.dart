@@ -14,8 +14,8 @@ StartVpnRequest _$StartVpnRequestFromJson(Map<String, dynamic> json) =>
       json['socksPort'] as String?,
       json['metricsPort'] as String?,
       json['coreInvokeText'] as String?,
-      configId: (json['configId'] as num?)?.toInt(),
       snapshotToken: json['snapshotToken'] as String?,
+      metadataJson: json['metadataJson'] as String?,
     );
 
 Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
@@ -24,8 +24,8 @@ Map<String, dynamic> _$StartVpnRequestToJson(StartVpnRequest instance) =>
       'socksPort': ?instance.socksPort,
       'metricsPort': ?instance.metricsPort,
       'coreInvokeText': ?instance.coreInvokeText,
-      'configId': ?instance.configId,
       'snapshotToken': ?instance.snapshotToken,
+      'metadataJson': ?instance.metadataJson,
     };
 
 LibXrayInvokeResponse _$LibXrayInvokeResponseFromJson(
@@ -170,7 +170,6 @@ ManagedRuntimeRequest _$ManagedRuntimeRequestFromJson(
   Map<String, dynamic> json,
 ) => ManagedRuntimeRequest(
   statePath: json['statePath'] as String,
-  planId: json['planId'] as String,
   inboundTag: json['inboundTag'] as String? ?? 'tunIn',
   listen: json['listen'] as String?,
   token: json['token'] as String?,
@@ -180,7 +179,6 @@ Map<String, dynamic> _$ManagedRuntimeRequestToJson(
   ManagedRuntimeRequest instance,
 ) => <String, dynamic>{
   'statePath': instance.statePath,
-  'planId': instance.planId,
   'inboundTag': instance.inboundTag,
   'listen': ?instance.listen,
   'token': ?instance.token,

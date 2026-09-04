@@ -97,7 +97,7 @@ class WindowsFfiApi extends BaseFfiApi {
       return commandSuccess();
     } catch (error, stackTrace) {
       ygLogger('start Windows VPN failed: $error\n$stackTrace');
-      await _rollbackStart(providerStartInvoked);
+      await _cleanupFailedStart(providerStartInvoked);
       return commandFailed(error.toString());
     } finally {
       _starting = false;
@@ -116,7 +116,7 @@ class WindowsFfiApi extends BaseFfiApi {
     }
   }
 
-  Future<void> _rollbackStart(bool providerStartInvoked) async {
+  Future<void> _cleanupFailedStart(bool providerStartInvoked) async {
     if (!providerStartInvoked) {
       await updateVpnStatus(VpnStatus.disconnected);
       return;
@@ -125,7 +125,7 @@ class WindowsFfiApi extends BaseFfiApi {
       final state = await _native.stopVpn();
       await _emitWindowsStatus(state.status);
     } catch (error) {
-      ygLogger('rollback Windows VPN provider failed: $error');
+      ygLogger('failed to clean up Windows VPN start: $error');
     }
   }
 

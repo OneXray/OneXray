@@ -115,8 +115,7 @@ class ServerImportService {
   }) : _database = database,
        _transfer = transfer ?? ConfigurationTransferService(),
        _validateRaw = validate == null
-           ? ((text, draft) =>
-                 RawEditorService().validate(text, geodata: draft))
+           ? ((text, _) => RawEditorService().validate(text))
            : ((text, _) async => (await XrayRawValidator.validate(
                text,
                testXray: validate,

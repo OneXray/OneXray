@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show protected;
 import 'package:isolate_manager/isolate_manager.dart';
@@ -104,61 +103,35 @@ abstract class BaseFfiApi {
   Future<({String configPath, String? runtimePath})?> materializeRunXrayConfig(
     LibXrayRunConfig request,
   ) async {
+    final runPath = p.join(await getTunFilesDir(), 'run');
+    final root = Directory(p.join(runPath, 'core-inputs'));
+    final type = await FileSystemEntity.type(root.path, followLinks: false);
+    if (type == FileSystemEntityType.directory) {
+      await root.delete(recursive: true);
+    } else if (type != FileSystemEntityType.notFound) {
+      throw const FormatException('Invalid desktop Core input directory');
+    }
+    await root.create(recursive: true);
     final xrayJson = request.request.xrayJson;
     if (xrayJson == null || xrayJson.isEmpty) {
       return null;
     }
 
     final runtime = request.request.runtime;
-    if (runtime != null &&
-        !RegExp(r'^[a-f0-9]{32}$').hasMatch(runtime.planId)) {
-      throw const FormatException('Invalid desktop runtime plan ID');
-    }
-    final runPath = p.join(await getTunFilesDir(), 'run');
-    // Reuse the coordinator's frozen plan directory. Legacy inputs remain
-    // content-addressed too, so publishing cannot mutate another running plan.
-    final directory = Directory(
-      runtime == null
-          ? p.join(
-              runPath,
-              'core-inputs',
-              sha256.convert(utf8.encode(xrayJson)).toString(),
-            )
-          : p.join(runPath, 'plans', runtime.planId),
-    );
-    await directory.create(recursive: true);
-    final config = File(p.join(directory.path, 'xray.json'));
-    await _writeImmutable(config, xrayJson);
-    String? runtimePath;
-    if (runtime != null) {
-      runtimePath = p.join(directory.path, 'runtime-config.json');
-      // This is CLI metadata only. Xray JSON remains in the separate -config file.
-      await _writeImmutable(File(runtimePath), jsonEncode(runtime.toJson()));
-    }
-    return (configPath: config.path, runtimePath: runtimePath);
-  }
-
-  Future<void> _writeImmutable(File target, String text) async {
-    if (await target.exists()) {
-      if (await target.readAsString() != text) {
-        throw const FormatException(
-          'Desktop runtime input differs from its saved plan',
-        );
-      }
-      return;
-    }
-    final staging = File('${target.path}.$pid.staging');
+    final directory = await root.createTemp('input-');
     try {
-      await staging.writeAsString(text, flush: true);
-      try {
-        await staging.rename(target.path);
-      } on FileSystemException {
-        if (!await target.exists() || await target.readAsString() != text) {
-          rethrow;
-        }
+      final config = File(p.join(directory.path, 'xray.json'));
+      await config.writeAsString(xrayJson, flush: true);
+      String? runtimePath;
+      if (runtime != null) {
+        runtimePath = p.join(directory.path, 'runtime-config.json');
+        await File(runtimePath)
+            .writeAsString(jsonEncode(runtime.toJson()), flush: true);
       }
-    } finally {
-      if (await staging.exists()) await staging.delete();
+      return (configPath: config.path, runtimePath: runtimePath);
+    } catch (_) {
+      if (await directory.exists()) await directory.delete(recursive: true);
+      rethrow;
     }
   }
 

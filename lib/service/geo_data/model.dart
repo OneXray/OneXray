@@ -79,24 +79,25 @@ class PublishedGeoData {
       builtIn ? '${row.name}:$code' : 'ext:$fileName:$code';
 }
 
-/// The caller owns the surrounding asset/configuration transaction. Disposal
-/// must run after that transaction has completed (including rollback).
+/// Downloaded files already live in the canonical Geodata directory. The
+/// caller only commits their metadata with the surrounding configuration.
+/// Disposal removes files whose metadata transaction did not commit.
 class GeoDataImportDraft {
   final Future<void> Function() _commit;
   final Future<void> Function() _dispose;
-  final Future<void> Function(String) _copyFiles;
   final List<GeoDataInput> inputs;
-  GeoDataImportDraft(this.inputs, this._commit, this._dispose, this._copyFiles);
+  GeoDataImportDraft(this.inputs, this._commit, this._dispose);
 
   Future<void> commit() => _commit();
   Future<void> dispose() => _dispose();
-  Future<void> copyFilesTo(String destination) => _copyFiles(destination);
 }
 
 class GeoDataRestoreDraft {
   final Future<void> Function() _commit;
+  final Future<void> Function() _complete;
   final Future<void> Function() _dispose;
-  GeoDataRestoreDraft(this._commit, this._dispose);
+  GeoDataRestoreDraft(this._commit, this._complete, this._dispose);
   Future<void> commit() => _commit();
+  Future<void> complete() => _complete();
   Future<void> dispose() => _dispose();
 }

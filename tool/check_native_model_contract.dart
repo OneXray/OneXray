@@ -63,16 +63,16 @@ const _contracts = [
       'socksPort',
       'metricsPort',
       'coreInvokeText',
-      'configId',
       'snapshotToken',
+      'metadataJson',
     },
     {
       'tun',
       'socksPort',
       'metricsPort',
       'coreInvokeText',
-      'configId',
       'snapshotToken',
+      'metadataJson',
     },
   ),
   _Contract(
@@ -83,8 +83,8 @@ const _contracts = [
   _Contract('RunXrayRequest', {'xrayJson', 'runtime'}, {'xrayJson', 'runtime'}),
   _Contract(
     'ManagedRuntimeRequest',
-    {'statePath', 'planId', 'inboundTag', 'listen', 'token'},
-    {'statePath', 'planId', 'inboundTag', 'listen', 'token'},
+    {'statePath', 'inboundTag', 'listen', 'token'},
+    {'statePath', 'inboundTag', 'listen', 'token'},
   ),
   _Contract(
     'LibXrayInvokeRequest',

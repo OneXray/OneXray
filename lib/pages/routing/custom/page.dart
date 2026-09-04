@@ -232,10 +232,6 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                                   configuration: controller
                                                       .checkConfiguration,
                                                   customDraft: profile,
-                                                  prepareAssets: controller
-                                                      .transfer
-                                                      .pending
-                                                      ?.copyFilesTo,
                                                 ),
                                             ],
                                           ),

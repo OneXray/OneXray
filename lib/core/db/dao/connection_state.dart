@@ -27,17 +27,13 @@ class ConnectionStateDao extends DatabaseAccessor<AppDatabase>
   /// Asset mutations must use this database so all writes share this transaction.
   Future<void> commit({
     required String settingsJson,
-    String? confirmedPlanId,
     Future<void> Function()? writeAssets,
   }) => attachedDatabase.transaction(() async {
     await _ensureRow();
     await writeAssets?.call();
     final changed =
         await (update(connectionState)..where((row) => row.id.equals(1))).write(
-          ConnectionStateCompanion(
-            settingsJson: Value(settingsJson),
-            confirmedPlanId: Value(confirmedPlanId),
-          ),
+          ConnectionStateCompanion(settingsJson: Value(settingsJson)),
         );
     if (changed != 1) {
       throw StateError('Connection state is missing');

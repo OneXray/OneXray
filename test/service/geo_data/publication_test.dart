@@ -11,7 +11,8 @@ import 'package:onexray/service/geo_data/service.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
-  late Directory directory;
+  late Directory workspace;
+  late Directory datRoot;
   late AppDatabase db;
   late GeoDataService service;
   var revision = 'one';
@@ -34,9 +35,32 @@ void main() {
     );
   }
 
+  Future<void> expectFlatRoot() async {
+    final entries = await datRoot.list(followLinks: false).toList();
+    expect(
+      await Future.wait(
+        entries.map(
+          (entry) => FileSystemEntity.type(entry.path, followLinks: false),
+        ),
+      ),
+      everyElement(FileSystemEntityType.file),
+    );
+  }
+
+  Future<Map<String, List<int>>> rootBytes() async {
+    final result = <String, List<int>>{};
+    await for (final entry in datRoot.list(followLinks: false)) {
+      if (entry is File) {
+        result[p.basename(entry.path)] = await entry.readAsBytes();
+      }
+    }
+    return result;
+  }
+
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('onexray-geodata-');
-    addTearDown(() => directory.delete(recursive: true));
+    workspace = await Directory.systemTemp.createTemp('onexray-geodata-');
+    datRoot = Directory(p.join(workspace.path, 'dat'));
+    addTearDown(() => workspace.delete(recursive: true));
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     revision = 'one';
@@ -45,7 +69,7 @@ void main() {
     downloads = 0;
     service = GeoDataService.forTesting(
       database: db,
-      directory: directory.path,
+      directory: datRoot.path,
       download: (url, file) async {
         downloads++;
         if (p.basenameWithoutExtension(file.path) == failDownload) {
@@ -69,181 +93,244 @@ void main() {
     url: 'https://example.com/$name',
   );
 
-  test('local install publishes both defaults together, without networking or backup rows', () async {
-    await service.ensureInstalled();
-    final files = await service.publishedFiles();
+  test(
+    'local install creates both bundled defaults in the flat root',
+    () async {
+      await service.ensureInstalled();
+
+      final files = await service.publishedFiles();
+      expect(downloads, 0);
+      expect(files.map((file) => file.row.id).toSet(), {-1, -2});
+      expect(files.map((file) => file.data.parent.path).toSet(), {
+        datRoot.path,
+      });
+      expect(files.map((file) => file.indexFile.parent.path).toSet(), {
+        datRoot.path,
+      });
+      expect(await db.geoDataDao.allRows, isEmpty);
+      expect(
+        files.every(
+          (file) => file.row.timestamp.millisecondsSinceEpoch == 123000,
+        ),
+        isTrue,
+      );
+      expect(
+        await File(p.join(datRoot.path, 'geoip.dat')).readAsString(),
+        'bundled',
+      );
+      expect(
+        await File(p.join(datRoot.path, 'geosite.dat')).readAsString(),
+        'bundled',
+      );
+      await expectFlatRoot();
+
+      await service.ensureInstalled();
+      expect(
+        await db.geoDataDao.publishedRows,
+        files.map((file) => file.row).toList(),
+      );
+    },
+  );
+
+  test('nested entries are rejected instead of being merged', () async {
+    await Directory(p.join(datRoot.path, 'nested')).create(recursive: true);
+
+    await expectLater(service.ensureInstalled(), throwsStateError);
     expect(downloads, 0);
-    expect(files.map((file) => file.row.id).toSet(), {-1, -2});
-    expect(files.map((file) => file.row.generation).toSet(), hasLength(1));
-    expect(files.every((file) => file.row.generation != null), isTrue);
-    expect(await db.geoDataDao.allRows, isEmpty);
-    expect(
-      files.every(
-        (file) => file.row.timestamp.millisecondsSinceEpoch == 123000,
-      ),
-      isTrue,
-    );
-    await service.ensureInstalled();
-    expect(
-      await db.geoDataDao.publishedRows,
-      files.map((file) => file.row).toList(),
-    );
+    expect(await db.geoDataDao.publishedRows, isEmpty);
   });
 
-  test('legacy default bytes and custom basename stay unchanged', () async {
-    for (final name in ['geoip', 'geosite', 'legacy.dat']) {
-      await File(p.join(directory.path, '$name.dat')).writeAsString('legacy');
-      await count(directory.path, name, GeoDataType.domain);
-    }
+  test(
+    'unregistered flat files are rejected instead of being merged',
+    () async {
+      await datRoot.create();
+      await File(p.join(datRoot.path, 'legacy.dat')).writeAsString('legacy');
+
+      await expectLater(service.ensureInstalled(), throwsStateError);
+
+      expect(await db.geoDataDao.publishedRows, isEmpty);
+      expect(
+        await File(p.join(datRoot.path, 'legacy.dat')).readAsString(),
+        'legacy',
+      );
+    },
+  );
+
+  test(
+    'failed default updates preserve every published byte in place',
+    () async {
+      await service.ensureInstalled();
+      final rows = await db.geoDataDao.publishedRows;
+      final before = await rootBytes();
+
+      failDownload = 'geosite';
+      await expectLater(
+        service.updateDefaults(),
+        throwsA(isA<SocketException>()),
+      );
+      expect(await db.geoDataDao.publishedRows, rows);
+      expect(await rootBytes(), before);
+
+      failDownload = null;
+      failIndex = 'geosite';
+      await expectLater(service.updateDefaults(), throwsFormatException);
+      expect(await db.geoDataDao.publishedRows, rows);
+      expect(await rootBytes(), before);
+      await expectFlatRoot();
+
+      failIndex = null;
+      revision = 'two';
+      await service.updateDefaults();
+      expect(
+        await File(p.join(datRoot.path, 'geoip.dat')).readAsString(),
+        'two',
+      );
+      expect(
+        await File(p.join(datRoot.path, 'geosite.dat')).readAsString(),
+        'two',
+      );
+      await expectFlatRoot();
+    },
+  );
+
+  test(
+    'custom update rolls back, overwrites in place, and delete removes files',
+    () async {
+      await service.ensureInstalled();
+      await service.add(input());
+      final original = (await service.publishedFiles()).firstWhere(
+        (file) => !file.builtIn,
+      );
+      final dataPath = original.data.path;
+      final indexPath = original.indexFile.path;
+      final before = await rootBytes();
+
+      await db.customStatement(
+        "CREATE TRIGGER fail_geo_update BEFORE UPDATE ON geo_data WHEN OLD.id > 0 BEGIN SELECT RAISE(FAIL, 'fixture'); END",
+      );
+      revision = 'two';
+      await expectLater(service.updateCustom(original.row), throwsA(anything));
+      expect(await db.geoDataDao.searchRow(original.row.id), original.row);
+      expect(await rootBytes(), before);
+      expect(await File(dataPath).readAsString(), 'one');
+
+      await db.customStatement('DROP TRIGGER fail_geo_update');
+      await service.updateCustom(original.row);
+      final updated = (await service.publishedFiles()).firstWhere(
+        (file) => !file.builtIn,
+      );
+      expect(updated.data.path, dataPath);
+      expect(updated.indexFile.path, indexPath);
+      expect(await updated.data.readAsString(), 'two');
+      await expectFlatRoot();
+
+      await service.deleteGeoDat(updated.row);
+      expect(await File(dataPath).exists(), isFalse);
+      expect(await File(indexPath).exists(), isFalse);
+      expect(await db.geoDataDao.searchRow(updated.row.id), isNull);
+      await expectFlatRoot();
+    },
+  );
+
+  test('failed standalone add removes its downloaded flat files', () async {
+    await service.ensureInstalled();
+    await db.customStatement('''
+      CREATE TRIGGER fail_geo_insert BEFORE INSERT ON geo_data
+      WHEN NEW.name = 'custom' BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+
+    await expectLater(service.add(input()), throwsA(anything));
+
+    expect(await db.geoDataDao.allRows, isEmpty);
+    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
+    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isFalse);
+    await expectFlatRoot();
+  });
+
+  test(
+    'import draft installs before commit and retains only committed files',
+    () async {
+      await service.ensureInstalled();
+      final draft = await service.prepareImports([input()]);
+      final data = File(p.join(datRoot.path, 'custom.dat'));
+      final index = File(p.join(datRoot.path, 'custom.json'));
+      expect(await db.geoDataDao.allRows, isEmpty);
+      expect(await data.readAsString(), 'one');
+      expect(await index.exists(), isTrue);
+      await expectFlatRoot();
+
+      await expectLater(
+        db.transaction(() async {
+          await draft.commit();
+          throw StateError('Config save failed');
+        }),
+        throwsStateError,
+      );
+      await draft.dispose();
+      expect(await db.geoDataDao.allRows, isEmpty);
+      expect(await data.exists(), isFalse);
+      expect(await index.exists(), isFalse);
+
+      final committed = await service.prepareImports([input()]);
+      await db.transaction(committed.commit);
+      await committed.dispose();
+      expect((await db.geoDataDao.allRows).single.name, 'custom');
+      expect(await data.readAsString(), 'one');
+      expect(await index.exists(), isTrue);
+      await expectFlatRoot();
+
+      final before = downloads;
+      await expectLater(
+        service.prepareImports([input('CUSTOM.dat')]),
+        throwsFormatException,
+      );
+      await expectLater(
+        service.prepareImports([input('dup.dat'), input('Dup.dat')]),
+        throwsFormatException,
+      );
+      await expectLater(
+        service.prepareImports([input('other.DAT')]),
+        throwsFormatException,
+      );
+      expect(downloads, before);
+    },
+  );
+
+  test('draft cleanup preserves a case-insensitive committed name', () async {
+    await service.ensureInstalled();
+    final draft = await service.prepareImports([input()]);
     await db.geoDataDao.insertRow(
       GeoDataCompanion.insert(
-        id: const Value(9),
-        name: 'legacy.dat',
+        name: 'CUSTOM',
         type: 'domain',
-        url: 'https://example.com/legacy',
+        url: 'https://example.com/CUSTOM.dat',
         timestamp: DateTime(2020),
         categoryCount: 1,
         ruleCount: 2,
       ),
     );
-    await service.ensureInstalled();
-    final legacy = (await db.geoDataDao.allRows).single;
-    expect(legacy.name, 'legacy.dat');
-    expect(legacy.generation, isNull);
-    final files = await service.publishedFiles();
-    expect(
-      await files.firstWhere((file) => file.builtIn).data.readAsString(),
-      'legacy',
-    );
-    final copy = await directory.createTemp('plan-');
-    await service.copyPublishedTo(copy.path);
-    expect(
-      await File(p.join(copy.path, 'legacy.dat.dat')).readAsString(),
-      'legacy',
-    );
-    expect(
-      (await service.readGeoList(directory.path, 'geosite')).categoryCount,
-      1,
-    );
+
+    await draft.dispose();
+
+    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
+    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isTrue);
   });
 
-  test('either default download or index failure leaves both published rows untouched', () async {
-    await service.ensureInstalled();
-    final before = await db.geoDataDao.publishedRows;
-    failDownload = 'geosite';
-    await expectLater(
-      service.updateDefaults(),
-      throwsA(isA<SocketException>()),
-    );
-    expect(await db.geoDataDao.publishedRows, before);
-    failDownload = null;
-    failIndex = 'geosite';
-    await expectLater(service.updateDefaults(), throwsFormatException);
-    expect(await db.geoDataDao.publishedRows, before);
-    failIndex = null;
-    await service.updateDefaults();
-    final after = await service.publishedFiles();
-    expect(after.map((file) => file.row.generation).toSet(), hasLength(1));
-    expect(after.first.row.generation, isNot(before.first.generation));
-  });
-
-  test('DB failure does not publish prepared bytes, and old plan copies remain valid', () async {
+  test('restore changes flat files only with its outer transaction', () async {
     await service.ensureInstalled();
     await service.add(input());
-    final old = (await service.publishedFiles()).firstWhere(
-      (file) => !file.builtIn,
-    );
-    final plan = await directory.createTemp('plan-');
-    await service.copyPublishedTo(plan.path);
-    await db.customStatement(
-      "CREATE TRIGGER fail_geo_update BEFORE UPDATE ON geo_data WHEN OLD.id > 0 BEGIN SELECT RAISE(FAIL, 'fixture'); END",
-    );
-    revision = 'two';
-    await expectLater(service.updateCustom(old.row), throwsA(anything));
-    expect(await db.geoDataDao.searchRow(old.row.id), old.row);
-    expect(await old.data.readAsString(), 'one');
-    expect(await File(p.join(plan.path, 'custom.dat')).readAsString(), 'one');
-    await db.customStatement('DROP TRIGGER fail_geo_update');
-    await service.updateCustom(old.row);
-    final fresh = (await service.publishedFiles()).firstWhere(
-      (file) => !file.builtIn,
-    );
-    expect(await fresh.data.readAsString(), 'two');
-    expect(await old.data.readAsString(), 'one');
-    await service.deleteGeoDat(fresh.row);
-    expect(await fresh.data.readAsString(), 'two');
-    expect(await File(p.join(plan.path, 'custom.dat')).readAsString(), 'one');
-  });
+    final beforeRows = await db.geoDataDao.publishedRows;
+    final beforeFiles = await rootBytes();
+    final archive = Directory(p.join(workspace.path, 'archive'));
+    await archive.create();
+    await File(p.join(archive.path, 'custom.dat')).writeAsString('restored');
+    await count(archive.path, 'custom', GeoDataType.domain);
 
-  test('dependency draft shares the caller transaction and rejects conflicts before downloading', () async {
-    await service.ensureInstalled();
-    final draft = await service.prepareImports([input()]);
-    expect(await db.geoDataDao.allRows, isEmpty);
-    final validation = await directory.createTemp('validation-');
-    await draft.copyFilesTo(validation.path);
-    expect(
-      await File(p.join(validation.path, 'custom.dat')).readAsString(),
-      'one',
-    );
+    await File(p.join(archive.path, 'orphan.dat')).writeAsString('orphan');
+    await count(archive.path, 'orphan', GeoDataType.domain);
+    final invalid = await service.prepareRestore(archive.path);
     await expectLater(
       db.transaction(() async {
-        await draft.commit();
-        throw StateError('Config save failed');
-      }),
-      throwsStateError,
-    );
-    await draft.dispose();
-    expect(await db.geoDataDao.allRows, isEmpty);
-    await service.add(input());
-    final before = downloads;
-    await expectLater(
-      service.prepareImports([input('CUSTOM.dat')]),
-      throwsFormatException,
-    );
-    await expectLater(
-      service.prepareImports([input('dup.dat'), input('Dup.dat')]),
-      throwsFormatException,
-    );
-    await expectLater(
-      service.prepareImports([input('other.DAT')]),
-      throwsFormatException,
-    );
-    expect(downloads, before);
-  });
-
-  test(
-    'restore replaces same-name data only with its database transaction',
-    () async {
-      await service.ensureInstalled();
-      await service.add(input());
-      final before = await db.geoDataDao.publishedRows;
-      final archive = await directory.createTemp('archive-');
-      await File(p.join(archive.path, 'custom.dat')).writeAsString('restored');
-      await count(archive.path, 'custom', GeoDataType.domain);
-      final draft = await service.prepareRestore(archive.path);
-      await expectLater(
-        db.transaction(() async {
-          await db.geoDataDao.clear();
-          await db.geoDataDao.insertRow(
-            GeoDataCompanion.insert(
-              id: const Value(77),
-              name: 'custom',
-              type: 'domain',
-              url: 'https://example.com/custom.dat',
-              timestamp: DateTime(2020),
-              categoryCount: 1,
-              ruleCount: 2,
-            ),
-          );
-          await draft.commit();
-          throw StateError('Restore interrupted');
-        }),
-        throwsStateError,
-      );
-      expect(await db.geoDataDao.publishedRows, before);
-      await draft.dispose();
-      final committed = await service.prepareRestore(archive.path);
-      await db.transaction(() async {
         await db.geoDataDao.clear();
         await db.geoDataDao.insertRow(
           GeoDataCompanion.insert(
@@ -256,19 +343,71 @@ void main() {
             ruleCount: 2,
           ),
         );
-        await committed.commit();
-      });
-      await committed.dispose();
-      final files = await service.publishedFiles();
-      expect(files.map((file) => file.row.generation).toSet(), hasLength(1));
-      expect(
-        await files.firstWhere((file) => !file.builtIn).data.readAsString(),
-        'restored',
-      );
-    },
-  );
+        await invalid.commit();
+      }),
+      throwsFormatException,
+    );
+    await invalid.dispose();
+    expect(await db.geoDataDao.publishedRows, beforeRows);
+    expect(await rootBytes(), beforeFiles);
+    await File(p.join(archive.path, 'orphan.dat')).delete();
+    await File(p.join(archive.path, 'orphan.json')).delete();
 
-  test('reserved IDs never overwrite historical records', () async {
+    final draft = await service.prepareRestore(archive.path);
+    await expectLater(
+      db.transaction(() async {
+        await db.geoDataDao.clear();
+        await db.geoDataDao.insertRow(
+          GeoDataCompanion.insert(
+            id: const Value(77),
+            name: 'custom',
+            type: 'domain',
+            url: 'https://example.com/custom.dat',
+            timestamp: DateTime(2020),
+            categoryCount: 1,
+            ruleCount: 2,
+          ),
+        );
+        await draft.commit();
+        throw StateError('Restore interrupted');
+      }),
+      throwsStateError,
+    );
+    await draft.dispose();
+    expect(await db.geoDataDao.publishedRows, beforeRows);
+    expect(await rootBytes(), beforeFiles);
+    await expectFlatRoot();
+
+    final committed = await service.prepareRestore(archive.path);
+    await db.transaction(() async {
+      await db.geoDataDao.clear();
+      await db.geoDataDao.insertRow(
+        GeoDataCompanion.insert(
+          id: const Value(77),
+          name: 'custom',
+          type: 'domain',
+          url: 'https://example.com/custom.dat',
+          timestamp: DateTime(2020),
+          categoryCount: 1,
+          ruleCount: 2,
+        ),
+      );
+      await committed.commit();
+    });
+    await committed.complete();
+    await committed.dispose();
+
+    final files = await service.publishedFiles();
+    expect(files.map((file) => file.data.parent.path).toSet(), {datRoot.path});
+    expect(
+      await files.firstWhere((file) => !file.builtIn).data.readAsString(),
+      'restored',
+    );
+    expect((await db.geoDataDao.allRows).single.id, 77);
+    await expectFlatRoot();
+  });
+
+  test('reserved IDs never overwrite existing records', () async {
     await db.geoDataDao.insertRow(
       GeoDataCompanion.insert(
         id: const Value(-1),
@@ -280,8 +419,10 @@ void main() {
         ruleCount: 2,
       ),
     );
+
     await expectLater(service.ensureInstalled(), throwsStateError);
     expect((await db.geoDataDao.publishedRows).single.name, 'user-source');
     expect(downloads, 0);
+    await expectFlatRoot();
   });
 }

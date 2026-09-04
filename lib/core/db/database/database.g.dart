@@ -1137,17 +1137,6 @@ class $GeoDataTable extends GeoData with TableInfo<$GeoDataTable, GeoDataData> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _generationMeta = const VerificationMeta(
-    'generation',
-  );
-  @override
-  late final GeneratedColumn<String> generation = GeneratedColumn<String>(
-    'generation',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1157,7 +1146,6 @@ class $GeoDataTable extends GeoData with TableInfo<$GeoDataTable, GeoDataData> {
     timestamp,
     categoryCount,
     ruleCount,
-    generation,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1225,12 +1213,6 @@ class $GeoDataTable extends GeoData with TableInfo<$GeoDataTable, GeoDataData> {
     } else if (isInserting) {
       context.missing(_ruleCountMeta);
     }
-    if (data.containsKey('generation')) {
-      context.handle(
-        _generationMeta,
-        generation.isAcceptableOrUnknown(data['generation']!, _generationMeta),
-      );
-    }
     return context;
   }
 
@@ -1268,10 +1250,6 @@ class $GeoDataTable extends GeoData with TableInfo<$GeoDataTable, GeoDataData> {
         DriftSqlType.int,
         data['${effectivePrefix}rule_count'],
       )!,
-      generation: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}generation'],
-      ),
     );
   }
 
@@ -1289,9 +1267,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
   final DateTime timestamp;
   final int categoryCount;
   final int ruleCount;
-
-  /// NULL preserves the pre-generation flat files without rewriting old rows.
-  final String? generation;
   const GeoDataData({
     required this.id,
     required this.name,
@@ -1300,7 +1275,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
     required this.timestamp,
     required this.categoryCount,
     required this.ruleCount,
-    this.generation,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1312,9 +1286,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
     map['timestamp'] = Variable<DateTime>(timestamp);
     map['category_count'] = Variable<int>(categoryCount);
     map['rule_count'] = Variable<int>(ruleCount);
-    if (!nullToAbsent || generation != null) {
-      map['generation'] = Variable<String>(generation);
-    }
     return map;
   }
 
@@ -1327,9 +1298,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
       timestamp: Value(timestamp),
       categoryCount: Value(categoryCount),
       ruleCount: Value(ruleCount),
-      generation: generation == null && nullToAbsent
-          ? const Value.absent()
-          : Value(generation),
     );
   }
 
@@ -1346,7 +1314,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
       categoryCount: serializer.fromJson<int>(json['categoryCount']),
       ruleCount: serializer.fromJson<int>(json['ruleCount']),
-      generation: serializer.fromJson<String?>(json['generation']),
     );
   }
   @override
@@ -1360,7 +1327,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
       'timestamp': serializer.toJson<DateTime>(timestamp),
       'categoryCount': serializer.toJson<int>(categoryCount),
       'ruleCount': serializer.toJson<int>(ruleCount),
-      'generation': serializer.toJson<String?>(generation),
     };
   }
 
@@ -1372,7 +1338,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
     DateTime? timestamp,
     int? categoryCount,
     int? ruleCount,
-    Value<String?> generation = const Value.absent(),
   }) => GeoDataData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1381,7 +1346,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
     timestamp: timestamp ?? this.timestamp,
     categoryCount: categoryCount ?? this.categoryCount,
     ruleCount: ruleCount ?? this.ruleCount,
-    generation: generation.present ? generation.value : this.generation,
   );
   GeoDataData copyWithCompanion(GeoDataCompanion data) {
     return GeoDataData(
@@ -1394,9 +1358,6 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
           ? data.categoryCount.value
           : this.categoryCount,
       ruleCount: data.ruleCount.present ? data.ruleCount.value : this.ruleCount,
-      generation: data.generation.present
-          ? data.generation.value
-          : this.generation,
     );
   }
 
@@ -1409,23 +1370,14 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
           ..write('url: $url, ')
           ..write('timestamp: $timestamp, ')
           ..write('categoryCount: $categoryCount, ')
-          ..write('ruleCount: $ruleCount, ')
-          ..write('generation: $generation')
+          ..write('ruleCount: $ruleCount')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    type,
-    url,
-    timestamp,
-    categoryCount,
-    ruleCount,
-    generation,
-  );
+  int get hashCode =>
+      Object.hash(id, name, type, url, timestamp, categoryCount, ruleCount);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1436,8 +1388,7 @@ class GeoDataData extends DataClass implements Insertable<GeoDataData> {
           other.url == this.url &&
           other.timestamp == this.timestamp &&
           other.categoryCount == this.categoryCount &&
-          other.ruleCount == this.ruleCount &&
-          other.generation == this.generation);
+          other.ruleCount == this.ruleCount);
 }
 
 class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
@@ -1448,7 +1399,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
   final Value<DateTime> timestamp;
   final Value<int> categoryCount;
   final Value<int> ruleCount;
-  final Value<String?> generation;
   const GeoDataCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -1457,7 +1407,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
     this.timestamp = const Value.absent(),
     this.categoryCount = const Value.absent(),
     this.ruleCount = const Value.absent(),
-    this.generation = const Value.absent(),
   });
   GeoDataCompanion.insert({
     this.id = const Value.absent(),
@@ -1467,7 +1416,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
     required DateTime timestamp,
     required int categoryCount,
     required int ruleCount,
-    this.generation = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        url = Value(url),
@@ -1482,7 +1430,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
     Expression<DateTime>? timestamp,
     Expression<int>? categoryCount,
     Expression<int>? ruleCount,
-    Expression<String>? generation,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1492,7 +1439,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
       if (timestamp != null) 'timestamp': timestamp,
       if (categoryCount != null) 'category_count': categoryCount,
       if (ruleCount != null) 'rule_count': ruleCount,
-      if (generation != null) 'generation': generation,
     });
   }
 
@@ -1504,7 +1450,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
     Value<DateTime>? timestamp,
     Value<int>? categoryCount,
     Value<int>? ruleCount,
-    Value<String?>? generation,
   }) {
     return GeoDataCompanion(
       id: id ?? this.id,
@@ -1514,7 +1459,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
       timestamp: timestamp ?? this.timestamp,
       categoryCount: categoryCount ?? this.categoryCount,
       ruleCount: ruleCount ?? this.ruleCount,
-      generation: generation ?? this.generation,
     );
   }
 
@@ -1542,9 +1486,6 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
     if (ruleCount.present) {
       map['rule_count'] = Variable<int>(ruleCount.value);
     }
-    if (generation.present) {
-      map['generation'] = Variable<String>(generation.value);
-    }
     return map;
   }
 
@@ -1557,8 +1498,7 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
           ..write('url: $url, ')
           ..write('timestamp: $timestamp, ')
           ..write('categoryCount: $categoryCount, ')
-          ..write('ruleCount: $ruleCount, ')
-          ..write('generation: $generation')
+          ..write('ruleCount: $ruleCount')
           ..write(')'))
         .toString();
   }
@@ -1840,19 +1780,8 @@ class $ConnectionStateTable extends ConnectionState
     requiredDuringInsert: false,
     defaultValue: const Constant('{}'),
   );
-  static const VerificationMeta _confirmedPlanIdMeta = const VerificationMeta(
-    'confirmedPlanId',
-  );
   @override
-  late final GeneratedColumn<String> confirmedPlanId = GeneratedColumn<String>(
-    'confirmed_plan_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, settingsJson, confirmedPlanId];
+  List<GeneratedColumn> get $columns => [id, settingsJson];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1877,15 +1806,6 @@ class $ConnectionStateTable extends ConnectionState
         ),
       );
     }
-    if (data.containsKey('confirmed_plan_id')) {
-      context.handle(
-        _confirmedPlanIdMeta,
-        confirmedPlanId.isAcceptableOrUnknown(
-          data['confirmed_plan_id']!,
-          _confirmedPlanIdMeta,
-        ),
-      );
-    }
     return context;
   }
 
@@ -1903,10 +1823,6 @@ class $ConnectionStateTable extends ConnectionState
         DriftSqlType.string,
         data['${effectivePrefix}settings_json'],
       )!,
-      confirmedPlanId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}confirmed_plan_id'],
-      ),
     );
   }
 
@@ -1920,20 +1836,12 @@ class ConnectionStateData extends DataClass
     implements Insertable<ConnectionStateData> {
   final int id;
   final String settingsJson;
-  final String? confirmedPlanId;
-  const ConnectionStateData({
-    required this.id,
-    required this.settingsJson,
-    this.confirmedPlanId,
-  });
+  const ConnectionStateData({required this.id, required this.settingsJson});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['settings_json'] = Variable<String>(settingsJson);
-    if (!nullToAbsent || confirmedPlanId != null) {
-      map['confirmed_plan_id'] = Variable<String>(confirmedPlanId);
-    }
     return map;
   }
 
@@ -1941,9 +1849,6 @@ class ConnectionStateData extends DataClass
     return ConnectionStateCompanion(
       id: Value(id),
       settingsJson: Value(settingsJson),
-      confirmedPlanId: confirmedPlanId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(confirmedPlanId),
     );
   }
 
@@ -1955,7 +1860,6 @@ class ConnectionStateData extends DataClass
     return ConnectionStateData(
       id: serializer.fromJson<int>(json['id']),
       settingsJson: serializer.fromJson<String>(json['settingsJson']),
-      confirmedPlanId: serializer.fromJson<String?>(json['confirmedPlanId']),
     );
   }
   @override
@@ -1964,30 +1868,20 @@ class ConnectionStateData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'settingsJson': serializer.toJson<String>(settingsJson),
-      'confirmedPlanId': serializer.toJson<String?>(confirmedPlanId),
     };
   }
 
-  ConnectionStateData copyWith({
-    int? id,
-    String? settingsJson,
-    Value<String?> confirmedPlanId = const Value.absent(),
-  }) => ConnectionStateData(
-    id: id ?? this.id,
-    settingsJson: settingsJson ?? this.settingsJson,
-    confirmedPlanId: confirmedPlanId.present
-        ? confirmedPlanId.value
-        : this.confirmedPlanId,
-  );
+  ConnectionStateData copyWith({int? id, String? settingsJson}) =>
+      ConnectionStateData(
+        id: id ?? this.id,
+        settingsJson: settingsJson ?? this.settingsJson,
+      );
   ConnectionStateData copyWithCompanion(ConnectionStateCompanion data) {
     return ConnectionStateData(
       id: data.id.present ? data.id.value : this.id,
       settingsJson: data.settingsJson.present
           ? data.settingsJson.value
           : this.settingsJson,
-      confirmedPlanId: data.confirmedPlanId.present
-          ? data.confirmedPlanId.value
-          : this.confirmedPlanId,
     );
   }
 
@@ -1995,58 +1889,49 @@ class ConnectionStateData extends DataClass
   String toString() {
     return (StringBuffer('ConnectionStateData(')
           ..write('id: $id, ')
-          ..write('settingsJson: $settingsJson, ')
-          ..write('confirmedPlanId: $confirmedPlanId')
+          ..write('settingsJson: $settingsJson')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, settingsJson, confirmedPlanId);
+  int get hashCode => Object.hash(id, settingsJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ConnectionStateData &&
           other.id == this.id &&
-          other.settingsJson == this.settingsJson &&
-          other.confirmedPlanId == this.confirmedPlanId);
+          other.settingsJson == this.settingsJson);
 }
 
 class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
   final Value<int> id;
   final Value<String> settingsJson;
-  final Value<String?> confirmedPlanId;
   const ConnectionStateCompanion({
     this.id = const Value.absent(),
     this.settingsJson = const Value.absent(),
-    this.confirmedPlanId = const Value.absent(),
   });
   ConnectionStateCompanion.insert({
     this.id = const Value.absent(),
     this.settingsJson = const Value.absent(),
-    this.confirmedPlanId = const Value.absent(),
   });
   static Insertable<ConnectionStateData> custom({
     Expression<int>? id,
     Expression<String>? settingsJson,
-    Expression<String>? confirmedPlanId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (settingsJson != null) 'settings_json': settingsJson,
-      if (confirmedPlanId != null) 'confirmed_plan_id': confirmedPlanId,
     });
   }
 
   ConnectionStateCompanion copyWith({
     Value<int>? id,
     Value<String>? settingsJson,
-    Value<String?>? confirmedPlanId,
   }) {
     return ConnectionStateCompanion(
       id: id ?? this.id,
       settingsJson: settingsJson ?? this.settingsJson,
-      confirmedPlanId: confirmedPlanId ?? this.confirmedPlanId,
     );
   }
 
@@ -2059,9 +1944,6 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
     if (settingsJson.present) {
       map['settings_json'] = Variable<String>(settingsJson.value);
     }
-    if (confirmedPlanId.present) {
-      map['confirmed_plan_id'] = Variable<String>(confirmedPlanId.value);
-    }
     return map;
   }
 
@@ -2069,8 +1951,7 @@ class ConnectionStateCompanion extends UpdateCompanion<ConnectionStateData> {
   String toString() {
     return (StringBuffer('ConnectionStateCompanion(')
           ..write('id: $id, ')
-          ..write('settingsJson: $settingsJson, ')
-          ..write('confirmedPlanId: $confirmedPlanId')
+          ..write('settingsJson: $settingsJson')
           ..write(')'))
         .toString();
   }
@@ -2661,7 +2542,6 @@ typedef $$GeoDataTableCreateCompanionBuilder = GeoDataCompanion Function({
   required DateTime timestamp,
   required int categoryCount,
   required int ruleCount,
-  Value<String?> generation,
 });
 typedef $$GeoDataTableUpdateCompanionBuilder = GeoDataCompanion Function({
   Value<int> id,
@@ -2671,7 +2551,6 @@ typedef $$GeoDataTableUpdateCompanionBuilder = GeoDataCompanion Function({
   Value<DateTime> timestamp,
   Value<int> categoryCount,
   Value<int> ruleCount,
-  Value<String?> generation,
 });
 
 class $$GeoDataTableFilterComposer
@@ -2715,11 +2594,6 @@ class $$GeoDataTableFilterComposer
 
   ColumnFilters<int> get ruleCount => $composableBuilder(
     column: $table.ruleCount,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get generation => $composableBuilder(
-    column: $table.generation,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2767,11 +2641,6 @@ class $$GeoDataTableOrderingComposer
     column: $table.ruleCount,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<String> get generation => $composableBuilder(
-    column: $table.generation,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$GeoDataTableAnnotationComposer
@@ -2805,11 +2674,6 @@ class $$GeoDataTableAnnotationComposer
 
   GeneratedColumn<int> get ruleCount =>
       $composableBuilder(column: $table.ruleCount, builder: (column) => column);
-
-  GeneratedColumn<String> get generation => $composableBuilder(
-    column: $table.generation,
-    builder: (column) => column,
-  );
 }
 
 class $$GeoDataTableTableManager
@@ -2850,7 +2714,6 @@ class $$GeoDataTableTableManager
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<int> categoryCount = const Value.absent(),
                 Value<int> ruleCount = const Value.absent(),
-                Value<String?> generation = const Value.absent(),
               }) => GeoDataCompanion(
                 id: id,
                 name: name,
@@ -2859,7 +2722,6 @@ class $$GeoDataTableTableManager
                 timestamp: timestamp,
                 categoryCount: categoryCount,
                 ruleCount: ruleCount,
-                generation: generation,
               ),
           createCompanionCallback:
               ({
@@ -2870,7 +2732,6 @@ class $$GeoDataTableTableManager
                 required DateTime timestamp,
                 required int categoryCount,
                 required int ruleCount,
-                Value<String?> generation = const Value.absent(),
               }) => GeoDataCompanion.insert(
                 id: id,
                 name: name,
@@ -2879,7 +2740,6 @@ class $$GeoDataTableTableManager
                 timestamp: timestamp,
                 categoryCount: categoryCount,
                 ruleCount: ruleCount,
-                generation: generation,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3077,13 +2937,11 @@ typedef $$ConnectionStateTableCreateCompanionBuilder =
     ConnectionStateCompanion Function({
       Value<int> id,
       Value<String> settingsJson,
-      Value<String?> confirmedPlanId,
     });
 typedef $$ConnectionStateTableUpdateCompanionBuilder =
     ConnectionStateCompanion Function({
       Value<int> id,
       Value<String> settingsJson,
-      Value<String?> confirmedPlanId,
     });
 
 class $$ConnectionStateTableFilterComposer
@@ -3102,11 +2960,6 @@ class $$ConnectionStateTableFilterComposer
 
   ColumnFilters<String> get settingsJson => $composableBuilder(
     column: $table.settingsJson,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get confirmedPlanId => $composableBuilder(
-    column: $table.confirmedPlanId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3129,11 +2982,6 @@ class $$ConnectionStateTableOrderingComposer
     column: $table.settingsJson,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<String> get confirmedPlanId => $composableBuilder(
-    column: $table.confirmedPlanId,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$ConnectionStateTableAnnotationComposer
@@ -3150,11 +2998,6 @@ class $$ConnectionStateTableAnnotationComposer
 
   GeneratedColumn<String> get settingsJson => $composableBuilder(
     column: $table.settingsJson,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get confirmedPlanId => $composableBuilder(
-    column: $table.confirmedPlanId,
     builder: (column) => column,
   );
 }
@@ -3194,25 +3037,17 @@ class $$ConnectionStateTableTableManager
               $$ConnectionStateTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$ConnectionStateTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> settingsJson = const Value.absent(),
-                Value<String?> confirmedPlanId = const Value.absent(),
-              }) => ConnectionStateCompanion(
-                id: id,
-                settingsJson: settingsJson,
-                confirmedPlanId: confirmedPlanId,
-              ),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> settingsJson = const Value.absent(),
+          }) => ConnectionStateCompanion(id: id, settingsJson: settingsJson),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> settingsJson = const Value.absent(),
-                Value<String?> confirmedPlanId = const Value.absent(),
               }) => ConnectionStateCompanion.insert(
                 id: id,
                 settingsJson: settingsJson,
-                confirmedPlanId: confirmedPlanId,
               ),
           withReferenceMapper: (p0) => p0
               .map(

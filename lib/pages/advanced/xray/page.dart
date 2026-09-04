@@ -265,7 +265,7 @@ class _XrayRuntimePageState extends State<XrayRuntimePage> {
                               title: l.prototypeRecentXrayConfiguration,
                               subtitle: l.prototypeReadOnlyRuntimeConfiguration,
                               icon: LucideIcons.fileJson,
-                              enabled: controller.plan != null,
+                              enabled: controller.runtime != null,
                               onTap: () => controller.openConfig(
                                 context,
                                 widget.onConfig,

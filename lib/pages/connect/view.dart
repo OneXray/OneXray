@@ -613,7 +613,6 @@ class ConnectView extends StatelessWidget {
       ConnectionPhase.connecting => l.prototypeConnecting,
       ConnectionPhase.connected => l.prototypeConnected,
       ConnectionPhase.disconnecting => l.prototypeDisconnecting,
-      ConnectionPhase.recovering => l.prototypeReconnecting,
       ConnectionPhase.failed => l.prototypeConnectionFailed,
     };
     final startedAt = view.traffic?.startedAtMs;
@@ -633,7 +632,6 @@ class ConnectView extends StatelessWidget {
             ? l.prototypeProtectedMinutes(elapsed)
             : l.prototypeProtectedHoursMinutes(elapsed ~/ 60, elapsed % 60),
       ConnectionPhase.disconnecting => l.prototypeFinishingConnection,
-      ConnectionPhase.recovering => l.prototypeApplyingConnectionSettings,
       ConnectionPhase.failed =>
         view.permission != null
             ? l.prototypeVpnPermissionRequired

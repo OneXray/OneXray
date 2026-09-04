@@ -1,4 +1,4 @@
-/// Uses one installed generation's category indexes. Recreate after publication;
+/// Uses the currently installed category indexes. Recreate after publication;
 /// the bundled mapping alone is never proof that a category is still installed.
 final class RegionCatalog {
   static const assetPath = 'assets/geodata/regions.json';
@@ -60,8 +60,8 @@ final class RegionCatalog {
         entry['code'] as String,
   ];
 
-  /// [files] uses saved .dat basenames from one generation, separated by type
-  /// by the caller. Pass fresh indexes after a successful Geodata publication.
+  /// [files] uses saved .dat basenames from the flat Geodata root, separated by
+  /// type by the caller. Pass fresh indexes after a successful publication.
   static List<String> suggestions(
     String query, {
     required bool domain,

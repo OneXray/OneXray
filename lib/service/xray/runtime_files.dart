@@ -6,15 +6,15 @@ import 'dart:typed_data';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/file.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 
 abstract final class RuntimeDiagnosticFiles {
   static const logChunkBytes = 1024 * 1024;
   static const logExportBytes = 64 * 1024 * 1024;
 
-  static String? logPath(ConnectionPlan? plan, {required bool access}) {
-    if (plan == null) return null;
-    final log = (jsonDecode(plan.xrayJson) as Map<String, dynamic>)['log'];
+  static String? logPath(ConnectionRuntime? runtime, {required bool access}) {
+    if (runtime == null) return null;
+    final log = (jsonDecode(runtime.xrayJson) as Map<String, dynamic>)['log'];
     final path = log is Map ? log[access ? 'access' : 'error'] : null;
     return path is String && path.isNotEmpty && path != 'none' ? path : null;
   }
@@ -45,10 +45,10 @@ abstract final class RuntimeDiagnosticFiles {
     'json',
   );
 
-  /// A plan ID selects the fixed System Extension file, never the supplied path.
+  /// The System Extension owns its fixed log files; other hosts use the path.
   static Future<NativeLogChunk?> readLog(
     String path, {
-    String? planId,
+    bool systemExtension = false,
     bool access = true,
     int offset = -1,
     int limit = logChunkBytes,
@@ -56,13 +56,8 @@ abstract final class RuntimeDiagnosticFiles {
     if (offset < -1 || limit <= 0 || limit > logChunkBytes) {
       throw const FormatException('Invalid log request');
     }
-    if (planId != null) {
-      return AppHostApi().readLog(
-        planId: planId,
-        access: access,
-        offset: offset,
-        limit: limit,
-      );
+    if (systemExtension) {
+      return AppHostApi().readLog(access: access, offset: offset, limit: limit);
     }
     final type = await FileSystemEntity.type(path, followLinks: false);
     if (type == FileSystemEntityType.notFound) return null;
@@ -88,13 +83,13 @@ abstract final class RuntimeDiagnosticFiles {
 
   static Future<Uint8List> readLogForExport(
     String path, {
-    String? planId,
+    bool systemExtension = false,
     bool access = true,
   }) async {
-    if (planId != null) {
+    if (systemExtension) {
       final first = await readLog(
         path,
-        planId: planId,
+        systemExtension: true,
         access: access,
         offset: 0,
       );
@@ -105,7 +100,7 @@ abstract final class RuntimeDiagnosticFiles {
       while (output.length < first.size) {
         final chunk = await readLog(
           path,
-          planId: planId,
+          systemExtension: true,
           access: access,
           offset: output.length,
           limit: min(first.size - output.length, logChunkBytes),
@@ -145,10 +140,14 @@ abstract final class RuntimeDiagnosticFiles {
   static Future<bool> exportLog(
     String path,
     String name, {
-    String? planId,
+    bool systemExtension = false,
     bool access = true,
   }) async => FileTool.saveData(
-    await readLogForExport(path, planId: planId, access: access),
+    await readLogForExport(
+      path,
+      systemExtension: systemExtension,
+      access: access,
+    ),
     name,
     'log',
   );

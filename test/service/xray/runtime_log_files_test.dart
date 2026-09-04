@@ -8,7 +8,6 @@ import 'package:onexray/service/xray/runtime_files.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const planId = '0123456789abcdef0123456789abcdef';
   const channel = BasicMessageChannel<Object?>(
     'dev.flutter.pigeon.onexray.BridgeHostApi.readLog',
     BridgeHostApi.pigeonChannelCodec,
@@ -56,10 +55,9 @@ void main() {
         var requests = 0;
         messenger.setMockDecodedMessageHandler(channel, (message) async {
           final arguments = message as List;
-          expect(arguments[0], planId);
-          expect(arguments[1], isFalse);
-          final offset = arguments[2] as int;
-          final limit = arguments[3] as int;
+          expect(arguments[0], isFalse);
+          final offset = arguments[1] as int;
+          final limit = arguments[2] as int;
           expect(
             limit,
             lessThanOrEqualTo(RuntimeDiagnosticFiles.logChunkBytes),
@@ -76,7 +74,7 @@ void main() {
         });
         final bytes = await RuntimeDiagnosticFiles.readLogForExport(
           '/not-a-readable-path/error.log',
-          planId: planId,
+          systemExtension: true,
           access: false,
         );
         expect(bytes.length, size);
@@ -93,7 +91,7 @@ void main() {
         expect(
           await RuntimeDiagnosticFiles.readLog(
             '/unused/access.log',
-            planId: planId,
+            systemExtension: true,
           ),
           isNull,
         );
@@ -102,13 +100,16 @@ void main() {
           (_) async => ['unavailable', 'Provider unavailable', null],
         );
         await expectLater(
-          RuntimeDiagnosticFiles.readLog('/unused/access.log', planId: planId),
+          RuntimeDiagnosticFiles.readLog(
+            '/unused/access.log',
+            systemExtension: true,
+          ),
           throwsA(isA<PlatformException>()),
         );
       },
     );
 
-    test('rejects bad identifiers, bounds and malformed responses', () async {
+    test('rejects invalid bounds and malformed responses', () async {
       var requests = 0;
       messenger.setMockDecodedMessageHandler(channel, (_) async {
         requests++;
@@ -123,16 +124,6 @@ void main() {
       });
       await expectLater(
         AppHostApi().readLog(
-          planId: '../access.log',
-          access: true,
-          offset: 0,
-          limit: 1,
-        ),
-        throwsFormatException,
-      );
-      await expectLater(
-        AppHostApi().readLog(
-          planId: planId,
           access: true,
           offset: 0,
           limit: RuntimeDiagnosticFiles.logChunkBytes + 1,
@@ -141,7 +132,7 @@ void main() {
       );
       expect(requests, 0);
       await expectLater(
-        AppHostApi().readLog(planId: planId, access: true, offset: 0, limit: 1),
+        AppHostApi().readLog(access: true, offset: 0, limit: 1),
         throwsFormatException,
       );
     });
@@ -155,8 +146,8 @@ void main() {
           requests++;
           return [
             NativeLogChunk(
-              data: Uint8List(arguments[3] as int),
-              offset: arguments[2] as int,
+              data: Uint8List(arguments[2] as int),
+              offset: arguments[1] as int,
               size: RuntimeDiagnosticFiles.logChunkBytes + 1,
               fileId: requests == 1 ? '1:23' : '1:24',
             ),
@@ -165,7 +156,7 @@ void main() {
         await expectLater(
           RuntimeDiagnosticFiles.readLogForExport(
             '/unused/access.log',
-            planId: planId,
+            systemExtension: true,
           ),
           throwsA(isA<FileSystemException>()),
         );
@@ -184,7 +175,7 @@ void main() {
         await expectLater(
           RuntimeDiagnosticFiles.readLogForExport(
             '/unused/access.log',
-            planId: planId,
+            systemExtension: true,
           ),
           throwsA(isA<FileSystemException>()),
         );

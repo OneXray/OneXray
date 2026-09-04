@@ -179,10 +179,11 @@ class _Fixture {
     final proc = await Directory(p.join(directory.path, 'proc')).create();
     final executable = File(p.join(directory.path, 'OneXrayCore'));
     await executable.writeAsString('not executed');
-    final plan = await Directory(p.join(directory.path, 'run', 'plans', 'plan'))
-        .create(recursive: true);
-    final config = File(p.join(plan.path, 'xray.json'));
-    final runtime = File(p.join(plan.path, 'runtime-config.json'));
+    final input = await Directory(
+      p.join(directory.path, 'run', 'core-inputs', 'input-fixture'),
+    ).create(recursive: true);
+    final config = File(p.join(input.path, 'xray.json'));
+    final runtime = File(p.join(input.path, 'runtime-config.json'));
     await config.writeAsString('{}');
     await runtime.writeAsString('{}');
     return _Fixture(directory, proc, executable, config, runtime);

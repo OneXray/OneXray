@@ -18,7 +18,7 @@ import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/background_task/service.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/resolver.dart';
 import 'package:onexray/service/event_bus/service.dart';
@@ -156,7 +156,7 @@ class ConnectController extends ChangeNotifier {
 
   String serverName(CoreConfigData row) {
     try {
-      return ServerSnapshot.fromRow(row).name;
+      return ResolvedServer.fromRow(row).name;
     } catch (_) {
       return row.name;
     }
@@ -211,14 +211,14 @@ class ConnectController extends ChangeNotifier {
           ? null
           : l10n.prototypeChooseBySpeedAvailability);
 
-  // The plan chooses the node identity; the badge shows that node's latest
+  // The runtime chooses the node identity; the badge shows that node's latest
   // successful probe, not a measurement of this session or a new selection.
   String? selectionHealth(AppLocalizations l10n) {
     final view = coordinator.state.value;
     if (view.phase != ConnectionPhase.connected) return null;
-    final entries = view.plan?.toJson()['entries'] as List?;
+    final entries = view.runtime?.entries;
     if (entries == null || entries.isEmpty) return null;
-    final id = (entries.first as Map)['id'];
+    final id = entries.first.id;
     final row = servers.where((row) => row.id == id).firstOrNull;
     if (row == null ||
         row.delay <= 0 ||
@@ -256,24 +256,23 @@ class ConnectController extends ChangeNotifier {
     }
   }
 
-  /// Only the confirmed running snapshot describes the path in use. Later
+  /// Only the active runtime metadata describes the path in use. Later
   /// asset renames, probes and subscription updates cannot change these labels.
   ({int entryCount, String path})? get runningRoute {
     final view = coordinator.state.value;
-    final plan = view.plan;
+    final runtime = view.runtime;
     if (view.phase != ConnectionPhase.connected ||
-        plan == null ||
-        plan.configuration.connection.expert) {
+        runtime == null ||
+        runtime.configuration.connection.expert) {
       return null;
     }
-    final json = plan.toJson();
-    final entries = json['entries'] as List;
+    final entries = runtime.entries;
     if (entries.isEmpty) return null;
-    final names = entries.map((entry) => (entry as Map)['name'] as String);
-    final exit = json['finalExit'] as Map?;
+    final names = entries.map((entry) => entry.name);
+    final exit = runtime.finalExit;
     return (
       entryCount: entries.length,
-      path: '${names.join(' + ')}${exit == null ? '' : ' → ${exit['name']}'}',
+      path: '${names.join(' + ')}${exit == null ? '' : ' → ${exit.name}'}',
     );
   }
 
@@ -370,8 +369,8 @@ class ConnectController extends ChangeNotifier {
           expectedConfiguration: current.encode(),
           allowReconnect: reconnect,
         );
-        // Failed applies rethrow, including after restoration. A successful plan
-        // may legitimately commit Automatic instead of an unavailable selection.
+        // A successful apply may legitimately commit Automatic instead of an
+        // unavailable selection.
         success = true;
         configuration = await coordinator.configuration;
       });
@@ -646,17 +645,17 @@ class ConnectController extends ChangeNotifier {
     final l = AppLocalizations.of(context)!;
     final view = coordinator.state.value;
     final connected = view.phase == ConnectionPhase.connected;
-    final plan = connected ? view.plan : null;
-    final settings = plan?.configuration.connection ?? configuration.connection;
-    final planJson = plan?.toJson();
+    final runtime = connected ? view.runtime : null;
+    final settings =
+        runtime?.configuration.connection ?? configuration.connection;
     final names = connected
-        ? ((planJson?['entries'] as List?) ?? [])
-              .map((entry) => (entry as Map)['name'] as String)
+        ? (runtime?.entries ?? const <RuntimeNode>[])
+              .map((entry) => entry.name)
               .toList()
         : _previewEntries(settings).map((row) => serverName(row)).toList();
     final entryNames = names.join(' + ');
     final exit = connected
-        ? ((planJson?['finalExit'] as Map?)?['name'] as String?)
+        ? runtime?.finalExit?.name
         : servers
               .where((row) => row.id == settings.finalExitId)
               .map(serverName)
@@ -733,7 +732,7 @@ class ConnectController extends ChangeNotifier {
   }
 
   /// Explain existing successful measurements without probing or selecting a
-  /// runtime plan. The actual connection still resolves through the coordinator.
+  /// runtime input. The actual connection still resolves through the coordinator.
   List<CoreConfigData> _previewEntries(ConnectionSettings settings) {
     final count = _configuredEntryCount(settings);
     if (count == null || settings.expert) return [];
@@ -760,7 +759,7 @@ class ConnectController extends ChangeNotifier {
           };
           if (!matches) return false;
           try {
-            ServerSnapshot.fromRow(row);
+            ResolvedServer.fromRow(row);
             return true;
           } on FormatException {
             return false;

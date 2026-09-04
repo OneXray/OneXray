@@ -620,7 +620,7 @@ protocol BridgeHostApi {
   func getAppIcon(packageName: String, completion: @escaping (Result<FlutterStandardTypedData?, Error>) -> Void)
   func useSystemExtension(completion: @escaping (Result<Bool, Error>) -> Void)
   func appleVpnCapabilities(completion: @escaping (Result<AppleVpnCapabilities, Error>) -> Void)
-  func readLog(planId: String, access: Bool, offset: Int64, limit: Int64, completion: @escaping (Result<NativeLogChunk?, Error>) -> Void)
+  func readLog(access: Bool, offset: Int64, limit: Int64, completion: @escaping (Result<NativeLogChunk?, Error>) -> Void)
   func queryLaunchAtLogin(completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func setLaunchAtLogin(enabled: Bool, completion: @escaping (Result<NativeLaunchAtLoginResult, Error>) -> Void)
   func openLaunchAtLoginSettings(completion: @escaping (Result<Bool, Error>) -> Void)
@@ -807,11 +807,10 @@ class BridgeHostApiSetup {
     if let api = api {
       readLogChannel.setMessageHandler { message, reply in
         let args = message as! [Any?]
-        let planIdArg = args[0] as! String
-        let accessArg = args[1] as! Bool
-        let offsetArg = args[2] as! Int64
-        let limitArg = args[3] as! Int64
-        api.readLog(planId: planIdArg, access: accessArg, offset: offsetArg, limit: limitArg) { result in
+        let accessArg = args[0] as! Bool
+        let offsetArg = args[1] as! Int64
+        let limitArg = args[2] as! Int64
+        api.readLog(access: accessArg, offset: offsetArg, limit: limitArg) { result in
           switch result {
           case .success(let res):
             reply(wrapResult(res))

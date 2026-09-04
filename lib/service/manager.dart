@@ -37,8 +37,7 @@ abstract final class ServiceManager {
 
   static Future<void> _serviceInit(BuildContext context) async {
     await _runInit("NetClient", () => NetClient().asyncInit());
-    // Existing installations can already have completed setup before the
-    // generation column was added. Register their local pair without a download.
+    // Ensure the canonical flat Geodata directory and its metadata are ready.
     await GeoDataService().ensureInstalled();
     // Recovery must succeed before external commands or automatic connection
     // are enabled. The legacy Profile runtime must not initialize alongside it.

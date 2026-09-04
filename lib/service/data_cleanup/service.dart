@@ -70,7 +70,6 @@ final class AppDataCleanupService {
     const retained = {
       'runtime.json',
       'runtime.json.lock',
-      'runtime-sessions',
       'traffic-totals.json',
     };
     await for (final entry in directory.list(followLinks: false)) {

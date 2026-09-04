@@ -402,10 +402,6 @@
   "@prototypeConnected": {
     "description": "Approved prototype copy: Connected"
   },
-  "prototypeReconnecting": "Reconnecting…",
-  "@prototypeReconnecting": {
-    "description": "Approved prototype copy: Reconnecting…"
-  },
   "prototypeDisconnecting": "Disconnecting…",
   "@prototypeDisconnecting": {
     "description": "Approved prototype copy: Disconnecting…"
@@ -425,10 +421,6 @@
   "prototypePreparingSecureConnection": "Preparing a secure connection",
   "@prototypePreparingSecureConnection": {
     "description": "Approved prototype copy: Preparing a secure connection"
-  },
-  "prototypeApplyingConnectionSettings": "Applying the new connection settings",
-  "@prototypeApplyingConnectionSettings": {
-    "description": "Approved prototype copy: Applying the new connection settings"
   },
   "prototypeFinishingConnection": "Finishing the current connection",
   "@prototypeFinishingConnection": {

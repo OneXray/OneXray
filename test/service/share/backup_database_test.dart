@@ -22,7 +22,6 @@ void main() {
       await _seedAssets(database);
       await database.connectionStateDao.commit(
         settingsJson: '{"connection":{"rawId":30}}',
-        confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       );
       final before = await BackupDatabaseContents.read(database);
       final payload = _roundTrip(before);
@@ -66,7 +65,6 @@ void main() {
       expect(await database.coreConfigDao.searchRow(99), isNull);
       final reset = await database.connectionStateDao.read();
       expect(reset.settingsJson, '{}');
-      expect(reset.confirmedPlanId, isNull);
     },
   );
 
@@ -266,10 +264,7 @@ void main() {
     'restore failure rolls all tables back after replacement starts',
     () async {
       await _seedAssets(database);
-      await database.connectionStateDao.commit(
-        settingsJson: '{"old":true}',
-        confirmedPlanId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      );
+      await database.connectionStateDao.commit(settingsJson: '{"old":true}');
       final stateBefore = await database.connectionStateDao.read();
       final before = await BackupDatabaseContents.read(database);
       await database.customStatement('''

@@ -4,7 +4,7 @@ import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/service/connection/compiler.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/smart_editor.dart';
 

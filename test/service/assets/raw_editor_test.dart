@@ -8,7 +8,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/xray/raw/db.dart';
@@ -35,7 +35,7 @@ void main() {
         database: db,
         inspect: (_) async => const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
-        stop: (_) async => throw StateError('Unexpected stop'),
+        stop: () async => throw StateError('Unexpected stop'),
       ),
     );
     final service = RawEditorService(
@@ -70,33 +70,26 @@ void main() {
     expect(await db.coreConfigDao.allRawRowsWithData, hasLength(3));
   });
 
-  test('running Raw rename does not reconnect; semantic cancel and failed apply keep the old asset', () async {
+  test('running Raw rename does not reconnect; cancel and failed start keep the asset', () async {
     final rawId = await db.coreConfigDao.insertAssetRow(
       XrayRawDb.configCompanion('original', _text),
     );
     final configuration = ConnectionConfiguration(
       connection: ConnectionSettings(expert: true, rawId: rawId),
     );
-    final old = _plan('a', configuration, _text);
-    await db.connectionStateDao.commit(
-      settingsJson: configuration.encode(),
-      confirmedPlanId: old.id,
-    );
-    var host = HostConnection(VpnStatus.connected, plan: old);
+    final old = _runtime('a', configuration, _text);
+    await db.connectionStateDao.commit(settingsJson: configuration.encode());
+    var host = HostConnection(VpnStatus.connected, runtime: old);
     final calls = <String>[];
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        readPlan: (id) async => id == old.id ? old : null,
         inspect: (_) async => host,
-        start: (plan) async {
-          calls.add('start:${plan.id}');
-          if (plan.id != old.id) {
-            throw const ConnectionHostException('startFailed');
-          }
-          return host = HostConnection(VpnStatus.connected, plan: old);
+        start: (runtime) async {
+          calls.add('start:${runtime.identity}');
+          throw const ConnectionHostException('startFailed');
         },
-        stop: (_) async {
+        stop: () async {
           calls.add('stop');
           return host = const HostConnection(VpnStatus.disconnected);
         },
@@ -107,7 +100,7 @@ void main() {
       coordinator: coordinator,
       validate: (_) async => true,
       prepare: (configuration, _, text) async =>
-          _plan('b', configuration, text),
+          _runtime('b', configuration, text),
     );
     final original = await service.load(rawId);
     await service.save(
@@ -145,7 +138,8 @@ void main() {
       renamed.original!.data,
     );
     expect((await db.connectionStateDao.read()).toJson(), before.toJson());
-    expect(coordinator.state.value.plan!.id, old.id);
+    expect(coordinator.state.value.phase, ConnectionPhase.failed);
+    expect(coordinator.state.value.runtime, isNull);
   });
 }
 
@@ -157,7 +151,7 @@ Future<ConnectionCoordinator> _initialize(
   return coordinator;
 }
 
-ConnectionPlan _plan(
+ConnectionRuntime _runtime(
   String digit,
   ConnectionConfiguration configuration,
   String text,
@@ -169,12 +163,11 @@ ConnectionPlan _plan(
       text,
       runtime: ManagedRuntimeRequest(
         statePath: '/fixture/run/runtime.json',
-        planId: id,
+        token: id,
       ),
     ).toJson(),
   );
-  return ConnectionPlan.create(
-    id: id,
+  return ConnectionRuntime.create(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
@@ -183,7 +176,6 @@ ConnectionPlan _plan(
       finalExit: null,
       nodeTags: {},
       ruleTags: {},
-      assetDirectory: '/fixture/assets',
     ),
     platform: ConnectionPlatform.android,
     request: StartVpnRequest(

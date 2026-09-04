@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 class VpnConstants {
   static const tunMtu = 1500;
 
+  /// The only App-side Geodata directory. Installed files are always flat.
   static String get datDir => p.join(AppHostApi().tunFilesDir, "dat");
   static const systemGeoTimestamp = "timestamp.txt";
 

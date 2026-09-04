@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 
 /// Only log policy is replaced; concurrently saved platform settings survive.
-/// The coordinator owns validation, reconnect/rollback and the atomic commit.
+/// The coordinator owns validation, reconnection and the atomic commit.
 Future<bool> saveRuntimeLogPolicy({
   required ConnectionCoordinator coordinator,
   required ConnectionConfiguration base,

@@ -118,6 +118,7 @@ void main() {
       for (final entry in {
         'core_config': ['location_source', 'last_measured_at'],
         'subscription': ['parse_failure_count', 'auto_update'],
+        'geo_data': ['generation'],
         'connection_state': ['revision'],
       }.entries) {
         final columns = await database
@@ -154,6 +155,13 @@ void main() {
             subscriptionColumns.map((row) => row.read<String>('name')),
             isNot(contains('auto_update')),
           );
+          final geoDataColumns = await database
+              .customSelect('PRAGMA table_info(geo_data)')
+              .get();
+          expect(
+            geoDataColumns.map((row) => row.read<String>('name')),
+            isNot(contains('generation')),
+          );
           expect(
             subscriptions.single.ageSecretKey,
             version == 2 ? 'AGE-SECRET-KEY-TEST' : null,
@@ -168,7 +176,6 @@ void main() {
           expect(rawRows.every((row) => row.countryCode == null), isTrue);
           expect(await database.routingProfileDao.allRows, isEmpty);
           expect((await database.connectionStateDao.read()).settingsJson, '{}');
-          expect((await database.geoDataDao.allRows).single.generation, isNull);
           final routingTables = await database.customSelect('''
             SELECT name FROM sqlite_master
             WHERE type = 'table' AND name IN ('routing_profile', 'custom_routing_profiles')
@@ -266,11 +273,7 @@ void main() {
     final check = sqlite.sqlite3.open(file.path);
     expect(check.userVersion, 3);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
-    expect(_columnNames(check, 'connection_state'), [
-      'id',
-      'settings_json',
-      'confirmed_plan_id',
-    ]);
+    expect(_columnNames(check, 'connection_state'), ['id', 'settings_json']);
     check.close();
 
     final retried = AppDatabase.forTesting(NativeDatabase(file));

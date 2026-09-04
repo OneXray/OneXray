@@ -48,7 +48,15 @@ App 在 XDG autostart 目录管理 `net.yuandev.onexray.desktop`。优先使用 
 - 清理 App 数据且准备删除用户偏好时，必须先取消当前平台登录项；取消失败时停止破坏性清理。Windows 只操作当前 MSIX 的 StartupTask。恢复备份会保留登录项状态。
 - 登录项注册状态由操作系统事实决定，不能只依据 Preferences 显示。
 - 自动连接只执行一次。重复的服务就绪事件不得重复启动 Core。
-- 自动与手动连接使用同一协调器、不可变计划及 Geodata 发布快照，不回到旧 Profile 路径。
+- 自动与手动连接使用同一协调器，不回到旧 Profile 路径。配置在内存中完成解析、选择和
+  校验，`run/start.json` 是交给原生宿主并供 App 重开识别当前运行的唯一描述；不创建
+  `ConnectionPlan`、`run/plans/<id>` 或运行历史。
+- 准备失败且尚未触碰原生宿主时，当前连接保持不变。一旦开始停止或启动原生 VPN，后续
+  任一步骤失败都尽力停止本次运行并进入 `failed`，不重新启动旧连接，也不恢复旧运行输入。
+- Windows 和 Linux 在旧运行停止后、每次实际启动桌面 Core 前清理整个 `run/core-inputs`，
+  再生成唯一的 `core-inputs/input-*` 输入目录；输入目录不复用，也不保留历史。
+- 启动过程不复制 Geodata，运行环境直接使用平铺的 `VpnConstants.datDir`；macOS System
+  Extension 仅可通过既有 Swift 跨容器传输实现这一平台边界。
 
 ## 主要实现入口
 

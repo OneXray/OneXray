@@ -280,7 +280,6 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
         ConnectionPhase.connecting => l.prototypeConnecting,
         ConnectionPhase.connected => l.prototypeConnected,
         ConnectionPhase.disconnecting => l.prototypeDisconnecting,
-        ConnectionPhase.recovering => l.prototypeReconnecting,
         ConnectionPhase.failed => l.prototypeConnectionFailed,
       };
 }

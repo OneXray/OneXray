@@ -49,8 +49,8 @@ data class StartVpnRequest(
     val socksPort: String? = null,
     val metricsPort: String?,
     val coreInvokeText: String?,
-    val configId: Long? = null,
     val snapshotToken: String? = null,
+    val metadataJson: String? = null,
 )
 
 @Serializable
@@ -98,7 +98,6 @@ data class RunXrayRequest(
 @Serializable
 data class ManagedRuntimeRequest(
     val statePath: String,
-    val planId: String,
     val inboundTag: String,
     val listen: String? = null,
     val token: String? = null,
@@ -116,7 +115,7 @@ data class XrayEnv(
 
 @Serializable
 data class LibXrayInvokeRequest(
-    val apiVersion: Int? = 3,
+    val apiVersion: Int? = 4,
     val method: LibXrayMethod? = null,
     val payload: RunXrayRequest? = null,
 )

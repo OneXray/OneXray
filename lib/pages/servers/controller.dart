@@ -16,6 +16,7 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/assets/server.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/subscription/service.dart';
@@ -232,22 +233,22 @@ class ServersController extends ConnectController {
       jsonEncode(configuration.connection.selection.toJson()) ==
           jsonEncode(selection.toJson());
 
-  // Display only: running identities come from the frozen plan. Offline
+  // Display only: running identities come from the active runtime. Offline
   // previews use existing successful probes, never start a probe or select VPN.
   ({List<String> names, CoreConfigData? first}) get _displaySelection {
     final settings = configuration.connection;
     if (settings.expert) return (names: [], first: null);
     final view = coordinator.state.value;
     if (view.phase == ConnectionPhase.connected) {
-      final plan = view.plan;
-      if (plan == null || plan.configuration.connection.expert) {
+      final runtime = view.runtime;
+      if (runtime == null || runtime.configuration.connection.expert) {
         return (names: [], first: null);
       }
-      final entries = (plan.toJson()['entries'] as List).cast<Map>();
+      final entries = runtime.entries;
       return (
-        names: entries.map((entry) => entry['name'] as String).toList(),
+        names: entries.map((entry) => entry.name).toList(),
         first: servers
-            .where((row) => row.id == entries.firstOrNull?['id'])
+            .where((row) => row.id == entries.firstOrNull?.id)
             .firstOrNull,
       );
     }
@@ -365,9 +366,9 @@ class ServersController extends ConnectController {
       coordinator.state.value.phase == ConnectionPhase.connected
       ? {
           for (final entry
-              in (coordinator.state.value.plan?.toJson()['entries'] as List?) ??
-                  const [])
-            (entry as Map)['id'] as int,
+              in coordinator.state.value.runtime?.entries ??
+                  const <RuntimeNode>[])
+            entry.id,
         }
       : {};
 

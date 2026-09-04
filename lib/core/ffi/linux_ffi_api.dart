@@ -210,18 +210,18 @@ class LinuxFfiApi extends BaseFfiApi {
       final expectedExecutable = await File(corePath).resolveSymbolicLinks();
       if (actualExecutable != expectedExecutable) return null;
 
-      final runDirectory = await Directory(
-        p.join(await getTunFilesDir(), 'run'),
+      final inputDirectory = await Directory(
+        p.join(await getTunFilesDir(), 'run', 'core-inputs'),
       ).resolveSymbolicLinks();
       final resolvedConfig = await File(configPath).resolveSymbolicLinks();
       if (!p.isAbsolute(configPath) ||
-          !p.isWithin(runDirectory, resolvedConfig)) {
+          !p.isWithin(inputDirectory, resolvedConfig)) {
         return null;
       }
       final runtimePath = record.runtimePath;
       if (runtimePath != null) {
         final resolvedRuntime = await File(runtimePath).resolveSymbolicLinks();
-        if (!p.isWithin(runDirectory, resolvedRuntime) ||
+        if (!p.isWithin(inputDirectory, resolvedRuntime) ||
             p.dirname(resolvedRuntime) != p.dirname(resolvedConfig)) {
           return null;
         }

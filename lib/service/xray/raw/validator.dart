@@ -64,7 +64,6 @@ class XrayRawValidator {
   static Future<XrayRawValidationResult> validate(
     String rawText, {
     Future<String> Function(String)? testXray,
-    String? assetDirectory,
   }) async {
     final normalized = normalize(rawText);
     if (!normalized.isValid) {
@@ -77,7 +76,6 @@ class XrayRawValidator {
     final res = await _test(
       jsonMap,
       testXray ?? (text) => AppHostApi().testXray(text, buildOnly: true),
-      assetDirectory ?? VpnConstants.datDir,
     );
     if (res.isNotEmpty) {
       return XrayRawValidationResult.invalid(res);
@@ -89,7 +87,6 @@ class XrayRawValidator {
   static Future<String> _test(
     Map<String, dynamic> jsonMap,
     Future<String> Function(String) testXray,
-    String assetDirectory,
   ) async {
     // Build the complete configuration without constructing devices/listeners.
     // Only this disposable copy gets App-owned resource paths and logging.
@@ -99,8 +96,8 @@ class XrayRawValidator {
     }
     jsonMap['env'] = <String, dynamic>{
       if (env is Map<String, dynamic>) ...env,
-      'xray.location.asset': assetDirectory,
-      'xray.location.cert': assetDirectory,
+      'xray.location.asset': VpnConstants.datDir,
+      'xray.location.cert': VpnConstants.datDir,
     };
     jsonMap['log'] = <String, dynamic>{
       'access': 'none',

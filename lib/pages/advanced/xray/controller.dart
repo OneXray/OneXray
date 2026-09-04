@@ -8,8 +8,8 @@ import 'package:onexray/pages/advanced/controller.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/xray/runtime_files.dart';
 import 'package:onexray/service/xray/runtime_settings.dart';
@@ -19,7 +19,9 @@ class XrayRuntimeController extends ChangeNotifier {
     : coordinator = coordinator ?? ConnectionCoordinator.instance {
     reader = AdvancedController(coordinator: this.coordinator);
     _subscription = reader.stream.listen((_) {
-      if (reader.state.runtime.plan != null) plan = reader.state.runtime.plan;
+      if (reader.state.runtime.runtime != null) {
+        runtime = reader.state.runtime.runtime;
+      }
       _changed();
     });
     load();
@@ -28,7 +30,7 @@ class XrayRuntimeController extends ChangeNotifier {
   late final AdvancedController reader;
   late final StreamSubscription<AdvancedPageState> _subscription;
   ConnectionConfiguration? base;
-  ConnectionPlan? plan;
+  ConnectionRuntime? runtime;
   Map<String, dynamic> log = {};
   PingState ping = PingState();
   bool loading = true;
@@ -49,7 +51,7 @@ class XrayRuntimeController extends ChangeNotifier {
   String speedSummary(AppLocalizations l) =>
       '${l.prototypeSeconds(ping.timeout.round())} · ${ping.url == PingUrl.custom ? l.prototypeCustomUrl : ping.url.name}';
   String? logPath(bool access) =>
-      RuntimeDiagnosticFiles.logPath(plan, access: access);
+      RuntimeDiagnosticFiles.logPath(runtime, access: access);
 
   void _changed() {
     if (!_disposed) notifyListeners();
@@ -61,7 +63,7 @@ class XrayRuntimeController extends ChangeNotifier {
     _changed();
     try {
       final configuration = await coordinator.configuration;
-      final confirmedPlan = await coordinator.readConfirmedPlan();
+      final currentRuntime = await coordinator.readCurrentRuntime();
       final systemExtension = await AppHostApi().useSystemExtension();
       final preferences = PingState();
       await preferences.readFromPreferences();
@@ -72,7 +74,7 @@ class XrayRuntimeController extends ChangeNotifier {
       );
       _systemExtension = systemExtension;
       ping = preferences;
-      plan = reader.state.runtime.plan ?? confirmedPlan;
+      runtime = reader.state.runtime.runtime ?? currentRuntime;
     } catch (_) {
       failed = true;
     } finally {
@@ -158,7 +160,7 @@ class XrayRuntimeController extends ChangeNotifier {
       LogFileViewerParams(
         title: access ? l.prototypeAccessLog : l.prototypeErrorLog,
         path: path,
-        systemExtensionPlanId: _systemExtension ? plan?.id : null,
+        systemExtension: _systemExtension,
         access: access,
       ),
     );
@@ -168,7 +170,7 @@ class XrayRuntimeController extends ChangeNotifier {
     BuildContext context,
     void Function(BuildContext, ConfigFileViewerParams) open,
   ) {
-    final current = plan;
+    final current = runtime;
     if (current == null) return;
     open(
       context,

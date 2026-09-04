@@ -87,8 +87,8 @@ struct StartVpnRequest: Codable {
     var socksPort: String?
     var metricsPort: String?
     var coreInvokeText: String?
-    var configId: Int64?
     var snapshotToken: String?
+    var metadataJson: String?
 
     private static func fromUrl(_ url: URL) throws -> Self {
         let data = try Data(contentsOf: url)
@@ -132,7 +132,6 @@ struct RunXrayRequest: Codable, Hashable {
 
 struct ManagedRuntimeRequest: Codable, Hashable {
     var statePath: String
-    var planId: String
     var inboundTag: String
     var listen: String?
     var token: String?
@@ -167,7 +166,7 @@ struct LibXrayInvokeRequest: Codable, Hashable {
     var payload: RunXrayRequest?
 
     init(
-        apiVersion: Int? = 3,
+        apiVersion: Int? = 4,
         method: LibXrayMethod? = nil,
         payload: RunXrayRequest? = nil
     ) {
@@ -224,12 +223,6 @@ enum RuntimeStateError: String, Error {
     case timeout = "runtimeStateTimeout"
 }
 
-func isValidPlanId(_ value: String) -> Bool {
-    value.utf8.count == 32 && value.utf8.allSatisfy {
-        (48...57).contains($0) || (97...102).contains($0)
-    }
-}
-
 // MARK: - System extension app-provider messages (app ↔ tunnel)
 
 struct TunnelLogChunk: Codable {
@@ -240,8 +233,8 @@ struct TunnelLogChunk: Codable {
     let size: Int64
     let fileId: String
 
-    static func validateRequest(planId: String, offset: Int64, limit: Int64) throws {
-        guard isValidPlanId(planId), offset >= -1,
+    static func validateRequest(offset: Int64, limit: Int64) throws {
+        guard offset >= -1,
               limit > 0, limit <= Int64(maximumBytes) else { throw RuntimeStateError.invalid }
     }
 
@@ -260,7 +253,7 @@ enum TunnelRequest: Codable {
     case putDat(name: String, content: Data, mtimeMs: Int64)
     case commitDat
     case startXray
-    case readLog(planId: String, access: Bool, offset: Int64, limit: Int64)
+    case readLog(access: Bool, offset: Int64, limit: Int64)
 }
 
 enum TunnelResponse: Codable {

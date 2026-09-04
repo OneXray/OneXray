@@ -6,8 +6,8 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/preparation.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
@@ -21,13 +21,12 @@ enum ConnectionPhase {
   connecting,
   connected,
   disconnecting,
-  recovering,
   failed,
 }
 
 class ConnectionView {
   final ConnectionPhase phase;
-  final ConnectionPlan? plan;
+  final ConnectionRuntime? runtime;
   final RuntimeSnapshot? traffic;
   final bool metricsAvailable;
   final int uploadSpeed;
@@ -36,7 +35,7 @@ class ConnectionView {
   final PlatformPermissionResult? permission;
   const ConnectionView({
     this.phase = ConnectionPhase.disconnected,
-    this.plan,
+    this.runtime,
     this.traffic,
     this.metricsAvailable = false,
     this.uploadSpeed = 0,
@@ -50,15 +49,10 @@ class ConnectionView {
       phase != ConnectionPhase.failed;
   bool get failed =>
       phase == ConnectionPhase.failed ||
-      (issue != null &&
-          !const {
-            'cancelled',
-            'selectionReset',
-            'previousSettingsRestored',
-          }.contains(issue));
+      (issue != null && !const {'cancelled', 'selectionReset'}.contains(issue));
 }
 
-typedef PrepareConnection = Future<ConnectionPlan> Function(
+typedef PrepareConnection = Future<ConnectionRuntime> Function(
   ConnectionConfiguration,
   Future<void>,
 );
@@ -69,20 +63,21 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   static final instance = ConnectionCoordinator();
   final AppDatabase db;
   late final PrepareConnection _prepare;
-  late final Future<HostConnection> Function(ConnectionPlan) _start;
-  late final Future<HostConnection> Function(ConnectionPlan?) _stop;
-  late final Future<HostConnection> Function(Iterable<ConnectionPlan>) _inspect;
+  late final Future<HostConnection> Function(ConnectionRuntime) _start;
+  late final Future<HostConnection> Function() _stop;
+  late final Future<HostConnection> Function(Iterable<ConnectionRuntime>)
+  _inspect;
   late final Future<HostConnection> Function(
-    Iterable<ConnectionPlan>,
+    Iterable<ConnectionRuntime>,
     VpnStatus,
   )
   _inspectObserved;
-  late final Future<RuntimeSnapshot> Function(ConnectionPlan) _readTraffic;
-  late final Future<ConnectionPlan?> Function(String?) _readPlan;
+  late final Future<RuntimeSnapshot> Function(ConnectionRuntime) _readTraffic;
+  late final Future<ConnectionRuntime?> Function() _readRuntime;
   final Stream<VpnStatus> _statusEvents;
   final bool Function() _needsStatusPolling;
-  late final Future<RuntimeSnapshot?> Function(ConnectionPlan?) _resetTraffic;
-  late final Future<RestoreReplay?> Function(ConnectionPlan?) _revokeReplay;
+  late final Future<RuntimeSnapshot?> Function(ConnectionRuntime?)
+  _resetTraffic;
   final _commands = CommandSerialExecutor();
   final state = ValueNotifier(const ConnectionView());
   Future<void>? _initializing;
@@ -100,27 +95,27 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   int _trafficGeneration = 0;
   bool _commandActive = false;
   Completer<void>? _cancel;
-  ConnectionPlan? _pendingPlan;
+  ConnectionRuntime? _pendingRuntime;
   Set<int> _preparingNodeIds = {};
   bool _closed = false;
   bool _observingLifecycle = false;
   bool _foreground = true;
   bool _resetSpeed = true;
+  bool _failureLatched = false;
 
   ConnectionCoordinator({
     AppDatabase? database,
     PrepareConnection? prepare,
-    Future<HostConnection> Function(ConnectionPlan)? start,
-    Future<HostConnection> Function(ConnectionPlan?)? stop,
-    Future<HostConnection> Function(Iterable<ConnectionPlan>)? inspect,
-    Future<HostConnection> Function(Iterable<ConnectionPlan>, VpnStatus)?
+    Future<HostConnection> Function(ConnectionRuntime)? start,
+    Future<HostConnection> Function()? stop,
+    Future<HostConnection> Function(Iterable<ConnectionRuntime>)? inspect,
+    Future<HostConnection> Function(Iterable<ConnectionRuntime>, VpnStatus)?
     inspectObserved,
-    Future<RuntimeSnapshot> Function(ConnectionPlan)? readTraffic,
-    Future<ConnectionPlan?> Function(String?)? readPlan,
+    Future<RuntimeSnapshot> Function(ConnectionRuntime)? readTraffic,
+    Future<ConnectionRuntime?> Function()? readRuntime,
     Stream<VpnStatus>? statusEvents,
     bool Function()? needsStatusPolling,
-    Future<RuntimeSnapshot?> Function(ConnectionPlan?)? resetTraffic,
-    Future<RestoreReplay?> Function(ConnectionPlan?)? revokeReplay,
+    Future<RuntimeSnapshot?> Function(ConnectionRuntime?)? resetTraffic,
   }) : db = database ?? AppDatabase(),
        _statusEvents =
            statusEvents ?? AppFlutterApi().vpnStatusController.stream,
@@ -132,11 +127,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _inspect = inspect ?? host.inspect;
     _inspectObserved =
         inspectObserved ??
-        ((plans, status) => host.inspect(plans, observedStatus: status));
+        ((runtimes, status) => host.inspect(runtimes, observedStatus: status));
     _readTraffic = readTraffic ?? host.query;
-    _readPlan = readPlan ?? host.readPlan;
+    _readRuntime = readRuntime ?? host.readRuntime;
     _resetTraffic = resetTraffic ?? host.resetTraffic;
-    _revokeReplay = revokeReplay ?? host.revokeReplay;
     _prepare =
         prepare ??
         ((configuration, cancelled) => ConnectionPreparation(db: db).prepare(
@@ -152,9 +146,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             as Map<String, dynamic>,
       );
 
-  /// The database stores a reference, not another copy of the private plan.
-  Future<ConnectionPlan?> readConfirmedPlan() async =>
-      _readPlan((await db.connectionStateDao.read()).confirmedPlanId);
+  Future<ConnectionRuntime?> readCurrentRuntime() => _readRuntime();
 
   /// Custom preparation (node/route drafts) shares the same temporary reference
   /// protection as the default path. apply clears it on success and failure.
@@ -171,8 +163,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           if (poll) {
             _statusSubscription ??= _statusEvents.listen(_onNativeStatus);
           }
-          final row = await db.connectionStateDao.read();
-          _publish(await _inspect(await _known(row)));
+          _publish(await _inspect(await _known()));
           _ready = true;
           if (poll) {
             WidgetsBinding.instance.addObserver(this);
@@ -199,6 +190,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
                 ? error.permission
                 : null,
           );
+          _failureLatched = true;
           Error.throwWithStackTrace(error, stack);
         });
   }
@@ -233,7 +225,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       !_commandActive &&
       _lastNativeStatus == VpnStatus.connected &&
       state.value.phase == ConnectionPhase.connected &&
-      state.value.plan != null;
+      state.value.runtime != null;
 
   void _syncPolling() {
     final watchStatus =
@@ -291,18 +283,17 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<SubscriptionNodeReferences> readReferences() async {
     final stored = await configuration;
-    if (state.value.plan == null &&
-        _pendingPlan == null &&
+    if (state.value.runtime == null &&
+        _pendingRuntime == null &&
         _preparingNodeIds.isEmpty &&
         state.value.phase != ConnectionPhase.disconnected &&
         _lastNativeStatus != VpnStatus.disconnected) {
-      // An unknown live plan cannot safely yield an empty protection set.
-      throw const ConnectionHostException('runtimeSnapshotUnavailable');
+      throw const ConnectionHostException('runtimeMetadataUnavailable');
     }
     return SubscriptionNodeReferences(
       runningIds: {
-        ...?state.value.plan?.nodeIds,
-        ...?_pendingPlan?.nodeIds,
+        ...?state.value.runtime?.nodeIds,
+        ...?_pendingRuntime?.nodeIds,
         ..._preparingNodeIds,
       },
       fixedId: stored.connection.selection.kind == SelectionKind.server
@@ -312,11 +303,15 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     );
   }
 
-  Future<List<ConnectionPlan>> _known(ConnectionStateData row) async => [
-    ?state.value.plan,
-    ?_pendingPlan,
-    ?await _readPlan(row.confirmedPlanId),
-  ];
+  Future<List<ConnectionRuntime>> _known() async {
+    final values = <ConnectionRuntime>[
+      ?state.value.runtime,
+      ?_pendingRuntime,
+      ?await _readRuntime(),
+    ];
+    final identities = <String>{};
+    return values.where((value) => identities.add(value.identity)).toList();
+  }
 
   Future<void> refresh({VpnStatus? observedStatus}) async {
     if (_closed || (!_foreground && observedStatus == null)) return;
@@ -328,11 +323,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     final commandGeneration = _commandGeneration;
     try {
       await DataMaintenance.run(() async {
-        final row = await db.connectionStateDao.read();
-        final plans = await _known(row);
+        final runtimes = await _known();
         final current = observedStatus == null
-            ? await _inspect(plans)
-            : await _inspectObserved(plans, observedStatus);
+            ? await _inspect(runtimes)
+            : await _inspectObserved(runtimes, observedStatus);
         if (!_commandActive &&
             !_closed &&
             commandGeneration == _commandGeneration &&
@@ -347,12 +341,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           (_pendingStatus == null || _pendingStatus == observedStatus)) {
         final old = state.value;
         if (observedStatus != null) {
-          // A confirmed native state remains true even if its saved plan or
-          // counters cannot be read. Do not lose an external disconnect.
+          // A confirmed native state remains true even if its runtime metadata
+          // or counters cannot be read. Do not lose an external disconnect.
           _publish(
             HostConnection(
               observedStatus,
-              plan: old.plan,
+              runtime: old.runtime,
               traffic: old.traffic,
             ),
             issue: old.issue ?? 'runtimeUnavailable',
@@ -361,7 +355,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         } else {
           state.value = ConnectionView(
             phase: old.phase,
-            plan: old.plan,
+            runtime: old.runtime,
             traffic: old.traffic,
             issue: old.issue ?? 'runtimeUnavailable',
             permission: old.permission,
@@ -379,19 +373,23 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   /// only an unavailable sample, not a disconnection or a reason to reconnect.
   Future<void> refreshTraffic() async {
     if (!_trafficWanted || _readingTraffic || _pendingStatus != null) return;
-    final plan = state.value.plan!;
+    final runtime = state.value.runtime!;
     final generation = _trafficGeneration;
     _readingTraffic = true;
     bool stillCurrent() =>
         _trafficWanted &&
         generation == _trafficGeneration &&
-        state.value.plan?.id == plan.id;
+        state.value.runtime?.identity == runtime.identity;
     try {
       await DataMaintenance.run(() async {
-        final traffic = await _readTraffic(plan);
+        final traffic = await _readTraffic(runtime);
         if (stillCurrent()) {
           _publish(
-            HostConnection(VpnStatus.connected, plan: plan, traffic: traffic),
+            HostConnection(
+              VpnStatus.connected,
+              runtime: runtime,
+              traffic: traffic,
+            ),
             keepResult: true,
             liveTraffic: true,
           );
@@ -403,7 +401,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         _resetSpeed = true;
         state.value = ConnectionView(
           phase: old.phase,
-          plan: old.plan,
+          runtime: old.runtime,
           traffic: old.traffic,
           issue: old.issue,
           permission: old.permission,
@@ -442,12 +440,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     if (connect && disconnect) {
       throw ArgumentError('Conflicting connection action');
     }
-    final row = await db.connectionStateDao.read();
     if (expectedConfiguration != null &&
         (await configuration).encode() != expectedConfiguration) {
       throw const ConnectionHostException('configurationChanged');
     }
-    final current = await _inspect(await _known(row));
+    final current = await _inspect(await _known());
     final shouldStart =
         !disconnect && (connect || (affectsRuntime && current.connected));
     final shouldStop = disconnect && current.status != VpnStatus.disconnected;
@@ -457,142 +454,111 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       throw const ConnectionHostException('reconnectRequired');
     }
     if (!shouldStart && !shouldStop) {
-      RestoreReplay? restoreReplay;
-      if ((affectsRuntime || disconnect) &&
-          current.status == VpnStatus.disconnected &&
-          row.confirmedPlanId != null &&
-          (writeAssets != null ||
-              next.encode() != (await configuration).encode())) {
-        restoreReplay = await _revokeReplay(
-          await _readPlan(row.confirmedPlanId),
-        );
-      }
-      try {
-        await db.connectionStateDao.commit(
-          settingsJson: next.encode(),
-          confirmedPlanId: row.confirmedPlanId,
-          writeAssets: writeAssets,
-        );
-      } catch (_) {
-        await restoreReplay?.call();
-        rethrow;
-      }
+      await db.connectionStateDao.commit(
+        settingsJson: next.encode(),
+        writeAssets: writeAssets,
+      );
       _publish(current);
       return;
     }
     final cancellation = Completer<void>();
     _cancel = cancellation;
-    final old = current.connected ? current.plan : null;
+    final old = current.connected ? current.runtime : null;
     if (current.connected && old == null) {
-      throw const ConnectionHostException('runtimeSnapshotUnavailable');
+      throw const ConnectionHostException('runtimeMetadataUnavailable');
     }
     state.value = ConnectionView(
       phase: ConnectionPhase.preparing,
-      plan: old,
+      runtime: old,
       traffic: current.traffic,
     );
     bool touchedHost = false;
-    RestoreReplay? restoreReplay;
     try {
-      // Keep the old nodes while this call may still restore the old plan.
       _preparingNodeIds = {...?old?.nodeIds};
-      final plan = disconnect
+      final runtime = disconnect
           ? null
           : await (prepare ?? _prepare)(next, cancellation.future);
       _checkCancelled(cancellation);
-      _pendingPlan = plan;
+      _pendingRuntime = runtime;
       var running = current;
       if (current.status != VpnStatus.disconnected) {
         touchedHost = true;
         state.value = ConnectionView(
           phase: ConnectionPhase.disconnecting,
-          plan: old,
+          runtime: old,
           traffic: current.traffic,
         );
-        running = await _stop(old);
+        running = await _stop();
         if (running.status != VpnStatus.disconnected) {
           throw const ConnectionHostException('stopNotConfirmed');
         }
       }
       _checkCancelled(cancellation);
-      if (plan != null) {
+      if (runtime != null) {
         touchedHost = true;
         state.value = ConnectionView(
           phase: ConnectionPhase.connecting,
           traffic: current.traffic,
         );
-        running = await _start(plan);
+        running = await _start(runtime);
         _checkCancelled(cancellation);
-        if (!running.connected || running.plan?.id != plan.id) {
+        if (!running.connected ||
+            running.runtime?.identity != runtime.identity) {
           throw const ConnectionHostException('startNotConfirmed');
         }
       }
-      if (disconnect) {
-        restoreReplay = await _revokeReplay(old);
-      }
       await db.connectionStateDao.commit(
-        settingsJson: (plan?.configuration ?? next).encode(),
-        confirmedPlanId: plan?.id ?? row.confirmedPlanId,
+        settingsJson: (runtime?.configuration ?? next).encode(),
         writeAssets: () async {
           await writeAssets?.call();
           _checkCancelled(cancellation);
         },
       );
-      _publish(running, issue: plan?.notice);
+      _publish(running, issue: runtime?.notice);
     } catch (error) {
-      var permission = error is ConnectionHostException
+      final permission = error is ConnectionHostException
           ? error.permission
           : null;
-      try {
-        await restoreReplay?.call();
-        var recovered = current;
-        var restoreFailed = false;
-        if (touchedHost) {
-          // Even a start timeout may leave a live tunnel; stop it before restoring.
-          recovered = await _stop(_pendingPlan);
-          if (old != null) {
-            state.value = ConnectionView(
-              phase: ConnectionPhase.recovering,
-              traffic: recovered.traffic,
-            );
-            try {
-              recovered = await _start(old);
-              if (!recovered.connected || recovered.plan?.id != old.id) {
-                throw const ConnectionHostException('restoreFailed');
-              }
-            } catch (restoreError) {
-              if (restoreError is ConnectionHostException) {
-                permission ??= restoreError.permission;
-              }
-              recovered = await _stop(old);
-              restoreFailed = true;
-            }
-          } else if (recovered.status == VpnStatus.disconnected) {
-            await _revokeReplay(_pendingPlan);
+      HostConnection? failed;
+      if (touchedHost) {
+        try {
+          failed = await _stop();
+        } catch (_) {
+          try {
+            failed = await _inspect(await _known());
+          } catch (_) {
+            // The failed state remains explicit when native state is unavailable.
           }
         }
-        _publish(
-          recovered,
-          issue: restoreFailed
-              ? 'restoreFailed'
-              : cancellation.isCompleted
-              ? 'cancelled'
-              : error is ConnectionHostException
-              ? error.reason
-              : 'changeFailed',
+      }
+      final issue = cancellation.isCompleted
+          ? 'cancelled'
+          : error is ConnectionHostException
+          ? error.reason
+          : 'changeFailed';
+      if (touchedHost) {
+        final status = failed?.status;
+        _lastNativeStatus = status;
+        _failureLatched = true;
+        state.value = ConnectionView(
+          phase: ConnectionPhase.failed,
+          runtime: status == VpnStatus.disconnected
+              ? null
+              : failed?.runtime ??
+                    _pendingRuntime ??
+                    state.value.runtime ??
+                    current.runtime,
+          traffic: failed?.traffic ?? current.traffic,
+          issue: issue,
           permission: permission,
         );
-      } catch (recoveryError) {
-        await _publishHostFailure(
-          'restoreFailed',
-          error: recoveryError,
-          permission: permission,
-        );
-        rethrow;
+        _syncPolling();
+      } else {
+        _publish(current, issue: issue, permission: permission);
       }
       rethrow;
     } finally {
-      _pendingPlan = null;
+      _pendingRuntime = null;
       _preparingNodeIds = {};
       _cancel = null;
     }
@@ -616,14 +582,13 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   /// Restore/clear already hold DataMaintenance.exclusive. Do not re-enter it.
   Future<void> stopForMaintenance() async {
     try {
-      final row = await db.connectionStateDao.read();
-      final current = await _inspect(await _known(row));
+      final current = await _inspect(await _known());
       state.value = ConnectionView(
         phase: ConnectionPhase.disconnecting,
-        plan: current.plan,
+        runtime: current.runtime,
         traffic: current.traffic,
       );
-      _publish(await _stop(current.plan));
+      _publish(await _stop());
     } catch (error) {
       await _publishHostFailure('stopFailed', error: error);
       rethrow;
@@ -635,49 +600,42 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     required Object error,
     PlatformPermissionResult? permission,
   }) async {
-    ConnectionPlan? plan;
+    ConnectionRuntime? runtime;
     var traffic = state.value.traffic;
     _lastNativeStatus = null;
     try {
-      final row = await db.connectionStateDao.read();
-      final current = await _inspect(await _known(row));
+      final current = await _inspect(await _known());
       _lastNativeStatus = current.status;
       traffic = current.traffic ?? traffic;
-      // The actual running plan can differ from saved settings after a failed
-      // change. Keep it visible and protect its nodes without committing it.
+      // The actual runtime can differ from saved settings after a failed change.
+      // Keep it visible and protect its nodes without committing it.
       if (current.status != VpnStatus.disconnected) {
-        plan = current.plan;
+        runtime = current.runtime;
       }
     } catch (_) {
       // Unknown host state stays an explicit failure; retry inspects it again.
     }
     state.value = ConnectionView(
       phase: ConnectionPhase.failed,
-      plan: plan,
+      runtime: runtime,
       traffic: traffic,
       issue: issue,
       permission:
           permission ??
           (error is ConnectionHostException ? error.permission : null),
     );
+    _failureLatched = true;
   }
 
   Future<void> resetTraffic() => _run(() async {
-    final row = await db.connectionStateDao.read();
-    final current = await _inspect(await _known(row));
-    final snapshot = await _resetTraffic(current.plan);
+    final current = await _inspect(await _known());
+    final traffic = await _resetTraffic(current.runtime);
     final previous = current.traffic ?? state.value.traffic;
     _publish(
       HostConnection(
         current.status,
-        plan: current.plan,
-        traffic:
-            snapshot ??
-            previous?.withTotals(
-              uplink: 0,
-              downlink: 0,
-              resetGeneration: previous.resetGeneration + 1,
-            ),
+        runtime: current.runtime,
+        traffic: traffic ?? previous?.withTotals(uplink: 0, downlink: 0),
       ),
     );
   });
@@ -686,6 +644,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       DataMaintenance.run(() async {
         await initialize();
         return _commands.run((_) async {
+          _failureLatched = false;
           _commandActive = true;
           _commandGeneration++;
           _trafficGeneration++;
@@ -726,11 +685,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     final sameSession =
         current.connected &&
         old.phase == ConnectionPhase.connected &&
-        current.plan?.id == old.plan?.id &&
+        current.runtime?.identity == old.runtime?.identity &&
         next != null &&
         previous?.sessionId == next.sessionId;
-    // A saved 30s snapshot must not replace newer live counters during a status
-    // refresh. Explicit resets still publish their new totals/reset generation.
+    // A saved 30s sample must not replace newer live counters during a status
+    // refresh. Explicit resets still publish their new totals.
     final retainLive =
         !liveTraffic &&
         keepResult &&
@@ -756,13 +715,17 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     }
     if (liveTraffic) _resetSpeed = false;
     state.value = ConnectionView(
-      phase: switch (current.status) {
-        VpnStatus.connected => ConnectionPhase.connected,
-        VpnStatus.connecting => ConnectionPhase.connecting,
-        VpnStatus.disconnecting => ConnectionPhase.disconnecting,
-        VpnStatus.disconnected => ConnectionPhase.disconnected,
-      },
-      plan: current.status == VpnStatus.disconnected ? null : current.plan,
+      phase: _failureLatched
+          ? ConnectionPhase.failed
+          : switch (current.status) {
+              VpnStatus.connected => ConnectionPhase.connected,
+              VpnStatus.connecting => ConnectionPhase.connecting,
+              VpnStatus.disconnecting => ConnectionPhase.disconnecting,
+              VpnStatus.disconnected => ConnectionPhase.disconnected,
+            },
+      runtime: current.status == VpnStatus.disconnected
+          ? null
+          : current.runtime,
       traffic: display,
       metricsAvailable:
           current.connected &&
@@ -771,8 +734,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       downloadSpeed: retainLive ? old.downloadSpeed : download,
       issue:
           issue ??
-          (current.connected && current.plan == null
-              ? 'runtimeSnapshotUnavailable'
+          (current.connected && current.runtime == null
+              ? 'runtimeMetadataUnavailable'
               : null),
       permission: permission,
     );
@@ -785,6 +748,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _pendingStatus = null;
     _lastNativeStatus = null;
     _resetSpeed = true;
+    _failureLatched = false;
     state.value = const ConnectionView();
     _syncPolling();
   }

@@ -670,7 +670,7 @@ interface BridgeHostApi {
   fun getAppIcon(packageName: String, callback: (Result<ByteArray?>) -> Unit)
   fun useSystemExtension(callback: (Result<Boolean>) -> Unit)
   fun appleVpnCapabilities(callback: (Result<AppleVpnCapabilities>) -> Unit)
-  fun readLog(planId: String, access: Boolean, offset: Long, limit: Long, callback: (Result<NativeLogChunk?>) -> Unit)
+  fun readLog(access: Boolean, offset: Long, limit: Long, callback: (Result<NativeLogChunk?>) -> Unit)
   fun queryLaunchAtLogin(callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
   fun setLaunchAtLogin(enabled: Boolean, callback: (Result<NativeLaunchAtLoginResult>) -> Unit)
   fun openLaunchAtLoginSettings(callback: (Result<Boolean>) -> Unit)
@@ -893,11 +893,10 @@ interface BridgeHostApi {
         if (api != null) {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
-            val planIdArg = args[0] as String
-            val accessArg = args[1] as Boolean
-            val offsetArg = args[2] as Long
-            val limitArg = args[3] as Long
-            api.readLog(planIdArg, accessArg, offsetArg, limitArg) { result: Result<NativeLogChunk?> ->
+            val accessArg = args[0] as Boolean
+            val offsetArg = args[1] as Long
+            val limitArg = args[2] as Long
+            api.readLog(accessArg, offsetArg, limitArg) { result: Result<NativeLogChunk?> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MessagesPigeonUtils.wrapError(error))

@@ -1,8 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/preparation.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/routing/custom_service.dart';
@@ -24,7 +24,7 @@ class CustomRoutingEditorDraft {
 class CustomRoutingEditorService {
   final AppDatabase db;
   final ConnectionCoordinator coordinator;
-  final Future<ConnectionPlan> Function(
+  final Future<ConnectionRuntime> Function(
     ConnectionConfiguration,
     Future<void>,
     RoutingProfileState,
@@ -78,7 +78,7 @@ class CustomRoutingEditorService {
     final configuration = await coordinator.configuration;
     final connection = configuration.connection;
     final selected = original != null && _selects(connection, original.id);
-    final running = coordinator.state.value.plan?.configuration.connection;
+    final running = coordinator.state.value.runtime?.configuration.connection;
     if (original != null &&
         running != null &&
         !running.expert &&
@@ -110,7 +110,6 @@ class CustomRoutingEditorService {
                   next,
                   cancelled: cancelled,
                   customDraft: state,
-                  prepareAssets: geodata?.copyFilesTo,
                   onResolved: coordinator.reportResolvedNodes,
                 )
           : null,
@@ -135,7 +134,7 @@ class CustomRoutingEditorService {
     final configuration = await coordinator.configuration;
     final connection = configuration.connection;
     final selected = _selects(connection, original.id);
-    final running = coordinator.state.value.plan?.configuration.connection;
+    final running = coordinator.state.value.runtime?.configuration.connection;
     if (running != null &&
         !running.expert &&
         _selects(running, original.id) &&

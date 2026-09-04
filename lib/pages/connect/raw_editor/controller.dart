@@ -136,7 +136,7 @@ class RawEditorController extends ChangeNotifier {
     testResult = null;
     _notify();
     try {
-      final result = await service.test(draft, geodata: transfers.pending);
+      final result = await service.test(draft);
       if (!_disposed && revision == _textRevision) testResult = result;
     } catch (_) {
       if (context.mounted && revision == _textRevision) {

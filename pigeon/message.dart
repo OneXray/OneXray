@@ -51,9 +51,9 @@ abstract class BridgeHostApi {
   @asyncCallback
   AppleVpnCapabilities appleVpnCapabilities();
 
-  // Fixed System Extension plan logs. Offset -1 reads the bounded file tail.
+  // Fixed System Extension logs. Offset -1 reads the bounded file tail.
   @asyncCallback
-  NativeLogChunk? readLog(String planId, bool access, int offset, int limit);
+  NativeLogChunk? readLog(bool access, int offset, int limit);
 
   @asyncCallback
   NativeLaunchAtLoginResult queryLaunchAtLogin();

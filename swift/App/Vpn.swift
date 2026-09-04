@@ -247,7 +247,7 @@ class VPNManager {
                 if let session = vpn.connection as? NETunnelProviderSession {
                     if Constants.useSystemExtension {
                         try session.startTunnel(options: ["source": "app" as NSString])
-                        try await syncDatAndStart(session: session, request: request)
+                        try await syncDatAndStart(session: session)
                     } else {
                         try session.startTunnel()
                     }
@@ -416,9 +416,9 @@ class VPNManager {
 
     // MARK: - System Extension path rewriting + XPC dat sync
 
-    func readLog(planId: String, access: Bool, offset: Int64, limit: Int64) async throws -> TunnelLogChunk? {
+    func readLog(access: Bool, offset: Int64, limit: Int64) async throws -> TunnelLogChunk? {
         guard Constants.useSystemExtension else { throw RuntimeStateError.unsupported }
-        try TunnelLogChunk.validateRequest(planId: planId, offset: offset, limit: limit)
+        try TunnelLogChunk.validateRequest(offset: offset, limit: limit)
         guard let manager = try await findVpn(),
               let session = manager.connection as? NETunnelProviderSession else {
             throw RuntimeStateError.unavailable
@@ -426,7 +426,7 @@ class VPNManager {
         // Reuse the read-only provider channel, including when disconnected.
         // A failed offline delivery is unavailable, never a cached success.
         let response = try await sendTunnelRequest(session: session,
-            .readLog(planId: planId, access: access, offset: offset, limit: limit),
+            .readLog(access: access, offset: offset, limit: limit),
             timeoutSeconds: 5)
         switch response {
         case let .logChunk(chunk):
@@ -480,14 +480,11 @@ class VPNManager {
         return newRequest
     }
 
-    private func syncDatAndStart(session: NETunnelProviderSession, request: StartVpnRequest) async throws {
-        guard let text = request.coreInvokeText,
-              let planId = try LibXrayInvokeRequest.fromText(text).payload?.runtime?.planId,
-              isValidPlanId(planId),
-              let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
+    private func syncDatAndStart(session: NETunnelProviderSession) async throws {
+        guard let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
             throw VPNError.routingDataSyncFailed
         }
-        let directory = userGroup.adaptedAppendPath(path: "run/plans/\(planId)/dat")
+        let directory = userGroup.adaptedAppendPath(path: "dat")
         let local = try buildLocalDatManifest(directory: directory)
         try await waitSessionMessageable(session: session)
 

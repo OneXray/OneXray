@@ -7,9 +7,9 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/plan.dart';
 import 'package:onexray/service/connection/preparation.dart';
 import 'package:onexray/service/connection/resolver.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/ping/service.dart';
@@ -41,16 +41,16 @@ class ServerRemoval {
 }
 
 /// Asset changes use the same commit/rollback boundary as connection changes.
-/// Candidate measurements and favorites never mutate the active plan.
+/// Candidate measurements and favorites never mutate the active runtime.
 class ServerAssetService {
   final AppDatabase db;
   final ConnectionCoordinator coordinator;
   final Future<String> Function(String) _validate;
   final void Function(List<int>) _schedule;
-  final Future<ConnectionPlan> Function(
+  final Future<ConnectionRuntime> Function(
     ConnectionConfiguration,
     Future<void>,
-    Map<int, ServerSnapshot>,
+    Map<int, ResolvedServer>,
     Set<int>,
   )?
   prepare;
@@ -87,7 +87,7 @@ class ServerAssetService {
   static bool selectable(CoreConfigData row) {
     if (measured(row) && !healthy(row)) return false;
     try {
-      final outbound = ServerSnapshot.fromRow(row).outbound;
+      final outbound = ResolvedServer.fromRow(row).outbound;
       if (outboundString(outbound, 'protocol')?.isNotEmpty != true) {
         return false;
       }
@@ -158,10 +158,9 @@ class ServerAssetService {
       // A repaired legacy row is not a metadata-only edit.
     }
     final active =
-        coordinator.state.value.plan?.nodeIds.contains(original.id) == true;
+        coordinator.state.value.runtime?.nodeIds.contains(original.id) == true;
     final reconnect = active && semanticChange;
-    final affectsRuntime =
-        semanticChange && (active || await _lastPlanUses({original.id}));
+    final affectsRuntime = semanticChange && active;
     var allowReconnect = false;
     if (reconnect &&
         coordinator.state.value.phase == ConnectionPhase.connected) {
@@ -169,8 +168,8 @@ class ServerAssetService {
       if (!allowReconnect) return false;
     }
     final companion = outboundCompanion(outbound);
-    final snapshots = {
-      original.id: ServerSnapshot(
+    final drafts = {
+      original.id: ResolvedServer(
         id: original.id,
         sourceId: original.subId,
         outbound: outbound,
@@ -182,12 +181,12 @@ class ServerAssetService {
       allowReconnect: allowReconnect,
       affectsRuntime: affectsRuntime,
       prepare: reconnect
-          ? (next, cancelled) => _prepare(next, cancelled, snapshots, const {})
+          ? (next, cancelled) => _prepare(next, cancelled, drafts, const {})
           : null,
       writeAssets: () async {
         if (semanticChange &&
             !reconnect &&
-            coordinator.state.value.plan?.nodeIds.contains(original.id) ==
+            coordinator.state.value.runtime?.nodeIds.contains(original.id) ==
                 true) {
           throw const FormatException('Server became active while editing');
         }
@@ -280,7 +279,7 @@ class ServerAssetService {
     );
     final active =
         coordinator.state.value.phase == ConnectionPhase.connected &&
-        coordinator.state.value.plan?.nodeIds.any(removed.contains) == true;
+        coordinator.state.value.runtime?.nodeIds.any(removed.contains) == true;
     return ServerRemoval(
       ids: Set.unmodifiable(removed),
       sourceId: sourceId,
@@ -309,21 +308,21 @@ class ServerAssetService {
         refreshed.disconnect != preview.disconnect) {
       throw const FormatException('Deletion preview changed');
     }
-    final affectsRuntime =
-        preview.affectsRuntime || await _lastPlanUses(preview.ids);
     await coordinator.apply(
       preview.configuration,
       expectedConfiguration: preview.expectedConfiguration,
       disconnect: preview.disconnect,
       allowReconnect: preview.affectsRuntime,
-      affectsRuntime: affectsRuntime && !preview.disconnect,
+      affectsRuntime: preview.affectsRuntime && !preview.disconnect,
       prepare: preview.affectsRuntime && !preview.disconnect
           ? (next, cancelled) =>
                 _prepare(next, cancelled, const {}, preview.ids)
           : null,
       writeAssets: () async {
         if (!preview.affectsRuntime &&
-            coordinator.state.value.plan?.nodeIds.any(preview.ids.contains) ==
+            coordinator.state.value.runtime?.nodeIds.any(
+                  preview.ids.contains,
+                ) ==
                 true) {
           throw const FormatException('Server became active before deletion');
         }
@@ -349,20 +348,10 @@ class ServerAssetService {
     );
   }
 
-  // A disconnected native profile can still reference its last frozen inputs.
-  // This affects offline invalidation, not the UI's reconnect confirmation.
-  Future<bool> _lastPlanUses(Set<int> ids) async {
-    if (coordinator.state.value.phase != ConnectionPhase.disconnected) {
-      return false;
-    }
-    final plan = await coordinator.readConfirmedPlan();
-    return plan?.nodeIds.any(ids.contains) == true;
-  }
-
-  Future<ConnectionPlan> _prepare(
+  Future<ConnectionRuntime> _prepare(
     ConnectionConfiguration next,
     Future<void> cancelled,
-    Map<int, ServerSnapshot> drafts,
+    Map<int, ResolvedServer> drafts,
     Set<int> removed,
   ) =>
       prepare?.call(next, cancelled, drafts, removed) ??

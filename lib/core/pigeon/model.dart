@@ -10,16 +10,16 @@ class StartVpnRequest {
   String? socksPort;
   String? metricsPort;
   String? coreInvokeText;
-  int? configId;
   String? snapshotToken;
+  String? metadataJson;
 
   StartVpnRequest(
     this.tun,
     this.socksPort,
     this.metricsPort,
     this.coreInvokeText, {
-    this.configId,
     this.snapshotToken,
+    this.metadataJson,
   });
 
   factory StartVpnRequest.fromJson(Map<String, dynamic> json) =>
@@ -192,14 +192,12 @@ class RunXrayRequest {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class ManagedRuntimeRequest {
   final String statePath;
-  final String planId;
   final String inboundTag;
   final String? listen;
   final String? token;
 
   const ManagedRuntimeRequest({
     required this.statePath,
-    required this.planId,
     this.inboundTag = 'tunIn',
     this.listen,
     this.token,
@@ -310,7 +308,7 @@ class LibXrayInvokeRequest {
   LibXrayMethod? method;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 3;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 4;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);

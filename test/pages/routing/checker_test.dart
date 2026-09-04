@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/routing/checker.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/routing/state.dart';
 
 void main() {
@@ -25,8 +25,6 @@ void main() {
             body: RouteChecker(
               configuration: ConnectionConfiguration(),
               customDraft: RoutingProfileState(name: ''),
-              prepareAssets: (_) async =>
-                  throw StateError('Opening a checker must not prepare assets'),
             ),
           ),
         ),

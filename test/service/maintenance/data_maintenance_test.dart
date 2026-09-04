@@ -73,4 +73,44 @@ void main() {
       expect(await DataMaintenance.exclusive(() async => 8), 8);
     },
   );
+
+  test('cleanup waits for maintenance instead of being dropped', () async {
+    final release = Completer<void>();
+    final order = <String>[];
+    final maintenance = DataMaintenance.exclusive(() async {
+      order.add('maintenance started');
+      await release.future;
+      order.add('maintenance finished');
+    });
+    final cleanup = DataMaintenance.cleanup(() async {
+      order.add('cleanup');
+    });
+
+    await Future<void>.delayed(Duration.zero);
+    expect(order, ['maintenance started']);
+    release.complete();
+    await maintenance;
+    await cleanup;
+    expect(order, ['maintenance started', 'maintenance finished', 'cleanup']);
+  });
+
+  test('cleanup waits for active readers and blocks new readers', () async {
+    final releaseReader = Completer<void>();
+    final order = <String>[];
+    final reader = DataMaintenance.run(() async {
+      order.add('reader started');
+      await releaseReader.future;
+      order.add('reader finished');
+    });
+    final cleanup = DataMaintenance.cleanup(() async {
+      order.add('cleanup');
+    });
+    await Future<void>.delayed(Duration.zero);
+    expect(order, ['reader started']);
+    await expectLater(DataMaintenance.run(() async {}), throwsStateError);
+    releaseReader.complete();
+    await reader;
+    await cleanup;
+    expect(order, ['reader started', 'reader finished', 'cleanup']);
+  });
 }

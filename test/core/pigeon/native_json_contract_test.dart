@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/model/tun_json.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/xray/raw/validator.dart';
 
@@ -36,9 +37,9 @@ void main() {
       tun,
       '11999',
       '12001',
-      '{"apiVersion":3,"method":"runXray"}',
-      configId: 7,
+      '{"apiVersion":4,"method":"runXray"}',
       snapshotToken: 'vcore-session-v2:${List.filled(64, 'a').join()}',
+      metadataJson: '{"mode":"smart"}',
     );
 
     expect(tun.toJson().keys.toSet(), {
@@ -68,8 +69,8 @@ void main() {
       'socksPort',
       'metricsPort',
       'coreInvokeText',
-      'configId',
       'snapshotToken',
+      'metadataJson',
     });
   });
 
@@ -78,12 +79,11 @@ void main() {
     () async {
       final result = await XrayRawValidator.validate(
         '{"name":"Test","outbounds":[{"protocol":"freedom"}]}',
-        assetDirectory: '/fixture/assets',
         testXray: (text) async {
           final config = jsonDecode(text) as Map<String, dynamic>;
           expect(config['env'], {
-            'xray.location.asset': '/fixture/assets',
-            'xray.location.cert': '/fixture/assets',
+            'xray.location.asset': VpnConstants.datDir,
+            'xray.location.cert': VpnConstants.datDir,
           });
           return '';
         },
@@ -92,20 +92,20 @@ void main() {
     },
   );
 
-  test('runXray request uses the v3 in-memory JSON contract', () {
+  test('runXray request uses the v4 in-memory JSON contract', () {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.runXray,
       payload: RunXrayRequest('{"outbounds":[]}').toJson(),
     );
 
     expect(request.toJson(), {
-      'apiVersion': 3,
+      'apiVersion': 4,
       'method': 'runXray',
       'payload': {'xrayJson': '{"outbounds":[]}'},
     });
   });
 
-  test('age subscription requests use the typed v3 contract', () {
+  test('age subscription requests use the typed v4 contract', () {
     final convert = LibXrayInvokeRequest(
       method: LibXrayMethod.convertShareLinksToXrayJson,
       payload: ConvertShareLinksToXrayJsonRequest(
@@ -123,7 +123,7 @@ void main() {
     );
 
     expect(convert.toJson(), {
-      'apiVersion': 3,
+      'apiVersion': 4,
       'method': 'convertShareLinksToXrayJson',
       'payload': {
         'text': 'encrypted text',
@@ -131,12 +131,12 @@ void main() {
       },
     });
     expect(generate.toJson(), {
-      'apiVersion': 3,
+      'apiVersion': 4,
       'method': 'generateAgeKeyPair',
       'payload': {'keyType': 'x25519'},
     });
     expect(generateHybrid.toJson(), {
-      'apiVersion': 3,
+      'apiVersion': 4,
       'method': 'generateAgeKeyPair',
       'payload': {'keyType': 'hybrid'},
     });

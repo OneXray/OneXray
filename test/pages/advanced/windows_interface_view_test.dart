@@ -11,7 +11,7 @@ import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/policy_editor.dart';
-import 'package:onexray/service/connection/plan.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/launch/setup.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';

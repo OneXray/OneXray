@@ -14,7 +14,4 @@ class GeoData extends Table {
   IntColumn get categoryCount => integer()();
 
   IntColumn get ruleCount => integer()();
-
-  /// NULL preserves the pre-generation flat files without rewriting old rows.
-  TextColumn get generation => text().nullable()();
 }
