@@ -136,7 +136,6 @@ void _onlyKeys(Map<String, dynamic> value, Set<String> allowed, String path) {
 void _validateRule(Map<String, dynamic> rule, int index) {
   final path = 'routing.rules[$index]';
   _onlyKeys(rule, const {
-    'type',
     'ruleTag',
     'domain',
     'ip',
@@ -145,9 +144,6 @@ void _validateRule(Map<String, dynamic> rule, int index) {
     'balancerTag',
     'outboundTag',
   }, path);
-  if (rule.containsKey('type') && rule['type'] != 'field') {
-    throw FormatException('$path.type must be field');
-  }
   if (rule.containsKey('ruleTag') &&
       (rule['ruleTag'] is! String ||
           (rule['ruleTag'] as String).trim().isEmpty)) {

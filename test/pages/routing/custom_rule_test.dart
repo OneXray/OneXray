@@ -21,7 +21,6 @@ void main() {
       controller.setNetwork('udp');
       controller.setAction('direct');
       expect(controller.buildRule(), {
-        'type': 'field',
         'ruleTag': 'Renamed',
         'domain': ['geosite:CN'],
         'ip': ['10.0.0.0/8'],

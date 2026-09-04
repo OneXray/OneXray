@@ -23,7 +23,7 @@ CompiledConnection compileRaw(
 }) => ConnectionCompiler.compile(
   settings: ConnectionSettings(expert: true),
   entries: [],
-  rawText: jsonEncode(source),
+  raw: source,
   regions: RegionCatalog.fromJson(
     {'geosite': <String, dynamic>{}, 'geoip': <String, dynamic>{}},
     geositeCodes: [],

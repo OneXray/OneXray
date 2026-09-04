@@ -26,7 +26,6 @@ CustomRoutingTemplate _template({int entries = 1, String action = 'direct'}) =>
         'routing': {
           'rules': [
             {
-              'type': 'field',
               'ruleTag': 'Example',
               'domain': ['domain:example.com'],
               'outboundTag': action,
@@ -71,7 +70,6 @@ void main() {
     expect(CustomRoutingService.read(row).entryCount, 3);
     expect((json['routing'] as Map)['rules'], [
       {
-        'type': 'field',
         'ruleTag': 'Example',
         'domain': ['domain:example.com'],
         'outboundTag': 'direct',

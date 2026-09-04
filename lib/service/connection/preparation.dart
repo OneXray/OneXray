@@ -178,20 +178,25 @@ class ConnectionPreparation {
         geositeCodes: RegionCatalog.codesFromIndex(await readIndex('geosite')),
         geoipCodes: RegionCatalog.codesFromIndex(await readIndex('geoip')),
       );
-      final rawObject = raw == null
+      final rawConfig = raw == null
           ? null
-          : jsonDecode(raw) as Map<String, dynamic>;
-      final rawInbounds = rawObject?['inbounds'] as List<dynamic>? ?? [];
+          : ConnectionCompiler.parseRawJson(raw);
+      List<Map<String, dynamic>> rawObjectArray(String key) {
+        final value = rawConfig?[key];
+        if (value == null) return [];
+        if (value is! List ||
+            value.any((entry) => entry is! Map<String, dynamic>)) {
+          throw FormatException('$key must be an object array');
+        }
+        return value.cast<Map<String, dynamic>>();
+      }
+
+      final rawInbounds = rawObjectArray('inbounds');
+      final rawOutbounds = rawObjectArray('outbounds');
       final ports = await allocateRuntimePorts(rawInbounds);
       final bootstrap = <String, List<String>>{};
-      if (!policy.ipv6Enabled) {
-        final outbounds = rawObject == null
-            ? [
-                ...entries.map((entry) => entry.outbound),
-                if (finalExit != null) finalExit.outbound,
-              ]
-            : (rawObject['outbounds'] as List).cast<Map<String, dynamic>>();
-        for (final address in outbounds.expand(outboundAddresses).toSet()) {
+      if (!policy.ipv6Enabled && rawConfig != null) {
+        for (final address in rawOutbounds.expand(outboundAddresses).toSet()) {
           if (InternetAddress.tryParse(address) != null) continue;
           final addresses = await InternetAddress.lookup(
             address,
@@ -211,7 +216,7 @@ class ConnectionPreparation {
         settings: settings,
         entries: entries,
         finalExit: finalExit,
-        rawText: raw,
+        raw: rawConfig,
         custom: custom,
         regions: regions,
         options: RuntimeOptions(

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/connection/runtime_network_policy.dart';
@@ -10,6 +11,7 @@ import 'package:onexray/service/routing/region_catalog.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/runtime_inbounds.dart';
+import 'package:onexray/service/xray/runtime_outbounds.dart';
 
 class ServerSnapshot {
   final int id;
@@ -133,26 +135,27 @@ class CompiledConnection {
 /// Pure value compilation. Never opens a database, edits an asset, allocates a
 /// port or starts Xray. Runtime files and successful commits belong to P3.
 class ConnectionCompiler {
+  static Map<String, dynamic> parseRawJson(String text) {
+    final value = jsonDecode(text);
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Raw configuration must be an object');
+    }
+    return value;
+  }
+
   /// Compare editor drafts through the same runtime overrides as real Raw plans.
   /// The caller supplies identical options for both drafts; no files are written.
   static Map<String, dynamic> rawSemanticJson(
     String text,
     RuntimeOptions options,
   ) {
-    final value = jsonDecode(text);
-    if (value is! Map<String, dynamic>) {
-      throw const FormatException('Raw configuration must be an object');
-    }
-    value.remove('name');
-    _runtime(value, options, raw: true);
-    return value;
+    final value = parseRawJson(text)..remove('name');
+    return _runtimeMap(value, options, raw: true);
   }
 
-  static const defaultOutbound = 'app-default';
-  static const defaultInbound = 'app-default-vpn';
   static const dnsProxy = 'app-dns-proxy';
   static const dnsDirect = 'app-dns-direct';
-  static const dnsOutbound = 'app-dns';
+  static const dnsOutbound = 'dnsOut';
   static const ipv6Block = 'app-ipv6-block';
 
   /// The editor and runtime share these exact built-in rules and their order.
@@ -162,7 +165,7 @@ class ConnectionCompiler {
   ) {
     final rules = <Map<String, dynamic>>[];
     void add(String reason, Map<String, dynamic> fields) {
-      rules.add({'type': 'field', 'ruleTag': 'app-smart-$reason', ...fields});
+      rules.add({'ruleTag': 'app-smart-$reason', ...fields});
     }
 
     if (smart.blockAds) {
@@ -202,7 +205,7 @@ class ConnectionCompiler {
     required ConnectionSettings settings,
     required List<ServerSnapshot> entries,
     ServerSnapshot? finalExit,
-    String? rawText,
+    Map<String, dynamic>? raw,
     CustomRoutingTemplate? custom,
     required RegionCatalog regions,
     required RuntimeOptions options,
@@ -211,16 +214,12 @@ class ConnectionCompiler {
     final ruleTags = <String, ({int? index, String name})>{};
     late final Map<String, dynamic> config;
     if (settings.expert) {
-      if (rawText == null || entries.isNotEmpty || finalExit != null) {
+      if (raw == null || entries.isNotEmpty || finalExit != null) {
         throw const FormatException(
           'Raw configuration is required without normal nodes',
         );
       }
-      final decoded = jsonDecode(rawText);
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('Raw JSON must be an object');
-      }
-      config = decoded;
+      config = _runtimeMap(raw, options, raw: true);
     } else {
       final required = settings.requiredEntries(
         customEntryCount: custom?.entryCount,
@@ -264,34 +263,14 @@ class ConnectionCompiler {
           rules.add({...rule, 'ruleTag': tag});
         }
       }
-      final outbounds = <Map<String, dynamic>>[
-        {
-          'tag': defaultOutbound,
-          'protocol': 'loopback',
-          'settings': {'inboundTag': defaultInbound},
-        },
-        {'tag': 'direct', 'protocol': 'freedom'},
-        {'tag': 'block', 'protocol': 'blackhole'},
-        {
-          'tag': dnsOutbound,
-          'protocol': 'dns',
-          'settings': {
-            'rules': [
-              {'action': 'hijack', 'qType': '1,28'},
-              {'action': 'direct'},
-            ],
-          },
-          'streamSettings': {
-            'sockopt': {'dialerProxy': defaultOutbound},
-          },
-        },
-      ];
+      final entriesOutbounds = <Map<String, dynamic>>[];
+      final exits = <Map<String, dynamic>>[];
       final selector = <String>[];
       for (final (index, entry) in entries.indexed) {
         final entryTag = 'app-entry-$index';
         final outbound = _node(entry, entryTag);
         nodeTags[entryTag] = entry.id;
-        outbounds.add(outbound);
+        entriesOutbounds.add(outbound);
         if (finalExit == null) {
           selector.add(entryTag);
         } else {
@@ -299,10 +278,26 @@ class ConnectionCompiler {
           final exit = _node(finalExit, exitTag);
           setOutboundDialerProxy(exit, entryTag);
           nodeTags[exitTag] = finalExit.id;
-          outbounds.add(exit);
+          exits.add(exit);
           selector.add(exitTag);
         }
       }
+      final outbounds = <Map<String, dynamic>>[
+        if (finalExit == null) ...entriesOutbounds else ...exits,
+        if (finalExit != null) ...entriesOutbounds,
+      ];
+      outbounds.addAll([
+        createFreedomOutboundMap(
+          tag: 'direct',
+          interfaceName:
+              options.platform == ConnectionPlatform.windows ||
+                  options.platform == ConnectionPlatform.linux
+              ? options.interfaceName
+              : null,
+        ),
+        createBlackholeOutboundMap(tag: 'block'),
+        createDnsOutboundMap(tag: dnsOutbound, dialerProxy: 'direct'),
+      ]);
       final directDomains = <String>{};
       if (settings.trafficMode != TrafficMode.smart ||
           settings.smart.directDns) {
@@ -312,7 +307,7 @@ class ConnectionCompiler {
           directDomains.addAll((rule['domain'] as List?)?.cast<String>() ?? []);
         }
       }
-      config = {
+      final source = XrayJson.fromJson({
         'outbounds': outbounds,
         'observatory': {'subjectSelector': <String>[]},
         'dns': {
@@ -338,26 +333,22 @@ class ConnectionCompiler {
           ],
           'rules': [
             {
-              'type': 'field',
               'ruleTag': 'app-default',
-              'inboundTag': [defaultInbound, 'pingIn', dnsProxy],
+              'inboundTag': ['pingIn', dnsProxy],
               'balancerTag': 'proxy',
             },
             {
-              'type': 'field',
               'ruleTag': 'app-direct-dns',
               'inboundTag': [dnsDirect],
               'outboundTag': 'direct',
             },
             {
-              'type': 'field',
               'ruleTag': 'app-tunnel-dns',
               'inboundTag': ['tunIn'],
               'port': '53',
               'outboundTag': dnsOutbound,
             },
             {
-              'type': 'field',
               'ruleTag': 'app-tunnel-dot',
               'inboundTag': ['tunIn'],
               'port': '853',
@@ -366,9 +357,10 @@ class ConnectionCompiler {
             ...rules,
           ],
         },
-      };
+      });
+      final runtime = _runtimeMap(source.toJson(), options, raw: false);
+      config = XrayJson.fromJson(runtime).toJson();
     }
-    _runtime(config, options, raw: settings.expert);
     return CompiledConnection(
       xrayJson: jsonEncode(config),
       settingsJson: jsonEncode(settings.toJson()),
@@ -415,11 +407,12 @@ class ConnectionCompiler {
     return value.cast<Map<String, dynamic>>().toList();
   }
 
-  static void _runtime(
-    Map<String, dynamic> config,
+  static Map<String, dynamic> _runtimeMap(
+    Map<String, dynamic> source,
     RuntimeOptions options, {
     required bool raw,
   }) {
+    final config = jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
     validateLocalDnsNetworkPolicy(
       config,
       ipv6: options.ipv6,
@@ -512,13 +505,13 @@ class ConnectionCompiler {
     }
     final dns = _object(config, 'dns');
     final queryStrategy = options.ipv6 ? 'UseIP' : 'UseIPv4';
-    dns['queryStrategy'] = queryStrategy;
+    if (raw) dns['queryStrategy'] = queryStrategy;
     for (final server in (dns['servers'] as List? ?? [])) {
       if (server is Map<String, dynamic>) {
         server['queryStrategy'] = queryStrategy;
       }
     }
-    if (options.bootstrapAddresses.isNotEmpty) {
+    if (raw && options.bootstrapAddresses.isNotEmpty) {
       final hosts = _object(dns, 'hosts');
       for (final entry in options.bootstrapAddresses.entries) {
         if (entry.value.isEmpty ||
@@ -545,27 +538,36 @@ class ConnectionCompiler {
       } else {
         sockopt.remove('interface');
       }
+      if (!raw) {
+        sockopt.remove('domainStrategy');
+        final settings = outbound['settings'];
+        if (settings is Map<String, dynamic>) {
+          settings.remove('domainStrategy');
+        }
+      }
       if (!options.ipv6) {
         for (final address in outboundAddresses(outbound)) {
           final ip = InternetAddress.tryParse(address);
           if (ip?.type == InternetAddressType.IPv6) {
             throw const FormatException('IPv6 is disabled');
           }
-          if (ip == null && !options.bootstrapAddresses.containsKey(address)) {
+          if (raw &&
+              ip == null &&
+              !options.bootstrapAddresses.containsKey(address)) {
             throw const FormatException(
               'IPv4 bootstrap resolution is required',
             );
           }
         }
-        sockopt['domainStrategy'] = 'ForceIPv4';
-        if (outbound['protocol'] == 'freedom') {
-          _object(outbound, 'settings')['domainStrategy'] = 'ForceIPv4';
+        if (raw) {
+          sockopt['domainStrategy'] = 'ForceIPv4';
+          if (outbound['protocol'] == 'freedom') {
+            _object(outbound, 'settings')['domainStrategy'] = 'ForceIPv4';
+          }
         }
-      } else if (!raw) {
-        // Physical node names use the protected platform resolver, not the
-        // proxy DNS server whose connection they are needed to establish.
-        sockopt['domainStrategy'] = 'AsIs';
       }
+      if (sockopt.isEmpty) stream.remove('sockopt');
+      if (stream.isEmpty) outbound.remove('streamSettings');
     }
     final routing = _object(config, 'routing');
     final rules = _objects(routing, 'rules');
@@ -583,7 +585,6 @@ class ConnectionCompiler {
         outbounds.first['tag'] = firstTag;
       }
       rules.insert(0, {
-        'type': 'field',
         'ruleTag': pingRule,
         'inboundTag': ['pingIn'],
         'outboundTag': firstTag,
@@ -591,19 +592,23 @@ class ConnectionCompiler {
     }
     // Global IPv6 policy must precede even the App-owned Raw ping rule.
     if (!options.ipv6) {
-      if (tags.contains(ipv6Block)) {
-        throw const FormatException('Reserved IPv6 tag conflict');
+      var blockTag = 'block';
+      if (raw) {
+        if (tags.contains(ipv6Block)) {
+          throw const FormatException('Reserved IPv6 tag conflict');
+        }
+        blockTag = ipv6Block;
+        outbounds.add({'tag': blockTag, 'protocol': 'blackhole'});
       }
-      outbounds.add({'tag': ipv6Block, 'protocol': 'blackhole'});
       rules.insert(0, {
-        'type': 'field',
         'ruleTag': ipv6Block,
         'ip': ['::/0'],
-        'outboundTag': ipv6Block,
+        'outboundTag': blockTag,
       });
     }
     routing['rules'] = rules;
     config['outbounds'] = outbounds;
+    return config;
   }
 
   static bool portIncludes(Object? value, int port) {

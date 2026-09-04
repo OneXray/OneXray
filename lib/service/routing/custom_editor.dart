@@ -224,10 +224,7 @@ class CustomRoutingEditorService {
       'entries': template.entryCount,
       'strategy': template.domainStrategy,
       'rules': [
-        for (final rule in template.rules)
-          {...rule}
-            ..remove('ruleTag')
-            ..remove('type'),
+        for (final rule in template.rules) {...rule}..remove('ruleTag'),
       ],
     };
     return const DeepCollectionEquality().equals(

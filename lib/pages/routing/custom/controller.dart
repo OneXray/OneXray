@@ -226,7 +226,6 @@ class CustomRoutingEditorController extends ChangeNotifier {
     if (_inlineEditing) {
       if (index == null) {
         rules.add({
-          'type': 'field',
           'ruleTag': AppLocalizations.of(context)!.prototypeNewRule,
           'balancerTag': 'proxy',
         });

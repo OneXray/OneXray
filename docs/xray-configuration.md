@@ -18,21 +18,43 @@
 ## 普通配置编译
 
 `ConnectionCompiler` 接收不可变输入，在副本中产生配置，不自行读库、分配端口或启动 Core。
+`XrayJson` 是普通模式最终配置的唯一结构；除明确声明为 Map 的 payload 外不保留未知
+字段，也不解析 Raw JSON。outbounds 的元素保持 `Map<String, dynamic>`，便于直接插入
+完整代理节点。
+`XrayJson` 文件只定义字段映射和标准 `fromJson` / `toJson`，不负责协议分派、校验或
+运行配置构造。TUN、SOCKS、HTTP 入站设置及系统出站使用类型模型，具体运行配置由
+`runtime_inbounds.dart` 和 `runtime_outbounds.dart` 构造后写入对应 Map；系统出站的最小
+`streamSettings.sockopt` 只包含实际生成的 `dialerProxy` 和 `interface`。
+运行时调整后仍须由 `XrayJson` 重新序列化，不得向普通配置注入模型外字段。
+Raw 使用独立的 Map 编译路径，未由 App 管理的根字段和嵌套字段原样保留。
 接入按选择范围与测速结果确定；已运行节点不会因后台测速或订阅更新而被热替换。
 测速状态直接由已有延迟值区分未检测、成功、失败与超时；地区使用出口国家代码，不保存
 测量来源或时间，也不引入时间过期判定或新的“是否测过”字段。
 
-普通配置始终使用 `balancerTag: proxy`，即使只有一个节点。selector 填写生成节点完整
-tag，采用 round-robin，失败回退为阻止。智能路由最终出口独立于接入；每条接入链使用
-自己的出口副本，避免链式依赖互相覆盖。Custom 不绑定具体节点或最终出口。
+普通配置中显式选择代理的规则始终使用 `balancerTag: proxy`，即使只有一个节点。
+selector 填写生成节点完整 tag，采用 round-robin，失败回退为阻止。未命中规则的流量不
+经过 balancer，而是遵循 Xray 默认行为使用第一个 outbound。智能路由最终出口独立于
+接入；每条接入链使用自己的出口副本，副本的 `dialerProxy` 指向对应接入节点，避免链式
+依赖互相覆盖。Custom 不绑定具体节点或最终出口。
+
+没有最终出口时，接入节点按用户选择顺序放在 `outbounds` 最顶部；存在最终出口时，最终
+出口副本按接入顺序位于顶部，随后才是它们依赖的接入节点。显式代理规则通过 balancer 在
+这些副本间负载均衡，未命中规则的流量默认使用第一份完整链路。其后追加系统出站。普通
+配置不再生成内部 loopback outbound。
+系统出站的 tag 固定为 `direct`、`block`、`dnsOut`。普通配置不在 outbound 的 `settings` 或
+`streamSettings.sockopt` 中写入 `domainStrategy`；完整 Raw JSON 中的用户字段不属于此
+简化范围。
 
 智能路由 IP 补匹配打开时使用 `IPIfNonMatch`：域名首轮未命中才解析为 IP 重新匹配；
-关闭为 `AsIs`，按请求已有域名或 IP 匹配。默认 VPN 通过内部 loopback 入站交给
-balancer，不用无条件 catch-all 提前截断 IP 第二轮匹配。
+关闭为 `AsIs`，按请求已有域名或 IP 匹配。这里配置的是 `routing.domainStrategy`；App
+生成的所有 rule 均省略可选的 `type: field`，且不增加无条件 catch-all 提前截断 IP
+第二轮匹配。Custom 导入将 `type` 视为不支持的字段并直接拒绝；完整 Raw JSON 保留用户
+原文，包括用户自行填写的 `type`。
 
 App DNS 固定两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。direct server 的
 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不宣称已判断 IP、端口
-或网络条件。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
+或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
+`queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
 
 ## 自定义路由
 
@@ -49,7 +71,8 @@ geoip/geosite。导入先校验、下载并生成索引，文件名冲突拒绝�
 
 ## Raw JSON
 
-Raw 保存完整原文，不经过 Profile，不因保存或测试改写原始 inbounds。运行副本保留用户
+Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或测试改写原始 inbounds。
+运行时直接解析为 Map 并在深副本上应用 App 策略。运行副本保留用户
 额外入站，但 App 接管 `tunIn`、`pingIn`、metrics、统计、日志、IPv6、运行路径及适用
 平台的出口网卡；额外 TUN、保留端口冲突或无法满足平台网络策略的配置明确失败。
 

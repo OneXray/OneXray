@@ -204,7 +204,6 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
       expect(result, {
-        'type': 'field',
         'ruleTag': 'New rule',
         'port': '443',
         'balancerTag': 'proxy',

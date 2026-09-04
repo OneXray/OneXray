@@ -80,8 +80,8 @@ class RouteCheckService {
           final routing = config['routing'] as Map<String, dynamic>;
           routing['domainStrategy'] = 'AsIs';
           routing['rules'] = [
-            {'type': 'field', 'domain': domains, 'outboundTag': 'direct'},
-            {'type': 'field', 'network': 'tcp,udp', 'balancerTag': 'proxy'},
+            {'domain': domains, 'outboundTag': 'direct'},
+            {'network': 'tcp,udp', 'balancerTag': 'proxy'},
           ];
           dnsDirect =
               (await api.checkRoute(request(jsonEncode(config)))).outboundTag ==

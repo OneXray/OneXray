@@ -10,7 +10,6 @@ void main() {
       final document = _template(2);
       document['name'] = '  My routes  ';
       final first = <String, dynamic>{
-        'type': 'field',
         'ruleTag': '  Duplicate label  ',
         'domain': ['domain:example.com', 'geosite:cn'],
         'ip': ['192.0.2.0/24', 'geoip:cn'],
@@ -266,7 +265,7 @@ void main() {
   test(
     'four conditions require valid native shapes and at least one value',
     () {
-      _rejectRule({'type': 'field', 'balancerTag': 'proxy'});
+      _rejectRule({..._rule(), 'type': 'field'});
       _rejectRule({'domain': [], 'ip': [], 'balancerTag': 'proxy'});
       for (final key in ['domain', 'ip']) {
         for (final value in [
@@ -390,7 +389,6 @@ Map<String, dynamic> _template([int count = 1]) => {
 };
 
 Map<String, dynamic> _rule() => {
-  'type': 'field',
   'ruleTag': 'A rule',
   'domain': ['domain:example.com'],
   'balancerTag': 'proxy',

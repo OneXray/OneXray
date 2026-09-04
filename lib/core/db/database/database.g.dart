@@ -2356,7 +2356,16 @@ class $$CoreConfigTableTableManager
                 favorite: favorite,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$CoreConfigTable, CoreConfigData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CoreConfigTable,
+                    CoreConfigData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -2611,7 +2620,16 @@ class $$SubscriptionTableTableManager
                 expanded: expanded,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SubscriptionTable, SubscriptionData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SubscriptionTable,
+                    SubscriptionData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -2864,7 +2882,16 @@ class $$GeoDataTableTableManager
                 generation: generation,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$GeoDataTable, GeoDataData>(table),
+                  BaseReferences<_$AppDatabase, $GeoDataTable, GeoDataData>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -3013,7 +3040,16 @@ class $$RoutingProfileTableTableManager
             required String data,
           }) => RoutingProfileCompanion.insert(id: id, name: name, data: data),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$RoutingProfileTable, RoutingProfileData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $RoutingProfileTable,
+                    RoutingProfileData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -3179,7 +3215,18 @@ class $$ConnectionStateTableTableManager
                 confirmedPlanId: confirmedPlanId,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ConnectionStateTable, ConnectionStateData>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ConnectionStateTable,
+                    ConnectionStateData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

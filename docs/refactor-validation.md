@@ -96,8 +96,8 @@ Android 独立 `p2-compiler-1788362045519363` 目录实际执行新接口，27 �
 AAR SHA-256：`2f4c1d2522e24f269adeb2cffc347f3ce3f3ab39dd0d269c83c50b9f66e11b7e`；
 macOS archive：`88dba48b8246a5adca63985b9b89613e9d7a414485e89b5d84ce8379cd0036af`。
 
-当前约束：IPv6 关闭时，节点域名须由 P3 预启动解析提供 IPv4 引导地址；显式 IPv6
-目标拒绝。Raw 的 `+local` DNS 在要求物理网卡绑定时不允许绕过约束，关闭 IPv6 时
+当前约束：IPv6 关闭时，普通配置拒绝显式 IPv6 目标，节点域名交给 Xray 解析，不额外
+生成根级 DNS hosts。Raw 仍由 P3 预启动解析提供 IPv4 引导地址；其 `+local` DNS 在要求物理网卡绑定时不允许绕过约束，关闭 IPv6 时
 不能验证为 IPv4 的本地 DNS 域名也拒绝；不能只改 queryStrategy 就宣称已强制所有物理出站。
 构建/路由检查会读取本地资源且影响核心进程全局值，不宣传为无 IO 或可与活动核心并发。
 

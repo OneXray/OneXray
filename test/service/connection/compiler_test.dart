@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/ping_auth.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/compiler.dart';
@@ -29,7 +30,6 @@ RuntimeOptions options({
   ConnectionPlatform platform = ConnectionPlatform.android,
   bool ipv6 = true,
   String interfaceName = '',
-  Map<String, List<String>> hosts = const {},
 }) => RuntimeOptions(
   platform: platform,
   assetDirectory: '${Directory.current.path}/assets/dat',
@@ -40,7 +40,6 @@ RuntimeOptions options({
   pingAuth: XrayInboundAccount('p2', 'fixture-only'),
   ipv6: ipv6,
   interfaceName: interfaceName,
-  bootstrapAddresses: hosts,
 );
 
 ServerSnapshot node(int id, {String? address}) => ServerSnapshot(
@@ -77,9 +76,52 @@ void main() {
         );
         expect(balancer['fallbackTag'], 'block');
         expect(config['observatory']['subjectSelector'], isEmpty);
-        expect(config['outbounds'].first['protocol'], 'loopback');
+        final outbounds = (config['outbounds'] as List).cast<Map>();
+        expect(
+          outbounds.take(count).map((outbound) => outbound['tag']),
+          List.generate(count, (index) => 'app-entry-$index'),
+        );
+        expect(outbounds.skip(count).map((outbound) => outbound['tag']), [
+          'direct',
+          'block',
+          'dnsOut',
+        ]);
+        expect(
+          outbounds.last['streamSettings']['sockopt']['dialerProxy'],
+          'direct',
+        );
+        expect(
+          outbounds.any((outbound) => outbound['protocol'] == 'loopback'),
+          false,
+        );
+        expect(jsonEncode(outbounds), isNot(contains('domainStrategy')));
+        expect(
+          (config['routing']['rules'] as List).any(
+            (rule) => (rule as Map).containsKey('type'),
+          ),
+          false,
+        );
         expect(plan.nodeTags.values, entries.map((entry) => entry.id));
         expect(entries.first.outbound['tag'], 'Same user tag');
+        expect(XrayJson.fromJson(config).toJson(), config);
+        final inbounds = (config['inbounds'] as List).cast<Map>();
+        expect(
+          inbounds.singleWhere(
+            (inbound) => inbound['tag'] == 'tunIn',
+          )['settings'],
+          {'name': 'OneXrayTun', 'mtu': 1500},
+        );
+        expect(
+          inbounds.singleWhere(
+            (inbound) => inbound['tag'] == 'pingIn',
+          )['settings'],
+          {
+            'allowTransparent': false,
+            'users': [
+              {'user': 'p2', 'pass': 'fixture-only'},
+            ],
+          },
+        );
         config['outbounds'].clear();
         expect(plan.config['outbounds'], isNotEmpty);
         expect(
@@ -97,29 +139,71 @@ void main() {
     'each final exit clone depends on its own entry, with no asset rewrite',
     () {
       for (var count = 1; count <= 3; count++) {
+        final entries = List.generate(count, (i) => node(i + 1));
+        final finalExit = ServerSnapshot(
+          id: 9,
+          sourceId: 1,
+          outbound: {
+            'tag': 'Same user tag',
+            'protocol': 'freedom',
+            'streamSettings': {
+              'sockopt': {'tcpFastOpen': true},
+            },
+          },
+        );
+        final finalExitBeforeCompile =
+            jsonDecode(jsonEncode(finalExit.outbound)) as Map<String, dynamic>;
         final plan = ConnectionCompiler.compile(
           settings: ConnectionSettings(
             smart: SmartRoutingSettings(entryCount: count, finalExitId: 9),
           ),
-          entries: List.generate(count, (i) => node(i + 1)),
-          finalExit: node(9),
+          entries: entries,
+          finalExit: finalExit,
           regions: catalog,
           options: options(),
         );
+        final outbounds = (plan.config['outbounds'] as List).cast<Map>();
+        final selector = List.generate(count, (i) => 'app-exit-$i');
         expect(
           plan.config['routing']['balancers'].single['selector'],
-          List.generate(count, (i) => 'app-exit-$i'),
+          selector,
+        );
+        expect(outbounds.map((outbound) => outbound['tag']), [
+          ...selector,
+          ...List.generate(count, (i) => 'app-entry-$i'),
+          'direct',
+          'block',
+          'dnsOut',
+        ]);
+        expect(
+          outbounds.take(count).map((outbound) => outbound['tag']),
+          selector,
+        );
+        expect(
+          outbounds.skip(count).take(count).map((outbound) => outbound['tag']),
+          List.generate(count, (index) => 'app-entry-$index'),
         );
         for (var i = 0; i < count; i++) {
-          final exit = (plan.config['outbounds'] as List).singleWhere(
+          final exit = outbounds.singleWhere(
             (item) => item['tag'] == 'app-exit-$i',
           );
           expect(
             exit['streamSettings']['sockopt']['dialerProxy'],
             'app-entry-$i',
           );
+          expect(exit['streamSettings']['sockopt']['tcpFastOpen'], true);
           expect(plan.nodeTags['app-exit-$i'], 9);
+          expect(plan.nodeTags['app-entry-$i'], i + 1);
         }
+        expect(
+          outbounds.map((outbound) => outbound['tag']).toSet(),
+          hasLength(outbounds.length),
+        );
+        expect(
+          entries.every((entry) => entry.outbound['tag'] == 'Same user tag'),
+          true,
+        );
+        expect(finalExit.outbound, finalExitBeforeCompile);
         _fixture('chain-$count', plan);
       }
     },
@@ -286,18 +370,23 @@ void main() {
   test('Raw keeps source/additional inbound/policy/DNS/routing but overrides runtime fields', () {
     const source = ''' {"inbounds":[{"tag":"tunIn","protocol":"tun","settings":{"name":"ignored"}},
       {"tag":"extra","protocol":"socks","listen":"127.0.0.1","port":18188}],
-      "outbounds":[{"tag":"custom-direct","protocol":"freedom"}],
-      "routing":{"rules":[{"domain":["full:example.test"],"outboundTag":"custom-direct"}]},
-      "dns":{"hosts":{"example.test":"127.0.0.1"},"servers":["localhost"]},
+      "outbounds":[{"tag":"custom-direct","protocol":"freedom","streamSettings":{"sockopt":{"domainStrategy":"UseIPv4"}}}],
+      "routing":{"rules":[{"type":"field","domain":["full:example.test"],"outboundTag":"custom-direct","futureRule":{"keep":true}}]},
+      "dns":{"hosts":{"example.test":"127.0.0.1"},"servers":["localhost"],"futureDns":{"keep":true}},
       "policy":{"levels":{"0":{"handshake":7,"statsUserUplink":true}},"system":{"statsOutboundUplink":true}},
       "log":{"error":"user-file","loglevel":"debug"},"metrics":{"listen":"0.0.0.0:8080"},
-      "fakeDns":[{"ipPool":"198.18.0.0/15","poolSize":1024}],
+      "fakeDns":[{"ipPool":"198.18.0.0/15","poolSize":1024,"futureFakeDns":true}],
+      "api":{"tag":"user-api"},"geodata":{"assets":[]},
+      "futureRoot":{"nested":{"keep":true}},
       "env":{"xray.location.asset":"bad"}}
     ''';
+    final raw = jsonDecode(source) as Map<String, dynamic>;
+    final rawBeforeCompile =
+        jsonDecode(jsonEncode(raw)) as Map<String, dynamic>;
     final plan = ConnectionCompiler.compile(
       settings: ConnectionSettings(expert: true, rawId: 8),
       entries: [],
-      rawText: source,
+      raw: raw,
       regions: catalog,
       options: options(),
     );
@@ -309,6 +398,14 @@ void main() {
     expect(runtime['policy']['system']['statsOutboundUplink'], false);
     expect(runtime['dns']['servers'], ['localhost']);
     expect(runtime['fakeDns'], jsonDecode(source)['fakeDns']);
+    expect(runtime['api'], jsonDecode(source)['api']);
+    expect(runtime['futureRoot'], jsonDecode(source)['futureRoot']);
+    expect(runtime['dns']['futureDns'], jsonDecode(source)['dns']['futureDns']);
+    expect(runtime.containsKey('geodata'), false);
+    expect(
+      runtime['outbounds'].first['streamSettings']['sockopt']['domainStrategy'],
+      'UseIPv4',
+    );
     expect(
       runtime['routing']['rules'].last,
       jsonDecode(source)['routing']['rules'].single,
@@ -319,8 +416,28 @@ void main() {
       jsonDecode(source)['policy']['levels']['0']['statsUserUplink'],
       true,
     );
+    expect(raw, rawBeforeCompile);
+    expect(raw['geodata'], jsonDecode(source)['geodata']);
     expect(plan.nodeTags, isEmpty);
     _fixture('raw', plan);
+  });
+
+  test('Raw semantic comparison includes fields unknown to the App', () {
+    Map<String, dynamic> semantic(String value) =>
+        ConnectionCompiler.rawSemanticJson(
+          jsonEncode({
+            'name': 'Ignored display name',
+            'outbounds': [
+              {'tag': 'direct', 'protocol': 'freedom'},
+            ],
+            'futureRoot': {'value': value},
+          }),
+          options(),
+        );
+
+    expect(semantic('one').containsKey('name'), false);
+    expect(semantic('one')['futureRoot'], {'value': 'one'});
+    expect(semantic('one'), isNot(semantic('two')));
   });
 
   test('Raw reserved tags/ports conflict clearly, rather than renaming user references', () {
@@ -332,12 +449,12 @@ void main() {
         () => ConnectionCompiler.compile(
           settings: ConnectionSettings(expert: true),
           entries: [],
-          rawText: jsonEncode({
+          raw: {
             'inbounds': [inbound],
             'outbounds': [
               {'protocol': 'freedom'},
             ],
-          }),
+          },
           regions: catalog,
           options: options(),
         ),
@@ -346,7 +463,7 @@ void main() {
     }
   });
 
-  test('Windows/Linux require explicit interface; IPv4-only bootstrap cannot recurse through proxy DNS', () {
+  test('Windows/Linux require an interface and stay within XrayJson', () {
     expect(
       () => options(platform: ConnectionPlatform.windows),
       throwsFormatException,
@@ -363,9 +480,6 @@ void main() {
           platform: platform,
           ipv6: false,
           interfaceName: 'selected-interface',
-          hosts: {
-            'node.test': ['127.0.0.1'],
-          },
         ),
       );
       final entry = (plan.config['outbounds'] as List).singleWhere(
@@ -375,23 +489,39 @@ void main() {
         entry['streamSettings']['sockopt']['interface'],
         'selected-interface',
       );
-      expect(entry['streamSettings']['sockopt']['domainStrategy'], 'ForceIPv4');
-      expect(plan.config['dns']['hosts']['node.test'], ['127.0.0.1']);
-      expect(plan.config['dns']['queryStrategy'], 'UseIPv4');
+      expect(
+        entry['streamSettings']['sockopt'].containsKey('domainStrategy'),
+        false,
+      );
+      expect(
+        (plan.config['outbounds'] as List).map((outbound) => outbound['tag']),
+        ['app-entry-0', 'direct', 'block', 'dnsOut'],
+      );
+      expect(
+        (plan.config['routing']['rules'] as List).first['outboundTag'],
+        'block',
+      );
+      expect(plan.config['dns'].containsKey('hosts'), false);
+      expect(plan.config['dns'].containsKey('queryStrategy'), false);
+      expect(
+        (plan.config['dns']['servers'] as List).every(
+          (server) => server['queryStrategy'] == 'UseIPv4',
+        ),
+        true,
+      );
       expect(
         plan.config['inbounds'].first['protocol'],
         platform == ConnectionPlatform.windows ? 'socks' : 'tun',
       );
+      final settings = plan.config['inbounds'].first['settings'];
+      if (platform == ConnectionPlatform.windows) {
+        expect(settings, {'auth': 'noauth', 'udp': true});
+      } else {
+        expect(settings['autoOutboundsInterface'], 'selected-interface');
+        expect(settings['autoSystemRoutingTable'], ['0.0.0.0/0']);
+      }
+      expect(XrayJson.fromJson(plan.config).toJson(), plan.config);
     }
-    expect(
-      () => ConnectionCompiler.compile(
-        settings: ConnectionSettings(),
-        entries: [node(1, address: 'node.test')],
-        regions: catalog,
-        options: options(ipv6: false),
-      ),
-      throwsFormatException,
-    );
   });
 
   test('typed route check uses the additive v3 Invoke contract', () {

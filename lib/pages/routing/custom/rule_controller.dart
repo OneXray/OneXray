@@ -114,7 +114,6 @@ class CustomRoutingRuleController extends ChangeNotifier {
     final domain = clean(domains);
     final ip = clean(ips);
     return <String, dynamic>{
-      'type': 'field',
       if (name.text.trim().isNotEmpty) 'ruleTag': name.text.trim(),
       if (domain.isNotEmpty) 'domain': domain,
       if (ip.isNotEmpty) 'ip': ip,

@@ -1,0 +1,32 @@
+import 'package:onexray/core/model/xray_json.dart';
+
+Map<String, dynamic> createFreedomOutboundMap({
+  required String tag,
+  String? interfaceName,
+}) => XrayOutbound(
+  tag: tag,
+  protocol: 'freedom',
+  streamSettings: interfaceName == null
+      ? null
+      : XrayStreamSettings(sockopt: XraySockopt(interface: interfaceName)),
+).toJson();
+
+Map<String, dynamic> createBlackholeOutboundMap({required String tag}) =>
+    XrayOutbound(tag: tag, protocol: 'blackhole').toJson();
+
+Map<String, dynamic> createDnsOutboundMap({
+  required String tag,
+  required String dialerProxy,
+}) => XrayOutbound(
+  tag: tag,
+  protocol: 'dns',
+  settings: {
+    'rules': const [
+      XrayOutboundDnsRule(action: 'hijack', qType: '1,28'),
+      XrayOutboundDnsRule(action: 'direct'),
+    ].map((rule) => rule.toJson()).toList(),
+  },
+  streamSettings: XrayStreamSettings(
+    sockopt: XraySockopt(dialerProxy: dialerProxy),
+  ),
+).toJson();
