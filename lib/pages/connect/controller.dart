@@ -360,31 +360,10 @@ class ConnectController extends ChangeNotifier {
       final reconnect =
           coordinator.state.value.phase == ConnectionPhase.connected;
       if (reconnect &&
-          await showConnectDialog<bool>(
-                context,
-                (dialogContext) => ConnectDialog(
-                  title: l10n.prototypeApplyChange,
-                  subtitle: l10n.prototypeReconnectNotice,
-                  body: ConnectCallout(
-                    icon: LucideIcons.refreshCw,
-                    text: l10n.prototypeWillUseName(
-                      label ?? _changeLabel(l10n, values, next.connection),
-                    ),
-                  ),
-                  actions: [
-                    ConnectDialogButton(
-                      label: l10n.prototypeCancel,
-                      secondary: true,
-                      onPressed: () => Navigator.of(dialogContext).pop(false),
-                    ),
-                    ConnectDialogButton(
-                      label: l10n.prototypeApplyAndReconnect,
-                      onPressed: () => Navigator.of(dialogContext).pop(true),
-                    ),
-                  ],
-                ),
-              ) !=
-              true) {
+          !await showApplyAndReconnectDialog(
+            context,
+            label: label ?? _changeLabel(l10n, values, next.connection),
+          )) {
         return false;
       }
       if (!context.mounted) return false;
@@ -453,15 +432,15 @@ class ConnectController extends ChangeNotifier {
       final connected =
           coordinator.state.value.phase == ConnectionPhase.connected;
       final disconnect = active && connected && servers.isEmpty;
-      if (!await ContextAlert.showConfirmDialog(
+      if (!await showDestructiveConfirmationDialog(
             context,
             title: l10n.prototypeDeleteRawQuestion,
-            content:
-                '${row.name}\n\n${disconnect
-                    ? l10n.prototypeRawDeleteDisconnectNotice
-                    : active
-                    ? l10n.prototypeActiveRawDeleteNotice
-                    : l10n.prototypeRawDeleteNotice}',
+            subtitle: row.name,
+            warning: disconnect
+                ? l10n.prototypeRawDeleteDisconnectNotice
+                : active
+                ? l10n.prototypeActiveRawDeleteNotice
+                : l10n.prototypeRawDeleteNotice,
             confirmLabel: disconnect
                 ? l10n.prototypeDeleteAndDisconnect
                 : active && connected

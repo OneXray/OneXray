@@ -52,129 +52,133 @@ class WindowsVpnView extends StatelessWidget {
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
       final palette = ColorManager.palette(context);
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+      final width = MediaQuery.sizeOf(context).width;
+      final mobile = width <= AppLayout.mobileBreakpoint;
+      final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
       final cidrs = controller.strings('windows', 'excludedCidrs');
       return PolicyDetailScaffold(
         title: l.prototypeWindowsSystemVpn,
         controller: controller,
         canSave: controller.validationHint(l) == null,
-        contentPadding: EdgeInsets.fromLTRB(
-          mobile ? 14 : 28,
-          mobile ? 12 : 18,
-          mobile ? 14 : 28,
-          mobile ? 18 : 24,
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l.prototypeSystemVpnPolicy,
-              style: AppTypography.platformDetailTitle,
-            ),
-            Text(
-              l.prototypeWindowsBypassNotice,
-              style: AppTypography.platformDetailBody,
-            ),
-            SizedBox(height: mobile ? 12 : 14),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border.symmetric(
-                  horizontal: BorderSide(color: palette.border),
+        contentPadding: EdgeInsets.zero,
+        body: Padding(
+          padding: EdgeInsets.fromLTRB(
+            gutter,
+            mobile ? 12 : 48,
+            gutter,
+            mobile ? 18 : 24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l.prototypeSystemVpnPolicy,
+                style: AppTypography.platformDetailTitle,
+              ),
+              Text(
+                l.prototypeWindowsBypassNotice,
+                style: AppTypography.platformDetailBody,
+              ),
+              SizedBox(height: mobile ? 12 : 14),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.symmetric(
+                    horizontal: BorderSide(color: palette.border),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _toggle(
+                      context,
+                      'alwaysOn',
+                      l.prototypeAlwaysOn,
+                      l.prototypeWindowsAutoConnectNotice,
+                    ),
+                    Divider(height: 1, thickness: 1, color: palette.border),
+                    _toggle(
+                      context,
+                      'allowLocalNetwork',
+                      l.prototypeBypassLocalSubnets,
+                      l.prototypeBypassLocalSubnetsHint,
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
+              const SizedBox(height: 28),
+              Row(
                 children: [
-                  _toggle(
-                    context,
-                    'alwaysOn',
-                    l.prototypeAlwaysOn,
-                    l.prototypeWindowsAutoConnectNotice,
+                  Expanded(
+                    child: Text(
+                      l.prototypeBypassNetworks,
+                      style: AppTypography.windowsNetworkTitle,
+                    ),
                   ),
-                  Divider(height: 1, thickness: 1, color: palette.border),
-                  _toggle(
-                    context,
-                    'allowLocalNetwork',
-                    l.prototypeBypassLocalSubnets,
-                    l.prototypeBypassLocalSubnetsHint,
+                  const SizedBox(width: 12),
+                  Text(
+                    '${cidrs.where((value) => value.trim().isNotEmpty).length} / 64',
+                    textDirection: TextDirection.ltr,
+                    style: AppTypography.windowsNetworkMeta.copyWith(
+                      color: palette.mutedForeground,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.prototypeBypassNetworks,
-                    style: AppTypography.windowsNetworkTitle,
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                l.prototypeBypassNetworksHint,
+                style: AppTypography.windowsPolicyHint.copyWith(
+                  color: palette.mutedForeground,
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  '${cidrs.where((value) => value.trim().isNotEmpty).length} / 64',
-                  textDirection: TextDirection.ltr,
-                  style: AppTypography.windowsNetworkMeta.copyWith(
-                    color: palette.mutedForeground,
-                  ),
+              ),
+              const SizedBox(height: 16),
+              _WindowsNetworks(
+                values: cidrs,
+                enabled: !controller.blocked,
+                onChanged: (values) => controller.update(
+                  'excludedCidrs',
+                  values,
+                  section: 'windows',
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l.prototypeBypassNetworksHint,
-              style: AppTypography.windowsPolicyHint.copyWith(
-                color: palette.mutedForeground,
               ),
-            ),
-            const SizedBox(height: 16),
-            _WindowsNetworks(
-              values: cidrs,
-              enabled: !controller.blocked,
-              onChanged: (values) => controller.update(
-                'excludedCidrs',
-                values,
-                section: 'windows',
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              l.prototypeBypassNetworkInputHint,
-              style: AppTypography.windowsNetworkNote.copyWith(
-                color: palette.mutedForeground,
-              ),
-            ),
-            if (controller.value['ipv6Enabled'] == false) ...[
               const SizedBox(height: 14),
               Text(
-                controller.ipv6Conflict
-                    ? l.prototypeIpv6BypassConflict
-                    : l.prototypeEnableIpv6ForBypass,
+                l.prototypeBypassNetworkInputHint,
                 style: AppTypography.windowsNetworkNote.copyWith(
                   color: palette.mutedForeground,
                 ),
               ),
-            ],
-            if ((controller.value['xrayOutboundInterfaceName'] as String)
-                .isEmpty) ...[
-              const SizedBox(height: 14),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton(
-                  onPressed: controller.blocked
-                      ? null
-                      : () => controller.openChild(context, openInterface),
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(0, 38),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    textStyle: AppTypography.control,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              if (controller.value['ipv6Enabled'] == false) ...[
+                const SizedBox(height: 14),
+                Text(
+                  controller.ipv6Conflict
+                      ? l.prototypeIpv6BypassConflict
+                      : l.prototypeEnableIpv6ForBypass,
+                  style: AppTypography.windowsNetworkNote.copyWith(
+                    color: palette.mutedForeground,
                   ),
-                  child: Text(l.prototypeChooseInterfaceBeforeSaving),
                 ),
-              ),
+              ],
+              if ((controller.value['xrayOutboundInterfaceName'] as String)
+                  .isEmpty) ...[
+                const SizedBox(height: 14),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    onPressed: controller.blocked
+                        ? null
+                        : () => controller.openChild(context, openInterface),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 38),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      textStyle: AppTypography.control,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(l.prototypeChooseInterfaceBeforeSaving),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       );
     },

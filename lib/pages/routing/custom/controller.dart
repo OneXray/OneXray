@@ -5,7 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
-import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/connection/plan.dart';
@@ -28,6 +28,9 @@ class CustomRoutingEditorController extends ChangeNotifier {
   final rules = <Map<String, dynamic>>[];
   final ruleKeys = <Object>[];
   Object? selectedRuleKey;
+  CustomRoutingRuleController? inlineRule;
+  Object? _inlineRuleKey;
+  bool _inlineEditing = false;
   List<RoutingProfileData> _rows = [];
   CustomRoutingEditorDraft? original;
   Map<String, dynamic> _document = {};
@@ -161,6 +164,39 @@ class CustomRoutingEditorController extends ChangeNotifier {
     selectedRuleKey = ruleKeys.isEmpty
         ? null
         : ruleKeys[ruleKeys.length > 1 ? 1 : 0];
+    _syncInlineRule();
+  }
+
+  void setInlineEditing(bool value) {
+    if (_inlineEditing == value) return;
+    _inlineEditing = value;
+    _syncInlineRule();
+    _notify();
+  }
+
+  void _syncInlineRule({bool refresh = false}) {
+    final key = _inlineEditing ? selectedRuleKey : null;
+    if (_inlineRuleKey == key && !refresh) return;
+    final previous = inlineRule;
+    previous?.removeListener(_inlineRuleChanged);
+    _inlineRuleKey = key;
+    final index = key == null ? -1 : ruleKeys.indexOf(key);
+    inlineRule = index < 0
+        ? null
+        : (CustomRoutingRuleController(rule: rules[index])
+            ..addListener(_inlineRuleChanged));
+    // Inputs from the previous rule unmount on the next frame.
+    if (previous != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    }
+  }
+
+  void _inlineRuleChanged() {
+    final key = _inlineRuleKey;
+    final index = key == null ? -1 : ruleKeys.indexOf(key);
+    if (_closed || index < 0 || inlineRule == null) return;
+    rules[index] = inlineRule!.draftRule;
+    _notify();
   }
 
   /// Import tools stage their dependencies separately before calling this.
@@ -187,6 +223,22 @@ class CustomRoutingEditorController extends ChangeNotifier {
     int? index,
   ]) async {
     if (!loaded || editingBlocked) return;
+    if (_inlineEditing) {
+      if (index == null) {
+        rules.add({
+          'type': 'field',
+          'ruleTag': AppLocalizations.of(context)!.prototypeNewRule,
+          'balancerTag': 'proxy',
+        });
+        ruleKeys.add(Object());
+        selectedRuleKey = ruleKeys.last;
+      } else {
+        selectedRuleKey = ruleKeys[index];
+      }
+      _syncInlineRule();
+      _notify();
+      return;
+    }
     final rule = index == null ? null : rules[index];
     if (index != null) {
       selectedRuleKey = ruleKeys[index];
@@ -201,6 +253,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
     } else {
       rules[index] = edited;
     }
+    _syncInlineRule(refresh: true);
     _notify();
   }
 
@@ -214,6 +267,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
           ? null
           : ruleKeys[index.clamp(0, ruleKeys.length - 1)];
     }
+    _syncInlineRule();
     _notify();
   }
 
@@ -275,12 +329,7 @@ class CustomRoutingEditorController extends ChangeNotifier {
           template: template,
         ),
         confirmReconnect: () => context.mounted
-            ? ContextAlert.showConfirmDialog(
-                context,
-                title: l10n.prototypeApplyChange,
-                content: l10n.prototypeReconnectNotice,
-                confirmLabel: l10n.prototypeApplyAndReconnect,
-              )
+            ? showApplyAndReconnectDialog(context, label: name.text.trim())
             : Future.value(false),
         geodata: transfer.pending,
       );
@@ -380,6 +429,8 @@ class CustomRoutingEditorController extends ChangeNotifier {
   @override
   void dispose() {
     _closed = true;
+    inlineRule?.removeListener(_inlineRuleChanged);
+    inlineRule?.dispose();
     transfer.removeListener(_notify);
     if (!_busy) transfer.dispose();
     name.dispose();

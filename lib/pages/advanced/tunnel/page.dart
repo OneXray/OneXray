@@ -5,6 +5,7 @@ import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -42,6 +43,9 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
     animation: controller,
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
+      final width = MediaQuery.sizeOf(context).width;
+      final mobile = width <= AppLayout.mobileBreakpoint;
+      final gutter = mobile ? 15.0 : AppSpacing.advancedDesktopGutter(width);
       if (controller.draft == null) {
         return Center(
           child: controller.busy
@@ -54,124 +58,152 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
       }
       return Scaffold(
         body: SettingsPageScroll(
-          padding: const EdgeInsets.fromLTRB(15, 22, 15, 24),
-          child: Column(
-            spacing: 25,
-            children: [
-              _section(
-                icon: LucideIcons.activity,
-                title: l.prototypeConnectionStatus,
-                children: [
-                  SettingRow(
-                    title: l.prototypeSystemVpn,
-                    leading: Icon(
-                      LucideIcons.circleCheck,
-                      color: ColorManager.palette(context).running,
-                    ),
-                    decorateLeading: false,
-                    minHeight: 52,
-                    titleStyle: AppTypography.settingsStatus.copyWith(
-                      color: ColorManager.palette(context).running,
-                    ),
-                    valueStyle: AppTypography.settingsStatus.copyWith(
-                      color: ColorManager.primaryText(context),
-                    ),
-                    value: _status(l),
-                  ),
-                ],
-              ),
-              _section(
-                icon: LucideIcons.network,
-                title: l.prototypeTunAddress,
-                children: [
-                  PolicyValueRow(
-                    title: l.prototypeIpv4TunAddress,
-                    value: '${PlatformPolicy.tunIpv4Address}/15',
-                  ),
-                  PolicyValueRow(
-                    title: l.prototypeIpv6TunAddress,
-                    value: '${PlatformPolicy.tunIpv6Address}/64',
-                  ),
-                ],
-              ),
-              _section(
-                icon: LucideIcons.globe2,
-                title: l.prototypeTunnelDns,
-                children: [
-                  PolicyValueRow(
-                    title: l.prototypeIpv4Dns,
-                    value: PlatformPolicy.dnsIpv4Address,
-                  ),
-                  PolicyValueRow(
-                    title: l.prototypeIpv6Dns,
-                    value: PlatformPolicy.dnsIpv6Address,
-                  ),
-                  PolicyValueRow(
-                    title: l.prototypeDomain,
-                    value: PlatformPolicy.dnsServerName,
-                  ),
-                ],
-              ),
-              _section(
-                icon: LucideIcons.network,
-                title: 'IPv6',
-                description: controller.ipv6Conflict
-                    ? l.prototypeIpv6BypassConflict
-                    : null,
-                children: [
-                  PolicyToggle(
-                    controller: controller,
-                    field: 'ipv6Enabled',
-                    title: l.prototypeUseIpv6,
-                  ),
-                ],
-              ),
-              if (controller.service.requiresInterface)
+          desktopMaxWidth: AppLayout.advancedMaxWidth,
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              gutter,
+              mobile ? 22 : 54,
+              gutter,
+              mobile ? 24 : 28,
+            ),
+            child: Column(
+              spacing: mobile ? 25 : 28,
+              children: [
                 _section(
-                  icon: LucideIcons.network,
-                  title: l.prototypeXrayOutboundInterface,
-                  description: l.prototypeManagedInterfaceNotice,
+                  icon: LucideIcons.activity,
+                  title: l.prototypeConnectionStatus,
                   children: [
                     SettingRow(
-                      title: l.prototypeXrayOutboundInterface,
-                      value:
-                          (controller.value['xrayOutboundInterfaceName']
-                                  as String)
-                              .isEmpty
-                          ? l.prototypeChooseInterface
-                          : controller.value['xrayOutboundInterfaceName']
-                                as String,
-                      showChevron: true,
-                      minHeight: 52,
-                      titleStyle: AppTypography.settingsValueLabel,
-                      valueStyle: AppTypography.settingsValue.copyWith(
-                        color: ColorManager.primaryText(context),
+                      title: l.prototypeSystemVpn,
+                      leading: Icon(
+                        LucideIcons.circleCheck,
+                        color: ColorManager.palette(context).running,
                       ),
-                      enabled: !controller.blocked && widget.openTunnel != null,
-                      onTap: () => _open(TunnelDestination.interface),
+                      decorateLeading: false,
+                      minHeight: mobile ? 52 : 56,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: mobile ? 13 : 14,
+                        vertical: 10,
+                      ),
+                      titleStyle:
+                          (mobile
+                                  ? AppTypography.settingsStatus
+                                  : AppTypography.desktopSettingsStatus)
+                              .copyWith(
+                                color: ColorManager.palette(context).running,
+                              ),
+                      valueStyle:
+                          (mobile
+                                  ? AppTypography.settingsStatus
+                                  : AppTypography.desktopSettingsStatus)
+                              .copyWith(
+                                color: ColorManager.primaryText(context),
+                              ),
+                      value: _status(l),
                     ),
                   ],
                 ),
-              if (controller.platform == ConnectionPlatform.ios ||
-                  controller.platform == ConnectionPlatform.macos)
-                _platformEntry(
-                  l.prototypeAppleSystemVpn,
-                  l.prototypeAppleVpnDescription,
-                  TunnelDestination.apple,
+                _section(
+                  icon: LucideIcons.network,
+                  title: l.prototypeTunAddress,
+                  children: [
+                    PolicyValueRow(
+                      title: l.prototypeIpv4TunAddress,
+                      value: '${PlatformPolicy.tunIpv4Address}/15',
+                    ),
+                    PolicyValueRow(
+                      title: l.prototypeIpv6TunAddress,
+                      value: '${PlatformPolicy.tunIpv6Address}/64',
+                    ),
+                  ],
                 ),
-              if (controller.platform == ConnectionPlatform.android)
-                _platformEntry(
-                  l.prototypeAndroidSystemVpn,
-                  l.prototypeAndroidVpnDescription,
-                  TunnelDestination.android,
+                _section(
+                  icon: LucideIcons.globe2,
+                  title: l.prototypeTunnelDns,
+                  children: [
+                    PolicyValueRow(
+                      title: l.prototypeIpv4Dns,
+                      value: PlatformPolicy.dnsIpv4Address,
+                    ),
+                    PolicyValueRow(
+                      title: l.prototypeIpv6Dns,
+                      value: PlatformPolicy.dnsIpv6Address,
+                    ),
+                    PolicyValueRow(
+                      title: l.prototypeDomain,
+                      value: PlatformPolicy.dnsServerName,
+                    ),
+                  ],
                 ),
-              if (controller.platform == ConnectionPlatform.windows)
-                _platformEntry(
-                  l.prototypeWindowsSystemVpn,
-                  l.prototypeWindowsVpnDescription,
-                  TunnelDestination.windows,
+                _section(
+                  icon: LucideIcons.network,
+                  title: 'IPv6',
+                  description: controller.ipv6Conflict
+                      ? l.prototypeIpv6BypassConflict
+                      : null,
+                  children: [
+                    PolicyToggle(
+                      controller: controller,
+                      field: 'ipv6Enabled',
+                      title: l.prototypeUseIpv6,
+                    ),
+                  ],
                 ),
-            ],
+                if (controller.service.requiresInterface)
+                  _section(
+                    icon: LucideIcons.network,
+                    title: l.prototypeXrayOutboundInterface,
+                    description: l.prototypeManagedInterfaceNotice,
+                    children: [
+                      SettingRow(
+                        title: l.prototypeXrayOutboundInterface,
+                        value:
+                            (controller.value['xrayOutboundInterfaceName']
+                                    as String)
+                                .isEmpty
+                            ? l.prototypeChooseInterface
+                            : controller.value['xrayOutboundInterfaceName']
+                                  as String,
+                        showChevron: true,
+                        minHeight: mobile ? 52 : 56,
+                        titleStyle: mobile
+                            ? AppTypography.settingsValueLabel
+                            : AppTypography.desktopSettingsValueLabel,
+                        valueStyle:
+                            (mobile
+                                    ? AppTypography.settingsValue
+                                    : AppTypography.desktopSettingsValue)
+                                .copyWith(
+                                  color: ColorManager.primaryText(context),
+                                ),
+                        enabled:
+                            !controller.blocked && widget.openTunnel != null,
+                        onTap: () => _open(TunnelDestination.interface),
+                      ),
+                    ],
+                  ),
+                if (controller.platform == ConnectionPlatform.ios ||
+                    controller.platform == ConnectionPlatform.macos)
+                  _platformEntry(
+                    l.prototypeAppleSystemVpn,
+                    l.prototypeAppleVpnDescription,
+                    TunnelDestination.apple,
+                  ),
+                if (controller.platform == ConnectionPlatform.android)
+                  _platformEntry(
+                    l.prototypeAndroidSystemVpn,
+                    l.prototypeAndroidVpnDescription,
+                    TunnelDestination.android,
+                  ),
+                if (controller.platform == ConnectionPlatform.windows)
+                  _platformEntry(
+                    l.prototypeWindowsSystemVpn,
+                    l.prototypeWindowsVpnDescription,
+                    TunnelDestination.windows,
+                  ),
+              ],
+            ),
           ),
         ),
         bottomNavigationBar: PolicyActions(
@@ -201,7 +233,17 @@ class _VpnTunnelPaneState extends State<VpnTunnelPane> {
       SettingRow(
         title: description,
         titleStyle: AppTypography.settingsRow,
-        minHeight: 52,
+        minHeight:
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint
+            ? 52
+            : 56,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal:
+              MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint
+              ? 13
+              : 14,
+          vertical: 10,
+        ),
         showChevron: true,
         enabled: !controller.blocked && widget.openTunnel != null,
         onTap: () => _open(destination),

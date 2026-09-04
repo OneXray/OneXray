@@ -41,10 +41,16 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
       final palette = ColorManager.palette(context);
       final file = controller.file;
       final codes = controller.codes;
+      final mobile =
+          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+      final gutter = mobile
+          ? AppSpacing.mobilePage
+          : AppSpacing.advancedDesktopGutter(MediaQuery.sizeOf(context).width);
       return Scaffold(
         appBar: AppBar(title: Text(file?.fileName ?? l.prototypeRoutingData)),
         body: SafeArea(
           child: ResponsiveContent(
+            desktopMaxWidth: AppLayout.advancedMaxWidth,
             child: controller.loading
                 ? const Center(child: CircularProgressIndicator())
                 : file == null || controller.failed
@@ -56,7 +62,12 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                       slivers: [
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                            padding: EdgeInsets.fromLTRB(
+                              gutter,
+                              mobile ? 12 : 54,
+                              gutter,
+                              12,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -132,11 +143,10 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                                     SettingRow(
                                       title: l.prototypeDataType,
                                       titleStyle: AppTypography.geodataBody,
-                                      minHeight: 43,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 13,
-                                          ),
+                                      minHeight: mobile ? 43 : 56,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: mobile ? 13 : 14,
+                                      ),
                                       trailing: Text(
                                         file.row.type == 'ip'
                                             ? 'GeoIP'
@@ -147,11 +157,10 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                                     SettingRow(
                                       title: l.prototypeCategories,
                                       titleStyle: AppTypography.geodataBody,
-                                      minHeight: 43,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 13,
-                                          ),
+                                      minHeight: mobile ? 43 : 56,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: mobile ? 13 : 14,
+                                      ),
                                       trailing: Text(
                                         '${file.index.categoryCount}',
                                         style: AppTypography.settingsRow,
@@ -194,28 +203,6 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                                         ),
                                       ),
                                     ),
-                                    trailing: controller.search.text.isEmpty
-                                        ? null
-                                        : IconButton(
-                                            tooltip: l.prototypeClear,
-                                            onPressed: controller.clearSearch,
-                                            style: IconButton.styleFrom(
-                                              minimumSize: const Size.square(
-                                                18,
-                                              ),
-                                              maximumSize: const Size.square(
-                                                18,
-                                              ),
-                                              padding: EdgeInsets.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                            ),
-                                            icon: const Icon(
-                                              LucideIcons.x,
-                                              size: 17,
-                                            ),
-                                          ),
                                   ),
                                 ),
                               ],
@@ -223,7 +210,12 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                           ),
                         ),
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 18),
+                          padding: EdgeInsets.fromLTRB(
+                            gutter,
+                            0,
+                            gutter,
+                            mobile ? 18 : 28,
+                          ),
                           sliver: DecoratedSliver(
                             decoration: BoxDecoration(
                               border: Border.all(color: palette.border),
@@ -235,14 +227,29 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                               padding: const EdgeInsets.all(1),
                               sliver: codes.isEmpty
                                   ? SliverToBoxAdapter(
-                                      child: Padding(
+                                      child: Container(
+                                        constraints: BoxConstraints(
+                                          minHeight: mobile ? 0 : 72,
+                                        ),
+                                        alignment: mobile
+                                            ? AlignmentDirectional.centerStart
+                                            : Alignment.center,
                                         padding: const EdgeInsets.all(18),
                                         child: Text(
                                           l.prototypeNoMatchingCategories,
-                                          style: AppTypography.geodataEmpty
-                                              .copyWith(
-                                                color: palette.mutedForeground,
-                                              ),
+                                          textAlign: mobile
+                                              ? TextAlign.start
+                                              : TextAlign.center,
+                                          style:
+                                              (mobile
+                                                      ? AppTypography
+                                                            .geodataEmpty
+                                                      : AppTypography
+                                                            .geodataTableBody)
+                                                  .copyWith(
+                                                    color:
+                                                        palette.mutedForeground,
+                                                  ),
                                         ),
                                       ),
                                     )

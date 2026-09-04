@@ -132,7 +132,12 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
     children: [
       _fields(context),
       Padding(
-        padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+        padding: EdgeInsets.symmetric(
+          horizontal:
+              MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint
+              ? 4
+              : 0,
+        ).copyWith(top: 12),
         child: _notice(context, widget.supportText),
       ),
       const SizedBox(height: 14),
@@ -255,7 +260,7 @@ class _SubscriptionFormViewState extends State<SubscriptionFormView> {
                     Icon(
                       _expanded
                           ? LucideIcons.arrowDown
-                          : LucideIcons.arrowRight,
+                          : LucideIcons.arrowRightDir,
                       size: 18,
                       textDirection: Directionality.of(context),
                     ),

@@ -71,19 +71,29 @@ class SetupPrivacyView extends StatelessWidget {
     final palette = ColorManager.palette(context);
     final mobile =
         MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final detailStyle =
+        (mobile ? AppTypography.setupPoint : AppTypography.setupDesktopPoint)
+            .copyWith(color: palette.mutedStrong);
     return Scaffold(
+      appBar: mobile
+          ? null
+          : AppBar(
+              leading: IconButton(
+                tooltip: l.prototypeBack,
+                onPressed: onBack,
+                icon: const Icon(LucideIcons.arrowLeftDir),
+              ),
+              title: Text(l.prototypePrivacyPolicy),
+            ),
       body: SafeArea(
         bottom: false,
         child: SetupBody(
-          top: 56,
+          top: mobile ? 56 : 24,
           children: [
-            Text(
-              l.prototypePrivacyPolicy,
-              style: mobile
-                  ? AppTypography.setupTitle
-                  : AppTypography.setupDesktopTitle,
-            ),
-            const SizedBox(height: 12),
+            if (mobile) ...[
+              Text(l.prototypePrivacyPolicy, style: AppTypography.setupTitle),
+              const SizedBox(height: 12),
+            ],
             Text(
               l.prototypeNoDataUpload,
               style: AppTypography.setupSubtitle.copyWith(
@@ -91,47 +101,48 @@ class SetupPrivacyView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 36),
-            Text(
-              l.prototypeConfiguredSourcesNotice,
-              style: AppTypography.setupPoint.copyWith(
-                color: palette.mutedStrong,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              l.prototypeRegionPrivacyNotice,
-              style: AppTypography.setupPoint.copyWith(
-                color: palette.mutedStrong,
-              ),
-            ),
-            const SizedBox(height: 24),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton(
-                onPressed: busy ? null : onOpenPolicy,
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 38),
-                  alignment: AlignmentDirectional.topStart,
-                  foregroundColor: palette.mutedStrong,
-                  textStyle: AppTypography.setupPoint.copyWith(
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: mobile ? 760 : 460),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Flexible(
-                      child: ButtonProgress(
-                        busy: busy,
-                        child: Text(l.prototypeReadFullPrivacyPolicy),
-                      ),
+                    Text(
+                      l.prototypeConfiguredSourcesNotice,
+                      style: detailStyle,
                     ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      LucideIcons.chevronRightDir,
-                      size: 16,
-                      color: palette.primary,
+                    const SizedBox(height: 24),
+                    Text(l.prototypeRegionPrivacyNotice, style: detailStyle),
+                    const SizedBox(height: 24),
+                    TextButton(
+                      onPressed: busy ? null : onOpenPolicy,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 38),
+                        alignment: AlignmentDirectional.topStart,
+                        foregroundColor: palette.mutedStrong,
+                        textStyle: detailStyle.copyWith(
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: ButtonProgress(
+                              busy: busy,
+                              child: Text(l.prototypeReadFullPrivacyPolicy),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            LucideIcons.chevronRightDir,
+                            size: 16,
+                            color: palette.primary,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

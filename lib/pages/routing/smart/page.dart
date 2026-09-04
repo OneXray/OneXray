@@ -64,51 +64,32 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
                         ),
                 )
               : SettingsPageScroll(
-                  desktopMaxWidth: 1220,
+                  desktopMaxWidth: AppLayout.routingMaxWidth,
                   padding: EdgeInsetsDirectional.fromSTEB(
                     mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                    12,
+                    mobile ? 12 : AppSpacing.desktopPageTop,
                     mobile ? AppSpacing.mobilePage : AppSpacing.page,
-                    mobile ? 18 : 42,
+                    mobile ? 18 : AppSpacing.desktopPageBottom,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (!mobile) ...[
-                        Text(
-                          l.prototypeSmartRulesMaintained,
-                          style: AppTypography.rowValue.copyWith(
-                            color: ColorManager.secondaryText(context),
-                          ),
+                  child:
+                      MediaQuery.sizeOf(context).width <=
+                          AppLayout.compactDesktopBreakpoint
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _settings(context),
+                            SizedBox(height: mobile ? 12 : 16),
+                            _preview(context),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 25, child: _settings(context)),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 24, child: _preview(context)),
+                          ],
                         ),
-                        const SizedBox(height: 22),
-                      ],
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final settings = _settings(context);
-                          final preview = _preview(context);
-                          if (constraints.maxWidth < 900) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                settings,
-                                SizedBox(height: mobile ? 12 : 16),
-                                preview,
-                              ],
-                            );
-                          }
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(flex: 25, child: settings),
-                              const SizedBox(width: 16),
-                              Expanded(flex: 24, child: preview),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
                 ),
         ),
         bottomNavigationBar: Column(

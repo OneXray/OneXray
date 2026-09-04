@@ -21,6 +21,13 @@ void _phone(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
 }
 
+void _desktop(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1160, 688);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPhysicalSize);
+}
+
 Widget _app(
   Widget view, {
   Locale locale = const Locale('en'),
@@ -75,6 +82,30 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  testWidgets('desktop network actions stay content-sized', (tester) async {
+    _desktop(tester);
+    final controller = _controller(
+      platform: ConnectionPlatform.macos,
+      apple: {'onDemandEnabled': true},
+    );
+    await tester.pumpWidget(
+      _app(
+        AppleVpnView(
+          controller: controller,
+          capabilities: _supported,
+          onEditWifi: () {},
+        ),
+      ),
+    );
+
+    final selector = find.byKey(const ValueKey('apple-network-action-choice'));
+    expect(
+      find.descendant(of: selector, matching: find.byType(Expanded)),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'Apple master toggles preserve subordinate drafts and edit navigation',
     (tester) async {

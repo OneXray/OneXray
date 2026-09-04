@@ -43,8 +43,12 @@ class AdvancedPage extends StatelessWidget {
                         ? AppSpacing.mobilePage
                         : AppSpacing.page,
                   ),
-                  labelStyle: AppTypography.selectedAdvancedTab,
-                  unselectedLabelStyle: AppTypography.advancedTab,
+                  labelStyle: mobile
+                      ? AppTypography.selectedAdvancedTab
+                      : AppTypography.selectedDesktopAdvancedTab,
+                  unselectedLabelStyle: mobile
+                      ? AppTypography.advancedTab
+                      : AppTypography.desktopAdvancedTab,
                   labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                   indicatorSize: TabBarIndicatorSize.tab,
                   tabs: [

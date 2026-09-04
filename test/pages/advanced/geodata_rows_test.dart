@@ -116,89 +116,119 @@ void main() {
     Locale('ru'),
     Locale('fa'),
   ]) {
-    testWidgets(
-      'mobile Geodata rows render dates and route actions ($locale)',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(390, 844));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        final builtIn = _file(-1, 'geoip', 12 * 1024 * 1024);
-        final custom = _file(42, 'custom-domain', 3 * 1024 * 1024);
-        final actions = <(String, PublishedGeoData)>[];
+    for (final width in const [390.0, 1160.0]) {
+      testWidgets(
+        'Geodata rows render dates and route actions ($locale, $width)',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = Size(width, 844);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          final builtIn = _file(-1, 'geoip', 12 * 1024 * 1024);
+          final custom = _file(42, 'custom-domain', 3 * 1024 * 1024);
+          final actions = <(String, PublishedGeoData)>[];
 
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.light,
-            locale: locale,
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    for (final file in [builtIn, custom])
-                      GeoDataRows(
-                        key: ValueKey(file.row.id),
-                        files: [file],
-                        custom: !file.builtIn,
-                        busy: false,
-                        onOpen: (value) => actions.add(('open', value)),
-                        onUpdate: (value) => actions.add(('update', value)),
-                        onDelete: (value) => actions.add(('delete', value)),
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.light,
+              locale: locale,
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              home: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: width > 720 ? 600 : double.infinity,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          for (final file in [builtIn, custom])
+                            GeoDataRows(
+                              key: ValueKey(file.row.id),
+                              files: [file],
+                              custom: !file.builtIn,
+                              busy: false,
+                              onOpen: (value) => actions.add(('open', value)),
+                              onUpdate: (value) =>
+                                  actions.add(('update', value)),
+                              onDelete: (value) =>
+                                  actions.add(('delete', value)),
+                            ),
+                        ],
                       ),
-                  ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
 
-        final l = AppLocalizations.of(
-          tester.element(find.byType(GeoDataRows).first),
-        )!;
-        for (final (file, size) in [
-          (builtIn, '12.0 MiB'),
-          (custom, '3.0 MiB'),
-        ]) {
-          final group = find.byKey(ValueKey(file.row.id));
-          for (final text in [
-            file.fileName,
-            file.sourceHost,
-            size,
-            DateFormat.yMd(locale.toString())
-                .add_Hm()
-                .format(file.row.timestamp.toLocal()),
+          final l = AppLocalizations.of(
+            tester.element(find.byType(GeoDataRows).first),
+          )!;
+          for (final (file, size) in [
+            (builtIn, '12.0 MiB'),
+            (custom, '3.0 MiB'),
           ]) {
+            final group = find.byKey(ValueKey(file.row.id));
+            for (final text in [
+              file.fileName,
+              file.sourceHost,
+              size,
+              DateFormat.yMd(locale.toString())
+                  .add_Hm()
+                  .format(file.row.timestamp.toLocal()),
+            ]) {
+              expect(
+                find.descendant(of: group, matching: find.text(text)),
+                findsOneWidget,
+              );
+            }
             expect(
-              find.descendant(of: group, matching: find.text(text)),
-              findsOneWidget,
+              find.descendant(
+                of: group,
+                matching: find.text(l.prototypeUpdate),
+              ),
+              file.builtIn ? findsNothing : findsOneWidget,
             );
+            expect(
+              find.descendant(
+                of: group,
+                matching: find.byTooltip(l.prototypeDeleteCustomDataset),
+              ),
+              file.builtIn ? findsNothing : findsOneWidget,
+            );
+            if (width > 720) {
+              expect(
+                find.descendant(
+                  of: group,
+                  matching: find.text(l.prototypeAction),
+                ),
+                file.builtIn ? findsNothing : findsOneWidget,
+              );
+              expect(
+                find.descendant(
+                  of: group,
+                  matching: find.text(l.prototypeFileName),
+                ),
+                findsOneWidget,
+              );
+            }
+            await tester.tap(find.text(file.fileName));
           }
-          expect(
-            find.descendant(of: group, matching: find.text(l.prototypeUpdate)),
-            file.builtIn ? findsNothing : findsOneWidget,
-          );
-          expect(
-            find.descendant(
-              of: group,
-              matching: find.byTooltip(l.prototypeDeleteCustomDataset),
-            ),
-            file.builtIn ? findsNothing : findsOneWidget,
-          );
-          await tester.tap(find.text(file.fileName));
-        }
-        await tester.tap(find.text(l.prototypeUpdate));
-        await tester.tap(find.byTooltip(l.prototypeDeleteCustomDataset));
-        expect(actions, [
-          ('open', builtIn),
-          ('open', custom),
-          ('update', custom),
-          ('delete', custom),
-        ]);
-        expect(tester.takeException(), isNull);
-      },
-    );
+          await tester.tap(find.text(l.prototypeUpdate));
+          await tester.tap(find.byTooltip(l.prototypeDeleteCustomDataset));
+          expect(actions, [
+            ('open', builtIn),
+            ('open', custom),
+            ('update', custom),
+            ('delete', custom),
+          ]);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
   }
 }
 

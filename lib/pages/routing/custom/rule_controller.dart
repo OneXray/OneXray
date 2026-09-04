@@ -47,17 +47,26 @@ class CustomRoutingRuleController extends ChangeNotifier {
         : 'any';
     action = _original['outboundTag'] as String? ?? 'proxy';
     for (final value in _original['domain'] as List? ?? const []) {
-      domains.add(RuleValueEntry(value as String));
+      domains.add(_entry(value as String));
     }
     for (final value in _original['ip'] as List? ?? const []) {
-      ips.add(RuleValueEntry(value as String));
+      ips.add(_entry(value as String));
     }
-    if (domains.isEmpty) domains.add(RuleValueEntry(''));
-    if (ips.isEmpty) ips.add(RuleValueEntry(''));
+    if (domains.isEmpty) domains.add(_entry(''));
+    if (ips.isEmpty) ips.add(_entry(''));
+    name.addListener(_changed);
+    port.addListener(_changed);
+  }
+
+  RuleValueEntry _entry(String value) =>
+      RuleValueEntry(value)..text.addListener(_changed);
+
+  void _changed() {
+    if (!_closed) notifyListeners();
   }
 
   void addValue(bool domain) {
-    (domain ? domains : ips).add(RuleValueEntry(''));
+    (domain ? domains : ips).add(_entry(''));
     notifyListeners();
   }
 
@@ -95,14 +104,16 @@ class CustomRoutingRuleController extends ChangeNotifier {
     }
   }
 
-  Map<String, dynamic> buildRule() {
+  /// Incomplete fields stay in the route draft while another rule is edited.
+  /// Save still validates the complete template through [buildRule].
+  Map<String, dynamic> get draftRule {
     List<String> clean(List<RuleValueEntry> values) => values
         .map((entry) => entry.text.text.trim())
         .where((value) => value.isNotEmpty)
         .toList();
     final domain = clean(domains);
     final ip = clean(ips);
-    final rule = <String, dynamic>{
+    return <String, dynamic>{
       'type': 'field',
       if (name.text.trim().isNotEmpty) 'ruleTag': name.text.trim(),
       if (domain.isNotEmpty) 'domain': domain,
@@ -117,6 +128,10 @@ class CustomRoutingRuleController extends ChangeNotifier {
         'network': _original['network'],
       if (action == 'proxy') 'balancerTag': 'proxy' else 'outboundTag': action,
     };
+  }
+
+  Map<String, dynamic> buildRule() {
+    final rule = draftRule;
     CustomRoutingTemplate.parse(
       jsonEncode({
         'outbounds': [{}],

@@ -62,11 +62,16 @@ class ConnectView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final connected = view.phase == ConnectionPhase.connected;
-    if (!hasServers &&
+    final empty =
+        !hasServers &&
         !expert &&
         activeRawId == null &&
         !connected &&
-        !view.busy) {
+        !view.busy;
+    if (MediaQuery.sizeOf(context).width > AppLayout.mobileBreakpoint) {
+      return _desktop(context, empty: empty);
+    }
+    if (empty) {
       return Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
@@ -199,16 +204,6 @@ class ConnectView extends StatelessWidget {
                 ),
               ),
             );
-            if (constraints.maxWidth >= 780) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: main),
-                  const SizedBox(width: 24),
-                  Expanded(flex: 2, child: traffic),
-                ],
-              );
-            }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [main, const SizedBox(height: 13), traffic],
@@ -219,14 +214,311 @@ class ConnectView extends StatelessWidget {
     );
   }
 
-  Widget _expertSwitch(BuildContext context) {
+  Widget _desktop(BuildContext context, {required bool empty}) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final viewport = MediaQuery.sizeOf(context);
+    final compact = viewport.width <= AppLayout.compactDesktopBreakpoint;
+    final connected = view.phase == ConnectionPhase.connected;
+    final main = Card(
+      key: const ValueKey('desktop-connection-panel'),
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _status(context, desktop: true),
+          _expertSwitch(context, desktop: true),
+          if (expert)
+            _raws(context, desktop: true)
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 29),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _desktopChoice(
+                    context,
+                    LucideIcons.earth,
+                    l.prototypeConnectionLocation,
+                    location,
+                    onServer,
+                    detail: locationDetail ?? runningPath,
+                    meta: connected ? locationHealth : null,
+                  ),
+                  const SizedBox(height: 25),
+                  _desktopChoice(
+                    context,
+                    LucideIcons.shieldCheck,
+                    l.prototypeTrafficMethod,
+                    method,
+                    onMethod,
+                    detail: methodDetail,
+                    busy: pendingChange == 'method',
+                  ),
+                  const SizedBox(height: 25),
+                  _why(context, desktop: true),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    final traffic = Card(
+      key: const ValueKey('desktop-traffic-panel'),
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 27, 24, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: onTraffic,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 48),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: palette.border)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l.prototypeTraffic,
+                        style: AppTypography.connectDesktopTrafficTitle,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Icon(
+                        LucideIcons.chevronRightDir,
+                        size: 17,
+                        color: palette.mutedForeground,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            TrafficReadout(view: view, desktop: true),
+          ],
+        ),
+      ),
+    );
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        AppSpacing.desktopPageTop,
+        AppSpacing.page,
+        AppSpacing.desktopPageBottom,
+      ),
+      child: empty
+          ? _desktopEmpty(context)
+          : compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 660),
+                  child: main,
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 560),
+                  child: traffic,
+                ),
+              ],
+            )
+          : ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight:
+                    (viewport.height -
+                            AppLayout.connectDesktopPanelViewportInset)
+                        .clamp(0.0, double.infinity),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(flex: 104, child: main),
+                    const SizedBox(width: 16),
+                    Expanded(flex: 100, child: traffic),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _desktopEmpty(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     return Container(
-      constraints: const BoxConstraints(
-        minHeight: AppLayout.connectExpertRowMinHeight,
+      constraints: BoxConstraints(
+        minHeight:
+            (MediaQuery.sizeOf(context).height -
+                    AppLayout.connectDesktopEmptyViewportInset)
+                .clamp(0.0, double.infinity),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: ShapeDecoration(
+        shape: AppDashedBorder(
+          side: BorderSide(color: palette.borderStrong),
+          borderRadius: BorderRadius.circular(AppRadii.card),
+        ),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(LucideIcons.layers3, size: 34),
+          const SizedBox(height: 13),
+          Text(
+            l.prototypeStartUsingOneXray,
+            style: AppTypography.panelTitle,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 13),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Text(
+              l.prototypeFirstConnectionHint,
+              textAlign: TextAlign.center,
+              style: AppTypography.connectDesktopEmptyDetail,
+            ),
+          ),
+          const SizedBox(height: 13),
+          FilledButton.icon(
+            onPressed: onAddServers,
+            icon: const Icon(LucideIcons.plus, size: 17),
+            label: Text(l.prototypeAddServers),
+          ),
+          const SizedBox(height: 13),
+          TextButton(
+            onPressed: () => onExpert(true),
+            child: Text(
+              l.prototypeUseCompleteRawJson,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _desktopChoice(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    VoidCallback onTap, {
+    String? detail,
+    String? meta,
+    bool busy = false,
+  }) {
+    final palette = ColorManager.palette(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 2),
+          child: Text(
+            label,
+            style: AppTypography.connectDesktopChoiceLabel.copyWith(
+              color: palette.mutedStrong,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Material(
+          color: palette.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.small),
+            side: BorderSide(color: palette.border),
+          ),
+          child: InkWell(
+            onTap: view.busy ? null : onTap,
+            borderRadius: BorderRadius.circular(AppRadii.small),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: AppLayout.connectDesktopChoiceMinHeight,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    if (busy)
+                      const ButtonProgressIndicator()
+                    else
+                      Icon(
+                        icon,
+                        size: 23,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? palette.foreground
+                            : palette.scannerBackground,
+                      ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.connectDesktopChoiceTitle,
+                          ),
+                          if (detail != null && detail.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              detail,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.connectDesktopChoiceDetail
+                                  .copyWith(color: palette.mutedForeground),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    if (meta != null) ...[
+                      Text(
+                        meta,
+                        style: AppTypography.connectDesktopChoiceMeta.copyWith(
+                          color: palette.running,
+                        ),
+                      ),
+                      const SizedBox(width: 13),
+                    ],
+                    const Icon(LucideIcons.chevronRightDir, size: 19),
+                    if (meta == null) const SizedBox(width: 13),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _expertSwitch(BuildContext context, {bool desktop = false}) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: desktop
+            ? AppLayout.connectDesktopExpertRowMinHeight
+            : AppLayout.connectExpertRowMinHeight,
+      ),
+      padding: EdgeInsets.symmetric(horizontal: desktop ? 18 : 12),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: palette.border)),
       ),
@@ -238,7 +530,9 @@ class ConnectView extends StatelessWidget {
                 Flexible(
                   child: Text(
                     l.prototypeExpertMode,
-                    style: AppTypography.connectCaption,
+                    style: desktop
+                        ? AppTypography.connectDesktopCaption
+                        : AppTypography.connectCaption,
                   ),
                 ),
                 const SizedBox(width: 7),
@@ -270,12 +564,14 @@ class ConnectView extends StatelessWidget {
     );
   }
 
-  Widget _why(BuildContext context) {
+  Widget _why(BuildContext context, {bool desktop = false}) {
     final palette = ColorManager.palette(context);
-    return InkWell(
+    final action = InkWell(
       onTap: onWhy,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 49),
+      borderRadius: desktop ? BorderRadius.circular(AppRadii.small) : null,
+      child: Container(
+        constraints: BoxConstraints(minHeight: desktop ? 53 : 49),
+        padding: desktop ? const EdgeInsets.symmetric(horizontal: 14) : null,
         child: Row(
           children: [
             Icon(LucideIcons.circleHelp, size: 20, color: palette.primary),
@@ -283,9 +579,11 @@ class ConnectView extends StatelessWidget {
             Expanded(
               child: Text(
                 AppLocalizations.of(context)!.prototypeWhyThisConnection,
-                style: AppTypography.connectWhy.copyWith(
-                  color: palette.primary,
-                ),
+                style:
+                    (desktop
+                            ? AppTypography.connectDesktopWhy
+                            : AppTypography.connectWhy)
+                        .copyWith(color: palette.primary),
               ),
             ),
             Icon(LucideIcons.chevronRightDir, size: 19, color: palette.primary),
@@ -293,9 +591,18 @@ class ConnectView extends StatelessWidget {
         ),
       ),
     );
+    if (!desktop) return action;
+    return Material(
+      color: palette.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.small),
+        side: BorderSide(color: palette.border),
+      ),
+      child: action,
+    );
   }
 
-  Widget _status(BuildContext context) {
+  Widget _status(BuildContext context, {bool desktop = false}) {
     final l = AppLocalizations.of(context)!;
     final connected = view.phase == ConnectionPhase.connected;
     final failed = view.failed && !connected;
@@ -340,123 +647,156 @@ class ConnectView extends StatelessWidget {
         : view.busy
         ? palette.primary
         : palette.mutedStrong;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minHeight: AppLayout.connectStatusMinHeight,
+    final button = FilledButton(
+      onPressed: view.phase == ConnectionPhase.disconnecting
+          ? null
+          : onConnection,
+      style: desktop
+          ? AppTheme.connectionButton(context, destructive: connected).copyWith(
+              minimumSize: const WidgetStatePropertyAll(
+                Size(
+                  AppLayout.connectDesktopButtonWidth,
+                  AppLayout.connectDesktopButtonMinHeight,
+                ),
+              ),
+              textStyle: WidgetStatePropertyAll(
+                AppTypography.connectDesktopAction,
+              ),
+            )
+          : AppTheme.connectionButton(context, destructive: connected),
+      child: ButtonProgress(
+        busy: desktop && view.busy,
+        child: Text(
+          connected
+              ? l.prototypeDisconnect
+              : view.phase == ConnectionPhase.disconnecting
+              ? l.prototypePleaseWait
+              : view.busy
+              ? l.prototypeCancel
+              : failed
+              ? l.prototypeTryAgain
+              : l.prototypeConnect,
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(15, 25, 15, 17),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (view.busy)
-                    SizedBox.square(
-                      dimension: 24,
-                      child: MediaQuery.disableAnimationsOf(context)
-                          ? Icon(
-                              LucideIcons.loaderCircle,
-                              color: color,
-                              size: 24,
-                            )
-                          : CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: color,
-                            ),
-                    )
-                  else if (connected)
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        LucideIcons.check,
-                        size: 14,
-                        color: palette.primaryForeground,
-                      ),
-                    )
-                  else
-                    Icon(
-                      failed ? LucideIcons.circleAlert : LucideIcons.shield,
+      ),
+    );
+    final content = ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: desktop
+            ? AppLayout.connectDesktopStatusMinHeight
+            : AppLayout.connectStatusMinHeight,
+      ),
+      child: Padding(
+        padding: desktop
+            ? const EdgeInsets.fromLTRB(20, 66, 20, 39)
+            : const EdgeInsets.fromLTRB(15, 25, 15, 17),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (view.busy)
+                  SizedBox.square(
+                    dimension: desktop ? 29 : 24,
+                    child: MediaQuery.disableAnimationsOf(context)
+                        ? Icon(
+                            LucideIcons.loaderCircle,
+                            color: color,
+                            size: desktop ? 29 : 24,
+                          )
+                        : CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: color,
+                          ),
+                  )
+                else if (connected)
+                  Container(
+                    width: desktop ? 29 : 24,
+                    height: desktop ? 29 : 24,
+                    decoration: BoxDecoration(
                       color: color,
-                      size: 24,
+                      shape: BoxShape.circle,
                     ),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      title,
-                      style: AppTypography.connectStatusTitle.copyWith(
-                        color: color,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Icon(
+                      LucideIcons.check,
+                      size: desktop ? 19 : 14,
+                      color: palette.primaryForeground,
                     ),
+                  )
+                else
+                  Icon(
+                    failed ? LucideIcons.circleAlert : LucideIcons.shield,
+                    color: color,
+                    size: desktop ? 29 : 24,
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                detail,
-                textAlign: TextAlign.center,
-                style: AppTypography.connectStatusDetail.copyWith(
-                  color: palette.mutedStrong,
-                ),
-              ),
-              if (view.issue == 'selectionReset')
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      l.prototypeNameActive(l.prototypeAutomaticSelection),
-                      textAlign: TextAlign.center,
-                      style: AppTypography.metadata,
-                    ),
-                  ),
-                ),
-              if (view.failed && !failed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                SizedBox(width: desktop ? 12 : 10),
+                Flexible(
                   child: Text(
-                    l.prototypeCheckNetwork,
-                    style: AppTypography.supporting.copyWith(
-                      color: palette.destructive,
-                    ),
+                    title,
+                    style:
+                        (desktop
+                                ? AppTypography.connectDesktopStatusTitle
+                                : AppTypography.connectStatusTitle)
+                            .copyWith(color: color),
                     textAlign: TextAlign.center,
                   ),
                 ),
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: view.phase == ConnectionPhase.disconnecting
-                    ? null
-                    : onConnection,
-                style: AppTheme.connectionButton(
-                  context,
-                  destructive: connected,
-                ),
-                child: Text(
-                  connected
-                      ? l.prototypeDisconnect
-                      : view.phase == ConnectionPhase.disconnecting
-                      ? l.prototypePleaseWait
-                      : view.busy
-                      ? l.prototypeCancel
-                      : failed
-                      ? l.prototypeTryAgain
-                      : l.prototypeConnect,
+              ],
+            ),
+            SizedBox(height: desktop ? 16 : 8),
+            Text(
+              detail,
+              textAlign: TextAlign.center,
+              style:
+                  (desktop
+                          ? AppTypography.connectDesktopStatusDetail
+                          : AppTypography.connectStatusDetail)
+                      .copyWith(color: palette.mutedStrong),
+            ),
+            if (view.issue == 'selectionReset')
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    l.prototypeNameActive(l.prototypeAutomaticSelection),
+                    textAlign: TextAlign.center,
+                    style: AppTypography.metadata,
+                  ),
                 ),
               ),
-            ],
-          ),
+            if (view.failed && !failed)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  l.prototypeCheckNetwork,
+                  style: AppTypography.supporting.copyWith(
+                    color: palette.destructive,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            SizedBox(height: desktop ? 30 : 18),
+            if (desktop)
+              Align(
+                child: SizedBox(
+                  width: AppLayout.connectDesktopButtonWidth,
+                  child: button,
+                ),
+              )
+            else
+              button,
+          ],
         ),
       ),
+    );
+    if (!desktop) return Card(margin: EdgeInsets.zero, child: content);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: palette.border)),
+      ),
+      child: content,
     );
   }
 
@@ -559,20 +899,27 @@ class ConnectView extends StatelessWidget {
     );
   }
 
-  Widget _raws(BuildContext context) {
+  Widget _raws(BuildContext context, {bool desktop = false}) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      padding: desktop
+          ? const EdgeInsets.fromLTRB(18, 0, 18, 14)
+          : const EdgeInsets.fromLTRB(12, 0, 12, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 47),
+            constraints: BoxConstraints(minHeight: desktop ? 52 : 47),
             child: Row(
               children: [
                 Expanded(
-                  child: Text('Raw JSON', style: AppTypography.connectRawTitle),
+                  child: Text(
+                    'Raw JSON',
+                    style: desktop
+                        ? AppTypography.connectDesktopRawTitle
+                        : AppTypography.connectRawTitle,
+                  ),
                 ),
                 Text(
                   '${raws.length} / 3',
@@ -602,32 +949,46 @@ class ConnectView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadii.card),
               ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 160),
+                constraints: BoxConstraints(
+                  minHeight: desktop
+                      ? AppLayout.connectDesktopRawEmptyMinHeight
+                      : 160,
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(19),
+                  padding: EdgeInsets.all(desktop ? 24 : 19),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: desktop
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.start,
                     children: [
                       Icon(
                         LucideIcons.filePlus,
-                        size: 27,
+                        size: desktop ? 32 : 27,
                         color: palette.mutedStrong,
                       ),
                       const SizedBox(height: 11),
                       Text(
                         l.prototypeNoRawJson,
                         textAlign: TextAlign.center,
-                        style: AppTypography.connectRawEmptyTitle,
+                        style: desktop
+                            ? AppTypography.connectDesktopRawEmptyTitle
+                            : AppTypography.connectRawEmptyTitle,
                       ),
                       const SizedBox(height: 9),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 270),
+                        constraints: BoxConstraints(
+                          maxWidth: desktop ? 330 : 270,
+                        ),
                         child: Text(
                           l.prototypeAddRawJsonHint,
                           textAlign: TextAlign.center,
-                          style: AppTypography.connectRawEmptyDetail.copyWith(
-                            color: palette.mutedForeground,
-                          ),
+                          style:
+                              (desktop
+                                      ? AppTypography
+                                            .connectDesktopRawEmptyDetail
+                                      : AppTypography.connectRawEmptyDetail)
+                                  .copyWith(color: palette.mutedForeground),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -649,7 +1010,7 @@ class ConnectView extends StatelessWidget {
                 children: [
                   for (final row in raws) ...[
                     if (row != raws.first) const Divider(),
-                    _rawRow(context, row),
+                    _rawRow(context, row, desktop: desktop),
                   ],
                 ],
               ),
@@ -690,7 +1051,11 @@ class ConnectView extends StatelessWidget {
     );
   }
 
-  Widget _rawRow(BuildContext context, CoreConfigData row) {
+  Widget _rawRow(
+    BuildContext context,
+    CoreConfigData row, {
+    bool desktop = false,
+  }) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final active = activeRawId == row.id;
@@ -699,7 +1064,7 @@ class ConnectView extends StatelessWidget {
           ? Color.lerp(palette.card, palette.selectedSurface, .6)!
           : palette.card,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 62),
+        constraints: BoxConstraints(minHeight: desktop ? 66 : 62),
         child: Row(
           children: [
             Expanded(
@@ -711,8 +1076,8 @@ class ConnectView extends StatelessWidget {
                     ? null
                     : () => onRawSelect(row),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: desktop ? 13 : 11,
                     vertical: 9,
                   ),
                   child: Row(
@@ -765,7 +1130,7 @@ class ConnectView extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: 42,
+              width: desktop ? 46 : 42,
               child: Center(
                 child: Container(
                   width: 36,
@@ -800,9 +1165,11 @@ class TrafficReadout extends StatelessWidget {
     super.key,
     required this.view,
     this.expandedGroups = false,
+    this.desktop = false,
   });
   final ConnectionView view;
   final bool expandedGroups;
+  final bool desktop;
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -849,11 +1216,13 @@ class TrafficReadout extends StatelessWidget {
     final palette = ColorManager.palette(context);
     return Container(
       constraints: BoxConstraints(
-        minHeight: expandedGroups
+        minHeight: desktop
+            ? AppLayout.connectDesktopTrafficGroupMinHeight
+            : expandedGroups
             ? 130
             : AppLayout.connectTrafficGroupMinHeight,
       ),
-      padding: const EdgeInsets.symmetric(vertical: 10.5),
+      padding: EdgeInsets.symmetric(vertical: desktop ? 22 : 10.5),
       decoration: BoxDecoration(
         border: divider
             ? Border(bottom: BorderSide(color: palette.border))
@@ -866,11 +1235,13 @@ class TrafficReadout extends StatelessWidget {
         children: [
           Text(
             title,
-            style: AppTypography.connectTrafficGroupTitle.copyWith(
-              color: palette.mutedStrong,
-            ),
+            style:
+                (desktop
+                        ? AppTypography.connectDesktopTrafficGroupTitle
+                        : AppTypography.connectTrafficGroupTitle)
+                    .copyWith(color: palette.mutedStrong),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: desktop ? 24 : 10),
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -921,31 +1292,42 @@ class TrafficReadout extends StatelessWidget {
     label: '$label $value',
     excludeSemantics: true,
     child: Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 8, 0),
+      padding: desktop
+          ? const EdgeInsetsDirectional.fromSTEB(40, 0, 18, 0)
+          : const EdgeInsetsDirectional.fromSTEB(12, 0, 8, 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsetsDirectional.only(start: 24, bottom: 5),
+            padding: EdgeInsetsDirectional.only(
+              start: desktop ? 30 : 24,
+              bottom: desktop ? 10 : 5,
+            ),
             child: Text(
               label,
-              style: AppTypography.connectTrafficLabel.copyWith(
-                color: ColorManager.palette(context).mutedStrong,
-              ),
+              style:
+                  (desktop
+                          ? AppTypography.connectDesktopTrafficLabel
+                          : AppTypography.connectTrafficLabel)
+                      .copyWith(
+                        color: ColorManager.palette(context).mutedStrong,
+                      ),
             ),
           ),
           Row(
             children: [
-              Icon(icon, size: 19, color: color),
-              const SizedBox(width: 7),
+              Icon(icon, size: desktop ? 24 : 19, color: color),
+              SizedBox(width: desktop ? 13 : 7),
               Flexible(
                 child: Text(
                   value,
                   textDirection: TextDirection.ltr,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.connectTrafficValue,
+                  style: desktop
+                      ? AppTypography.metric
+                      : AppTypography.connectTrafficValue,
                 ),
               ),
             ],

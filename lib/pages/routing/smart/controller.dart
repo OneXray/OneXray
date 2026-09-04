@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
-import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/plan.dart';
@@ -192,11 +192,9 @@ class SmartRoutingEditorController extends ChangeNotifier {
         original: original!.configuration,
         smart: draft,
         confirmReconnect: () => context.mounted
-            ? ContextAlert.showConfirmDialog(
+            ? showApplyAndReconnectDialog(
                 context,
-                title: l.prototypeApplyChange,
-                content: l.prototypeReconnectNotice,
-                confirmLabel: l.prototypeApplyAndReconnect,
+                label: l.prototypeSmartRouting,
               )
             : Future.value(false),
       );

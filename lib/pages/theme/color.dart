@@ -37,6 +37,7 @@ class AppPalette {
     required this.scannerBackground,
     required this.overlay,
     required this.header,
+    required this.brand,
     required this.sidebar,
     required this.sidebarForeground,
     required this.sidebarPrimary,
@@ -97,6 +98,7 @@ class AppPalette {
     scannerBackground: Color(0xFF101B35),
     overlay: Color.fromRGBO(9, 17, 29, 0.48),
     header: Color(0xFFFEFEFE),
+    brand: Color(0xFF071B55),
     sidebar: Color(0xFFF8FAFC),
     sidebarForeground: Color(0xFF565D6D),
     sidebarPrimary: Color(0xFF1F6AF9),
@@ -155,6 +157,7 @@ class AppPalette {
     scannerBackground: Color(0xFF101B35),
     overlay: Color.fromRGBO(9, 17, 29, 0.48),
     header: Color(0xFF10151E),
+    brand: Color(0xFFA9CAFF),
     sidebar: Color(0xFF151C27),
     sidebarForeground: Color(0xFFC2CAD5),
     sidebarPrimary: Color(0xFF69A5FF),
@@ -214,6 +217,7 @@ class AppPalette {
   final Color overlay;
   final Color header;
   final Color sidebar;
+  final Color brand;
   final Color sidebarForeground;
   final Color sidebarPrimary;
   final Color sidebarPrimaryForeground;
@@ -283,6 +287,7 @@ class AppPalette {
       overlay: color(begin.overlay, end.overlay),
       header: color(begin.header, end.header),
       sidebar: color(begin.sidebar, end.sidebar),
+      brand: color(begin.brand, end.brand),
       sidebarForeground: color(begin.sidebarForeground, end.sidebarForeground),
       sidebarPrimary: color(begin.sidebarPrimary, end.sidebarPrimary),
       sidebarPrimaryForeground: color(

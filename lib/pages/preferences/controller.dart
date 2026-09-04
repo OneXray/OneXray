@@ -180,6 +180,7 @@ class PreferencesController extends PageCubit<PreferencesPageState> {
             cancelLabel: l10n.prototypeCancel,
             confirmLabel: l10n.prototypeConfirmClearData,
             destructive: true,
+            barrierDismissible: false,
           ).show(context) ||
           !context.mounted) {
         return;

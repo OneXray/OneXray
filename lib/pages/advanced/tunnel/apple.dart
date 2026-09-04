@@ -106,8 +106,9 @@ class AppleVpnView extends StatelessWidget {
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
       final apple = controller.group('apple');
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+      final width = MediaQuery.sizeOf(context).width;
+      final mobile = width <= AppLayout.mobileBreakpoint;
+      final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
       Widget toggle(
         String field,
         String title,
@@ -126,9 +127,9 @@ class AppleVpnView extends StatelessWidget {
       );
       return Padding(
         padding: EdgeInsets.fromLTRB(
-          mobile ? 14 : 28,
-          mobile ? 14 : 18,
-          mobile ? 14 : 28,
+          gutter,
+          mobile ? 14 : 48,
+          gutter,
           mobile ? 18 : 24,
         ),
         child: Column(
@@ -287,15 +288,16 @@ class AppleWifiView extends StatelessWidget {
     animation: controller,
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+      final width = MediaQuery.sizeOf(context).width;
+      final mobile = width <= AppLayout.mobileBreakpoint;
+      final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
       final palette = ColorManager.palette(context);
       final gap = mobile ? 18.0 : 24.0;
       return Padding(
         padding: EdgeInsets.fromLTRB(
-          mobile ? 14 : 28,
-          17,
-          mobile ? 14 : 28,
+          gutter,
+          mobile ? 17 : 48,
+          gutter,
           mobile ? 18 : 24,
         ),
         child: Column(

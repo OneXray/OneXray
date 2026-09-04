@@ -7,6 +7,7 @@ import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/settings.dart';
 
@@ -24,196 +25,157 @@ class ServerBrowser extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final groups = controller.groups(l);
     final favorites = controller.favorites(l);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final mobile = constraints.maxWidth < 840;
-        if (constraints.maxWidth <= AppLayout.mobileBreakpoint) {
-          return _mobileBrowser(context, groups, favorites);
-        }
-        final selectedGroup =
-            groups
-                .where((row) => row.id == controller.activeGroupId)
-                .firstOrNull ??
-            groups.firstOrNull;
-        final browse = ListView(
-          controller: scroll,
-          padding: const EdgeInsets.all(16),
-          children: [
-            ListTile(
-              leading:
-                  controller.selectingGroup(const ServerSelection.automatic())
-                  ? const ButtonProgressIndicator()
-                  : const Icon(LucideIcons.sparkles),
-              title: Text(l.prototypeAutomaticRecommended),
-              subtitle: Text(l.prototypeChooseBySpeedAvailability),
-              selected: controller.selected(const ServerSelection.automatic()),
-              onTap: controller.busy
-                  ? null
-                  : () => controller.choose(
-                      context,
-                      const ServerSelection.automatic(),
-                    ),
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    if (controller.servers.isEmpty) {
+      return _empty(context, mobile: mobile);
+    }
+    if (mobile) {
+      return _mobileBrowser(context, groups, favorites);
+    }
+    final active = _activeGroup(groups);
+    return SingleChildScrollView(
+      controller: scroll,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        AppSpacing.desktopPageTop,
+        AppSpacing.page,
+        AppSpacing.desktopPageBottom,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _search(context),
+          const SizedBox(height: 15),
+          if (MediaQuery.sizeOf(context).width <=
+              AppLayout.compactDesktopBreakpoint)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _locationList(context, groups, favorites),
+                if (active != null) ...[
+                  const SizedBox(height: 16),
+                  ServerGroupView(
+                    controller: controller,
+                    group: active,
+                    embedded: true,
+                  ),
+                ],
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 41,
+                  child: _locationList(context, groups, favorites),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 59,
+                  child: active == null
+                      ? const SizedBox.shrink()
+                      : ServerGroupView(
+                          controller: controller,
+                          group: active,
+                          embedded: true,
+                        ),
+                ),
+              ],
             ),
-            if (favorites.isNotEmpty) ...[
-              ServerSectionTitle(l.prototypeFavorites),
-              for (final row in favorites)
-                ServerNodeRow(controller: controller, row: row),
-              const SizedBox(height: 16),
-            ],
-            if (controller.servers.isEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Column(
-                  children: [
-                    const Icon(LucideIcons.server),
-                    const SizedBox(height: 12),
-                    Text(
-                      l.prototypeNoServersYet,
-                      style: Theme.of(context).textTheme.titleMedium,
+        ],
+      ),
+    );
+  }
+
+  Widget _empty(BuildContext context, {required bool mobile}) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final padding = mobile
+        ? const EdgeInsets.fromLTRB(15, 13, 15, 22)
+        : const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.desktopPageTop,
+            AppSpacing.page,
+            AppSpacing.desktopPageBottom,
+          );
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        controller: scroll,
+        padding: padding,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: mobile
+                ? constraints.maxHeight > padding.vertical
+                      ? constraints.maxHeight - padding.vertical
+                      : 0.0
+                : 520.0,
+          ),
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              shape: AppDashedBorder(
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                side: BorderSide(color: palette.borderStrong),
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(mobile ? 28 : 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    LucideIcons.layers3,
+                    size: 34,
+                    color: palette.mutedForeground,
+                  ),
+                  const SizedBox(height: 13),
+                  Text(
+                    l.prototypeNoServersYet,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.panelTitle.copyWith(
+                      color: palette.foreground,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
+                  ),
+                  const SizedBox(height: 13),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Text(
                       l.prototypeAddProviderSubscriptionHint,
                       textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () => controller.addServers(context),
-                      icon: const Icon(LucideIcons.plus),
-                      label: Text(l.prototypeAddServers),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            for (final group in groups)
-              Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                color: !mobile && selectedGroup?.id == group.id
-                    ? Theme.of(context).colorScheme.secondaryContainer
-                    : null,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(
-                    start: 4,
-                    end: 4,
-                    bottom: 4,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ListTile(
-                        leading: Icon(
-                          controller.grouping == ServerGrouping.location
-                              ? LucideIcons.globe
-                              : LucideIcons.folder,
-                        ),
-                        title: Text(group.name),
-                        subtitle: Text(controller.summary(l, group)),
-                        trailing: const Icon(LucideIcons.chevronRightDir),
-                        onTap: () =>
-                            controller.browse(context, group, mobile: mobile),
+                      style: AppTypography.dialogBody.copyWith(
+                        color: palette.mutedForeground,
                       ),
-                      Wrap(
-                        alignment: WrapAlignment.end,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          ServerUseButton(controller: controller, group: group),
-                          if (group.source != null)
-                            SourceMenu(
-                              controller: controller,
-                              source: group.source!,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (groups.isEmpty && controller.search.text.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  controller.grouping == ServerGrouping.location
-                      ? l.prototypeNoMatchingLocations
-                      : l.prototypeNoMatchingSubscriptions,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-          ],
-        );
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<ServerGrouping>(
-                      segments: [
-                        ButtonSegment(
-                          value: ServerGrouping.location,
-                          label: Text(l.prototypeByNodeLocation),
-                        ),
-                        ButtonSegment(
-                          value: ServerGrouping.subscription,
-                          label: Text(l.prototypeBySubscription),
-                        ),
-                      ],
-                      selected: {controller.grouping},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (values) =>
-                          controller.groupBy(values.single),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: controller.search,
-                    onChanged: controller.searchChanged,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(LucideIcons.search),
-                      hintText: controller.grouping == ServerGrouping.location
-                          ? l.prototypeSearchLocationsServers
-                          : l.prototypeSearchSubscriptionsServers,
-                      suffixIcon: controller.search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: l.prototypeClear,
-                              onPressed: () {
-                                controller.search.clear();
-                                controller.searchChanged('');
-                              },
-                              icon: const Icon(LucideIcons.x),
-                            ),
-                    ),
+                  const SizedBox(height: 13),
+                  FilledButton.icon(
+                    onPressed: () => controller.addServers(context),
+                    icon: const Icon(LucideIcons.plus, size: 18),
+                    label: Text(l.prototypeAddServer),
+                  ),
+                  const SizedBox(height: 4),
+                  TextButton(
+                    onPressed: () => controller.openServerHelp(context),
+                    child: Text(l.prototypeHowGetServers),
                   ),
                 ],
               ),
             ),
-            Expanded(
-              child: mobile
-                  ? browse
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(width: 350, child: browse),
-                        const VerticalDivider(width: 1),
-                        Expanded(
-                          child: selectedGroup == null
-                              ? const SizedBox.shrink()
-                              : ServerGroupView(
-                                  controller: controller,
-                                  group: selectedGroup,
-                                ),
-                        ),
-                      ],
-                    ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ),
     );
   }
+
+  ServerGroup? _activeGroup(List<ServerGroup> groups) =>
+      groups
+          .where((group) => group.id == controller.activeGroupId)
+          .firstOrNull ??
+      groups
+          .where((group) => group.id == controller.currentGroupId)
+          .firstOrNull ??
+      groups.firstOrNull;
 
   Widget _mobileBrowser(
     BuildContext context,
@@ -222,18 +184,6 @@ class ServerBrowser extends StatelessWidget {
   ) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
-    final current = controller.currentSelectionSummary(l);
-    final currentGroupId = controller.currentGroupId;
-    final activeGroup =
-        groups
-            .where((group) => group.id == controller.activeGroupId)
-            .firstOrNull ??
-        groups.where((group) => group.id == currentGroupId).firstOrNull ??
-        groups.firstOrNull;
-    final inputBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadii.card),
-      borderSide: BorderSide(color: palette.border),
-    );
     return ListView(
       controller: scroll,
       padding: const EdgeInsets.fromLTRB(15, 13, 15, 22),
@@ -255,190 +205,183 @@ class ServerBrowser extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 15),
-        SizedBox(
-          height: 43,
-          child: TextField(
-            controller: controller.search,
-            onChanged: controller.searchChanged,
-            textAlignVertical: TextAlignVertical.center,
-            style: AppTypography.serverBody.copyWith(color: palette.foreground),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsetsDirectional.only(end: 13),
-              hintText: l.prototypeSearchSubscriptionsServers,
-              hintStyle: AppTypography.serverBody.copyWith(
-                color: palette.mutedForeground,
-              ),
-              prefixIconConstraints: const BoxConstraints.tightFor(
-                width: 41,
-                height: 43,
-              ),
-              prefixIcon: Padding(
-                padding: const EdgeInsetsDirectional.only(start: 13, end: 10),
-                child: Icon(
-                  LucideIcons.search,
-                  size: 18,
-                  color: palette.mutedForeground,
-                ),
-              ),
-              border: inputBorder,
-              enabledBorder: inputBorder,
-              focusedBorder: inputBorder.copyWith(
-                borderSide: BorderSide(color: palette.primary),
-              ),
+        _search(context),
+        const SizedBox(height: 12),
+        _locationList(context, groups, favorites),
+      ],
+    );
+  }
+
+  Widget _search(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      borderSide: BorderSide(color: palette.border),
+    );
+    return SizedBox(
+      height: 43,
+      child: TextField(
+        controller: controller.search,
+        onChanged: controller.searchChanged,
+        textAlignVertical: TextAlignVertical.center,
+        style: AppTypography.serverBody.copyWith(color: palette.foreground),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsetsDirectional.only(end: 13),
+          hintText: l.prototypeSearchSubscriptionsServers,
+          hintStyle: AppTypography.serverBody.copyWith(
+            color: palette.mutedForeground,
+          ),
+          prefixIconConstraints: const BoxConstraints.tightFor(
+            width: 41,
+            height: 43,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsetsDirectional.only(start: 13, end: 10),
+            child: Icon(
+              LucideIcons.search,
+              size: 18,
+              color: palette.mutedForeground,
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Material(
-          color: palette.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.card),
-            side: BorderSide(color: palette.border),
+          border: border,
+          enabledBorder: border,
+          focusedBorder: border.copyWith(
+            borderSide: BorderSide(color: palette.primary),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _automaticRow(context),
-              if (current != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Color.lerp(
-                      palette.card,
-                      palette.selectedSurface,
-                      .45,
-                    ),
-                    border: Border(top: BorderSide(color: palette.border)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        LucideIcons.circleCheck,
-                        size: 20,
-                        color: palette.running,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l.prototypeCurrentSelection,
-                              style: AppTypography.serverSelectionLabel
-                                  .copyWith(color: palette.mutedForeground),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              current.title,
-                              style: AppTypography.serverSelectionTitle
-                                  .copyWith(color: palette.foreground),
-                            ),
-                            if (current.detail.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                current.detail,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.serverSelectionDetail
-                                    .copyWith(color: palette.mutedForeground),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              if (favorites.isNotEmpty) ...[
-                _listHeading(context, l.prototypeFavorites),
-                for (final row in favorites)
-                  ServerNodeRow(controller: controller, row: row),
-              ],
-              if (controller.servers.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      const Icon(LucideIcons.server),
-                      const SizedBox(height: 12),
-                      Text(
-                        l.prototypeNoServersYet,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        l.prototypeAddProviderSubscriptionHint,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: () => controller.addServers(context),
-                        icon: const Icon(LucideIcons.plus),
-                        label: Text(l.prototypeAddServers),
-                      ),
-                    ],
-                  ),
-                ),
-              _listHeading(
-                context,
-                controller.grouping == ServerGrouping.location
-                    ? l.prototypeByNodeLocation
-                    : l.prototypeBySubscription,
+        ),
+      ),
+    );
+  }
+
+  Widget _locationList(
+    BuildContext context,
+    List<ServerGroup> groups,
+    List<CoreConfigData> favorites,
+  ) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final current = controller.currentSelectionSummary(l);
+    final activeGroup = _activeGroup(groups);
+    return Material(
+      color: palette.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        side: BorderSide(color: palette.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _automaticRow(context),
+          if (current != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Color.lerp(palette.card, palette.selectedSurface, .45),
+                border: Border(top: BorderSide(color: palette.border)),
               ),
-              for (final group in groups)
-                _groupRow(context, group, active: group.id == activeGroup?.id),
-              if (groups.isEmpty && controller.search.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 28,
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.circleCheck,
+                    size: 20,
+                    color: palette.running,
                   ),
-                  child: Text(
-                    controller.grouping == ServerGrouping.location
-                        ? l.prototypeNoMatchingLocations
-                        : l.prototypeNoMatchingSubscriptions,
-                    textAlign: TextAlign.center,
-                    style: AppTypography.settingsInput.copyWith(
-                      color: palette.mutedForeground,
-                    ),
-                  ),
-                ),
-              InkWell(
-                onTap: () => controller.openSources(context),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 52),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          LucideIcons.refreshCw,
-                          size: 17,
-                          color: palette.primary,
-                        ),
-                        const SizedBox(width: 9),
-                        Expanded(
-                          child: Text(
-                            l.prototypeUpdatesAndSources,
-                            style: AppTypography.serverBody.copyWith(
-                              color: palette.primary,
-                            ),
+                        Text(
+                          l.prototypeCurrentSelection,
+                          style: AppTypography.serverSelectionLabel.copyWith(
+                            color: palette.mutedForeground,
                           ),
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          current.title,
+                          style: AppTypography.serverSelectionTitle.copyWith(
+                            color: palette.foreground,
+                          ),
+                        ),
+                        if (current.detail.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            current.detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.serverSelectionDetail.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                ],
+              ),
+            ),
+          if (favorites.isNotEmpty) ...[
+            _listHeading(context, l.prototypeFavorites),
+            for (final row in favorites)
+              ServerNodeRow(controller: controller, row: row),
+          ],
+          _listHeading(
+            context,
+            controller.grouping == ServerGrouping.location
+                ? l.prototypeByNodeLocation
+                : l.prototypeBySubscription,
+          ),
+          for (final group in groups)
+            _groupRow(context, group, active: group.id == activeGroup?.id),
+          if (groups.isEmpty && controller.search.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+              child: Text(
+                controller.grouping == ServerGrouping.location
+                    ? l.prototypeNoMatchingLocations
+                    : l.prototypeNoMatchingSubscriptions,
+                textAlign: TextAlign.center,
+                style: AppTypography.settingsInput.copyWith(
+                  color: palette.mutedForeground,
                 ),
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          if (mobile)
+            InkWell(
+              onTap: () => controller.openSources(context),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 52),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        LucideIcons.refreshCw,
+                        size: 17,
+                        color: palette.primary,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          l.prototypeUpdatesAndSources,
+                          style: AppTypography.serverBody.copyWith(
+                            color: palette.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -457,6 +400,8 @@ class ServerBrowser extends StatelessWidget {
     final palette = ColorManager.palette(context);
     final selected = controller.selected(const ServerSelection.automatic());
     final result = controller.automaticResult(l);
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     return Semantics(
       selected: selected,
       button: true,
@@ -513,7 +458,7 @@ class ServerBrowser extends StatelessWidget {
                           color: palette.mutedForeground,
                         ),
                       ),
-                      if (result != null) ...[
+                      if (mobile && result != null) ...[
                         const SizedBox(height: 5),
                         Text(
                           result,
@@ -527,6 +472,20 @@ class ServerBrowser extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (!mobile && result != null) ...[
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 150),
+                    child: Text(
+                      result,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.serverSelectionHealth.copyWith(
+                        color: palette.running,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 12),
                 Icon(
                   selected
@@ -560,7 +519,13 @@ class ServerBrowser extends StatelessWidget {
           children: [
             Expanded(
               child: InkWell(
-                onTap: () => controller.browse(context, group, mobile: true),
+                onTap: () => controller.browse(
+                  context,
+                  group,
+                  mobile:
+                      MediaQuery.sizeOf(context).width <=
+                      AppLayout.mobileBreakpoint,
+                ),
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 66),
                   padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 6, 10),
@@ -647,215 +612,216 @@ class ServerGroupView extends StatelessWidget {
   final ServersController controller;
   final ServerGroup group;
   final bool groupPage;
+  final bool embedded;
   const ServerGroupView({
     super.key,
     required this.controller,
     required this.group,
     this.groupPage = false,
+    this.embedded = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
-      return _mobileGroup(context);
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final card = _card(context, mobile);
+    if (embedded) {
+      return card;
     }
     return ListView(
       key: PageStorageKey('servers:${group.id}'),
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (!groupPage)
-          Text(group.name, style: Theme.of(context).textTheme.titleLarge),
-        Text(
-          controller.summary(l, group),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            OutlinedButton.icon(
-              onPressed:
-                  group.rows.isEmpty || group.rows.any(controller.serverBusy)
-                  ? null
-                  : () => controller.test(context, group.rows),
-              icon: controller.testing(group.rows)
-                  ? const ButtonProgressIndicator()
-                  : const Icon(LucideIcons.gauge),
-              label: Text(l.prototypeTestServers),
+      padding: mobile
+          ? const EdgeInsets.fromLTRB(15, 13, 15, 22)
+          : const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              AppSpacing.desktopPageTop,
+              AppSpacing.page,
+              AppSpacing.desktopPageBottom,
             ),
-            ServerUseButton(controller: controller, group: group),
-            if (group.source != null)
-              SourceMenu(controller: controller, source: group.source!),
+      children: [card],
+    );
+  }
+
+  Widget _card(BuildContext context, bool mobile) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Material(
+      color: palette.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        side: BorderSide(color: palette.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(1),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              constraints: BoxConstraints(minHeight: mobile ? 0 : 88),
+              padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: palette.border)),
+              ),
+              child: mobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _heading(context, mobile),
+                        const SizedBox(height: 12),
+                        _actions(context, mobile),
+                      ],
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) => Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth,
+                            ),
+                            child: _heading(context, mobile),
+                          ),
+                          _actions(context, mobile),
+                        ],
+                      ),
+                    ),
+            ),
+            if (group.visibleRows.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 28,
+                ),
+                child: Text(
+                  l.prototypeNoServersYet,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.rowValue.copyWith(
+                    color: palette.mutedForeground,
+                  ),
+                ),
+              ),
+            for (final row in group.visibleRows)
+              ServerNodeRow(
+                controller: controller,
+                row: row,
+                detail: group.country != null
+                    ? controller.sourceName(l, row)
+                    : controller.countryName(l, row.countryCode),
+                showDivider: row != group.visibleRows.last,
+              ),
           ],
         ),
-        const Divider(height: 28),
-        if (group.visibleRows.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(l.prototypeNoServersYet),
+      ),
+    );
+  }
+
+  Widget _heading(BuildContext context, bool mobile) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final label = Padding(
+      padding: EdgeInsets.only(top: mobile ? 4 : 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!mobile) ...[
+            Text(
+              group.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.serverGroupTitle,
+            ),
+            const SizedBox(height: 4),
+          ],
+          Text(
+            controller.summary(l, group),
+            style: AppTypography.serverGroupSummary.copyWith(
+              color: palette.mutedForeground,
+            ),
           ),
-        for (final row in group.visibleRows)
-          ServerNodeRow(controller: controller, row: row),
+        ],
+      ),
+    );
+    return Row(
+      mainAxisSize: mobile ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: palette.surfaceHover,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: group.country == null
+              ? Icon(LucideIcons.layers3, size: 20, color: palette.primary)
+              : Text(
+                  group.country!.isEmpty ? '—' : group.country!,
+                  style: AppTypography.serverGroupCode.copyWith(
+                    color: palette.mutedStrong,
+                  ),
+                ),
+        ),
+        const SizedBox(width: 13),
+        if (mobile) Expanded(child: label) else Flexible(child: label),
       ],
     );
   }
 
-  Widget _mobileGroup(BuildContext context) {
+  Widget _actions(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
-    return ListView(
-      key: PageStorageKey('servers:${group.id}'),
-      padding: const EdgeInsets.fromLTRB(15, 13, 15, 22),
+    return Wrap(
+      alignment: WrapAlignment.end,
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Material(
-          color: palette.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.card),
-            side: BorderSide(color: palette.border),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.all(1),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 17,
-                    vertical: 15,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: palette.border)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: palette.surfaceHover,
-                              borderRadius: BorderRadius.circular(9),
-                            ),
-                            child: group.country == null
-                                ? Icon(
-                                    LucideIcons.layers3,
-                                    size: 20,
-                                    color: palette.primary,
-                                  )
-                                : Text(
-                                    group.country!.isEmpty
-                                        ? '—'
-                                        : group.country!,
-                                    style: AppTypography.serverGroupCode
-                                        .copyWith(color: palette.mutedStrong),
-                                  ),
-                          ),
-                          const SizedBox(width: 13),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                controller.summary(l, group),
-                                style: AppTypography.serverGroupSummary
-                                    .copyWith(color: palette.mutedForeground),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        alignment: WrapAlignment.end,
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          OutlinedButton(
-                            onPressed:
-                                group.rows.isEmpty ||
-                                    group.rows.any(controller.serverBusy)
-                                ? null
-                                : () => controller.test(context, group.rows),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(
-                                0,
-                                AppLayout.mobileButtonMinHeight,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 15,
-                              ),
-                              foregroundColor: palette.foreground,
-                              backgroundColor: palette.card,
-                              side: BorderSide(color: palette.borderStrong),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.control,
-                                ),
-                              ),
-                              textStyle: AppTypography.serverGroupAction,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.standard,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (controller.testing(group.rows))
-                                  const ButtonProgressIndicator()
-                                else
-                                  const Icon(LucideIcons.refreshCw, size: 16),
-                                const SizedBox(width: 8),
-                                Text(l.prototypeTestServers),
-                              ],
-                            ),
-                          ),
-                          ServerUseButton(controller: controller, group: group),
-                          if (group.source != null)
-                            SizedBox(
-                              width: 36,
-                              child: SourceMenu(
-                                controller: controller,
-                                source: group.source!,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (group.visibleRows.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 28,
-                    ),
-                    child: Text(
-                      l.prototypeNoServersYet,
-                      textAlign: TextAlign.center,
-                      style: AppTypography.rowValue.copyWith(
-                        color: palette.mutedForeground,
-                      ),
-                    ),
-                  ),
-                for (final row in group.visibleRows)
-                  ServerNodeRow(
-                    controller: controller,
-                    row: row,
-                    detail: group.country != null
-                        ? controller.sourceName(l, row)
-                        : controller.countryName(l, row.countryCode),
-                    showDivider: row != group.visibleRows.last,
-                  ),
-              ],
+        OutlinedButton(
+          onPressed: group.rows.isEmpty || group.rows.any(controller.serverBusy)
+              ? null
+              : () => controller.test(context, group.rows),
+          style: OutlinedButton.styleFrom(
+            minimumSize: Size(
+              0,
+              mobile
+                  ? AppLayout.mobileButtonMinHeight
+                  : AppLayout.buttonMinHeight,
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            foregroundColor: palette.foreground,
+            backgroundColor: palette.card,
+            side: BorderSide(color: palette.borderStrong),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.control),
+            ),
+            textStyle: AppTypography.serverGroupAction,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.standard,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (controller.testing(group.rows))
+                const ButtonProgressIndicator()
+              else
+                const Icon(LucideIcons.refreshCw, size: 16),
+              const SizedBox(width: 8),
+              Text(l.prototypeTestServers),
+            ],
           ),
         ),
+        ServerUseButton(controller: controller, group: group),
+        if (group.source != null)
+          SizedBox(
+            width: 36,
+            child: SourceMenu(controller: controller, source: group.source!),
+          ),
       ],
     );
   }
@@ -881,112 +847,95 @@ class ServerUseButton extends StatelessWidget {
     final VoidCallback? choose = controller.busy || !enabled
         ? null
         : () => controller.choose(context, group.selection);
-    if (inline ||
-        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
-      final palette = ColorManager.palette(context);
-      return Semantics(
-        label: '${l.prototypeUseEntryServers(count)}: ${group.name}',
-        button: true,
-        selected: selected,
-        enabled: choose != null,
-        onTap: choose,
-        excludeSemantics: true,
-        child: Tooltip(
-          message: enabled
-              ? l.prototypeUseEntryServers(count)
-              : l.prototypeNotEnoughServers,
-          child: Opacity(
-            opacity: choose == null ? .52 : 1,
-            child: OutlinedButton(
-              onPressed: choose,
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, AppLayout.mobileButtonMinHeight),
-                padding: const EdgeInsets.symmetric(horizontal: 9),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.standard,
-                foregroundColor: selected
-                    ? palette.primary
-                    : palette.foreground,
-                backgroundColor: selected
-                    ? palette.selectedSurface
-                    : palette.card,
-                side: BorderSide(
-                  color: selected
-                      ? Color.lerp(palette.border, palette.primary, .48)!
-                      : inline
-                      ? palette.border
-                      : palette.borderStrong,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.control),
-                ),
-                textStyle: inline
-                    ? AppTypography.serverUseLabel
-                    : AppTypography.serverGroupAction,
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final palette = ColorManager.palette(context);
+    return Semantics(
+      label: '${l.prototypeUseEntryServers(count)}: ${group.name}',
+      button: true,
+      selected: selected,
+      enabled: choose != null,
+      onTap: choose,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: enabled
+            ? l.prototypeUseEntryServers(count)
+            : l.prototypeNotEnoughServers,
+        child: Opacity(
+          opacity: choose == null ? .52 : 1,
+          child: OutlinedButton(
+            onPressed: choose,
+            style: OutlinedButton.styleFrom(
+              minimumSize: Size(
+                0,
+                mobile
+                    ? AppLayout.mobileButtonMinHeight
+                    : inline
+                    ? 32
+                    : 36,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (controller.selectingGroup(group.selection))
-                    const ButtonProgressIndicator()
-                  else
-                    Icon(
-                      selected ? LucideIcons.circleCheck : LucideIcons.zap,
-                      size: inline ? 15 : 16,
-                    ),
-                  const SizedBox(width: 6),
-                  Text(l.prototypeUse),
-                  const SizedBox(width: 6),
-                  Container(
-                    constraints: const BoxConstraints(minWidth: 20),
-                    height: 20,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                      color: selected
-                          ? palette.primarySolid
-                          : palette.surfaceHover,
-                    ),
-                    child: Text(
-                      '$count',
-                      style:
-                          (inline
-                                  ? AppTypography.serverUseCount
-                                  : AppTypography.serverGroupUseCount)
-                              .copyWith(
-                                color: selected
-                                    ? palette.primaryForeground
-                                    : palette.mutedStrong,
-                              ),
-                    ),
+              padding: EdgeInsets.symmetric(
+                horizontal: !mobile && inline ? 7 : 9,
+              ),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.standard,
+              foregroundColor: selected ? palette.primary : palette.foreground,
+              backgroundColor: selected
+                  ? palette.selectedSurface
+                  : palette.card,
+              side: BorderSide(
+                color: selected
+                    ? Color.lerp(palette.border, palette.primary, .48)!
+                    : inline
+                    ? palette.border
+                    : palette.borderStrong,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.control),
+              ),
+              textStyle: inline
+                  ? AppTypography.serverUseLabel
+                  : AppTypography.serverGroupAction,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (controller.selectingGroup(group.selection))
+                  const ButtonProgressIndicator()
+                else
+                  Icon(
+                    selected ? LucideIcons.circleCheck : LucideIcons.zap,
+                    size: inline ? 15 : 16,
                   ),
-                ],
-              ),
+                const SizedBox(width: 6),
+                Text(l.prototypeUse),
+                const SizedBox(width: 6),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  height: 20,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    color: selected
+                        ? palette.primarySolid
+                        : palette.surfaceHover,
+                  ),
+                  child: Text(
+                    '$count',
+                    style:
+                        (inline
+                                ? AppTypography.serverUseCount
+                                : AppTypography.serverGroupUseCount)
+                            .copyWith(
+                              color: selected
+                                  ? palette.primaryForeground
+                                  : palette.mutedStrong,
+                            ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      );
-    }
-    return Tooltip(
-      message: enabled
-          ? l.prototypeUseEntryServers(count)
-          : l.prototypeNotEnoughServers,
-      child: OutlinedButton.icon(
-        onPressed: choose,
-        icon: controller.selectingGroup(group.selection)
-            ? const ButtonProgressIndicator()
-            : Icon(selected ? LucideIcons.check : LucideIcons.network),
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(l.prototypeUse),
-            const SizedBox(width: 6),
-            Badge(
-              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-              textColor: Theme.of(context).colorScheme.onSecondaryContainer,
-              label: Text('$count'),
-            ),
-          ],
         ),
       ),
     );
@@ -1007,128 +956,15 @@ class ServerNodeRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final running = controller.runningEntries.contains(row.id);
-    final chosen = controller.chosen(row);
-    final enabled = controller.canChoose(row);
-    final colors = Theme.of(context).colorScheme;
-    final protocol = controller.protocol(row);
-    if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
-      return _mobileRow(
-        context,
-        running: running,
-        chosen: chosen,
-        enabled: enabled,
-        protocol: protocol,
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Material(
-        color: running ? colors.primaryContainer : colors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: running ? colors.primary : colors.outlineVariant,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: controller.busy || !enabled
-                    ? null
-                    : () => controller.chooseRow(context, row),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (controller.selectingGroup(
-                            ServerSelection.server(row.id),
-                          )) ...[
-                            const ButtonProgressIndicator(),
-                            const SizedBox(width: 6),
-                          ] else if (chosen) ...[
-                            Icon(
-                              LucideIcons.circleCheck,
-                              color: colors.primary,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          Expanded(
-                            child: Text(
-                              controller.serverName(row),
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (protocol.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            protocol,
-                            textDirection: TextDirection.ltr,
-                            style: AppTypography.badge,
-                          ),
-                        ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${controller.countryName(l, row.countryCode)} · ${controller.sourceName(l, row)}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      Text(
-                        '${running ? '${l.prototypeConnected} · ' : ''}${controller.health(l, row)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: running
-                              ? colors.primary
-                              : colors.onSurfaceVariant,
-                        ),
-                      ),
-                      if (controller.exitConflict(row))
-                        Text(
-                          l.prototypeFinalExitEntryConflict,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: row.favorite
-                      ? l.prototypeRemoveFavorite
-                      : l.prototypeAddFavorite,
-                  onPressed: controller.serverBusy(row)
-                      ? null
-                      : () => controller.toggleFavorite(context, row),
-                  isSelected: row.favorite,
-                  icon: controller.favoritingIds.contains(row.id)
-                      ? const ButtonProgressIndicator()
-                      : const Icon(LucideIcons.star),
-                  selectedIcon: controller.favoritingIds.contains(row.id)
-                      ? const ButtonProgressIndicator()
-                      : Icon(LucideIcons.star, color: colors.primary),
-                ),
-                ServerMenu(controller: controller, row: row),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _row(
+    context,
+    running: controller.runningEntries.contains(row.id),
+    chosen: controller.chosen(row),
+    enabled: controller.canChoose(row),
+    protocol: controller.protocol(row),
+  );
 
-  Widget _mobileRow(
+  Widget _row(
     BuildContext context, {
     required bool running,
     required bool chosen,
@@ -1363,53 +1199,24 @@ class ServerMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
-      return IconButton(
-        tooltip: '${l.prototypeMoreActions}: ${controller.serverName(row)}',
-        onPressed: controller.serverBusy(row)
-            ? null
-            : () => open(context, controller, row),
-        style: IconButton.styleFrom(
-          foregroundColor: ColorManager.palette(context).mutedStrong,
-          iconSize: 18,
-          padding: EdgeInsets.zero,
-          minimumSize: const Size(42, 42),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: const RoundedRectangleBorder(),
-        ),
-        icon:
-            controller.serverBusy(row) &&
-                !controller.favoritingIds.contains(row.id)
-            ? const ButtonProgressIndicator()
-            : const Icon(LucideIcons.ellipsis),
-      );
-    }
-    return PopupMenuButton<ServerAction>(
-      tooltip: l.prototypeMoreActions,
-      enabled: !controller.serverBusy(row),
+    return IconButton(
+      tooltip: '${l.prototypeMoreActions}: ${controller.serverName(row)}',
+      onPressed: controller.serverBusy(row)
+          ? null
+          : () => open(context, controller, row),
+      style: IconButton.styleFrom(
+        foregroundColor: ColorManager.palette(context).mutedStrong,
+        iconSize: 18,
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(42, 42),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const RoundedRectangleBorder(),
+      ),
       icon:
           controller.serverBusy(row) &&
               !controller.favoritingIds.contains(row.id)
           ? const ButtonProgressIndicator()
           : const Icon(LucideIcons.ellipsis),
-      onSelected: (action) => controller.serverAction(context, row, action),
-      itemBuilder: (_) => [
-        PopupMenuItem(value: ServerAction.edit, child: Text(l.prototypeEdit)),
-        PopupMenuItem(
-          value: ServerAction.test,
-          child: Text(l.prototypeTestAgain),
-        ),
-        if (row.subId != 0)
-          PopupMenuItem(
-            value: ServerAction.copy,
-            child: Text(l.prototypeSaveAsLocalServer),
-          ),
-        PopupMenuItem(value: ServerAction.share, child: Text(l.prototypeShare)),
-        PopupMenuItem(
-          value: ServerAction.delete,
-          child: Text(l.prototypeDelete),
-        ),
-      ],
     );
   }
 }
@@ -1437,58 +1244,22 @@ class SourceMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
-      return IconButton(
-        tooltip: '${l.prototypeMoreActions}: ${source.name}',
-        onPressed: controller.sourceBusy(source.id)
-            ? null
-            : () => open(context, controller, source),
-        style: IconButton.styleFrom(
-          foregroundColor: ColorManager.palette(context).mutedStrong,
-          iconSize: 18,
-          padding: EdgeInsets.zero,
-          minimumSize: const Size(36, 42),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: const RoundedRectangleBorder(),
-        ),
-        icon: controller.sourceBusy(source.id)
-            ? const ButtonProgressIndicator()
-            : const Icon(LucideIcons.ellipsis),
-      );
-    }
-    return PopupMenuButton<SourceAction>(
-      tooltip: l.prototypeMoreActions,
-      enabled: !controller.sourceBusy(source.id),
+    return IconButton(
+      tooltip: '${l.prototypeMoreActions}: ${source.name}',
+      onPressed: controller.sourceBusy(source.id)
+          ? null
+          : () => open(context, controller, source),
+      style: IconButton.styleFrom(
+        foregroundColor: ColorManager.palette(context).mutedStrong,
+        iconSize: 18,
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(36, 42),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: const RoundedRectangleBorder(),
+      ),
       icon: controller.sourceBusy(source.id)
           ? const ButtonProgressIndicator()
           : const Icon(LucideIcons.ellipsis),
-      onSelected: (action) => controller.sourceAction(context, source, action),
-      itemBuilder: (_) => [
-        PopupMenuItem(
-          value: SourceAction.update,
-          child: Text(l.prototypeCheckForUpdates),
-        ),
-        PopupMenuItem(
-          value: SourceAction.test,
-          child: Text(l.prototypeTestServers),
-        ),
-        PopupMenuItem(value: SourceAction.edit, child: Text(l.prototypeEdit)),
-        PopupMenuItem(value: SourceAction.share, child: Text(l.prototypeShare)),
-        PopupMenuItem(
-          value: SourceAction.delete,
-          child: Text(l.prototypeDelete),
-        ),
-      ],
     );
   }
-}
-
-class ServerSectionTitle extends StatelessWidget {
-  final String title;
-  const ServerSectionTitle(this.title, {super.key});
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Text(title, style: Theme.of(context).textTheme.titleSmall),
-  );
 }

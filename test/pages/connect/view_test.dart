@@ -86,13 +86,90 @@ void main() {
     locale: locale,
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
-    builder: (context, child) => MediaQuery(
-      data: MediaQuery.of(context)
-          .copyWith(textScaler: TextScaler.linear(scale)),
-      child: ShadTheme(data: AppTheme.shad(Brightness.light), child: child!),
+    builder: (context, child) => LayoutBuilder(
+      builder: (context, constraints) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          size: constraints.biggest,
+          textScaler: TextScaler.linear(scale),
+        ),
+        child: ShadTheme(data: AppTheme.shad(Brightness.light), child: child!),
+      ),
     ),
     home: Scaffold(body: child),
   );
+
+  for (final expert in [false, true]) {
+    testWidgets('desktop connection shares one panel, expert=$expert', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(1160, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(app(screen(expert: expert)));
+      await tester.pumpAndSettle();
+      final panel = find.byKey(const ValueKey('desktop-connection-panel'));
+      final traffic = find.byKey(const ValueKey('desktop-traffic-panel'));
+      final panelRect = tester.getRect(panel);
+      final trafficRect = tester.getRect(traffic);
+      expect(panelRect.top, AppSpacing.desktopPageTop);
+      expect(trafficRect.top, panelRect.top);
+      expect(trafficRect.left - panelRect.right, 16);
+      expect(panelRect.width / trafficRect.width, closeTo(1.04, .001));
+      expect(panelRect.height, closeTo(trafficRect.height, .001));
+      expect(
+        find.descendant(of: panel, matching: find.text('Disconnected')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: panel, matching: find.text('Expert mode')),
+        findsOneWidget,
+      );
+      final connectButton = find.widgetWithText(FilledButton, 'Connect');
+      expect(
+        tester.getSize(connectButton).width,
+        AppLayout.connectDesktopButtonWidth,
+      );
+      expect(
+        tester.getSize(connectButton).height,
+        AppLayout.connectDesktopButtonMinHeight,
+      );
+      expect(
+        tester.widget<TrafficReadout>(find.byType(TrafficReadout)).desktop,
+        isTrue,
+      );
+      expect(
+        find.text('Why this connection?'),
+        expert ? findsNothing : findsOneWidget,
+      );
+      expect(find.text('Add Raw JSON'), expert ? findsOneWidget : findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('compact desktop stacks panels while mobile stays unchanged', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(850, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(app(screen()));
+    await tester.pumpAndSettle();
+    final panel = find.byKey(const ValueKey('desktop-connection-panel'));
+    final traffic = find.byKey(const ValueKey('desktop-traffic-panel'));
+    expect(tester.getRect(traffic).top - tester.getRect(panel).bottom, 16);
+    expect(tester.getSize(traffic).width, tester.getSize(panel).width);
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    await tester.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(traffic, findsNothing);
+    expect(
+      tester.widget<TrafficReadout>(find.byType(TrafficReadout)).desktop,
+      isFalse,
+    );
+    expect(
+      tester.getSize(find.widgetWithText(FilledButton, 'Connect')).height,
+      AppLayout.connectButtonMinHeight,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   for (final locale in [
     const Locale('en'),

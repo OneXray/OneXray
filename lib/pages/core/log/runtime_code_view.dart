@@ -34,10 +34,10 @@ class RuntimeCodeScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = ColorManager.palette(context);
-    final mobile =
-        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-    final horizontal = mobile ? 14.0 : 28.0;
-    final top = mobile ? 12.0 : 18.0;
+    final width = MediaQuery.sizeOf(context).width;
+    final mobile = width <= AppLayout.mobileBreakpoint;
+    final horizontal = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
+    final top = mobile ? 12.0 : 48.0;
     final bottom = mobile ? 18.0 : 24.0;
     final pill = Material(
       color: palette.surfaceHover,
@@ -81,7 +81,7 @@ class RuntimeCodeScaffold extends StatelessWidget {
       appBar: AppBar(title: Text(title)),
       body: SafeArea(
         child: ResponsiveContent(
-          desktopMaxWidth: 1080,
+          desktopMaxWidth: AppLayout.advancedMaxWidth,
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(

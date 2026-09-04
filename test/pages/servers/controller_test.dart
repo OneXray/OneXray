@@ -97,6 +97,63 @@ void main() {
     expect(controller.protocol(one), 'VLESS | XHTTP | TLS');
   });
 
+  test('subscription grouping omits sources without nodes', () async {
+    final one = await server('Tokyo', source: 4);
+    controller.servers = [one];
+    controller.sources = [
+      SubscriptionData(
+        id: 4,
+        name: 'Used source',
+        url: 'https://example.test/used',
+        timestamp: DateTime(2026, 9, 4),
+        count: 1,
+        expanded: true,
+      ),
+      SubscriptionData(
+        id: 5,
+        name: 'Empty source',
+        url: 'https://example.test/empty',
+        timestamp: DateTime(2026, 9, 4),
+        count: 0,
+        expanded: true,
+      ),
+    ];
+
+    controller.groupBy(ServerGrouping.subscription);
+
+    expect(controller.groups(l).map((group) => group.name), ['Used source']);
+  });
+
+  test(
+    'group summary keeps availability shape before a successful probe',
+    () async {
+      final one = await server('one');
+      final two = await server('two');
+      controller.servers = [one, two];
+
+      expect(
+        controller.summary(l, controller.groups(l).single),
+        l.prototypeGroupAvailability(2, 2, '—'),
+      );
+    },
+  );
+
+  test('source checked label uses relative copy only for the current day', () {
+    final now = DateTime(2026, 9, 4, 12);
+    expect(
+      controller.sourceCheckedLabel(l, now, now: now),
+      l.prototypeCheckedJustNow,
+    );
+    expect(
+      controller.sourceCheckedLabel(l, DateTime(2026, 9, 4, 10), now: now),
+      l.prototypeCheckedToday,
+    );
+    expect(
+      controller.sourceCheckedLabel(l, DateTime(2026, 9, 3, 23, 59), now: now),
+      isNull,
+    );
+  });
+
   test('Use N follows normal route and excludes final exit, not the current fixed selection', () async {
     final one = await server('one');
     final two = await server('two');

@@ -36,6 +36,7 @@ AppConfirmationDialog _dialog(AppLocalizations l, _Action action) =>
       },
       destructive: action == _Action.delete || action == _Action.clear,
       expandConfirm: action == _Action.restore || action == _Action.export,
+      barrierDismissible: false,
     );
 
 Future<void> _pumpDialog(
@@ -195,4 +196,24 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('backdrop does not dismiss a destructive confirmation', (
+    tester,
+  ) async {
+    bool? result;
+    await _pumpDialog(
+      tester,
+      action: _Action.clear,
+      onResult: (confirmed) => result = confirmed,
+    );
+
+    await tester.tapAt(const Offset(2, 2));
+    await tester.pumpAndSettle();
+    expect(find.byType(AppConfirmationDialog), findsOneWidget);
+    expect(result, isNull);
+
+    await tester.tap(find.byType(OutlinedButton));
+    await tester.pumpAndSettle();
+    expect(result, isFalse);
+  });
 }

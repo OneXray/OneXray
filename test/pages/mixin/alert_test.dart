@@ -54,7 +54,7 @@ void main() {
     expect(find.byType(SingleChildScrollView), findsOneWidget);
     final route = ModalRoute.of(tester.element(find.byType(ShadDialog)));
     expect(route?.opaque, isFalse);
-    expect(route?.barrierColor?.a, closeTo(0.35, 0.001));
+    expect(route?.barrierColor?.a, closeTo(0.48, 0.001));
 
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();

@@ -28,6 +28,10 @@ class ServerSourcesDialog extends StatelessWidget {
         builder: (context, _) {
           final material = MaterialLocalizations.of(context);
           final localCount = controller.sourceCount(0);
+          String checkedAt(SubscriptionData source) =>
+              controller.sourceCheckedLabel(l, source.timestamp) ??
+              '${material.formatMediumDate(source.timestamp.toLocal())} '
+                  '${material.formatTimeOfDay(TimeOfDay.fromDateTime(source.timestamp.toLocal()))}';
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Column(
@@ -43,8 +47,7 @@ class ServerSourcesDialog extends StatelessWidget {
                     name: source.name,
                     detail:
                         '${l.prototypeServerCount(controller.sourceCount(source.id))} · '
-                        '${material.formatMediumDate(source.timestamp.toLocal())} '
-                        '${material.formatTimeOfDay(TimeOfDay.fromDateTime(source.timestamp.toLocal()))}',
+                        '${checkedAt(source)}',
                     status:
                         controller.sourceErrors[source.id] ??
                         l.prototypeUpdated,
@@ -81,6 +84,183 @@ class ServerSourcesDialog extends StatelessWidget {
       ),
     );
   }
+}
+
+class ServerHelpDialog extends StatelessWidget {
+  const ServerHelpDialog({super.key, required this.canScanQr});
+
+  final bool canScanQr;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return AppDialog(
+      title: l.prototypeHowToGetServers,
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 4),
+        child: Column(
+          children: [
+            _HelpRow(icon: LucideIcons.link2, text: l.prototypeAskVpnProvider),
+            const SizedBox(height: 15),
+            _HelpRow(
+              icon: canScanQr ? LucideIcons.qrCode : LucideIcons.fileInput,
+              text: canScanQr
+                  ? l.prototypeScanServerQrOrImportConfiguration
+                  : l.prototypeImportConfigurationFileHint,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l.prototypeDone),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(l.prototypeAddServer),
+        ),
+      ],
+    );
+  }
+}
+
+class _HelpRow extends StatelessWidget {
+  const _HelpRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ColorManager.palette(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 22, color: palette.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTypography.dialogBody.copyWith(color: palette.foreground),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class SourceUpdateErrorDialog extends StatelessWidget {
+  const SourceUpdateErrorDialog({
+    super.key,
+    required this.sourceName,
+    required this.failedCount,
+  });
+
+  final String sourceName;
+  final int failedCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return AppDialog(
+      title: l.prototypeSubscriptionUpdateFailed,
+      subtitle: sourceName,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            liveRegion: true,
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: palette.destructiveSurface,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    LucideIcons.circleAlert,
+                    size: 21,
+                    color: palette.destructive,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      l.prototypeSubscriptionExistingNodesKept,
+                      style: AppTypography.dialogCallout.copyWith(
+                        color: palette.destructive,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _ImportStat(
+                    label: l.prototypeUsableNodes(0),
+                    foreground: palette.running,
+                    background: palette.runningSurface,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ImportStat(
+                    label: l.prototypeUnrecognizedNodes(failedCount),
+                    foreground: failedCount > 0
+                        ? palette.restartingText
+                        : palette.running,
+                    background: failedCount > 0
+                        ? palette.warningSurface
+                        : palette.runningSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.prototypeDone),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImportStat extends StatelessWidget {
+  const _ImportStat({
+    required this.label,
+    required this.foreground,
+    required this.background,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(AppRadii.control),
+    ),
+    child: Text(
+      label,
+      style: AppTypography.importStat.copyWith(color: foreground),
+    ),
+  );
 }
 
 class _SourceRow extends StatelessWidget {

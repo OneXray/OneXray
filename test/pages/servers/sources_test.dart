@@ -184,4 +184,42 @@ void main() {
     expect(controller.actions, SourceAction.values);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'zero-node update result explains that existing nodes were kept',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(540, 700);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.material(Brightness.light, mobile: false),
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(
+            body: SourceUpdateErrorDialog(
+              sourceName: 'Example subscription',
+              failedCount: 3,
+            ),
+          ),
+        ),
+      );
+      final l = AppLocalizations.of(
+        tester.element(find.byType(SourceUpdateErrorDialog)),
+      )!;
+
+      expect(find.text(l.prototypeSubscriptionUpdateFailed), findsOneWidget);
+      expect(find.text('Example subscription'), findsOneWidget);
+      expect(
+        find.text(l.prototypeSubscriptionExistingNodesKept),
+        findsOneWidget,
+      );
+      expect(find.text(l.prototypeUsableNodes(0)), findsOneWidget);
+      expect(find.text(l.prototypeUnrecognizedNodes(3)), findsOneWidget);
+      expect(find.text(l.prototypeDone), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

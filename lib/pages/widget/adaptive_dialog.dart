@@ -39,8 +39,9 @@ Future<T?> showChoiceDialog<T>(BuildContext context, WidgetBuilder builder) {
 /// Shared presentation for prototype-aligned dialogs. System prompts stay native.
 Future<T?> showAppDialog<T>(
   BuildContext context,
-  WidgetBuilder builder,
-) => showGeneralDialog<T>(
+  WidgetBuilder builder, {
+  double desktopMaxWidth = AppLayout.dialogWidth,
+}) => showGeneralDialog<T>(
   context: context,
   barrierDismissible: true,
   barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
@@ -49,14 +50,19 @@ Future<T?> showAppDialog<T>(
       ? Colors.transparent
       : ColorManager.palette(context).overlay,
   pageBuilder: (context, animation, secondaryAnimation) =>
-      AppDialogFrame(child: builder(context)),
+      AppDialogFrame(desktopMaxWidth: desktopMaxWidth, child: builder(context)),
 );
 
 /// The same responsive surface for imperative dialogs and GoRouter pages.
 class AppDialogFrame extends StatelessWidget {
-  const AppDialogFrame({super.key, required this.child});
+  const AppDialogFrame({
+    super.key,
+    required this.child,
+    this.desktopMaxWidth = AppLayout.dialogWidth,
+  });
 
   final Widget child;
+  final double desktopMaxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +101,7 @@ class AppDialogFrame extends StatelessWidget {
                 alignment: mobile ? Alignment.bottomCenter : Alignment.center,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: mobile ? size.width : AppLayout.dialogWidth,
+                    maxWidth: mobile ? size.width : desktopMaxWidth,
                     maxHeight: math.min(
                       math.min(
                         AppLayout.dialogMaxHeight + bottomSafeArea,
@@ -209,7 +215,12 @@ class AppDialog extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(title, style: AppTypography.dialogTitle),
+                                Text(
+                                  title,
+                                  style: mobile
+                                      ? AppTypography.dialogTitle
+                                      : AppTypography.confirmationDesktopTitle,
+                                ),
                                 if (subtitle != null) ...[
                                   const SizedBox(height: 6),
                                   Text(
@@ -247,45 +258,48 @@ class AppDialog extends StatelessWidget {
                       ),
                     ),
                     body,
+                    if (!mobile && actions.isNotEmpty)
+                      _actions(context, mobile: false),
                   ],
                 ),
               ),
             ),
-            if (actions.isNotEmpty)
-              Container(
-                constraints: const BoxConstraints(minHeight: 70),
-                padding: EdgeInsets.symmetric(
-                  horizontal: mobile ? 16 : 20,
-                  vertical: mobile ? 12 : 14,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: palette.border)),
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) => Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      for (var index = 0; index < actions.length; index++) ...[
-                        if (index > 0)
-                          const SizedBox(width: AppSpacing.actionGap),
-                        if (mobile &&
-                            expandLastAction &&
-                            index == actions.length - 1)
-                          Expanded(child: actions[index])
-                        else if (mobile && expandLastAction)
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: constraints.maxWidth * 0.62,
-                            ),
-                            child: IntrinsicWidth(child: actions[index]),
-                          )
-                        else
-                          Flexible(child: actions[index]),
-                      ],
-                    ],
+            if (mobile && actions.isNotEmpty) _actions(context, mobile: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actions(BuildContext context, {required bool mobile}) {
+    final palette = ColorManager.palette(context);
+    return Container(
+      constraints: const BoxConstraints(minHeight: 70),
+      padding: EdgeInsets.symmetric(
+        horizontal: mobile ? 16 : 20,
+        vertical: mobile ? 12 : 14,
+      ),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: palette.border)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            for (var index = 0; index < actions.length; index++) ...[
+              if (index > 0) const SizedBox(width: AppSpacing.actionGap),
+              if (mobile && expandLastAction && index == actions.length - 1)
+                Expanded(child: actions[index])
+              else if (mobile && expandLastAction)
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth * 0.62,
                   ),
-                ),
-              ),
+                  child: IntrinsicWidth(child: actions[index]),
+                )
+              else
+                Flexible(child: actions[index]),
+            ],
           ],
         ),
       ),

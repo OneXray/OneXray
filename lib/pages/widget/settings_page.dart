@@ -75,19 +75,25 @@ class SettingsPageScroll extends StatelessWidget {
   final Widget child;
   final double desktopMaxWidth;
   final EdgeInsetsGeometry padding;
+  final AlignmentGeometry alignment;
 
   const SettingsPageScroll({
     super.key,
     required this.child,
     this.desktopMaxWidth = AppLayout.standardMaxWidth,
     this.padding = const EdgeInsetsDirectional.only(bottom: 24),
+    this.alignment = AlignmentDirectional.topCenter,
   });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: padding,
-      child: ResponsiveContent(desktopMaxWidth: desktopMaxWidth, child: child),
+      child: ResponsiveContent(
+        desktopMaxWidth: desktopMaxWidth,
+        alignment: alignment,
+        child: child,
+      ),
     );
   }
 }
@@ -216,6 +222,7 @@ class AppConfirmationDialog extends StatelessWidget {
   final String confirmLabel;
   final bool destructive;
   final bool expandConfirm;
+  final bool barrierDismissible;
 
   const AppConfirmationDialog({
     super.key,
@@ -226,11 +233,13 @@ class AppConfirmationDialog extends StatelessWidget {
     required this.confirmLabel,
     this.destructive = false,
     this.expandConfirm = false,
+    this.barrierDismissible = true,
   });
 
   Future<bool> show(BuildContext context) async =>
       await showDialog<bool>(
         context: context,
+        barrierDismissible: barrierDismissible,
         useSafeArea: false,
         barrierColor: AppPalette.restoreOverlay,
         builder: (_) => this,

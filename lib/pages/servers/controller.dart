@@ -2,14 +2,17 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
+import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/sources.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/service/assets/server.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -159,11 +162,6 @@ class ServersController extends ConnectController {
           ? (row.countryCode?.toUpperCase() ?? '')
           : '${row.subId}';
       buckets.putIfAbsent(key, () => []).add(row);
-    }
-    if (grouping == ServerGrouping.subscription) {
-      for (final source in sources) {
-        buckets.putIfAbsent('${source.id}', () => []);
-      }
     }
     final result = <ServerGroup>[];
     for (final entry in buckets.entries) {
@@ -391,15 +389,36 @@ class ServersController extends ConnectController {
       : l.prototypeAvailableLatency(row.delay);
 
   String summary(AppLocalizations l, ServerGroup group) {
-    final healthy = group.rows.where(ServerAssetService.healthy).toList();
-    final delays = healthy.map((row) => row.delay).toList()..sort();
-    return delays.isEmpty
-        ? l.prototypeServerCount(group.rows.length)
-        : l.prototypeGroupAvailability(
-            healthy.length,
-            group.rows.length,
-            delays.first,
-          );
+    final available = group.rows.where(ServerAssetService.selectable).length;
+    final delays =
+        group.rows
+            .where(ServerAssetService.selectable)
+            .where(ServerAssetService.healthy)
+            .map((row) => row.delay)
+            .toList()
+          ..sort();
+    return l.prototypeGroupAvailability(
+      available,
+      group.rows.length,
+      delays.firstOrNull ?? '—',
+    );
+  }
+
+  String? sourceCheckedLabel(
+    AppLocalizations l,
+    DateTime timestamp, {
+    DateTime? now,
+  }) {
+    final checked = timestamp.toLocal();
+    final reference = (now ?? DateTime.now()).toLocal();
+    final elapsed = reference.difference(checked);
+    if (elapsed.isNegative || elapsed.inMinutes < 1) {
+      return l.prototypeCheckedJustNow;
+    }
+    if (DateUtils.isSameDay(checked, reference)) {
+      return l.prototypeCheckedToday;
+    }
+    return null;
   }
 
   Future<void> browse(
@@ -517,9 +536,16 @@ class ServersController extends ConnectController {
             );
           } else {
             sourceErrors[source.id] = l.prototypeSubscriptionUpdateFailed;
-            ContextAlert.showToast(
-              context,
-              l.prototypeSubscriptionExistingNodesKept,
+            final navigator = Navigator.of(context);
+            final closeSources = ModalRoute.of(context) is PopupRoute;
+            final dialogContext = navigator.context;
+            if (closeSources) navigator.pop();
+            await showAppDialog<void>(
+              dialogContext,
+              (_) => SourceUpdateErrorDialog(
+                sourceName: source.name,
+                failedCount: result.parseFailureCount ?? 0,
+              ),
             );
           }
         }, sourceId: source.id);
@@ -558,17 +584,19 @@ class ServersController extends ConnectController {
         );
         if (!context.mounted) return;
         final l = AppLocalizations.of(context)!;
-        if (!await ContextAlert.showConfirmDialog(
+        final reconnect = preview.affectsRuntime && !preview.disconnect;
+        if (!await showDestructiveConfirmationDialog(
           context,
           title: sourceId == null
               ? l.prototypeDeleteServer
               : l.prototypeDeleteSource,
-          content:
-              '$name\n${l.prototypeServerCount(preview.ids.length)}\n\n${l.prototypeDeletedServerSelectionNotice}'
-              '${preview.affectsRuntime && !preview.disconnect ? '\n\n${l.prototypeReconnectNotice}' : ''}',
+          subtitle: name,
+          warning:
+              '${sourceId == null ? l.prototypeDeletedServerSelectionNotice : l.prototypeSourceDeleteWarning(preview.ids.length)}'
+              '${reconnect ? '\n\n${l.prototypeReconnectNotice}' : ''}',
           confirmLabel: preview.disconnect
               ? l.prototypeDeleteAndDisconnect
-              : preview.affectsRuntime
+              : reconnect
               ? l.prototypeDeleteAndReconnect
               : l.prototypeDelete,
         )) {
@@ -588,6 +616,7 @@ class ServersController extends ConnectController {
     final source = await showAppDialog<SubscriptionData>(
       context,
       (_) => ServerSourcesDialog(controller: this),
+      desktopMaxWidth: AppLayout.sourcesDialogWidth,
     );
     if (source == null || !context.mounted || _disposed) return;
     final action = await showSourceActionsMenu(
@@ -597,6 +626,16 @@ class ServersController extends ConnectController {
     );
     if (action != null && context.mounted && !_disposed) {
       await sourceAction(context, source, action);
+    }
+  }
+
+  Future<void> openServerHelp(BuildContext context) async {
+    final add = await showAppDialog<bool>(
+      context,
+      (_) => ServerHelpDialog(canScanQr: AppPlatform.isMobile),
+    );
+    if (add == true && context.mounted && !_disposed) {
+      await addServers(context);
     }
   }
 

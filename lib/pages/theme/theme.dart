@@ -429,6 +429,7 @@ abstract final class AppTheme {
           ),
           disabledBackgroundColor: disabledButtonColor(palette.primarySolid),
           minimumSize: minimumButtonSize,
+          visualDensity: VisualDensity.standard,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.buttonHorizontal,
           ),

@@ -23,11 +23,16 @@ class AutoUpdatePage extends StatelessWidget {
         final controller = context.read<AutoUpdateController>();
         final l = AppLocalizations.of(context)!;
         final value = state.autoUpdateState;
-        final mobile =
-            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        final width = MediaQuery.sizeOf(context).width;
+        final mobile = width <= AppLayout.mobileBreakpoint;
+        final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
         return Scaffold(
           appBar: AppBar(title: Text(l.prototypeDataUpdates)),
           bottomNavigationBar: PageActionBar(
+            maxWidth: AppLayout.advancedMaxWidth,
+            expandDesktop: true,
+            horizontalPadding: mobile ? null : gutter,
+            spacing: mobile ? AppSpacing.actionGap : 13,
             children: [
               OutlinedButton(
                 onPressed: () => controller.cancel(context),
@@ -61,110 +66,113 @@ class AutoUpdatePage extends StatelessWidget {
                     ),
                   )
                 : SettingsPageScroll(
-                    padding: const EdgeInsetsDirectional.fromSTEB(
-                      14,
-                      12,
-                      14,
-                      26,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: 25,
-                      children: [
-                        if (!mobile)
-                          Text(
-                            l.prototypeDataUpdateIntervalsHint,
-                            style: AppTypography.settingsDetailNote.copyWith(
-                              color: ColorManager.secondaryText(context),
-                            ),
-                          ),
-                        SettingSection(
-                          title: l.prototypeSubscriptions,
-                          icon: LucideIcons.refreshCw,
-                          padding: EdgeInsets.zero,
-                          dividerIndent: 0,
-                          description: l.prototypeSubscriptionUpdateGuard,
-                          descriptionBelow: true,
-                          children: [
-                            _automaticUpdates(
-                              title: l.prototypeAutomaticUpdates,
-                              value: value.subscriptionEnabled,
-                              onChanged: state.saving
-                                  ? null
-                                  : controller.updateSubscriptionEnabled,
-                            ),
-                            _interval(
-                              l,
-                              value.subscriptionInterval,
-                              value.subscriptionEnabled && !state.saving,
-                              controller.updateSubscriptionInterval,
-                            ),
-                          ],
-                        ),
-                        SettingSection(
-                          title: l.prototypeRoutingData,
-                          icon: LucideIcons.globe2,
-                          padding: EdgeInsets.zero,
-                          dividerIndent: 0,
-                          description: l.prototypeGeodataUpdatesTogether,
-                          descriptionBelow: true,
-                          children: [
-                            _automaticUpdates(
-                              title: l.prototypeAutomaticUpdates,
-                              value: value.geoDataEnable,
-                              onChanged: state.saving
-                                  ? null
-                                  : controller.updateGeoDataEnable,
-                            ),
-                            _interval(
-                              l,
-                              value.geoDataInterval,
-                              value.geoDataEnable && !state.saving,
-                              controller.updateGeoDataInterval,
-                            ),
-                          ],
-                        ),
-                        _note(context, l.prototypeUpdateTimingNotice),
-                        _note(context, l.prototypeDueUpdatesRetryNotice),
-                        SettingSection(
-                          title: l.prototypeDownloadCompatibility,
-                          icon: LucideIcons.globe2,
-                          padding: EdgeInsets.zero,
-                          dividerIndent: 0,
-                          description: l.prototypeDownloadCompatibilityHint,
-                          descriptionBelow: true,
-                          children: [
-                            SettingRow(
-                              title: 'User-Agent',
-                              titleStyle: AppTypography.settingsRow,
-                              minHeight: 62,
-                              contentPadding:
-                                  const EdgeInsetsDirectional.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
-                                  ),
-                              trailing: SettingSelect<DownloadUserAgentMode>(
-                                value: state.userAgent,
-                                entries: {
-                                  DownloadUserAgentMode.oneXray: 'OneXray',
-                                  DownloadUserAgentMode.system:
-                                      l.prototypeSystemBrowser,
-                                },
+                    desktopMaxWidth: AppLayout.advancedMaxWidth,
+                    padding: EdgeInsets.zero,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        gutter,
+                        mobile ? 12 : 48,
+                        gutter,
+                        mobile ? 26 : 24,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: mobile ? 25 : 28,
+                        children: [
+                          SettingSection(
+                            title: l.prototypeSubscriptions,
+                            icon: LucideIcons.refreshCw,
+                            padding: EdgeInsets.zero,
+                            dividerIndent: 0,
+                            description: l.prototypeSubscriptionUpdateGuard,
+                            descriptionBelow: true,
+                            children: [
+                              _automaticUpdates(
+                                mobile: mobile,
+                                title: l.prototypeAutomaticUpdates,
+                                value: value.subscriptionEnabled,
                                 onChanged: state.saving
                                     ? null
-                                    : controller.updateUserAgent,
+                                    : controller.updateSubscriptionEnabled,
+                              ),
+                              _interval(
+                                l,
+                                value.subscriptionInterval,
+                                value.subscriptionEnabled && !state.saving,
+                                controller.updateSubscriptionInterval,
+                                mobile: mobile,
+                              ),
+                            ],
+                          ),
+                          SettingSection(
+                            title: l.prototypeRoutingData,
+                            icon: LucideIcons.globe2,
+                            padding: EdgeInsets.zero,
+                            dividerIndent: 0,
+                            description: l.prototypeGeodataUpdatesTogether,
+                            descriptionBelow: true,
+                            children: [
+                              _automaticUpdates(
+                                mobile: mobile,
+                                title: l.prototypeAutomaticUpdates,
+                                value: value.geoDataEnable,
+                                onChanged: state.saving
+                                    ? null
+                                    : controller.updateGeoDataEnable,
+                              ),
+                              _interval(
+                                l,
+                                value.geoDataInterval,
+                                value.geoDataEnable && !state.saving,
+                                controller.updateGeoDataInterval,
+                                mobile: mobile,
+                              ),
+                            ],
+                          ),
+                          _note(context, l.prototypeUpdateTimingNotice),
+                          _note(context, l.prototypeDueUpdatesRetryNotice),
+                          SettingSection(
+                            title: l.prototypeDownloadCompatibility,
+                            icon: LucideIcons.globe2,
+                            padding: EdgeInsets.zero,
+                            dividerIndent: 0,
+                            description: l.prototypeDownloadCompatibilityHint,
+                            descriptionBelow: true,
+                            children: [
+                              SettingRow(
+                                title: 'User-Agent',
+                                titleStyle: mobile
+                                    ? AppTypography.settingsRow
+                                    : AppTypography.settingsSelect,
+                                minHeight: 62,
+                                contentPadding:
+                                    const EdgeInsetsDirectional.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                trailing: SettingSelect<DownloadUserAgentMode>(
+                                  value: state.userAgent,
+                                  entries: {
+                                    DownloadUserAgentMode.oneXray: 'OneXray',
+                                    DownloadUserAgentMode.system:
+                                        l.prototypeSystemBrowser,
+                                  },
+                                  onChanged: state.saving
+                                      ? null
+                                      : controller.updateUserAgent,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (state.failed)
+                            Text(
+                              l.prototypeTemporarilyUnavailable,
+                              style: AppTypography.settingsDetailNote.copyWith(
+                                color: Theme.of(context).colorScheme.error,
                               ),
                             ),
-                          ],
-                        ),
-                        if (state.failed)
-                          Text(
-                            l.prototypeTemporarilyUnavailable,
-                            style: AppTypography.settingsDetailNote.copyWith(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
           ),
@@ -174,16 +182,17 @@ class AutoUpdatePage extends StatelessWidget {
   );
 
   Widget _automaticUpdates({
+    required bool mobile,
     required String title,
     required bool value,
     required ValueChanged<bool>? onChanged,
   }) => SettingRow(
     title: title,
     titleStyle: AppTypography.settingsRow,
-    minHeight: 58,
-    contentPadding: const EdgeInsetsDirectional.symmetric(
-      horizontal: 13,
-      vertical: 7,
+    minHeight: mobile ? 58 : 64,
+    contentPadding: EdgeInsetsDirectional.symmetric(
+      horizontal: mobile ? 13 : 14,
+      vertical: mobile ? 7 : 9,
     ),
     enabled: onChanged != null,
     onTap: onChanged == null ? null : () => onChanged(!value),
@@ -208,10 +217,13 @@ class AutoUpdatePage extends StatelessWidget {
     AppLocalizations l,
     AutoUpdateInterval value,
     bool enabled,
-    ValueChanged<AutoUpdateInterval?> onChanged,
-  ) => SettingRow(
+    ValueChanged<AutoUpdateInterval?> onChanged, {
+    required bool mobile,
+  }) => SettingRow(
     title: l.prototypeUpdateInterval,
-    titleStyle: AppTypography.settingsRow,
+    titleStyle: mobile
+        ? AppTypography.settingsRow
+        : AppTypography.settingsSelect,
     minHeight: 62,
     contentPadding: const EdgeInsetsDirectional.symmetric(
       horizontal: 14,

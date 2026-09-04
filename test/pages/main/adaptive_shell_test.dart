@@ -100,27 +100,35 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final desktopNavigation = find.byKey(
+      const ValueKey('primary-desktop-navigation'),
+    );
     expect(find.text('home-content'), findsOneWidget);
+    expect(find.text('OneXray'), findsOneWidget);
     expect(
-      tester.getSize(find.byType(NavigationRail)).width,
+      tester.getSize(desktopNavigation).width,
       AppLayout.desktopSidebarWidth,
+    );
+    final desktopHome = find.byKey(const ValueKey('primary-navigation-home'));
+    expect(tester.widget<Semantics>(desktopHome).properties.selected, isTrue);
+    expect(tester.getSize(desktopHome).height, AppSpacing.sidebarRowHeight);
+    expect(
+      tester.getSize(desktopHome).width,
+      AppLayout.desktopSidebarWidth - AppSpacing.sidebarHorizontal * 2 - 1,
     );
     for (final width in [900.0, 721.0]) {
       await tester.binding.setSurfaceSize(Size(width, 800));
       await tester.pumpAndSettle();
       expect(
-        tester.getSize(find.byType(NavigationRail)).width,
+        tester.getSize(desktopNavigation).width,
         AppLayout.compactSidebarWidth,
       );
-      expect(
-        tester.widget<NavigationRail>(find.byType(NavigationRail)).extended,
-        isTrue,
-      );
+      expect(find.text('OneXray'), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
     await tester.binding.setSurfaceSize(const Size(720, 800));
     await tester.pumpAndSettle();
-    expect(find.byType(NavigationRail), findsNothing);
+    expect(desktopNavigation, findsNothing);
     final navigation = find.byKey(const ValueKey('primary-mobile-navigation'));
     final homeDestination = find.byKey(
       const ValueKey('primary-navigation-home'),
@@ -205,14 +213,13 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(901, 800));
     await tester.pumpAndSettle();
     expect(
-      tester.getSize(find.byType(NavigationRail)).width,
+      tester.getSize(desktopNavigation).width,
       AppLayout.desktopSidebarWidth,
     );
     await tester.tap(find.text('Update available'));
     await tester.pumpAndSettle();
 
     expect(find.text('update-dialog'), findsOneWidget);
-    // Switching roots retains the branch's existing subpage.
-    expect(router.routeInformationProvider.value.uri.path, '/settings/details');
+    expect(router.routeInformationProvider.value.uri.path, '/settings');
   });
 }

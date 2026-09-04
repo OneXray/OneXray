@@ -3,6 +3,7 @@ import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/routing/checker.dart';
 import 'package:onexray/pages/routing/custom/controller.dart';
+import 'package:onexray/pages/routing/custom/rule_page.dart';
 import 'package:onexray/pages/routing/widgets.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -45,6 +46,9 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    controller.setInlineEditing(
+      MediaQuery.sizeOf(context).width > AppLayout.mobileBreakpoint,
+    );
     if (!_started) {
       _started = true;
       controller.load(context);
@@ -76,11 +80,12 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                   builder: (context, constraints) => SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
                       mobile ? 14 : 28,
-                      12,
+                      mobile ? 12 : AppSpacing.desktopPageTop,
                       mobile ? 14 : 28,
-                      18,
+                      mobile ? 18 : AppSpacing.desktopPageBottom,
                     ),
                     child: ResponsiveContent(
+                      desktopMaxWidth: AppLayout.routingMaxWidth,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -91,7 +96,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
-                              spacing: 8,
+                              spacing: mobile ? 8 : 0,
                               children: [
                                 widget.transferTools?.call(
                                       context,
@@ -101,11 +106,26 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                       controller: controller.transfer,
                                       disabled: controller.busy,
                                     ),
-                                Text(
-                                  l.prototypeCustomImportHint,
-                                  style: AppTypography.actionHelp.copyWith(
-                                    color: ColorManager.palette(context)
-                                        .mutedForeground,
+                                Padding(
+                                  padding: mobile
+                                      ? EdgeInsets.zero
+                                      : const EdgeInsets.fromLTRB(
+                                          22,
+                                          10,
+                                          22,
+                                          0,
+                                        ),
+                                  child: Text(
+                                    l.prototypeCustomImportHint,
+                                    style:
+                                        (mobile
+                                                ? AppTypography.actionHelp
+                                                : AppTypography.shareHint)
+                                            .copyWith(
+                                              color: ColorManager.palette(
+                                                context,
+                                              ).mutedForeground,
+                                            ),
                                   ),
                                 ),
                               ],
@@ -113,106 +133,146 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                           ),
                           const SizedBox(height: 16),
                           _identity(context, mobile),
-                          const SizedBox(height: 12),
-                          RoutingCard(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: mobile
-                                    ? (constraints.maxHeight > 26
-                                          ? constraints.maxHeight - 26
-                                          : 0)
-                                    : 0,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (!mobile)
-                                    RoutingCardHeader(
-                                      title: l.prototypeRuleList,
-                                      description: l.prototypeRulesMatchInOrder,
-                                    ),
-                                  RoutingEntryCountRow(
-                                    value: controller.entryCount,
-                                    onChanged: controller.editingBlocked
-                                        ? null
-                                        : controller.setEntryCount,
+                          SizedBox(height: mobile ? 12 : 16),
+                          LayoutBuilder(
+                            builder: (context, layout) {
+                              final list = RoutingCard(
+                                key: const ValueKey('custom-rule-list'),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: mobile
+                                        ? (constraints.maxHeight > 26
+                                              ? constraints.maxHeight - 26
+                                              : 0)
+                                        : 0,
                                   ),
-                                  ReorderableListView.builder(
-                                    shrinkWrap: true,
-                                    primary: false,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    padding: EdgeInsets.zero,
-                                    buildDefaultDragHandles: false,
-                                    onReorderItem: controller.reorder,
-                                    itemCount: controller.rules.length,
-                                    itemBuilder: (context, index) =>
-                                        _rule(context, index),
-                                  ),
-                                  _fallback(context),
-                                  Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: OutlinedButton.icon(
-                                      onPressed: controller.editingBlocked
-                                          ? null
-                                          : () => controller.editRule(
-                                              context,
-                                              widget.openRule,
-                                            ),
-                                      style: OutlinedButton.styleFrom(
-                                        minimumSize: const Size.fromHeight(43),
-                                        foregroundColor: ColorManager.palette(
-                                          context,
-                                        ).primary,
-                                        side: BorderSide(
-                                          color: Color.lerp(
-                                            ColorManager.palette(context)
-                                                .border,
-                                            ColorManager.palette(context)
-                                                .primary,
-                                            .55,
-                                          )!,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (!mobile)
+                                        RoutingCardHeader(
+                                          title: l.prototypeRuleList,
+                                          description:
+                                              l.prototypeRulesMatchInOrder,
                                         ),
-                                        textStyle: AppTypography.ruleAdd,
+                                      RoutingEntryCountRow(
+                                        value: controller.entryCount,
+                                        onChanged: controller.editingBlocked
+                                            ? null
+                                            : controller.setEntryCount,
                                       ),
-                                      icon: const Icon(
-                                        LucideIcons.plus,
-                                        size: 17,
+                                      ReorderableListView.builder(
+                                        shrinkWrap: true,
+                                        primary: false,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        padding: EdgeInsets.zero,
+                                        buildDefaultDragHandles: false,
+                                        onReorderItem: controller.reorder,
+                                        itemCount: controller.rules.length,
+                                        itemBuilder: (context, index) =>
+                                            _rule(context, index, mobile),
                                       ),
-                                      label: Text(l.prototypeAddRule),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      12,
-                                      0,
-                                      12,
-                                      12,
-                                    ),
-                                    child: RoutingCard(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          _dns(context),
-                                          if (controller.previewTemplate
-                                              case final template?)
-                                            RouteChecker(
-                                              configuration:
-                                                  controller.checkConfiguration,
-                                              customDraft: template,
-                                              prepareAssets: controller
-                                                  .transfer
-                                                  .pending
-                                                  ?.copyFilesTo,
+                                      _fallback(context, mobile),
+                                      Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: OutlinedButton.icon(
+                                          onPressed: controller.editingBlocked
+                                              ? null
+                                              : () => controller.editRule(
+                                                  context,
+                                                  widget.openRule,
+                                                ),
+                                          style: OutlinedButton.styleFrom(
+                                            minimumSize: const Size.fromHeight(
+                                              43,
                                             ),
-                                        ],
+                                            visualDensity: mobile
+                                                ? null
+                                                : VisualDensity.standard,
+                                            foregroundColor:
+                                                ColorManager.palette(context)
+                                                    .primary,
+                                            side: BorderSide(
+                                              color: Color.lerp(
+                                                ColorManager.palette(context)
+                                                    .border,
+                                                ColorManager.palette(context)
+                                                    .primary,
+                                                .55,
+                                              )!,
+                                            ),
+                                            textStyle: AppTypography.ruleAdd,
+                                          ),
+                                          icon: const Icon(
+                                            LucideIcons.plus,
+                                            size: 17,
+                                          ),
+                                          label: Text(l.prototypeAddRule),
+                                        ),
                                       ),
-                                    ),
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          12,
+                                          0,
+                                          12,
+                                          12,
+                                        ),
+                                        child: RoutingCard(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              _dns(context, mobile),
+                                              if (controller.previewTemplate
+                                                  case final template?)
+                                                RouteChecker(
+                                                  configuration: controller
+                                                      .checkConfiguration,
+                                                  customDraft: template,
+                                                  prepareAssets: controller
+                                                      .transfer
+                                                      .pending
+                                                      ?.copyFilesTo,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                              if (mobile) return list;
+                              final inline = controller.inlineRule;
+                              final editor = inline == null
+                                  ? null
+                                  : CustomRoutingRuleForm(controller: inline);
+                              if (layout.maxWidth < 876) {
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  spacing: 16,
+                                  children: [list, ?editor],
+                                );
+                              }
+                              final available = layout.maxWidth - 16;
+                              final left = (available * .46).clamp(
+                                390.0,
+                                available - 470,
+                              );
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(width: left, child: list),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: editor ?? const SizedBox.shrink(),
                                   ),
                                 ],
-                              ),
-                            ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -313,6 +373,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
       style: OutlinedButton.styleFrom(
         foregroundColor: palette.destructive,
         minimumSize: const Size(0, 38),
+        visualDensity: mobile ? null : VisualDensity.standard,
         padding: const EdgeInsets.symmetric(horizontal: 11),
         textStyle: AppTypography.ruleAdd,
       ),
@@ -351,7 +412,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
     );
   }
 
-  Widget _rule(BuildContext context, int index) {
+  Widget _rule(BuildContext context, int index, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final selected = controller.selectedRuleKey == controller.ruleKeys[index];
@@ -366,7 +427,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
     );
     return Container(
       key: ObjectKey(controller.ruleKeys[index]),
-      constraints: const BoxConstraints(minHeight: 72),
+      constraints: BoxConstraints(minHeight: mobile ? 72 : 68),
       decoration: BoxDecoration(
         color: selected ? palette.selectedSurface : palette.card,
         border: Border(bottom: BorderSide(color: palette.border)),
@@ -378,7 +439,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
               ),
             )
           : null,
-      padding: const EdgeInsets.symmetric(horizontal: 7),
+      padding: EdgeInsets.symmetric(horizontal: mobile ? 7 : 10),
       child: Row(
         spacing: 8,
         children: [
@@ -411,7 +472,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
             ),
           ),
           SizedBox(
-            width: 18,
+            width: mobile ? 18 : 20,
             child: Text(
               (index + 1).toString(),
               textAlign: TextAlign.center,
@@ -426,7 +487,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                   ? null
                   : () => controller.editRule(context, widget.openRule, index),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 70),
+                constraints: BoxConstraints(minHeight: mobile ? 70 : 66),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 7),
                   child: Row(
@@ -442,25 +503,37 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                               controller.ruleName(index, l),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTypography.ruleTitleMobile,
+                              style: mobile
+                                  ? AppTypography.ruleTitleMobile
+                                  : AppTypography.ruleTitleDesktop,
                             ),
                             Text(
                               controller.ruleSummary(index, l),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTypography.ruleSummary.copyWith(
-                                color: palette.mutedForeground,
-                              ),
+                              style:
+                                  (mobile
+                                          ? AppTypography.ruleSummary
+                                          : AppTypography.ruleSummaryDesktop)
+                                      .copyWith(color: palette.mutedForeground),
                             ),
-                            Text(
-                              controller.ruleAction(index, l),
-                              style: AppTypography.ruleAction.copyWith(
-                                color: actionColor,
+                            if (mobile)
+                              Text(
+                                controller.ruleAction(index, l),
+                                style: AppTypography.ruleAction.copyWith(
+                                  color: actionColor,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
+                      if (!mobile)
+                        Text(
+                          controller.ruleAction(index, l),
+                          style: AppTypography.ruleAction.copyWith(
+                            color: actionColor,
+                          ),
+                        ),
                       Icon(
                         LucideIcons.chevronRightDir,
                         size: 17,
@@ -491,11 +564,11 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
     );
   }
 
-  Widget _fallback(BuildContext context) {
+  Widget _fallback(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     return Container(
-      constraints: const BoxConstraints(minHeight: 62),
+      constraints: BoxConstraints(minHeight: mobile ? 62 : 61),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: palette.border)),
@@ -509,12 +582,19 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 3,
               children: [
-                Text(l.prototypeOtherTraffic, style: AppTypography.ruleAdd),
+                Text(
+                  l.prototypeOtherTraffic,
+                  style: mobile
+                      ? AppTypography.ruleAdd
+                      : AppTypography.routingSelectionTitle,
+                ),
                 Text(
                   l.prototypeWhenNoRuleMatches,
-                  style: AppTypography.conditionRelation.copyWith(
-                    color: palette.mutedForeground,
-                  ),
+                  style:
+                      (mobile
+                              ? AppTypography.conditionRelation
+                              : AppTypography.ruleSummaryDesktop)
+                          .copyWith(color: palette.mutedForeground),
                 ),
               ],
             ),
@@ -528,7 +608,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
     );
   }
 
-  Widget _dns(BuildContext context) {
+  Widget _dns(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     return Container(
@@ -543,12 +623,19 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 3,
               children: [
-                Text(l.dnsPageTitle, style: AppTypography.ruleAdd),
+                Text(
+                  l.dnsPageTitle,
+                  style: mobile
+                      ? AppTypography.ruleAdd
+                      : AppTypography.routingSelectionTitle,
+                ),
                 Text(
                   l.prototypeAutomaticFollowsEachRule,
-                  style: AppTypography.conditionRelation.copyWith(
-                    color: palette.mutedForeground,
-                  ),
+                  style:
+                      (mobile
+                              ? AppTypography.conditionRelation
+                              : AppTypography.ruleSummaryDesktop)
+                          .copyWith(color: palette.mutedForeground),
                 ),
               ],
             ),

@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/view.dart';
+import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
@@ -38,34 +39,77 @@ class _ServersPageState extends State<ServersPage> {
       final l = AppLocalizations.of(context)!;
       final mobileRoot =
           MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
-      return Scaffold(
+      final empty =
+          controller.ready && !controller.failed && controller.servers.isEmpty;
+      final page = Scaffold(
         appBar: AppBar(
           title: Text(l.prototypeServers),
           actions: [
-            if (!mobileRoot)
-              IconButton(
-                tooltip: l.prototypeManageSources,
+            if (!mobileRoot && !empty) ...[
+              OutlinedButton.icon(
                 onPressed: () => controller.openSources(context),
-                icon: const Icon(LucideIcons.refreshCw),
+                icon: const Icon(LucideIcons.refreshCw, size: 17),
+                label: Text(l.prototypeUpdatesAndSources),
               ),
-            IconButton(
-              style: mobileRoot ? AppTheme.mobileHeaderAction(context) : null,
-              tooltip: l.prototypeAddServers,
-              onPressed: () => controller.addServers(context),
-              icon: const Icon(LucideIcons.plus),
-            ),
+              const SizedBox(width: 10),
+              FilledButton.icon(
+                onPressed: () => controller.addServers(context),
+                icon: const Icon(LucideIcons.plus, size: 17),
+                label: Text(l.prototypeAddServer),
+              ),
+            ] else if (mobileRoot)
+              IconButton(
+                style: AppTheme.mobileHeaderAction(context),
+                tooltip: l.prototypeAddServers,
+                onPressed: () => controller.addServers(context),
+                icon: const Icon(LucideIcons.plus),
+              ),
           ],
+          bottom: mobileRoot || empty
+              ? null
+              : PreferredSize(
+                  preferredSize: const Size.fromHeight(
+                    AppLayout.navigationTabsHeight,
+                  ),
+                  child: SizedBox(
+                    height: AppLayout.navigationTabsHeight,
+                    child: TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.page,
+                      ),
+                      labelStyle: AppTypography.selectedDesktopAdvancedTab,
+                      unselectedLabelStyle: AppTypography.desktopAdvancedTab,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      tabs: [
+                        Tab(height: 42, text: l.prototypeByNodeLocation),
+                        Tab(height: 42, text: l.prototypeBySubscription),
+                      ],
+                      onTap: (index) =>
+                          controller.groupBy(ServerGrouping.values[index]),
+                    ),
+                  ),
+                ),
         ),
         body: SafeArea(
           child: ServerLoadState(
             controller: controller,
             child: ResponsiveContent(
-              desktopMaxWidth: 1200,
+              desktopMaxWidth: AppLayout.standardMaxWidth,
               child: ServerBrowser(controller: controller, scroll: scroll),
             ),
           ),
         ),
       );
+      return mobileRoot
+          ? page
+          : DefaultTabController(
+              length: 2,
+              initialIndex: controller.grouping.index,
+              child: page,
+            );
     },
   );
 }

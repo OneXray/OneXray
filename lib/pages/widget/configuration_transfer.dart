@@ -64,10 +64,9 @@ class ConfigurationTransferController extends ChangeNotifier {
             title: kind == ConfigurationKind.raw
                 ? l10n.prototypeReplaceEditorJson
                 : l10n.prototypeReplaceCustomRoute,
-            content: kind == ConfigurationKind.raw
-                ? l10n.prototypeJsonImportedIntoEditor
-                : l10n.prototypeCustomImportedIntoEditor,
-            confirmLabel: l10n.prototypeImportFile,
+            confirmLabel: clipboard
+                ? l10n.prototypeReadClipboard
+                : l10n.prototypeImportFile,
           )) {
         return;
       }

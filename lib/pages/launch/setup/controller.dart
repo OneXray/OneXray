@@ -18,7 +18,6 @@ enum SetupAction {
   continueSystem,
   chooseInterface,
   chooseRegion,
-  detectRegion,
   skipRegion,
   confirmRegion,
   finishLater,
@@ -133,8 +132,6 @@ class SetupController extends PageCubit<SetupPageState>
         unawaited(chooseInterface(context));
       case SetupAction.chooseRegion:
         unawaited(chooseRegion(context));
-      case SetupAction.detectRegion:
-        unawaited(detectRegion());
       case SetupAction.skipRegion:
         unawaited(continueRegion(confirm: false));
       case SetupAction.confirmRegion:
@@ -213,6 +210,10 @@ class SetupController extends PageCubit<SetupPageState>
   Future<void> continueSystem() => _perform(() async {
     await service.continueSystem(state.interfaceName);
     await _load();
+    final suggested = await service.suggestRegion();
+    if (suggested != null && state.regionCodes.contains(suggested)) {
+      emit(state.copyWith(region: suggested, regionSuggested: true));
+    }
   });
 
   Future<void> continueRegion({required bool confirm}) => _perform(() async {
@@ -221,14 +222,6 @@ class SetupController extends PageCubit<SetupPageState>
     final existing = await service.hasServers();
     emit(state.copyWith(hasServers: existing));
     if (existing) await _finish();
-  });
-
-  Future<void> detectRegion() => _perform(() async {
-    final suggested = await service.suggestRegion();
-    if (suggested == null || !state.regionCodes.contains(suggested)) {
-      throw const SetupFailure('region');
-    }
-    emit(state.copyWith(region: suggested, regionSuggested: true));
   });
 
   Future<void> chooseInterface(BuildContext context) => _perform(() async {

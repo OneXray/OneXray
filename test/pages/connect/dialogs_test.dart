@@ -6,6 +6,85 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/theme.dart';
 
 void main() {
+  testWidgets('destructive confirmation keeps subject and warning structure', (
+    tester,
+  ) async {
+    bool? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.material(Brightness.light),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                result = await showDestructiveConfirmationDialog(
+                  context,
+                  title: 'Delete this server?',
+                  subtitle: 'Tokyo 01',
+                  warning: 'This change cannot be undone.',
+                  confirmLabel: 'Delete',
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete this server?'), findsOneWidget);
+    expect(find.text('Tokyo 01'), findsOneWidget);
+    expect(find.text('This change cannot be undone.'), findsOneWidget);
+    expect(
+      tester.widget<ConnectCallout>(find.byType(ConnectCallout)).warning,
+      isTrue,
+    );
+    expect(find.byType(FilledButton), findsOneWidget);
+
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(result, isTrue);
+  });
+
+  testWidgets('reconnect confirmation names the pending configuration', (
+    tester,
+  ) async {
+    bool? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.material(Brightness.light),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                result = await showApplyAndReconnectDialog(
+                  context,
+                  label: 'Daily route',
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Apply this change?'), findsOneWidget);
+    expect(find.text('Will use: Daily route'), findsOneWidget);
+
+    await tester.tap(find.text('Apply and reconnect'));
+    await tester.pumpAndSettle();
+    expect(result, isTrue);
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets('bottom dialog paints its safe area in $brightness', (
       tester,

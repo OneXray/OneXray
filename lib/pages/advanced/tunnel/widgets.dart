@@ -35,7 +35,11 @@ class PolicyDetailScaffold extends StatelessWidget {
         leading: BackButton(onPressed: () => controller.cancel(context)),
       ),
       body: SafeArea(
-        child: SettingsPageScroll(padding: contentPadding, child: body),
+        child: SettingsPageScroll(
+          desktopMaxWidth: AppLayout.advancedMaxWidth,
+          padding: contentPadding,
+          child: body,
+        ),
       ),
       bottomNavigationBar: PolicyActions(
         controller: controller,
@@ -70,6 +74,8 @@ class PolicyActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final width = MediaQuery.sizeOf(context).width;
+    final mobile = width <= AppLayout.mobileBreakpoint;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -82,8 +88,12 @@ class PolicyActions extends StatelessWidget {
             ),
           ),
         PageActionBar(
-          horizontalPadding: root ? 15 : null,
-          spacing: root ? 13 : AppSpacing.actionGap,
+          maxWidth: AppLayout.advancedMaxWidth,
+          expandDesktop: true,
+          horizontalPadding: mobile
+              ? (root ? 15 : null)
+              : AppSpacing.advancedDesktopGutter(width),
+          spacing: root || !mobile ? 13 : AppSpacing.actionGap,
           children: [
             OutlinedButton(
               onPressed: root && controller.blocked ? null : cancel,
@@ -133,26 +143,33 @@ class PolicyToggle extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => SettingRow(
-    title: title,
-    subtitle: subtitle,
-    titleMaxLines: 4,
-    minHeight: MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint
-        ? 52
-        : 56,
-    titleStyle: AppTypography.settingsFieldTitle,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-    trailing: ShadSwitch(
-      value:
-          (section == null
-                  ? controller.value
-                  : controller.group(section!))[field]
-              as bool,
-      onChanged: controller.blocked || !supported
-          ? null
-          : (value) => controller.update(field, value, section: section),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return SettingRow(
+      title: title,
+      subtitle: subtitle,
+      titleMaxLines: 4,
+      minHeight: mobile ? 52 : 56,
+      titleStyle: mobile
+          ? AppTypography.settingsFieldTitle
+          : AppTypography.settingsRow,
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: mobile ? 13 : 14,
+        vertical: 10,
+      ),
+      trailing: ShadSwitch(
+        value:
+            (section == null
+                    ? controller.value
+                    : controller.group(section!))[field]
+                as bool,
+        onChanged: controller.blocked || !supported
+            ? null
+            : (value) => controller.update(field, value, section: section),
+      ),
+    );
+  }
 }
 
 class PolicyValueRow extends StatelessWidget {
@@ -161,19 +178,30 @@ class PolicyValueRow extends StatelessWidget {
   const PolicyValueRow({super.key, required this.title, required this.value});
 
   @override
-  Widget build(BuildContext context) => SelectionArea(
-    child: SettingRow(
-      title: title,
-      value: value,
-      minHeight: 46,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-      titleStyle: AppTypography.settingsValueLabel,
-      valueStyle: AppTypography.settingsValue.copyWith(
-        color: ColorManager.primaryText(context),
+  Widget build(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return SelectionArea(
+      child: SettingRow(
+        title: title,
+        value: value,
+        minHeight: mobile ? 46 : 50,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: mobile ? 13 : 14,
+          vertical: mobile ? 9 : 10,
+        ),
+        titleStyle: mobile
+            ? AppTypography.settingsValueLabel
+            : AppTypography.desktopSettingsValueLabel,
+        valueStyle:
+            (mobile
+                    ? AppTypography.settingsValue
+                    : AppTypography.desktopSettingsValue)
+                .copyWith(color: ColorManager.primaryText(context)),
+        valueTextDirection: TextDirection.ltr,
       ),
-      valueTextDirection: TextDirection.ltr,
-    ),
-  );
+    );
+  }
 }
 
 /// One item per field. Controllers own list edits; this widget owns text cursors.

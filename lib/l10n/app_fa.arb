@@ -926,6 +926,12 @@
     "prototypeNoServersYet": "هنوز سروری وجود ندارد",
     "prototypeAddProviderSubscriptionHint": "برای شروع، اشتراک یک ارائه‌دهنده را اضافه کنید یا پیکربندی سرور وارد کنید.",
     "prototypeHowGetServers": "چطور سرور تهیه کنم؟",
+    "prototypeHowToGetServers": "چطور سرور تهیه کنیم",
+    "prototypeAskVpnProvider": "از ارائه‌دهندهٔ VPN خود پیوند اشتراک یا پیوند اشتراک‌گذاری سرور بخواهید.",
+    "prototypeImportConfigurationFileHint": "همچنین می‌توانید فایل پیکربندی وارد کنید.",
+    "prototypeScanServerQrOrImportConfiguration": "همچنین می‌توانید کد QR سرور را اسکن کنید یا فایل پیکربندی وارد کنید.",
+    "prototypeCheckedToday": "امروز بررسی شد",
+    "prototypeCheckedJustNow": "همین حالا بررسی شد",
     "prototypeRemoveFavorite": "حذف از علاقه‌مندی‌ها",
     "prototypeAddFavorite": "افزودن به علاقه‌مندی‌ها",
     "prototypeServerCount": "{count} سرور",
@@ -1322,6 +1328,7 @@
     "prototypeSourceUpdateHint": "دانلود و وارد کردن مستقیم گره‌های قابل استفاده",
     "prototypeNameRemoved": "{name} حذف شد",
     "prototypeDeletedServerSelectionNotice": "اگر این سرور اکنون انتخاب شده باشد یا به‌عنوان خروجی نهایی VPN استفاده شود، OneXray به انتخاب خودکار برمی‌گردد.",
+    "prototypeSourceDeleteWarning": "{count} سرور حذف می‌شود. انتخاب‌های اتصال نامعتبر به حالت خودکار برمی‌گردند و خروجی نهایی VPN حذف‌شده پاک می‌شود. اتصال فعلی تا زمانی که خودتان آن را قطع کنید برقرار می‌ماند.",
     "prototypeDeletedRouteSmartNotice": "پس از حذف این طرح، مسیریابی هوشمند انتخاب می‌شود.",
     "prototypeSwitchAndReconnect": "تغییر و اتصال دوباره",
     "prototypeNewRule": "قانون جدید",
@@ -1396,5 +1403,6 @@
     "prototypeSmartRuleSummary": "فعلی: {count} قانون مستقیم · ۱ قانون پیش‌فرض VPN",
     "prototypeOtherTraffic": "سایر ترافیک",
     "prototypeRuleCheckPrivacy": "بررسی به‌صورت محلی انجام می‌شود و هرگز ذخیره یا بارگذاری نمی‌شود.",
-    "prototypeRuleCheckScope": "فقط شرایط وب‌سایت، IP، درگاه و نوع شبکه را بررسی می‌کند."
+    "prototypeRuleCheckScope": "فقط شرایط وب‌سایت، IP، درگاه و نوع شبکه را بررسی می‌کند.",
+    "prototypeAction": "اقدام"
 }

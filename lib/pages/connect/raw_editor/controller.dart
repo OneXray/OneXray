@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
@@ -162,12 +162,7 @@ class RawEditorController extends ChangeNotifier {
         draft,
         geodata: transfers.pending,
         confirmReconnect: () => context.mounted
-            ? ContextAlert.showConfirmDialog(
-                context,
-                title: l10n.prototypeApplyChange,
-                content: l10n.prototypeReconnectNotice,
-                confirmLabel: l10n.prototypeApplyAndReconnect,
-              )
+            ? showApplyAndReconnectDialog(context, label: name.text.trim())
             : Future.value(false),
       );
       if (id != null &&

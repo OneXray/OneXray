@@ -24,7 +24,9 @@ class SetupBody extends StatelessWidget {
           child: IntrinsicHeight(
             child: Center(
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: mobile ? 620 : 760),
+                constraints: BoxConstraints(
+                  maxWidth: mobile ? 620 : AppLayout.setupContentMaxWidth + 48,
+                ),
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(24, top, 24, mobile ? 28 : 36),
                   child: Column(
@@ -41,18 +43,153 @@ class SetupBody extends StatelessWidget {
   }
 }
 
-class SetupFooter extends StatelessWidget {
-  const SetupFooter({super.key, required this.children});
+class SetupDesktopBody extends StatelessWidget {
+  const SetupDesktopBody({
+    super.key,
+    required this.progress,
+    required this.children,
+    this.bodyTop = 48,
+    this.expandContent = true,
+  });
 
+  final Widget progress;
   final List<Widget> children;
+  final double bodyTop;
+  final bool expandContent;
 
   @override
-  Widget build(BuildContext context) => PageActionBar(
-    horizontalPadding: 24,
-    verticalPadding: 16,
-    spacing: 14,
-    children: children,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final body = Padding(
+        padding: const EdgeInsetsDirectional.only(
+          start: AppSpacing.setupDesktopHorizontal,
+          top: AppSpacing.setupDesktopTop,
+          end: AppSpacing.setupDesktopHorizontal,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('OneXray', style: AppTypography.setupBrand),
+            const SizedBox(height: 10),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppLayout.setupProgressMaxWidth,
+                ),
+                child: progress,
+              ),
+            ),
+            if (expandContent) Expanded(child: _content()) else _content(),
+          ],
+        ),
+      );
+      return SingleChildScrollView(
+        child: expandContent
+            ? ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(child: body),
+              )
+            : body,
+      );
+    },
   );
+
+  Widget _content() => Align(
+    alignment: AlignmentDirectional.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxWidth: AppLayout.setupContentMaxWidth,
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(top: bodyTop, bottom: 36),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
+    ),
+  );
+}
+
+class SetupFooter extends StatelessWidget {
+  const SetupFooter({super.key, required this.children, this.note});
+
+  final List<Widget> children;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    if (mobile) {
+      return PageActionBar(
+        horizontalPadding: 24,
+        verticalPadding: 16,
+        spacing: 14,
+        children: children,
+      );
+    }
+    final palette = ColorManager.palette(context);
+    return Material(
+      color: palette.card,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: palette.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppLayout.setupFooterMaxWidth,
+                minHeight: AppLayout.setupFooterMinHeight,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.setupDesktopHorizontal,
+                  vertical: 18,
+                ),
+                child: children.length == 1
+                    ? Row(
+                        children: [
+                          const Spacer(),
+                          SizedBox(
+                            width: AppLayout.setupFooterButtonWidth,
+                            child: children.single,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          SizedBox(
+                            width: AppLayout.setupFooterButtonWidth,
+                            child: children.first,
+                          ),
+                          Expanded(
+                            child: note == null
+                                ? const SizedBox.shrink()
+                                : Text(
+                                    note!,
+                                    textAlign: TextAlign.center,
+                                    style: AppTypography.setupStatus.copyWith(
+                                      color: palette.mutedForeground,
+                                    ),
+                                  ),
+                          ),
+                          SizedBox(
+                            width: AppLayout.setupFooterButtonWidth,
+                            child: children.last,
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class SetupActionButton extends StatelessWidget {
@@ -71,13 +208,17 @@ class SetupActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     final palette = ColorManager.palette(context);
     final style = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(0, 46)),
+      minimumSize: WidgetStatePropertyAll(Size(0, mobile ? 46 : 44)),
       padding: const WidgetStatePropertyAll(
         EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
-      textStyle: WidgetStatePropertyAll(AppTypography.setupAction),
+      textStyle: WidgetStatePropertyAll(
+        mobile ? AppTypography.setupAction : AppTypography.setupDesktopAction,
+      ),
       backgroundColor: outline
           ? null
           : WidgetStateProperty.resolveWith(

@@ -47,6 +47,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
         appBar: AppBar(title: Text(l.prototypeRoutingData)),
         body: SafeArea(
           child: ResponsiveContent(
+            desktopMaxWidth: AppLayout.advancedMaxWidth,
             child: controller.loading
                 ? const Center(child: CircularProgressIndicator())
                 : controller.failed
@@ -68,56 +69,19 @@ class _GeoDataPageState extends State<GeoDataPage> {
                       controller: scroll,
                       padding: mobile
                           ? const EdgeInsets.fromLTRB(14, 10, 14, 18)
-                          : const EdgeInsets.all(20),
-                      children: [
-                        Text(
-                          l.prototypeRoutingDataHint,
-                          style: mobile
-                              ? AppTypography.geodataIntro.copyWith(
-                                  color: palette.mutedForeground,
-                                )
-                              : null,
-                        ),
-                        SizedBox(height: mobile ? 10 : 12),
-                        Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: SizedBox(
-                            width: mobile ? double.infinity : null,
-                            child: FilledButton.icon(
-                              style: mobile
-                                  ? FilledButton.styleFrom(
-                                      minimumSize: const Size(0, 38),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                      ),
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                      textStyle:
-                                          AppTypography.geodataPrimaryAction,
-                                      visualDensity: VisualDensity.standard,
-                                    )
-                                  : null,
-                              onPressed: !controller.canUpdateAll
-                                  ? null
-                                  : () => controller.updateAll(context),
-                              icon: controller.updatingAll
-                                  ? const ButtonProgressIndicator(size: 15)
-                                  : const Icon(LucideIcons.refreshCw, size: 15),
-                              label: Text(l.prototypeUpdateAll),
+                          : EdgeInsets.fromLTRB(
+                              AppSpacing.advancedDesktopGutter(
+                                MediaQuery.sizeOf(context).width,
+                              ),
+                              54,
+                              AppSpacing.advancedDesktopGutter(
+                                MediaQuery.sizeOf(context).width,
+                              ),
+                              28,
                             ),
-                          ),
-                        ),
-                        SizedBox(height: mobile ? 5 : 8),
-                        Text(
-                          l.prototypeHttpsOnly,
-                          textAlign: mobile ? TextAlign.center : TextAlign.end,
-                          style: mobile
-                              ? AppTypography.geodataValue.copyWith(
-                                  color: palette.mutedForeground,
-                                )
-                              : Theme.of(context).textTheme.bodySmall,
-                        ),
-                        SizedBox(height: mobile ? 7 : 28),
+                      children: [
+                        _intro(context),
+                        SizedBox(height: mobile ? 7 : 16),
                         _heading(
                           context,
                           l.prototypeDefaultRoutingData,
@@ -143,7 +107,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
                         ),
                         if (controller.errors[-1] != null)
                           _error(context, controller.errors[-1]!),
-                        SizedBox(height: mobile ? 18 : 28),
+                        SizedBox(height: mobile ? 18 : 24),
                         _heading(
                           context,
                           l.prototypeCustomRoutingData,
@@ -174,9 +138,11 @@ class _GeoDataPageState extends State<GeoDataPage> {
                             child: Text(
                               l.prototypeNoCustomRoutingData,
                               textAlign: TextAlign.center,
-                              style: AppTypography.settingsDetailNote.copyWith(
-                                color: palette.mutedForeground,
-                              ),
+                              style:
+                                  (mobile
+                                          ? AppTypography.settingsDetailNote
+                                          : AppTypography.geodataTableBody)
+                                      .copyWith(color: palette.mutedForeground),
                             ),
                           )
                         else
@@ -208,40 +174,99 @@ class _GeoDataPageState extends State<GeoDataPage> {
     },
   );
 
-  ButtonStyle? _headingButtonStyle(BuildContext context) =>
-      MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint
-      ? OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 34),
-          padding: const EdgeInsets.symmetric(horizontal: 9),
-          textStyle: AppTypography.geodataAction,
-          visualDensity: VisualDensity.standard,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        )
-      : null;
-
-  Widget _heading(BuildContext context, String title, Widget action) =>
-      Container(
-        constraints: const BoxConstraints(minHeight: 42),
-        padding: MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint
-            ? EdgeInsets.zero
-            : const EdgeInsets.only(bottom: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style:
-                    MediaQuery.sizeOf(context).width <=
-                        AppLayout.mobileBreakpoint
-                    ? AppTypography.geodataTitle
-                    : Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            const SizedBox(width: 12),
-            action,
-          ],
+  Widget _intro(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    final description = Text(
+      l.prototypeRoutingDataHint,
+      style:
+          (mobile
+                  ? AppTypography.geodataIntro
+                  : AppTypography.geodataDesktopIntro)
+              .copyWith(color: palette.mutedForeground),
+    );
+    final actions = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: mobile
+          ? CrossAxisAlignment.stretch
+          : CrossAxisAlignment.end,
+      children: [
+        FilledButton.icon(
+          style: mobile
+              ? FilledButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: AppTypography.geodataPrimaryAction,
+                )
+              : FilledButton.styleFrom(minimumSize: const Size(132, 42)),
+          onPressed: !controller.canUpdateAll
+              ? null
+              : () => controller.updateAll(context),
+          icon: controller.updatingAll
+              ? const ButtonProgressIndicator(size: 15)
+              : const Icon(LucideIcons.refreshCw, size: 15),
+          label: Text(l.prototypeUpdateAll),
         ),
-      );
+        const SizedBox(height: 5),
+        Text(
+          l.prototypeHttpsOnly,
+          textAlign: mobile ? TextAlign.center : TextAlign.end,
+          style: AppTypography.geodataValue.copyWith(
+            color: palette.mutedForeground,
+          ),
+        ),
+      ],
+    );
+    return mobile
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [description, const SizedBox(height: 10), actions],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: description),
+              const SizedBox(width: 20),
+              actions,
+            ],
+          );
+  }
+
+  ButtonStyle _headingButtonStyle(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return OutlinedButton.styleFrom(
+      minimumSize: Size(0, mobile ? 34 : 36),
+      padding: EdgeInsets.symmetric(horizontal: mobile ? 9 : 12),
+      textStyle: mobile ? AppTypography.geodataAction : null,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
+  Widget _heading(BuildContext context, String title, Widget action) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: mobile ? 42 : 44),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: mobile
+                  ? AppTypography.geodataTitle
+                  : AppTypography.geodataDesktopTitle,
+            ),
+          ),
+          SizedBox(width: mobile ? 12 : 16),
+          action,
+        ],
+      ),
+    );
+  }
 
   Widget _error(BuildContext context, String text) => Padding(
     padding: const EdgeInsets.only(top: 12),
@@ -253,75 +278,8 @@ class _GeoDataPageState extends State<GeoDataPage> {
   );
 
   Widget _form(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint) {
-      return _mobileForm(context);
-    }
-    final l = AppLocalizations.of(context)!;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          DropdownButtonFormField<GeoDataType>(
-            initialValue: controller.type,
-            decoration: InputDecoration(labelText: l.prototypeDataType),
-            items: const [
-              DropdownMenuItem(value: GeoDataType.ip, child: Text('GeoIP')),
-              DropdownMenuItem(
-                value: GeoDataType.domain,
-                child: Text('GeoSite'),
-              ),
-            ],
-            onChanged: controller.formBusy ? null : controller.changeType,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: controller.name,
-            enabled: !controller.formBusy,
-            autocorrect: false,
-            textDirection: TextDirection.ltr,
-            decoration: InputDecoration(labelText: l.prototypeSavedFileName),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: controller.url,
-            enabled: !controller.formBusy,
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-            textDirection: TextDirection.ltr,
-            decoration: InputDecoration(
-              labelText: l.prototypeHttpsDownloadAddress,
-            ),
-          ),
-          if (controller.formError != null)
-            _error(context, controller.formError!),
-          const SizedBox(height: 16),
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              TextButton(
-                onPressed: controller.formBusy ? null : controller.toggleAdd,
-                child: Text(l.prototypeCancel),
-              ),
-              FilledButton(
-                onPressed: controller.formBusy
-                    ? null
-                    : () => controller.add(context),
-                child: ButtonProgress(
-                  busy: controller.formBusy,
-                  child: Text(l.prototypeAdd),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _mobileForm(BuildContext context) {
+    final viewport = MediaQuery.sizeOf(context).width;
+    final mobile = viewport <= AppLayout.mobileBreakpoint;
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     Widget field(String label, Widget input) => Column(
@@ -338,102 +296,133 @@ class _GeoDataPageState extends State<GeoDataPage> {
       ],
     );
     final buttonStyle = FilledButton.styleFrom(
-      minimumSize: const Size(84, 38),
+      minimumSize: Size(mobile ? 84 : 0, 38),
       padding: const EdgeInsets.symmetric(horizontal: 13),
       textStyle: AppTypography.control,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.standard,
+    );
+    final typeField = field(
+      l.prototypeDataType,
+      SizedBox(
+        width: double.infinity,
+        child: SettingSelect<GeoDataType>(
+          value: controller.type,
+          entries: const {
+            GeoDataType.ip: 'GeoIP',
+            GeoDataType.domain: 'GeoSite',
+          },
+          textStyle: AppTypography.geodataField,
+          onChanged: controller.formBusy ? null : controller.changeType,
+        ),
+      ),
+    );
+    final nameField = field(
+      l.prototypeSavedFileName,
+      ShadInput(
+        controller: controller.name,
+        enabled: !controller.formBusy,
+        autofocus: true,
+        autocorrect: false,
+        textDirection: TextDirection.ltr,
+        constraints: const BoxConstraints(minHeight: 38),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        style: AppTypography.geodataField,
+        placeholderStyle: AppTypography.geodataField.copyWith(
+          color: palette.mutedForeground,
+        ),
+        placeholder: Text(
+          controller.type == GeoDataType.ip ? 'geoip.dat' : 'geosite.dat',
+        ),
+      ),
+    );
+    final urlField = field(
+      l.prototypeHttpsDownloadAddress,
+      ShadInput(
+        controller: controller.url,
+        enabled: !controller.formBusy,
+        keyboardType: TextInputType.url,
+        autocorrect: false,
+        textDirection: TextDirection.ltr,
+        constraints: const BoxConstraints(minHeight: 38),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        style: AppTypography.geodataField,
+        placeholderStyle: AppTypography.geodataField.copyWith(
+          color: palette.mutedForeground,
+        ),
+        placeholder: const Text('https://example.com/geoip.dat'),
+      ),
+    );
+    final actions = Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      spacing: 7,
+      children: [
+        Flexible(
+          child: OutlinedButton(
+            style: buttonStyle,
+            onPressed: controller.formBusy ? null : controller.toggleAdd,
+            child: Text(l.prototypeCancel),
+          ),
+        ),
+        Flexible(
+          child: FilledButton(
+            style: buttonStyle,
+            onPressed: controller.formBusy
+                ? null
+                : () => controller.add(context),
+            child: ButtonProgress(
+              busy: controller.formBusy,
+              child: Text(l.prototypeAdd),
+            ),
+          ),
+        ),
+      ],
     );
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(11),
+      margin: EdgeInsets.only(bottom: mobile ? 12 : 16),
+      padding: mobile
+          ? const EdgeInsets.all(11)
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
         color: palette.muted,
         border: Border.all(color: palette.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.card),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
+        spacing: mobile ? 10 : 12,
         children: [
-          field(
-            l.prototypeDataType,
-            SizedBox(
-              width: double.infinity,
-              child: SettingSelect<GeoDataType>(
-                value: controller.type,
-                entries: const {
-                  GeoDataType.ip: 'GeoIP',
-                  GeoDataType.domain: 'GeoSite',
-                },
-                textStyle: AppTypography.geodataField,
-                onChanged: controller.formBusy ? null : controller.changeType,
-              ),
+          if (mobile) ...[
+            typeField,
+            nameField,
+            urlField,
+            Align(alignment: AlignmentDirectional.centerEnd, child: actions),
+          ] else if (viewport <= AppLayout.compactDesktopBreakpoint) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                SizedBox(width: 120, child: typeField),
+                const SizedBox(width: 12),
+                Expanded(child: nameField),
+              ],
             ),
-          ),
-          field(
-            l.prototypeSavedFileName,
-            ShadInput(
-              controller: controller.name,
-              enabled: !controller.formBusy,
-              autofocus: true,
-              autocorrect: false,
-              textDirection: TextDirection.ltr,
-              constraints: const BoxConstraints(minHeight: 38),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              style: AppTypography.geodataField,
-              placeholderStyle: AppTypography.geodataField.copyWith(
-                color: palette.mutedForeground,
-              ),
-              placeholder: Text(
-                controller.type == GeoDataType.ip ? 'geoip.dat' : 'geosite.dat',
-              ),
+            urlField,
+            Align(alignment: AlignmentDirectional.centerEnd, child: actions),
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                SizedBox(width: 120, child: typeField),
+                const SizedBox(width: 12),
+                SizedBox(width: 170, child: nameField),
+                const SizedBox(width: 12),
+                Expanded(child: urlField),
+                const SizedBox(width: 12),
+                actions,
+              ],
             ),
-          ),
-          field(
-            l.prototypeHttpsDownloadAddress,
-            ShadInput(
-              controller: controller.url,
-              enabled: !controller.formBusy,
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              textDirection: TextDirection.ltr,
-              constraints: const BoxConstraints(minHeight: 38),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              style: AppTypography.geodataField,
-              placeholderStyle: AppTypography.geodataField.copyWith(
-                color: palette.mutedForeground,
-              ),
-              placeholder: const Text('https://example.com/geoip.dat'),
-            ),
-          ),
           if (controller.formError != null)
             _error(context, controller.formError!),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            spacing: 7,
-            children: [
-              Flexible(
-                child: OutlinedButton(
-                  style: buttonStyle,
-                  onPressed: controller.formBusy ? null : controller.toggleAdd,
-                  child: Text(l.prototypeCancel),
-                ),
-              ),
-              Flexible(
-                child: FilledButton(
-                  style: buttonStyle,
-                  onPressed: controller.formBusy
-                      ? null
-                      : () => controller.add(context),
-                  child: ButtonProgress(
-                    busy: controller.formBusy,
-                    child: Text(l.prototypeAdd),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );

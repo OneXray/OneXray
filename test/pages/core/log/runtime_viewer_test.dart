@@ -9,6 +9,7 @@ import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/controller.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/runtime_code_view.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
@@ -18,8 +19,12 @@ const _logLines = ValueKey('runtime-log-lines');
 const _configScroll = ValueKey('runtime-config-code-scroll');
 const _originalJson = ' {"log":{"loglevel":"warning"},"inbounds":[]} ';
 
-Widget _app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
-  theme: AppTheme.material(Brightness.light, mobile: true),
+Widget _app(
+  Widget child, {
+  Locale locale = const Locale('en'),
+  bool mobile = true,
+}) => MaterialApp(
+  theme: AppTheme.material(Brightness.light, mobile: mobile),
   locale: locale,
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
@@ -42,6 +47,52 @@ AppLocalizations _strings(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byType(RuntimeCodeScaffold)))!;
 
 void main() {
+  testWidgets('desktop runtime viewers share Advanced width and top spacing', (
+    tester,
+  ) async {
+    _viewport(tester, size: const Size(1160, 688));
+    for (final view in [
+      LogFileViewerView(
+        state: const LogFileViewerPageState(
+          title: 'Access log',
+          fileExists: true,
+          lines: ['Desktop log line'],
+        ),
+        onExport: () {},
+        onFollowTail: (_) {},
+      ),
+      ConfigFileViewerView(
+        state: const ConfigFileViewerPageState(
+          title: 'Runtime JSON',
+          text: _originalJson,
+          loading: false,
+        ),
+        onExport: () {},
+      ),
+    ]) {
+      await tester.pumpWidget(_app(view, mobile: false));
+      await tester.pumpAndSettle();
+      final panel = tester.getRect(find.byKey(_panel));
+      final export = tester.getRect(find.byType(OutlinedButton));
+      final gutter = AppSpacing.advancedDesktopGutter(1160);
+      expect(
+        panel.left,
+        closeTo((1160 - AppLayout.advancedMaxWidth) / 2 + gutter, .01),
+      );
+      expect(
+        panel.width,
+        closeTo(AppLayout.advancedMaxWidth - gutter * 2, .01),
+      );
+      expect(
+        export.top,
+        closeTo(tester.getRect(find.byType(AppBar)).bottom + 48, .01),
+      );
+      expect(export.bottom + 12, closeTo(panel.top, .01));
+      expect(panel.height, greaterThanOrEqualTo(420));
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   for (final locale in const [
     Locale('en'),
     Locale('zh'),

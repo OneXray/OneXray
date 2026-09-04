@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/service/ping/service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -95,7 +96,7 @@ class ContextAlert {
   static Future<bool> showConfirmDialog(
     BuildContext context, {
     required String title,
-    required String content,
+    String? content,
     String? confirmLabel,
   }) async {
     final confirmed = await _showDialog<bool>(
@@ -103,7 +104,7 @@ class ContextAlert {
       variant: ShadDialogVariant.alert,
       builder: (ctx) => ShadDialog.alert(
         title: _dialogTitle(ctx, icon: LucideIcons.triangleAlert, title: title),
-        description: _dialogDescription(ctx, content),
+        description: content == null ? null : _dialogDescription(ctx, content),
         backgroundColor: _dialogBackground(ctx),
         closeIcon: const SizedBox.shrink(),
         constraints: _dialogConstraints(ctx),
@@ -167,7 +168,7 @@ class ContextAlert {
       context: context,
       builder: builder,
       variant: variant,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
+      barrierColor: ColorManager.palette(context).overlay,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       opaque: false,
     );

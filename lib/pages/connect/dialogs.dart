@@ -12,6 +12,71 @@ import 'package:onexray/service/connection/settings.dart';
 Future<T?> showConnectDialog<T>(BuildContext context, WidgetBuilder builder) =>
     showAppDialog<T>(context, builder);
 
+Future<bool> showDestructiveConfirmationDialog(
+  BuildContext context, {
+  required String title,
+  required String subtitle,
+  required String warning,
+  required String confirmLabel,
+}) async =>
+    await showAppDialog<bool>(context, (dialogContext) {
+      final l = AppLocalizations.of(dialogContext)!;
+      return AppDialog(
+        title: title,
+        subtitle: subtitle,
+        expandLastAction: false,
+        body: ConnectCallout(
+          icon: LucideIcons.circleAlert,
+          text: warning,
+          warning: true,
+        ),
+        actions: [
+          ConnectDialogButton(
+            label: l.prototypeCancel,
+            secondary: true,
+            onPressed: () => Navigator.pop(dialogContext, false),
+          ),
+          ConnectDialogButton(
+            label: confirmLabel,
+            icon: LucideIcons.trash2,
+            destructive: true,
+            onPressed: () => Navigator.pop(dialogContext, true),
+          ),
+        ],
+      );
+    }) ??
+    false;
+
+Future<bool> showApplyAndReconnectDialog(
+  BuildContext context, {
+  required String label,
+}) async {
+  final l = AppLocalizations.of(context)!;
+  return await showAppDialog<bool>(
+        context,
+        (dialogContext) => AppDialog(
+          title: l.prototypeApplyChange,
+          subtitle: l.prototypeReconnectNotice,
+          body: ConnectCallout(
+            icon: LucideIcons.refreshCw,
+            text: l.prototypeWillUseName(label),
+          ),
+          actions: [
+            ConnectDialogButton(
+              label: l.prototypeCancel,
+              secondary: true,
+              onPressed: () => Navigator.pop(dialogContext, false),
+            ),
+            ConnectDialogButton(
+              label: l.prototypeApplyAndReconnect,
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+      ) ==
+      true;
+}
+
 typedef ConnectDialog = AppDialog;
 
 class ConnectDialogButton extends StatelessWidget {

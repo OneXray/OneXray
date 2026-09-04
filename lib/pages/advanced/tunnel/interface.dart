@@ -78,101 +78,105 @@ class OutboundInterfaceView extends StatelessWidget {
     builder: (context, _) {
       final l = AppLocalizations.of(context)!;
       final palette = ColorManager.palette(context);
-      final mobile =
-          MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+      final width = MediaQuery.sizeOf(context).width;
+      final mobile = width <= AppLayout.mobileBreakpoint;
+      final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
       final selected = controller.value['xrayOutboundInterfaceName'] as String;
       return PolicyDetailScaffold(
         title: l.prototypeXrayOutboundInterface,
         controller: controller,
         canSave:
             !controller.loading && !controller.failed && selected.isNotEmpty,
-        contentPadding: EdgeInsets.fromLTRB(
-          mobile ? 14 : 28,
-          mobile ? 12 : 18,
-          mobile ? 14 : 28,
-          mobile ? 18 : 24,
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l.prototypeChooseInterface,
-              style: AppTypography.platformDetailTitle,
-            ),
-            Text(
-              l.prototypeInterfaceSelectionNotice,
-              style: AppTypography.platformDetailBody,
-            ),
-            SizedBox(height: mobile ? 12 : 14),
-            if (controller.loading)
-              const Center(child: CircularProgressIndicator())
-            else if (controller.failed || controller.interfaces.isEmpty)
-              Column(
-                children: [
-                  Text(l.prototypeTemporarilyUnavailable),
-                  TextButton(
-                    onPressed: onRetry ?? controller.readInterfaces,
-                    child: Text(l.prototypeRetry),
-                  ),
-                ],
-              )
-            else
-              ShadRadioGroup<String>(
-                initialValue: selected,
-                enabled: !controller.blocked,
-                axis: Axis.horizontal,
-                onChanged: (value) {
-                  if (value != null && value != selected) {
-                    controller.update('xrayOutboundInterfaceName', value);
-                  }
-                },
-                items: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: palette.border)),
+        contentPadding: EdgeInsets.zero,
+        body: Padding(
+          padding: EdgeInsets.fromLTRB(
+            gutter,
+            mobile ? 12 : 48,
+            gutter,
+            mobile ? 18 : 24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l.prototypeChooseInterface,
+                style: AppTypography.platformDetailTitle,
+              ),
+              Text(
+                l.prototypeInterfaceSelectionNotice,
+                style: AppTypography.platformDetailBody,
+              ),
+              SizedBox(height: mobile ? 12 : 14),
+              if (controller.loading)
+                const Center(child: CircularProgressIndicator())
+              else if (controller.failed || controller.interfaces.isEmpty)
+                Column(
+                  children: [
+                    Text(l.prototypeTemporarilyUnavailable),
+                    TextButton(
+                      onPressed: onRetry ?? controller.readInterfaces,
+                      child: Text(l.prototypeRetry),
                     ),
-                    child: Column(
-                      children: [
-                        for (final value in controller.interfaces)
-                          _InterfaceRow(
-                            value: value,
-                            selected: selected == value.name,
-                            enabled: !controller.blocked,
-                            onTap: () => controller.update(
-                              'xrayOutboundInterfaceName',
-                              value.name,
+                  ],
+                )
+              else
+                ShadRadioGroup<String>(
+                  initialValue: selected,
+                  enabled: !controller.blocked,
+                  axis: Axis.horizontal,
+                  onChanged: (value) {
+                    if (value != null && value != selected) {
+                      controller.update('xrayOutboundInterfaceName', value);
+                    }
+                  },
+                  items: [
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        border: Border(top: BorderSide(color: palette.border)),
+                      ),
+                      child: Column(
+                        children: [
+                          for (final value in controller.interfaces)
+                            _InterfaceRow(
+                              value: value,
+                              selected: selected == value.name,
+                              enabled: !controller.blocked,
+                              onTap: () => controller.update(
+                                'xrayOutboundInterfaceName',
+                                value.name,
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            Container(
-              constraints: BoxConstraints(minHeight: mobile ? 50 : 49),
-              padding: EdgeInsets.symmetric(
-                horizontal: mobile ? 10 : 16,
-                vertical: 10,
-              ),
-              child: Row(
-                children: [
-                  Icon(LucideIcons.info, size: 16, color: palette.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l.prototypeManagedInterfaceNotice,
-                      style:
-                          (mobile
-                                  ? AppTypography.runtimeCodeNote
-                                  : AppTypography.runtimeCodeDesktopNote)
-                              .copyWith(color: palette.mutedForeground),
+                  ],
+                ),
+              Container(
+                constraints: BoxConstraints(minHeight: mobile ? 50 : 49),
+                padding: EdgeInsets.symmetric(
+                  horizontal: mobile ? 10 : 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.info, size: 16, color: palette.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.prototypeManagedInterfaceNotice,
+                        style:
+                            (mobile
+                                    ? AppTypography.runtimeCodeNote
+                                    : AppTypography.runtimeCodeDesktopNote)
+                                .copyWith(color: palette.mutedForeground),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     },

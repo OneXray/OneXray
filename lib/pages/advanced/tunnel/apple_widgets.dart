@@ -299,6 +299,7 @@ class _NetworkChoice extends StatelessWidget {
       ],
     );
     final options = Container(
+      key: const ValueKey('apple-network-action-choice'),
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: palette.muted,
@@ -307,52 +308,28 @@ class _NetworkChoice extends StatelessWidget {
       ),
       child: IntrinsicHeight(
         child: Row(
+          mainAxisSize: mobile ? MainAxisSize.max : MainAxisSize.min,
           children: [
             for (final choice in ['connect', 'disconnect'])
-              Expanded(
-                child: Semantics(
-                  selected: controller.group('apple')[field] == choice,
-                  inMutuallyExclusiveGroup: true,
-                  child: TextButton(
-                    key: ValueKey('$field-$choice'),
-                    onPressed: controller.blocked
-                        ? null
-                        : () => controller.update(
-                            field,
-                            choice,
-                            section: 'apple',
-                          ),
-                    style: TextButton.styleFrom(
-                      minimumSize: Size(mobile ? 0 : 88, mobile ? 34 : 32),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      foregroundColor:
-                          controller.group('apple')[field] == choice
-                          ? palette.primary
-                          : palette.mutedStrong,
-                      backgroundColor:
-                          controller.group('apple')[field] == choice
-                          ? palette.card
-                          : Colors.transparent,
-                      side: controller.group('apple')[field] == choice
-                          ? BorderSide(color: palette.primary)
-                          : BorderSide.none,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadii.chip),
-                      ),
-                      textStyle: mobile
-                          ? AppTypography.appleNetworkAction
-                          : AppTypography.appleNetworkActionDesktop,
-                    ),
-                    child: Text(
-                      choice == 'connect'
-                          ? l.prototypeConnectAutomatically
-                          : l.prototypeDisconnectVpn,
-                      textAlign: TextAlign.center,
-                    ),
+              if (mobile)
+                Expanded(
+                  child: _NetworkChoiceButton(
+                    controller: controller,
+                    field: field,
+                    choice: choice,
+                    mobile: true,
+                  ),
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 88),
+                  child: _NetworkChoiceButton(
+                    controller: controller,
+                    field: field,
+                    choice: choice,
+                    mobile: false,
                   ),
                 ),
-              ),
           ],
         ),
       ),
@@ -369,9 +346,60 @@ class _NetworkChoice extends StatelessWidget {
               children: [
                 Expanded(child: label),
                 const SizedBox(width: 16),
-                Flexible(child: options),
+                options,
               ],
             ),
+    );
+  }
+}
+
+class _NetworkChoiceButton extends StatelessWidget {
+  const _NetworkChoiceButton({
+    required this.controller,
+    required this.field,
+    required this.choice,
+    required this.mobile,
+  });
+
+  final PolicyEditorController controller;
+  final String field;
+  final String choice;
+  final bool mobile;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final selected = controller.group('apple')[field] == choice;
+    return Semantics(
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      child: TextButton(
+        key: ValueKey('$field-$choice'),
+        onPressed: controller.blocked
+            ? null
+            : () => controller.update(field, choice, section: 'apple'),
+        style: TextButton.styleFrom(
+          minimumSize: Size(0, mobile ? 34 : 32),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          foregroundColor: selected ? palette.primary : palette.mutedStrong,
+          backgroundColor: selected ? palette.card : Colors.transparent,
+          side: selected ? BorderSide(color: palette.primary) : BorderSide.none,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.chip),
+          ),
+          textStyle: mobile
+              ? AppTypography.appleNetworkAction
+              : AppTypography.appleNetworkActionDesktop,
+        ),
+        child: Text(
+          choice == 'connect'
+              ? l.prototypeConnectAutomatically
+              : l.prototypeDisconnectVpn,
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
 }

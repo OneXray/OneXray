@@ -40,54 +40,74 @@ class SetupView extends StatelessWidget {
         MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     final welcome = state.step == SetupStep.welcome;
     final palette = ColorManager.palette(context);
+    final content = <Widget>[
+      ...switch (state.step) {
+        SetupStep.welcome => _welcome(context, mobile),
+        SetupStep.system => _system(context, mobile),
+        SetupStep.region => _region(context, mobile),
+        SetupStep.servers => _servers(context, mobile),
+        SetupStep.complete => const <Widget>[],
+      },
+      if (state.step != SetupStep.system) ..._feedback(context),
+      if (state.step == SetupStep.region ||
+          state.step == SetupStep.servers) ...[
+        const Spacer(),
+        const SizedBox(height: 28),
+        Text(
+          state.step == SetupStep.region
+              ? l.prototypeRegionSkipNotice
+              : l.prototypeExistingServersSkip,
+          style: AppTypography.setupSkipNote.copyWith(
+            color: palette.mutedForeground,
+          ),
+        ),
+      ],
+    ];
     return PopScope(
       canPop: false,
       child: Scaffold(
         body: SafeArea(
           bottom: false,
-          child: SetupBody(
-            key: ValueKey(state.step),
-            top: welcome ? 32 : 24,
-            children: [
-              if (welcome || !mobile) ...[
-                Text(
-                  'OneXray',
-                  textAlign: welcome ? TextAlign.center : TextAlign.start,
-                  style: AppTypography.setupBrand,
+          child: mobile
+              ? SetupBody(
+                  key: ValueKey(state.step),
+                  top: welcome ? 32 : 24,
+                  children: [
+                    if (welcome) ...[
+                      Text(
+                        'OneXray',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.setupBrand,
+                      ),
+                      const SizedBox(height: 36),
+                    ],
+                    if (!welcome && state.step != SetupStep.complete) ...[
+                      _SetupProgress(step: state.step),
+                      const SizedBox(height: 48),
+                    ],
+                    ...content,
+                  ],
+                )
+              : SetupDesktopBody(
+                  key: ValueKey(state.step),
+                  progress: state.step == SetupStep.complete
+                      ? const SizedBox.shrink()
+                      : _SetupProgress(step: state.step),
+                  bodyTop: welcome ? 46 : 48,
+                  expandContent:
+                      state.step == SetupStep.region ||
+                      state.step == SetupStep.servers,
+                  children: content,
                 ),
-                SizedBox(height: welcome ? 36 : 24),
-              ],
-              if (!welcome && state.step != SetupStep.complete) ...[
-                _SetupProgress(step: state.step),
-                const SizedBox(height: 48),
-              ],
-              ...switch (state.step) {
-                SetupStep.welcome => _welcome(context, mobile),
-                SetupStep.system => _system(context, mobile),
-                SetupStep.region => _region(context, mobile),
-                SetupStep.servers => _servers(context, mobile),
-                SetupStep.complete => const <Widget>[],
-              },
-              if (state.step != SetupStep.system) ..._feedback(context),
-              if (state.step == SetupStep.region ||
-                  state.step == SetupStep.servers) ...[
-                const Spacer(),
-                const SizedBox(height: 28),
-                Text(
-                  state.step == SetupStep.region
-                      ? l.prototypeRegionSkipNotice
-                      : l.prototypeExistingServersSkip,
-                  style: AppTypography.setupSkipNote.copyWith(
-                    color: palette.mutedForeground,
-                  ),
-                ),
-              ],
-            ],
-          ),
         ),
         bottomNavigationBar: state.step == SetupStep.complete
             ? null
-            : SetupFooter(children: _actions(l)),
+            : SetupFooter(
+                note: !mobile && state.step == SetupStep.system
+                    ? l.prototypeSetupDoesNotStartVpn
+                    : null,
+                children: _actions(l, mobile),
+              ),
       ),
     );
   }
@@ -97,7 +117,7 @@ class SetupView extends StatelessWidget {
     final palette = ColorManager.palette(context);
     return [
       Center(child: Assets.appIcon.blue.image(width: 96, height: 96)),
-      const SizedBox(height: 26),
+      SizedBox(height: mobile ? 26 : 24),
       Text(
         l.prototypeWelcome,
         textAlign: TextAlign.center,
@@ -115,7 +135,7 @@ class SetupView extends StatelessWidget {
                     : AppTypography.setupDesktopSubtitle)
                 .copyWith(color: palette.mutedStrong),
       ),
-      const SizedBox(height: 36),
+      SizedBox(height: mobile ? 36 : 34),
       Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
@@ -126,7 +146,7 @@ class SetupView extends StatelessWidget {
                   icon: LucideIcons.shieldCheck,
                   text: l.prototypeNoDataCollection,
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: mobile ? 24 : 20),
                 SetupPoint(
                   icon: LucideIcons.userRound,
                   text: l.prototypeBringOwnServers,
@@ -136,7 +156,7 @@ class SetupView extends StatelessWidget {
           ),
         ),
       ),
-      const SizedBox(height: 30),
+      SizedBox(height: mobile ? 30 : 28),
       Center(
         child: TextButton(
           onPressed: _action(SetupAction.privacy),
@@ -200,7 +220,7 @@ class SetupView extends StatelessWidget {
         mobile ? null : l.prototypeSetupOnce,
       ),
       if (state.localReady) ...[
-        const SizedBox(height: 30),
+        SizedBox(height: mobile ? 30 : 24),
         Row(
           mainAxisAlignment: mobile
               ? MainAxisAlignment.start
@@ -211,14 +231,16 @@ class SetupView extends StatelessWidget {
             Flexible(
               child: Text(
                 l.prototypeLocalConfigurationReady,
-                style: AppTypography.setupReady.copyWith(
-                  color: palette.mutedStrong,
-                ),
+                style:
+                    (mobile
+                            ? AppTypography.setupReady
+                            : AppTypography.setupDesktopReady)
+                        .copyWith(color: palette.mutedStrong),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 40),
+        SizedBox(height: mobile ? 40 : 36),
       ] else
         const SizedBox(height: 30),
       DecoratedBox(
@@ -262,13 +284,36 @@ class SetupView extends StatelessWidget {
                     title: l.prototypeVpnPermission,
                     busy: state.activeAction == SetupAction.permission,
                     description: l.prototypeAllowAddVpn,
-                    trailing: Text(
-                      status,
-                      style: AppTypography.setupHint.copyWith(
-                        color: state.authorized
-                            ? palette.running
-                            : palette.primary,
-                      ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          state.authorized
+                              ? l.prototypeAuthorized
+                              : l.prototypeSetUpVpn,
+                          style:
+                              (mobile
+                                      ? AppTypography.setupHint
+                                      : AppTypography.setupDesktopTrailing)
+                                  .copyWith(
+                                    color: state.authorized
+                                        ? palette.running
+                                        : palette.primary,
+                                  ),
+                        ),
+                        if (!mobile) ...[
+                          const SizedBox(width: 12),
+                          Icon(
+                            state.authorized
+                                ? LucideIcons.circleCheck
+                                : LucideIcons.chevronRightDir,
+                            size: 19,
+                            color: state.authorized
+                                ? palette.running
+                                : palette.mutedStrong,
+                          ),
+                        ],
+                      ],
                     ),
                     onTap: state.authorized
                         ? null
@@ -296,7 +341,7 @@ class SetupView extends StatelessWidget {
           ),
         ),
       ],
-      if (mobile && !requiresInterface) ...[
+      if (!requiresInterface) ...[
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -315,14 +360,16 @@ class SetupView extends StatelessWidget {
         ),
       ],
       ..._feedback(context),
-      const SizedBox(height: 56),
-      Text(
-        l.prototypeSetupDoesNotStartVpn,
-        textAlign: TextAlign.center,
-        style: AppTypography.setupSubtitle.copyWith(
-          color: palette.mutedForeground,
+      if (mobile) ...[
+        const SizedBox(height: 56),
+        Text(
+          l.prototypeSetupDoesNotStartVpn,
+          textAlign: TextAlign.center,
+          style: AppTypography.setupSubtitle.copyWith(
+            color: palette.mutedForeground,
+          ),
         ),
-      ),
+      ],
     ];
   }
 
@@ -350,19 +397,6 @@ class SetupView extends StatelessWidget {
             : l.prototypeRegionSelectedManually,
         style: AppTypography.setupHint.copyWith(
           color: ColorManager.palette(context).mutedForeground,
-        ),
-      ),
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: TextButton.icon(
-          onPressed: _action(SetupAction.detectRegion),
-          style: TextButton.styleFrom(
-            textStyle: AppTypography.setupPrivacyLink,
-          ),
-          icon: state.activeAction == SetupAction.detectRegion
-              ? const ButtonProgressIndicator(size: 18)
-              : const Icon(LucideIcons.locateFixed, size: 18),
-          label: Text(l.prototypeDetect),
         ),
       ),
     ];
@@ -400,9 +434,9 @@ class SetupView extends StatelessWidget {
           text: l.prototypeServersReadyForHome,
         ),
       ],
-      const SizedBox(height: 24),
+      SizedBox(height: mobile ? 24 : 28),
       for (var index = 0; index < methods.length; index++) ...[
-        if (index > 0) const SizedBox(height: 9),
+        if (index > 0) SizedBox(height: mobile ? 9 : 10),
         _SetupRow(
           icon: methods[index].$2,
           title: methods[index].$3,
@@ -449,60 +483,63 @@ class SetupView extends StatelessWidget {
       ? null
       : () => onAction(action);
 
-  List<Widget> _actions(AppLocalizations l) => switch (state.step) {
-    SetupStep.welcome => [
-      SetupActionButton(
-        label: l.prototypeAgreeAndContinue,
-        busy: state.activeAction == SetupAction.acceptPrivacy,
-        onPressed: _action(SetupAction.acceptPrivacy),
-      ),
-    ],
-    SetupStep.system => [
-      SetupActionButton(
-        label: l.prototypeBack,
-        outline: true,
-        onPressed: _action(SetupAction.back),
-      ),
-      SetupActionButton(
-        label: state.authorized ? l.prototypeContinue : l.prototypeSetUpVpn,
-        busy:
-            state.activeAction == SetupAction.permission ||
-            state.activeAction == SetupAction.continueSystem,
-        onPressed: state.authorized
-            ? state.ready(requiresInterface: requiresInterface)
-                  ? _action(SetupAction.continueSystem)
-                  : null
-            : _action(SetupAction.permission),
-      ),
-    ],
-    SetupStep.region => [
-      SetupActionButton(
-        label: l.prototypeSkip,
-        busy: state.activeAction == SetupAction.skipRegion,
-        outline: true,
-        onPressed: _action(SetupAction.skipRegion),
-      ),
-      SetupActionButton(
-        label: l.prototypeConfirmAndContinue,
-        busy: state.activeAction == SetupAction.confirmRegion,
-        onPressed: _action(SetupAction.confirmRegion),
-      ),
-    ],
-    SetupStep.servers => [
-      SetupActionButton(
-        label: l.prototypeAddLater,
-        busy: state.activeAction == SetupAction.finishLater,
-        outline: true,
-        onPressed: _action(SetupAction.finishLater),
-      ),
-      SetupActionButton(
-        label: l.prototypeGoToHome,
-        busy: state.activeAction == SetupAction.finish,
-        onPressed: state.hasServers ? _action(SetupAction.finish) : null,
-      ),
-    ],
-    SetupStep.complete => const [],
-  };
+  List<Widget> _actions(AppLocalizations l, bool mobile) =>
+      switch (state.step) {
+        SetupStep.welcome => [
+          SetupActionButton(
+            label: l.prototypeAgreeAndContinue,
+            busy: state.activeAction == SetupAction.acceptPrivacy,
+            onPressed: _action(SetupAction.acceptPrivacy),
+          ),
+        ],
+        SetupStep.system => [
+          SetupActionButton(
+            label: l.prototypeBack,
+            outline: true,
+            onPressed: _action(SetupAction.back),
+          ),
+          SetupActionButton(
+            label: mobile && !state.authorized
+                ? l.prototypeSetUpVpn
+                : l.prototypeContinue,
+            busy:
+                state.activeAction == SetupAction.permission ||
+                state.activeAction == SetupAction.continueSystem,
+            onPressed: mobile && !state.authorized
+                ? _action(SetupAction.permission)
+                : state.ready(requiresInterface: requiresInterface)
+                ? _action(SetupAction.continueSystem)
+                : null,
+          ),
+        ],
+        SetupStep.region => [
+          SetupActionButton(
+            label: l.prototypeSkip,
+            busy: state.activeAction == SetupAction.skipRegion,
+            outline: true,
+            onPressed: _action(SetupAction.skipRegion),
+          ),
+          SetupActionButton(
+            label: l.prototypeConfirmAndContinue,
+            busy: state.activeAction == SetupAction.confirmRegion,
+            onPressed: _action(SetupAction.confirmRegion),
+          ),
+        ],
+        SetupStep.servers => [
+          SetupActionButton(
+            label: l.prototypeAddLater,
+            busy: state.activeAction == SetupAction.finishLater,
+            outline: true,
+            onPressed: _action(SetupAction.finishLater),
+          ),
+          SetupActionButton(
+            label: l.prototypeGoToHome,
+            busy: state.activeAction == SetupAction.finish,
+            onPressed: state.hasServers ? _action(SetupAction.finish) : null,
+          ),
+        ],
+        SetupStep.complete => const [],
+      };
 }
 
 class _SetupProgress extends StatelessWidget {
@@ -519,47 +556,125 @@ class _SetupProgress extends StatelessWidget {
       l.prototypeYourRegion,
       l.prototypeAddServers,
     ];
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     return Semantics(
       label: l.prototypeSetupProgress,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Flexible(
-                child: Text(
-                  '${labels[step.index]} ·',
-                  style: AppTypography.setupProgress,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${step.index + 1} / 4',
-                textDirection: TextDirection.ltr,
-                style: AppTypography.setupProgress,
-              ),
-            ],
-          ),
-          const SizedBox(height: 13),
-          Row(
-            children: [
-              for (var index = 0; index < 4; index++) ...[
-                if (index > 0) const SizedBox(width: 6),
-                Expanded(
-                  child: Container(
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: index <= step.index
-                          ? palette.primary
-                          : palette.border,
-                      borderRadius: BorderRadius.circular(3),
+      child: mobile
+          ? Column(
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${labels[step.index]} ·',
+                        style: AppTypography.setupProgress,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${step.index + 1} / 4',
+                      textDirection: TextDirection.ltr,
+                      style: AppTypography.setupProgress,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 13),
+                Row(
+                  children: [
+                    for (var index = 0; index < 4; index++) ...[
+                      if (index > 0) const SizedBox(width: 6),
+                      Expanded(
+                        child: Container(
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: index <= step.index
+                                ? palette.primary
+                                : palette.border,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
-            ],
-          ),
-        ],
-      ),
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var index = 0; index < labels.length; index++)
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: index == 0
+                                  ? const SizedBox.shrink()
+                                  : Divider(height: 1, color: palette.border),
+                            ),
+                            const SizedBox(width: 14),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: index <= step.index
+                                    ? palette.primary
+                                    : palette.card,
+                                border: Border.all(
+                                  color: index <= step.index
+                                      ? palette.primary
+                                      : palette.borderStrong,
+                                ),
+                              ),
+                              child: index < step.index
+                                  ? Icon(
+                                      LucideIcons.check,
+                                      size: 15,
+                                      color: palette.primaryForeground,
+                                    )
+                                  : Text(
+                                      '${index + 1}',
+                                      style: AppTypography.setupStepActive
+                                          .copyWith(
+                                            color: index == step.index
+                                                ? palette.primaryForeground
+                                                : palette.mutedForeground,
+                                          ),
+                                    ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: index == labels.length - 1
+                                  ? const SizedBox.shrink()
+                                  : Divider(height: 1, color: palette.border),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          labels[index],
+                          textAlign: TextAlign.center,
+                          style:
+                              (index == step.index
+                                      ? AppTypography.setupStepActive
+                                      : AppTypography.setupStepLabel)
+                                  .copyWith(
+                                    color: index == step.index
+                                        ? palette.foreground
+                                        : index < step.index
+                                        ? palette.mutedStrong
+                                        : palette.mutedForeground,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }
@@ -586,6 +701,8 @@ class _SetupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     final palette = ColorManager.palette(context);
     final radius = BorderRadius.circular(AppRadii.card);
     return Material(
@@ -604,19 +721,35 @@ class _SetupRow extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(
             minHeight: importMethod
-                ? 56
+                ? mobile
+                      ? 56
+                      : 62
                 : outlined
-                ? 62
-                : 84,
+                ? mobile
+                      ? 62
+                      : 68
+                : mobile
+                ? 84
+                : 88,
           ),
           child: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: importMethod
-                  ? 13
-                  : outlined
+              horizontal: mobile
+                  ? importMethod
+                        ? 13
+                        : outlined
+                        ? 14
+                        : 10
+                  : importMethod
+                  ? 16
+                  : 14,
+              vertical: mobile
+                  ? importMethod
+                        ? 12
+                        : 16
+                  : importMethod
                   ? 14
-                  : 10,
-              vertical: importMethod ? 12 : 16,
+                  : 18,
             ),
             child: Row(
               children: [
@@ -625,10 +758,14 @@ class _SetupRow extends StatelessWidget {
                 else
                   Icon(
                     icon,
-                    size: importMethod ? 23 : 24,
+                    size: importMethod
+                        ? 23
+                        : mobile
+                        ? 24
+                        : 26,
                     color: palette.primary,
                   ),
-                const SizedBox(width: 12),
+                SizedBox(width: mobile ? 12 : 18),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,14 +773,20 @@ class _SetupRow extends StatelessWidget {
                       Text(
                         title,
                         style: importMethod
-                            ? AppTypography.setupImport
-                            : AppTypography.setupRowTitle,
+                            ? mobile
+                                  ? AppTypography.setupImport
+                                  : AppTypography.setupDesktopImport
+                            : mobile
+                            ? AppTypography.setupRowTitle
+                            : AppTypography.setupDesktopRowTitle,
                       ),
                       if (description != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           description!,
-                          style: AppTypography.setupSelectorDetail,
+                          style: mobile
+                              ? AppTypography.setupSelectorDetail
+                              : AppTypography.setupDesktopRowDetail,
                         ),
                       ],
                     ],

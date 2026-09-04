@@ -12,13 +12,17 @@ import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/launch/setup.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-Widget _app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
-  theme: AppTheme.material(Brightness.light, mobile: true),
+Widget _app(
+  Widget child, {
+  Locale locale = const Locale('en'),
+  bool mobile = true,
+}) => MaterialApp(
+  theme: AppTheme.material(Brightness.light, mobile: mobile),
   locale: locale,
   supportedLocales: AppLocalizations.supportedLocales,
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   builder: (context, child) => ShadTheme(
-    data: AppTheme.shad(Brightness.light, mobile: true),
+    data: AppTheme.shad(Brightness.light, mobile: mobile),
     child: child!,
   ),
   home: child,
@@ -26,6 +30,13 @@ Widget _app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
 
 void _mobile(WidgetTester tester) {
   tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+void _desktop(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1160, 688);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -181,6 +192,51 @@ void main() {
       expect(actions.last, SetupAction.continueSystem);
     },
   );
+
+  testWidgets('desktop setup uses the full stepper and distributed footer', (
+    tester,
+  ) async {
+    _desktop(tester);
+    await tester.pumpWidget(
+      _app(
+        SetupView(
+          state: SetupPageState(
+            step: SetupStep.system,
+            busy: false,
+            localReady: true,
+            permission: PlatformPermissionResult(
+              kind: PlatformPermissionKind.appleVpn,
+              state: PlatformPermissionState.notDetermined,
+            ),
+          ),
+          requiresInterface: false,
+          supportsScan: false,
+          onAction: (_) {},
+          onAddServer: (_) {},
+        ),
+        mobile: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome & privacy'), findsOneWidget);
+    expect(find.text('System setup'), findsOneWidget);
+    expect(find.text('This process will not start the VPN.'), findsOneWidget);
+    expect(find.text('Set up VPN'), findsOneWidget);
+    final back = tester.getRect(find.widgetWithText(OutlinedButton, 'Back'));
+    final next = tester.getRect(find.widgetWithText(FilledButton, 'Continue'));
+    expect(back.width, 210);
+    expect(next.width, 210);
+    expect(back.left, 40);
+    expect(next.right, 1120);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+          .onPressed,
+      isNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'server methods route individually and scan follows platform support',

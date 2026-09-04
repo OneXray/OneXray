@@ -70,9 +70,11 @@ class _RawEditorPageState extends State<RawEditorPage> {
         body: SafeArea(
           bottom: false,
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: mobile ? 14 : 28,
-              vertical: 12,
+            padding: EdgeInsets.fromLTRB(
+              mobile ? 14 : AppSpacing.page,
+              mobile ? 12 : AppSpacing.desktopPageTop,
+              mobile ? 14 : AppSpacing.page,
+              mobile ? 12 : AppSpacing.desktopPageBottom,
             ),
             child: ResponsiveContent(
               desktopMaxWidth: 900,

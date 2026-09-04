@@ -926,6 +926,12 @@
   "prototypeNoServersYet": "还没有可用的服务器",
   "prototypeAddProviderSubscriptionHint": "添加服务商提供的订阅链接，或导入服务器配置即可开始。",
   "prototypeHowGetServers": "如何获取服务器？",
+  "prototypeHowToGetServers": "如何获取服务器",
+  "prototypeAskVpnProvider": "向 VPN 服务商获取订阅链接或服务器分享链接。",
+  "prototypeImportConfigurationFileHint": "也可以导入配置文件。",
+  "prototypeScanServerQrOrImportConfiguration": "也可以扫描服务器二维码或导入配置文件。",
+  "prototypeCheckedToday": "今天检查",
+  "prototypeCheckedJustNow": "刚刚检查",
   "prototypeRemoveFavorite": "取消收藏",
   "prototypeAddFavorite": "添加收藏",
   "prototypeServerCount": "{count} 台服务器",
@@ -1322,6 +1328,7 @@
   "prototypeSourceUpdateHint": "下载并直接导入可用节点",
   "prototypeNameRemoved": "{name} 已移除",
   "prototypeDeletedServerSelectionNotice": "如果该节点是当前位置或 VPN 最终出口，OneXray 将回退到自动选择。",
+  "prototypeSourceDeleteWarning": "将移除 {count} 台服务器；失效的连接位置将回到自动选择，被删除的 VPN 最终出口将清除。当前连接会继续运行，直到你主动断开。",
   "prototypeDeletedRouteSmartNotice": "删除当前方案后将切换到智能路由。",
   "prototypeSwitchAndReconnect": "切换并重新连接",
   "prototypeNewRule": "新规则",
@@ -1396,5 +1403,6 @@
   "prototypeSmartRuleSummary": "当前：{count} 条直连规则 · 1 条 VPN 默认规则",
   "prototypeOtherTraffic": "其他流量",
   "prototypeRuleCheckPrivacy": "检查在本机完成，不会保存或上传输入内容。",
-  "prototypeRuleCheckScope": "仅检查网站、IP、端口和网络类型条件。"
+  "prototypeRuleCheckScope": "仅检查网站、IP、端口和网络类型条件。",
+  "prototypeAction": "操作"
 }

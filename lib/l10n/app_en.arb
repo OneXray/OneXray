@@ -1765,6 +1765,30 @@
   "@prototypeHowGetServers": {
     "description": "Approved prototype copy: How do I get servers?"
   },
+  "prototypeHowToGetServers": "How to get servers",
+  "@prototypeHowToGetServers": {
+    "description": "Approved prototype copy: How to get servers"
+  },
+  "prototypeAskVpnProvider": "Ask your VPN provider for a subscription link or a server share link.",
+  "@prototypeAskVpnProvider": {
+    "description": "Approved prototype copy: Ask your VPN provider for a subscription link or a server share link."
+  },
+  "prototypeImportConfigurationFileHint": "You can also import a configuration file.",
+  "@prototypeImportConfigurationFileHint": {
+    "description": "Approved prototype copy: You can also import a configuration file."
+  },
+  "prototypeScanServerQrOrImportConfiguration": "You can also scan a server QR code or import a configuration file.",
+  "@prototypeScanServerQrOrImportConfiguration": {
+    "description": "Approved prototype copy: You can also scan a server QR code or import a configuration file."
+  },
+  "prototypeCheckedToday": "Checked today",
+  "@prototypeCheckedToday": {
+    "description": "Approved prototype copy: Checked today"
+  },
+  "prototypeCheckedJustNow": "Checked just now",
+  "@prototypeCheckedJustNow": {
+    "description": "Approved prototype copy: Checked just now"
+  },
   "prototypeRemoveFavorite": "Remove favorite",
   "@prototypeRemoveFavorite": {
     "description": "Approved prototype copy: Remove favorite"
@@ -1998,6 +2022,15 @@
   "prototypeDeleteSource": "Delete this source?",
   "@prototypeDeleteSource": {
     "description": "Approved prototype copy: Delete this source?"
+  },
+  "prototypeSourceDeleteWarning": "{count} servers will be removed. Invalid connection selections will return to Automatic, and a deleted VPN final exit will be cleared. The current connection will keep running until you disconnect.",
+  "@prototypeSourceDeleteWarning": {
+    "description": "Approved prototype copy: {count} servers will be removed. Invalid connection selections will return to Automatic, and a deleted VPN final exit will be cleared. The current connection will keep running until you disconnect.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "prototypeCheckForUpdates": "Check for updates",
   "@prototypeCheckForUpdates": {
@@ -3897,5 +3930,9 @@
   "prototypeRuleCheckScope": "Checks website, IP, port, and network conditions only.",
   "@prototypeRuleCheckScope": {
     "description": "Approved prototype copy: Checks website, IP, port, and network conditions only."
+  },
+  "prototypeAction": "Action",
+  "@prototypeAction": {
+    "description": "Approved prototype copy: Action"
   }
 }

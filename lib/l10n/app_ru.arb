@@ -926,6 +926,12 @@
   "prototypeNoServersYet": "Серверов пока нет",
   "prototypeAddProviderSubscriptionHint": "Для начала добавьте подписку провайдера или импортируйте конфигурацию сервера.",
   "prototypeHowGetServers": "Где взять серверы?",
+  "prototypeHowToGetServers": "Где взять серверы",
+  "prototypeAskVpnProvider": "Запросите у провайдера VPN ссылку подписки или ссылку на сервер.",
+  "prototypeImportConfigurationFileHint": "Также можно импортировать файл конфигурации.",
+  "prototypeScanServerQrOrImportConfiguration": "Также можно сканировать QR-код сервера или импортировать файл конфигурации.",
+  "prototypeCheckedToday": "Проверено сегодня",
+  "prototypeCheckedJustNow": "Проверено только что",
   "prototypeRemoveFavorite": "Убрать из избранного",
   "prototypeAddFavorite": "В избранное",
   "prototypeServerCount": "Серверов: {count}",
@@ -1322,6 +1328,7 @@
   "prototypeSourceUpdateHint": "Загрузить и сразу импортировать пригодные узлы",
   "prototypeNameRemoved": "Удалено: {name}",
   "prototypeDeletedServerSelectionNotice": "Если этот сервер выбран для подключения или конечного выхода VPN, OneXray вернётся к автовыбору.",
+  "prototypeSourceDeleteWarning": "Будет удалено серверов: {count}. Недействительный выбор подключения заменится автовыбором, удалённый конечный выход VPN будет сброшен. Текущее подключение продолжит работать до отключения.",
   "prototypeDeletedRouteSmartNotice": "После удаления маршрута будет выбрана умная маршрутизация.",
   "prototypeSwitchAndReconnect": "Переключить и переподключить",
   "prototypeNewRule": "Новое правило",
@@ -1396,5 +1403,6 @@
   "prototypeSmartRuleSummary": "Сейчас: прямых правил — {count} · 1 правило VPN по умолчанию",
   "prototypeOtherTraffic": "Остальной трафик",
   "prototypeRuleCheckPrivacy": "Проверка выполняется локально, её результат не сохраняется и не отправляется.",
-  "prototypeRuleCheckScope": "Проверяются только условия сайта, IP, порта и типа сети."
+  "prototypeRuleCheckScope": "Проверяются только условия сайта, IP, порта и типа сети.",
+  "prototypeAction": "Действие"
 }

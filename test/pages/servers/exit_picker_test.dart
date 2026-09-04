@@ -7,9 +7,12 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
+import 'package:onexray/pages/routing/widgets.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/exit_picker.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 
@@ -92,15 +95,19 @@ void main() {
 
   Future<void> open(
     WidgetTester tester,
-    List<ServerExitChoice?> results,
-  ) async {
+    List<ServerExitChoice?> results, {
+    double width = 427,
+  }) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(427, 900);
+    tester.view.physicalSize = Size(width, 900);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.material(Brightness.light, mobile: true),
+        theme: AppTheme.material(
+          Brightness.light,
+          mobile: width <= AppLayout.mobileBreakpoint,
+        ),
         locale: const Locale('en'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -151,6 +158,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(results.single?.id, 3);
     expect(find.byType(ServerExitPickerView), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop selector keeps a 760 card and a matching footer scope', (
+    tester,
+  ) async {
+    await open(tester, <ServerExitChoice?>[], width: 1160);
+    final card = find.byType(RoutingCard);
+    expect(tester.getSize(card).width, AppLayout.routingEditorMaxWidth);
+    expect(tester.getCenter(card).dx, 580);
+    expect(
+      tester.getTopLeft(card).dy,
+      kToolbarHeight + AppSpacing.desktopPageTop,
+    );
+    expect(find.text(l.prototypeChooseFinalExit), findsNothing);
+    expect(
+      tester.widget<PageActionBar>(find.byType(PageActionBar)).maxWidth,
+      AppLayout.routingEditorMaxWidth,
+    );
+    expect(
+      find.descendant(of: card, matching: find.byType(IntrinsicWidth)),
+      findsOneWidget,
+    );
+    await tester.tap(find.text(l.prototypeBySubscription));
+    await tester.pumpAndSettle();
+    expect(controller.grouping, ServerGrouping.subscription);
     expect(tester.takeException(), isNull);
   });
 

@@ -32,6 +32,7 @@ void main() {
       expect(original['ruleTag'], 'Original');
       expect(original['domain'], ['old.example']);
       controller.port.text = '65536';
+      expect(controller.draftRule['port'], '65536');
       expect(controller.buildRule, throwsFormatException);
     },
   );

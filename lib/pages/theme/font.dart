@@ -100,6 +100,8 @@ abstract final class AppTypography {
   static final pageAction = _prototypeRole(12, 620, height: 1.4);
   static final advancedTab = _prototypeRole(12.5, 560);
   static final selectedAdvancedTab = _prototypeRole(12.5, 620);
+  static final desktopAdvancedTab = _prototypeRole(14, 560);
+  static final selectedDesktopAdvancedTab = _prototypeRole(14, 620);
 
   static final settingsSectionTitle = _prototypeRole(14, 650, height: 1.3);
   static final settingsSectionDesktopTitle = _prototypeRole(
@@ -112,6 +114,14 @@ abstract final class AppTypography {
   static final settingsValueLabel = _prototypeRole(12.5, 400);
   static final settingsValue = _prototypeRole(12.5, 520);
   static final settingsStatus = _prototypeRole(12.5, 620);
+  static final desktopSettingsValueLabel = _prototypeRole(13, 400);
+  static final desktopSettingsValue = _prototypeRole(13, 520);
+  static final desktopSettingsStatus = _prototypeRole(13, 620);
+  static final desktopSettingsRowValue = _prototypeRole(13, 400);
+  static final desktopSettingsVersion = _prototypeRole(13.5, 400);
+  static final desktopSettingsHint = _prototypeRole(11.5, 400, height: 1.5);
+  static final desktopSettingsNote = _prototypeRole(11.5, 400);
+  static final desktopSettingsDanger = _prototypeRole(14, 570);
   static final settingsHint = _prototypeRole(10.5, 400, height: 1.5);
   static final settingsThemeOption = _prototypeRole(14, 400);
   static final settingsThemeOptionMobile = _prototypeRole(12.5, 400);
@@ -141,6 +151,8 @@ abstract final class AppTypography {
   static final routeIdentityLabel = _prototypeRole(10.5, 620);
   static final routeCount = _prototypeRole(10.5, 400);
   static final ruleTitleMobile = _prototypeRole(11.5, 700, height: 1.4);
+  static final ruleTitleDesktop = _prototypeRole(12.5, 700, height: 1.4);
+  static final ruleSummaryDesktop = _prototypeRole(10, 400);
   static final ruleSummary = _prototypeRole(10.5, 400);
   static final ruleAction = _prototypeRole(10.5, 650);
   static final ruleNumber = _prototypeRole(11, 400);
@@ -237,14 +249,22 @@ abstract final class AppTypography {
   static final setupPoint = _prototypeRole(13, 400, height: 1.65);
   static final setupDesktopPoint = _prototypeRole(14, 400, height: 1.65);
   static final setupProgress = _prototypeRole(14, 700, height: 1.5);
+  static final setupStepLabel = _prototypeRole(14, 400, height: 1.4);
+  static final setupStepActive = _prototypeRole(14, 600, height: 1.4);
   static final setupReady = _prototypeRole(16, 550, height: 1.6);
+  static final setupDesktopReady = _prototypeRole(17, 400, height: 1.6);
   static final setupPermission = _prototypeRole(16, 400, height: 1.5);
   static final setupStatus = _prototypeRole(13, 400);
   static final setupHint = _prototypeRole(12, 400, height: 1.65);
   static final setupSkipNote = _prototypeRole(12, 400, height: 1.6);
   static final setupRowTitle = _prototypeRole(16, 600, height: 1.5);
+  static final setupDesktopRowTitle = _prototypeRole(19, 600, height: 1.5);
+  static final setupDesktopRowDetail = _prototypeRole(16, 400, height: 1.5);
+  static final setupDesktopTrailing = _prototypeRole(14, 400);
   static final setupImport = _prototypeRole(14, 400);
+  static final setupDesktopImport = _prototypeRole(15, 400);
   static final setupAction = _prototypeRole(16, 620, height: 1.4);
+  static final setupDesktopAction = _prototypeRole(17, 620, height: 1.4);
   static final setupChildTitle = _prototypeRole(
     23,
     700,
@@ -298,6 +318,11 @@ abstract final class AppTypography {
   static final backupEmptyTitle = _prototypeRole(16, 700);
 
   static final geodataIntro = _prototypeRole(9.5, 400, height: 1.45);
+  static final geodataDesktopIntro = _prototypeRole(11, 400, height: 1.45);
+  static final geodataDesktopTitle = _prototypeRole(14, 680, height: 1.3);
+  static final geodataTableHeading = _prototypeRole(10.5, 400);
+  static final geodataTableBody = _prototypeRole(12, 400);
+  static final geodataDesktopAction = _prototypeRole(11, 650);
   static final geodataTitle = _prototypeRole(13, 680, height: 1.3);
   static final geodataMeta = _prototypeRole(8.5, 500);
   static final geodataValue = _prototypeRole(10, 400);
@@ -357,6 +382,7 @@ abstract final class AppTypography {
   static final serverUseLabel = _prototypeRole(10.5, 620);
   static final serverUseCount = _prototypeRole(14, 630, height: 1);
   static final serverGroupCode = _prototypeRole(13, 720);
+  static final serverGroupTitle = _prototypeRole(18, 700, height: 1.3);
   static final serverGroupSummary = _prototypeRole(12, 400);
   static final serverNodeTitle = _prototypeRole(13, 700);
   static final serverProtocol = _prototypeRole(10, 550, height: 1.4);
@@ -387,6 +413,44 @@ abstract final class AppTypography {
   static final connectRawNotice = _prototypeRole(10, 400, height: 1.4);
   static final connectRawRowTitle = _prototypeRole(13, 630);
   static final connectRawRowDetail = _prototypeRole(10.5, 400);
+
+  static final desktopBrand = _prototypeRole(
+    25,
+    720,
+  ).copyWith(letterSpacing: -1);
+  static final desktopUpdateLabel = _prototypeRole(13, 550);
+  static final connectDesktopStatusTitle = _prototypeRole(21, 650, height: 1.3);
+  static final connectDesktopStatusDetail = _prototypeRole(15, 400);
+  static final connectDesktopEmptyDetail = _prototypeRole(
+    16,
+    400,
+    height: 1.55,
+  );
+  static final connectDesktopAction = _prototypeRole(20, 660);
+  static final connectDesktopCaption = _prototypeRole(14, 620);
+  static final connectDesktopChoiceLabel = _prototypeRole(16, 520);
+  static final connectDesktopChoiceTitle = _prototypeRole(16, 620);
+  static final connectDesktopChoiceDetail = _prototypeRole(
+    12,
+    400,
+    height: 1.35,
+  );
+  static final connectDesktopChoiceMeta = _prototypeRole(13, 600);
+  static final connectDesktopWhy = _prototypeRole(16, 570);
+  static final connectDesktopTrafficTitle = _prototypeRole(20, 650);
+  static final connectDesktopTrafficGroupTitle = _prototypeRole(
+    15,
+    520,
+    height: 1.35,
+  );
+  static final connectDesktopTrafficLabel = _prototypeRole(13, 400);
+  static final connectDesktopRawTitle = _prototypeRole(15, 650);
+  static final connectDesktopRawEmptyTitle = _prototypeRole(14, 700);
+  static final connectDesktopRawEmptyDetail = _prototypeRole(
+    11,
+    400,
+    height: 1.45,
+  );
 
   static final dialogTitle = _prototypeRole(18, 700, height: 1.3);
   static final dialogSubtitle = _prototypeRole(13, 400, height: 1.45);

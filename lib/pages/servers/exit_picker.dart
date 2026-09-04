@@ -61,20 +61,16 @@ class ServerExitPickerView extends StatelessWidget {
           child: ServerLoadState(
             controller: controller,
             child: ResponsiveContent(
-              desktopMaxWidth: 760,
+              desktopMaxWidth:
+                  AppLayout.routingEditorMaxWidth + AppSpacing.page * 2,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+                padding: EdgeInsets.fromLTRB(
+                  mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                  mobile ? 12 : AppSpacing.desktopPageTop,
+                  mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                  mobile ? 18 : AppSpacing.desktopPageBottom,
+                ),
                 children: [
-                  if (!mobile)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        l.prototypeChooseFinalExit,
-                        style: AppTypography.settingsDetailNote.copyWith(
-                          color: palette.mutedForeground,
-                        ),
-                      ),
-                    ),
                   RoutingCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,6 +157,7 @@ class ServerExitPickerView extends StatelessWidget {
           ),
         ),
         bottomNavigationBar: PageActionBar(
+          maxWidth: AppLayout.routingEditorMaxWidth,
           children: [
             if (!mobile)
               OutlinedButton(
@@ -208,25 +205,22 @@ class ServerExitPickerView extends StatelessWidget {
   Widget _grouping(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: Container(
-        width: mobile ? double.infinity : 300,
-        margin: EdgeInsets.symmetric(
-          horizontal: mobile ? 12 : 14,
-          vertical: 10,
-        ),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          border: Border.all(color: palette.border),
-          borderRadius: BorderRadius.circular(AppRadii.control),
-        ),
-        child: SizedBox(
-          height: 41,
-          child: Row(
-            children: [
-              for (final grouping in ServerGrouping.values)
-                Expanded(
+    final control = Container(
+      width: mobile ? double.infinity : null,
+      margin: EdgeInsets.symmetric(horizontal: mobile ? 12 : 14, vertical: 10),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(AppRadii.control),
+      ),
+      child: SizedBox(
+        height: 41,
+        child: Row(
+          children: [
+            for (final grouping in ServerGrouping.values)
+              Expanded(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 112),
                   child: Semantics(
                     button: true,
                     selected: controller.grouping == grouping,
@@ -263,10 +257,14 @@ class ServerExitPickerView extends StatelessWidget {
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
+    );
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: mobile ? control : IntrinsicWidth(child: control),
     );
   }
 }

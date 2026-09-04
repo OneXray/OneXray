@@ -153,7 +153,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Paste route'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Import links'));
+      await _tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Import links'),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(ServerImportPreviewPage), findsOneWidget);
       controller.closeFlow(
@@ -224,7 +227,10 @@ void main() {
       );
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Import links'));
+      await _tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Import links'),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(ServerImportPreviewPage), findsOneWidget);
       expect(
@@ -241,11 +247,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ServerImportFormPage), findsOneWidget);
       expect(result, isNull);
-      await tester.tap(find.widgetWithText(FilledButton, 'Import links'));
+      await _tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Import links'),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(ServerImportPreviewPage), findsOneWidget);
       expect(imported, 1);
-      await tester.tap(find.text('Cancel'));
+      await _tapVisible(tester, find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(result?.count, 2);
       expect(result?.subscriptionCount, 1);
@@ -322,7 +331,7 @@ void main() {
     controller.toggleSecret();
     expect(controller.obscureSecret, false);
     controller.name.text = 'Renamed';
-    await tester.tap(find.text('Save'));
+    await _tapVisible(tester, find.text('Save'));
     await tester.pump();
     expect(find.text('Save'), findsOneWidget);
     expect(find.byType(ButtonProgressIndicator), findsOneWidget);
@@ -447,14 +456,14 @@ void main() {
         );
         await tester.tap(find.text('Open'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Confirm add'));
+        await _tapVisible(tester, find.text('Confirm add'));
         await tester.pumpAndSettle();
         expect(find.text('Servers added'), findsOneWidget);
         expect(find.text('Data source'), findsOneWidget);
         expect(find.text('Done'), findsOneWidget);
         expect(controller.committedResult?.writeFailureCount, 1);
         if (exit == 'done') {
-          await tester.tap(find.text('Done'));
+          await _tapVisible(tester, find.text('Done'));
         } else if (exit == 'system') {
           await Navigator.of(
             tester.element(find.byType(ServerImportPreviewPage)),
@@ -483,6 +492,12 @@ void _mobileViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(390, 844);
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pump();
+  await tester.tap(finder);
 }
 
 Widget _wizard(

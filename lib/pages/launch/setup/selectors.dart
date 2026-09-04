@@ -155,66 +155,89 @@ class _SetupSelector extends StatelessWidget {
         final l10n = AppLocalizations.of(context)!;
         final controller = context.read<_ChoiceController>();
         final palette = ColorManager.palette(context);
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         return Scaffold(
+          appBar: mobile
+              ? null
+              : AppBar(
+                  leading: IconButton(
+                    tooltip: l10n.prototypeBack,
+                    onPressed: () => controller.cancel(context),
+                    icon: const Icon(LucideIcons.arrowLeftDir),
+                  ),
+                  title: Text(title),
+                ),
           body: SafeArea(
             bottom: false,
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
+                constraints: const BoxConstraints(
+                  maxWidth: AppLayout.setupContentMaxWidth,
+                ),
                 child: CustomScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   slivers: [
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
+                      padding: EdgeInsets.fromLTRB(
+                        mobile ? 24 : 0,
+                        mobile ? 56 : 24,
+                        mobile ? 24 : 0,
+                        28,
+                      ),
                       sliver: SliverMainAxisGroup(
                         slivers: [
                           SliverToBoxAdapter(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Row(
-                                  children: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          controller.cancel(context),
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                        ),
-                                        minimumSize: const Size(0, 38),
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                        textStyle: AppTypography.control,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            LucideIcons.arrowLeftDir,
-                                            size: 18,
+                                if (mobile) ...[
+                                  Row(
+                                    children: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            controller.cancel(context),
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
                                           ),
-                                          const SizedBox(width: 6),
-                                          Text(l10n.prototypeBack),
-                                        ],
+                                          minimumSize: const Size(0, 38),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          textStyle: AppTypography.control,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              LucideIcons.arrowLeftDir,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(l10n.prototypeBack),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        title,
-                                        style: AppTypography.setupChildTitle,
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          title,
+                                          style: AppTypography.setupChildTitle,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  description,
-                                  style: AppTypography.setupSelectorDetail
-                                      .copyWith(color: palette.mutedForeground),
-                                ),
-                                const SizedBox(height: 22),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    description,
+                                    style: AppTypography.setupSelectorDetail
+                                        .copyWith(
+                                          color: palette.mutedForeground,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 22),
+                                ],
                                 if (searchLabel != null) ...[
                                   TextField(
                                     style: AppTypography.setupSearch,

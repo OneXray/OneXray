@@ -216,6 +216,7 @@ class BackupController extends PageCubit<BackupPageState> {
             : l10n.prototypeContinue,
         destructive: menuId == IconMenuId.delete,
         expandConfirm: menuId != IconMenuId.delete,
+        barrierDismissible: false,
       ).show(context);
       if (!confirmed || !context.mounted) return;
       switch (menuId) {
@@ -332,6 +333,7 @@ class BackupController extends PageCubit<BackupPageState> {
         cancelLabel: l10n.prototypeCancel,
         confirmLabel: l10n.prototypeConfirmRestore,
         expandConfirm: true,
+        barrierDismissible: false,
       ).show(context);
       if (!confirmed || !context.mounted) return;
       final success = await BackupService().restore(file.path);

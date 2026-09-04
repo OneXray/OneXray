@@ -220,72 +220,114 @@ void main() {
     },
   );
 
-  testWidgets('new route count and ordering only change the in-memory draft', (
-    tester,
-  ) async {
-    final db = AppDatabase.forTesting(NativeDatabase.memory());
-    final coordinator = ConnectionCoordinator(database: db);
-    final controller = CustomRoutingEditorController(
-      service: CustomRoutingEditorService(
-        database: db,
-        coordinator: coordinator,
-      ),
-    );
-    addTearDown(controller.dispose);
-    addTearDown(coordinator.dispose);
-    addTearDown(db.close);
-    late BuildContext context;
-    await tester.pumpWidget(
-      _app(
-        Builder(
-          builder: (value) {
-            context = value;
-            return const SizedBox.shrink();
-          },
+  testWidgets(
+    'route ordering and inline edits only change the in-memory draft',
+    (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final coordinator = ConnectionCoordinator(database: db);
+      final controller = CustomRoutingEditorController(
+        service: CustomRoutingEditorService(
+          database: db,
+          coordinator: coordinator,
         ),
-      ),
-    );
-    await tester.runAsync(() async {
-      await db.routingProfileDao.insertRow(
-        RoutingProfileCompanion.insert(
-          name: 'Work 1',
-          data: base64Encode(
-            utf8.encode('{"outbounds":[{}],"routing":{"rules":[]}}'),
+      );
+      addTearDown(controller.dispose);
+      addTearDown(coordinator.dispose);
+      addTearDown(db.close);
+      late BuildContext context;
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (value) {
+              context = value;
+              return const SizedBox.shrink();
+            },
           ),
         ),
       );
-      await controller.load(context);
-    });
-    expect(controller.loaded, isTrue);
-    expect(controller.routeCount, 2);
-    expect(controller.name.text, 'Custom Routing 2');
-    expect(controller.rules, isEmpty);
-    controller.replaceTemplate(
-      jsonEncode({
-        'outbounds': [{}],
-        'routing': {
-          'rules': [
-            for (final name in ['A', 'B', 'C'])
-              {
-                'ruleTag': name,
-                'domain': ['$name.example'],
-                'balancerTag': 'proxy',
-              },
-          ],
-        },
-      }),
-    );
-    final selected = controller.selectedRuleKey;
-    controller.reorder(1, 0);
-    expect(controller.rules.map((rule) => rule['ruleTag']), ['B', 'A', 'C']);
-    expect(controller.selectedRuleKey, selected);
-    controller.deleteRule(0);
-    expect(controller.rules.map((rule) => rule['ruleTag']), ['A', 'C']);
-    expect(controller.selectedRuleKey, controller.ruleKeys.first);
-    expect(
-      await tester.runAsync(() => db.routingProfileDao.allRows),
-      hasLength(1),
-    );
-    expect(tester.takeException(), isNull);
-  });
+      await tester.runAsync(() async {
+        await db.routingProfileDao.insertRow(
+          RoutingProfileCompanion.insert(
+            name: 'Work 1',
+            data: base64Encode(
+              utf8.encode('{"outbounds":[{}],"routing":{"rules":[]}}'),
+            ),
+          ),
+        );
+        await controller.load(context);
+      });
+      expect(controller.loaded, isTrue);
+      expect(controller.routeCount, 2);
+      expect(controller.name.text, 'Custom Routing 2');
+      expect(controller.rules, isEmpty);
+      controller.replaceTemplate(
+        jsonEncode({
+          'outbounds': [{}],
+          'routing': {
+            'rules': [
+              for (final name in ['A', 'B', 'C'])
+                {
+                  'ruleTag': name,
+                  'domain': ['$name.example'],
+                  'balancerTag': 'proxy',
+                },
+            ],
+          },
+        }),
+      );
+      final selected = controller.selectedRuleKey;
+      controller.reorder(1, 0);
+      expect(controller.rules.map((rule) => rule['ruleTag']), ['B', 'A', 'C']);
+      expect(controller.selectedRuleKey, selected);
+      controller.deleteRule(0);
+      expect(controller.rules.map((rule) => rule['ruleTag']), ['A', 'C']);
+      expect(controller.selectedRuleKey, controller.ruleKeys.first);
+      controller.setInlineEditing(true);
+      expect(controller.inlineRule!.name.text, 'A');
+      controller.inlineRule!.name.text = 'A edited';
+      controller.inlineRule!.domains.single.text.text = 'edited.example';
+      controller.inlineRule!.port.text = '65536';
+      expect(controller.previewTemplate, isNull);
+      Future<Map<String, dynamic>?> unexpectedNavigation(
+        BuildContext _,
+        Map<String, dynamic>? _,
+      ) async =>
+          throw StateError('Desktop must keep the editor beside the list');
+      await controller.editRule(context, unexpectedNavigation, 1);
+      expect(controller.inlineRule!.name.text, 'C');
+      expect(controller.rules.first['port'], '65536');
+      await controller.editRule(context, unexpectedNavigation, 0);
+      expect(controller.inlineRule!.domains.single.text.text, 'edited.example');
+      expect(controller.inlineRule!.port.text, '65536');
+      controller.inlineRule!.port.text = '443';
+      controller.reorder(0, 1);
+      expect(controller.rules.last['ruleTag'], 'A edited');
+      controller.inlineRule!.setAction('direct');
+      expect(controller.rules.last['outboundTag'], 'direct');
+      await controller.editRule(context, unexpectedNavigation);
+      expect(controller.inlineRule!.name.text, 'New rule');
+      expect(controller.previewTemplate, isNull);
+      controller.inlineRule!.domains.single.text.text = 'new.example';
+      expect(controller.previewTemplate!.rules, hasLength(3));
+      controller.deleteRule(2);
+      expect(controller.inlineRule!.name.text, 'A edited');
+      controller.setInlineEditing(false);
+      expect(controller.inlineRule, isNull);
+      var mobileOpened = false;
+      await controller.editRule(context, (_, rule) async {
+        mobileOpened = true;
+        final current = rule!;
+        expect(current['ruleTag'], 'A edited');
+        return {...current, 'ruleTag': 'Mobile edit'};
+      }, 1);
+      expect(mobileOpened, isTrue);
+      expect(controller.rules.last['ruleTag'], 'Mobile edit');
+      await tester.pump();
+      expect(
+        await tester.runAsync(() => db.routingProfileDao.allRows),
+        hasLength(1),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

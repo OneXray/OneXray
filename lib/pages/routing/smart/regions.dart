@@ -130,30 +130,19 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
         appBar: AppBar(title: Text(l.prototypeDirectRegions)),
         body: SafeArea(
           child: ResponsiveContent(
-            desktopMaxWidth: 816,
+            desktopMaxWidth:
+                AppLayout.routingEditorMaxWidth + AppSpacing.page * 2,
             child: Semantics(
               label: l.prototypeSupportedRegions,
               child: CustomScrollView(
                 semanticChildCount: visible.length,
                 slivers: [
-                  if (!mobile)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(28, 12, 28, 22),
-                        child: Text(
-                          l.prototypeChooseDirectRegions,
-                          style: AppTypography.rowValue.copyWith(
-                            color: palette.mutedForeground,
-                          ),
-                        ),
-                      ),
-                    ),
                   SliverPadding(
                     padding: EdgeInsetsDirectional.fromSTEB(
-                      mobile ? 14 : 28,
-                      mobile ? 12 : 0,
-                      mobile ? 14 : 28,
-                      18,
+                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                      mobile ? 12 : AppSpacing.desktopPageTop,
+                      mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                      mobile ? 18 : AppSpacing.desktopPageBottom,
                     ),
                     sliver: DecoratedSliver(
                       decoration: BoxDecoration(
@@ -250,6 +239,7 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
           ),
         ),
         bottomNavigationBar: PageActionBar(
+          maxWidth: AppLayout.routingEditorMaxWidth,
           children: [
             if (!mobile)
               OutlinedButton(

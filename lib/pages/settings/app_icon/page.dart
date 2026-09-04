@@ -43,6 +43,7 @@ class AppIconPage extends StatelessWidget {
               ),
             ),
             bottomNavigationBar: PageActionBar(
+              maxWidth: AppLayout.routingEditorMaxWidth,
               children: [
                 ShadButton.outline(
                   onPressed: () => controller.cancel(context),
@@ -87,71 +88,82 @@ class AppIconChoiceView extends StatelessWidget {
     final mobile =
         MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     return SettingsPageScroll(
-      desktopMaxWidth: 760,
-      padding: const EdgeInsets.fromLTRB(14, 17, 14, 26),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            description,
-            style: AppTypography.settingsDetailNote.copyWith(
-              color: ColorManager.secondaryText(context),
-            ),
-          ),
-          const SizedBox(height: 23),
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 16),
-            child: Column(
-              children: [
-                _iconImage(_imageFor(selected), 100),
-                const SizedBox(height: 9),
-                Text('OneXray', style: AppTypography.iconPreviewBrand),
-                const SizedBox(height: 9),
-                Text(
-                  useDockIconAssets
-                      ? l10n.prototypeDockPreview
-                      : l10n.prototypeHomeScreenPreview,
-                  style: AppTypography.iconPreviewCaption.copyWith(
-                    color: ColorManager.secondaryText(context),
+      desktopMaxWidth: AppLayout.routingMaxWidth,
+      alignment: AlignmentDirectional.topStart,
+      padding: EdgeInsets.zero,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          mobile ? 14 : AppSpacing.page,
+          mobile ? 17 : AppSpacing.desktopPageTop,
+          mobile ? 14 : AppSpacing.page,
+          mobile ? 26 : AppSpacing.desktopPageBottom + 26,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (mobile) ...[
+              Text(
+                description,
+                style: AppTypography.settingsDetailNote.copyWith(
+                  color: ColorManager.secondaryText(context),
+                ),
+              ),
+              const SizedBox(height: 23),
+            ],
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 16),
+              child: Column(
+                children: [
+                  _iconImage(_imageFor(selected), 100),
+                  const SizedBox(height: 9),
+                  Text('OneXray', style: AppTypography.iconPreviewBrand),
+                  const SizedBox(height: 9),
+                  Text(
+                    useDockIconAssets
+                        ? l10n.prototypeDockPreview
+                        : l10n.prototypeHomeScreenPreview,
+                    style: AppTypography.iconPreviewCaption.copyWith(
+                      color: ColorManager.secondaryText(context),
+                    ),
                   ),
+                ],
+              ),
+            ),
+            SizedBox(height: mobile ? 23 : 24),
+            ShadRadioGroup<AppIcon>(
+              axis: Axis.horizontal,
+              initialValue: selected,
+              onChanged: (icon) {
+                if (icon != null && icon != selected) onSelected(icon);
+              },
+              items: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final gap = mobile ? 10.0 : 14.0;
+                    return Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: [
+                        for (final icon in AppIcon.values)
+                          SizedBox(
+                            width: (constraints.maxWidth - gap * 2) / 3,
+                            child: _AppIconOption(
+                              icon: icon,
+                              label: appIconLabel(l10n, icon),
+                              image: _imageFor(icon),
+                              selected: selected == icon,
+                              onTap: () => onSelected(icon),
+                              mobile: mobile,
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 23),
-          ShadRadioGroup<AppIcon>(
-            axis: Axis.horizontal,
-            initialValue: selected,
-            onChanged: (icon) {
-              if (icon != null && icon != selected) onSelected(icon);
-            },
-            items: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final gap = mobile ? 10.0 : 14.0;
-                  return Wrap(
-                    spacing: gap,
-                    runSpacing: gap,
-                    children: [
-                      for (final icon in AppIcon.values)
-                        SizedBox(
-                          width: (constraints.maxWidth - gap * 2) / 3,
-                          child: _AppIconOption(
-                            icon: icon,
-                            label: appIconLabel(l10n, icon),
-                            image: _imageFor(icon),
-                            selected: selected == icon,
-                            onTap: () => onSelected(icon),
-                            mobile: mobile,
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

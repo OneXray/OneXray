@@ -144,7 +144,7 @@ class _RouteCheckerState extends State<RouteChecker> {
                     Icon(
                       expanded
                           ? LucideIcons.chevronDown
-                          : LucideIcons.chevronRight,
+                          : LucideIcons.chevronRightDir,
                       size: 18,
                       color: palette.mutedForeground,
                     ),
