@@ -68,6 +68,10 @@ dependencies:
 
   isolate_manager: ^6.3.2
 
+  # editor
+  re_editor: ^0.10.0
+  re_highlight: ^0.0.3
+
   # desktop
   tray_manager: ^0.5.3
   window_manager: ^0.5.2
@@ -84,6 +88,10 @@ dev_dependencies:
   flutter_gen_runner: ^5.15.0
   ffigen: ^21.0.0
   msix: ^3.18.0
+
+# re_editor only uses APIs that remain compatible with isolate_manager 6.x.
+dependency_overrides:
+  isolate_manager: ^6.3.2
 
 msix_config:
   display_name: OneXray

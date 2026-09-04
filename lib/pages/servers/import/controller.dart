@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
@@ -16,6 +14,7 @@ import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
 import 'package:onexray/service/subscription/validator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:re_editor/re_editor.dart';
 
 enum ServerImportAction { scan, paste, subscription, file, json }
 
@@ -48,12 +47,14 @@ class ServerImportController extends ChangeNotifier {
              );
              return result.item1 ? null : result.item2;
            }) {
+    jsonText.addListener(_changed);
     for (final field in [text, name, url, secretKey, publicKey]) {
       field.addListener(_changed);
     }
   }
 
   final text = TextEditingController();
+  final jsonText = CodeLineEditingController();
   final name = TextEditingController();
   final url = TextEditingController();
   final secretKey = TextEditingController();
@@ -97,16 +98,9 @@ class ServerImportController extends ChangeNotifier {
     }
     return action == ServerImportAction.file ||
         action == ServerImportAction.scan ||
-        text.text.trim().isNotEmpty;
-  }
-
-  int get lineCount => '\n'.allMatches(text.text).length + 1;
-  bool get validJson {
-    try {
-      return jsonDecode(text.text) is Map;
-    } catch (_) {
-      return false;
-    }
+        (action == ServerImportAction.json ? jsonText.text : text.text)
+            .trim()
+            .isNotEmpty;
   }
 
   void _changed() {
@@ -206,8 +200,8 @@ class ServerImportController extends ChangeNotifier {
         _changed();
       }
     } else {
-      if (action == ServerImportAction.json && text.text.isEmpty) {
-        text.text = '{\n  "outbounds": []\n}';
+      if (action == ServerImportAction.json && jsonText.text.isEmpty) {
+        jsonText.text = '{\n  "outbounds": []\n}';
       }
       result = await showAppDialog<ServerImportResult>(
         context,
@@ -396,7 +390,7 @@ class ServerImportController extends ChangeNotifier {
   Future<void> detect(BuildContext context, ServerImportAction action) async {
     if (busy) return;
     final result = action == ServerImportAction.json
-        ? await _preview(context, text.text, manual: true)
+        ? await _preview(context, jsonText.text, manual: true)
         : await _importText(context, text.text);
     if ((result != null || _closingFlow) && context.mounted) {
       Navigator.of(context)
@@ -651,6 +645,7 @@ class ServerImportController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    jsonText.dispose();
     for (final controller in [text, name, url, secretKey, publicKey]) {
       controller.dispose();
     }

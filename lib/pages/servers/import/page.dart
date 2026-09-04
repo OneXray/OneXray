@@ -356,7 +356,7 @@ class ServerImportFormPage extends StatelessWidget {
               color: palette.mutedStrong,
             ),
           ),
-          OutboundJsonEditor(controller: controller.text),
+          OutboundJsonEditor(controller: controller.jsonText),
           Text(
             l10n.prototypeNodeJsonHint,
             style: AppTypography.importJsonHint.copyWith(

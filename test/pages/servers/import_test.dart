@@ -32,8 +32,10 @@ void main() {
     expect(controller.canSubmit(ServerImportAction.paste), isFalse);
     controller.text.text = 'vless://local';
     expect(controller.canSubmit(ServerImportAction.paste), isTrue);
+    expect(controller.canSubmit(ServerImportAction.json), isFalse);
+    controller.jsonText.text = '{"protocol":"vless"}';
     expect(controller.canSubmit(ServerImportAction.json), isTrue);
-    controller.text.text = '  ';
+    controller.jsonText.text = '  ';
     expect(controller.canSubmit(ServerImportAction.json), isFalse);
 
     controller.name.text = 'Provider';
@@ -46,7 +48,7 @@ void main() {
     expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
     controller.publicKey.text = 'public';
     expect(controller.canSubmit(ServerImportAction.subscription), isTrue);
-    expect(changes, 7);
+    expect(changes, 8);
     controller.busy = true;
     expect(controller.canSubmit(ServerImportAction.subscription), isFalse);
     controller.busy = false;

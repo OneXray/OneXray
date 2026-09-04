@@ -6,6 +6,7 @@ import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
+import 'package:re_editor/re_editor.dart';
 
 enum RawEditorAction { test, save }
 
@@ -25,7 +26,7 @@ class RawEditorController extends ChangeNotifier {
     transfers.addListener(_transferChanged);
   }
   final name = TextEditingController();
-  final text = TextEditingController();
+  final text = CodeLineEditingController();
   RawEditorDraft? _draft;
   bool busy = true;
   RawEditorAction? action;
@@ -52,7 +53,6 @@ class RawEditorController extends ChangeNotifier {
   bool get loaded => _draft != null;
   bool get canTest => !working && loaded && text.text.trim().isNotEmpty;
   bool get canSave => canTest && name.text.trim().isNotEmpty;
-  int get lineCount => '\n'.allMatches(text.text).length + 1;
   void _changed() {
     if (_disposed) return;
     testResult = null;

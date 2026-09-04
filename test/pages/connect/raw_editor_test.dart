@@ -6,11 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/raw_editor/controller.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/widget/json_editor.dart';
 import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/geo_data/model.dart';
+import 'package:re_editor/re_editor.dart';
 
 void main() {
   testWidgets('Raw test result is discarded after the editable JSON changes', (
@@ -72,7 +73,7 @@ void main() {
       controller.name.text = 'Private configuration';
       expect(notified, greaterThan(0));
       expect(controller.canSave, isTrue);
-      controller.text.clear();
+      controller.text.text = '';
       expect(controller.canTest, isFalse);
       expect(controller.canSave, isFalse);
       controller.text.text = '{}';
@@ -91,8 +92,8 @@ void main() {
     tester.view.physicalSize = const Size(427, 900);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
-    final controller = TextEditingController(
-      text: List.generate(100, (i) => '  "line$i": $i,').join('\n'),
+    final controller = CodeLineEditingController.fromText(
+      List.generate(100, (i) => '  "line$i": $i,').join('\n'),
     );
     addTearDown(controller.dispose);
     await tester.pumpWidget(
@@ -101,16 +102,28 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             height: 390,
-            child: SettingsJsonEditor(controller: controller, lineCount: 100),
+            child: AppJsonEditor(controller: controller),
           ),
         ),
       ),
     );
     expect(find.text('xray.json'), findsNothing);
-    final field = tester.widget<TextField>(find.byType(TextField));
-    field.scrollController!.jumpTo(500);
+    final editor = find.byType(CodeEditor);
+    final vertical = find.descendant(
+      of: editor,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable &&
+            (widget.axisDirection == AxisDirection.down ||
+                widget.axisDirection == AxisDirection.up),
+      ),
+    );
+    expect(vertical, findsOneWidget);
+    final position = tester.state<ScrollableState>(vertical).position;
+    expect(position.maxScrollExtent, greaterThan(500));
+    position.jumpTo(500);
     await tester.pumpAndSettle();
-    expect(field.scrollController!.offset, 500);
+    expect(position.pixels, 500);
     expect(tester.takeException(), isNull);
   });
 }

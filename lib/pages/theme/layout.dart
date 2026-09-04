@@ -36,7 +36,7 @@ abstract final class AppLayout {
   static const connectDesktopChoiceMinHeight = 72.0;
   static const connectDesktopTrafficGroupMinHeight = 165.0;
   static const connectDesktopRawEmptyMinHeight = 204.0;
-  static const connectDesktopPanelViewportInset = 106.0;
+  static const connectDesktopPanelViewportInset = 102.0;
   static const connectDesktopEmptyViewportInset = 108.0;
   static const connectButtonMinHeight = 45.0;
   static const connectExpertRowMinHeight = 47.0;

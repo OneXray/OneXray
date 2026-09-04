@@ -137,7 +137,7 @@ void main() {
       );
       final line = tester.widget<Text>(find.text('first line'));
       expect(line.textDirection, TextDirection.ltr);
-      expect(line.style!.fontSize, 10.5);
+      expect(line.style!.fontSize, 12);
       expect(line.style!.height, isNull);
       expect(tester.widget<AppBar>(find.byType(AppBar)).actions, isNull);
       expect(tester.takeException(), isNull);

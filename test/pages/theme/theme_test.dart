@@ -102,7 +102,7 @@ void main() {
       expect(material.textTheme.bodyMedium?.fontFamily, AppFontFamily.sans);
       expect(material.textTheme.bodyMedium?.fontSize, 13);
       expect(material.textTheme.bodySmall?.fontSize, 12);
-      expect(material.textTheme.labelSmall?.fontSize, 11);
+      expect(material.textTheme.labelSmall?.fontSize, 12);
       expect(shad.textTheme.family, AppFontFamily.sans);
       expect(shad.textTheme.p.fontSize, 13);
       expect(shad.textTheme.small.fontSize, 13);
@@ -111,19 +111,19 @@ void main() {
       expect(AppTypography.panelTitle.fontSize, 19);
       expect(AppTypography.supporting.fontSize, 12);
       expect(AppTypography.navigationLabel.fontSize, 16);
-      expect(AppTypography.badge.fontSize, 11);
+      expect(AppTypography.badge.fontSize, 12);
       expect(AppTypography.code.fontSize, 12);
       expect(AppTypography.metric.fontSize, 20);
       for (final (style, size, weight) in [
         (AppTypography.connectStatusTitle, 17, FontWeight.w700),
         (AppTypography.connectButton, 16, FontWeight.w700),
         (AppTypography.connectCaption, 12, FontWeight.w600),
-        (AppTypography.connectChoiceLabel, 11, FontWeight.w500),
-        (AppTypography.advancedTab, 12.5, FontWeight.w600),
+        (AppTypography.connectChoiceLabel, 12, FontWeight.w500),
+        (AppTypography.advancedTab, 13, FontWeight.w600),
         (AppTypography.connectChoiceTitle, 14, FontWeight.w600),
-        (AppTypography.connectChoiceMeta, 10.5, FontWeight.w600),
+        (AppTypography.connectChoiceMeta, 12, FontWeight.w600),
         (AppTypography.connectTrafficTitle, 15, FontWeight.w700),
-        (AppTypography.connectTrafficGroupTitle, 11, FontWeight.w500),
+        (AppTypography.connectTrafficGroupTitle, 12, FontWeight.w500),
         (AppTypography.connectTrafficValue, 15, FontWeight.w600),
         (AppTypography.connectRawTitle, 12, FontWeight.w700),
         (AppTypography.connectRawCount, 12, FontWeight.w600),
@@ -228,7 +228,7 @@ void main() {
         navigation.iconTheme!.resolve({})!.color,
         AppPalette.light.mutedStrong,
       );
-      expect(navigation.labelTextStyle!.resolve({})!.fontSize, 10);
+      expect(navigation.labelTextStyle!.resolve({})!.fontSize, 12);
       expect(
         navigation.labelTextStyle!.resolve({})!.fontWeight,
         FontWeight.w400,

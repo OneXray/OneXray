@@ -5,14 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/outbound_json_editor.dart';
+import 'package:re_editor/re_editor.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
   testWidgets('long outbound JSON stays bounded, scrollable and LTR in fa', (
     tester,
   ) async {
-    final controller = TextEditingController(
-      text: const JsonEncoder.withIndent('  ').convert({
+    final controller = CodeLineEditingController.fromText(
+      const JsonEncoder.withIndent('  ').convert({
         'outbounds': List.generate(
           60,
           (index) => {
@@ -51,33 +52,35 @@ void main() {
       );
       await tester.pumpAndSettle();
       final editor = find.byType(OutboundJsonEditor);
-      final editable = find.descendant(
+      final codeEditor = find.descendant(
         of: editor,
-        matching: find.byType(EditableText),
+        matching: find.byType(CodeEditor),
       );
       expect(tester.getSize(editor).height, height);
       expect(Directionality.of(tester.element(editor)), TextDirection.rtl);
-      expect(Directionality.of(tester.element(editable)), TextDirection.ltr);
-      expect(
-        tester.state<EditableTextState>(editable).renderEditable.textDirection,
-        TextDirection.ltr,
-      );
+      expect(Directionality.of(tester.element(codeEditor)), TextDirection.ltr);
+      final widget = tester.widget<CodeEditor>(codeEditor);
+      expect(widget.controller, same(controller));
+      expect(widget.autofocus, isFalse);
+      expect(widget.wordWrap, isFalse);
+      expect(widget.style?.codeTheme, isNotNull);
       expect(tester.takeException(), isNull);
 
       final scrollable = find.descendant(
-        of: editable,
-        matching: find.byType(Scrollable),
+        of: codeEditor,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              (widget.axisDirection == AxisDirection.down ||
+                  widget.axisDirection == AxisDirection.up),
+        ),
       );
+      expect(scrollable, findsOneWidget);
       final position = tester.state<ScrollableState>(scrollable).position;
       expect(position.maxScrollExtent, greaterThan(0));
-      await tester.drag(scrollable, Offset(0, -position.maxScrollExtent - 500));
+      position.jumpTo(position.maxScrollExtent);
       await tester.pumpAndSettle();
       expect(position.pixels, closeTo(position.maxScrollExtent, 0.1));
-      final render = tester.state<EditableTextState>(editable).renderEditable;
-      final lastCaret = render.getLocalRectForCaret(
-        TextPosition(offset: controller.text.length),
-      );
-      expect(lastCaret.center.dy, inInclusiveRange(0.0, render.size.height));
       expect(controller.text, contains('END_OF_OUTBOUND_JSON'));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());

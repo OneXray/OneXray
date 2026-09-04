@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/alert.dart';
 import 'package:onexray/service/assets/server.dart';
+import 'package:re_editor/re_editor.dart';
 
 class ServerEditorController extends ChangeNotifier {
   final int serverId;
@@ -12,7 +13,7 @@ class ServerEditorController extends ChangeNotifier {
     : service = service ?? ServerAssetService() {
     text.addListener(_changed);
   }
-  final text = TextEditingController();
+  final text = CodeLineEditingController();
   ServerEditDraft? _draft;
   bool busy = false;
   bool loading = true;
@@ -21,7 +22,6 @@ class ServerEditorController extends ChangeNotifier {
   bool get loaded => _draft != null;
   String? get name => _draft?.original.name;
   bool get fromSubscription => _draft != null && _draft!.original.subId != 0;
-  int get lineCount => '\n'.allMatches(text.text).length + 1;
   bool get validJson {
     try {
       final value = jsonDecode(text.text);

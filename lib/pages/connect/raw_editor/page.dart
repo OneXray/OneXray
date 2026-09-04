@@ -5,11 +5,11 @@ import 'package:onexray/pages/routing/widgets.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/widget/configuration_transfer.dart';
+import 'package:onexray/pages/widget/json_editor.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class RawEditorPage extends StatefulWidget {
@@ -160,10 +160,7 @@ class _RawEditorPageState extends State<RawEditorPage> {
                       height: mobile ? 392 : 412,
                       child: AbsorbPointer(
                         absorbing: !controller.loaded,
-                        child: SettingsJsonEditor(
-                          controller: controller.text,
-                          lineCount: controller.lineCount,
-                        ),
+                        child: AppJsonEditor(controller: controller.text),
                       ),
                     ),
                     SizedBox(height: gap),
