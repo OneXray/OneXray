@@ -13,14 +13,6 @@ class ConfigWriteResult {
 class ConfigWriter {
   // Inputs are already encoded by their format-specific readers. This shared
   // asset writer owns type/count transactions, never a second base64 pass.
-  static Future<ConfigWriteResult> writeRowsWithResult(
-    List<CoreConfigCompanion> rows,
-    int? subId,
-  ) async {
-    final db = AppDatabase();
-    return writeRowsInTransaction(db, rows, subId);
-  }
-
   static Future<ConfigWriteResult> writeRowsInTransaction(
     AppDatabase db,
     List<CoreConfigCompanion> rows,
@@ -54,17 +46,4 @@ class ConfigWriter {
         .toList(growable: false);
     return DataMaintenance.run(() => db.coreConfigDao.insertAssetRows(entries));
   }
-
-  static Future<int> insertRow(CoreConfigCompanion row) => DataMaintenance.run(
-    () => AppDatabase().coreConfigDao.insertAssetRow(row),
-  );
-
-  static Future<bool> updateRow(CoreConfigData row) =>
-      DataMaintenance.run(() => AppDatabase().coreConfigDao.updateRow(row));
-
-  static Future<int> copyRow(int id) =>
-      DataMaintenance.run(() => AppDatabase().coreConfigDao.copyRow(id));
-
-  static Future<int> deleteRow(CoreConfigData row) =>
-      DataMaintenance.run(() => AppDatabase().coreConfigDao.deleteRow(row));
 }

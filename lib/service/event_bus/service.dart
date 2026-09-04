@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/service/app_update/service.dart';
@@ -29,12 +28,6 @@ class AppEventBus extends Cubit<AppEventBusState> {
         languageCode: LanguageCode.fromString(languageCode),
       ),
     );
-  }
-
-  Future<void> asyncInitService(BuildContext context) async {
-    if (_isActive && context.mounted) {
-      await ServiceManager.serviceInit(context);
-    }
   }
 
   void updatePinging(bool value) {

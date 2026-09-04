@@ -10,7 +10,6 @@ import 'package:onexray/service/menu/tray/service.dart';
 import 'package:onexray/service/menu/window/service.dart';
 import 'package:onexray/service/notification/service.dart';
 import 'package:onexray/service/share/service.dart';
-import 'package:onexray/service/toast/service.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/geo_data/service.dart';
 
@@ -56,7 +55,6 @@ abstract final class ServiceManager {
       );
     }
     await _runInit("WindowService", () => WindowService().asyncInit());
-    await _runInit("ToastService", () => ToastService().init());
     await _runInit("ShareService", () => ShareService().init());
     await _runInit(
       "AppStartupService",
@@ -81,10 +79,8 @@ abstract final class ServiceManager {
     _initialized = false;
     TrayService().dispose();
     ShareService().dispose();
-    NotificationService().dispose();
     ShortCutService().dispose();
     WindowService().dispose();
     BackgroundTaskService().dispose();
-    ToastService().dispose();
   }
 }

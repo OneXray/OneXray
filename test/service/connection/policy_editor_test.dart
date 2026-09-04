@@ -77,8 +77,6 @@ void main() {
       expect((await db.connectionStateDao.read()).settingsJson, stored);
       expect(stops, 0);
       expect(host.status, VpnStatus.disconnected);
-      controller.discard();
-      expect(controller.value, original.policy);
     },
   );
 

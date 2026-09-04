@@ -1,13 +1,7 @@
-import 'dart:collection';
 import 'dart:convert';
 
 class JsonTool {
   static const encoder = JsonEncoder.withIndent("  ");
-
-  static String encodeJsonToSortedString(Map<String, dynamic> jsonMap) {
-    final sortedMap = SplayTreeMap.from(jsonMap);
-    return encoder.convert(sortedMap);
-  }
 
   static const decoder = JsonDecoder();
 

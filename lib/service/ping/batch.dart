@@ -112,12 +112,4 @@ class PingBatchRunner {
         .map(PingBatchResult.fromResponse)
         .toList(growable: false);
   }
-
-  static Future<PingBatchResult?> runSingle(
-    PingBatchSource source,
-    PingState pingState,
-  ) async {
-    final results = await run([source], pingState);
-    return results.isEmpty ? null : results.first;
-  }
 }

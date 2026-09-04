@@ -79,7 +79,6 @@ class ServersController extends ConnectController {
   final Set<int> testingIds = {};
   final Set<int> favoritingIds = {};
   ServerSelection? selecting;
-  bool get actionBusy => _pending.isNotEmpty;
   bool _disposed = false;
   final Map<int, String> sourceErrors = {};
 

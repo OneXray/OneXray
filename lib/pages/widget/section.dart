@@ -4,23 +4,6 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-class SectionHeader extends StatelessWidget {
-  final String title;
-
-  const SectionHeader({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(
-        vertical: 5,
-        horizontal: 10,
-      ),
-      child: Text(title, style: AppTypography.supporting),
-    );
-  }
-}
-
 class SectionView extends StatelessWidget {
   final String title;
   final String? description;

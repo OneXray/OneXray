@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
-import 'package:onexray/service/ping/service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -48,49 +47,6 @@ class ContextAlert {
     if (openSettings == true) {
       await openAppSettings();
     }
-  }
-
-  static Future<void> showPingResultDialog(
-    BuildContext context,
-    int delay,
-  ) async {
-    final content = PingService().parsePingResponse(delay);
-    await showOKDialog(
-      context,
-      AppLocalizations.of(context)!.outboundPageRealPingResult,
-      content,
-    );
-  }
-
-  static Future<void> showOKDialog(
-    BuildContext context,
-    String title,
-    String content,
-  ) async {
-    await _showDialog<void>(
-      context: context,
-      builder: (ctx) => ShadDialog(
-        title: _dialogTitle(ctx, icon: LucideIcons.info, title: title),
-        description: _dialogDescription(ctx, content),
-        backgroundColor: _dialogBackground(ctx),
-        closeIcon: const SizedBox.shrink(),
-        constraints: _dialogConstraints(ctx),
-        padding: const EdgeInsets.all(20),
-        gap: 20,
-        removeBorderRadiusWhenTiny: false,
-        titleTextAlign: TextAlign.start,
-        descriptionTextAlign: TextAlign.start,
-        scrollable: false,
-        useSafeArea: false,
-        actionsAxis: Axis.vertical,
-        actions: [
-          ShadButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(AppLocalizations.of(ctx)!.buttonOK),
-          ),
-        ],
-      ),
-    );
   }
 
   static Future<bool> showConfirmDialog(

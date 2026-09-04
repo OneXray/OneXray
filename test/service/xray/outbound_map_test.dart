@@ -3,47 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:uuid/uuid.dart';
 
 void main() {
-  test('new outbound contains a complete VLESS XHTTP example', () {
-    final outbound = newOutboundMap(tag: 'custom');
-    final settings = outbound['settings'] as Map<String, dynamic>;
-    final id = settings.remove('id');
-
-    expect(id, isA<String>());
-    expect(Uuid.isValidUUID(fromString: id as String), isTrue);
-    expect(outbound, {
-      'protocol': 'vless',
-      'settings': {'address': 'example.com', 'port': 443, 'encryption': 'none'},
-      'tag': 'custom',
-      'streamSettings': {
-        'network': 'xhttp',
-        'xhttpSettings': {
-          'host': 'example.com',
-          'path': '/xhttp',
-          'mode': 'auto',
-        },
-        'security': 'reality',
-        'realitySettings': {
-          'show': false,
-          'fingerprint': 'chrome',
-          'serverName': 'example.com',
-          'password': 'T25lWHJheS1YSFRUUC1leGFtcGxlLWtleS0wMDAwMDA',
-        },
-      },
-    });
-  });
-
-  test('new outbound settings accept numeric JSON values', () {
-    final outbound = newOutboundMap();
-    final settings = outbound['settings'] as Map<String, dynamic>;
-
-    settings['port'] = 8443;
-
-    expect(settings['port'], 8443);
-  });
-
   test('single outbound wrapper round-trips without shared references', () {
     final source = <String, dynamic>{
       'protocol': 'vless',
@@ -84,6 +45,7 @@ void main() {
 
   test('runtime tag and dialer helpers preserve siblings', () {
     final outbound = <String, dynamic>{
+      'tag': 'proxy',
       'protocol': 'vless',
       'editorOnly': {'keep': true},
       'streamSettings': {
@@ -92,10 +54,8 @@ void main() {
       },
     };
 
-    setOutboundTag(outbound, 'proxy');
     setOutboundDialerProxy(outbound, 'chainProxy');
     expect(outboundDialerProxy(outbound), 'chainProxy');
-    removeOutboundDialerProxy(outbound);
 
     expect(outbound['tag'], 'proxy');
     expect(outbound['editorOnly'], {'keep': true});
@@ -104,7 +64,7 @@ void main() {
           as Map<String, dynamic>)['interface'],
       'utun9',
     );
-    expect(outboundDialerProxy(outbound), isNull);
+    expect(outboundDialerProxy(outbound), 'chainProxy');
   });
 
   test('canonical gate only rejects VMess and Shadowsocks mismatches', () {

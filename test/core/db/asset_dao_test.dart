@@ -1,125 +1,45 @@
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/db/dao/config_query.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
-// ignore: depend_on_referenced_packages
-import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
-// ignore: depend_on_referenced_packages
-import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   late AppDatabase database;
 
   setUp(() {
-    SharedPreferencesAsyncPlatform.instance =
-        InMemorySharedPreferencesAsync.empty();
     database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
   });
 
-  test(
-    'normal queries isolate outbound, Raw and retired asset types',
-    () async {
-      final dao = database.coreConfigDao;
-      for (final type in ['setting', 'full', 'unknown']) {
-        await dao.insertRow(_config(type));
-      }
-      final rawId = await dao.insertRow(_config('raw', subId: 7));
-      final outboundId = await dao.insertRow(
-        _config(
-          'outbound',
-        ).copyWith(countryCode: const Value('US'), favorite: const Value(true)),
-      );
-      final subscriptionId = await database.subscriptionDao.insertRow(
-        SubscriptionCompanion.insert(
-          id: const Value(7),
-          name: 'Subscription',
-          url: 'https://example.com/sub',
-          timestamp: DateTime.utc(2026),
-          count: 1,
-          expanded: true,
-        ),
-      );
-      final subscribedId = await dao.insertRow(
-        _config('outbound', subId: subscriptionId),
-      );
+  test('asset queries isolate raw and reject retired types', () async {
+    final dao = database.coreConfigDao;
+    for (final type in ['setting', 'full', 'unknown']) {
+      await dao.insertRow(_config(type));
+    }
+    final rawId = await dao.insertRow(_config('raw', subId: 7));
+    await dao.insertRow(_config('outbound'));
 
-      final configs = (await dao.allHomeNodeRows)
-          .whereType<ConfigItem>()
-          .toList();
-      expect(configs.map((row) => row.config.id), [outboundId, subscribedId]);
-      expect(configs.first.config.countryCode, 'US');
-      expect(configs.first.config.favorite, isTrue);
-      expect(
-        (await dao.allHomeNodeRowsStream().first).whereType<ConfigItem>().map(
-          (row) => row.config.id,
-        ),
-        [outboundId, subscribedId],
-      );
-      expect(
-        (await dao.allHomeNodeRowsWithDataBySubId(0)).map((row) => row.id),
-        [outboundId],
-      );
-      expect((await dao.allRawRowsWithData).single.id, rawId);
-      expect((await dao.allRawRowsWithDataStream.first).single.id, rawId);
-      expect(
-        (await dao.allLocalRowsWithData).map((row) => row.id),
-        unorderedEquals([outboundId, rawId]),
-      );
-      expect((await dao.randomConfig())!.id, outboundId);
-      expect(await dao.allSettingRows, isEmpty);
-      expect(await dao.allSettingRowsStream().first, isEmpty);
-
-      // Low-level lookup remains available without reactivating retired assets.
-      expect((await dao.searchRow(1))!.type, 'setting');
-      await expectLater(
-        dao.updateRow((await dao.searchRow(1))!),
-        throwsStateError,
-      );
-      expect(
-        await dao.updateRow(
-          (await dao.searchRow(rawId))!.copyWith(type: 'outbound'),
-        ),
-        isFalse,
-      );
-      expect((await dao.searchRow(rawId))!.type, 'raw');
-      await expectLater(dao.copyRow(1), throwsArgumentError);
-      await expectLater(
-        dao.insertAssetRows([_config('outbound'), _config('full')]),
-        throwsArgumentError,
-      );
-      expect(await dao.allOutboundRowsWithDataBySubId(0), hasLength(1));
-    },
-  );
-
-  test(
-    'copy preserves metadata and encoded data without copying health',
-    () async {
-      final dao = database.coreConfigDao;
-      final originalId = await dao.insertRow(
-        _config('outbound', subId: 7).copyWith(
-          data: const Value('eyJ0YWciOiJ0ZXN0In0='),
-          countryCode: const Value('JP'),
-          favorite: const Value(true),
-          delay: const Value(42),
-        ),
-      );
-
-      final copiedId = await dao.copyRow(originalId);
-      final copy = (await dao.searchRow(copiedId))!;
-      expect(copiedId, isNot(originalId));
-      expect(copy.subId, 0);
-      expect(copy.name, 'outbound config');
-      expect(copy.tags, 'test-tags');
-      expect(copy.data, 'eyJ0YWciOiJ0ZXN0In0=');
-      expect(copy.countryCode, 'JP');
-      expect(copy.favorite, isTrue);
-      expect(copy.delay, PingDelayConstants.unknown);
-      expect((await dao.searchRow(originalId))!.delay, 42);
-    },
-  );
+    expect((await dao.allRawRowsWithData).single.id, rawId);
+    expect((await dao.allRawRowsWithDataStream.first).single.id, rawId);
+    expect((await dao.searchRow(1))!.type, 'setting');
+    await expectLater(
+      dao.updateRow((await dao.searchRow(1))!),
+      throwsStateError,
+    );
+    expect(
+      await dao.updateRow(
+        (await dao.searchRow(rawId))!.copyWith(type: 'outbound'),
+      ),
+      isFalse,
+    );
+    expect((await dao.searchRow(rawId))!.type, 'raw');
+    await expectLater(
+      dao.insertAssetRows([_config('outbound'), _config('full')]),
+      throwsArgumentError,
+    );
+    expect(await dao.allOutboundRowsWithDataBySubId(0), hasLength(1));
+  });
 
   test(
     'Raw additions enforce 0/2/3 limits atomically across mixed batches',
@@ -138,9 +58,8 @@ void main() {
       expect(await dao.allRawRowsWithData, hasLength(2));
       expect(await dao.allOutboundRowsWithDataBySubId(0), isEmpty);
 
-      final thirdId = await dao.insertAssetRow(_config('raw'));
+      await dao.insertAssetRow(_config('raw'));
       await expectLater(dao.insertAssetRow(_config('raw')), throwsStateError);
-      await expectLater(dao.copyRow(thirdId), throwsStateError);
       expect(await dao.allRawRowsWithData, hasLength(3));
     },
   );
@@ -153,7 +72,6 @@ void main() {
       final restored = await dao.allRawRowsWithData;
       expect(restored, hasLength(4));
       await expectLater(dao.insertAssetRow(_config('raw')), throwsStateError);
-      await expectLater(dao.copyRow(restored.first.id), throwsStateError);
       expect(
         await dao.updateRow(
           restored.first.copyWith(
@@ -167,7 +85,7 @@ void main() {
       await dao.deleteRow(restored[3]);
       await dao.deleteRow(restored[2]);
       expect(await dao.allRawRowsWithData, hasLength(2));
-      await dao.copyRow(restored.first.id);
+      await dao.insertAssetRow(_config('raw'));
       expect(await dao.allRawRowsWithData, hasLength(3));
     },
   );

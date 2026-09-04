@@ -113,26 +113,6 @@ class SubscriptionService {
     }
   }
 
-  Future<bool> addSubscription(String url, String name, bool showLoading) =>
-      DataMaintenance.run(() => _addSubscription(url, name, showLoading));
-
-  Future<bool> _addSubscription(
-    String url,
-    String name,
-    bool showLoading,
-  ) async {
-    final subscriptionName = name.isEmpty ? "anonymous" : name;
-    final checked = await SubscriptionValidator.validate(subscriptionName, url);
-    if (!checked.item1) {
-      return false;
-    }
-    final result = await _insertSubscriptionWithLoading(
-      SubscriptionInput(name: subscriptionName, url: url),
-      showLoading,
-    );
-    return result.success;
-  }
-
   Future<int> importSubscriptions(List<SubscriptionImportEntry> entries) =>
       DataMaintenance.run(() => _importSubscriptions(entries));
 
@@ -652,23 +632,6 @@ class SubscriptionService {
         SubscriptionUpdateResult.invalidContent,
       _ => SubscriptionUpdateResult.invalidContent,
     };
-  }
-
-  Future<void> refreshAllSubscription({bool updateDownloading = true}) =>
-      DataMaintenance.run(() => _refreshAllSubscription(updateDownloading));
-
-  Future<void> _refreshAllSubscription(bool updateDownloading) async {
-    final eventBus = updateDownloading ? AppEventBus.instance : null;
-    eventBus?.updateDownloading(true);
-    try {
-      final db = _database;
-      final subscriptions = await db.subscriptionDao.allRows;
-      for (final subscription in subscriptions) {
-        await _refreshSubscriptionResult(subscription, false);
-      }
-    } finally {
-      eventBus?.updateDownloading(false);
-    }
   }
 
   Future<void> refreshOutdatedSubscription({

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -76,20 +75,6 @@ class PingController extends PageCubit<PingPageState> {
   }
 
   void cancel(BuildContext context) => context.pop();
-
-  Future<void> copyResolvedUrl(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: state.pingState.realUrl));
-    if (context.mounted) {
-      final localizations = AppLocalizations.of(context)!;
-      ContextAlert.showToast(
-        context,
-        localizations.actionResult(
-          localizations.menuCopy,
-          localizations.resultSuccess,
-        ),
-      );
-    }
-  }
 
   Future<void> save(BuildContext context) async {
     if (!state.loaded || state.saving) return;

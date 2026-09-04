@@ -610,22 +610,6 @@ class ConnectController extends ChangeNotifier {
     }
   }
 
-  Future<void> selectServer(
-    BuildContext context,
-    ServerSelection selection, {
-    bool close = false,
-  }) async {
-    if (await change(context, {
-          'selection': selection.toJson(),
-          'expert': false,
-        }) &&
-        context.mounted &&
-        close &&
-        ModalRoute.of(context)?.isCurrent == true) {
-      Navigator.pop(context);
-    }
-  }
-
   Future<void> chooseTrafficMethod(BuildContext context) async {
     final selected = await showConnectDialog<ConnectTrafficChoice>(
       context,

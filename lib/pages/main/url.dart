@@ -58,9 +58,6 @@ abstract final class RouterPath {
   static const firstRun = "/firstRun";
   static const setup = "/setup";
   static const home = "/home";
-  static const subscriptions = "/subscriptions";
-  static const core = "/core";
-  static const settings = "/settings";
 
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -115,7 +112,6 @@ abstract final class RouterPath {
         pageBuilder: (_, state) => AppDialogPage<void>(
           builder: (_) => _withDialogExtra<AppUpdateDialogParams>(
             state,
-            "AppUpdateDialogParams",
             (params) => AppUpdateDialog(params: params),
           ),
         ),
@@ -200,7 +196,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.appleVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
-      AppSecondaryDestination.appleVpn,
       (draft) => AppleVpnPage(
         draft: draft,
         openWifi: (context, draft) => context.pushScoped<bool>(
@@ -214,7 +209,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.appleWifi,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
-      AppSecondaryDestination.appleWifi,
       (draft) => AppleWifiPage(draft: draft),
     ),
   ),
@@ -222,7 +216,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.androidVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
-      AppSecondaryDestination.androidVpn,
       (draft) => AndroidVpnPage(
         draft: draft,
         openApps: (context, mode, selected) => context.pushScoped<List<String>>(
@@ -236,7 +229,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.androidApps,
     (_, state) => _withExtra<(String, List<String>)>(
       state,
-      AppSecondaryDestination.androidApps,
       (params) => AndroidAppsPage(mode: params.$1, selected: params.$2),
     ),
   ),
@@ -244,7 +236,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.windowsVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
-      AppSecondaryDestination.windowsVpn,
       (draft) => WindowsVpnPage(
         draft: draft,
         openInterface: (context, draft) => context.pushScoped<bool>(
@@ -258,7 +249,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.outboundInterface,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
-      AppSecondaryDestination.outboundInterface,
       (draft) => OutboundInterfacePage(draft: draft),
     ),
   ),
@@ -273,11 +263,7 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   ),
   _route(
     AppSecondaryDestination.routingDataFile,
-    (_, state) => _withExtra<int>(
-      state,
-      AppSecondaryDestination.routingDataFile,
-      (id) => GeoDataFilePage(fileId: id),
-    ),
+    (_, state) => _withExtra<int>(state, (id) => GeoDataFilePage(fileId: id)),
   ),
   _route(
     AppSecondaryDestination.serversImport,
@@ -287,23 +273,18 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.serverGroup,
     (_, state) => _withExtra<ServerGroupParams>(
       state,
-      AppSecondaryDestination.serverGroup,
       (params) => ServerGroupPage(params: params),
     ),
   ),
   _route(
     AppSecondaryDestination.serverEditor,
-    (_, state) => _withExtra<int>(
-      state,
-      AppSecondaryDestination.serverEditor,
-      (id) => ServerEditorPage(serverId: id),
-    ),
+    (_, state) =>
+        _withExtra<int>(state, (id) => ServerEditorPage(serverId: id)),
   ),
   _route(
     AppSecondaryDestination.serverFinalExitPicker,
     (_, state) => _withExtra<ServerExitPickerParams>(
       state,
-      AppSecondaryDestination.serverFinalExitPicker,
       (params) => ServerExitPickerPage(params: params),
     ),
   ),
@@ -348,7 +329,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.share,
     (_, state) => _withExtra<SharePageParams>(
       state,
-      AppSecondaryDestination.share,
       (params) => SharePage(params: params),
     ),
   ),
@@ -356,7 +336,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.subscriptionEdit,
     (_, state) => _withExtra<SubscriptionEditParams>(
       state,
-      AppSecondaryDestination.subscriptionEdit,
       (params) => SubscriptionEditorPage(subscriptionId: params.id),
     ),
   ),
@@ -365,7 +344,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.logFile,
     (_, state) => _withExtra<LogFileViewerParams>(
       state,
-      AppSecondaryDestination.logFile,
       (params) => LogFileViewerPage(params: params),
     ),
   ),
@@ -373,7 +351,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.configFileViewer,
     (_, state) => _withExtra<ConfigFileViewerParams>(
       state,
-      AppSecondaryDestination.configFileViewer,
       (params) => ConfigFileViewerPage(params: params),
     ),
   ),
@@ -392,38 +369,27 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   ),
 ];
 
-Widget _withExtra<T>(
-  GoRouterState state,
-  AppSecondaryDestination destination,
-  Widget Function(T params) builder,
-) {
+Widget _withExtra<T>(GoRouterState state, Widget Function(T params) builder) {
   final extra = state.extra;
   if (extra is T) {
     return builder(extra);
   }
-  return _InvalidRoutePage(destination: destination, expectedType: "$T");
+  return const _InvalidRoutePage();
 }
 
 Widget _withDialogExtra<T>(
   GoRouterState state,
-  String expectedType,
   Widget Function(T params) builder,
 ) {
   final extra = state.extra;
   if (extra is T) {
     return builder(extra);
   }
-  return _InvalidRouteDialog(expectedType: expectedType);
+  return const _InvalidRouteDialog();
 }
 
 class _InvalidRoutePage extends StatelessWidget {
-  const _InvalidRoutePage({
-    required this.destination,
-    required this.expectedType,
-  });
-
-  final AppSecondaryDestination destination;
-  final String expectedType;
+  const _InvalidRoutePage();
 
   @override
   Widget build(BuildContext context) {
@@ -449,9 +415,7 @@ class _InvalidRoutePage extends StatelessWidget {
 }
 
 class _InvalidRouteDialog extends StatelessWidget {
-  const _InvalidRouteDialog({required this.expectedType});
-
-  final String expectedType;
+  const _InvalidRouteDialog();
 
   @override
   Widget build(BuildContext context) {

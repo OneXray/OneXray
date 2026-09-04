@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/connection/coordinator.dart';
@@ -54,8 +53,6 @@ class AdvancedController extends PageCubit<AdvancedPageState>
     reload();
     _readVersion();
   }
-
-  bool get showInterface => AppPlatform.isWindows || AppPlatform.isLinux;
 
   void setVisible(bool visible) {
     if (!isPageActive || _visible == visible) return;

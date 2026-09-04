@@ -48,8 +48,6 @@ final class NotificationService {
     }
   }
 
-  void dispose() {}
-
   Future<void> _onReceiveNotification(
     NotificationResponse notificationResponse,
   ) async {
@@ -57,33 +55,5 @@ final class NotificationService {
     if (payload != null) {
       ygLogger(payload);
     }
-  }
-
-  Future<void> pushNotification(String message) async {
-    if (AppPlatform.isAndroid) {
-      await _pushAndroidNotification(message);
-    } else {
-      await _localNotification.show(id: 0, title: message);
-    }
-  }
-
-  Future<void> _pushAndroidNotification(String message) async {
-    const androidNotificationDetails = AndroidNotificationDetails(
-      'net.yuandev.onexray',
-      'OneXray',
-      channelDescription: 'OneXray',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-      ticker: 'OneXray',
-    );
-    const notificationDetails = NotificationDetails(
-      android: androidNotificationDetails,
-    );
-    await _localNotification.show(
-      id: 0,
-      title: message,
-      body: null,
-      notificationDetails: notificationDetails,
-    );
   }
 }

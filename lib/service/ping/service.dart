@@ -9,7 +9,6 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/tools/empty.dart';
-import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/ping/batch.dart';
 import 'package:onexray/service/ping/state.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
@@ -44,18 +43,6 @@ class PingService {
 
   Future<void> _scheduledPingQueue = Future.value();
   var _pingingTaskCount = 0;
-
-  Future<void> pingOutboundConfigs(int subId) => _enqueuePing(() async {
-    final db = _database;
-    await _runPinging(() async {
-      final rows = await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId);
-      await _pingConfigs(db, rows);
-    });
-  });
-
-  Future<void> pingHomeNodeConfigs(int subId) async {
-    await pingOutboundConfigs(subId);
-  }
 
   void schedulePingConfigIds(List<int> ids) {
     unawaited(pingConfigIds(ids));
@@ -169,18 +156,6 @@ class PingService {
     return CoreConfigType.fromString(row.type) == CoreConfigType.outbound;
   }
 
-  Future<void> pingRawConfig(int id) => _enqueuePing(() async {
-    final db = _database;
-    await _runPinging(() async {
-      final row = await db.coreConfigDao.searchRow(id);
-      if (row == null ||
-          CoreConfigType.fromString(row.type) != CoreConfigType.raw) {
-        throw StateError('Raw configuration not found');
-      }
-      await _pingConfigs(db, [row]);
-    });
-  });
-
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
     final pingState = PingState();
     await pingState.readFromPreferences();
@@ -258,22 +233,5 @@ class PingService {
         .write(
           CoreConfigCompanion(delay: Value(delay), countryCode: Value(country)),
         );
-  }
-
-  String parsePingResponse(int delay) {
-    var content = "";
-    switch (delay) {
-      case PingDelayConstants.timeout:
-        content = appLocalizationsNoContext().pingTimeout;
-        break;
-      case PingDelayConstants.error:
-        content = appLocalizationsNoContext().pingError;
-        break;
-      default:
-        content = "${delay}ms";
-        break;
-    }
-
-    return content;
   }
 }

@@ -137,20 +137,6 @@ void main() {
     expect(OneXrayAppLinkParser.parse(spoofedHost), isNull);
     expect(OneXrayAppLinkParser.parse(wrongPath), isNull);
   });
-
-  test('parses supported links from multi-line share text', () {
-    final raw = _configUri(type: 'raw').toString();
-    final geoData = _geoDataUri(type: 'domain').toString();
-    final retired = _configUri(type: 'full').toString();
-
-    final links = OneXrayAppLinkParser.parseText(
-      '$raw\r\nnot-a-link\n$retired\n$geoData\n',
-    );
-
-    expect(links, hasLength(2));
-    expect(links.first, isA<OneXrayConfigLink>());
-    expect(links.last, isA<OneXrayGeoDataLink>());
-  });
 }
 
 Uri _configUri({

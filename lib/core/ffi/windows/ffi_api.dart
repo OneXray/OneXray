@@ -18,10 +18,7 @@ class WindowsFfiApi extends BaseFfiApi {
 
   final _native = WindowsNativeApi();
   bool _starting = false;
-  String? _snapshotToken;
   String? _packageLocalDataDir;
-
-  String? get snapshotToken => _snapshotToken;
 
   void usePackageLocalDataDir(String path) => _packageLocalDataDir = path;
 
@@ -36,12 +33,10 @@ class WindowsFfiApi extends BaseFfiApi {
     }
     try {
       var state = await _native.getVpnStatus();
-      _rememberSnapshot(state);
       if ((state.status == WindowsVpnStatus.connected ||
               state.status == WindowsVpnStatus.connecting) &&
           !await _hasValidSession(state.snapshotToken)) {
         state = await _native.stopVpn();
-        _rememberSnapshot(state);
       }
       await _emitWindowsStatus(state.status);
       return commandSuccess();
@@ -98,7 +93,6 @@ class WindowsFfiApi extends BaseFfiApi {
       }
       request.snapshotToken = token;
       await request.writeToStartFile();
-      _snapshotToken = token;
       await _emitWindowsStatus(state.status);
       return commandSuccess();
     } catch (error, stackTrace) {
@@ -114,7 +108,6 @@ class WindowsFfiApi extends BaseFfiApi {
   Future<NativeVpnCommandResult> stopVpn() async {
     try {
       final state = await _native.stopVpn();
-      _rememberSnapshot(state);
       await _emitWindowsStatus(state.status);
       return commandSuccess();
     } catch (error, stackTrace) {
@@ -130,17 +123,10 @@ class WindowsFfiApi extends BaseFfiApi {
     }
     try {
       final state = await _native.stopVpn();
-      _rememberSnapshot(state);
       await _emitWindowsStatus(state.status);
     } catch (error) {
       ygLogger('rollback Windows VPN provider failed: $error');
     }
-  }
-
-  void _rememberSnapshot(WindowsVpnProfileState state) {
-    _snapshotToken = state.status == WindowsVpnStatus.disconnected
-        ? null
-        : state.snapshotToken;
   }
 
   Future<bool> _hasValidSession(String? snapshotToken) async {

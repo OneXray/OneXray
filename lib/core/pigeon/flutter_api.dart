@@ -22,16 +22,7 @@ class AppFlutterApi extends BridgeFlutterApi {
     vpnStatusController.add(status);
   }
 
-  final refreshVpnController = StreamController<RefreshVpnResult>.broadcast();
-
-  RefreshVpnResult? _lastRefreshVpnResult;
   RefreshVpnResult? _lastLoggedRefreshVpnResult;
-
-  RefreshVpnResult? consumeRefreshVpnResult() {
-    final result = _lastRefreshVpnResult;
-    _lastRefreshVpnResult = null;
-    return result;
-  }
 
   @override
   Future<void> refreshVpn(RefreshVpnResult result) async {
@@ -39,7 +30,5 @@ class AppFlutterApi extends BridgeFlutterApi {
       ygLogger("refreshVpn ${result.name}");
       _lastLoggedRefreshVpnResult = result;
     }
-    _lastRefreshVpnResult = result;
-    refreshVpnController.add(result);
   }
 }

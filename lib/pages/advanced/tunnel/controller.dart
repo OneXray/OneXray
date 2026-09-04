@@ -232,15 +232,6 @@ class PolicyEditorController extends ChangeNotifier {
     Navigator.of(context).pop();
   }
 
-  void discard() {
-    if (blocked || draft == null) {
-      return;
-    }
-    draft = PolicyEditorDraft(draft!.original);
-    error = null;
-    notify();
-  }
-
   void restoreDefaults() {
     if (blocked || draft == null) return;
     draft = PolicyEditorDraft(

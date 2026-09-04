@@ -7,10 +7,6 @@ import "package:path/path.dart" as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-class ConfigFileType {
-  static const json = ".json";
-}
-
 class FileTool {
   static Future<void> checkDir(String path) async {
     final dir = Directory(path);
@@ -28,42 +24,12 @@ class FileTool {
     }
   }
 
-  static Future<void> deleteFileIfExists(String path) async {
-    final file = File(path);
-    final exists = await file.exists();
-    if (exists) {
-      await file.delete();
-    }
-  }
-
   static Future<String> makeCacheDir() async {
     final cacheDir = await getApplicationCacheDirectory();
     final uuid = const Uuid().v8();
     final rootDir = p.join(cacheDir.path, uuid);
     await FileTool.checkDir(rootDir);
     return rootDir;
-  }
-
-  static Future<String> makeCacheFile(String fileType) async {
-    final cacheDir = await getApplicationCacheDirectory();
-    final uuid = const Uuid().v8();
-    final path = p.join(cacheDir.path, "$uuid$fileType");
-    return path;
-  }
-
-  static Future<void> clearTextFile(String filePath) async {
-    final file = File(filePath);
-    await file.writeAsString("");
-  }
-
-  static Future<void> copyDir(String srcDir, String dstDir) async {
-    final files = await Directory(srcDir).list().toList();
-    for (final file in files) {
-      final srcPath = file.path;
-      final srcFile = File(srcPath);
-      final dstPath = p.join(dstDir, p.basename(srcPath));
-      await srcFile.copy(dstPath);
-    }
   }
 
   static Future<bool> saveFile(

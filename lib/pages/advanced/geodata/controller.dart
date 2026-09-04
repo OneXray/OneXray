@@ -253,11 +253,6 @@ class GeoDataFileController extends ChangeNotifier {
   }
 
   void searchChanged(String _) => _changed();
-  void clearSearch() {
-    search.clear();
-    _changed();
-  }
-
   void initialize() {
     _subscription = service.watchPublished().listen(
       (value) {

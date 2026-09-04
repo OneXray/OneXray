@@ -3,90 +3,25 @@
   "buttonRetry": "Retry",
   "validationNameRequired": "name required",
   "validationNameDuplicate": "name has existed",
-  "validationPriorityRequired": "priority required",
-  "validationDnsRequired": "dns required",
-  "validationIPv4Invalid": "IPv4 is invalid",
-  "validationIPv6Invalid": "IPv6 is invalid",
-  "validationInterfaceRequired": "network interface required",
   "validationUrlRequired": "URL required",
   "validationUrlInvalid": "URL is invalid",
   "validationUrlDuplicate": "URL has existed",
   "validationJsonInvalid": "JSON invalid",
-  "jsonEditorValid": "Configuration valid",
-  "jsonEditorInvalid": "JSON parse error",
-  "jsonEditorLines": "lines",
-  "jsonEditorSpaces": "Spaces: 2",
-  "validationNoInbounds": "No inbounds",
-  "validationNoTunInInbound": "No tunIn inbound",
   "validationPortInvalid": "port is invalid",
-  "validationPortDuplicate": "ports must be different",
-  "validationTagRequired": "tag required",
-  "validationTagUnique": "tag must be unique",
-  "validationInboundCredentialsRequired": "User and password are required when listening on all interfaces.",
-  "validationInboundAddressRequired": "Target address is required.",
-  "validationInboundInUse": "This inbound is used by a routing rule.",
-  "validationProxyRequired": "proxy outbound required",
-  "validationOutboundInUse": "outbound is still referenced",
-  "pingError": "error",
-  "pingTimeout": "timeout",
-  "menuEdit": "Edit",
-  "menuShare": "Share",
-  "menuSave": "Save",
-  "menuCopy": "Copy",
-  "menuDelete": "Delete",
-  "menuClean": "Clean",
-  "menuRefresh": "Refresh",
-  "menuManualInput": "Manual Input",
-  "menuSubscribeLink": "Subscribe Link",
-  "menuScanQRCode": "Scan QR code",
   "menuPickImage": "Choose from photos",
-  "menuPickFile": "Pick File",
-  "menuReadPasteboard": "Read Pasteboard",
   "buttonOK": "OK",
   "buttonCancel": "Cancel",
   "buttonOpenSettings": "Open system settings",
   "buttonSave": "Save",
   "buttonSaveFailed": "Save failed",
-  "buttonAdd": "Add",
-  "buttonImport": "Import",
   "buttonAddFailed": "Add failed",
-  "buttonDecline": "Decline",
-  "buttonAccept": "Accept",
-  "buttonRestart": "Restart",
-  "buttonNextStep": "Next Step",
-  "dateViewLastUpdateTime": "Last Update Time:",
-  "helpURL": "Only support https URL, other URL may fail to load",
-  "helpOrder": "On mobile platform, long press to reorder. On desktop platform, drag trailing icon to reorder.",
-  "switchEnabled": "enabled",
-  "switchRouteOnly": "route only",
   "resultSuccess": "successfully",
   "resultFailed": "failed",
-  "runningAndWait": "Something is running, please wait",
-  "listSearchHint": "Search",
-  "listNoSearchResult": "No matching results",
-  "listStatusSelected": "Selected",
-  "listStatusRunning": "Running",
   "menuBarStartVpn": "Start VPN",
   "menuBarStopVpn": "Stop VPN",
   "menuBarShowApp": "Show OneXray",
   "menuBarQuitApp": "Quit",
   "menuBarQuitAndStopVpn": "Quit and Stop VPN",
-  "settingNotSet": "not set",
-  "vpnNoConfig": "No available config",
-  "vpnSelectOneConfig": "Please select one config",
-  "vpnRoutingModeProxyMissing": "Global mode requires a proxy outbound",
-  "vpnOutboundInvalid": "Outbound config invalid",
-  "vpnFinalOutboundMissing": "Final outbound node not found",
-  "vpnFinalOutboundInvalid": "Final outbound node invalid",
-  "vpnFinalOutboundSameAsOutbound": "Final outbound cannot be the current outbound",
-  "vpnPlatformPermissionCheckFailed": "Platform permission check failed",
-  "vpnStartFailed": "VPN start failed",
-  "vpnStartTimeout": "VPN start timed out",
-  "vpnStopFailed": "VPN stop failed",
-  "vpnCommandFailed": "VPN command failed",
-  "vpnStaleCoreCleanupFailed": "Failed to stop the previous Core process",
-  "vpnLocalPortFailed": "Failed to allocate local ports",
-  "vpnStartRequestFailed": "Failed to create Xray start request",
   "actionResult": "{action} {result}",
   "@actionResult": {
     "placeholders": {
@@ -98,433 +33,31 @@
       }
     }
   },
-  "privacyPageTitle": "Privacy",
-  "privacyPageAccept": "Accept and Continue",
-  "firstRunPageTitle": "Initial Configuration",
-  "firstRunPageStep": "Step 1 of 1",
-  "firstRunPageIntroTitle": "Confirm the network defaults",
-  "firstRunPageIntroDescription": "These values reset the Simple Profile and network settings. You can change them later.",
-  "firstRunPageCountryTitle": "Country or Region",
-  "firstRunPageNetworkTitle": "Network",
-  "firstRunPageInterfaceTitle": "Outbound Network Interface",
-  "firstRunPageCountrySection": "To ensure the routing function works properly, please select your country or region correctly.",
-  "firstRunPageInterfaceSection": "Select the fixed network interface used by Xray.",
-  "coreRunModeTitle": "Run Mode",
-  "coreRunModeTun": "TUN",
-  "coreRunModeProxy": "Proxy",
-  "coreRoutingModeTitle": "Routing",
-  "coreRoutingModeRule": "Rule",
-  "coreRoutingModeGlobal": "Global",
-  "coreRoutingModeDirect": "Direct",
-  "mainNavigationCore": "Core",
-  "homePageTitle": "Home",
-  "homeManualInputOutbound": "Outbound",
-  "homeManualInputRawJson": "Raw Json",
-  "homeManualInputMultiNodeOutbound": "Multi-node Outbound",
-  "homePageStatusDisconnected": "Not Connected",
-  "homePageStatusConnecting": "Connecting",
-  "homePageStatusDisconnecting": "Disconnecting",
-  "homePageStatusConnected": "Connected",
-  "homePageActionDisconnect": "Disconnect",
-  "homePageActionStartDirect": "Start direct connection",
-  "homePageActionConnectToNode": "Connect to {node}",
-  "homePageActionSwitchToNode": "Switch to {node}",
-  "homePageSearchNodes": "Search nodes",
-  "homePageCloseSearch": "Close search",
-  "homePageAddNode": "Add node",
-  "homePageSubscriptionActions": "Subscription actions",
-  "homePageCurrentNode": "Current Node",
-  "homePageNoSelectedNode": "No node selected",
-  "homePageDirectConnection": "Direct Connection",
-  "homePageTrafficNotProxied": "Not proxied",
   "homePageOpenSettings": "Permission is denied. Open Settings to allow it?",
   "permissionDialogTitle": "Permission Required",
-  "homePageSubscriptionDeleteWarning": "This will delete all configs from this subscribe link",
-  "homePageSubscriptionCleanWarning": "This will delete all unreachable configs from this subscribe link",
-  "homePageWaitForApprovalTitle": "Waiting for Network Extension Approval",
-  "homePageWaitForApprovalTips": "Please approve the OneXray Network Extension manually:\n\n1. Open System Settings\n2. Go to General\n3. Open Login Items & Extensions\n4. Find Extensions\n5. Open Network Extensions\n6. Enable OneXraySE\n7. Return to the OneXray Home page and click Start again",
-  "homeOutboundViewXrayProfile": "Xray Profile",
-  "homeOutboundViewNoOutbound": "No configs",
-  "homeOutboundViewNoValidConfig": "Can not read valid config",
-  "homeOutboundViewImportSuccess": "Import config success",
-  "xrayProfileListPageTitle": "Xray Profiles",
-  "xrayProfileListPageSimple": "Simple Profile",
-  "xrayProfileListPageEmpty": "No Xray profiles",
-  "xrayProfileListPageDeleteSelectedBlocked": "Switch to another Xray Profile before deleting this one.",
-  "xrayProfileDnsControlledByTunIPv6": "Controlled by TUN IPv6",
-  "xrayProfileSimplePageTitle": "Simple Profile",
-  "xrayProfileSimplePageEnableLog": "Enable Log",
-  "xrayProfileSimplePageRouting": "Routing",
-  "xrayProfileSimplePageDomainStrategy": "domainStrategy",
-  "xrayProfileSimplePageDirectSet": "Direct Domain Rule Set",
-  "xrayProfileSimplePageAppleDirect": "Apple Direct",
-  "xrayProfileSimplePageLocalDirect": "Local Network Direct",
-  "xrayProfileSimplePageBlockAds": "Block Ads",
-  "xrayProfileSimplePageEnableIPRule": "Enable IP Rule",
-  "xrayProfileSimplePageLocalDns": "Local DNS",
-  "xrayProfileSimplePageFakeDns": "FakeDNS",
-  "xrayProfileSimplePageDns": "DNS",
-  "xrayProfileUIPageTitle": "Xray Profile",
-  "xrayProfileUIPageName": "name",
-  "xrayProfileUIRawJsonHint": "The UI supports only common fields. Edit configuration roots other than name with root JSON, or replace the complete profile with Raw JSON.",
-  "xrayProfileUIRawOnly": "This field is available in Raw JSON only.",
-  "xrayProfileUIAdvancedTitle": "Advanced",
-  "xrayProfileUIAdvancedDescription": "Root fields without structured controls",
-  "xrayProfileUIPageGroupRuntime": "Runtime",
-  "xrayProfileUIPageGroupPolicy": "Policy",
-  "xrayProfileUIPageGroupDiagnostics": "Diagnostics",
-  "xrayProfileUIPageInboundsDescription": "Edit the inbounds root JSON",
-  "xrayProfileUIPageOutboundsDescription": "Edit the outbounds root JSON",
-  "xrayProfileUIPageRoutingDescription": "domainStrategy and root JSON",
-  "xrayProfileUIPageDnsDescription": "Server address, port, and root JSON",
-  "xrayProfileUIPageFakeDnsDescription": "Synthetic address pools",
-  "xrayProfileUIPageLogDescription": "Core diagnostic output",
-  "xrayMultiNodeOutboundTitle": "Multi-node Outbound",
-  "xrayMultiNodeOutboundRawJsonHint": "Multi-node Outbound only stores outbounds, dns, and routing. Edit advanced settings inside these fields with root JSON or Raw JSON.",
-  "xrayMultiNodeOutboundGroupConfiguration": "Configuration",
-  "xrayMultiNodeOutboundPrimaryProxy": "Primary Proxy",
-  "xrayMultiNodeOutboundProxyMissing": "Proxy not set",
-  "xrayMultiNodeOutboundCustomOutbounds": "Custom Outbounds",
-  "xrayMultiNodeOutboundCustomOutboundsDescription": "Tags are editable and must remain unique",
-  "xrayLogPageTitle": "Log",
-  "xrayLogPageLogLevel": "loglevel",
-  "xrayLogPageDnsLog": "dnsLog",
-  "xrayLogPageMaskAddress": "maskAddress",
-  "fakeDnsPageTitle": "FakeDNS",
-  "fakeDnsPageIPv4": "IPv4",
-  "fakeDnsPageIPv6": "IPv6",
-  "fakeDnsPageIpPool": "ipPool",
-  "fakeDnsPagePoolSize": "poolSize",
-  "fakeDnsValidationIpPoolRequired": "ipPool is required",
-  "fakeDnsValidationIpPoolInvalid": "ipPool is invalid",
-  "fakeDnsValidationPoolSizeInvalid": "poolSize must be a positive integer",
-  "fakeDnsValidationPoolSizeTooLarge": "poolSize exceeds the ipPool capacity",
   "dnsPageTitle": "DNS",
-  "dnsPageSectionHosts": "Hosts",
-  "dnsPageSectionServers": "Servers",
-  "dnsPageSectionPolicy": "Global Policy",
-  "dnsPageHosts": "hosts",
-  "dnsPageServers": "servers",
-  "dnsPageTag": "tag",
-  "dnsPageClientIp": "clientIp",
-  "dnsPageClientIpExample": "1.2.3.4",
-  "dnsPageDisableCache": "disableCache",
-  "dnsPageServeStale": "serveStale",
-  "dnsPageServeExpiredTTL": "serveExpiredTTL",
-  "dnsPageServeExpiredTTLExample": "1800",
-  "dnsPageDisableFallback": "disableFallback",
-  "dnsPageDisableFallbackIfMatch": "disableFallbackIfMatch",
-  "dnsPageEnableParallelQuery": "enableParallelQuery",
-  "dnsPageUseSystemHosts": "useSystemHosts",
-  "dnsHostsPageTitle": "Hosts",
-  "dnsHostsPageAdd": "Add Host",
-  "dnsHostsPageHost": "Domain",
-  "dnsHostsPageHostExample": "google.com, geosite.cn",
-  "dnsHostsPageAddress": "Address",
-  "dnsHostsPageAddressExample": "google.com, 127.0.0.1",
-  "dnsServerPageTitle": "DNS Name Server",
-  "dnsServerPageSectionAddress": "Address",
-  "dnsServerPageSectionDomains": "Domains",
-  "dnsServerPageSectionExpectedIPs": "Expected IPs",
-  "dnsServerPageSectionUnexpectedIPs": "Unexpected IPs",
-  "dnsServerPageSectionPolicy": "Query Policy",
-  "dnsServerPageAddress": "address",
-  "dnsServerPageAddressExample": "8.8.8.8, https://8.8.8.8/dns-query",
-  "dnsServerPageClientIp": "clientIp",
-  "dnsServerPageClientIpExample": "1.2.3.4",
-  "dnsServerPagePort": "port",
-  "dnsServerPagePortExample": "53",
-  "dnsServerPageSkipFallback": "skipFallback",
-  "dnsServerPageDomains": "domains",
-  "dnsServerPageDomain": "domain",
-  "dnsServerPageDomainExample": "google.com, geosite:cn",
-  "dnsServerPageExpectedIPs": "expectedIPs",
-  "dnsServerPageUnexpectedIPs": "unexpectedIPs",
-  "dnsServerPageIp": "ip",
-  "dnsServerPageIpExample": "127.0.0.1, fe80::/10, geoip:cn",
-  "dnsServerPageTag": "tag",
-  "dnsServerPageTimeoutMs": "timeoutMs",
-  "dnsServerPageTimeoutMsExample": "4000",
-  "dnsServerPageDisableCache": "disableCache",
-  "dnsServerPageServeStale": "serveStale",
-  "dnsServerPageServeExpiredTTL": "serveExpiredTTL",
-  "dnsServerPageServeExpiredTTLExample": "1800",
-  "dnsServerPageFinalQuery": "finalQuery",
-  "routingPageTitle": "Routing",
-  "routingPageSectionStrategy": "Strategy",
-  "routingPageSectionSystemRules": "System Rules",
-  "routingPageSectionCustomRules": "Custom Rules",
-  "routingPageDomainStrategy": "domainStrategy",
-  "routingPageRules": "rules",
-  "routingRulePageTitle": "Rule",
-  "routingRulePageSectionDomain": "Domain Match",
-  "routingRulePageSectionIp": "IP Match",
-  "routingRulePageSectionPort": "Port & Network",
-  "routingRulePageSectionSourceIP": "Source IP",
-  "routingRulePageSectionLocalIP": "Local IP",
-  "routingRulePageSectionProcess": "Process",
-  "routingRulePageSectionAttr": "Attributes",
-  "routingRulePageSectionInput": "Input",
-  "routingRulePageSectionOutput": "Output",
-  "routingRulePageDomain": "domain",
-  "routingRulePageDomainExample": "google.com, geosite:cn",
-  "routingRulePageIp": "ip",
-  "routingRulePageIpExample": "127.0.0.1, fe80::/10, geoip:cn",
-  "routingRulePagePort": "port",
-  "routingRulePagePortExample": "53,443,1000-2000",
-  "routingRulePageSourcePort": "sourcePort",
-  "routingRulePageLocalPort": "localPort",
-  "routingRulePageNetwork": "network",
-  "routingRulePageSourceIP": "sourceIP",
-  "routingRulePageLocalIP": "localIP",
-  "routingRulePageProcess": "process",
-  "routingRulePageProcessExample": "curl, /usr/bin/curl, /usr/bin/",
-  "routingRulePageInboundTag": "inboundTag",
-  "routingRulePageProtocol": "protocol",
-  "routingRulePageAttrs": "attrs",
-  "routingRulePageAttrsKey": "key",
-  "routingRulePageAttrsValue": "value",
-  "routingRulePageOutboundTag": "outboundTag",
-  "routingRulePageRuleTag": "ruleTag",
-  "inboundsPageTitle": "Inbounds",
-  "inboundsPageTunMode": "TUN Mode",
-  "inboundsPageInternal": "Internal",
-  "inboundsPageTun": "TUN",
-  "inboundsPagePing": "Ping",
-  "inboundsPageAdditional": "Additional Inbounds",
-  "inboundsPageAdditionalDescription": "Local proxy and dokodemo-door inbounds",
-  "inboundsPageAddSocks": "SOCKS Proxy",
-  "inboundsPageAddHttp": "HTTP Proxy",
-  "inboundsPageAddDokodemoDoor": "dokodemo-door",
-  "inboundAdditionalPageSocksTitle": "SOCKS Inbound",
-  "inboundAdditionalPageHttpTitle": "HTTP Inbound",
-  "inboundAdditionalPageDokodemoDoorTitle": "dokodemo-door Inbound",
-  "inboundAdditionalPageSectionListener": "Listener",
-  "inboundAdditionalPageSectionAuthentication": "Authentication",
-  "inboundAdditionalPageSectionTarget": "Target",
-  "inboundAdditionalPageLocalhost": "Localhost",
-  "inboundAdditionalPageAllInterfaces": "All Interfaces",
-  "inboundAdditionalPageAllInterfacesWarning": "Authentication is required because this proxy is accessible from the local network.",
-  "inboundTunPageTitle": "TUN",
-  "inboundTunPageListen": "listen",
-  "inboundTunPageProtocol": "protocol",
-  "inboundTunPageSettings": "settings",
-  "inboundTunPageSettingsName": "name",
-  "inboundTunPageSettingsMTU": "MTU",
-  "inboundTunPageSettingsGateway": "gateway",
-  "inboundTunPageSettingsDns": "dns",
-  "inboundTunPageSettingsAutoSystemRoutingTable": "autoSystemRoutingTable",
-  "inboundTunPageSettingsAutoOutboundsInterface": "autoOutboundsInterface",
-  "inboundTunPageTag": "tag",
-  "inboundTunPageSniffing": "sniffing",
-  "inboundSniffingPageTitle": "Sniffing",
-  "inboundSniffingPageMetadataOnly": "metadataOnly",
-  "inboundSniffingPageDestOverride": "destOverride",
-  "inboundSniffingPageDomainsExcluded": "domainsExcluded",
-  "inboundSniffingPageDomainsExcludedExample": "google.com",
-  "inboundSniffingPageIpsExcluded": "ipsExcluded",
-  "inboundSniffingPageIpsExcludedExample": "127.0.0.1, fe80::/10",
-  "inboundPingPageTitle": "Ping",
-  "inboundPingPageListen": "listen",
-  "inboundPingPagePort": "port",
-  "inboundPingPageProtocol": "protocol",
-  "inboundPingPageTag": "tag",
-  "outboundsPageTitle": "Outbounds",
-  "outboundsPageSystem": "System",
-  "outboundSelectPageTitle": "Select Outbound",
-  "finalOutboundPageTitle": "Final Outbound",
-  "finalOutboundPageDisabled": "Disabled",
-  "finalOutboundPageDelete": "Delete Final Outbound",
-  "finalOutboundValidationInvalid": "Invalid final outbound",
-  "outboundFreedomPageTitle": "Freedom",
-  "outboundFreedomPageProtocol": "protocol",
-  "outboundFreedomPageTag": "tag",
-  "outboundFreedomPageSockopt": "sockopt",
-  "outboundFreedomPageInterface": "interface",
-  "outboundFragmentPageTitle": "Fragment",
-  "outboundFragmentPageProtocol": "protocol",
-  "outboundFragmentPageSettings": "settings",
-  "outboundFragmentPagePackets": "packets",
-  "outboundFragmentPageLength": "length",
-  "outboundFragmentPageInterval": "interval",
-  "outboundFragmentPageTag": "tag",
-  "outboundFragmentPageSockopt": "sockopt",
-  "outboundFragmentPageInterface": "interface",
-  "outboundBlackHolePageTitle": "BlackHole",
-  "outboundBlackHolePageProtocol": "protocol",
-  "outboundBlackHolePageTag": "tag",
-  "outboundDnsPageTitle": "DNS",
-  "outboundDnsPageProtocol": "protocol",
-  "outboundDnsPageSettings": "settings",
-  "outboundDnsPageNetwork": "network",
-  "outboundDnsPageAddress": "address",
-  "outboundDnsPagePort": "port",
-  "outboundDnsPageRules": "rules",
-  "outboundDnsPageRule": "rule",
-  "outboundDnsPageRuleAction": "action",
-  "outboundDnsPageRuleQType": "qType",
-  "outboundDnsPageRuleQTypeExample": "1,28,65",
-  "outboundDnsPageRuleDomain": "domain",
-  "outboundDnsPageRuleDomainExample": "domain:example.com, geosite:cn",
-  "outboundDnsPageRuleRCode": "rCode",
-  "outboundDnsPageRuleRCodeExample": "5",
-  "outboundDnsPageTag": "tag",
-  "outboundDnsPageSockopt": "sockopt",
-  "outboundDnsPageDialerProxy": "dialerProxy",
-  "outboundPageRealPing": "Real Ping",
-  "outboundPageRealPingResult": "Real ping result",
-  "outboundPageTitle": "Xray Outbound",
-  "outboundUIPageRawJsonHint": "The UI supports only common Outbound fields; edit other fields in Raw JSON.",
   "xrayRawPageTitle": "Raw JSON",
-  "outboundUIPageName": "name",
-  "outboundUIPageProtocol": "protocol",
-  "outboundUIPageVLESS": "VLESS",
-  "outboundUIPageVMess": "VMess",
-  "outboundUIPageShadowsocks": "Shadowsocks",
-  "outboundUIPageTrojan": "Trojan",
-  "outboundUIPageSocks": "Socks",
-  "outboundUIPageHysteria": "Hysteria2",
-  "outboundUIPageAddress": "address",
-  "outboundUIPageAddressExample": "127.0.0.1, example.com",
-  "outboundUIPagePort": "port",
-  "outboundUIPagePortExample": "443",
-  "outboundUIPageId": "id",
-  "outboundUIPageIdExample": "86ffebe4-f529-471d-88e9-b5d24b9ab655",
-  "outboundUIPageEncryption": "encryption",
-  "outboundUIPageFlow": "flow",
-  "outboundUIPageVmessSecurity": "security",
-  "outboundUIPageMethod": "method",
-  "outboundUIPagePassword": "password",
-  "outboundUIPageUser": "user",
-  "outboundUIPagePass": "pass",
-  "outboundUIPageTag": "tag",
-  "outboundUIPageNetwork": "network",
-  "outboundUIPagePath": "path",
-  "outboundUIPagePathExample": "/path",
-  "outboundUIPageHost": "host",
-  "outboundUIPageHostExample": "example.com",
-  "outboundUIPageXhttpMode": "mode",
-  "outboundUIPageGrpcAuthority": "authority",
-  "outboundUIPageGrpcAuthorityExample": "grpc.example.com",
-  "outboundUIPageGrpcServiceName": "serviceName",
-  "outboundUIPageGrpcMultiMode": "multiMode",
-  "outboundUIPageHysteriaAuth": "auth",
-  "outboundUIPageSecurity": "security",
-  "outboundUIPageServerName": "serverName",
-  "outboundUIPageServerNameExample": "example.com",
-  "outboundUIPageFingerprint": "fingerprint",
-  "outboundUIPagePinnedPeerCertSha256": "pinnedPeerCertSha256",
-  "outboundUIPageVerifyPeerCertByName": "verifyPeerCertByName",
-  "outboundUIPageEchConfigList": "echConfigList",
-  "outboundUIPageShortId": "shortId",
-  "outboundUIPageMldsa65Verify": "mldsa65Verify",
-  "outboundUIPageSpiderX": "spiderX",
-  "qrcodePageTitle": "Scan QRCode",
-  "subscriptionAddPageTitle": "Subscribe Link",
-  "subscriptionEditPageTitle": "Edit Subscription",
-  "subscriptionAddPageSection": "Support the link of VMessAEAD/VLESS, Clash / Mihomo, Hysteria 2 URI and XrayJson",
-  "subscriptionAddPageName": "name",
-  "subscriptionAddPageUrl": "URL",
-  "subscriptionAddPageUrlExample": "https://example.com/sub.txt",
-  "subscriptionAddPageNoConfigs": "No Xray config found for the url",
   "subscriptionDownloadFailed": "Failed to download the subscription",
-  "subscriptionEncryptionSection": "Encryption",
-  "subscriptionAgeProviderSupportTitle": "Provider support required",
-  "subscriptionAgeProviderSupportDescription": "Enter age keys only when your subscription provider supports age-encrypted subscriptions. Otherwise, leave both fields empty.",
-  "subscriptionAgeSecretKey": "Age Secret Key",
-  "subscriptionAgeSecretKeyHint": "AGE-SECRET-KEY-1...",
-  "subscriptionAgePublicKey": "Age Public Key",
-  "subscriptionAgePublicKeyHint": "age1...",
   "subscriptionGenerateAgeKey": "Generate Key",
-  "subscriptionGenerateAgeX25519Key": "X25519",
-  "subscriptionGenerateAgeHybridKey": "Hybrid (ML-KEM-768 + X25519)",
-  "subscriptionClearAgeKey": "Clear",
-  "subscriptionRevealAgeKey": "Reveal key",
-  "subscriptionHideAgeKey": "Hide key",
-  "subscriptionReplaceAgeKeyTitle": "Replace age key?",
   "subscriptionReplaceAgeKeyMessage": "The current age key will be replaced. The previous key cannot decrypt responses encrypted for it.",
   "subscriptionGenerateAgeKeyFailed": "Unable to generate an age key",
   "subscriptionInvalidAgeSecretKey": "The age key pair is incomplete or invalid",
   "subscriptionMissingAgeSecretKey": "This encrypted subscription requires an age secret key",
   "subscriptionDecryptFailed": "Unable to decrypt the subscription with this age key",
   "subscriptionDecryptedTooLarge": "The decrypted subscription exceeds the 16 MiB limit",
-  "subscriptionListPageTitle": "Subscriptions",
-  "subscriptionListPageEmpty": "No subscriptions",
-  "sharePageTitle": "Share",
-  "sharePageXrayLink": "VMessAEAD/VLESS sharing protocol. Widely used, keeps full compatibility with other apps (except VMess).",
-  "sharePageSubscriptionLink": "HTTPS link. Widely used, keeps full compatibility with other apps.",
-  "sharePageAppLink": "OneXray URL scheme. Only OneXray can import this link.",
   "sharePageOneXrayLink": "OneXray link",
   "sharePageQRCode": "QRCode",
-  "sharePageShareQRCode": "Share QRCode",
   "sharePageSaveQRCode": "Save QR image",
   "sharePageShowQRCode": "Show QR code",
   "sharePageLink": "Link",
   "sharePageShareLink": "Share",
   "sharePageCopyLink": "Copy share link",
-  "sharePageXrayJson": "Xray JSON. Used to export Raw Json / Xray Profile.",
-  "sharePageText": "Text",
-  "sharePageShareText": "Share Text",
-  "sharePageCopyText": "Copy Text",
-  "sharePageJsonFile": "JSON File",
-  "sharePageShareJsonFile": "Share JSON File",
-  "sharePageSaveJsonFile": "Save JSON File",
-  "nodeInfoPageTitle": "Node Information",
-  "nodeInfoPageCurrentSession": "Current Session",
-  "nodeInfoPageNetworkLocation": "Network Location",
-  "nodeInfoPageFetching": "Fetching...",
-  "nodeInfoPageFailed": "Failed",
-  "nodeInfoPageDuration": "Duration",
-  "nodeInfoPageDelay": "Delay",
-  "nodeInfoPageTraffic": "Traffic",
-  "nodeInfoPageIP": "IP",
-  "nodeInfoPageIPVersion": "IP Version",
-  "nodeInfoPageLocation": "Location",
-  "nodeInfoPageCountryOrRegion": "Country or Region",
-  "nodeInfoPageRegion": "Region",
-  "nodeInfoPageCity": "City",
-  "settingsPageTitle": "Settings",
-  "settingsPageAppVersion": "App Version",
-  "settingsPageXrayVersion": "Xray-core Version",
-  "settingsPageSectionNetwork": "Network & Runtime",
-  "settingsPageSectionData": "Data & Updates",
-  "settingsPageSectionApp": "App Settings",
-  "settingsPageSectionSupport": "Support & About",
-  "settingsPageSectionVersion": "Version",
-  "corePageImportEnhancedRouting": "Import Enhanced Routing",
-  "corePageRunModeDescription": "Choose how OneXray starts the Core",
-  "corePageTunSettingsDescription": "Interface, routing, DNS, and platform options",
-  "corePagePingDescription": "Timeout and test endpoint",
-  "corePageXrayProfilesDescription": "Runtime DNS, routing, inbounds, and outbounds",
-  "corePageRuleSetDescription": "System and custom Rule Sets",
-  "corePageImportEnhancedRoutingDescription": "Import routing rules from a supported file",
-  "corePageAccessLogDescription": "Live accepted connections",
-  "corePageErrorLogDescription": "Core diagnostics and runtime errors",
-  "corePageXrayConfigDescription": "Final runtime configuration generated by OneXray",
-  "appUpdateCheck": "Check for Updates",
-  "settingsPageAutoUpdateDescription": "Subscriptions and Rule Sets",
-  "settingsPageCheckUpdateDescription": "Look for a newer OneXray release",
-  "settingsPageBackupDescription": "Export, import, and restore App data",
-  "settingsPageAppIconDescription": "Choose an alternate Home Screen icon",
-  "settingsPageThemeDescription": "System, Light, or Dark",
-  "settingsPageLanguageDescription": "Use the system language or choose one",
-  "settingsPageGeneral": "General",
-  "settingsPageGeneralDescription": "Startup and network request behavior",
   "settingsPageDesktop": "Desktop",
-  "settingsPageDesktopDescription": "Startup and desktop behavior",
   "desktopSettingsPageSectionStartup": "Startup",
   "settingsPageLaunchAtLogin": "Launch at login",
   "settingsPageLaunchAtLoginDescription": "Start OneXray when you sign in",
   "settingsPageStartHidden": "Start hidden",
   "settingsPageStartHiddenDescription": "Open without showing the main window",
-  "settingsPageConnectOnLaunch": "Connect on App Launch",
-  "settingsPageConnectOnLaunchDescription": "Connect the last or default node whenever OneXray starts",
-  "generalSettingsPageSectionStartup": "Startup",
-  "generalSettingsPageUserAgent": "User-Agent",
-  "generalSettingsPageSystemUserAgent": "System User-Agent",
-  "generalSettingsPageSystemUserAgentDescription": "Use the system browser identity; Windows and Linux use a compatible browser UA",
-  "generalSettingsPageOneXrayUserAgent": "OneXray User-Agent",
-  "generalSettingsPageOneXrayUserAgentDescription": "Use the OneXray identity with App version information",
   "settingsPageLaunchAtLoginRequiresApproval": "System approval required",
   "settingsPageLaunchAtLoginApprovalDescription": "Allow OneXray in your system's login or startup app settings",
   "settingsPageLaunchAtLoginUnavailable": "Launch at login is unavailable",
@@ -538,150 +71,15 @@
   "appUpdateOpen": "Go to update",
   "appUpdateLater": "Later",
   "appUpdateSkipVersion": "Skip this version",
-  "settingsPageClearData": "Clear Data",
-  "settingsPageClearDataSubtitle": "Delete configs, subscriptions, custom rule sets, runtime files, and cache. Backups, app preferences, and initial profiles are kept.",
-  "settingsPageClearDataDialogTitle": "Clear data?",
-  "settingsPageClearDataDialogContent": "This will stop VPN and delete configs, subscriptions, custom rule sets, runtime files, and cache. Backups, app preferences, and initial profiles will be kept.",
-  "settingsPageDoc": "Documentation",
-  "settingsPageReview": "Rate Us on App Store",
-  "settingsPageTelegramChannel": "Follow us on Telegram",
-  "settingsPageSubmitIssue": "Submit an issue on Github",
-  "settingsPageSourceCode": "Source Code",
-  "settingsPageCredits": "Credits",
-  "settingsPagePrivacy": "Privacy Policy",
-  "settingsPageFooterTips": "This is a client-only app. We do not provide any VPN servers or services. You must provide your own server configuration to use it.",
-  "tunSettingsPageTitle": "TUN Settings",
-  "tunSettingsPageRestartVpnTitle": "Restart VPN?",
-  "tunSettingsPageRestartVpnContent": "The settings have been saved, but they will not affect the running VPN until it is restarted. Restart now?",
-  "tunSettingsPageTunName": "name",
-  "tunSettingsPageTunIPv4": "TUN address (IPv4)",
-  "tunSettingsPageTunIPv4Example": "192.168.3.1",
-  "tunSettingsPageTunIPv6": "TUN address (IPv6)",
-  "tunSettingsPageTunIPv6Example": "fd00::2",
-  "tunSettingsPageTunDnsIPv4": "DNS (IPv4)",
-  "tunSettingsPageTunDnsIPv4Example": "8.8.8.8",
-  "tunSettingsPageTunDnsIPv6": "DNS (IPv6)",
-  "tunSettingsPageTunDnsIPv6Example": "2001:4860:4860::8888",
-  "tunSettingsPageTunDnsEnableDot": "enable DNS over TLS",
-  "tunSettingsPageTunDnsServerName": "server name",
-  "tunSettingsPageTunDnsServerNameExample": "dns.google",
-  "tunSettingsPageEnableIPv6": "Enable IPv6",
-  "tunSettingsPageEnableIPv6Tip": "Recommended. Some services may prefer IPv6, and disabling it may cause IPv6 traffic to bypass the TUN route.",
-  "tunSettingsPageMetrics": "Enable metrics",
-  "tunSettingsPageAppleRouting": "Apple Network Routing",
-  "tunSettingsPageIncludeAllNetworks": "includeAllNetworks",
-  "tunSettingsPageIncludeAllNetworksTip": "Route most network traffic through the VPN. iOS 14.0+ / macOS 10.15+.",
-  "tunSettingsPageExcludeLocalNetworks": "excludeLocalNetworks",
-  "tunSettingsPageExcludeLocalNetworksTip": "Keep local network traffic outside the VPN. iOS 14.2+ / macOS 10.15+.",
-  "tunSettingsPageExcludeCellularServices": "excludeCellularServices",
   "tunSettingsPageExcludeCellularServicesTip": "Keep supported cellular service traffic outside the VPN. iOS 16.4+ / macOS 13.3+.",
-  "tunSettingsPageExcludeAPNs": "excludeAPNs",
   "tunSettingsPageExcludeAPNsTip": "Keep Apple Push Notification service traffic outside the VPN. iOS 16.4+ / macOS 13.3+.",
-  "tunSettingsPageExcludeDeviceCommunication": "excludeDeviceCommunication",
   "tunSettingsPageExcludeDeviceCommunicationTip": "Keep communication with connected Apple devices outside the VPN. iOS 17.4+ / macOS 14.4+.",
-  "tunSettingsPageInterface": "network interface",
-  "tunSettingsPageOnDemandEnabled": "On-demand enabled",
-  "tunSettingsPageOnDemandRules": "Rules",
-  "tunSettingsPagePerAppVPN": "Per-app VPN",
-  "tunSettingsPagePerAppVPNMode": "Mode",
-  "tunSettingsPagePerAppVPNPermission": "The Per-app VPN feature requires the QUERY_ALL_PACKAGES permission, which we use to query all installed apps on your device so that you can choose which apps can use VPN to proxy network traffic. We do not collect, transmit, or store the apps information. We will not query the apps information without your consent.",
-  "tunSettingsPagePerAppVPNHelp": "0 apps means all apps will be proxied",
-  "tunSettingsPagePerAppVPNCount": "{count} apps",
-  "@tunSettingsPagePerAppVPNCount": {
-    "description": "Per-app VPN count",
-    "placeholders": {
-      "count": {
-        "type": "String"
-      }
-    }
-  },
-  "onDemandRulePageTitle": "On Demand",
-  "onDemandRulePageMode": "Mode",
-  "onDemandRulePageInterfaceType": "Interface Type",
-  "onDemandRulePageSSID": "SSID",
-  "networkInterfacePageTitle": "network interface",
-  "networkInterfacePageNoInterface": "No Network Interface",
-  "selectedAppPageTitle": "Selected Apps",
-  "selectedAppPageNoApp": "No selected app",
-  "installedAppPageTitle": "Installed Apps",
-  "installedAppPageNoApp": "No Installed Apps",
-  "pingPageTitle": "Ping",
-  "pingPageDescription": "These values are shared by node and real ping operations.",
-  "pingPageTimeout": "Timeout (second)",
-  "pingPageTimeoutDescription": "Maximum time to wait for each request",
-  "pingPageUrl": "URL",
-  "pingPageResolvedUrl": "Resolved URL",
-  "pingPageAutoPingNewConfigs": "Auto ping new nodes",
-  "pingPageAutoPingNewConfigsDescription": "Ping nodes after an import or subscription update",
-  "autoUpdatePageTitle": "Auto Update",
-  "autoUpdatePageSubscription": "Subscription",
-  "autoUpdatePageGeoData": "GeoData",
-  "autoUpdatePageEnable": "Enable",
-  "autoUpdatePageEnabled": "Enabled",
-  "autoUpdatePageDisabled": "Disabled",
-  "autoUpdatePageInterval": "Interval",
   "autoUpdatePageIntervalOneDay": "One day",
   "autoUpdatePageIntervalThreeDays": "Three days",
   "autoUpdatePageIntervalOneWeek": "One week",
-  "autoUpdatePageGeoDataUpdateAfterVpnConnected": "Update after VPN connected",
-  "geoDataListPageTitle": "Rule Set",
-  "geoDataListPageSystem": "System",
-  "geoDataListPageCustom": "Custom",
-  "geoDataListPageEmptyCustom": "No custom rule sets",
-  "geoDataListPageTypeDomain": "Domain",
-  "geoDataListPageTypeIp": "IP",
-  "geoDataListPageCategoryCount": "{count} categories",
-  "@geoDataListPageCategoryCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "geoDataListPageRuleCount": "{count} rules",
-  "@geoDataListPageRuleCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "geoDatCodesPageNoCodes": "No Rule Set Data",
-  "geoDatAddPageTitle": "Rule Set",
-  "geoDatAddPageSection": "Support v2fly geosite and geoip",
-  "geoDatAddPageName": "name",
-  "geoDatAddPageType": "Type",
-  "geoDatAddPageUrl": "URL",
-  "geoDatAddPageUrlExample": "https://example.com/rule.dat",
-  "geoDatAddPageFailed": "Rule data download failed",
-  "logPageTitle": "Log",
-  "logPageLogFile": "Log file",
-  "logPageAccess": "access log",
-  "logPageError": "error log",
-  "logPageXrayConfig": "Xray config file",
   "logFileViewerContinueFollowing": "Continue following",
-  "logFileViewerFileNotExist": "Log file does not exist",
   "logFileViewerShowingRecent": "Showing recent log",
-  "configFileViewerPageShare": "Share File",
-  "configFileViewerPageFileNotExist": "File not exist",
-  "backupPageTitle": "Backup & Restore",
-  "backupPageNoFiles": "No backup files",
-  "backupPageImport": "Import backup file",
-  "backupPageBackup": "Backup",
-  "backupPageSensitiveWarning": "Backup files are not encrypted and may contain node credentials, subscription URLs, and age secret keys.",
   "backupPageRestore": "Restore",
-  "backupPageRestoreTips": "Restoring will delete all your data and reimport from backup zip file.",
-  "appIconPageTitle": "App Icon",
-  "appIconPageSelect": "Select an icon:",
-  "appIconPageDescription": "The selected icon is applied to the iOS Home Screen.",
-  "dockIconPageTitle": "Dock Icon",
-  "dockIconPageDescription": "The selected icon is applied to the macOS Dock.",
-  "appIconPageBlue": "Blue",
-  "appIconPageBlack": "Black",
-  "appIconPageGreen": "Green",
-  "appIconPageOrange": "Orange",
-  "appIconPagePurple": "Purple",
-  "appIconPageRed": "Red",
   "appIconPageSetFailed": "Failed to set new App Icon",
   "desktopSettingsPageHideDockIcon": "Hide Dock icon",
   "desktopSettingsPageHideDockIconDescription": "Apply immediately to the current App session",
@@ -692,13 +90,6 @@
   "themePageLightDescription": "Always use the light appearance",
   "themePageDark": "Dark",
   "themePageDarkDescription": "Always use the dark appearance",
-  "languagePageTitle": "Language",
-  "languagePageSystem": "System",
-  "languagePageEnglish": "English",
-  "languagePageRussian": "Русский",
-  "languagePagePersian": "فارسی",
-  "languagePageChinese": "简体中文",
-  "languagePageTraditionalChinese": "繁體中文",
   "prototypeConnect": "Connect",
   "@prototypeConnect": {
     "description": "Approved prototype copy: Connect"
@@ -714,10 +105,6 @@
   "prototypeSettings": "Settings",
   "@prototypeSettings": {
     "description": "Approved prototype copy: Settings"
-  },
-  "prototypePrimaryNavigation": "Primary navigation",
-  "@prototypePrimaryNavigation": {
-    "description": "Approved prototype copy: Primary navigation"
   },
   "prototypeBack": "Back",
   "@prototypeBack": {
@@ -773,30 +160,13 @@
   "@prototypePleaseWait": {
     "description": "Approved prototype copy: Please wait"
   },
-  "prototypeSelected": "Selected",
-  "@prototypeSelected": {
-    "description": "Approved prototype copy: Selected"
-  },
   "prototypeNotSelected": "Not selected",
   "@prototypeNotSelected": {
     "description": "Approved prototype copy: Not selected"
   },
-  "prototypeRecommended": "Recommended",
-  "@prototypeRecommended": {
-    "description": "Approved prototype copy: Recommended"
-  },
   "prototypeMoreActions": "More actions",
   "@prototypeMoreActions": {
     "description": "Approved prototype copy: More actions"
-  },
-  "prototypeSelectName": "Select {name}",
-  "@prototypeSelectName": {
-    "description": "Approved prototype copy: Select {name}",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
   },
   "prototypeNameSaved": "{name} was saved",
   "@prototypeNameSaved": {
@@ -827,10 +197,6 @@
         "type": "String"
       }
     }
-  },
-  "prototypeFirstTimeSetup": "First-time setup",
-  "@prototypeFirstTimeSetup": {
-    "description": "Approved prototype copy: First-time setup"
   },
   "prototypeSetupProgress": "Setup progress",
   "@prototypeSetupProgress": {
@@ -904,10 +270,6 @@
   "@prototypeVpnPermission": {
     "description": "Approved prototype copy: VPN permission"
   },
-  "prototypeAllowConfigureSystemVpn": "Allow OneXray to configure the system VPN",
-  "@prototypeAllowConfigureSystemVpn": {
-    "description": "Approved prototype copy: Allow OneXray to configure the system VPN"
-  },
   "prototypeAllowAddVpn": "Allow OneXray to add a VPN configuration.",
   "@prototypeAllowAddVpn": {
     "description": "Approved prototype copy: Allow OneXray to add a VPN configuration."
@@ -959,10 +321,6 @@
   "prototypeChooseCountryRegion": "Choose your country or region",
   "@prototypeChooseCountryRegion": {
     "description": "Approved prototype copy: Choose your country or region"
-  },
-  "prototypeCountryRegion": "Country or region",
-  "@prototypeCountryRegion": {
-    "description": "Approved prototype copy: Country or region"
   },
   "prototypeRegionSearch": "Search by region name or code",
   "@prototypeRegionSearch": {
@@ -1261,10 +619,6 @@
   "@prototypeEditRawJson": {
     "description": "Approved prototype copy: Edit Raw JSON"
   },
-  "prototypeRawJsonEditorDescription": "Create or edit a complete Xray configuration.",
-  "@prototypeRawJsonEditorDescription": {
-    "description": "Approved prototype copy: Create or edit a complete Xray configuration."
-  },
   "prototypeConfigurationName": "Configuration name",
   "@prototypeConfigurationName": {
     "description": "Approved prototype copy: Configuration name"
@@ -1386,14 +740,6 @@
   "prototypeAddJsonManually": "Add JSON manually",
   "@prototypeAddJsonManually": {
     "description": "Approved prototype copy: Add JSON manually"
-  },
-  "prototypePointCameraAtQr": "Point the camera at a server QR code",
-  "@prototypePointCameraAtQr": {
-    "description": "Approved prototype copy: Point the camera at a server QR code"
-  },
-  "prototypeChooseFromPhotos": "Choose from photos",
-  "@prototypeChooseFromPhotos": {
-    "description": "Approved prototype copy: Choose from photos"
   },
   "prototypeImportLinks": "Import links",
   "@prototypeImportLinks": {
@@ -1633,14 +979,6 @@
   "@prototypeTurkey": {
     "description": "Approved prototype copy: Turkey"
   },
-  "prototypeChooseConnectionLocation": "Choose a connection location",
-  "@prototypeChooseConnectionLocation": {
-    "description": "Approved prototype copy: Choose a connection location"
-  },
-  "prototypeChooseLocationHint": "Select Automatic, a region, or one specific server.",
-  "@prototypeChooseLocationHint": {
-    "description": "Approved prototype copy: Select Automatic, a region, or one specific server."
-  },
   "prototypeAddServer": "Add server",
   "@prototypeAddServer": {
     "description": "Approved prototype copy: Add server"
@@ -1665,10 +1003,6 @@
   "@prototypeFavorites": {
     "description": "Approved prototype copy: Favorites"
   },
-  "prototypeGroupServers": "Group servers",
-  "@prototypeGroupServers": {
-    "description": "Approved prototype copy: Group servers"
-  },
   "prototypeByNodeLocation": "By node location",
   "@prototypeByNodeLocation": {
     "description": "Approved prototype copy: By node location"
@@ -1680,14 +1014,6 @@
   "prototypeSubscriptions": "Subscriptions",
   "@prototypeSubscriptions": {
     "description": "Approved prototype copy: Subscriptions"
-  },
-  "prototypeAllLocations": "All locations",
-  "@prototypeAllLocations": {
-    "description": "Approved prototype copy: All locations"
-  },
-  "prototypeSearchLocationsServers": "Search locations or servers",
-  "@prototypeSearchLocationsServers": {
-    "description": "Approved prototype copy: Search locations or servers"
   },
   "prototypeSearchSubscriptionsServers": "Search subscriptions, locations, or servers",
   "@prototypeSearchSubscriptionsServers": {
@@ -1721,14 +1047,6 @@
       }
     }
   },
-  "prototypeProtocol": "Protocol",
-  "@prototypeProtocol": {
-    "description": "Approved prototype copy: Protocol"
-  },
-  "prototypeRegion": "Region",
-  "@prototypeRegion": {
-    "description": "Approved prototype copy: Region"
-  },
   "prototypeSource": "Source",
   "@prototypeSource": {
     "description": "Approved prototype copy: Source"
@@ -1748,10 +1066,6 @@
   "prototypeCurrentSelection": "Current selection",
   "@prototypeCurrentSelection": {
     "description": "Approved prototype copy: Current selection"
-  },
-  "prototypeAutomaticWithinRegion": "Automatic within region",
-  "@prototypeAutomaticWithinRegion": {
-    "description": "Approved prototype copy: Automatic within region"
   },
   "prototypeNoServersYet": "No servers yet",
   "@prototypeNoServersYet": {
@@ -2003,18 +1317,6 @@
   "@prototypeServerShareWarning": {
     "description": "Approved prototype copy: This link may contain server credentials. Share it only with people you trust."
   },
-  "prototypeCopyShareLink": "Copy share link",
-  "@prototypeCopyShareLink": {
-    "description": "Approved prototype copy: Copy share link"
-  },
-  "prototypeShareLinkCopied": "Share link copied",
-  "@prototypeShareLinkCopied": {
-    "description": "Approved prototype copy: Share link copied"
-  },
-  "prototypeCannotShareLink": "Could not share this link",
-  "@prototypeCannotShareLink": {
-    "description": "Approved prototype copy: Could not share this link"
-  },
   "prototypeDeleteServer": "Delete this server?",
   "@prototypeDeleteServer": {
     "description": "Approved prototype copy: Delete this server?"
@@ -2092,10 +1394,6 @@
   "@prototypeDirectRegionsHint": {
     "description": "Approved prototype copy: Sites and IP addresses in the selected regions stay direct."
   },
-  "prototypeChooseDirectRegions": "Choose the regions whose sites and IP addresses should stay direct.",
-  "@prototypeChooseDirectRegions": {
-    "description": "Approved prototype copy: Choose the regions whose sites and IP addresses should stay direct."
-  },
   "prototypeSearchDirectRegions": "Search direct regions",
   "@prototypeSearchDirectRegions": {
     "description": "Approved prototype copy: Search direct regions"
@@ -2165,10 +1463,6 @@
         "type": "int"
       }
     }
-  },
-  "prototypeChooseFinalExit": "Choose one fixed server that VPN traffic uses before reaching the Internet.",
-  "@prototypeChooseFinalExit": {
-    "description": "Approved prototype copy: Choose one fixed server that VPN traffic uses before reaching the Internet."
   },
   "prototypeNoAdditionalExit": "No additional exit (recommended)",
   "@prototypeNoAdditionalExit": {
@@ -2335,10 +1629,6 @@
   "@prototypeCannotReadCustomRoute": {
     "description": "Approved prototype copy: Could not read this custom route. Use a custom routing JSON template."
   },
-  "prototypeGeodataFilenameConflict": "A routing data filename already exists. Nothing was imported.",
-  "@prototypeGeodataFilenameConflict": {
-    "description": "Approved prototype copy: A routing data filename already exists. Nothing was imported."
-  },
   "prototypeCustomShareWarning": "This routing template includes your rules and data source URLs, but no selected servers. Share it only with people you trust.",
   "@prototypeCustomShareWarning": {
     "description": "Approved prototype copy: This routing template includes your rules and data source URLs, but no selected servers. Share it only with people you trust."
@@ -2350,10 +1640,6 @@
   "prototypeAppearance": "Appearance",
   "@prototypeAppearance": {
     "description": "Approved prototype copy: Appearance"
-  },
-  "prototypeAppearanceStartupDescription": "Adjust OneXray appearance and startup behavior",
-  "@prototypeAppearanceStartupDescription": {
-    "description": "Approved prototype copy: Adjust OneXray appearance and startup behavior"
   },
   "prototypeSystem": "System",
   "@prototypeSystem": {
@@ -2374,10 +1660,6 @@
   "prototypeLanguage": "Language",
   "@prototypeLanguage": {
     "description": "Approved prototype copy: Language"
-  },
-  "prototypeInterfaceLanguage": "Interface language",
-  "@prototypeInterfaceLanguage": {
-    "description": "Approved prototype copy: Interface language"
   },
   "prototypeChooseLanguage": "Choose the language used throughout OneXray.",
   "@prototypeChooseLanguage": {
@@ -2507,29 +1789,9 @@
   "@prototypeCheckAppUpdates": {
     "description": "Approved prototype copy: Check for app updates"
   },
-  "prototypeUpdateAvailable": "Update available",
-  "@prototypeUpdateAvailable": {
-    "description": "Approved prototype copy: Update available"
-  },
-  "prototypeSettingsUpdateAvailable": "Settings — update available",
-  "@prototypeSettingsUpdateAvailable": {
-    "description": "Approved prototype copy: Settings — update available"
-  },
   "prototypeAboutUpdateAvailable": "About OneXray — update available",
   "@prototypeAboutUpdateAvailable": {
     "description": "Approved prototype copy: About OneXray — update available"
-  },
-  "prototypeNewVersionAvailable": "New version available",
-  "@prototypeNewVersionAvailable": {
-    "description": "Approved prototype copy: New version available"
-  },
-  "prototypeCurrentVersion": "Current version",
-  "@prototypeCurrentVersion": {
-    "description": "Approved prototype copy: Current version"
-  },
-  "prototypeLatestVersion": "Latest version",
-  "@prototypeLatestVersion": {
-    "description": "Approved prototype copy: Latest version"
   },
   "prototypeVersionAvailable": "Version {version} is available",
   "@prototypeVersionAvailable": {
@@ -2547,22 +1809,6 @@
   "prototypeReleaseNotes": "Release notes",
   "@prototypeReleaseNotes": {
     "description": "Approved prototype copy: Release notes"
-  },
-  "prototypeLater": "Later",
-  "@prototypeLater": {
-    "description": "Approved prototype copy: Later"
-  },
-  "prototypeSkipVersion": "Skip this version",
-  "@prototypeSkipVersion": {
-    "description": "Approved prototype copy: Skip this version"
-  },
-  "prototypeGoToUpdate": "Go to update",
-  "@prototypeGoToUpdate": {
-    "description": "Approved prototype copy: Go to update"
-  },
-  "prototypeAlreadyUpToDate": "Already up to date",
-  "@prototypeAlreadyUpToDate": {
-    "description": "Approved prototype copy: Already up to date"
   },
   "prototypeHelpCommunity": "Help and community",
   "@prototypeHelpCommunity": {
@@ -2600,10 +1846,6 @@
   "@prototypeDataUpdateIntervals": {
     "description": "Approved prototype copy: Subscription and Geodata update intervals"
   },
-  "prototypeDataUpdateIntervalsHint": "Set separate automatic update intervals for subscriptions and Geodata.",
-  "@prototypeDataUpdateIntervalsHint": {
-    "description": "Approved prototype copy: Set separate automatic update intervals for subscriptions and Geodata."
-  },
   "prototypeAutomaticUpdates": "Automatic updates",
   "@prototypeAutomaticUpdates": {
     "description": "Approved prototype copy: Automatic updates"
@@ -2624,22 +1866,6 @@
   "@prototypeEveryWeek": {
     "description": "Approved prototype copy: Every week"
   },
-  "prototypeSubscriptionAutomaticUpdates": "Subscriptions automatic updates",
-  "@prototypeSubscriptionAutomaticUpdates": {
-    "description": "Approved prototype copy: Subscriptions automatic updates"
-  },
-  "prototypeSubscriptionUpdateInterval": "Subscriptions update interval",
-  "@prototypeSubscriptionUpdateInterval": {
-    "description": "Approved prototype copy: Subscriptions update interval"
-  },
-  "prototypeGeodataAutomaticUpdates": "Routing data (Geodata) automatic updates",
-  "@prototypeGeodataAutomaticUpdates": {
-    "description": "Approved prototype copy: Routing data (Geodata) automatic updates"
-  },
-  "prototypeGeodataUpdateInterval": "Routing data (Geodata) update interval",
-  "@prototypeGeodataUpdateInterval": {
-    "description": "Approved prototype copy: Routing data (Geodata) update interval"
-  },
   "prototypeSubscriptionUpdateGuard": "Updates replace subscription nodes only when at least one usable node is recognized. Otherwise, an error is reported and existing nodes are kept. Your current connection is not changed.",
   "@prototypeSubscriptionUpdateGuard": {
     "description": "Approved prototype copy: Updates replace subscription nodes only when at least one usable node is recognized. Otherwise, an error is reported and existing nodes are kept. Your current connection is not changed."
@@ -2659,10 +1885,6 @@
   "prototypeSpeedTestSummary": "Timeout and speed test URL",
   "@prototypeSpeedTestSummary": {
     "description": "Approved prototype copy: Timeout and speed test URL"
-  },
-  "prototypeSpeedTestHint": "Configure the timeout and URL used to test servers.",
-  "@prototypeSpeedTestHint": {
-    "description": "Approved prototype copy: Configure the timeout and URL used to test servers."
   },
   "prototypeTimeout": "Timeout",
   "@prototypeTimeout": {
@@ -2748,25 +1970,9 @@
   "@prototypeChooseInterface": {
     "description": "Approved prototype copy: Choose an interface"
   },
-  "prototypeChooseXrayInterface": "Choose the network interface used by Xray",
-  "@prototypeChooseXrayInterface": {
-    "description": "Approved prototype copy: Choose the network interface used by Xray"
-  },
-  "prototypeChooseInterfaceBeforeConnecting": "Choose an Xray outbound interface before connecting",
-  "@prototypeChooseInterfaceBeforeConnecting": {
-    "description": "Approved prototype copy: Choose an Xray outbound interface before connecting"
-  },
   "prototypeManagedInterfaceNotice": "Selected during initial setup. OneXray manages this setting. Raw JSON cannot override it.",
   "@prototypeManagedInterfaceNotice": {
     "description": "Approved prototype copy: Selected during initial setup. OneXray manages this setting. Raw JSON cannot override it."
-  },
-  "prototypeManagedTunNotice": "OneXray manages TUN settings. Raw JSON cannot override them.",
-  "@prototypeManagedTunNotice": {
-    "description": "Approved prototype copy: OneXray manages TUN settings. Raw JSON cannot override them."
-  },
-  "prototypeNotConnected": "Not connected",
-  "@prototypeNotConnected": {
-    "description": "Approved prototype copy: Not connected"
   },
   "prototypeRestoreDefaults": "Restore default settings",
   "@prototypeRestoreDefaults": {
@@ -2775,10 +1981,6 @@
   "prototypeSaveAndReconnect": "Save and reconnect",
   "@prototypeSaveAndReconnect": {
     "description": "Approved prototype copy: Save and reconnect"
-  },
-  "prototypeAdvancedSettingsSaved": "Advanced settings saved",
-  "@prototypeAdvancedSettingsSaved": {
-    "description": "Approved prototype copy: Advanced settings saved"
   },
   "prototypeXrayCore": "Xray core",
   "@prototypeXrayCore": {
@@ -2808,10 +2010,6 @@
   "@prototypeRoutingDataSummary": {
     "description": "Approved prototype copy: View, add, and update local routing data files"
   },
-  "prototypeAddGeodata": "Add Geodata",
-  "@prototypeAddGeodata": {
-    "description": "Approved prototype copy: Add Geodata"
-  },
   "prototypeAddDataSource": "Add data source",
   "@prototypeAddDataSource": {
     "description": "Approved prototype copy: Add data source"
@@ -2840,10 +2038,6 @@
   "@prototypeHttpsDownloadAddress": {
     "description": "Approved prototype copy: HTTPS download address"
   },
-  "prototypeEnterHttpsUrl": "Enter an HTTPS download URL.",
-  "@prototypeEnterHttpsUrl": {
-    "description": "Approved prototype copy: Enter an HTTPS download URL."
-  },
   "prototypeFileName": "File name",
   "@prototypeFileName": {
     "description": "Approved prototype copy: File name"
@@ -2855,14 +2049,6 @@
   "prototypeLastSuccessfulUpdate": "Last successful update",
   "@prototypeLastSuccessfulUpdate": {
     "description": "Approved prototype copy: Last successful update"
-  },
-  "prototypeIpRuleData": "IP rule data",
-  "@prototypeIpRuleData": {
-    "description": "Approved prototype copy: IP rule data"
-  },
-  "prototypeDomainRuleData": "Domain rule data",
-  "@prototypeDomainRuleData": {
-    "description": "Approved prototype copy: Domain rule data"
   },
   "prototypeDefaultRoutingData": "Default routing data",
   "@prototypeDefaultRoutingData": {
@@ -2881,10 +2067,6 @@
       }
     }
   },
-  "prototypeUpdatedTogether": "Updated together",
-  "@prototypeUpdatedTogether": {
-    "description": "Approved prototype copy: Updated together"
-  },
   "prototypeNoCustomRoutingData": "No custom routing data yet.",
   "@prototypeNoCustomRoutingData": {
     "description": "Approved prototype copy: No custom routing data yet."
@@ -2901,17 +2083,9 @@
   "@prototypeDeleteDatasetWarning": {
     "description": "Approved prototype copy: Rules using this dataset may no longer match after deletion."
   },
-  "prototypeJustNow": "Just now",
-  "@prototypeJustNow": {
-    "description": "Approved prototype copy: Just now"
-  },
   "prototypeUpdate": "Update",
   "@prototypeUpdate": {
     "description": "Approved prototype copy: Update"
-  },
-  "prototypeUpdateDefaultRoutingData": "Update default routing data",
-  "@prototypeUpdateDefaultRoutingData": {
-    "description": "Approved prototype copy: Update default routing data"
   },
   "prototypeGeodataAdded": "Geodata added",
   "@prototypeGeodataAdded": {
@@ -3065,10 +2239,6 @@
   "@prototypeNoMatchingCategories": {
     "description": "Approved prototype copy: No matching categories"
   },
-  "prototypeDataFileMissing": "This routing data file is no longer available.",
-  "@prototypeDataFileMissing": {
-    "description": "Approved prototype copy: This routing data file is no longer available."
-  },
   "prototypeAndroidSystemVpn": "Android system VPN",
   "@prototypeAndroidSystemVpn": {
     "description": "Approved prototype copy: Android system VPN"
@@ -3149,10 +2319,6 @@
         "type": "int"
       }
     }
-  },
-  "prototypeInstalledApps": "Installed apps",
-  "@prototypeInstalledApps": {
-    "description": "Approved prototype copy: Installed apps"
   },
   "prototypeNoMatchingApps": "No installed apps match your search.",
   "@prototypeNoMatchingApps": {
@@ -3292,10 +2458,6 @@
   "@prototypeUseDnsOverTlsHint": {
     "description": "Approved prototype copy: Use encrypted DNS for better privacy."
   },
-  "prototypeAutomaticConnection": "Automatic connection",
-  "@prototypeAutomaticConnection": {
-    "description": "Approved prototype copy: Automatic connection"
-  },
   "prototypeAutomaticConnectionDisconnection": "Automatic connection and disconnection",
   "@prototypeAutomaticConnectionDisconnection": {
     "description": "Approved prototype copy: Automatic connection and disconnection"
@@ -3340,10 +2502,6 @@
   "@prototypeKeepCurrentConnectionHint": {
     "description": "Approved prototype copy: Do not connect automatically or disconnect an existing connection."
   },
-  "prototypeEditWifi": "Edit Wi-Fi",
-  "@prototypeEditWifi": {
-    "description": "Approved prototype copy: Edit Wi-Fi"
-  },
   "prototypeEditWifiRules": "Edit Wi-Fi rules",
   "@prototypeEditWifiRules": {
     "description": "Approved prototype copy: Edit Wi-Fi rules"
@@ -3351,10 +2509,6 @@
   "prototypeWifiRules": "Wi-Fi rules",
   "@prototypeWifiRules": {
     "description": "Approved prototype copy: Wi-Fi rules"
-  },
-  "prototypeWifiRulesHint": "Choose when Wi-Fi connects or disconnects the VPN",
-  "@prototypeWifiRulesHint": {
-    "description": "Approved prototype copy: Choose when Wi-Fi connects or disconnects the VPN"
   },
   "prototypeWifiConnectNetworks": "Wi-Fi networks that connect the VPN",
   "@prototypeWifiConnectNetworks": {
@@ -3371,10 +2525,6 @@
   "prototypeWifiDisconnectNetworksHint": "Connect to these Wi-Fi networks to disconnect the VPN.",
   "@prototypeWifiDisconnectNetworksHint": {
     "description": "Approved prototype copy: Connect to these Wi-Fi networks to disconnect the VPN."
-  },
-  "prototypeWifiInputHint": "Enter one complete Wi-Fi name in each field.",
-  "@prototypeWifiInputHint": {
-    "description": "Approved prototype copy: Enter one complete Wi-Fi name in each field."
   },
   "prototypeAddWifi": "Add Wi-Fi",
   "@prototypeAddWifi": {
@@ -3542,10 +2692,6 @@
   "@prototypeCopyFailed": {
     "description": "Approved prototype copy: Could not copy. Select the text and copy it manually."
   },
-  "prototypeSmartRulesMaintained": "OneXray maintains the built-in rules and their order.",
-  "@prototypeSmartRulesMaintained": {
-    "description": "Approved prototype copy: OneXray maintains the built-in rules and their order."
-  },
   "prototypeDirectDns": "Use local DNS for direct traffic",
   "@prototypeDirectDns": {
     "description": "Approved prototype copy: Use local DNS for direct traffic"
@@ -3671,21 +2817,6 @@
   "@buttonRetry": {
     "description": "Approved prototype copy: Retry"
   },
-  "@menuEdit": {
-    "description": "Approved prototype copy: Edit"
-  },
-  "@menuShare": {
-    "description": "Approved prototype copy: Share"
-  },
-  "@menuSave": {
-    "description": "Approved prototype copy: Save"
-  },
-  "@menuDelete": {
-    "description": "Approved prototype copy: Delete"
-  },
-  "@menuScanQRCode": {
-    "description": "Approved prototype copy: Scan QR code"
-  },
   "@menuPickImage": {
     "description": "Approved prototype copy: Choose from photos"
   },
@@ -3694,9 +2825,6 @@
   },
   "@buttonSave": {
     "description": "Approved prototype copy: Save"
-  },
-  "@sharePageTitle": {
-    "description": "Approved prototype copy: Share"
   },
   "@sharePageCopyLink": {
     "description": "Approved prototype copy: Copy share link"
@@ -3766,10 +2894,6 @@
   },
   "@buttonOpenSettings": {
     "description": "Approved prototype copy: Open system settings"
-  },
-  "prototypeAdvancedDescription": "Manage system integration and runtime configuration",
-  "@prototypeAdvancedDescription": {
-    "description": "Approved prototype copy: Manage system integration and runtime configuration"
   },
   "prototypeAboutPrivacyNotice": "OneXray does not collect or upload usage, traffic, or browsing data.",
   "@prototypeAboutPrivacyNotice": {

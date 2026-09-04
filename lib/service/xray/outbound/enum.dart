@@ -1,24 +1,5 @@
 import 'package:collection/collection.dart';
 
-enum XrayOutboundProtocol {
-  blackhole("blackhole"),
-  dns("dns"),
-  freedom("freedom"),
-  vless("vless"),
-  vmess("vmess"),
-  socks("socks"),
-  shadowsocks("shadowsocks"),
-  trojan("trojan"),
-  hysteria("hysteria");
-
-  const XrayOutboundProtocol(this.name);
-
-  final String name;
-
-  @override
-  String toString() => name;
-}
-
 enum VMessSecurity {
   aes128gcm("aes-128-gcm"),
   chacha20poly1305("chacha20-poly1305"),
@@ -53,33 +34,4 @@ enum ShadowsocksMethod {
 
   static ShadowsocksMethod? fromString(String name) =>
       ShadowsocksMethod.values.firstWhereOrNull((value) => value.name == name);
-}
-
-enum StreamSettingsNetwork {
-  raw("raw"),
-  xhttp("xhttp"),
-  grpc("grpc"),
-  ws("ws"),
-  httpupgrade("httpupgrade"),
-  hysteria("hysteria");
-
-  const StreamSettingsNetwork(this.name);
-
-  final String name;
-
-  @override
-  String toString() => name;
-}
-
-enum StreamSettingsSecurity {
-  none("none"),
-  tls("tls"),
-  reality("reality");
-
-  const StreamSettingsSecurity(this.name);
-
-  final String name;
-
-  @override
-  String toString() => name;
 }

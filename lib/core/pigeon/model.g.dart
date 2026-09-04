@@ -103,14 +103,6 @@ Map<String, dynamic> _$XrayVersionResponseToJson(
   XrayVersionResponse instance,
 ) => <String, dynamic>{'version': ?instance.version};
 
-GetXrayStateResponse _$GetXrayStateResponseFromJson(
-  Map<String, dynamic> json,
-) => GetXrayStateResponse(json['running'] as bool?);
-
-Map<String, dynamic> _$GetXrayStateResponseToJson(
-  GetXrayStateResponse instance,
-) => <String, dynamic>{'running': ?instance.running};
-
 CountGeoDataRequest _$CountGeoDataRequestFromJson(Map<String, dynamic> json) =>
     CountGeoDataRequest(
       json['name'] as String?,
@@ -279,7 +271,6 @@ const _$LibXrayMethodEnumMap = {
   LibXrayMethod.runXray: 'runXray',
   LibXrayMethod.stopXray: 'stopXray',
   LibXrayMethod.xrayVersion: 'xrayVersion',
-  LibXrayMethod.getXrayState: 'getXrayState',
 };
 
 GetFreePortsRequest _$GetFreePortsRequestFromJson(Map<String, dynamic> json) =>

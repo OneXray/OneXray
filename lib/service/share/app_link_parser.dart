@@ -13,25 +13,6 @@ abstract final class OneXrayAppLinkParser {
   static const subscriptionPath = '/sub/add';
   static const geoDataPath = '/dat/add';
 
-  static List<OneXrayAppLink> parseText(String text) {
-    final links = <OneXrayAppLink>[];
-    for (final rawLine in text.split('\n')) {
-      final line = rawLine.trim();
-      if (line.isEmpty) {
-        continue;
-      }
-      final uri = Uri.tryParse(line);
-      if (uri == null) {
-        continue;
-      }
-      final link = parse(uri);
-      if (link != null) {
-        links.add(link);
-      }
-    }
-    return links;
-  }
-
   static OneXrayAppLink? parse(Uri uri) {
     if (uri.scheme.toLowerCase() != scheme ||
         uri.host.toLowerCase() != host ||

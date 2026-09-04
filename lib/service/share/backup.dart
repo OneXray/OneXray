@@ -48,9 +48,6 @@ class BackupService {
   static const _routingProfileFile = "routing_profile.json";
 
   int _lastRestoreSkippedCoreConfigCount = 0;
-  int get lastRestoreSkippedCoreConfigCount =>
-      _lastRestoreSkippedCoreConfigCount;
-
   static const _zipFilePrefix = "OneXray";
 
   // backup zip files dir, in application support directory

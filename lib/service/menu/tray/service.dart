@@ -181,9 +181,6 @@ enum _TrayMenuKey {
 
   final String name;
 
-  @override
-  String toString() => name;
-
   static _TrayMenuKey? fromString(String name) =>
       _TrayMenuKey.values.firstWhereOrNull((value) => value.name == name);
 }

@@ -133,15 +133,4 @@ class NetClient {
       return null;
     }
   }
-
-  Future<bool> downloadFile(String url, String savePath) async {
-    try {
-      await asyncInit();
-      await _downloadClient.download(url, savePath);
-      return true;
-    } catch (e) {
-      ygLogger("$e");
-      return false;
-    }
-  }
 }

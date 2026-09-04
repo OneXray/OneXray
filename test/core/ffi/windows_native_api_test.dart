@@ -1,28 +1,11 @@
-import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/native_api.dart';
-import 'package:onexray/core/ffi/windows/vpn_status_observer.dart';
 
 void main() {
-  test(
-    'RAS watcher registers, emits its initial invalidation, and stops',
-    () async {
-      final firstInvalidation = Completer<void>();
-      final subscription = watchWindowsVpnInvalidations().listen((_) {
-        if (!firstInvalidation.isCompleted) firstInvalidation.complete();
-      });
-      await firstInvalidation.future.timeout(const Duration(seconds: 5));
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await subscription.cancel().timeout(const Duration(seconds: 5));
-    },
-    skip: !Platform.isWindows,
-  );
-
   test('queries the canonical Windows VPN profile state', () async {
     final digest = List.filled(64, 'a').join();
     String? requestJson;

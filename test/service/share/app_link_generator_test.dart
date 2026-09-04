@@ -47,23 +47,6 @@ void main() {
       });
     }
 
-    test('keeps retired storage values without allowing sharing', () {
-      expect(CoreConfigType.multiNodeOutbound.name, 'full');
-      expect(
-        CoreConfigType.fromString('full'),
-        CoreConfigType.multiNodeOutbound,
-      );
-      expect(OneXrayConfigLinkType.multiNodeOutbound.wireName, 'full');
-      for (final type in [
-        CoreConfigType.profile,
-        CoreConfigType.multiNodeOutbound,
-      ]) {
-        final config = _config(type: type.name);
-        expect(OneXrayAppLinkGenerator.config(config), isNull);
-        expect(config.data, 'e30=');
-      }
-    });
-
     test('Raw link preserves unprojected fields and original JSON text', () {
       final source = <String, dynamic>{
         'name': 'Payload Profile',
@@ -168,7 +151,12 @@ void main() {
       );
 
       expect(text, isNotNull);
-      final links = OneXrayAppLinkParser.parseText(text!);
+      final links = text!
+          .split('\n')
+          .map(Uri.parse)
+          .map(OneXrayAppLinkParser.parse)
+          .whereType<OneXrayAppLink>()
+          .toList();
       expect(links, hasLength(3));
       expect(links[0], isA<OneXrayGeoDataLink>());
       expect(links[0].name, 'a-domain');

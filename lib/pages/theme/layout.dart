@@ -11,7 +11,6 @@ abstract final class AppLayout {
   static const routingMaxWidth = 1220.0;
   static const routingEditorMaxWidth = 760.0;
   static const contentBreakpoint = 840.0;
-  static const mobileHeaderHeight = 56.0;
   static const navigationTabsHeight = 44.0;
   static const mobileNavigationHeight = 92.0;
   static const mobileNavigationIconSize = 21.0;

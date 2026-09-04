@@ -3,8 +3,6 @@ import 'package:onexray/core/pigeon/model.dart';
 
 enum OneXrayConfigLinkType {
   outbound('outbound'),
-  profile('profile'),
-  multiNodeOutbound('full'),
   custom('custom'),
   raw('raw');
 

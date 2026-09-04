@@ -95,7 +95,12 @@ void main() {
     );
     expect(await service.sharingDataCount(source), 1);
     expect(await service.sharingDataCount('{"outbounds":[]}'), 0);
-    final links = OneXrayAppLinkParser.parseText(text);
+    final links = text
+        .split('\n')
+        .map(Uri.parse)
+        .map(OneXrayAppLinkParser.parse)
+        .whereType<OneXrayAppLink>()
+        .toList();
     expect(links, hasLength(2));
     expect(links.first, isA<OneXrayGeoDataLink>());
     expect((links.last as OneXrayConfigLink).xrayJson, source);

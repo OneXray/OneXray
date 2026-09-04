@@ -141,7 +141,6 @@ void main() {
     final results = <ServerExitChoice?>[];
     await open(tester, results);
     expect(find.text(l.prototypeVpnFinalExit), findsOneWidget);
-    expect(find.text(l.prototypeChooseFinalExit), findsNothing);
     expect(find.text(l.prototypeAddServers), findsNothing);
     expect(find.text(l.prototypeManageSources), findsNothing);
     expect(find.text(l.prototypeFavorites), findsNothing);
@@ -172,7 +171,6 @@ void main() {
       tester.getTopLeft(card).dy,
       kToolbarHeight + AppSpacing.desktopPageTop,
     );
-    expect(find.text(l.prototypeChooseFinalExit), findsNothing);
     expect(
       tester.widget<PageActionBar>(find.byType(PageActionBar)).maxWidth,
       AppLayout.routingEditorMaxWidth,

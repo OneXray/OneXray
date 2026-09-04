@@ -135,18 +135,6 @@ class XrayVersionResponse {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class GetXrayStateResponse {
-  bool? running;
-
-  GetXrayStateResponse(this.running);
-
-  factory GetXrayStateResponse.fromJson(Map<String, dynamic> json) =>
-      _$GetXrayStateResponseFromJson(json);
-
-  Map<String, dynamic> toJson() => _$GetXrayStateResponseToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class CountGeoDataRequest {
   String? name;
   String? geoType;
@@ -314,8 +302,6 @@ enum LibXrayMethod {
   stopXray,
   @JsonValue("xrayVersion")
   xrayVersion,
-  @JsonValue("getXrayState")
-  getXrayState,
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

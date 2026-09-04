@@ -15,22 +15,16 @@ void main() {
       debugPrint = (String? message, {int? wrapWidth}) => messages.add(message);
       addTearDown(() => debugPrint = previousDebugPrint);
       final statuses = <VpnStatus>[];
-      final permissions = <RefreshVpnResult>[];
       final statusSubscription = api.vpnStatusController.stream.listen(
         statuses.add,
       );
-      final permissionSubscription = api.refreshVpnController.stream.listen(
-        permissions.add,
-      );
       addTearDown(statusSubscription.cancel);
-      addTearDown(permissionSubscription.cancel);
 
       await api.vpnStatusChanged(VpnStatus.connected);
       await api.vpnStatusChanged(VpnStatus.connected);
       await api.vpnStatusChanged(VpnStatus.disconnected);
       await api.vpnStatusChanged(VpnStatus.disconnected);
       await api.refreshVpn(RefreshVpnResult.installed);
-      expect(api.consumeRefreshVpnResult(), RefreshVpnResult.installed);
       await api.refreshVpn(RefreshVpnResult.installed);
       await Future<void>.delayed(Duration.zero);
 
@@ -40,12 +34,6 @@ void main() {
         VpnStatus.disconnected,
         VpnStatus.disconnected,
       ]);
-      expect(permissions, [
-        RefreshVpnResult.installed,
-        RefreshVpnResult.installed,
-      ]);
-      expect(api.consumeRefreshVpnResult(), RefreshVpnResult.installed);
-      expect(api.consumeRefreshVpnResult(), isNull);
       expect(messages, [
         'vpnStatusChanged connected',
         'vpnStatusChanged disconnected',

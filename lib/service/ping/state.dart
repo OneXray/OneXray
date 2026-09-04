@@ -19,10 +19,6 @@ enum PingUrl {
   static PingUrl? fromString(String name) =>
       PingUrl.values.firstWhereOrNull((value) => value.name == name);
 
-  static List<String> get names {
-    return PingUrl.values.map((e) => e.name).toList();
-  }
-
   static bool isValidCustomUrl(String value) {
     final uri = Uri.tryParse(value);
     if (uri == null || uri.host.isEmpty) {
@@ -36,7 +32,6 @@ enum PingUrl {
 class PingTimeout {
   static const min = 3.0;
   static const max = 8.0;
-  static const divisions = 5;
   static const defaultValue = 5.0;
 }
 
@@ -44,8 +39,6 @@ class PingState {
   var timeout = PingTimeout.defaultValue;
   var url = PingUrl.cloudflare;
   var customUrl = "";
-  // Retained for the retiring settings UI. Scheduling no longer consults it.
-  var autoPingNewConfigs = true;
 
   String get realUrl => url == PingUrl.custom ? customUrl : url.url;
 
@@ -76,13 +69,10 @@ class PingState {
     if (url == PingUrl.custom && !PingUrl.isValidCustomUrl(customUrl)) {
       url = PingUrl.cloudflare;
     }
-    if (pingJson.autoPingNewConfigs != null) {
-      autoPingNewConfigs = pingJson.autoPingNewConfigs!;
-    }
   }
 
   Future<void> saveToPreferences() async {
-    final pingJson = PingJson(timeout, url.name, customUrl, autoPingNewConfigs);
+    final pingJson = PingJson(timeout, url.name, customUrl);
     await PreferencesKey().savePingState(pingJson.toJson());
   }
 }

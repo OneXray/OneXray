@@ -30,7 +30,6 @@ class AppHostApi {
   var _windowsPackageAvailable = false;
 
   bool get windowsPackageAvailable => _windowsPackageAvailable;
-  String? get windowsSnapshotToken => WindowsFfiApi().snapshotToken;
   bool get needsVpnStatusPolling =>
       AppPlatform.isWindows ||
       (AppPlatform.isLinux && LinuxFfiApi().needsVpnStatusPolling);
@@ -169,27 +168,6 @@ class AppHostApi {
       _reportUnexpected('getFreePorts', error, stackTrace);
     }
     return [];
-  }
-
-  Future<Map<String, dynamic>> convertShareLinksToXrayJsonStrict(
-    String text, {
-    String? ageSecretKey,
-  }) async {
-    final key = ageSecretKey?.trim();
-    final res = await _invoke(
-      LibXrayInvokeRequest(
-        method: LibXrayMethod.convertShareLinksToXrayJson,
-        payload: ConvertShareLinksToXrayJsonRequest(
-          text,
-          age: key == null || key.isEmpty ? null : AgeDecryptConfig(key),
-        ).toJson(),
-      ),
-    );
-    final resp = LibXrayInvokeResponseParser.parse(res);
-    if (resp.success && resp.data != null) {
-      return resp.data!;
-    }
-    throw LibXrayInvokeException(resp.error);
   }
 
   Future<ConvertShareLinksReport> convertShareLinksToXrayJsonReport(
@@ -451,24 +429,6 @@ class AppHostApi {
       _reportUnexpected('stopXray', error, stackTrace);
     }
     return _errorResult;
-  }
-
-  Future<bool> getXrayState() async {
-    if (!AppPlatform.isIOS) {
-      return false;
-    }
-    try {
-      final res = await _invoke(
-        LibXrayInvokeRequest(method: LibXrayMethod.getXrayState),
-      );
-      final resp = LibXrayInvokeResponseParser.parse(res);
-      if (resp.success && resp.data != null) {
-        return GetXrayStateResponse.fromJson(resp.data!).running ?? false;
-      }
-    } catch (error, stackTrace) {
-      _reportUnexpected('getXrayState', error, stackTrace);
-    }
-    return false;
   }
 
   Future<String> xrayVersion() async {

@@ -39,9 +39,4 @@ class SystemGeoDatState {
       (await AppDatabase().geoDataDao.publishedRows)
           .where((row) => row.id < 0)
           .toList();
-  static Future<List<GeoDataData>> get geoSite async => (await system)
-      .where((row) => row.id == SystemGeoDatId.geoSite.id)
-      .toList();
-  static Future<List<GeoDataData>> get geoIp async =>
-      (await system).where((row) => row.id == SystemGeoDatId.geoIp.id).toList();
 }

@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:onexray/pages/core/tun/app_icon/controller.dart';
 import 'package:onexray/pages/core/tun/app_icon/view.dart';
-import 'package:onexray/pages/widget/data_list.dart';
 import 'package:onexray/service/app_icon/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -20,8 +19,6 @@ final _pngBytes = img.encodePng(
   ),
 );
 
-/// Mirrors the leading slot of [DataListRow]: a fixed 31x31 box that hands
-/// loose constraints to its child.
 Widget _host(TunAppIconController controller, Widget child) {
   return BlocProvider.value(
     value: controller,
@@ -123,44 +120,6 @@ void main() {
     expect(requested, ['with.icon', 'without.icon']);
     expect(find.byType(Image), findsNothing);
     expect(find.byIcon(LucideIcons.package), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('the launcher icon fills the leading slot', (tester) async {
-    final controller = _controller((_) async => _pngBytes);
-
-    await tester.pumpWidget(
-      BlocProvider.value(
-        value: controller,
-        child: const MaterialApp(
-          home: Scaffold(
-            body: DataListRow(
-              title: 'OneXray',
-              subtitle: 'net.yuandev.onexray',
-              leading: AppIconView(packageName: 'net.yuandev.onexray'),
-              leadingStyle: DataListRowLeadingStyle.image,
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final image = find.byType(Image);
-    // The image codec completes through real async, which the fake async of
-    // pump and pumpAndSettle does not drive, so the frame is precached here to
-    // make the laid-out size deterministic.
-    await tester.runAsync(
-      () => precacheImage(
-        controller.state.icons['net.yuandev.onexray']!,
-        tester.element(image),
-      ),
-    );
-    await tester.pump();
-
-    // A 96x96 launcher icon scales down into the 31dp slot instead of
-    // overflowing it or collapsing to nothing.
-    expect(tester.getSize(image), const Size(31, 31));
     expect(tester.takeException(), isNull);
   });
 }

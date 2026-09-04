@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connection/resolver.dart';
@@ -63,38 +62,31 @@ void main() {
     expect((await db.coreConfigDao.searchRow(second))!.countryCode, 'SG');
   });
 
-  test(
-    'legacy auto=false cannot disable imported-node or subscription queues',
-    () async {
-      await PreferencesKey().savePingState({'autoPingNewConfigs': false});
-      final local = await db.coreConfigDao.insertRow(_node('Local'));
-      final remote = await db.coreConfigDao.insertRow(
-        _node('Remote', subId: 9),
-      );
-      var batches = 0;
-      final service = PingService.forTesting(
-        database: db,
-        runBatch: (sources, state) async {
-          expect(state.autoPingNewConfigs, isFalse);
-          batches++;
-          return _successes(sources.length);
-        },
-      );
+  test('imported-node and subscription queues always run', () async {
+    final local = await db.coreConfigDao.insertRow(_node('Local'));
+    final remote = await db.coreConfigDao.insertRow(_node('Remote', subId: 9));
+    var batches = 0;
+    final service = PingService.forTesting(
+      database: db,
+      runBatch: (sources, state) async {
+        batches++;
+        return _successes(sources.length);
+      },
+    );
 
-      service.schedulePingConfigIds([local, local]);
-      service.schedulePingSubscriptions([9, 9]);
-      await service.pingConfigIds([local, remote]);
+    service.schedulePingConfigIds([local, local]);
+    service.schedulePingSubscriptions([9, 9]);
+    await service.pingConfigIds([local, remote]);
 
-      // The last queued selection sees both measurements and does not probe again.
-      expect(batches, 2);
-      for (final id in [local, remote]) {
-        final row = (await db.coreConfigDao.searchRow(id))!;
-        expect(row.delay, 20);
-        expect(PingService.isUnmeasured(row), isFalse);
-      }
-      expect(AppEventBus.instance.state.pinging, isFalse);
-    },
-  );
+    // The last queued selection sees both measurements and does not probe again.
+    expect(batches, 2);
+    for (final id in [local, remote]) {
+      final row = (await db.coreConfigDao.searchRow(id))!;
+      expect(row.delay, 20);
+      expect(PingService.isUnmeasured(row), isFalse);
+    }
+    expect(AppEventBus.instance.state.pinging, isFalse);
+  });
 
   test('five-node batch commits let selection finish while the remaining two continue', () async {
     final ids = <int>[];

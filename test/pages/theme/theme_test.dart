@@ -209,7 +209,7 @@ void main() {
       expect(material.appBarTheme.titleTextStyle!.fontWeight, FontWeight.w600);
       expect(material.appBarTheme.titleTextStyle!.letterSpacing, isNull);
       expect(material.appBarTheme.centerTitle, isFalse);
-      expect(material.appBarTheme.toolbarHeight, AppLayout.mobileHeaderHeight);
+      expect(material.appBarTheme.toolbarHeight, kToolbarHeight);
       expect(
         material.appBarTheme.titleSpacing,
         AppSpacing.mobileHeaderHorizontal,
@@ -247,20 +247,15 @@ void main() {
       );
     });
 
-    test('legacy color accessors map to semantic prototype tokens', () {
+    test('color accessors map to semantic prototype tokens', () {
       const tokens = AppColorTokens.light;
       final palette = tokens.palette;
 
-      expect(tokens.pageBackground, palette.background);
       expect(tokens.surface, palette.card);
       expect(tokens.surfaceBorder, palette.border);
       expect(tokens.primaryText, palette.foreground);
       expect(tokens.secondaryText, palette.mutedForeground);
       expect(tokens.tagBackground, palette.muted);
-      expect(tokens.sectionTitle, palette.mutedForeground);
-      expect(tokens.interactiveText, palette.primary);
-      expect(tokens.secondaryButtonBackground, palette.secondary);
-      expect(tokens.secondaryButtonForeground, palette.secondaryForeground);
     });
   });
 

@@ -4,7 +4,6 @@ import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
-import 'package:onexray/service/db/config_writer.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 
 Map<String, dynamic> readOutboundFromDbData(CoreConfigData row) {
@@ -42,20 +41,4 @@ CoreConfigCompanion outboundCompanion(
     delay: PingDelayConstants.unknown,
     subId: DBConstants.defaultId,
   );
-}
-
-Future<int> insertOutboundToDb(Map<String, dynamic> outbound) =>
-    ConfigWriter.insertRow(outboundCompanion(outbound));
-
-Future<bool> updateOutboundToDb(
-  Map<String, dynamic> outbound,
-  CoreConfigData row,
-) async {
-  final companion = outboundCompanion(outbound, databaseName: row.name);
-  final saved = row.copyWith(
-    name: companion.name.value,
-    tags: companion.tags.value,
-    data: companion.data,
-  );
-  return ConfigWriter.updateRow(saved);
 }

@@ -91,10 +91,6 @@ extension AppNavigationContext on BuildContext {
     go(primary.rootPath);
   }
 
-  void goScoped(AppSecondaryDestination destination, {Object? extra}) {
-    go(scopedPath(destination), extra: extra);
-  }
-
   Future<T?> pushScoped<T>(
     AppSecondaryDestination destination, {
     Object? extra,

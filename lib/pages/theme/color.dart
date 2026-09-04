@@ -335,20 +335,12 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
 
   final AppPalette palette;
 
-  Color get pageBackground => palette.background;
   Color get surface => palette.card;
   Color get surfaceBorder => palette.border;
   Color get primaryText => palette.foreground;
   Color get secondaryText => palette.mutedForeground;
   Color get tagBackground => palette.muted;
   Color get selectedBackground => palette.selectedSurface;
-  Color get runningBackground => palette.runningSurface;
-  Color get stopButtonBackground => palette.destructiveSurface;
-  Color get stopButtonForeground => palette.destructive;
-  Color get sectionTitle => palette.mutedForeground;
-  Color get interactiveText => palette.primary;
-  Color get secondaryButtonBackground => palette.secondary;
-  Color get secondaryButtonForeground => palette.secondaryForeground;
 
   static AppColorTokens fallback(Brightness brightness) {
     return brightness == Brightness.light ? light : dark;
@@ -376,10 +368,6 @@ class ColorManager {
 
   static AppPalette palette(BuildContext context) => tokens(context).palette;
 
-  static Color scaffoldBackground(Brightness brightness) {
-    return AppColorTokens.fallback(brightness).pageBackground;
-  }
-
   static Color surface(BuildContext context) => tokens(context).surface;
 
   static Color primaryText(BuildContext context) => tokens(context).primaryText;
@@ -396,37 +384,5 @@ class ColorManager {
 
   static Color selected(BuildContext context) {
     return tokens(context).selectedBackground;
-  }
-
-  static Color running(BuildContext context) {
-    return tokens(context).runningBackground;
-  }
-
-  static Color buttonStop(BuildContext context) {
-    return tokens(context).stopButtonBackground;
-  }
-
-  static Color buttonStopForeground(BuildContext context) {
-    return tokens(context).stopButtonForeground;
-  }
-
-  static Color sectionTitle(BuildContext context) {
-    return tokens(context).sectionTitle;
-  }
-
-  static Color interactiveText(BuildContext context) {
-    return tokens(context).interactiveText;
-  }
-
-  static Color formTitle(BuildContext context) {
-    return interactiveText(context);
-  }
-
-  static Color secondaryButtonBackground(BuildContext context) {
-    return tokens(context).secondaryButtonBackground;
-  }
-
-  static Color secondaryButtonForeground(BuildContext context) {
-    return tokens(context).secondaryButtonForeground;
   }
 }

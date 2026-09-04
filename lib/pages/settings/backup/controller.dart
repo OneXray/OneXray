@@ -193,9 +193,7 @@ class BackupController extends PageCubit<BackupPageState> {
       IconMenuId.share => l10n.prototypeShare,
       IconMenuId.save => l10n.prototypeExport,
       IconMenuId.delete => l10n.prototypeDelete,
-      _ => null,
     };
-    if (action == null) return;
     emit(
       state.copyWith(fileActions: {...state.fileActions, file.path: menuId}),
     );
@@ -204,7 +202,7 @@ class BackupController extends PageCubit<BackupPageState> {
         title: switch (menuId) {
           IconMenuId.delete => l10n.prototypeDeleteBackupQuestion,
           IconMenuId.share => l10n.prototypeShareBackup,
-          _ => l10n.prototypeExportBackup,
+          IconMenuId.save => l10n.prototypeExportBackup,
         },
         subject: file.name,
         content: menuId == IconMenuId.delete
@@ -228,8 +226,6 @@ class BackupController extends PageCubit<BackupPageState> {
           break;
         case IconMenuId.delete:
           await _deleteFile(file);
-          break;
-        default:
           break;
       }
     } catch (_) {

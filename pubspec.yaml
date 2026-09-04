@@ -14,7 +14,6 @@ dependencies:
     sdk: flutter
 
   #---------- flutter.dev plugin
-  cupertino_icons: ^1.0.9
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
@@ -42,7 +41,6 @@ dependencies:
 
   #---------- flutter community
   package_info_plus: ^10.2.1
-  device_info_plus: ^13.2.0
   share_plus: ^13.3.0
 
   #---------- third party plugin
@@ -66,17 +64,9 @@ dependencies:
   lucide_icons_flutter: ^3.1.17
   # markdown
   flutter_markdown_plus: ^1.0.12
-  duration: ^4.0.3
-
   flutter_local_notifications: ^22.3.0
 
-  in_app_review: ^2.0.12
-
   isolate_manager: ^6.3.2
-
-  # editor
-  re_editor: ^0.10.0
-  re_highlight: ^0.0.3
 
   # desktop
   tray_manager: ^0.5.3
@@ -94,10 +84,6 @@ dev_dependencies:
   flutter_gen_runner: ^5.15.0
   ffigen: ^21.0.0
   msix: ^3.18.0
-
-# re_editor only uses APIs that remain compatible with isolate_manager 6.x.
-dependency_overrides:
-  isolate_manager: ^6.3.2
 
 msix_config:
   display_name: OneXray

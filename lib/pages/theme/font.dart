@@ -3,7 +3,6 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 abstract final class AppFontFamily {
   static const sans = "packages/shadcn_ui/Geist";
-  static const mono = "packages/shadcn_ui/GeistMono";
 }
 
 abstract final class AppTypography {
@@ -18,7 +17,6 @@ abstract final class AppTypography {
   static final pageTitle = _style(31, 700);
   static final panelTitle = _style(19, 700);
   static final sectionTitle = _style(14, 700);
-  static final listSectionTitle = _style(16, 600);
   static final rowTitle = _style(13, 700);
   static final rowValue = _style(13);
   static final supporting = _style(12);
@@ -29,7 +27,6 @@ abstract final class AppTypography {
   static final badge = _style(11, 600);
   static final code = _style(12);
   static final metric = _style(20, 600);
-  static final numeric = rowValue;
 
   static final mobileNavigationLabel = _style(10, 400);
   static final selectedMobileNavigationLabel = _style(10, 600);

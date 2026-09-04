@@ -49,21 +49,6 @@ class PreferencesKey {
   Future<void> saveSetupStep(String value) =>
       _prefs.setString(_setupStep, value);
 
-  static const _localSubscriptionExpanded =
-      "${_namespace}localSubscriptionExpanded";
-
-  Future<bool> readLocalSubscriptionExpanded() async {
-    final value = await _prefs.getBool(_localSubscriptionExpanded);
-    if (value == null) {
-      return true;
-    }
-    return value;
-  }
-
-  Future<void> saveLocalSubscriptionExpanded(bool value) async {
-    await _prefs.setBool(_localSubscriptionExpanded, value);
-  }
-
   static const _appUpdateLastCheckTimestamp =
       "${_namespace}appUpdateLastCheckTimestamp";
 
@@ -188,7 +173,6 @@ class PreferencesKey {
 
   Future<void> clearUserDataPreferences() async {
     await Future.wait([
-      _prefs.remove(_localSubscriptionExpanded),
       _prefs.remove('app2.runningConfigId'),
       _prefs.remove('app2.lastConfigId'),
       _prefs.remove('app2.vpnStartTimestamp'),
