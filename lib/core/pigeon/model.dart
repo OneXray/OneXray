@@ -308,7 +308,7 @@ class LibXrayInvokeRequest {
   LibXrayMethod? method;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 4;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 5;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);
@@ -332,9 +332,8 @@ class GetFreePortsRequest {
 class ConvertShareLinksToXrayJsonRequest {
   String? text;
   AgeDecryptConfig? age;
-  bool? includeStats;
 
-  ConvertShareLinksToXrayJsonRequest(this.text, {this.age, this.includeStats});
+  ConvertShareLinksToXrayJsonRequest(this.text, {this.age});
 
   factory ConvertShareLinksToXrayJsonRequest.fromJson(
     Map<String, dynamic> json,
@@ -347,12 +346,12 @@ class ConvertShareLinksToXrayJsonRequest {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class ConvertShareLinksReport {
   final Map<String, dynamic> config;
-  final int? usableCount;
-  final int? failedCount;
+  final int usableCount;
+  final int failedCount;
   const ConvertShareLinksReport(
     this.config, {
-    this.usableCount,
-    this.failedCount,
+    required this.usableCount,
+    required this.failedCount,
   });
   factory ConvertShareLinksReport.fromJson(Map<String, dynamic> json) =>
       _$ConvertShareLinksReportFromJson(json);

@@ -17,19 +17,17 @@ class XrayShareReader {
     String text, {
     String? ageSecretKey,
   }) async {
-    final report = await AppHostApi().convertShareLinksToXrayJsonReport(
+    final report = await AppHostApi().convertShareLinksToXrayJson(
       text,
       ageSecretKey: ageSecretKey,
     );
     final rows = await readXrayJsonOutbounds(report.config);
-    if (report.usableCount != null && rows.length > report.usableCount!) {
+    if (rows.length > report.usableCount) {
       throw const FormatException('Import counts differ from content');
     }
     return ShareParseReport(
       rows,
-      failureCount: report.failedCount == null || report.usableCount == null
-          ? null
-          : report.failedCount! + report.usableCount! - rows.length,
+      failureCount: report.failedCount + report.usableCount - rows.length,
     );
   }
 

@@ -514,7 +514,7 @@ void main() {
     }
   });
 
-  test('typed route check uses the v4 Invoke contract', () {
+  test('typed route check uses the v5 Invoke contract', () {
     final request = LibXrayInvokeRequest(
       method: LibXrayMethod.checkRoute,
       payload: const CheckRouteRequest(
@@ -524,7 +524,7 @@ void main() {
         network: 'tcp',
       ).toJson(),
     );
-    expect(request.toJson()['apiVersion'], 4);
+    expect(request.toJson()['apiVersion'], 5);
     expect(request.toJson()['method'], 'checkRoute');
     expect(request.payload!['timeout'], 5000);
     expect(request.payload!['inboundTag'], 'tunIn');

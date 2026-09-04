@@ -285,31 +285,26 @@ ConvertShareLinksToXrayJsonRequest _$ConvertShareLinksToXrayJsonRequestFromJson(
   age: json['age'] == null
       ? null
       : AgeDecryptConfig.fromJson(json['age'] as Map<String, dynamic>),
-  includeStats: json['includeStats'] as bool?,
 );
 
 Map<String, dynamic> _$ConvertShareLinksToXrayJsonRequestToJson(
   ConvertShareLinksToXrayJsonRequest instance,
-) => <String, dynamic>{
-  'text': ?instance.text,
-  'age': ?instance.age?.toJson(),
-  'includeStats': ?instance.includeStats,
-};
+) => <String, dynamic>{'text': ?instance.text, 'age': ?instance.age?.toJson()};
 
 ConvertShareLinksReport _$ConvertShareLinksReportFromJson(
   Map<String, dynamic> json,
 ) => ConvertShareLinksReport(
   json['config'] as Map<String, dynamic>,
-  usableCount: (json['usableCount'] as num?)?.toInt(),
-  failedCount: (json['failedCount'] as num?)?.toInt(),
+  usableCount: (json['usableCount'] as num).toInt(),
+  failedCount: (json['failedCount'] as num).toInt(),
 );
 
 Map<String, dynamic> _$ConvertShareLinksReportToJson(
   ConvertShareLinksReport instance,
 ) => <String, dynamic>{
   'config': instance.config,
-  'usableCount': ?instance.usableCount,
-  'failedCount': ?instance.failedCount,
+  'usableCount': instance.usableCount,
+  'failedCount': instance.failedCount,
 };
 
 AgeDecryptConfig _$AgeDecryptConfigFromJson(Map<String, dynamic> json) =>
