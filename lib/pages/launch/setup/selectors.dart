@@ -22,25 +22,8 @@ class SetupRegionParams {
   const SetupRegionParams(this.codes, this.selected);
 }
 
-String setupRegionLabel(AppLocalizations l10n, String code) => switch (code) {
-  'CN' => l10n.prototypeMainlandChina,
-  'RU' => l10n.prototypeRussia,
-  'IR' => l10n.prototypeIran,
-  'HK' => l10n.prototypeHongKong,
-  'JP' => l10n.prototypeJapan,
-  'SG' => l10n.prototypeSingapore,
-  'KR' => l10n.prototypeSouthKorea,
-  'US' => l10n.prototypeUnitedStates,
-  'CA' => l10n.prototypeCanada,
-  'DE' => l10n.prototypeGermany,
-  'GB' => l10n.prototypeUnitedKingdom,
-  'FR' => l10n.prototypeFrance,
-  'IN' => l10n.prototypeIndia,
-  'AU' => l10n.prototypeAustralia,
-  'BR' => l10n.prototypeBrazil,
-  'TR' => l10n.prototypeTurkey,
-  _ => code, // The remaining official codes have no approved translated names.
-};
+String setupRegionLabel(AppLocalizations l10n, String code) =>
+    l10n.countryRegionName(code.toUpperCase());
 
 class SetupInterfacePage extends StatelessWidget {
   final SetupInterfaceParams params;

@@ -172,7 +172,7 @@ void main() {
       final l = AppLocalizations.of(
         tester.element(find.byType(ServerBrowser)),
       )!;
-      await tester.tap(find.text(l.prototypeSingapore));
+      await tester.tap(find.text(l.countryRegionName('SG')));
       await tester.pumpAndSettle();
       expect(controller.browsedOnMobile, isFalse);
       expect(tester.widget<ServerGroupView>(group).group.country, 'SG');
@@ -187,7 +187,7 @@ void main() {
     expect(find.byType(TabBar), findsOneWidget);
     expect(find.byType(ServerGroupView), findsNothing);
     final l = AppLocalizations.of(tester.element(find.byType(ServerBrowser)))!;
-    await tester.tap(find.text(l.prototypeSingapore));
+    await tester.tap(find.text(l.countryRegionName('SG')));
     await tester.pumpAndSettle();
     expect(controller.browsedOnMobile, isTrue);
     expect(tester.takeException(), isNull);

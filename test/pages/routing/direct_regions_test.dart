@@ -1,6 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
+import 'package:onexray/l10n/localizations/app_localizations_fa.dart';
+import 'package:onexray/l10n/localizations/app_localizations_ru.dart';
 import 'package:onexray/l10n/localizations/app_localizations_zh.dart';
+import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/routing/smart/regions.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
 
@@ -37,7 +44,7 @@ void main() {
     expect(controller.visibleCodes(AppLocalizationsEn()), ['RU']);
     expect(controller.visibleCodes(AppLocalizationsZh()), ['RU']);
     expect(controller.detail('RU'), 'Russia · RU');
-    expect(controller.detail('AD'), 'AD');
+    expect(controller.detail('AD'), 'Andorra · AD');
     controller.search('us');
     expect(controller.visibleCodes(AppLocalizationsEn()), ['RU', 'US']);
     controller.clear();
@@ -46,5 +53,30 @@ void main() {
     available = ['US'];
     await controller.load();
     expect(controller.state.codes, ['US']);
+  });
+
+  test('every bundled region has a name in every supported language', () {
+    final mapping = jsonDecode(
+      File(RegionCatalog.assetPath).readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final codes = (mapping['geoip'] as Map<String, dynamic>).keys;
+    final localizations = <AppLocalizations>[
+      AppLocalizationsEn(),
+      AppLocalizationsFa(),
+      AppLocalizationsRu(),
+      AppLocalizationsZh(),
+      AppLocalizationsZhHant(),
+    ];
+
+    for (final l10n in localizations) {
+      for (final code in codes) {
+        expect(
+          setupRegionLabel(l10n, code),
+          isNot(code),
+          reason: '${l10n.localeName}: $code',
+        );
+      }
+    }
+    expect(setupRegionLabel(AppLocalizationsEn(), 'zz'), 'ZZ');
   });
 }

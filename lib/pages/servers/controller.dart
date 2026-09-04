@@ -131,27 +131,12 @@ class ServersController extends ConnectController {
     changed();
   }
 
-  String countryName(AppLocalizations l, String? code) =>
-      switch (code?.toUpperCase()) {
-        'CN' => l.prototypeMainlandChina,
-        'RU' => l.prototypeRussia,
-        'IR' => l.prototypeIran,
-        'HK' => l.prototypeHongKong,
-        'JP' => l.prototypeJapan,
-        'SG' => l.prototypeSingapore,
-        'KR' => l.prototypeSouthKorea,
-        'US' => l.prototypeUnitedStates,
-        'CA' => l.prototypeCanada,
-        'DE' => l.prototypeGermany,
-        'GB' => l.prototypeUnitedKingdom,
-        'FR' => l.prototypeFrance,
-        'IN' => l.prototypeIndia,
-        'AU' => l.prototypeAustralia,
-        'BR' => l.prototypeBrazil,
-        'TR' => l.prototypeTurkey,
-        null || '' => '—',
-        _ => code!.toUpperCase(),
-      };
+  String countryName(AppLocalizations l, String? code) {
+    final normalized = code?.toUpperCase();
+    return normalized == null || normalized.isEmpty
+        ? '—'
+        : l.countryRegionName(normalized);
+  }
 
   String sourceName(AppLocalizations l, CoreConfigData row) =>
       sources.where((source) => source.id == row.subId).firstOrNull?.name ??

@@ -3,7 +3,7 @@
   "bundleTimestampUtc": "2026-08-29T11:23:45Z",
   "domainPolicy": "Manually reviewed CN/CATEGORY-IR/CATEGORY-RU/CATEGORY-TM only; include only when present. Never infer country semantics from a two-letter geosite category or CATEGORY- prefix.",
   "provenance": "Source URLs match App SystemGeoDatURL and libXray/download_geo. The download does not retain upstream release tags; file SHA256 is the verified content version. Bundle timestamp is local preparation time, not an upstream release version.",
-  "regionPolicy": "Actual non-empty two-letter geoip region categories, excluding ZZ (unknown). No new translated names; callers use existing localized names or the region code.",
+  "regionPolicy": "Actual non-empty two-letter geoip region categories, excluding ZZ (unknown). Localized display names are maintained by the App ARB files; unknown codes fall back to the region code.",
   "semanticSources": [
     "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/cn",
     "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/category-ir",

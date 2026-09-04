@@ -88,7 +88,7 @@ void main() {
     expect(controller.selectionGroups(l).single.visibleRows.single.id, 3);
     expect(
       controller.exitRowDetail(l, controller.servers[2]),
-      '${l.prototypeSingapore} · ${l.prototypeAvailableLatency(20)}',
+      '${l.countryRegionName('SG')} · ${l.prototypeAvailableLatency(20)}',
     );
     expect(controller.configuration.encode(), before);
   });
