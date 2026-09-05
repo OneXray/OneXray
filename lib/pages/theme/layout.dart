@@ -25,6 +25,8 @@ abstract final class AppLayout {
   static const switchWidth = 42.0;
   static const switchHeight = 24.0;
   static const switchThumbMargin = 2.0;
+  static const emptyStateDesktopMinHeight = 520.0;
+  static const emptyStateTextMaxWidth = 420.0;
   static const connectStatusMinHeight = 158.0;
   static const connectDesktopStatusMinHeight = 256.0;
   static const connectDesktopButtonWidth = 228.0;
@@ -34,7 +36,6 @@ abstract final class AppLayout {
   static const connectDesktopTrafficGroupMinHeight = 165.0;
   static const connectDesktopRawEmptyMinHeight = 204.0;
   static const connectDesktopPanelViewportInset = 102.0;
-  static const connectDesktopEmptyViewportInset = 108.0;
   static const connectButtonMinHeight = 45.0;
   static const connectExpertRowMinHeight = 47.0;
   static const connectChoiceMinHeight = 49.0;

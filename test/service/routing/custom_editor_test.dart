@@ -340,7 +340,6 @@ ConnectionRuntime _runtime(
       entries: [],
       finalExit: null,
       nodeTags: {},
-      ruleTags: {},
     ),
     platform: ConnectionPlatform.android,
     request: StartVpnRequest(

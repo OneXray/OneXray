@@ -615,10 +615,6 @@
   "@prototypeConfigurationName": {
     "description": "Approved prototype copy: Configuration name"
   },
-  "prototypeTestConfiguration": "Test configuration",
-  "@prototypeTestConfiguration": {
-    "description": "Approved prototype copy: Test configuration"
-  },
   "prototypeSeconds": "{count} seconds",
   "@prototypeSeconds": {
     "description": "Approved prototype copy: {count} seconds",
@@ -1507,22 +1503,6 @@
   "prototypeVpnRuleHint": "Uses the current VPN connection without saving a server in this rule.",
   "@prototypeVpnRuleHint": {
     "description": "Approved prototype copy: Uses the current VPN connection without saving a server in this rule."
-  },
-  "prototypeCheckWebsite": "Check a website",
-  "@prototypeCheckWebsite": {
-    "description": "Approved prototype copy: Check a website"
-  },
-  "prototypeCheck": "Check",
-  "@prototypeCheck": {
-    "description": "Approved prototype copy: Check"
-  },
-  "prototypeMatchedRule": "Matched rule",
-  "@prototypeMatchedRule": {
-    "description": "Approved prototype copy: Matched rule"
-  },
-  "prototypeNoneDefault": "None (default)",
-  "@prototypeNoneDefault": {
-    "description": "Approved prototype copy: None (default)"
   },
   "prototypeDeleteRoute": "Delete route",
   "@prototypeDeleteRoute": {
@@ -2904,14 +2884,6 @@
   "@prototypeSubscriptionShareAgeHint": {
     "description": "Approved prototype copy: Includes the name and optional Age type, never an Age secret key. The receiving app creates its own keys."
   },
-  "prototypeCheckRules": "Check rules",
-  "@prototypeCheckRules": {
-    "description": "Approved prototype copy: Check rules"
-  },
-  "prototypeWebsiteOrIpAddress": "Website or IP address",
-  "@prototypeWebsiteOrIpAddress": {
-    "description": "Approved prototype copy: Website or IP address"
-  },
   "prototypeCustomRouteCount": "{count} of 3 custom routes",
   "@prototypeCustomRouteCount": {
     "description": "Approved prototype copy: {count} of 3 custom routes",
@@ -2978,14 +2950,6 @@
   "prototypeOtherTraffic": "Other traffic",
   "@prototypeOtherTraffic": {
     "description": "Approved prototype copy: Other traffic"
-  },
-  "prototypeRuleCheckPrivacy": "The check runs locally and is never saved or uploaded.",
-  "@prototypeRuleCheckPrivacy": {
-    "description": "Approved prototype copy: The check runs locally and is never saved or uploaded."
-  },
-  "prototypeRuleCheckScope": "Checks website, IP, port, and network conditions only.",
-  "@prototypeRuleCheckScope": {
-    "description": "Approved prototype copy: Checks website, IP, port, and network conditions only."
   },
   "prototypeAction": "Action",
   "@prototypeAction": {

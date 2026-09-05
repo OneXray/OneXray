@@ -79,7 +79,7 @@ geoip/geosite。导入先在同级临时目录下载、校验并生成索引，�
 
 ## Raw JSON
 
-Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或测试改写原始 inbounds。
+Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校验改写原始 inbounds。
 运行时直接解析为 Map 并在深副本上应用 App 策略。运行副本保留用户
 额外入站，但 App 接管 `tunIn`、metrics、统计、日志、IPv6、运行路径及适用
 平台的出口网卡；额外 TUN、保留端口冲突或无法满足平台网络策略的配置明确失败。
@@ -88,9 +88,9 @@ Windows 的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore Provider/Se
 Android、Apple、Linux 使用平台 TUN。Windows 只给 Xray 绑定所选网卡，不给 VCore 新增
 绑定要求。iOS Debug 本地代理仅替换调试入口，不改变正常持久配置或正常 UI 逻辑。
 
-Raw 真实测试通过 libXray 临时实例执行 DNS、路由与 URL 探测，不调用 Core.Start 或绑定
-用户入站；WireGuard/VLESS reverse 等构造即有副作用的路径拒绝。构建校验与实际可连接
-是不同门槛，不能用测试结果冒充所有平台 VPN 启动成功。
+Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建或启动 Xray instance。
+构建器仍可能读取本地资产、证书并应用根 `env`；校验成功只说明配置可以构建，不保证
+运行时资源可用、VPN 可以启动或网络可以连接。节点延迟和位置检测使用 `pingBatch`。
 
 ## 运行协调与统计
 
@@ -101,8 +101,8 @@ Raw 真实测试通过 libXray 临时实例执行 DNS、路由与 URL 探测，�
 或跨进程提交日志。
 
 准备阶段先完成 Windows/Linux 出口网卡存在性检查，再对最终配置执行一次
-`libXray.testXray(buildOnly: true)` 构建校验；两者均发生在停止旧运行或启动原生 VPN 之前。
-build-only 校验只提前发现配置构建错误，不保证所有平台资源、端口或 handler 运行时错误。
+`libXray.testXray` 构建校验；两者均发生在停止旧运行或启动原生 VPN 之前。
+`testXray` 在加载配置前拒绝同进程已有的受管理 Xray instance；调用方负责进程隔离。
 
 准备失败且尚未触碰宿主时，当前运行不变。一旦已请求停止或启动原生 VPN，后续启动、确认、
 资产写入或数据库提交失败时，协调器尽力停止本次运行并进入 `failed`；不重新启动旧连接，

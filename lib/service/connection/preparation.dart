@@ -212,10 +212,7 @@ class ConnectionPreparation {
         bootstrapAddresses: bootstrap,
       ),
     );
-    final validation = await AppHostApi().testXray(
-      compiled.xrayJson,
-      buildOnly: true,
-    );
+    final validation = await AppHostApi().testXray(compiled.xrayJson);
     if (validation.isNotEmpty) {
       throw const FormatException('Xray configuration validation failed');
     }

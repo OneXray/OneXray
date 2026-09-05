@@ -118,7 +118,6 @@ enum LibXrayMethod: String, Codable {
     case countGeoData
     case pingBatch
     case testXray
-    case checkRoute
     case runXray
     case stopXray
     case xrayVersion
@@ -166,7 +165,7 @@ struct LibXrayInvokeRequest: Codable, Hashable {
     var payload: RunXrayRequest?
 
     init(
-        apiVersion: Int? = 5,
+        apiVersion: Int? = 3,
         method: LibXrayMethod? = nil,
         payload: RunXrayRequest? = nil
     ) {

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/routing/checker.dart';
 import 'package:onexray/pages/routing/custom/controller.dart';
 import 'package:onexray/pages/routing/custom/rule_page.dart';
 import 'package:onexray/pages/routing/widgets.dart';
@@ -229,20 +228,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                             12,
                                           ),
                                           child: RoutingCard(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                _dns(context, mobile),
-                                                if (controller.previewState
-                                                    case final profile?)
-                                                  RouteChecker(
-                                                    configuration: controller
-                                                        .checkConfiguration,
-                                                    customDraft: profile,
-                                                  ),
-                                              ],
-                                            ),
+                                            child: _dns(context, mobile),
                                           ),
                                         ),
                                       ],

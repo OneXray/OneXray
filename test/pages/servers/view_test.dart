@@ -13,6 +13,7 @@ import 'package:onexray/pages/servers/view.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/page_empty_state.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 
 class _Controller extends ServersController {
@@ -130,16 +131,14 @@ void main() {
 
   for (final locale in const [Locale('en'), Locale('ru'), Locale('fa')]) {
     testWidgets(
-      'desktop shares one scroll surface and responsive cards: $locale',
+      'desktop tabs use equal-width cards and one scroll surface: $locale',
       (tester) async {
         await pumpBrowser(tester, 1160, locale: locale);
         final browser = find.byType(ServerBrowser);
         final group = find.byType(ServerGroupView);
+        const columnWidth = (1160 - 225 - 56 - 16) / 2;
         expect(group, findsOneWidget);
-        expect(
-          tester.getSize(group).width,
-          closeTo((1160 - 225 - 56 - 16) * .59, 1),
-        );
+        expect(tester.getSize(group).width, closeTo(columnWidth, 1));
         expect(
           find.descendant(
             of: browser,
@@ -158,6 +157,11 @@ void main() {
         ); // Desktop tabs live in AppBar.
         expect(find.byType(VerticalDivider), findsNothing);
         expect(find.byType(PopupMenuButton<ServerAction>), findsNothing);
+
+        controller.groupBy(ServerGrouping.subscription);
+        await tester.pumpAndSettle();
+        expect(group, findsOneWidget);
+        expect(tester.getSize(group).width, closeTo(columnWidth, 1));
         expect(tester.takeException(), isNull);
       },
     );
@@ -200,6 +204,21 @@ void main() {
     await pumpBrowser(tester, 1160);
     final l = AppLocalizations.of(tester.element(find.byType(ServerBrowser)))!;
 
+    expect(find.byType(PageEmptyState), findsOneWidget);
+    final emptyCard = find.byWidgetPredicate(
+      (widget) =>
+          widget is DecoratedBox &&
+          widget.decoration is ShapeDecoration &&
+          (widget.decoration as ShapeDecoration).shape is AppDashedBorder,
+    );
+    final card = tester.getRect(emptyCard);
+    expect(card.top, AppSpacing.desktopPageTop);
+    expect(card.left, AppLayout.desktopSidebarWidth + AppSpacing.page);
+    expect(
+      card.width,
+      1160 - AppLayout.desktopSidebarWidth - AppSpacing.page * 2,
+    );
+    expect(card.height, AppLayout.emptyStateDesktopMinHeight);
     expect(find.text(l.prototypeNoServersYet), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     expect(find.byType(ServerGroupView), findsNothing);

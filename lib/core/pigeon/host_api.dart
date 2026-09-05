@@ -300,15 +300,12 @@ class AppHostApi {
     return null;
   }
 
-  Future<String> testXray(String xrayJson, {bool buildOnly = false}) async {
+  Future<String> testXray(String xrayJson) async {
     try {
       final res = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
-          payload: TestXrayRequest(
-            xrayJson,
-            buildOnly: buildOnly ? true : null,
-          ).toJson(),
+          payload: TestXrayRequest(xrayJson).toJson(),
         ),
       );
       final resp = LibXrayInvokeResponseParser.parse(res);
@@ -320,45 +317,6 @@ class AppHostApi {
       _reportUnexpected('testXray', error, stackTrace);
     }
     return _errorResult;
-  }
-
-  Future<CheckRouteResponse> checkRoute(CheckRouteRequest request) async {
-    final result = await _invoke(
-      LibXrayInvokeRequest(
-        method: LibXrayMethod.checkRoute,
-        payload: request.toJson(),
-      ),
-    );
-    final response = LibXrayInvokeResponseParser.parse(result);
-    if (!response.success || response.data == null) {
-      throw LibXrayInvokeException(response.error);
-    }
-    return CheckRouteResponse.fromJson(response.data!);
-  }
-
-  Future<int> probeXray(
-    String xrayJson, {
-    required String url,
-    required int timeout,
-    String inboundTag = 'tunIn',
-  }) async {
-    final result = await _invoke(
-      LibXrayInvokeRequest(
-        method: LibXrayMethod.testXray,
-        payload: TestXrayRequest(
-          xrayJson,
-          url: url,
-          timeout: timeout,
-          inboundTag: inboundTag,
-        ).toJson(),
-      ),
-    );
-    final response = LibXrayInvokeResponseParser.parse(result);
-    final delay = response.data?['delay'];
-    if (!response.success || delay is! int || delay < 0) {
-      throw const FormatException('Configuration URL probe failed');
-    }
-    return delay;
   }
 
   Future<String> runXray(String coreInvokeText) async {

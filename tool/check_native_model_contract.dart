@@ -104,6 +104,11 @@ void main() {
     'android/app/src/main/kotlin/net/yuandev/onexray/pigeon/Model.kt',
   ).readAsStringSync();
 
+  if (!swift.contains('apiVersion: Int? = 3,') ||
+      !kotlin.contains('apiVersion: Int? = 3,')) {
+    throw StateError('Native libXray requests must use API version 3');
+  }
+
   for (final contract in _contracts) {
     _check(
       'Swift ${contract.type}',

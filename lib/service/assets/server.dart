@@ -63,8 +63,7 @@ class ServerAssetService {
     this.prepare,
   }) : db = database ?? AppDatabase(),
        coordinator = coordinator ?? ConnectionCoordinator.instance,
-       _validate =
-           validate ?? ((text) => AppHostApi().testXray(text, buildOnly: true)),
+       _validate = validate ?? AppHostApi().testXray,
        _schedule = schedule ?? PingService().schedulePingConfigIds;
 
   Stream<List<CoreConfigData>> watch() => (db.select(

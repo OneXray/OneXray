@@ -10,16 +10,12 @@ import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
 
-enum RawEditorAction { test, save }
-
 const _unchanged = Object();
 
 class RawEditorPageState {
   final bool loaded;
   final bool busy;
-  final RawEditorAction? action;
   final String? error;
-  final RawTestResult? testResult;
   final int? sharingDataCount;
   final String name;
   final String text;
@@ -28,9 +24,7 @@ class RawEditorPageState {
   const RawEditorPageState({
     this.loaded = false,
     this.busy = true,
-    this.action,
     this.error,
-    this.testResult,
     this.sharingDataCount,
     this.name = '',
     this.text = '',
@@ -40,9 +34,7 @@ class RawEditorPageState {
   RawEditorPageState copyWith({
     bool? loaded,
     bool? busy,
-    Object? action = _unchanged,
     Object? error = _unchanged,
-    Object? testResult = _unchanged,
     Object? sharingDataCount = _unchanged,
     String? name,
     String? text,
@@ -50,13 +42,7 @@ class RawEditorPageState {
   }) => RawEditorPageState(
     loaded: loaded ?? this.loaded,
     busy: busy ?? this.busy,
-    action: identical(action, _unchanged)
-        ? this.action
-        : action as RawEditorAction?,
     error: identical(error, _unchanged) ? this.error : error as String?,
-    testResult: identical(testResult, _unchanged)
-        ? this.testResult
-        : testResult as RawTestResult?,
     sharingDataCount: identical(sharingDataCount, _unchanged)
         ? this.sharingDataCount
         : sharingDataCount as int?,
@@ -105,18 +91,19 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
   );
 
   bool get busy => state.busy;
-  RawEditorAction? get action => state.action;
   String? get error => state.error;
-  RawTestResult? get testResult => state.testResult;
   int? get sharingDataCount => state.sharingDataCount;
   bool get working => state.busy || state.transfer.busy;
   bool get loaded => state.loaded;
-  bool get canTest => !working && loaded && state.text.trim().isNotEmpty;
-  bool get canSave => canTest && state.name.trim().isNotEmpty;
+  bool get canSave =>
+      !working &&
+      loaded &&
+      state.text.trim().isNotEmpty &&
+      state.name.trim().isNotEmpty;
 
   void _textChanged() {
     if (!isPageActive) return;
-    emit(state.copyWith(text: text.text, testResult: null));
+    emit(state.copyWith(text: text.text));
     unawaited(_updateSharingDataCount());
   }
 
@@ -197,39 +184,10 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
     text: state.text,
   );
 
-  Future<void> test(BuildContext context) async {
-    if (!canTest) return;
-    final revision = _textRevision;
-    emit(
-      state.copyWith(
-        busy: true,
-        action: RawEditorAction.test,
-        error: null,
-        testResult: null,
-      ),
-    );
-    try {
-      final result = await service.test(draft);
-      if (isPageActive && revision == _textRevision) {
-        emit(state.copyWith(testResult: result));
-      }
-    } catch (_) {
-      if (context.mounted && revision == _textRevision) {
-        emit(
-          state.copyWith(
-            error: AppLocalizations.of(context)!.prototypeCheckNetwork,
-          ),
-        );
-      }
-    } finally {
-      emit(state.copyWith(busy: false, action: null));
-    }
-  }
-
   Future<void> save(BuildContext context) async {
     if (!canSave) return;
     _saving = true;
-    emit(state.copyWith(busy: true, action: RawEditorAction.save, error: null));
+    emit(state.copyWith(busy: true, error: null));
     final l10n = AppLocalizations.of(context)!;
     try {
       final id = await service.save(
@@ -263,7 +221,7 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
     } finally {
       _saving = false;
       if (!isPageActive) await transfers.close();
-      emit(state.copyWith(busy: false, action: null));
+      emit(state.copyWith(busy: false));
     }
   }
 

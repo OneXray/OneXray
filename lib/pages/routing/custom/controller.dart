@@ -10,7 +10,6 @@ import 'package:onexray/pages/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/pages/widget/configuration_transfer.dart';
 import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/custom_editor.dart';
 import 'package:onexray/service/routing/document.dart';
 import 'package:onexray/service/routing/state.dart';
@@ -257,16 +256,6 @@ class CustomRoutingEditorController
       return null;
     }
   }
-
-  ConnectionConfiguration get checkConfiguration => ConnectionConfiguration(
-    connection: ConnectionSettings.fromJson({
-      ...state.configuration.connection.toJson(),
-      'expert': false,
-      'trafficMode': TrafficMode.custom.name,
-      'customId': profileId,
-    }),
-    policy: state.configuration.policy,
-  );
 
   void _replaceProfileState(RoutingProfileState value, {String? name}) {
     final keys = List<Object>.generate(value.rules.length, (_) => Object());

@@ -7,8 +7,8 @@ import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/widget/page_empty_state.dart';
 import 'package:onexray/service/connection/settings.dart';
 
 class ServerBrowser extends StatelessWidget {
@@ -28,7 +28,15 @@ class ServerBrowser extends StatelessWidget {
     final mobile =
         MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
     if (controller.servers.isEmpty) {
-      return _empty(context, mobile: mobile);
+      return PageEmptyState(
+        title: l.prototypeNoServersYet,
+        description: l.prototypeAddProviderSubscriptionHint,
+        primaryLabel: l.prototypeAddServer,
+        onPrimary: () => controller.addServers(context),
+        secondaryLabel: l.prototypeHowGetServers,
+        onSecondary: () => controller.openServerHelp(context),
+        scrollController: scroll,
+      );
     }
     if (mobile) {
       return _mobileBrowser(context, groups, favorites);
@@ -67,13 +75,9 @@ class ServerBrowser extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 41,
-                  child: _locationList(context, groups, favorites),
-                ),
+                Expanded(child: _locationList(context, groups, favorites)),
                 const SizedBox(width: 16),
                 Expanded(
-                  flex: 59,
                   child: active == null
                       ? const SizedBox.shrink()
                       : ServerGroupView(
@@ -85,85 +89,6 @@ class ServerBrowser extends StatelessWidget {
               ],
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _empty(BuildContext context, {required bool mobile}) {
-    final l = AppLocalizations.of(context)!;
-    final palette = ColorManager.palette(context);
-    final padding = mobile
-        ? const EdgeInsets.fromLTRB(15, 13, 15, 22)
-        : const EdgeInsets.fromLTRB(
-            AppSpacing.page,
-            AppSpacing.desktopPageTop,
-            AppSpacing.page,
-            AppSpacing.desktopPageBottom,
-          );
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        controller: scroll,
-        padding: padding,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: mobile
-                ? constraints.maxHeight > padding.vertical
-                      ? constraints.maxHeight - padding.vertical
-                      : 0.0
-                : 520.0,
-          ),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              shape: AppDashedBorder(
-                borderRadius: BorderRadius.circular(AppRadii.card),
-                side: BorderSide(color: palette.borderStrong),
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(mobile ? 28 : 24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    LucideIcons.layers3,
-                    size: 34,
-                    color: palette.mutedForeground,
-                  ),
-                  const SizedBox(height: 13),
-                  Text(
-                    l.prototypeNoServersYet,
-                    textAlign: TextAlign.center,
-                    style: AppTypography.panelTitle.copyWith(
-                      color: palette.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 13),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: Text(
-                      l.prototypeAddProviderSubscriptionHint,
-                      textAlign: TextAlign.center,
-                      style: AppTypography.dialogBody.copyWith(
-                        color: palette.mutedForeground,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 13),
-                  FilledButton.icon(
-                    onPressed: () => controller.addServers(context),
-                    icon: const Icon(LucideIcons.plus, size: 18),
-                    label: Text(l.prototypeAddServer),
-                  ),
-                  const SizedBox(height: 4),
-                  TextButton(
-                    onPressed: () => controller.openServerHelp(context),
-                    child: Text(l.prototypeHowGetServers),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

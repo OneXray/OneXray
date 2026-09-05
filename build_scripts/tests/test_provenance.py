@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from app.provenance import begin_build, finish_build, source_revision, sha256, validate_lib_inputs, verify_release
+from app.provenance import begin_build, finish_build, source_revision, sha256, verify_release
 
 
 class ProvenanceTest(unittest.TestCase):
@@ -43,12 +43,6 @@ class ProvenanceTest(unittest.TestCase):
             "tools": {"python": {"version": "fixture"}},
             "fileSha256": {"pubspec.lock": "d" * 64},
             "packages": {package.name: sha256(package)},
-            "libXrayInputs": {
-                "schemaVersion": 1, "evidence": "build-inputs-only", "builder": "windows",
-                "libXrayCommit": "b" * 40, "errors": [], "recordedAt": "fixture",
-                "goVersion": "fixture", "modules": "fixture", "goModSha256": "a" * 64,
-                "goSumSha256": "b" * 64,
-            },
         }
         destination = self.artifacts / f"provenance-windows-{architecture}.json"
         destination.write_text(json.dumps(receipt))
@@ -122,20 +116,6 @@ class ProvenanceTest(unittest.TestCase):
             self.assertNotIn("local-source.dart", json.dumps(receipt))
             self.assertNotIn("new-source.dart", json.dumps(receipt))
 
-    def test_core_receipt_is_complete_and_identifies_the_builder_not_build_success(self):
-        receipt = {
-            "schemaVersion": 1, "evidence": "build-inputs-only", "builder": "apple-go",
-            "libXrayCommit": "b" * 40, "errors": [], "recordedAt": "fixture",
-            "goVersion": "go version fixture", "modules": "github.com/xtls/xray-core fixture",
-            "goModSha256": "a" * 64, "goSumSha256": "b" * 64,
-            "libXrayDirty": True,
-        }
-        self.assertEqual(validate_lib_inputs(json.dumps(receipt), "apple-go", "b" * 40), receipt)
-        for key, value in (("builder", "android"), ("errors", ["go failed"]),
-                           ("modules", None), ("libXrayCommit", "c" * 40)):
-            with self.subTest(key=key), self.assertRaises(ValueError):
-                validate_lib_inputs(json.dumps({**receipt, key: value}), "apple-go", "b" * 40)
-
     def test_all_jobs_use_resolved_sha_and_publishers_require_receipts(self):
         workflows = Path(__file__).resolve().parents[2] / ".github/workflows"
         build = (workflows / "build.yml").read_text()
@@ -162,17 +142,10 @@ class ProvenanceTest(unittest.TestCase):
         package = output / "OneXray-linux-x86_64.zip"
         package.write_bytes(b"fixture package")
         (output / "OneXray-windows-amd64.msix").write_bytes(b"other target")
-        lib_inputs = {
-            "schemaVersion": 1, "evidence": "build-inputs-only", "builder": "linux",
-            "libXrayCommit": "b" * 40, "errors": [], "recordedAt": "fixture",
-            "goVersion": "fixture Go", "modules": "fixture Xray", "goModSha256": "a" * 64,
-            "goSumSha256": "b" * 64,
-        }
         builder = SimpleNamespace(
             root_dir=str(root), output_dir=str(output), workspace_dir=str(self.artifacts),
             project_dir=str(root / "linux"), system="linux", build_number=401,
-            builder=SimpleNamespace(package_suffix="linux-x86_64",
-                                    core_build_metadata=json.dumps(lib_inputs)),
+            builder=SimpleNamespace(package_suffix="linux-x86_64"),
             project_config={"core.lib.dst.dir.linux": "app",
                             "core.lib.src.files.linux": ["linux_so/libXray.so"]},
             read_version=lambda: "26.9.1+401",
@@ -186,7 +159,6 @@ class ProvenanceTest(unittest.TestCase):
         self.assertEqual(receipt["packages"], {package.name: sha256(package)})
         self.assertEqual(receipt["fileSha256"]["OneXray/assets/geodata/regions.json"], sha256(regions))
         self.assertEqual(receipt["fileSha256"]["OneXray/linux/app/libXray.so"], sha256(library))
-        self.assertEqual(receipt["libXrayInputs"], lib_inputs)
         self.assertEqual(receipt["version"], "26.9.1+401")
 
 

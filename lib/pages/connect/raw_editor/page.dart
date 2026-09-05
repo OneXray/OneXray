@@ -93,30 +93,7 @@ class _RawEditorPageState extends State<RawEditorPage> {
                       ConfigurationTransferTools(
                         controller: controller.transfers,
                         disabled: state.busy || !state.loaded,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: controller.canTest
-                                ? () => controller.test(context)
-                                : null,
-                            icon: controller.action == RawEditorAction.test
-                                ? const ButtonProgressIndicator()
-                                : const Icon(LucideIcons.zap, size: 16),
-                            label: Text(l10n.prototypeTestConfiguration),
-                          ),
-                        ],
                       ),
-                      if (state.testResult case final result?)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Semantics(
-                            liveRegion: true,
-                            child: Text(
-                              '${result.delay} ms · ${result.url} · ${l10n.prototypeSeconds(result.timeout)}',
-                              textDirection: TextDirection.ltr,
-                              style: AppTypography.rawNote,
-                            ),
-                          ),
-                        ),
                       if (state.sharingDataCount case final count?
                           when count > 0)
                         Padding(
@@ -205,7 +182,7 @@ class _RawEditorPageState extends State<RawEditorPage> {
                     ? () => controller.save(context)
                     : null,
                 child: ButtonProgress(
-                  busy: controller.action == RawEditorAction.save,
+                  busy: state.loaded && state.busy,
                   child: Text(l10n.prototypeSave),
                 ),
               ),

@@ -289,7 +289,6 @@ abstract final class AppTypography {
   static final desktopUpdateLabel = _style(13, 600);
   static final connectDesktopStatusTitle = _style(21, 700);
   static final connectDesktopStatusDetail = _style(15, 400);
-  static final connectDesktopEmptyDetail = _style(16, 400);
   static final connectDesktopAction = _style(20, 700);
   static final connectDesktopCaption = _style(14, 600);
   static final connectDesktopChoiceLabel = _style(16, 500);

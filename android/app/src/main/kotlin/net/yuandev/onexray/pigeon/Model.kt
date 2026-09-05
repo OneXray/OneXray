@@ -73,9 +73,6 @@ enum class LibXrayMethod {
     @SerialName("testXray")
     TEST_XRAY,
 
-    @SerialName("checkRoute")
-    CHECK_ROUTE,
-
     @SerialName("runXray")
     RUN_XRAY,
 
@@ -115,7 +112,7 @@ data class XrayEnv(
 
 @Serializable
 data class LibXrayInvokeRequest(
-    val apiVersion: Int? = 5,
+    val apiVersion: Int? = 3,
     val method: LibXrayMethod? = null,
     val payload: RunXrayRequest? = null,
 )

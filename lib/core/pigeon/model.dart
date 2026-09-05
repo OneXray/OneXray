@@ -212,69 +212,13 @@ class ManagedRuntimeRequest {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class TestXrayRequest {
   String? xrayJson;
-  bool? buildOnly;
-  String? url;
-  int? timeout;
-  String? inboundTag;
 
-  TestXrayRequest(
-    this.xrayJson, {
-    this.buildOnly,
-    this.url,
-    this.timeout,
-    this.inboundTag,
-  });
+  TestXrayRequest(this.xrayJson);
 
   factory TestXrayRequest.fromJson(Map<String, dynamic> json) =>
       _$TestXrayRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$TestXrayRequestToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class CheckRouteRequest {
-  final String xrayJson;
-  final String? domain;
-  final String? ip;
-  final int port;
-  final String network;
-  final String inboundTag;
-  final int timeout;
-
-  const CheckRouteRequest({
-    required this.xrayJson,
-    this.domain,
-    this.ip,
-    required this.port,
-    required this.network,
-    this.inboundTag = 'tunIn',
-    this.timeout = 5000,
-  });
-
-  factory CheckRouteRequest.fromJson(Map<String, dynamic> json) =>
-      _$CheckRouteRequestFromJson(json);
-  Map<String, dynamic> toJson() => _$CheckRouteRequestToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true)
-class CheckRouteResponse {
-  final bool matched;
-  final String ruleTag;
-  final String outboundTag;
-  final String balancerTag;
-  final bool defaulted;
-
-  const CheckRouteResponse({
-    required this.matched,
-    required this.ruleTag,
-    required this.outboundTag,
-    required this.balancerTag,
-    required this.defaulted,
-  });
-
-  factory CheckRouteResponse.fromJson(Map<String, dynamic> json) =>
-      _$CheckRouteResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$CheckRouteResponseToJson(this);
 }
 
 enum LibXrayMethod {
@@ -292,8 +236,6 @@ enum LibXrayMethod {
   pingBatch,
   @JsonValue("testXray")
   testXray,
-  @JsonValue("checkRoute")
-  checkRoute,
   @JsonValue("runXray")
   runXray,
   @JsonValue("stopXray")
@@ -308,7 +250,7 @@ class LibXrayInvokeRequest {
   LibXrayMethod? method;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 5;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 3;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);

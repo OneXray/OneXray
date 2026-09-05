@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
@@ -202,7 +201,6 @@ void main() {
     );
     expect(plan.finalExit, isNull);
     expect(plan.config['routing']['domainStrategy'], 'AsIs');
-    expect(plan.ruleTags, isEmpty);
     expect(
       ConnectionSettings(
         selection: const ServerSelection.server(1),
@@ -291,8 +289,6 @@ void main() {
       regions: catalog,
       options: options(),
     );
-    expect(plan.ruleTags['app-custom-0'], (index: 0, name: 'Same'));
-    expect(plan.ruleTags['app-custom-1'], (index: 1, name: 'Same'));
     final first = (plan.config['routing']['rules'] as List).singleWhere(
       (rule) => rule['ruleTag'] == 'app-custom-0',
     );
@@ -512,31 +508,6 @@ void main() {
       }
       expect(XrayJson.fromJson(plan.config).toJson(), plan.config);
     }
-  });
-
-  test('typed route check uses the v5 Invoke contract', () {
-    final request = LibXrayInvokeRequest(
-      method: LibXrayMethod.checkRoute,
-      payload: const CheckRouteRequest(
-        xrayJson: '{}',
-        domain: 'example.test',
-        port: 443,
-        network: 'tcp',
-      ).toJson(),
-    );
-    expect(request.toJson()['apiVersion'], 5);
-    expect(request.toJson()['method'], 'checkRoute');
-    expect(request.payload!['timeout'], 5000);
-    expect(request.payload!['inboundTag'], 'tunIn');
-    final response = CheckRouteResponse.fromJson({
-      'matched': false,
-      'ruleTag': '',
-      'outboundTag': 'app-entry-0',
-      'balancerTag': 'proxy',
-      'defaulted': true,
-    });
-    expect(response.defaulted, true);
-    expect(response.balancerTag, 'proxy');
   });
 }
 

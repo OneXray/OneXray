@@ -5,7 +5,6 @@ import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/service/connection/compiler.dart';
-import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/smart_editor.dart';
 
@@ -98,19 +97,6 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
         }),
         error: null,
       ),
-    );
-  }
-
-  ConnectionConfiguration get checkConfiguration {
-    final current = state.original!.configuration;
-    return ConnectionConfiguration(
-      connection: ConnectionSettings.fromJson({
-        ...current.connection.toJson(),
-        'smart': state.draft.toJson(),
-        'expert': false,
-        'trafficMode': TrafficMode.smart.name,
-      }),
-      policy: current.policy,
     );
   }
 

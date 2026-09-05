@@ -125,8 +125,7 @@ class ServerImportService {
            (parse == null
                ? XrayShareReader().parseShareTextReport
                : (text) async => ShareParseReport(await parse(text))),
-       _validate =
-           validate ?? ((text) => AppHostApi().testXray(text, buildOnly: true)),
+       _validate = validate ?? AppHostApi().testXray,
        _write =
            write ??
            ((rows) => ConfigWriter.writeRowsInTransaction(

@@ -49,7 +49,7 @@ void main() {
       ).toJson(),
     ).toJson();
 
-    expect(request['apiVersion'], 5);
+    expect(request['apiVersion'], 3);
     expect(request['method'], 'pingBatch');
     expect(request['payload'], {
       'configs': [

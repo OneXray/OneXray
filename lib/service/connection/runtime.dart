@@ -66,7 +66,6 @@ class ConnectionRuntime {
   final String xrayJson;
   final List<RuntimeNode> entries;
   final RuntimeNode? finalExit;
-  final Map<String, ({int? index, String name})> ruleTags;
   final String? notice;
 
   ConnectionRuntime._({
@@ -76,7 +75,6 @@ class ConnectionRuntime {
     required this.xrayJson,
     required this.entries,
     required this.finalExit,
-    required this.ruleTags,
     this.notice,
   });
 
@@ -115,7 +113,6 @@ class ConnectionRuntime {
       xrayJson: compiled.xrayJson,
       entries: List.unmodifiable(entries),
       finalExit: finalExit,
-      ruleTags: Map.unmodifiable(compiled.ruleTags),
       notice: notice,
     );
   }
@@ -165,7 +162,6 @@ class ConnectionRuntime {
       finalExit: metadata['finalExit'] == null
           ? null
           : RuntimeNode.fromJson(metadata['finalExit'] as Map<String, dynamic>),
-      ruleTags: const {},
     );
   }
 

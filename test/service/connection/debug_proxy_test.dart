@@ -122,7 +122,6 @@ ConnectionRuntime _runtime({
       entries: const [],
       finalExit: null,
       nodeTags: const {},
-      ruleTags: const {},
     ),
     platform: ConnectionPlatform.values.byName(platform),
     request: StartVpnRequest(null, port, '18003', jsonEncode(invoke.toJson())),

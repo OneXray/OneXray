@@ -417,7 +417,6 @@ ConnectionRuntime _runtime(
     entries: entries,
     finalExit: finalExit,
     nodeTags: const {},
-    ruleTags: const {},
   );
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,

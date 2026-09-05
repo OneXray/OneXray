@@ -73,10 +73,7 @@ class XrayRawValidator {
     final jsonMap = JsonTool.decoder.convert(
       normalized.normalizedText!,
     ) as Map<String, dynamic>;
-    final res = await _test(
-      jsonMap,
-      testXray ?? (text) => AppHostApi().testXray(text, buildOnly: true),
-    );
+    final res = await _test(jsonMap, testXray ?? AppHostApi().testXray);
     if (res.isNotEmpty) {
       return XrayRawValidationResult.invalid(res);
     }
@@ -88,7 +85,7 @@ class XrayRawValidator {
     Map<String, dynamic> jsonMap,
     Future<String> Function(String) testXray,
   ) async {
-    // Build the complete configuration without constructing devices/listeners.
+    // Parse the configuration without creating or starting a core instance.
     // Only this disposable copy gets App-owned resource paths and logging.
     final env = jsonMap['env'];
     if (env != null && env is! Map<String, dynamic>) {

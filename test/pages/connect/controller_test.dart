@@ -474,7 +474,6 @@ ConnectionRuntime _runtime({bool expert = false}) {
       entries: [server(1, 'Singapore 03'), server(2, 'Japan 02')],
       finalExit: server(3, 'United States 01'),
       nodeTags: {},
-      ruleTags: {},
     ),
     platform: ConnectionPlatform.android,
     request: StartVpnRequest(

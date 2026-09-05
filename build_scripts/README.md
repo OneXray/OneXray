@@ -17,13 +17,9 @@
   `sourceDirty` records each checkout's initial tracked/untracked changes (ignored
   files excluded), before script-controlled source changes. It contains only
   booleans and does not prevent local development builds with uncommitted work.
-- libXray must produce a fresh `build/build-metadata-<target>.json` during the
-  successful core build (`apple-go` for iOS/macOS). Incomplete, stale, or mismatched
-  input receipts stop the App build **before** packaging/deployment. The full
-  receipt and its SHA-256 are retained; its `build-inputs-only` scope is not proof
-  of native build success. Windows additionally requires VCore integration
+- Windows additionally requires VCore integration
   revision **3**, the existing identity, architecture, file set, and hashes.
-- Both publish workflows require build metadata and per-platform receipts, a
+- Both publish workflows require release metadata and per-platform receipts, a
   successful matching `Build` run, clean recorded source checkouts before the
   build, and matching package hashes. A release tag must
   resolve to the recorded App commit. Missing metadata is never a manual-build
@@ -35,8 +31,8 @@
   the existing Apple/Android Fastlane commands. Do not run them as local tests.
 
 中文要点：依赖 ref 仅解析一次，`*-sha.txt` 只写真实提交；每个平台单独记录实际工具链、
-依赖锁、原生库、GeoData 与包摘要。libXray 输入记录必须来自本次成功构建，不能沿用旧文件，
-不能把本地未发布的提交写成上游可用版本。发布入口拒绝缺失元数据、构建前源树未提交、来源不一致和摘要不一致；
+依赖锁、原生库、GeoData 与包摘要。不能把本地未发布的提交写成上游可用版本。
+发布入口拒绝缺失元数据、构建前源树未提交、来源不一致和摘要不一致；
 这些检查不替代各平台实机/渠道验收。保持使用干净构建目录，避免混入之前构建的产物。
 
 无需构建或安装依赖的脚本验证（Python 3.12+）：

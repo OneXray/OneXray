@@ -6,6 +6,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/widget/page_empty_state.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -68,43 +69,20 @@ class ConnectView extends StatelessWidget {
         activeRawId == null &&
         !view.canDisconnect &&
         !view.busy;
-    if (MediaQuery.sizeOf(context).width > AppLayout.mobileBreakpoint) {
-      return _desktop(context, empty: empty);
-    }
     if (empty) {
-      return Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(LucideIcons.layers3, size: 40),
-              const SizedBox(height: 20),
-              Text(
-                l.prototypeStartUsingOneXray,
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(l.prototypeFirstConnectionHint, textAlign: TextAlign.center),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: onAddServers,
-                icon: const Icon(LucideIcons.plus),
-                label: Text(l.prototypeAddServers),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => onExpert(true),
-                child: Text(
-                  l.prototypeUseCompleteRawJson,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
+      return ResponsiveContent(
+        child: PageEmptyState(
+          title: l.prototypeStartUsingOneXray,
+          description: l.prototypeFirstConnectionHint,
+          primaryLabel: l.prototypeAddServers,
+          onPrimary: onAddServers,
+          secondaryLabel: l.prototypeUseCompleteRawJson,
+          onSecondary: () => onExpert(true),
         ),
       );
+    }
+    if (MediaQuery.sizeOf(context).width > AppLayout.mobileBreakpoint) {
+      return _desktop(context);
     }
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -214,7 +192,7 @@ class ConnectView extends StatelessWidget {
     );
   }
 
-  Widget _desktop(BuildContext context, {required bool empty}) {
+  Widget _desktop(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final viewport = MediaQuery.sizeOf(context);
@@ -313,9 +291,7 @@ class ConnectView extends StatelessWidget {
         AppSpacing.page,
         AppSpacing.desktopPageBottom,
       ),
-      child: empty
-          ? _desktopEmpty(context)
-          : compact
+      child: compact
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -348,62 +324,6 @@ class ConnectView extends StatelessWidget {
                 ),
               ),
             ),
-    );
-  }
-
-  Widget _desktopEmpty(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final palette = ColorManager.palette(context);
-    return Container(
-      constraints: BoxConstraints(
-        minHeight:
-            (MediaQuery.sizeOf(context).height -
-                    AppLayout.connectDesktopEmptyViewportInset)
-                .clamp(0.0, double.infinity),
-      ),
-      decoration: ShapeDecoration(
-        shape: AppDashedBorder(
-          side: BorderSide(color: palette.borderStrong),
-          borderRadius: BorderRadius.circular(AppRadii.card),
-        ),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(LucideIcons.layers3, size: 34),
-          const SizedBox(height: 13),
-          Text(
-            l.prototypeStartUsingOneXray,
-            style: AppTypography.panelTitle,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 13),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Text(
-              l.prototypeFirstConnectionHint,
-              textAlign: TextAlign.center,
-              style: AppTypography.connectDesktopEmptyDetail,
-            ),
-          ),
-          const SizedBox(height: 13),
-          FilledButton.icon(
-            onPressed: onAddServers,
-            icon: const Icon(LucideIcons.plus, size: 17),
-            label: Text(l.prototypeAddServers),
-          ),
-          const SizedBox(height: 13),
-          TextButton(
-            onPressed: () => onExpert(true),
-            child: Text(
-              l.prototypeUseCompleteRawJson,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

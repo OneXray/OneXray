@@ -34,19 +34,6 @@ def source_revision(path: Path, expected: str | None = None) -> str:
     return revision
 
 
-def validate_lib_inputs(text: str, builder: str, revision: str) -> dict:
-    value = json.loads(text)
-    if (not isinstance(value, dict) or value.get("schemaVersion") != 1
-            or value.get("evidence") != "build-inputs-only"
-            or value.get("builder") != builder or value.get("libXrayCommit") != revision
-            or value.get("errors") != []
-            or any(not value.get(key) for key in (
-                "recordedAt", "goVersion", "modules", "goModSha256", "goSumSha256",
-            ))):
-        raise ValueError("Incomplete or mismatched libXray build input metadata")
-    return value
-
-
 def begin_build(builder, target: str) -> dict:
     root = Path(builder.root_dir)
     workspace = Path(builder.workspace_dir)
@@ -173,11 +160,6 @@ def finish_build(builder, receipt: dict) -> Path:
                 for path in output.glob(pattern) if path.is_file()}
     if not packages:
         raise ValueError("No packages available for build provenance")
-    lib_inputs = validate_lib_inputs(
-        builder.builder.core_build_metadata,
-        "apple-go" if builder.system in ("ios", "macos") else builder.system,
-        receipt["sources"]["libXray"],
-    )
     receipt.update({
         "version": builder.read_version(),
         "buildNumber": builder.build_number,
@@ -190,9 +172,6 @@ def finish_build(builder, receipt: dict) -> Path:
         "tools": tools,
         "fileSha256": files,
         "packages": packages,
-        "libXrayInputs": lib_inputs,
-        "libXrayInputsSha256": hashlib.sha256(
-            builder.builder.core_build_metadata.encode("utf-8")).hexdigest(),
     })
     ndk = os.environ.get("ANDROID_NDK_HOME") or os.environ.get("ANDROID_NDK_ROOT")
     if ndk and (Path(ndk) / "source.properties").is_file():
@@ -256,11 +235,6 @@ def verify_release(artifacts: Path, run: dict, *, tag: str | None = None,
         dirty = receipt.get("sourceDirty")
         if not isinstance(dirty, dict) or any(dirty.get(name) is not False for name in required_sources):
             raise ValueError("Release sources must be recorded and clean before building")
-        validate_lib_inputs(
-            json.dumps(receipt.get("libXrayInputs")),
-            "apple-go" if target in ("ios", "macos", "macos_se") else target,
-            expected["libXray"],
-        )
         if receipt.get("target") == "windows":
             if sources.get("VCore") != expected["VCore"]:
                 raise ValueError("VCore checkout does not match build metadata")

@@ -248,7 +248,6 @@ ConnectionRuntime _runtime(ConnectionConfiguration configuration) {
       entries: [],
       finalExit: null,
       nodeTags: {},
-      ruleTags: {},
     ),
     platform: ConnectionPlatform.android,
     request: StartVpnRequest(

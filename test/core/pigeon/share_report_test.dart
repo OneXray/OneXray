@@ -38,7 +38,7 @@ void main() {
       };
       messenger.setMockDecodedMessageHandler(channel, (request) async {
         final json = jsonDecode((request as List).single as String) as Map;
-        expect(json['apiVersion'], 5);
+        expect(json['apiVersion'], 3);
         expect(json['payload'], {'text': 'fixture'});
         return [jsonEncode(response)];
       });

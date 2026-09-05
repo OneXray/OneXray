@@ -8,6 +8,7 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/json_editor.dart';
 import 'package:onexray/pages/widget/page_action_bar.dart';
+import 'package:onexray/pages/widget/page_empty_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:re_editor/re_editor.dart';
@@ -59,6 +60,7 @@ void main() {
     bool expert = false,
     String? runningPath,
     List<CoreConfigData> raws = const [],
+    VoidCallback? onAddServers,
     VoidCallback? onExpert,
   }) => ConnectView(
     view: view,
@@ -70,7 +72,7 @@ void main() {
     runningPath: runningPath,
     method: 'Smart Routing',
     onConnection: () {},
-    onAddServers: () {},
+    onAddServers: onAddServers ?? () {},
     onExpert: (_) => onExpert?.call(),
     onServer: () {},
     onMethod: () {},
@@ -244,6 +246,84 @@ void main() {
     await tester.tap(find.text('Use a complete Raw JSON configuration'));
     expect(switched, isTrue);
   });
+
+  testWidgets('connection empty state uses the server page layout', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    for (final (size, locale) in [
+      (const Size(1160, 800), const Locale('zh')),
+      (const Size(760, 600), const Locale('ru')),
+      (const Size(1160, 800), const Locale('fa')),
+    ]) {
+      await tester.binding.setSurfaceSize(size);
+      await tester.pumpWidget(
+        app(
+          Scaffold(
+            appBar: AppBar(title: const Text('Connect')),
+            body: screen(hasServers: false),
+          ),
+          locale: locale,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PageEmptyState), findsOneWidget);
+      final emptyCard = find.byWidgetPredicate(
+        (widget) =>
+            widget is DecoratedBox &&
+            widget.decoration is ShapeDecoration &&
+            (widget.decoration as ShapeDecoration).shape is AppDashedBorder,
+      );
+      final card = tester.getRect(emptyCard);
+      final bodyTop = tester.getBottomLeft(find.byType(AppBar)).dy;
+      expect(card.center.dx, closeTo(size.width / 2, .5));
+      expect(card.top, bodyTop + AppSpacing.desktopPageTop);
+      expect(
+        card.width,
+        size.width.clamp(0.0, AppLayout.standardMaxWidth) - AppSpacing.page * 2,
+      );
+      expect(card.height, AppLayout.emptyStateDesktopMinHeight);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets(
+    'empty state actions stay reachable in short and mobile windows',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final size in [const Size(760, 240), const Size(390, 600)]) {
+        var added = false;
+        var switched = false;
+        await tester.binding.setSurfaceSize(size);
+        await tester.pumpWidget(
+          app(
+            screen(
+              hasServers: false,
+              onAddServers: () => added = true,
+              onExpert: () => switched = true,
+            ),
+            scale: 1.5,
+          ),
+        );
+        await tester.pumpAndSettle();
+        for (final action in [
+          find.widgetWithText(FilledButton, 'Add servers'),
+          find.widgetWithText(
+            TextButton,
+            'Use a complete Raw JSON configuration',
+          ),
+        ]) {
+          await tester.ensureVisible(action);
+          await tester.pumpAndSettle();
+          await tester.tap(action);
+        }
+        expect(added, isTrue);
+        expect(switched, isTrue);
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
 
   testWidgets('platform errors are not presented as permission requests', (
     tester,

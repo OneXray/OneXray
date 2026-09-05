@@ -105,18 +105,13 @@ class CompiledConnection {
   final ResolvedServer? finalExit;
   final Map<String, int> nodeTags;
 
-  /// Runtime rule identity -> original array position/name or Smart reason key.
-  final Map<String, ({int? index, String name})> ruleTags;
-
   CompiledConnection({
     required this.xrayJson,
     required Iterable<ResolvedServer> entries,
     required this.finalExit,
     required Map<String, int> nodeTags,
-    required Map<String, ({int? index, String name})> ruleTags,
   }) : entries = List.unmodifiable(entries),
-       nodeTags = Map.unmodifiable(nodeTags),
-       ruleTags = Map.unmodifiable(ruleTags);
+       nodeTags = Map.unmodifiable(nodeTags);
 
   Map<String, dynamic> get config =>
       jsonDecode(xrayJson) as Map<String, dynamic>;
@@ -201,7 +196,6 @@ class ConnectionCompiler {
     required RuntimeOptions options,
   }) {
     final nodeTags = <String, int>{};
-    final ruleTags = <String, ({int? index, String name})>{};
     late final Map<String, dynamic> config;
     if (settings.expert) {
       if (raw == null || entries.isNotEmpty || finalExit != null) {
@@ -234,19 +228,11 @@ class ConnectionCompiler {
       if (settings.trafficMode == TrafficMode.smart) {
         final smart = settings.smart;
         domainStrategy = smart.resolveIpOnNoMatch ? 'IPIfNonMatch' : 'AsIs';
-        for (final rule in smartRules(smart, regions)) {
-          final tag = rule['ruleTag'] as String;
-          ruleTags[tag] = (
-            index: null,
-            name: tag.substring('app-smart-'.length),
-          );
-          rules.add(rule);
-        }
+        rules.addAll(smartRules(smart, regions));
       } else if (settings.trafficMode == TrafficMode.custom) {
         domainStrategy = custom!.domainStrategy;
         for (final (index, rule) in custom.rules.indexed) {
           final tag = 'app-custom-$index';
-          ruleTags[tag] = (index: index, name: rule.ruleTag);
           rules.add({...rule.xrayJson.toJson(), 'ruleTag': tag});
         }
       }
@@ -353,7 +339,6 @@ class ConnectionCompiler {
       entries: entries,
       finalExit: finalExit,
       nodeTags: nodeTags,
-      ruleTags: ruleTags,
     );
   }
 

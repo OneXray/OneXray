@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/routing/checker.dart';
 import 'package:onexray/pages/routing/smart/controller.dart';
 import 'package:onexray/pages/routing/widgets.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -307,7 +306,6 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
               ],
             ),
           ),
-          RouteChecker(configuration: controller.checkConfiguration),
           SizedBox(height: mobile ? 8 : 12),
         ],
       ),
