@@ -60,7 +60,9 @@ void main() {
   }
 
   setUp(() async {
-    workspace = await Directory.systemTemp.createTemp('onexray-geodata-');
+    final fixtures = await Directory('../references/onexray-tests').absolute
+        .create(recursive: true);
+    workspace = await fixtures.createTemp('geodata-');
     datRoot = Directory(p.join(workspace.path, 'dat'));
     addTearDown(() => workspace.delete(recursive: true));
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -242,6 +244,39 @@ void main() {
       );
     },
   );
+
+  for (final damage in [
+    'orphan',
+    'missing DAT',
+    'missing index',
+    'invalid index',
+  ]) {
+    test('cold startup rejects $damage with an existing manifest', () async {
+      await service.ensureInstalled();
+      await service.add(input());
+      await service.ensureInstalled();
+      final rows = await db.geoDataDao.publishedRows;
+      switch (damage) {
+        case 'orphan':
+          await File(p.join(datRoot.path, 'orphan.dat'))
+              .writeAsString('orphan');
+        case 'missing DAT':
+          await File(p.join(datRoot.path, 'custom.dat')).delete();
+        case 'missing index':
+          await File(p.join(datRoot.path, 'custom.json')).delete();
+        case 'invalid index':
+          await File(p.join(datRoot.path, 'custom.json')).writeAsString('{}');
+      }
+      final bytes = await rootBytes();
+      final previousDownloads = downloads;
+
+      await expectLater(createService(db).ensureInstalled(), throwsA(anything));
+
+      expect(await db.geoDataDao.publishedRows, rows);
+      expect(await rootBytes(), bytes);
+      expect(downloads, previousDownloads);
+    });
+  }
 
   test(
     'failed default updates preserve every published byte in place',

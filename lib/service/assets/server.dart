@@ -78,10 +78,7 @@ class ServerAssetService {
       row.delay != PingDelayConstants.unknown;
 
   static bool healthy(CoreConfigData row) =>
-      measured(row) &&
-      row.delay >= 0 &&
-      row.delay != PingDelayConstants.error &&
-      row.delay != PingDelayConstants.timeout;
+      PingDelayConstants.isSuccessful(row.delay);
 
   static bool selectable(CoreConfigData row) {
     if (measured(row) && !healthy(row)) return false;

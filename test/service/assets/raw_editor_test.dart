@@ -12,6 +12,7 @@ import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/runtime_host.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/geo_data/model.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:onexray/service/xray/raw/db.dart';
 
 const _text =
@@ -146,6 +147,167 @@ void main() {
     expect(coordinator.state.value.phase, ConnectionPhase.failed);
     expect(coordinator.state.value.runtime, isNull);
   });
+
+  for (final scenario in ['offline', 'unused', 'disconnect', 'reconnect']) {
+    test(
+      'Raw deletion preserves confirmation and runtime behavior: $scenario',
+      () async {
+        final rawId = await db.coreConfigDao.insertAssetRow(
+          XrayRawDb.configCompanion('original', _text),
+        );
+        if (scenario == 'reconnect') {
+          await db.coreConfigDao.insertAssetRow(
+            outboundCompanion({'tag': 'server', 'protocol': 'freedom'}),
+          );
+        }
+        final selected = scenario != 'unused';
+        final configuration = ConnectionConfiguration(
+          connection: ConnectionSettings(
+            expert: selected,
+            rawId: selected ? rawId : null,
+          ),
+        );
+        await db.connectionConfigDao.commit(
+          configurationJson: configuration.encode(),
+        );
+        var host = scenario == 'offline'
+            ? const HostConnection(VpnStatus.disconnected)
+            : HostConnection(
+                VpnStatus.connected,
+                runtime: _runtime('a', configuration, _text),
+              );
+        final calls = <String>[];
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            readRuntime: () async => null,
+            needsStatusPolling: () => false,
+            inspect: (_) async => host,
+            prepare: (next, _) async => _runtime('b', next, _text),
+            start: (runtime) async {
+              calls.add('start');
+              return host = HostConnection(
+                VpnStatus.connected,
+                runtime: runtime,
+              );
+            },
+            stop: () async {
+              calls.add('stop');
+              return host = const HostConnection(VpnStatus.disconnected);
+            },
+          ),
+        );
+        final service = RawEditorService(
+          database: db,
+          coordinator: coordinator,
+        );
+        final original = (await service.load(rawId)).original!;
+        expect(
+          await service.delete(original, confirm: (_, _, _) async => false),
+          false,
+        );
+        expect(await db.coreConfigDao.searchRow(rawId), original);
+        expect(calls, isEmpty);
+
+        expect(
+          await service.delete(
+            original,
+            confirm: (active, reconnect, disconnect) async {
+              expect(active, selected);
+              expect(reconnect, scenario == 'reconnect');
+              expect(disconnect, scenario == 'disconnect');
+              return true;
+            },
+          ),
+          true,
+        );
+
+        expect(await db.coreConfigDao.searchRow(rawId), isNull);
+        expect((await coordinator.configuration).connection.expert, false);
+        expect((await coordinator.configuration).connection.rawId, isNull);
+        expect(calls, switch (scenario) {
+          'reconnect' => ['stop', 'start'],
+          'disconnect' => ['stop'],
+          _ => <String>[],
+        });
+        expect(host.connected, scenario == 'unused' || scenario == 'reconnect');
+      },
+    );
+  }
+
+  test(
+    'Raw deletion protects the actual runtime after commit and stop fail',
+    () async {
+      final a = await db.coreConfigDao.insertAssetRow(
+        XrayRawDb.configCompanion('A', _text),
+      );
+      final b = await db.coreConfigDao.insertAssetRow(
+        XrayRawDb.configCompanion('B', _text),
+      );
+      final saved = ConnectionConfiguration(
+        connection: ConnectionSettings(expert: true, rawId: a),
+      );
+      final next = ConnectionConfiguration(
+        connection: ConnectionSettings(expert: true, rawId: b),
+      );
+      await db.connectionConfigDao.commit(configurationJson: saved.encode());
+      var host = HostConnection(
+        VpnStatus.connected,
+        runtime: _runtime('a', saved, _text),
+      );
+      var stops = 0;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => null,
+          needsStatusPolling: () => false,
+          inspect: (_) async => host,
+          prepare: (configuration, _) async =>
+              _runtime('b', configuration, _text),
+          start: (runtime) async =>
+              host = HostConnection(VpnStatus.connected, runtime: runtime),
+          stop: () async {
+            if (++stops > 1) throw const ConnectionHostException('stopFailed');
+            return host = const HostConnection(VpnStatus.disconnected);
+          },
+        ),
+      );
+      await db.customStatement('''
+      CREATE TRIGGER fail_save BEFORE UPDATE ON connection_config
+      BEGIN SELECT RAISE(FAIL, 'fixture commit failure'); END
+    ''');
+      await expectLater(coordinator.apply(next), throwsA(anything));
+      await db.customStatement('DROP TRIGGER fail_save');
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect((await coordinator.configuration).connection.rawId, a);
+      expect(
+        coordinator.state.value.runtime!.configuration.connection.rawId,
+        b,
+      );
+      final service = RawEditorService(database: db, coordinator: coordinator);
+      final original = (await service.load(b)).original!;
+
+      await expectLater(
+        service.delete(
+          original,
+          confirm: (_, _, _) async =>
+              fail('Unsafe deletion must not be offered'),
+        ),
+        throwsA(
+          isA<RawEditorException>().having(
+            (e) => e.reason,
+            'reason',
+            'changed',
+          ),
+        ),
+      );
+
+      expect(await db.coreConfigDao.searchRow(b), original);
+      expect((await coordinator.configuration).encode(), saved.encode());
+      expect(host.runtime!.configuration.connection.rawId, b);
+      expect(stops, 2);
+    },
+  );
 
   test('failed Raw database save rolls staged Geodata back', () async {
     final coordinator = await _initialize(

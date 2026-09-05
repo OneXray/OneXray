@@ -16,6 +16,7 @@ import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/service/assets/raw_editor.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/platform_requirements.dart';
@@ -320,13 +321,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
     if (entries == null || entries.isEmpty) return null;
     final id = entries.first.id;
     final row = servers.where((row) => row.id == id).firstOrNull;
-    if (row == null ||
-        row.delay <= 0 ||
-        const {
-          PingDelayConstants.unknown,
-          PingDelayConstants.error,
-          PingDelayConstants.timeout,
-        }.contains(row.delay)) {
+    if (row == null || !PingDelayConstants.isSuccessful(row.delay)) {
       return null;
     }
     return l10n.prototypeAvailableLatency(row.delay);
@@ -513,60 +508,37 @@ class ConnectController extends PageCubit<ConnectPageState> {
     }
     emit(state.copyWith(deletingRawIds: {...deletingRawIds, row.id}));
     try {
-      final expected = await coordinator.configuration;
-      if (!context.mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      final active =
-          expected.connection.expert && expected.connection.rawId == row.id;
-      final connected = connectionView.phase == ConnectionPhase.connected;
-      final disconnect = active && connected && servers.isEmpty;
-      if (!await showDestructiveConfirmationDialog(
-            context,
-            title: l10n.prototypeDeleteRawQuestion,
-            subtitle: row.name,
-            warning: disconnect
-                ? l10n.prototypeRawDeleteDisconnectNotice
-                : active
-                ? l10n.prototypeActiveRawDeleteNotice
-                : l10n.prototypeRawDeleteNotice,
-            confirmLabel: disconnect
-                ? l10n.prototypeDeleteAndDisconnect
-                : active && connected
-                ? l10n.prototypeDeleteAndReconnect
-                : l10n.prototypeDelete,
-          ) ||
-          !context.mounted) {
-        return;
-      }
-      if (!context.mounted) return;
       await run(context, () async {
-        final current = expected;
-        await coordinator.apply(
-          ConnectionConfiguration(
-            connection: ConnectionSettings.fromJson({
-              ...current.connection.toJson(),
-              if (current.connection.rawId == row.id) ...{
-                'expert': false,
-                'rawId': null,
+        var active = false;
+        final deleted =
+            await RawEditorService(
+              database: db,
+              coordinator: coordinator,
+            ).delete(
+              row,
+              confirm: (selected, reconnect, disconnect) async {
+                if (!context.mounted) return false;
+                active = selected;
+                final l10n = AppLocalizations.of(context)!;
+                return await showDestructiveConfirmationDialog(
+                      context,
+                      title: l10n.prototypeDeleteRawQuestion,
+                      subtitle: row.name,
+                      warning: disconnect
+                          ? l10n.prototypeRawDeleteDisconnectNotice
+                          : selected
+                          ? l10n.prototypeActiveRawDeleteNotice
+                          : l10n.prototypeRawDeleteNotice,
+                      confirmLabel: disconnect
+                          ? l10n.prototypeDeleteAndDisconnect
+                          : reconnect
+                          ? l10n.prototypeDeleteAndReconnect
+                          : l10n.prototypeDelete,
+                    ) &&
+                    context.mounted;
               },
-            }),
-            policy: current.policy,
-          ),
-          affectsRuntime: active && !disconnect,
-          disconnect: disconnect,
-          allowReconnect: connected,
-          expectedConfiguration: expected.encode(),
-          writeAssets: () async {
-            final latest = await db.coreConfigDao.searchRow(row.id);
-            if (latest == null ||
-                latest.type != row.type ||
-                latest.data != row.data) {
-              throw StateError('Raw configuration changed before deletion');
-            }
-            await db.coreConfigDao.deleteRow(row);
-          },
-        );
-        if (active) expertView = false;
+            );
+        if (deleted && active) expertView = false;
       });
     } finally {
       emit(state.copyWith(deletingRawIds: {...deletingRawIds}..remove(row.id)));
@@ -824,12 +796,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
           if (row.type != 'outbound' ||
               row.id <= 0 ||
               row.id == settings.finalExitId ||
-              row.delay < 0 ||
-              const {
-                PingDelayConstants.unknown,
-                PingDelayConstants.error,
-                PingDelayConstants.timeout,
-              }.contains(row.delay)) {
+              !PingDelayConstants.isSuccessful(row.delay)) {
             return false;
           }
           final matches = switch (settings.selection.kind) {

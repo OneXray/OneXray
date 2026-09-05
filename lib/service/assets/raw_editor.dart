@@ -9,6 +9,7 @@ import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/preparation.dart';
 import 'package:onexray/service/connection/runtime.dart';
+import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/xray/raw/db.dart';
@@ -103,14 +104,7 @@ class RawEditorService {
     await coordinator.refresh();
     final configuration = await coordinator.configuration;
     final runtime = coordinator.state.value.runtime;
-    final running = runtime?.configuration.connection;
-    if (original != null &&
-        running?.expert == true &&
-        running?.rawId == original.id &&
-        (!configuration.connection.expert ||
-            configuration.connection.rawId != original.id)) {
-      throw const RawEditorException('changed');
-    }
+    if (original != null) _checkRunningRaw(original, configuration);
     final selected =
         original != null &&
         configuration.connection.expert &&
@@ -160,13 +154,7 @@ class RawEditorService {
             XrayRawDb.configCompanion(draft.name.trim(), text),
           );
         } else {
-          final current = await db.coreConfigDao.searchRow(original.id);
-          if (current == null ||
-              current.type != 'raw' ||
-              current.data != original.data ||
-              current.name != original.name) {
-            throw const RawEditorException('changed');
-          }
+          final current = await _checkOriginal(original);
           final saved = current.copyWith(
             name: draft.name.trim(),
             data: Value(base64Encode(utf8.encode(text))),
@@ -178,6 +166,82 @@ class RawEditorService {
       },
     );
     return savedId;
+  }
+
+  Future<bool> delete(
+    CoreConfigData original, {
+    required Future<bool> Function(
+      bool selected,
+      bool reconnect,
+      bool disconnect,
+    )
+    confirm,
+  }) async {
+    await _checkOriginal(original);
+    await coordinator.initialize();
+    await coordinator.refresh();
+    final configuration = await coordinator.configuration;
+    _checkRunningRaw(original, configuration);
+    final connection = configuration.connection;
+    final selected = connection.expert && connection.rawId == original.id;
+    final connected =
+        coordinator.state.value.phase == ConnectionPhase.connected;
+    final servers =
+        await (db.select(db.coreConfig)
+              ..where((row) => row.type.equals('outbound'))
+              ..limit(1))
+            .get();
+    final disconnect = selected && connected && servers.isEmpty;
+    final reconnect = selected && connected && !disconnect;
+    if (!await confirm(selected, reconnect, disconnect)) return false;
+    await coordinator.apply(
+      ConnectionConfiguration(
+        connection: ConnectionSettings.fromJson({
+          ...connection.toJson(),
+          if (connection.rawId == original.id) ...{
+            'expert': false,
+            'rawId': null,
+          },
+        }),
+        policy: configuration.policy,
+      ),
+      affectsRuntime: selected && !disconnect,
+      disconnect: disconnect,
+      allowReconnect: connected,
+      expectedConfiguration: configuration.encode(),
+      writeAssets: () async {
+        _checkRunningRaw(original, configuration);
+        await _checkOriginal(original);
+        if (await db.coreConfigDao.deleteRow(original) != 1) {
+          throw const RawEditorException('missing');
+        }
+      },
+    );
+    return true;
+  }
+
+  void _checkRunningRaw(
+    CoreConfigData original,
+    ConnectionConfiguration configuration,
+  ) {
+    final running = coordinator.state.value.runtime?.configuration.connection;
+    if (running?.expert == true &&
+        running?.rawId == original.id &&
+        (!configuration.connection.expert ||
+            configuration.connection.rawId != original.id)) {
+      throw const RawEditorException('changed');
+    }
+  }
+
+  Future<CoreConfigData> _checkOriginal(CoreConfigData original) async {
+    final current = await db.coreConfigDao.searchRow(original.id);
+    if (current == null ||
+        current.type != 'raw' ||
+        current.data != original.data ||
+        current.name != original.name) {
+      throw const RawEditorException('changed');
+    }
+    return current;
   }
 
   static String namedText(String name, String text) {

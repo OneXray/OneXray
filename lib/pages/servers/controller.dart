@@ -290,9 +290,7 @@ class ServersController extends ConnectController {
     final row = display.first;
     return l.prototypeCurrentServerLatency(
       display.names.first,
-      row != null && ServerAssetService.healthy(row) && row.delay > 0
-          ? row.delay
-          : '—',
+      row != null && ServerAssetService.healthy(row) ? row.delay : '—',
     );
   }
 

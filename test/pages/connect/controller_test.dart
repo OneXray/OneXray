@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -72,6 +73,23 @@ void main() {
         'Automatic selection · 2 entry nodes',
       );
       expect(controller.selectionHealth(l), 'Available · 42 ms');
+      final running = controller.servers.first;
+      for (final delay in [
+        0,
+        -1,
+        PingDelayConstants.unknown,
+        PingDelayConstants.error,
+        PingDelayConstants.timeout,
+      ]) {
+        controller.servers = [
+          running.copyWith(delay: delay),
+          controller.servers.last,
+        ];
+        expect(
+          controller.selectionHealth(l),
+          delay == 0 ? 'Available · 0 ms' : isNull,
+        );
+      }
       expect(
         controller.selectionDetail(l),
         'Singapore 03 + Japan 02 → United States 01',

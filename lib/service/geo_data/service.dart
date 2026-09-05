@@ -121,15 +121,7 @@ class GeoDataService {
         (existing.isEmpty && rows.isNotEmpty) ||
         (resetOrphanedFiles && rows.isEmpty);
     if (!resetPublication) {
-      final defaults = rows.where((row) => row.id < 0).toList();
-      if (defaults.isNotEmpty) {
-        await _readAll(defaults);
-        return;
-      }
-
       if (rows.isNotEmpty) {
-        // v1/v2 stored only custom rows. Adopt that exact flat publication by
-        // adding the new built-in manifest rows without rewriting its files.
         final expected = {
           ..._bundledNames,
           for (final row in rows) '${row.name}.dat',
@@ -137,9 +129,13 @@ class GeoDataService {
         };
         if (existing.length != expected.length ||
             !existing.containsAll(expected)) {
-          throw StateError('Default routing data is incomplete');
+          throw StateError('Routing data files do not match the manifest');
         }
         await _readAll(rows);
+        if (rows.any((row) => row.id < 0)) return;
+
+        // v1/v2 stored only custom rows. Adopt that exact flat publication by
+        // adding the new built-in manifest rows without rewriting its files.
         await _validateDefaultFiles(_root);
         await _db.transaction(() async {
           final current = await _db.geoDataDao.publishedRows;

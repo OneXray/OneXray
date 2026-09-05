@@ -160,7 +160,12 @@ class ConnectionResolver {
         }
       }
       final successful =
-          candidates.where((candidate) => _isSuccessful(candidate.row)).toList()
+          candidates
+              .where(
+                (candidate) =>
+                    PingDelayConstants.isSuccessful(candidate.row.delay),
+              )
+              .toList()
             ..sort((a, b) {
               final delay = a.row.delay.compareTo(b.row.delay);
               return delay == 0 ? a.row.id.compareTo(b.row.id) : delay;
@@ -243,10 +248,4 @@ class ConnectionResolver {
         SelectionKind.source => row.subId == selection.id,
         SelectionKind.server => row.id == selection.id,
       };
-
-  static bool _isSuccessful(CoreConfigData row) =>
-      row.delay >= 0 &&
-      row.delay != PingDelayConstants.unknown &&
-      row.delay != PingDelayConstants.error &&
-      row.delay != PingDelayConstants.timeout;
 }

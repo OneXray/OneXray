@@ -190,6 +190,7 @@ void main() {
     for (final (delay, label, selectable) in [
       (PingDelayConstants.unknown, l.prototypeNotTested, true),
       (0, l.prototypeAvailableLatency(0), true),
+      (-1, l.prototypeTemporarilyUnavailable, false),
       (320, l.prototypeSlowLatency(320), true),
       (PingDelayConstants.error, l.prototypeTemporarilyUnavailable, false),
       (PingDelayConstants.timeout, l.prototypeTemporarilyUnavailable, false),
@@ -197,6 +198,13 @@ void main() {
       final candidate = row.copyWith(delay: delay);
       expect(controller.health(l, candidate), label);
       expect(controller.canChoose(candidate), selectable);
+      controller.servers = [candidate];
+      expect(
+        controller.automaticResult(l),
+        delay == 0 || delay == 320
+            ? l.prototypeCurrentServerLatency('one', delay)
+            : isNull,
+      );
     }
   });
 
