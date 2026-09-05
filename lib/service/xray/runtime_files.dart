@@ -3,8 +3,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/service/connection/runtime.dart';
 
@@ -45,19 +43,13 @@ abstract final class RuntimeDiagnosticFiles {
     'json',
   );
 
-  /// The System Extension owns its fixed log files; other hosts use the path.
-  static Future<NativeLogChunk?> readLog(
+  static Future<({Uint8List data, int offset, int size})?> readLog(
     String path, {
-    bool systemExtension = false,
-    bool access = true,
     int offset = -1,
     int limit = logChunkBytes,
   }) async {
     if (offset < -1 || limit <= 0 || limit > logChunkBytes) {
       throw const FormatException('Invalid log request');
-    }
-    if (systemExtension) {
-      return AppHostApi().readLog(access: access, offset: offset, limit: limit);
     }
     final type = await FileSystemEntity.type(path, followLinks: false);
     if (type == FileSystemEntityType.notFound) return null;
@@ -70,52 +62,13 @@ abstract final class RuntimeDiagnosticFiles {
       final start = offset == -1 ? max(0, size - limit) : min(offset, size);
       await file.setPosition(start);
       final data = await file.read(min(size - start, limit));
-      return NativeLogChunk(
-        data: data,
-        offset: start,
-        size: size,
-        fileId: path,
-      );
+      return (data: data, offset: start, size: size);
     } finally {
       await file.close();
     }
   }
 
-  static Future<Uint8List> readLogForExport(
-    String path, {
-    bool systemExtension = false,
-    bool access = true,
-  }) async {
-    if (systemExtension) {
-      final first = await readLog(
-        path,
-        systemExtension: true,
-        access: access,
-        offset: 0,
-      );
-      if (first == null || first.size > logExportBytes || first.offset != 0) {
-        throw const FileSystemException('Log file is unavailable');
-      }
-      final output = BytesBuilder(copy: false)..add(first.data);
-      while (output.length < first.size) {
-        final chunk = await readLog(
-          path,
-          systemExtension: true,
-          access: access,
-          offset: output.length,
-          limit: min(first.size - output.length, logChunkBytes),
-        );
-        if (chunk == null ||
-            chunk.fileId != first.fileId ||
-            chunk.size < first.size ||
-            chunk.offset != output.length ||
-            chunk.data.isEmpty) {
-          throw const FileSystemException('Log changed during export');
-        }
-        output.add(chunk.data);
-      }
-      return output.takeBytes();
-    }
+  static Future<Uint8List> readLogForExport(String path) async {
     final file = File(path);
     if (await FileSystemEntity.type(path, followLinks: false) !=
         FileSystemEntityType.file) {
@@ -137,18 +90,6 @@ abstract final class RuntimeDiagnosticFiles {
     }
   }
 
-  static Future<bool> exportLog(
-    String path,
-    String name, {
-    bool systemExtension = false,
-    bool access = true,
-  }) async => FileTool.saveData(
-    await readLogForExport(
-      path,
-      systemExtension: systemExtension,
-      access: access,
-    ),
-    name,
-    'log',
-  );
+  static Future<bool> exportLog(String path, String name) async =>
+      FileTool.saveData(await readLogForExport(path), name, 'log');
 }

@@ -23,15 +23,17 @@ class XrayRuntimePage extends StatelessWidget {
     required this.onSpeedTest,
     required this.onLog,
     required this.onConfig,
+    this.createController,
   });
   final void Function(BuildContext) onGeodata;
   final void Function(BuildContext) onUpdates;
   final void Function(BuildContext) onSpeedTest;
   final void Function(BuildContext, LogFileViewerParams) onLog;
   final void Function(BuildContext, ConfigFileViewerParams) onConfig;
+  final XrayRuntimeController Function()? createController;
   @override
   Widget build(BuildContext context) => BlocProvider(
-    create: (_) => XrayRuntimeController(),
+    create: (_) => createController?.call() ?? XrayRuntimeController(),
     child: BlocBuilder<XrayRuntimeController, XrayRuntimePageState>(
       builder: (context, state) {
         final controller = context.read<XrayRuntimeController>();
@@ -44,7 +46,8 @@ class XrayRuntimePage extends StatelessWidget {
           tabIndex: 1,
           onChanged: controller.reader.setVisible,
           child: Scaffold(
-            bottomNavigationBar: controller.base == null
+            bottomNavigationBar:
+                controller.base == null || state.systemExtension
                 ? null
                 : PageActionBar(
                     maxWidth: AppLayout.advancedMaxWidth,
@@ -166,88 +169,89 @@ class XrayRuntimePage extends StatelessWidget {
                               ),
                             ],
                           ),
-                          _section(
-                            icon: LucideIcons.fileText,
-                            title: l.prototypeLogs,
-                            description: l.prototypeManagedLogNotice,
-                            children: [
-                              _logToggle(
-                                controller: controller,
-                                title: l.prototypeRecordXrayLogs,
-                                field: 'enabled',
-                                value: controller.logsEnabled,
-                                mobile: mobile,
-                              ),
-                              if (controller.logsEnabled) ...[
-                                SettingRow(
-                                  title: l.prototypeErrorLogLevel,
-                                  titleStyle: mobile
-                                      ? AppTypography.settingsFieldTitle
-                                      : AppTypography.settingsRow,
-                                  minHeight: mobile ? 52 : 56,
-                                  trailing: SizedBox(
-                                    width: mobile
-                                        ? (MediaQuery.sizeOf(context).width *
-                                                  .48)
-                                              .clamp(0.0, 190.0)
-                                              .toDouble()
-                                        : 190,
-                                    child: SettingSelect<String>(
-                                      value: controller.level,
-                                      minHeight: mobile ? 36 : 38,
-                                      textStyle: mobile
-                                          ? AppTypography.runtimeSelector
-                                          : AppTypography
-                                                .runtimeDesktopSelector,
-                                      entries: {
-                                        'error': l.prototypeErrorsOnly,
-                                        'warning': l.prototypeWarning,
-                                        'info': 'Info',
-                                        'debug': 'Debug',
-                                      },
-                                      onChanged: disabled
-                                          ? null
-                                          : controller.setLevel,
+                          if (!state.systemExtension)
+                            _section(
+                              icon: LucideIcons.fileText,
+                              title: l.prototypeLogs,
+                              description: l.prototypeManagedLogNotice,
+                              children: [
+                                _logToggle(
+                                  controller: controller,
+                                  title: l.prototypeRecordXrayLogs,
+                                  field: 'enabled',
+                                  value: controller.logsEnabled,
+                                  mobile: mobile,
+                                ),
+                                if (controller.logsEnabled) ...[
+                                  SettingRow(
+                                    title: l.prototypeErrorLogLevel,
+                                    titleStyle: mobile
+                                        ? AppTypography.settingsFieldTitle
+                                        : AppTypography.settingsRow,
+                                    minHeight: mobile ? 52 : 56,
+                                    trailing: SizedBox(
+                                      width: mobile
+                                          ? (MediaQuery.sizeOf(context).width *
+                                                    .48)
+                                                .clamp(0.0, 190.0)
+                                                .toDouble()
+                                          : 190,
+                                      child: SettingSelect<String>(
+                                        value: controller.level,
+                                        minHeight: mobile ? 36 : 38,
+                                        textStyle: mobile
+                                            ? AppTypography.runtimeSelector
+                                            : AppTypography
+                                                  .runtimeDesktopSelector,
+                                        entries: {
+                                          'error': l.prototypeErrorsOnly,
+                                          'warning': l.prototypeWarning,
+                                          'info': 'Info',
+                                          'debug': 'Debug',
+                                        },
+                                        onChanged: disabled
+                                            ? null
+                                            : controller.setLevel,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                _logToggle(
-                                  controller: controller,
-                                  title: l.prototypeRecordDnsQueries,
-                                  field: 'recordDns',
-                                  value: controller.recordDns,
+                                  _logToggle(
+                                    controller: controller,
+                                    title: l.prototypeRecordDnsQueries,
+                                    field: 'recordDns',
+                                    value: controller.recordDns,
+                                    mobile: mobile,
+                                  ),
+                                  _logToggle(
+                                    controller: controller,
+                                    title: l.prototypeHideLogIpAddresses,
+                                    field: 'maskIp',
+                                    value: controller.maskIp,
+                                    mobile: mobile,
+                                  ),
+                                ],
+                                _pushRow(
+                                  context,
                                   mobile: mobile,
+                                  title: l.prototypeAccessLog,
+                                  subtitle: l.prototypeAccessLogHint,
+                                  icon: LucideIcons.fileText,
+                                  enabled: controller.logPath(true) != null,
+                                  onTap: () =>
+                                      controller.openLog(context, true, onLog),
                                 ),
-                                _logToggle(
-                                  controller: controller,
-                                  title: l.prototypeHideLogIpAddresses,
-                                  field: 'maskIp',
-                                  value: controller.maskIp,
+                                _pushRow(
+                                  context,
                                   mobile: mobile,
+                                  title: l.prototypeErrorLog,
+                                  subtitle: l.prototypeErrorLogHint,
+                                  icon: LucideIcons.terminal,
+                                  enabled: controller.logPath(false) != null,
+                                  onTap: () =>
+                                      controller.openLog(context, false, onLog),
                                 ),
                               ],
-                              _pushRow(
-                                context,
-                                mobile: mobile,
-                                title: l.prototypeAccessLog,
-                                subtitle: l.prototypeAccessLogHint,
-                                icon: LucideIcons.fileText,
-                                enabled: controller.logPath(true) != null,
-                                onTap: () =>
-                                    controller.openLog(context, true, onLog),
-                              ),
-                              _pushRow(
-                                context,
-                                mobile: mobile,
-                                title: l.prototypeErrorLog,
-                                subtitle: l.prototypeErrorLogHint,
-                                icon: LucideIcons.terminal,
-                                enabled: controller.logPath(false) != null,
-                                onTap: () =>
-                                    controller.openLog(context, false, onLog),
-                              ),
-                            ],
-                          ),
+                            ),
                           _section(
                             icon: LucideIcons.fileJson,
                             title: l.prototypeRuntimeConfiguration,

@@ -141,7 +141,7 @@ libXray 以 30 秒为目标原子覆盖本次会话的 `runtime.json`，正常�
 归档、VPN 启停或累计清零；实时计数继续读取 Xray 原生 metrics。
 
 所有平台使用同一统计读取链路，App 不读 libXray 会话文件，macOS SE 也不再通过原生
-消息代读；libXray 自己持有文件权限，日志与 DAT 的原生消息保持独立。HTTP 地址与随机
+消息代读；libXray 自己持有文件权限，DAT 同步继续使用独立原生消息。HTTP 地址与随机
 令牌属于私有启动请求，不允许 Raw 覆盖，不写入日志或分享内容。App 重开从
 `run/start.json` 定位当前候选端点，但只有原生状态与 HTTP 当前会话能够确认实际运行。
 

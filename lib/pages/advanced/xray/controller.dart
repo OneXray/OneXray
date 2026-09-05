@@ -123,8 +123,9 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
     ConnectionPhase.disconnecting => l.prototypeDisconnecting,
     ConnectionPhase.failed => l.prototypeConnectionFailed,
   };
-  String? logPath(bool access) =>
-      RuntimeDiagnosticFiles.logPath(runtime, access: access);
+  String? logPath(bool access) => state.systemExtension
+      ? null
+      : RuntimeDiagnosticFiles.logPath(runtime, access: access);
 
   void _advancedChanged(AdvancedPageState advanced) {
     emit(
@@ -165,7 +166,7 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   }
 
   void setLog(String key, Object value) {
-    if (busy) return;
+    if (busy || state.systemExtension) return;
     emit(state.copyWith(log: {...log, key: value}));
   }
 
@@ -174,7 +175,7 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   }
 
   void restoreDefaults() {
-    if (busy) return;
+    if (busy || state.systemExtension) return;
     emit(
       state.copyWith(
         log: Map<String, dynamic>.from(
@@ -185,7 +186,13 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   }
 
   Future<void> save(BuildContext context) async {
-    if (busy || runtimeBusy || !dirty || base == null) return;
+    if (busy ||
+        runtimeBusy ||
+        state.systemExtension ||
+        !dirty ||
+        base == null) {
+      return;
+    }
     final l = AppLocalizations.of(context)!;
     emit(state.copyWith(saving: true, failed: false));
     try {
@@ -240,8 +247,6 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
       LogFileViewerParams(
         title: access ? l.prototypeAccessLog : l.prototypeErrorLog,
         path: path,
-        systemExtension: state.systemExtension,
-        access: access,
       ),
     );
   }

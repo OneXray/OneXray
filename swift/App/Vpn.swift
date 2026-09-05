@@ -416,33 +416,6 @@ class VPNManager {
 
     // MARK: - System Extension path rewriting + XPC dat sync
 
-    func readLog(access: Bool, offset: Int64, limit: Int64) async throws -> TunnelLogChunk? {
-        guard Constants.useSystemExtension else { throw RuntimeStateError.unsupported }
-        try TunnelLogChunk.validateRequest(offset: offset, limit: limit)
-        guard let manager = try await findVpn(),
-              let session = manager.connection as? NETunnelProviderSession else {
-            throw RuntimeStateError.unavailable
-        }
-        // Reuse the read-only provider channel, including when disconnected.
-        // A failed offline delivery is unavailable, never a cached success.
-        let response = try await sendTunnelRequest(session: session,
-            .readLog(access: access, offset: offset, limit: limit),
-            timeoutSeconds: 5)
-        switch response {
-        case let .logChunk(chunk):
-            try chunk?.validate(limit: limit)
-            if let chunk {
-                let expectedOffset = offset == -1 ? max(0, chunk.size - limit) : min(offset, chunk.size)
-                guard chunk.offset == expectedOffset else { throw RuntimeStateError.invalid }
-            }
-            return chunk
-        case let .error(code):
-            throw RuntimeStateError(rawValue: code) ?? .unavailable
-        default:
-            throw RuntimeStateError.invalid
-        }
-    }
-
     private func pathMapping() -> (user: String, ext: String)? {
         guard let userGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()),
               let extGroup = extensionGroupContainerURL()
@@ -539,14 +512,6 @@ class VPNManager {
         timeoutSeconds: UInt64? = nil
     ) async throws -> TunnelResponse {
         let data = try TunnelMessageCoder.encode(request)
-        let maximumResponseBytes: Int?
-        switch request {
-        case .readLog: maximumResponseBytes = TunnelLogChunk.maximumMessageBytes
-        default: maximumResponseBytes = nil
-        }
-        if let maximumResponseBytes, data.count > maximumResponseBytes {
-            throw RuntimeStateError.invalid
-        }
         return try await withCheckedThrowingContinuation { continuation in
             let pending = PendingTunnelResponse(continuation)
             let timeout = timeoutSeconds.map { seconds in
@@ -562,10 +527,6 @@ class VPNManager {
                         timeout?.cancel()
                         guard let response else {
                             pending.resolve(.failure(RuntimeStateError.unavailable))
-                            return
-                        }
-                        if let maximumResponseBytes, response.count > maximumResponseBytes {
-                            pending.resolve(.failure(RuntimeStateError.invalid))
                             return
                         }
                         do {

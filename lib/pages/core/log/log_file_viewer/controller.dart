@@ -54,7 +54,6 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
 
   Timer? _timer;
   int _offset = 0;
-  String? _fileId;
   var _droppedContent = false;
   var _reading = false;
   List<int> _buffer = const [];
@@ -69,23 +68,15 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
     if (_reading || !isPageActive) return;
     _reading = true;
     try {
+      var replace = !state.fileExists;
       var chunk = await RuntimeDiagnosticFiles.readLog(
         params.path,
-        systemExtension: params.systemExtension,
-        access: params.access,
-        offset: _fileId == null ? -1 : _offset,
+        offset: replace ? -1 : _offset,
       );
-      var replace = _fileId == null;
       if (chunk != null &&
           !replace &&
-          (chunk.fileId != _fileId ||
-              chunk.size < _offset ||
-              chunk.size - _offset > _maxBufferBytes)) {
-        chunk = await RuntimeDiagnosticFiles.readLog(
-          params.path,
-          systemExtension: params.systemExtension,
-          access: params.access,
-        );
+          (chunk.size < _offset || chunk.size - _offset > _maxBufferBytes)) {
+        chunk = await RuntimeDiagnosticFiles.readLog(params.path);
         replace = true;
       }
       if (chunk == null) {
@@ -101,13 +92,12 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
         _buffer = _trimBuffer([..._buffer, ...chunk.data]);
       }
       _offset = chunk.offset + chunk.data.length;
-      _fileId = chunk.fileId;
       _emitBuffer(
         fileExists: true,
         truncated: replace ? _droppedContent : state.truncated,
       );
     } catch (_) {
-      // Unavailable provider messages must not leave a stale successful view.
+      // An unavailable file must not leave a stale successful view.
       _resetMissingFile();
     } finally {
       _reading = false;
@@ -152,7 +142,6 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
 
   void _resetMissingFile() {
     _offset = 0;
-    _fileId = null;
     _droppedContent = false;
     _buffer = const [];
     _emitBuffer(fileExists: false, truncated: false);
@@ -181,8 +170,6 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
       await RuntimeDiagnosticFiles.exportLog(
         params.path,
         p.basename(params.path),
-        systemExtension: params.systemExtension,
-        access: params.access,
       );
     } catch (_) {
       if (context.mounted) {

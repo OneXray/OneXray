@@ -337,41 +337,6 @@ class AppHostApi {
     return _errorResult;
   }
 
-  /// Reads only the two fixed logs inside the System Extension run directory.
-  Future<NativeLogChunk?> readLog({
-    required bool access,
-    required int offset,
-    required int limit,
-  }) async {
-    if (offset < -1 || limit <= 0 || limit > 1024 * 1024) {
-      throw const FormatException('Invalid log request');
-    }
-    if (!AppPlatform.isMacOS) {
-      throw UnsupportedError('logRequiresSystemExtension');
-    }
-    final chunk = await _api
-        .readLog(access, offset, limit)
-        .timeout(const Duration(seconds: 8));
-    if (chunk != null &&
-        (chunk.offset < 0 ||
-            chunk.size < chunk.offset ||
-            chunk.data.length > limit ||
-            chunk.data.length > chunk.size - chunk.offset ||
-            chunk.fileId.isEmpty ||
-            chunk.fileId.length > 128)) {
-      throw const FormatException('Invalid log response');
-    }
-    if (chunk != null) {
-      final expectedOffset = offset == -1
-          ? (chunk.size > limit ? chunk.size - limit : 0)
-          : (offset > chunk.size ? chunk.size : offset);
-      if (chunk.offset != expectedOffset) {
-        throw const FormatException('Invalid log response');
-      }
-    }
-    return chunk;
-  }
-
   Future<String> stopXray() async {
     if (!AppPlatform.isIOS) {
       return _errorResult;

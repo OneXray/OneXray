@@ -51,10 +51,6 @@ abstract class BridgeHostApi {
   @asyncCallback
   AppleVpnCapabilities appleVpnCapabilities();
 
-  // Fixed System Extension logs. Offset -1 reads the bounded file tail.
-  @asyncCallback
-  NativeLogChunk? readLog(bool access, int offset, int limit);
-
   @asyncCallback
   NativeLaunchAtLoginResult queryLaunchAtLogin();
 
@@ -81,20 +77,6 @@ class AppleVpnCapabilities {
   });
   final bool serviceExclusions;
   final bool deviceCommunication;
-}
-
-class NativeLogChunk {
-  NativeLogChunk({
-    required this.data,
-    required this.offset,
-    required this.size,
-    required this.fileId,
-  });
-
-  final Uint8List data;
-  final int offset;
-  final int size;
-  final String fileId;
 }
 
 // Apple VPN profile and System Extension readiness.

@@ -137,23 +137,6 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         )))
     }
 
-    func readLog(access: Bool, offset: Int64, limit: Int64,
-                 completion: @escaping (Result<NativeLogChunk?, any Error>) -> Void) {
-        Task {
-            do {
-                let chunk = try await VPNManager.shared.readLog(
-                    access: access, offset: offset, limit: limit
-                )
-                completion(.success(chunk.map {
-                    NativeLogChunk(data: FlutterStandardTypedData(bytes: $0.data),
-                                   offset: $0.offset, size: $0.size, fileId: $0.fileId)
-                }))
-            } catch {
-                completion(.failure(error as? RuntimeStateError ?? RuntimeStateError.unavailable))
-            }
-        }
-    }
-
     func queryLaunchAtLogin(
         completion: @escaping (Result<NativeLaunchAtLoginResult, any Error>) -> Void
     ) {

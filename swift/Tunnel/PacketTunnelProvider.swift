@@ -257,19 +257,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         case .startXray:
             fulfillStartSignal()
             response = .ok
-        case let .readLog(access, offset, limit):
-            do {
-                guard data.count <= 4096 else { throw RuntimeStateError.invalid }
-                response = .logChunk(try readLog(access: access, offset: offset, limit: limit))
-            } catch {
-                response = .error((error as? RuntimeStateError ?? .unavailable).rawValue)
-            }
         }
-        guard let encoded = try? TunnelMessageCoder.encode(response) else { return nil }
-        if case .readLog = request, encoded.count > TunnelLogChunk.maximumMessageBytes {
-            return try? TunnelMessageCoder.encode(TunnelResponse.error(RuntimeStateError.invalid.rawValue))
-        }
-        return encoded
+        return try? TunnelMessageCoder.encode(response)
     }
 
     private func logFile(access: Bool) throws -> URL? {
@@ -279,31 +268,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         let directory = container.adaptedAppendPath(path: "run")
         guard try runtimeDirectoryExists(directory) else { return nil }
         return directory.adaptedAppendPath(path: access ? "access.log" : "error.log")
-    }
-
-    private func readLog(access: Bool, offset: Int64, limit: Int64) throws -> TunnelLogChunk? {
-        try TunnelLogChunk.validateRequest(offset: offset, limit: limit)
-        guard let file = try logFile(access: access) else { return nil }
-        let descriptor = Darwin.open(file.adaptedPath(), O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
-        guard descriptor >= 0 else {
-            if errno == ENOENT { return nil }
-            throw RuntimeStateError.unavailable
-        }
-        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
-        defer { try? handle.close() }
-        var attributes = stat()
-        guard fstat(descriptor, &attributes) == 0,
-              attributes.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG),
-              attributes.st_size >= 0 else { throw RuntimeStateError.invalid }
-        let size = Int64(attributes.st_size)
-        let start = offset == -1 ? max(0, size - limit) : min(offset, size)
-        try handle.seek(toOffset: UInt64(start))
-        let count = Int(min(limit, size - start))
-        let data = count == 0 ? Data() : (try handle.read(upToCount: count) ?? Data())
-        let chunk = TunnelLogChunk(data: data, offset: start, size: size,
-            fileId: "\(attributes.st_dev):\(attributes.st_ino)")
-        try chunk.validate(limit: limit)
-        return chunk
     }
 
     private func runtimeDirectoryExists(_ directory: URL) throws -> Bool {
