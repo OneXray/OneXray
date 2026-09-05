@@ -55,12 +55,10 @@ class BackgroundTaskService with WidgetsBindingObserver {
   Future<void> checkDataUpdate({
     bool updateSubscription = true,
     bool updateGeoData = true,
-    bool? vpnConnected,
   }) async {
     await DataUpdateService().checkAndRun(
       updateSubscription: updateSubscription,
       updateGeoData: updateGeoData,
-      vpnConnected: vpnConnected ?? _vpnConnected,
     );
   }
 
@@ -69,7 +67,7 @@ class BackgroundTaskService with WidgetsBindingObserver {
       case VpnStatus.connected:
         if (_vpnConnected) return;
         _vpnConnected = true;
-        unawaited(_checkGeoDataUpdateAfterVpnConnected());
+        unawaited(_checkDataUpdateAfterVpnConnected());
         break;
       default:
         _vpnConnected = false;
@@ -77,11 +75,11 @@ class BackgroundTaskService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _checkGeoDataUpdateAfterVpnConnected() async {
+  Future<void> _checkDataUpdateAfterVpnConnected() async {
     await Future.delayed(const Duration(seconds: 3));
     if (!_vpnConnected) {
       return;
     }
-    await checkDataUpdate(vpnConnected: true);
+    await checkDataUpdate();
   }
 }

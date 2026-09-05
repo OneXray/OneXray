@@ -18,7 +18,6 @@ class DataUpdateService {
   Future<void> checkAndRun({
     bool updateSubscription = true,
     bool updateGeoData = true,
-    bool vpnConnected = false,
   }) async {
     if (_running || AppEventBus.instance.state.downloading) {
       return;

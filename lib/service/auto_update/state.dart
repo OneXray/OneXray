@@ -44,7 +44,6 @@ class AutoUpdateState {
   var subscriptionInterval = AutoUpdateInterval.threeDays;
   var geoDataEnable = true;
   var geoDataInterval = AutoUpdateInterval.threeDays;
-  var geoDataUpdateAfterVpnConnected = true;
 
   Future<void> readFromPreferences() async {
     final jsonMap = await PreferencesKey().readAutoUpdate();
@@ -68,10 +67,6 @@ class AutoUpdateState {
         autoUpdateJson.geoDataInterval!,
       );
     }
-    if (autoUpdateJson.geoDataUpdateAfterVpnConnected != null) {
-      geoDataUpdateAfterVpnConnected =
-          autoUpdateJson.geoDataUpdateAfterVpnConnected!;
-    }
   }
 
   Future<void> saveToPreferences() async {
@@ -80,7 +75,6 @@ class AutoUpdateState {
       subscriptionInterval.value,
       geoDataEnable,
       geoDataInterval.value,
-      geoDataUpdateAfterVpnConnected,
     );
     await PreferencesKey().saveAutoUpdate(autoUpdateJson.toJson());
   }
