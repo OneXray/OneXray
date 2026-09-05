@@ -1,0 +1,170 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/controller.dart';
+import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/servers/view.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/responsive_content.dart';
+
+class ServersPage extends StatefulWidget {
+  const ServersPage({super.key});
+  @override
+  State<ServersPage> createState() => _ServersPageState();
+}
+
+class _ServersPageState extends State<ServersPage> {
+  final controller = ServersController();
+  final scroll = ScrollController();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) controller.initialize();
+    });
+  }
+
+  @override
+  void dispose() {
+    scroll.dispose();
+    unawaited(controller.close());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => BlocProvider.value(
+    value: controller,
+    child: BlocBuilder<ServersController, ConnectPageState>(
+      builder: (context, state) {
+        final l = AppLocalizations.of(context)!;
+        final mobileRoot =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        final empty = state.ready && !state.failed && state.servers.isEmpty;
+        final page = Scaffold(
+          appBar: AppBar(
+            title: Text(l.prototypeServers),
+            actions: [
+              if (!mobileRoot && !empty) ...[
+                OutlinedButton.icon(
+                  onPressed: () => controller.openSources(context),
+                  icon: const Icon(LucideIcons.refreshCw),
+                  label: Text(l.prototypeUpdatesAndSources),
+                ),
+                const SizedBox(width: 10),
+                FilledButton.icon(
+                  onPressed: () => controller.addServers(context),
+                  icon: const Icon(LucideIcons.plus),
+                  label: Text(l.prototypeAddServer),
+                ),
+              ] else if (mobileRoot)
+                IconButton(
+                  color: ColorManager.palette(context).primary,
+                  tooltip: l.prototypeAddServers,
+                  onPressed: () => controller.addServers(context),
+                  icon: const Icon(LucideIcons.plus),
+                ),
+            ],
+            bottom: mobileRoot || empty
+                ? null
+                : TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.page,
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    tabs: [
+                      Tab(text: l.prototypeByNodeLocation),
+                      Tab(text: l.prototypeBySubscription),
+                    ],
+                    onTap: (index) =>
+                        controller.groupBy(ServerGrouping.values[index]),
+                  ),
+          ),
+          body: SafeArea(
+            child: ServerLoadState(
+              controller: controller,
+              child: ResponsiveContent(
+                desktopMaxWidth: AppLayout.standardMaxWidth,
+                child: ServerBrowser(controller: controller, scroll: scroll),
+              ),
+            ),
+          ),
+        );
+        return mobileRoot
+            ? page
+            : DefaultTabController(
+                length: 2,
+                initialIndex: controller.grouping.index,
+                child: page,
+              );
+      },
+    ),
+  );
+}
+
+class ServerGroupPage extends StatelessWidget {
+  final ServerGroupParams params;
+  const ServerGroupPage({super.key, required this.params});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = params.controller;
+    return BlocProvider.value(
+      value: controller,
+      child: BlocBuilder<ServersController, ConnectPageState>(
+        builder: (context, _) {
+          final l = AppLocalizations.of(context)!;
+          final group = controller
+              .groups(l)
+              .where((row) => row.id == params.groupId)
+              .firstOrNull;
+          return Scaffold(
+            appBar: AppBar(title: Text(group?.name ?? l.prototypeServers)),
+            body: SafeArea(
+              child: ResponsiveContent(
+                child: group == null
+                    ? Center(child: Text(l.prototypeNoServersYet))
+                    : ServerGroupView(
+                        controller: controller,
+                        group: group,
+                        groupPage: true,
+                      ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ServerLoadState extends StatelessWidget {
+  final ServersController controller;
+  final Widget child;
+  const ServerLoadState({
+    super.key,
+    required this.controller,
+    required this.child,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    if (controller.failed) {
+      return Center(
+        child: FilledButton(
+          onPressed: () => controller.initialize(),
+          child: Text(l.prototypeRetry),
+        ),
+      );
+    }
+    if (!controller.ready) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return child;
+  }
+}

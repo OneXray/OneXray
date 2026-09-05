@@ -25,15 +25,25 @@ BackupCoreConfigJson _$BackupCoreConfigJsonFromJson(
   json['type'] as String?,
   json['tags'] as String?,
   json['data'] as String?,
+  id: (json['id'] as num?)?.toInt(),
+  subId: (json['subId'] as num?)?.toInt(),
+  delay: (json['delay'] as num?)?.toInt(),
+  countryCode: json['countryCode'] as String?,
+  favorite: json['favorite'] as bool?,
 );
 
 Map<String, dynamic> _$BackupCoreConfigJsonToJson(
   BackupCoreConfigJson instance,
 ) => <String, dynamic>{
+  'id': ?instance.id,
   'name': ?instance.name,
   'type': ?instance.type,
   'tags': ?instance.tags,
   'data': ?instance.data,
+  'subId': ?instance.subId,
+  'delay': ?instance.delay,
+  'countryCode': ?instance.countryCode,
+  'favorite': ?instance.favorite,
 };
 
 BackupSubscriptionJson _$BackupSubscriptionJsonFromJson(
@@ -45,17 +55,21 @@ BackupSubscriptionJson _$BackupSubscriptionJsonFromJson(
   json['agePublicKey'] as String?,
   (json['timestamp'] as num?)?.toInt(),
   json['expanded'] as bool?,
+  id: (json['id'] as num?)?.toInt(),
+  count: (json['count'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$BackupSubscriptionJsonToJson(
   BackupSubscriptionJson instance,
 ) => <String, dynamic>{
+  'id': ?instance.id,
   'name': ?instance.name,
   'url': ?instance.url,
   'ageSecretKey': ?instance.ageSecretKey,
   'agePublicKey': ?instance.agePublicKey,
   'timestamp': ?instance.timestamp,
   'expanded': ?instance.expanded,
+  'count': ?instance.count,
 };
 
 BackupGeoDataJson _$BackupGeoDataJsonFromJson(Map<String, dynamic> json) =>
@@ -66,10 +80,12 @@ BackupGeoDataJson _$BackupGeoDataJsonFromJson(Map<String, dynamic> json) =>
       (json['timestamp'] as num?)?.toInt(),
       (json['categoryCount'] as num?)?.toInt(),
       (json['ruleCount'] as num?)?.toInt(),
+      id: (json['id'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$BackupGeoDataJsonToJson(BackupGeoDataJson instance) =>
     <String, dynamic>{
+      'id': ?instance.id,
       'name': ?instance.name,
       'type': ?instance.type,
       'url': ?instance.url,
@@ -77,3 +93,19 @@ Map<String, dynamic> _$BackupGeoDataJsonToJson(BackupGeoDataJson instance) =>
       'categoryCount': ?instance.categoryCount,
       'ruleCount': ?instance.ruleCount,
     };
+
+BackupRoutingProfileJson _$BackupRoutingProfileJsonFromJson(
+  Map<String, dynamic> json,
+) => BackupRoutingProfileJson(
+  (json['id'] as num?)?.toInt(),
+  json['name'] as String?,
+  json['data'] as String?,
+);
+
+Map<String, dynamic> _$BackupRoutingProfileJsonToJson(
+  BackupRoutingProfileJson instance,
+) => <String, dynamic>{
+  'id': ?instance.id,
+  'name': ?instance.name,
+  'data': ?instance.data,
+};

@@ -93,7 +93,6 @@ android/keystore/
 ios/fastlane/AuthKey.p8
 macos/fastlane/AuthKey.p8
 macos_se/fastlane/AuthKey.p8
-ios/Flutter/AdMob.xcconfig
 .fvm/
 
 # ai

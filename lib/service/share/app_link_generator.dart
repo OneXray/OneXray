@@ -7,22 +7,45 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/app_link_parser.dart';
 import 'package:onexray/service/subscription/model.dart';
+import 'package:onexray/service/xray/outbound/map.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
 
 enum _SubscriptionAgeMode { none, x25519, hybrid, invalid }
 
 abstract final class OneXrayAppLinkGenerator {
+  static Uri configurationText(
+    OneXrayConfigLinkType type,
+    String name,
+    String text,
+  ) => Uri(
+    scheme: OneXrayAppLinkParser.scheme,
+    host: OneXrayAppLinkParser.host,
+    path: OneXrayAppLinkParser.configPath,
+    queryParameters: {
+      'type': type.wireName,
+      'data': base64Encode(utf8.encode(text)),
+    },
+    fragment: name,
+  );
+
   static Uri? config(CoreConfigData config) {
     final type = switch (CoreConfigType.fromString(config.type)) {
       CoreConfigType.outbound => OneXrayConfigLinkType.outbound,
-      CoreConfigType.profile => OneXrayConfigLinkType.profile,
-      CoreConfigType.multiNodeOutbound =>
-        OneXrayConfigLinkType.multiNodeOutbound,
       CoreConfigType.raw => OneXrayConfigLinkType.raw,
       null => null,
     };
-    final data = config.data?.trim();
+    var data = config.data?.trim();
     if (type == null || data == null || data.isEmpty) {
       return null;
+    }
+    if (type == OneXrayConfigLinkType.outbound) {
+      try {
+        data = base64Encode(
+          utf8.encode(encodeSingleOutbound(readOutboundFromDbData(config))),
+        );
+      } catch (_) {
+        return null;
+      }
     }
 
     return _verified(

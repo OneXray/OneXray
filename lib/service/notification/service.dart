@@ -16,7 +16,11 @@ final class NotificationService {
     const initializationSettingsAndroid = AndroidInitializationSettings(
       'ic_launcher',
     );
-    final initializationSettingsDarwin = DarwinInitializationSettings();
+    const initializationSettingsDarwin = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestSoundPermission: false,
+      requestBadgePermission: false,
+    );
     final initializationSettingsLinux = LinuxInitializationSettings(
       defaultActionName: 'Open notification',
     );
@@ -48,8 +52,6 @@ final class NotificationService {
     }
   }
 
-  void dispose() {}
-
   Future<void> _onReceiveNotification(
     NotificationResponse notificationResponse,
   ) async {
@@ -60,30 +62,38 @@ final class NotificationService {
   }
 
   Future<void> pushNotification(String message) async {
-    if (AppPlatform.isAndroid) {
-      await _pushAndroidNotification(message);
-    } else {
-      await _localNotification.show(id: 0, title: message);
+    if (AppPlatform.isIOS) {
+      await _localNotification
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true);
+    } else if (AppPlatform.isMacOS) {
+      await _localNotification
+          .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true);
     }
-  }
 
-  Future<void> _pushAndroidNotification(String message) async {
-    const androidNotificationDetails = AndroidNotificationDetails(
-      'net.yuandev.onexray',
-      'OneXray',
-      channelDescription: 'OneXray',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-      ticker: 'OneXray',
-    );
-    const notificationDetails = NotificationDetails(
-      android: androidNotificationDetails,
-    );
-    await _localNotification.show(
-      id: 0,
-      title: message,
-      body: null,
-      notificationDetails: notificationDetails,
-    );
+    if (AppPlatform.isAndroid) {
+      const details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          'net.yuandev.onexray',
+          'OneXray',
+          channelDescription: 'OneXray',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          ticker: 'OneXray',
+        ),
+      );
+      await _localNotification.show(
+        id: 0,
+        title: message,
+        notificationDetails: details,
+      );
+      return;
+    }
+    await _localNotification.show(id: 0, title: message);
   }
 }

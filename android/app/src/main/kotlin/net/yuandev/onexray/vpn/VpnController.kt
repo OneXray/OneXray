@@ -3,10 +3,11 @@ package net.yuandev.onexray.vpn
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.VpnService
+import android.content.pm.ShortcutManager
 import android.service.quicksettings.TileService
 import androidx.core.content.ContextCompat
 import com.elvishew.xlog.XLog
+import net.yuandev.onexray.MainActivity
 import net.yuandev.onexray.tile.OneQuickSettingsTileService
 import java.io.File
 import java.net.InetAddress
@@ -14,20 +15,12 @@ import java.net.NetworkInterface
 import java.net.SocketException
 
 object VpnController {
-    private const val startSnapshotRelativePath = "run/start.json"
     private const val stopRequestRelativePath = "run/vpn.stop"
     private val vpnAddresses by lazy {
         setOf(
             InetAddress.getByName(OneVpnService.IPV4_ADDRESS),
             InetAddress.getByName(OneVpnService.IPV6_ADDRESS),
         )
-    }
-
-    enum class StartResult {
-        STARTED,
-        MISSING_START_SNAPSHOT,
-        NEED_PERMISSION,
-        FAILED,
     }
 
     fun readVpnRunning(context: Context): Boolean {
@@ -52,23 +45,26 @@ object VpnController {
         return false
     }
 
-    fun hasStartSnapshot(context: Context): Boolean =
-        File(context.filesDir, startSnapshotRelativePath).isFile
+    fun buildShortcutStartIntent(context: Context): Intent {
+        // Reuse the plugin-created Intent so the App's coordinator handles
+        // connection preparation; do not replay a previously saved plan.
+        val shortcutIntent = try {
+            context.getSystemService(ShortcutManager::class.java)
+                ?.dynamicShortcuts?.firstOrNull { it.id == "startVpn" }
+                ?.intent?.let { Intent(it) }
+        } catch (_: RuntimeException) {
+            XLog.w("VpnController: unable to read start shortcut; opening App")
+            null
+        }
+        return (shortcutIntent ?: Intent(context, MainActivity::class.java)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+    }
 
     fun buildStartIntent(context: Context): Intent =
         Intent(context, OneVpnService::class.java).apply {
             action = OneVpnService.ACTION_START
         }
-
-    fun startVpnWithLastProfile(context: Context): StartResult {
-        if (!hasStartSnapshot(context)) {
-            return StartResult.MISSING_START_SNAPSHOT
-        }
-        if (VpnService.prepare(context) != null) {
-            return StartResult.NEED_PERMISSION
-        }
-        return if (startVpn(context)) StartResult.STARTED else StartResult.FAILED
-    }
 
     fun startVpn(context: Context): Boolean {
         if (!clearStopRequest(context)) {

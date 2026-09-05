@@ -1,9 +1,12 @@
 import 'dart:ui';
+import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/gen/assets.gen.dart';
-import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/app_startup/service.dart';
+import 'package:onexray/service/notification/service.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -18,6 +21,8 @@ final class TrayService with TrayListener {
 
   //==========================
   var _initialized = false;
+  ConnectionPhase? _lastPhase;
+  bool? _lastCanDisconnect;
 
   void init() {
     if (!AppPlatform.isDesktop || _initialized) {
@@ -25,6 +30,7 @@ final class TrayService with TrayListener {
     }
 
     trayManager.addListener(this);
+    ConnectionCoordinator.instance.state.addListener(_connectionChanged);
     _initialized = true;
   }
 
@@ -33,7 +39,20 @@ final class TrayService with TrayListener {
       return;
     }
     trayManager.removeListener(this);
+    ConnectionCoordinator.instance.state.removeListener(_connectionChanged);
+    _lastPhase = null;
+    _lastCanDisconnect = null;
     _initialized = false;
+  }
+
+  void _connectionChanged() {
+    final view = ConnectionCoordinator.instance.state.value;
+    if (_lastPhase == view.phase && _lastCanDisconnect == view.canDisconnect) {
+      return;
+    }
+    _lastPhase = view.phase;
+    _lastCanDisconnect = view.canDisconnect;
+    unawaited(refreshTrayManager());
   }
 
   Future<void> refreshTrayManager() async {
@@ -41,7 +60,8 @@ final class TrayService with TrayListener {
       return;
     }
 
-    final running = VpnService().vpnRunning;
+    final view = ConnectionCoordinator.instance.state.value;
+    final running = view.canDisconnect || view.busy;
     await _setTrayIcon(running);
 
     final items = <MenuItem>[];
@@ -126,27 +146,39 @@ final class TrayService with TrayListener {
       return;
     }
 
-    switch (key) {
-      case _TrayMenuKey.startVpn:
-        await VpnService().startDefaultVpn();
-        break;
-      case _TrayMenuKey.stopVpn:
-        await VpnService().stopDefaultVpn();
-        break;
-      case _TrayMenuKey.showApp:
-        await windowManager.show();
-        await windowManager.focus();
-        break;
-      case _TrayMenuKey.quitApp:
-        if (AppPlatform.isLinux || AppPlatform.isWindows) {
-          await VpnService().stopDefaultVpn();
-        }
-        ServicesBinding.instance.exitApplication(AppExitType.cancelable);
-        break;
-      case _TrayMenuKey.quitAndStopVpn:
-        await VpnService().stopDefaultVpn();
-        ServicesBinding.instance.exitApplication(AppExitType.cancelable);
-        break;
+    try {
+      switch (key) {
+        case _TrayMenuKey.startVpn:
+          try {
+            await ConnectionCoordinator.instance.connect();
+          } catch (_) {
+            await NotificationService().pushNotification(
+              appLocalizationsNoContext().prototypeConnectionFailed,
+            );
+            rethrow;
+          }
+          break;
+        case _TrayMenuKey.stopVpn:
+          await ConnectionCoordinator.instance.disconnect();
+          break;
+        case _TrayMenuKey.showApp:
+          await windowManager.show();
+          await windowManager.focus();
+          break;
+        case _TrayMenuKey.quitApp:
+          if (AppPlatform.isLinux || AppPlatform.isWindows) {
+            await ConnectionCoordinator.instance.disconnect();
+          }
+          ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+          break;
+        case _TrayMenuKey.quitAndStopVpn:
+          await ConnectionCoordinator.instance.disconnect();
+          ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+          break;
+      }
+    } catch (_) {
+      // Keep the coordinator's failure/permission state for the normal UI retry.
+      await AppStartupService().showMainWindow();
     }
   }
 }
@@ -161,9 +193,6 @@ enum _TrayMenuKey {
   const _TrayMenuKey(this.name);
 
   final String name;
-
-  @override
-  String toString() => name;
 
   static _TrayMenuKey? fromString(String name) =>
       _TrayMenuKey.values.firstWhereOrNull((value) => value.name == name);

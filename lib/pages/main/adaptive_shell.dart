@@ -3,37 +3,107 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/home/main/page.dart';
-import 'package:onexray/pages/core/main/page.dart';
+import 'package:onexray/pages/connect/page.dart';
+import 'package:onexray/pages/main/advanced.dart';
 import 'package:onexray/pages/main/navigation.dart';
-import 'package:onexray/pages/settings/main/page.dart';
-import 'package:onexray/pages/subscriptions/list/page.dart';
+import 'package:onexray/pages/preferences/page.dart';
+import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/event_bus/state.dart';
+import 'package:onexray/service/manager.dart';
+import 'package:onexray/service/menu/short_cut/service.dart';
+import 'package:onexray/service/share/service.dart';
 
-class AdaptiveMainShell extends StatelessWidget {
-  const AdaptiveMainShell({super.key, required this.navigationShell});
-
-  static const double railBreakpoint = 700;
-  static const double _extendedRailBreakpoint = 900;
+class AdaptiveMainShell extends StatefulWidget {
+  const AdaptiveMainShell({
+    super.key,
+    required this.navigationShell,
+    this.initializeServices,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final Future<void> Function(BuildContext context)? initializeServices;
+
+  @override
+  State<AdaptiveMainShell> createState() => _AdaptiveMainShellState();
+}
+
+class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
+  Future<void>? _servicesReady;
+
+  StatefulNavigationShell get navigationShell => widget.navigationShell;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _servicesReady ??= _initializeServices();
+  }
+
+  Future<void> _initializeServices() {
+    ShortCutService().onConnectionFailure = () {
+      if (mounted) {
+        context.goPrimaryRoot(AppPrimaryDestination.connect);
+      }
+    };
+    ShareService().onIncomingShare = (text) async {
+      if (mounted) {
+        await context.pushScoped(
+          AppSecondaryDestination.serversImport,
+          extra: text,
+        );
+      }
+    };
+    return (widget.initializeServices ?? ServiceManager.serviceInit)(context);
+  }
+
+  void _retry() {
+    final servicesReady = _initializeServices();
+    setState(() {
+      _servicesReady = servicesReady;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<AppEventBus, AppEventBusState, AppUpdateInfo?>(
-      selector: (state) => state.appUpdateInfo,
-      builder: (context, appUpdateInfo) => LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth >= railBreakpoint) {
-            return _railScaffold(context, constraints.maxWidth, appUpdateInfo);
-          }
-          return _bottomNavigationScaffold(context, appUpdateInfo != null);
-        },
-      ),
+    return FutureBuilder<void>(
+      future: _servicesReady,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: FilledButton(
+                key: const ValueKey('service-initialization-retry'),
+                onPressed: _retry,
+                child: Text(AppLocalizations.of(context)!.buttonRetry),
+              ),
+            ),
+          );
+        }
+        return BlocSelector<AppEventBus, AppEventBusState, AppUpdateInfo?>(
+          selector: (state) => state.appUpdateInfo,
+          builder: (context, appUpdateInfo) => LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > AppLayout.mobileBreakpoint) {
+                return _railScaffold(
+                  context,
+                  constraints.maxWidth,
+                  appUpdateInfo,
+                );
+              }
+              return _bottomNavigationScaffold(context, appUpdateInfo != null);
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -43,24 +113,44 @@ class AdaptiveMainShell extends StatelessWidget {
   ) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) =>
-            context.goPrimary(navigationShell, AppPrimaryRoute.values[index]),
-        destinations: AppPrimaryRoute.values
-            .map(
-              (primary) => NavigationDestination(
-                icon: _navigationIcon(context, primary, appUpdateAvailable),
-                selectedIcon: _navigationIcon(
-                  context,
-                  primary,
-                  appUpdateAvailable,
+      bottomNavigationBar:
+          navigationShell
+                  .shellRouteContext
+                  .match
+                  .matches
+                  .last
+                  .matchedLocation !=
+              AppPrimaryDestination
+                  .values[navigationShell.currentIndex]
+                  .rootPath
+          ? null
+          : DecoratedBox(
+              key: const ValueKey('primary-mobile-navigation'),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: ColorManager.palette(context).border),
                 ),
-                label: _label(context, primary),
               ),
-            )
-            .toList(),
-      ),
+              child: NavigationBar(
+                selectedIndex: navigationShell.currentIndex,
+                onDestinationSelected: (index) => context.goPrimary(
+                  navigationShell,
+                  AppPrimaryDestination.values[index],
+                ),
+                destinations: [
+                  for (final primary in AppPrimaryDestination.values)
+                    NavigationDestination(
+                      key: ValueKey('primary-navigation-${primary.name}'),
+                      icon: _navigationIcon(
+                        context,
+                        primary,
+                        appUpdateAvailable,
+                      ),
+                      label: _label(context, primary),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -69,49 +159,65 @@ class AdaptiveMainShell extends StatelessWidget {
     double width,
     AppUpdateInfo? appUpdateInfo,
   ) {
-    final extended = width >= _extendedRailBreakpoint;
+    final compact = width <= AppLayout.compactDesktopBreakpoint;
+    final sidebarWidth = !compact
+        ? AppLayout.desktopSidebarWidth
+        : AppLayout.compactSidebarWidth;
+    final palette = ColorManager.palette(context);
     return Scaffold(
       body: Row(
         children: [
-          SafeArea(
-            bottom: false,
-            child: SizedBox(
-              width: extended ? 220 : 72,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: NavigationRail(
-                      extended: extended,
-                      minWidth: 72,
-                      minExtendedWidth: 220,
-                      selectedIndex: navigationShell.currentIndex,
-                      onDestinationSelected: (index) => context.goPrimary(
-                        navigationShell,
-                        AppPrimaryRoute.values[index],
-                      ),
-                      destinations: AppPrimaryRoute.values
-                          .map(
-                            (primary) => NavigationRailDestination(
-                              icon: Icon(_icon(primary)),
-                              selectedIcon: Icon(_icon(primary)),
-                              label: Text(_label(context, primary)),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                  if (appUpdateInfo != null)
-                    _DesktopUpdateReminder(
-                      extended: extended,
-                      onTap: () => _showDesktopUpdate(context, appUpdateInfo),
-                    ),
-                ],
+          Container(
+            key: const ValueKey('primary-desktop-navigation'),
+            width: sidebarWidth,
+            decoration: BoxDecoration(
+              color: palette.sidebar,
+              border: BorderDirectional(
+                end: BorderSide(color: palette.sidebarBorder),
               ),
             ),
-          ),
-          VerticalDivider(
-            width: 1,
-            color: ColorManager.palette(context).sidebarBorder,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sidebarHorizontal,
+                  vertical: AppSpacing.sidebarVertical,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                        compact
+                            ? AppSpacing.sidebarCompactBrandStart
+                            : AppSpacing.sidebarBrandStart,
+                        AppSpacing.sidebarBrandTop,
+                        compact
+                            ? AppSpacing.sidebarCompactBrandStart
+                            : AppSpacing.sidebarBrandStart,
+                        AppSpacing.sidebarBrandBottom,
+                      ),
+                      child: Text(
+                        'OneXray',
+                        style: AppTypography.desktopBrand.copyWith(
+                          color: palette.brand,
+                        ),
+                      ),
+                    ),
+                    for (final primary in AppPrimaryDestination.values) ...[
+                      if (primary.index > 0)
+                        const SizedBox(height: AppSpacing.sidebarRowGap),
+                      _desktopDestination(context, primary),
+                    ],
+                    const Spacer(),
+                    if (appUpdateInfo != null)
+                      _DesktopUpdateReminder(
+                        onTap: () => _showDesktopUpdate(context, appUpdateInfo),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ),
           Expanded(child: navigationShell),
         ],
@@ -119,8 +225,66 @@ class AdaptiveMainShell extends StatelessWidget {
     );
   }
 
+  Widget _desktopDestination(
+    BuildContext context,
+    AppPrimaryDestination primary,
+  ) {
+    final palette = ColorManager.palette(context);
+    final selected = primary.index == navigationShell.currentIndex;
+    final label = _label(context, primary);
+    final color = selected ? palette.primary : palette.mutedStrong;
+    return Semantics(
+      key: ValueKey('primary-navigation-${primary.name}'),
+      label: label,
+      selected: selected,
+      button: true,
+      child: Material(
+        color: selected ? palette.selectedSurface : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          side: BorderSide(
+            color: selected
+                ? Color.lerp(palette.border, palette.primary, .2)!
+                : Colors.transparent,
+          ),
+        ),
+        child: InkWell(
+          onTap: () => context.goPrimary(navigationShell, primary),
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          hoverColor: palette.surfaceHover,
+          child: ExcludeSemantics(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: AppSpacing.sidebarRowHeight,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(_icon(primary), size: 22, color: color),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style:
+                            (selected
+                                    ? AppTypography.selectedNavigationLabel
+                                    : AppTypography.navigationLabel)
+                                .copyWith(color: color),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showDesktopUpdate(BuildContext context, AppUpdateInfo updateInfo) {
-    context.goPrimary(navigationShell, AppPrimaryRoute.settings);
+    context.goPrimaryRoot(AppPrimaryDestination.settings);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (context.mounted) {
         context.pushAppUpdateDialog(updateInfo);
@@ -130,88 +294,78 @@ class AdaptiveMainShell extends StatelessWidget {
 
   Widget _navigationIcon(
     BuildContext context,
-    AppPrimaryRoute primary,
+    AppPrimaryDestination primary,
     bool appUpdateAvailable,
   ) {
     final icon = Icon(_icon(primary));
-    if (primary != AppPrimaryRoute.settings || !appUpdateAvailable) {
+    if (primary != AppPrimaryDestination.settings || !appUpdateAvailable) {
       return icon;
     }
     return _UpdateBadge(child: icon);
   }
 
-  IconData _icon(AppPrimaryRoute primary) {
+  IconData _icon(AppPrimaryDestination primary) {
     return switch (primary) {
-      AppPrimaryRoute.home => LucideIcons.house,
-      AppPrimaryRoute.subscriptions => LucideIcons.layers3,
-      AppPrimaryRoute.core => LucideIcons.slidersHorizontal,
-      AppPrimaryRoute.settings => LucideIcons.settings,
+      AppPrimaryDestination.connect => LucideIcons.link,
+      AppPrimaryDestination.servers => LucideIcons.layers3,
+      AppPrimaryDestination.advanced => LucideIcons.terminal,
+      AppPrimaryDestination.settings => LucideIcons.settings,
     };
   }
 
-  String _label(BuildContext context, AppPrimaryRoute primary) {
+  String _label(BuildContext context, AppPrimaryDestination primary) {
     final localizations = AppLocalizations.of(context)!;
     return switch (primary) {
-      AppPrimaryRoute.home => localizations.homePageTitle,
-      AppPrimaryRoute.subscriptions => localizations.subscriptionListPageTitle,
-      AppPrimaryRoute.core => localizations.mainNavigationCore,
-      AppPrimaryRoute.settings => localizations.settingsPageTitle,
+      AppPrimaryDestination.connect => localizations.prototypeConnect,
+      AppPrimaryDestination.servers => localizations.prototypeServers,
+      AppPrimaryDestination.advanced => localizations.prototypeAdvanced,
+      AppPrimaryDestination.settings => localizations.prototypeSettings,
     };
   }
 }
 
 class _DesktopUpdateReminder extends StatelessWidget {
-  const _DesktopUpdateReminder({required this.extended, required this.onTap});
+  const _DesktopUpdateReminder({required this.onTap});
 
-  final bool extended;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final label = AppLocalizations.of(context)!.appUpdateAvailable;
     final palette = ColorManager.palette(context);
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 12),
-      child: Tooltip(
-        message: label,
-        child: Material(
-          color: palette.sidebarAccent,
-          borderRadius: BorderRadius.circular(8),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: extended
-                  ? Padding(
-                      padding: const EdgeInsetsDirectional.symmetric(
-                        horizontal: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          const _UpdateBadge(
-                            child: Icon(LucideIcons.download, size: 19),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.navigationLabel.copyWith(
-                                color: palette.sidebarAccentForeground,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : const Center(
-                      child: _UpdateBadge(
-                        child: Icon(LucideIcons.download, size: 19),
+    return Tooltip(
+      message: label,
+      child: Material(
+        color: palette.sidebarAccent,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          child: SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: AppSpacing.controlHorizontal,
+              ),
+              child: Row(
+                children: [
+                  const _UpdateBadge(
+                    child: Icon(LucideIcons.download, size: 19),
+                  ),
+                  const SizedBox(width: AppSpacing.actionGap),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.desktopUpdateLabel.copyWith(
+                        color: palette.sidebarAccentForeground,
                       ),
                     ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -238,15 +392,15 @@ class _UpdateBadge extends StatelessWidget {
 class PrimaryRootContent extends StatelessWidget {
   const PrimaryRootContent({super.key, required this.primary});
 
-  final AppPrimaryRoute primary;
+  final AppPrimaryDestination primary;
 
   @override
   Widget build(BuildContext context) {
     return switch (primary) {
-      AppPrimaryRoute.home => const HomePage(),
-      AppPrimaryRoute.subscriptions => const SubscriptionListPage(),
-      AppPrimaryRoute.core => const CorePage(),
-      AppPrimaryRoute.settings => const SettingsPage(),
+      AppPrimaryDestination.connect => const ConnectPage(),
+      AppPrimaryDestination.servers => const ServersPage(),
+      AppPrimaryDestination.advanced => const AdvancedRootPage(),
+      AppPrimaryDestination.settings => const PreferencesPage(),
     };
   }
 }

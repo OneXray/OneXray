@@ -12,15 +12,12 @@ AutoUpdateJson _$AutoUpdateJsonFromJson(Map<String, dynamic> json) =>
       (json['subscriptionInterval'] as num?)?.toInt(),
       json['geoDataEnabled'] as bool?,
       (json['geoDataInterval'] as num?)?.toInt(),
-      json['geoDataUpdateAfterVpnConnected'] as bool?,
     );
 
-Map<String, dynamic> _$AutoUpdateJsonToJson(
-  AutoUpdateJson instance,
-) => <String, dynamic>{
-  'subscriptionEnabled': ?instance.subscriptionEnabled,
-  'subscriptionInterval': ?instance.subscriptionInterval,
-  'geoDataEnabled': ?instance.geoDataEnabled,
-  'geoDataInterval': ?instance.geoDataInterval,
-  'geoDataUpdateAfterVpnConnected': ?instance.geoDataUpdateAfterVpnConnected,
-};
+Map<String, dynamic> _$AutoUpdateJsonToJson(AutoUpdateJson instance) =>
+    <String, dynamic>{
+      'subscriptionEnabled': ?instance.subscriptionEnabled,
+      'subscriptionInterval': ?instance.subscriptionInterval,
+      'geoDataEnabled': ?instance.geoDataEnabled,
+      'geoDataInterval': ?instance.geoDataInterval,
+    };

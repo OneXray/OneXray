@@ -11,8 +11,16 @@ part 'desktop_core_process.g.dart';
 @JsonSerializable(includeIfNull: false)
 class DesktopCoreProcessRecord {
   final int pid;
+  final String? configPath;
+  final String? runtimePath;
+  final int? startTicks;
 
-  const DesktopCoreProcessRecord({required this.pid});
+  const DesktopCoreProcessRecord({
+    required this.pid,
+    this.configPath,
+    this.runtimePath,
+    this.startTicks,
+  });
 
   factory DesktopCoreProcessRecord.fromJson(Map<String, dynamic> json) =>
       _$DesktopCoreProcessRecordFromJson(json);
@@ -22,6 +30,9 @@ class DesktopCoreProcessRecord {
 
 class DesktopCoreProcessStore {
   static const _fileName = 'core-process.json';
+  final String? directory;
+
+  DesktopCoreProcessStore({this.directory});
 
   Future<DesktopCoreProcessRecord?> read() async {
     try {
@@ -32,19 +43,27 @@ class DesktopCoreProcessStore {
       final value = JsonTool.decoder.convert(await file.readAsString());
       return DesktopCoreProcessRecord.fromJson(value as Map<String, dynamic>);
     } catch (error) {
-      ygLogger('read desktop core process record failed: $error');
-      await clear();
-      return null;
+      ygLogger(
+        'read desktop core process record failed (${error.runtimeType})',
+      );
+      // An unreadable record is unknown ownership, not evidence that Core stopped.
+      throw StateError('Unable to read desktop core process identity');
     }
   }
 
   Future<void> write(DesktopCoreProcessRecord record) async {
     final file = await _file();
     await file.parent.create(recursive: true);
-    await file.writeAsString(
-      JsonTool.encoder.convert(record.toJson()),
-      flush: true,
-    );
+    final staging = File('${file.path}.staging');
+    try {
+      await staging.writeAsString(
+        JsonTool.encoder.convert(record.toJson()),
+        flush: true,
+      );
+      await staging.rename(file.path);
+    } finally {
+      if (await staging.exists()) await staging.delete();
+    }
   }
 
   Future<void> clear({int? pid}) async {
@@ -66,7 +85,7 @@ class DesktopCoreProcessStore {
   }
 
   Future<File> _file() async {
-    final directory = await getApplicationSupportDirectory();
-    return File(p.join(directory.path, 'run', _fileName));
+    final path = directory ?? (await getApplicationSupportDirectory()).path;
+    return File(p.join(path, 'run', _fileName));
   }
 }

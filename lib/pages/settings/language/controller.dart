@@ -3,14 +3,23 @@ import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 
 class LanguagePageState {
   final LanguageCode languageCode;
+  final bool saving;
 
-  const LanguagePageState({this.languageCode = LanguageCode.system});
+  const LanguagePageState({
+    this.languageCode = LanguageCode.system,
+    this.saving = false,
+  });
 
-  LanguagePageState copyWith({LanguageCode? languageCode}) {
-    return LanguagePageState(languageCode: languageCode ?? this.languageCode);
+  LanguagePageState copyWith({LanguageCode? languageCode, bool? saving}) {
+    return LanguagePageState(
+      languageCode: languageCode ?? this.languageCode,
+      saving: saving ?? this.saving,
+    );
   }
 }
 
@@ -25,16 +34,32 @@ class LanguageController extends PageCubit<LanguagePageState> {
   }
 
   void updateLanguageCode(LanguageCode? value) {
-    if (value != null) {
+    if (value != null && !state.saving) {
       emit(state.copyWith(languageCode: value));
     }
   }
 
   Future<void> save(BuildContext context) async {
-    final eventBus = AppEventBus.instance;
-    await eventBus.updateLanguageCode(state.languageCode);
-    if (context.mounted) {
-      context.pop();
+    if (state.saving) return;
+    emit(state.copyWith(saving: true));
+    try {
+      await AppEventBus.instance.updateLanguageCode(state.languageCode);
+      if (context.mounted && ModalRoute.of(context)?.isCurrent == true) {
+        context.pop();
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.buttonSaveFailed,
+        );
+      }
+    } finally {
+      emit(state.copyWith(saving: false));
     }
+  }
+
+  void cancel(BuildContext context) {
+    context.pop();
   }
 }

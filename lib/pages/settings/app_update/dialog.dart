@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/app_update/controller.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/app_update/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -15,19 +17,28 @@ class AppUpdateDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = AppUpdateDialogController(params.updateInfo);
-    return AppUpdateDialogView(
-      updateInfo: params.updateInfo,
-      onLater: () => controller.later(context),
-      onSkip: () => controller.skip(context),
-      onUpdate: () => controller.update(context),
-      onOpenLink: controller.openLink,
+    return BlocProvider(
+      create: (_) => AppUpdateDialogController(params.updateInfo),
+      child: BlocBuilder<AppUpdateDialogController, AppUpdateDialogAction?>(
+        builder: (context, action) {
+          final controller = context.read<AppUpdateDialogController>();
+          return AppUpdateDialogView(
+            updateInfo: params.updateInfo,
+            action: action,
+            onLater: () => controller.later(context),
+            onSkip: () => controller.skip(context),
+            onUpdate: () => controller.update(context),
+            onOpenLink: controller.openLink,
+          );
+        },
+      ),
     );
   }
 }
 
 class AppUpdateDialogView extends StatelessWidget {
   final AppUpdateInfo updateInfo;
+  final AppUpdateDialogAction? action;
   final VoidCallback onLater;
   final VoidCallback onSkip;
   final VoidCallback onUpdate;
@@ -36,6 +47,7 @@ class AppUpdateDialogView extends StatelessWidget {
   const AppUpdateDialogView({
     super.key,
     required this.updateInfo,
+    this.action,
     required this.onLater,
     required this.onSkip,
     required this.onUpdate,
@@ -49,7 +61,8 @@ class AppUpdateDialogView extends StatelessWidget {
     final screenSize = MediaQuery.sizeOf(context);
     final notesHeight = (screenSize.height * 0.42).clamp(160.0, 420.0);
     return Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      // Match the prototype dialog's effective UA max-width (viewport - 38).
+      insetPadding: const EdgeInsets.symmetric(horizontal: 19, vertical: 16),
       backgroundColor: Colors.transparent,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
@@ -69,8 +82,7 @@ class AppUpdateDialogView extends StatelessWidget {
                   children: [
                     Text(
                       l10n.appUpdateDialogTitle,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: AppTypography.updateTitle,
                     ),
                     const SizedBox(height: 14),
                     _VersionGrid(updateInfo: updateInfo),
@@ -79,14 +91,39 @@ class AppUpdateDialogView extends StatelessWidget {
               ),
               if (notes.isNotEmpty) ...[
                 Divider(height: 1, color: ColorManager.border(context)),
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: notesHeight),
-                  child: Markdown(
-                    data: notes,
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)),
-                    onTapLink: (_, href, _) => onOpenLink(href),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: notesHeight),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            l10n.prototypeReleaseNotes,
+                            style: AppTypography.updateNotesHeading,
+                          ),
+                          const SizedBox(height: 10),
+                          MarkdownBody(
+                            data: notes,
+                            selectable: true,
+                            styleSheet:
+                                MarkdownStyleSheet.fromTheme(
+                                  Theme.of(context),
+                                ).copyWith(
+                                  p: AppTypography.updateNotes,
+                                  listBullet: AppTypography.updateNotes,
+                                  listIndent: 20,
+                                  listBulletPadding:
+                                      const EdgeInsetsDirectional.only(end: 4)
+                                          .resolve(Directionality.of(context)),
+                                  blockSpacing: 6,
+                                ),
+                            onTapLink: (_, href, _) => onOpenLink(href),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -95,6 +132,7 @@ class AppUpdateDialogView extends StatelessWidget {
                 laterLabel: l10n.appUpdateLater,
                 skipLabel: l10n.appUpdateSkipVersion,
                 updateLabel: l10n.appUpdateOpen,
+                action: action,
                 onLater: onLater,
                 onSkip: onSkip,
                 onUpdate: onUpdate,
@@ -118,7 +156,7 @@ class _VersionGrid extends StatelessWidget {
     return Column(
       children: [
         _row(context, l10n.appUpdateCurrentVersion, updateInfo.currentVersion),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         _row(context, l10n.appUpdateLatestVersion, updateInfo.latestVersion),
       ],
     );
@@ -127,22 +165,17 @@ class _VersionGrid extends StatelessWidget {
   Widget _row(BuildContext context, String label, String version) {
     return Row(
       children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(color: ColorManager.secondaryText(context)),
-          ),
-        ),
+        Expanded(child: Text(label, style: AppTypography.updateVersionLabel)),
         Container(
           padding: const EdgeInsetsDirectional.symmetric(
             horizontal: 8,
             vertical: 4,
           ),
           decoration: BoxDecoration(
-            color: ColorManager.tagBackground(context),
-            borderRadius: BorderRadius.circular(5),
+            color: ColorManager.palette(context).surfaceHover,
+            borderRadius: BorderRadius.circular(4),
           ),
-          child: Text(version, style: AppTypography.code),
+          child: Text(version, style: AppTypography.updateVersion),
         ),
       ],
     );
@@ -153,6 +186,7 @@ class _UpdateActions extends StatelessWidget {
   final String laterLabel;
   final String skipLabel;
   final String updateLabel;
+  final AppUpdateDialogAction? action;
   final VoidCallback onLater;
   final VoidCallback onSkip;
   final VoidCallback onUpdate;
@@ -161,6 +195,7 @@ class _UpdateActions extends StatelessWidget {
     required this.laterLabel,
     required this.skipLabel,
     required this.updateLabel,
+    required this.action,
     required this.onLater,
     required this.onSkip,
     required this.onUpdate,
@@ -171,12 +206,24 @@ class _UpdateActions extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      color: ColorManager.tagBackground(context).withValues(alpha: 0.45),
+      color: ColorManager.palette(context).muted,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final actions = [
-            ShadButton.outline(onPressed: onLater, child: Text(laterLabel)),
-            ShadButton.outline(onPressed: onSkip, child: Text(skipLabel)),
+            ShadButton.outline(
+              height: 40,
+              onPressed: onLater,
+              child: Text(laterLabel),
+            ),
+            ShadButton.outline(
+              height: 40,
+              enabled: action != AppUpdateDialogAction.skip,
+              onPressed: action == AppUpdateDialogAction.skip ? null : onSkip,
+              child: ButtonProgress(
+                busy: action == AppUpdateDialogAction.skip,
+                child: Text(skipLabel),
+              ),
+            ),
             ShadButton(onPressed: onUpdate, child: Text(updateLabel)),
           ];
           if (constraints.maxWidth < 460) {

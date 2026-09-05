@@ -81,17 +81,45 @@ jobs:
   # =================================================================
   release_metadata:
     runs-on: ubuntu-24.04
+    outputs:
+      libxray_sha: ${{ steps.revisions.outputs.libxray_sha }}
+      vcore_sha: ${{ steps.revisions.outputs.vcore_sha }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: XTLS/libXray
+          ref: ${{ env.LIBXRAY_REF }}
+          path: libXray
+
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.VCORE_REPOSITORY }}
+          ref: ${{ env.VCORE_REF }}
+          path: VCore
+
       - name: Write build metadata
+        id: revisions
+        env:
+          BUILD_TARGET: ${{ inputs.target || 'all' }}
         run: |
+          libxray_sha="$(git -C libXray rev-parse HEAD)"
+          vcore_sha="$(git -C VCore rev-parse HEAD)"
+          [[ "$libxray_sha" =~ ^[0-9a-f]{40}$ && "$vcore_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "libxray_sha=$libxray_sha" >> "$GITHUB_OUTPUT"
+          echo "vcore_sha=$vcore_sha" >> "$GITHUB_OUTPUT"
           mkdir -p release-metadata
           echo "${GITHUB_EVENT_NAME}" > release-metadata/event.txt
           echo "${GITHUB_REF}" > release-metadata/ref.txt
           echo "${GITHUB_REF_NAME}" > release-metadata/ref-name.txt
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
-          echo "${LIBXRAY_REF}" > release-metadata/libxray-sha.txt
-          echo "${VCORE_REF}" > release-metadata/vcore-sha.txt
-          echo "${{ inputs.target || 'all' }}" > release-metadata/target.txt
+          echo "$libxray_sha" > release-metadata/libxray-sha.txt
+          echo "$vcore_sha" > release-metadata/vcore-sha.txt
+          echo "$LIBXRAY_REF" > release-metadata/libxray-ref.txt
+          echo "$VCORE_REF" > release-metadata/vcore-ref.txt
+          echo "$GITHUB_RUN_ID" > release-metadata/run-id.txt
+          echo "$GITHUB_RUN_ATTEMPT" > release-metadata/run-attempt.txt
+          echo "$GITHUB_REPOSITORY" > release-metadata/repository.txt
+          echo "$BUILD_TARGET" > release-metadata/target.txt
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             echo "${GITHUB_REF_NAME}" > release-metadata/tag.txt
           fi
@@ -107,6 +135,9 @@ jobs:
   # iOS — uploads to App Store Connect (TestFlight) via fastlane
   # =================================================================
   ios:
+    needs: release_metadata
+    env:
+      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'ios'
     runs-on: macos-26
     timeout-minutes: 60
@@ -121,7 +152,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
+          ref: ${{ needs.release_metadata.outputs.libxray_sha }}
           path: libXray
 
       - name: Select Xcode
@@ -173,10 +204,20 @@ jobs:
           path: output/OneXray-ios*.ipa
           if-no-files-found: error
 
+      - name: Upload build provenance
+        uses: actions/upload-artifact@v7
+        with:
+          name: provenance-ios
+          path: output/provenance-ios-*.json
+          if-no-files-found: error
+
   # =================================================================
   # macOS (MAS) — universal binary, uploads to App Store Connect
   # =================================================================
   macos:
+    needs: release_metadata
+    env:
+      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'macos'
     runs-on: macos-26
     timeout-minutes: 60
@@ -191,7 +232,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
+          ref: ${{ needs.release_metadata.outputs.libxray_sha }}
           path: libXray
 
       - name: Select Xcode
@@ -246,11 +287,21 @@ jobs:
           FASTLANE_MAS_INSTALLER_CERT: ${{ secrets.FASTLANE_MAS_INSTALLER_CERT }}
         run: uv run --project build_scripts python build_scripts/main.py OneXray macos
 
+      - name: Upload build provenance
+        uses: actions/upload-artifact@v7
+        with:
+          name: provenance-macos
+          path: output/provenance-macos-*.json
+          if-no-files-found: error
+
   # =================================================================
   # macOS SE (Developer ID) — universal binary, Developer ID signed
   #   + notarized + zipped
   # =================================================================
   macos_se:
+    needs: release_metadata
+    env:
+      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'macos'
     runs-on: macos-26
     timeout-minutes: 60
@@ -265,7 +316,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
+          ref: ${{ needs.release_metadata.outputs.libxray_sha }}
           path: libXray
 
       - name: Select Xcode
@@ -317,10 +368,20 @@ jobs:
           path: output/OneXray-macos-universal*.zip
           if-no-files-found: error
 
+      - name: Upload build provenance
+        uses: actions/upload-artifact@v7
+        with:
+          name: provenance-macos_se
+          path: output/provenance-macos_se-*.json
+          if-no-files-found: error
+
   # =================================================================
   # Android — uploads AAB to Play Store via fastlane
   # =================================================================
   android:
+    needs: release_metadata
+    env:
+      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'android'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -335,7 +396,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
+          ref: ${{ needs.release_metadata.outputs.libxray_sha }}
           path: libXray
 
       - uses: actions/setup-java@v5
@@ -400,6 +461,13 @@ jobs:
           path: output/OneXray-android-universal*.apk
           if-no-files-found: error
 
+      - name: Upload build provenance
+        uses: actions/upload-artifact@v7
+        with:
+          name: provenance-android
+          path: output/provenance-android-*.json
+          if-no-files-found: error
+
   # =================================================================
   # Windows x64 and arm64 — Microsoft Store .msix only
   #   x64 uses Windows Server 2025 with Visual Studio 2026; arm64 uses
@@ -407,6 +475,7 @@ jobs:
   #   all match the target architecture.
   # =================================================================
   windows:
+    needs: release_metadata
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'windows'
     strategy:
       fail-fast: false
@@ -425,6 +494,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     env:
+      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
+      ONEXRAY_VCORE_SHA: ${{ needs.release_metadata.outputs.vcore_sha }}
       GOARCH: ${{ matrix.goarch }}
       ONEXRAY_WINDOWS_ARCH: ${{ matrix.arch }}
     defaults:
@@ -439,13 +510,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
+          ref: ${{ needs.release_metadata.outputs.libxray_sha }}
           path: libXray
 
       - uses: actions/checkout@v7
         with:
           repository: ${{ env.VCORE_REPOSITORY }}
-          ref: ${{ env.VCORE_REF }}
+          ref: ${{ needs.release_metadata.outputs.vcore_sha }}
           path: VCore
 
       - uses: actions/setup-go@v7
@@ -496,6 +567,8 @@ jobs:
           $extractPath = Join-Path $env:RUNNER_TEMP "llvm-mingw"
           Write-Host "Downloading LLVM-MinGW $($release.tag_name): $($asset.name)"
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
+          "ONEXRAY_LLVM_MINGW_RELEASE=$($release.tag_name)" >> $env:GITHUB_ENV
+          "ONEXRAY_LLVM_MINGW_SHA256=$((Get-FileHash $archivePath -Algorithm SHA256).Hash.ToLower())" >> $env:GITHUB_ENV
           Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath
 
           $binPath = Get-ChildItem -LiteralPath $extractPath -Directory |
@@ -537,6 +610,13 @@ jobs:
           path: output/OneXray-${{ matrix.package_suffix }}.msix
           if-no-files-found: error
 
+      - name: Upload build provenance
+        uses: actions/upload-artifact@v7
+        with:
+          name: provenance-windows-${{ matrix.arch }}
+          path: output/provenance-windows-*.json
+          if-no-files-found: error
+
   # =================================================================
   # Linux — fastforge .zip + .deb, x64 and arm64
   #   Pinned to ubuntu-24.04 (x64) / ubuntu-24.04-arm (arm64): the
@@ -547,6 +627,9 @@ jobs:
   #   for private ones.
   # =================================================================
   linux:
+    needs: release_metadata
+    env:
+      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'linux'
     strategy:
       fail-fast: false
@@ -569,7 +652,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: XTLS/libXray
-          ref: ${{ env.LIBXRAY_REF }}
+          ref: ${{ needs.release_metadata.outputs.libxray_sha }}
           path: libXray
 
       - uses: actions/setup-go@v7
@@ -628,4 +711,11 @@ jobs:
           path: |
             output/OneXray-*.zip
             output/OneXray-*.deb
+          if-no-files-found: error
+
+      - name: Upload build provenance
+        uses: actions/upload-artifact@v7
+        with:
+          name: provenance-linux-${{ matrix.arch }}
+          path: output/provenance-linux-*.json
           if-no-files-found: error

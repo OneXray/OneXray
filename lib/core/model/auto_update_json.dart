@@ -8,14 +8,12 @@ class AutoUpdateJson {
   int? subscriptionInterval;
   bool? geoDataEnabled;
   int? geoDataInterval;
-  bool? geoDataUpdateAfterVpnConnected;
 
   AutoUpdateJson(
     this.subscriptionEnabled,
     this.subscriptionInterval,
     this.geoDataEnabled,
     this.geoDataInterval,
-    this.geoDataUpdateAfterVpnConnected,
   );
 
   factory AutoUpdateJson.fromJson(Map<String, dynamic> json) =>

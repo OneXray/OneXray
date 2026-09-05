@@ -2,7 +2,7 @@ import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/service/app_startup/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 
-enum LaunchDestination { privacy, firstRun, home }
+enum LaunchDestination { privacy, firstRun, connect }
 
 class LaunchBootstrapService {
   Future<LaunchDestination> resolveDestination() async {
@@ -18,7 +18,6 @@ class LaunchBootstrapService {
   }
 
   Future<LaunchDestination> resolveAcceptedDestination() async {
-    await _initState();
     final firstRun = await PreferencesKey().readFirstRun();
     if (firstRun) {
       final appStartup = AppStartupService();
@@ -26,14 +25,10 @@ class LaunchBootstrapService {
       await appStartup.showMainWindow();
       return LaunchDestination.firstRun;
     }
-    return LaunchDestination.home;
+    return LaunchDestination.connect;
   }
 
   Future<void> _initTheme() async {
     await AppEventBus.instance.asyncInitTheme();
-  }
-
-  Future<void> _initState() async {
-    await AppEventBus.instance.asyncInitState();
   }
 }

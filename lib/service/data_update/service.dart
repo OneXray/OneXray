@@ -18,28 +18,24 @@ class DataUpdateService {
   Future<void> checkAndRun({
     bool updateSubscription = true,
     bool updateGeoData = true,
-    bool vpnConnected = false,
   }) async {
     if (_running || AppEventBus.instance.state.downloading) {
       return;
     }
 
-    final autoUpdateState = AutoUpdateState();
-    await autoUpdateState.readFromPreferences();
-    final shouldUpdateSubscription =
-        updateSubscription && autoUpdateState.subscriptionEnabled;
-    final shouldUpdateGeoData =
-        updateGeoData &&
-        autoUpdateState.geoDataEnable &&
-        (!autoUpdateState.geoDataUpdateAfterVpnConnected || vpnConnected);
-    if (!shouldUpdateSubscription && !shouldUpdateGeoData) {
-      return;
-    }
-
     _running = true;
     final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
+    var downloading = false;
     try {
+      final autoUpdateState = AutoUpdateState();
+      await autoUpdateState.readFromPreferences();
+      final shouldUpdateSubscription =
+          updateSubscription && autoUpdateState.subscriptionEnabled;
+      final shouldUpdateGeoData =
+          updateGeoData && autoUpdateState.geoDataEnable;
+      if (!shouldUpdateSubscription && !shouldUpdateGeoData) return;
+      eventBus.updateDownloading(true);
+      downloading = true;
       if (shouldUpdateSubscription) {
         await SubscriptionService().refreshOutdatedSubscription(
           autoUpdateState: autoUpdateState,
@@ -49,10 +45,10 @@ class DataUpdateService {
       if (shouldUpdateGeoData) {
         await _refreshOutdatedGeoData(autoUpdateState);
       }
-    } catch (e) {
-      ygLogger("DataUpdateService checkAndRun error: $e");
+    } catch (_) {
+      ygLogger('Data update check failed');
     } finally {
-      eventBus.updateDownloading(false);
+      if (downloading) eventBus.updateDownloading(false);
       _running = false;
     }
   }
@@ -62,10 +58,15 @@ class DataUpdateService {
     final now = DateTime.now();
     final systemGeoData = await SystemGeoDatState.system;
     if (_expired(systemGeoData, now, interval)) {
-      await GeoDataService().refreshSystemGeoDat(
-        systemGeoData,
-        updateDownloading: false,
-      );
+      try {
+        await GeoDataService().refreshSystemGeoDat(
+          systemGeoData,
+          updateDownloading: false,
+        );
+      } catch (_) {
+        // Keep the default pair due, but do not starve independent custom data.
+        ygLogger('Default Geodata update failed');
+      }
     }
 
     final customGeoData = await AppDatabase().geoDataDao.allRows;

@@ -1,46 +1,30 @@
 import 'dart:convert';
 
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/xray/constants.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
-import 'package:uuid/uuid.dart';
 
-const _exampleRealityPassword = 'T25lWHJheS1YSFRUUC1leGFtcGxlLWtleS0wMDAwMDA';
+Map<String, dynamic> copyOutboundMap(
+  Map<String, dynamic> outbound, {
+  String? nameAlias,
+}) {
+  final copied = jsonDecode(jsonEncode(outbound)) as Map<String, dynamic>;
+  if (!copied.containsKey('tag')) {
+    final legacyName = outboundString(copied, 'name');
+    final fallbackTag = legacyName?.isNotEmpty == true
+        ? legacyName
+        : nameAlias?.isNotEmpty == true
+        ? nameAlias
+        : null;
+    if (fallbackTag != null && fallbackTag.isNotEmpty) {
+      copied['tag'] = fallbackTag;
+    }
+  }
+  copied.remove('name');
+  return copied;
+}
 
-Map<String, dynamic> newOutboundMap({
-  String name = XrayStateConstants.defaultName,
-  String tag = 'proxy',
-}) => <String, dynamic>{
-  'name': name,
-  'protocol': 'vless',
-  'settings': <String, dynamic>{
-    'address': 'example.com',
-    'port': 443,
-    'id': const Uuid().v4(),
-    'encryption': 'none',
-  },
-  'tag': tag,
-  'streamSettings': <String, dynamic>{
-    'network': 'xhttp',
-    'xhttpSettings': <String, dynamic>{
-      'host': 'example.com',
-      'path': '/xhttp',
-      'mode': 'auto',
-    },
-    'security': 'reality',
-    'realitySettings': <String, dynamic>{
-      'show': false,
-      'fingerprint': 'chrome',
-      'serverName': 'example.com',
-      'password': _exampleRealityPassword,
-    },
-  },
-};
-
-Map<String, dynamic> copyOutboundMap(Map<String, dynamic> outbound) =>
-    jsonDecode(jsonEncode(outbound)) as Map<String, dynamic>;
-
-Map<String, dynamic> decodeSingleOutbound(String text) {
+Map<String, dynamic> decodeSingleOutbound(String text, {String? nameAlias}) {
   final root = JsonTool.decoder.convert(text);
   if (root is! Map<String, dynamic>) {
     throw const FormatException('Xray JSON root must be an object');
@@ -53,13 +37,11 @@ Map<String, dynamic> decodeSingleOutbound(String text) {
   if (outbound is! Map<String, dynamic>) {
     throw const FormatException('Outbound must be an object');
   }
-  return copyOutboundMap(outbound);
+  return copyOutboundMap(outbound, nameAlias: nameAlias);
 }
 
 String encodeSingleOutbound(Map<String, dynamic> outbound) =>
-    JsonTool.encoder.convert({
-      'outbounds': [outbound],
-    });
+    JsonTool.encoder.convert(XrayJson(outbounds: [outbound]).toJson());
 
 String? outboundString(Map<String, dynamic> outbound, String key) {
   final value = outbound[key];
@@ -80,18 +62,8 @@ String? outboundSecurity(Map<String, dynamic> outbound) {
       : null;
 }
 
-String outboundDisplayName(
-  Map<String, dynamic> outbound, {
-  String? fallback,
-  bool useSendThrough = false,
-}) {
-  final values = <Object?>[
-    outbound['name'],
-    if (useSendThrough) outbound['sendThrough'],
-    fallback,
-    outbound['tag'],
-    outbound['protocol'],
-  ];
+String outboundDisplayName(Map<String, dynamic> outbound) {
+  final values = <Object?>[outbound['tag'], outbound['protocol']];
   return values.whereType<String>().firstWhere(
     (value) => value.isNotEmpty,
     orElse: () => '',
@@ -103,10 +75,6 @@ String outboundTags(Map<String, dynamic> outbound) => [
   outboundNetwork(outbound) ?? '',
   outboundSecurity(outbound) ?? '',
 ].join(',');
-
-void setOutboundTag(Map<String, dynamic> outbound, String tag) {
-  outbound['tag'] = tag;
-}
 
 String? outboundDialerProxy(Map<String, dynamic> outbound) {
   final stream = outbound['streamSettings'];
@@ -126,29 +94,11 @@ void setOutboundDialerProxy(Map<String, dynamic> outbound, String dialerProxy) {
   sockopt['dialerProxy'] = dialerProxy;
 }
 
-void removeOutboundDialerProxy(Map<String, dynamic> outbound) {
-  final stream = outbound['streamSettings'];
-  if (stream is! Map<String, dynamic>) {
-    return;
-  }
-  final sockopt = stream['sockopt'];
-  if (sockopt is Map<String, dynamic>) {
-    sockopt.remove('dialerProxy');
-  }
-}
-
 String? outboundProxyTag(Map<String, dynamic> outbound) {
   final settings = outbound['proxySettings'];
   return settings is Map<String, dynamic>
       ? outboundString(settings, 'tag')
       : null;
-}
-
-void removeOutboundProxyTag(Map<String, dynamic> outbound) {
-  final settings = outbound['proxySettings'];
-  if (settings is Map<String, dynamic>) {
-    settings.remove('tag');
-  }
 }
 
 void requireCanonicalOutbound(Map<String, dynamic> outbound) {

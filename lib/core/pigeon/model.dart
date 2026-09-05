@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:onexray/core/model/xray_inbound_account.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/tools/json.dart';
 
@@ -9,22 +8,18 @@ part 'model.g.dart';
 class StartVpnRequest {
   TunJson? tun;
   String? socksPort;
-  String? pingPort;
-  XrayInboundAccount? pingAuth;
   String? metricsPort;
   String? coreInvokeText;
-  int? configId;
   String? snapshotToken;
+  String? metadataJson;
 
   StartVpnRequest(
     this.tun,
     this.socksPort,
-    this.pingPort,
-    this.pingAuth,
     this.metricsPort,
     this.coreInvokeText, {
-    this.configId,
     this.snapshotToken,
+    this.metadataJson,
   });
 
   factory StartVpnRequest.fromJson(Map<String, dynamic> json) =>
@@ -110,8 +105,16 @@ class PingBatchItemResponse {
   bool? success;
   int? delay;
   String? error;
+  String? locationJson;
+  String? locationError;
 
-  PingBatchItemResponse(this.success, this.delay, this.error);
+  PingBatchItemResponse(
+    this.success,
+    this.delay,
+    this.error, {
+    this.locationJson,
+    this.locationError,
+  });
 
   factory PingBatchItemResponse.fromJson(Map<String, dynamic> json) =>
       _$PingBatchItemResponseFromJson(json);
@@ -129,18 +132,6 @@ class XrayVersionResponse {
       _$XrayVersionResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayVersionResponseToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
-class GetXrayStateResponse {
-  bool? running;
-
-  GetXrayStateResponse(this.running);
-
-  factory GetXrayStateResponse.fromJson(Map<String, dynamic> json) =>
-      _$GetXrayStateResponseFromJson(json);
-
-  Map<String, dynamic> toJson() => _$GetXrayStateResponseToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -162,8 +153,9 @@ class PingBatchRequest {
   List<PingBatchItemRequest>? configs;
   int? timeout;
   String? url;
+  String? locationUrl;
 
-  PingBatchRequest(this.configs, this.timeout, this.url);
+  PingBatchRequest(this.configs, this.timeout, this.url, {this.locationUrl});
 
   factory PingBatchRequest.fromJson(Map<String, dynamic> json) =>
       _$PingBatchRequestFromJson(json);
@@ -187,13 +179,34 @@ class PingBatchItemRequest {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class RunXrayRequest {
   String? xrayJson;
+  ManagedRuntimeRequest? runtime;
 
-  RunXrayRequest(this.xrayJson);
+  RunXrayRequest(this.xrayJson, {this.runtime});
 
   factory RunXrayRequest.fromJson(Map<String, dynamic> json) =>
       _$RunXrayRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$RunXrayRequestToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class ManagedRuntimeRequest {
+  final String statePath;
+  final String inboundTag;
+  final String? listen;
+  final String? token;
+
+  const ManagedRuntimeRequest({
+    required this.statePath,
+    this.inboundTag = 'tunIn',
+    this.listen,
+    this.token,
+  });
+
+  factory ManagedRuntimeRequest.fromJson(Map<String, dynamic> json) =>
+      _$ManagedRuntimeRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ManagedRuntimeRequestToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -229,8 +242,6 @@ enum LibXrayMethod {
   stopXray,
   @JsonValue("xrayVersion")
   xrayVersion,
-  @JsonValue("getXrayState")
-  getXrayState,
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
@@ -239,7 +250,7 @@ class LibXrayInvokeRequest {
   LibXrayMethod? method;
   Map<String, dynamic>? payload;
 
-  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 2;
+  LibXrayInvokeRequest({this.method, this.payload}) : apiVersion = 3;
 
   factory LibXrayInvokeRequest.fromJson(Map<String, dynamic> json) =>
       _$LibXrayInvokeRequestFromJson(json);
@@ -272,6 +283,21 @@ class ConvertShareLinksToXrayJsonRequest {
 
   Map<String, dynamic> toJson() =>
       _$ConvertShareLinksToXrayJsonRequestToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class ConvertShareLinksReport {
+  final Map<String, dynamic> config;
+  final int usableCount;
+  final int failedCount;
+  const ConvertShareLinksReport(
+    this.config, {
+    required this.usableCount,
+    required this.failedCount,
+  });
+  factory ConvertShareLinksReport.fromJson(Map<String, dynamic> json) =>
+      _$ConvertShareLinksReportFromJson(json);
+  Map<String, dynamic> toJson() => _$ConvertShareLinksReportToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

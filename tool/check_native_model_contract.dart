@@ -61,22 +61,18 @@ const _contracts = [
     {
       'tun',
       'socksPort',
-      'pingPort',
-      'pingAuth',
       'metricsPort',
       'coreInvokeText',
-      'configId',
       'snapshotToken',
+      'metadataJson',
     },
     {
       'tun',
       'socksPort',
-      'pingPort',
-      'pingAuth',
       'metricsPort',
       'coreInvokeText',
-      'configId',
       'snapshotToken',
+      'metadataJson',
     },
   ),
   _Contract(
@@ -84,7 +80,12 @@ const _contracts = [
     {'assetLocation', 'certLocation', 'tunFd'},
     {'assetLocation', 'certLocation', 'tunFd'},
   ),
-  _Contract('RunXrayRequest', {'xrayJson'}, {'xrayJson'}),
+  _Contract('RunXrayRequest', {'xrayJson', 'runtime'}, {'xrayJson', 'runtime'}),
+  _Contract(
+    'ManagedRuntimeRequest',
+    {'statePath', 'inboundTag', 'listen', 'token'},
+    {'statePath', 'inboundTag', 'listen', 'token'},
+  ),
   _Contract(
     'LibXrayInvokeRequest',
     {'apiVersion', 'method', 'payload'},
@@ -102,6 +103,11 @@ void main() {
   final kotlin = File(
     'android/app/src/main/kotlin/net/yuandev/onexray/pigeon/Model.kt',
   ).readAsStringSync();
+
+  if (!swift.contains('apiVersion: Int? = 3,') ||
+      !kotlin.contains('apiVersion: Int? = 3,')) {
+    throw StateError('Native libXray requests must use API version 3');
+  }
 
   for (final contract in _contracts) {
     _check(

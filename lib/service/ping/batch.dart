@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/ping/state.dart';
@@ -14,11 +17,54 @@ class PingBatchResult {
   final bool success;
   final int delay;
   final String error;
+  final String? countryCode;
+  final String? locationError;
 
-  const PingBatchResult(this.success, this.delay, this.error);
+  const PingBatchResult(
+    this.success,
+    this.delay,
+    this.error, {
+    this.countryCode,
+    this.locationError,
+  });
 
   factory PingBatchResult.failed([String error = ""]) =>
       PingBatchResult(false, PingDelayConstants.error, error);
+
+  factory PingBatchResult.fromResponse(PingBatchItemResponse response) {
+    if (response.delay == null) {
+      return PingBatchResult.failed(response.error ?? "");
+    }
+
+    String? countryCode;
+    var locationError = response.locationError;
+    if (response.locationJson != null) {
+      try {
+        final location = jsonDecode(response.locationJson!);
+        final country = location is Map<String, dynamic>
+            ? location['country']
+            : null;
+        final normalized = country is String
+            ? country.trim().toUpperCase()
+            : '';
+        if (RegExp(r'^[A-Z]{2}$').hasMatch(normalized)) {
+          countryCode = normalized;
+        } else {
+          locationError = 'invalid location response';
+        }
+      } on FormatException {
+        locationError = 'invalid location response';
+      }
+    }
+
+    return PingBatchResult(
+      response.success ?? false,
+      response.delay!,
+      response.error ?? "",
+      countryCode: countryCode,
+      locationError: locationError,
+    );
+  }
 }
 
 class PingBatchRunner {
@@ -50,6 +96,7 @@ class PingBatchRunner {
           .toList(growable: false),
       pingState.timeout.toInt(),
       pingState.realUrl,
+      locationUrl: NetClient.geoIPUrl,
     );
     final response = await AppHostApi().pingBatch(request);
     final responseResults = response?.results;
@@ -62,23 +109,7 @@ class PingBatchRunner {
     }
 
     return responseResults
-        .map(
-          (result) => result.delay == null
-              ? PingBatchResult.failed(result.error ?? "")
-              : PingBatchResult(
-                  result.success ?? false,
-                  result.delay!,
-                  result.error ?? "",
-                ),
-        )
+        .map(PingBatchResult.fromResponse)
         .toList(growable: false);
-  }
-
-  static Future<PingBatchResult?> runSingle(
-    PingBatchSource source,
-    PingState pingState,
-  ) async {
-    final results = await run([source], pingState);
-    return results.isEmpty ? null : results.first;
   }
 }

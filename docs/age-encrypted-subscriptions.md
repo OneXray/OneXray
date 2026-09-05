@@ -11,7 +11,7 @@ OneXray 可以下载明文订阅，也可以在内存中解密标准 age armor�
 
 两者必须同时存在或同时为空，App 不会尝试从私钥推导并补写公钥，也不在本地验证两者是否匹配。当前可以生成 X25519 和 ML-KEM-768 + X25519 混合密钥；使用“生成密钥”覆盖已有输入前必须由用户确认，手动编辑后保存不触发该确认。
 
-密钥由 libXray Invoke API v2 的 `generateAgeKeyPair` 生成。App 只负责保存和传递，不自行实现 age 密码学。
+密钥由 libXray Invoke API v3 的 `generateAgeKeyPair` 生成。App 只负责保存和传递，不自行实现 age 密码学。
 
 ## 下载与解密流程
 

@@ -3,48 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
-import 'package:uuid/uuid.dart';
 
 void main() {
-  test('new outbound contains a complete VLESS XHTTP example', () {
-    final outbound = newOutboundMap(tag: 'custom');
-    final settings = outbound['settings'] as Map<String, dynamic>;
-    final id = settings.remove('id');
-
-    expect(id, isA<String>());
-    expect(Uuid.isValidUUID(fromString: id as String), isTrue);
-    expect(outbound, {
-      'name': 'xray',
-      'protocol': 'vless',
-      'settings': {'address': 'example.com', 'port': 443, 'encryption': 'none'},
-      'tag': 'custom',
-      'streamSettings': {
-        'network': 'xhttp',
-        'xhttpSettings': {
-          'host': 'example.com',
-          'path': '/xhttp',
-          'mode': 'auto',
-        },
-        'security': 'reality',
-        'realitySettings': {
-          'show': false,
-          'fingerprint': 'chrome',
-          'serverName': 'example.com',
-          'password': 'T25lWHJheS1YSFRUUC1leGFtcGxlLWtleS0wMDAwMDA',
-        },
-      },
-    });
-  });
-
-  test('new outbound settings accept numeric JSON values', () {
-    final outbound = newOutboundMap();
-    final settings = outbound['settings'] as Map<String, dynamic>;
-
-    settings['port'] = 8443;
-
-    expect(settings['port'], 8443);
-  });
-
   test('single outbound wrapper round-trips without shared references', () {
     final source = <String, dynamic>{
       'protocol': 'vless',
@@ -85,6 +45,7 @@ void main() {
 
   test('runtime tag and dialer helpers preserve siblings', () {
     final outbound = <String, dynamic>{
+      'tag': 'proxy',
       'protocol': 'vless',
       'editorOnly': {'keep': true},
       'streamSettings': {
@@ -93,10 +54,8 @@ void main() {
       },
     };
 
-    setOutboundTag(outbound, 'proxy');
     setOutboundDialerProxy(outbound, 'chainProxy');
     expect(outboundDialerProxy(outbound), 'chainProxy');
-    removeOutboundDialerProxy(outbound);
 
     expect(outbound['tag'], 'proxy');
     expect(outbound['editorOnly'], {'keep': true});
@@ -105,7 +64,7 @@ void main() {
           as Map<String, dynamic>)['interface'],
       'utun9',
     );
-    expect(outboundDialerProxy(outbound), isNull);
+    expect(outboundDialerProxy(outbound), 'chainProxy');
   });
 
   test('canonical gate only rejects VMess and Shadowsocks mismatches', () {
@@ -139,37 +98,69 @@ void main() {
     );
   });
 
-  test('DB save prefers object name and fills fallback only in its copy', () {
-    final named = <String, dynamic>{
-      'name': 'Object Name',
-      'tag': 'proxy',
+  test('legacy name aliases tag only when tag is absent', () {
+    final legacy = <String, dynamic>{
+      'name': 'Legacy Name',
       'protocol': 'vless',
       'settings': {'editorOnly': true},
     };
-    final namedCompanion = outboundCompanion(
-      named,
-      databaseName: 'Link Fragment',
+    final normalized = copyOutboundMap(legacy);
+
+    expect(normalized['tag'], 'Legacy Name');
+    expect(normalized, isNot(contains('name')));
+    expect(legacy['name'], 'Legacy Name');
+
+    final canonical = copyOutboundMap({
+      'name': 'Legacy Name',
+      'tag': 'Canonical Tag',
+    });
+    expect(canonical['tag'], 'Canonical Tag');
+    expect(canonical, isNot(contains('name')));
+
+    final unnamed = copyOutboundMap({'protocol': 'vless'});
+    expect(unnamed, isNot(contains('tag')));
+  });
+
+  test('DB save uses tag and fills a missing tag from the row name', () {
+    final tagged = <String, dynamic>{
+      'tag': 'Node Tag',
+      'protocol': 'vless',
+      'settings': {'editorOnly': true},
+    };
+    final taggedCompanion = outboundCompanion(
+      tagged,
+      databaseName: 'Legacy Row Name',
     );
 
-    expect(namedCompanion.name.value, 'Object Name');
-    expect(_savedOutbound(namedCompanion.data.value!), named);
+    expect(taggedCompanion.name.value, 'Node Tag');
+    expect(_savedOutbound(taggedCompanion.data.value!), tagged);
 
-    final unnamed = <String, dynamic>{
-      'tag': 'proxy',
+    final untagged = <String, dynamic>{
       'protocol': 'vless',
       'settings': {'editorOnly': true},
     };
     final fallbackCompanion = outboundCompanion(
-      unnamed,
-      databaseName: 'Link Fragment',
+      untagged,
+      databaseName: 'Legacy Row Name',
     );
 
-    expect(fallbackCompanion.name.value, 'Link Fragment');
+    expect(fallbackCompanion.name.value, 'Legacy Row Name');
     expect(
-      _savedOutbound(fallbackCompanion.data.value!)['name'],
-      'Link Fragment',
+      _savedOutbound(fallbackCompanion.data.value!)['tag'],
+      'Legacy Row Name',
     );
-    expect(unnamed, isNot(contains('name')));
+    expect(
+      _savedOutbound(fallbackCompanion.data.value!),
+      isNot(contains('name')),
+    );
+    expect(untagged, isNot(contains('tag')));
+
+    final protocolCompanion = outboundCompanion({
+      'protocol': 'vless',
+      'settings': {'editorOnly': true},
+    });
+    expect(protocolCompanion.name.value, 'vless');
+    expect(_savedOutbound(protocolCompanion.data.value!)['tag'], 'vless');
   });
 }
 

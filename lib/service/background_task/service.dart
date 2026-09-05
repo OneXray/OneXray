@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
+
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/data_update/service.dart';
 
-class BackgroundTaskService {
+class BackgroundTaskService with WidgetsBindingObserver {
   static final BackgroundTaskService _singleton =
       BackgroundTaskService._internal();
 
@@ -16,11 +18,14 @@ class BackgroundTaskService {
   Timer? _timer;
   StreamSubscription<VpnStatus>? _vpnStatusSubscription;
   var _vpnConnected = false;
+  var _observingLifecycle = false;
 
   void init() {
     if (_timer != null) {
       return;
     }
+    WidgetsBinding.instance.addObserver(this);
+    _observingLifecycle = true;
     _vpnStatusSubscription ??= AppFlutterApi().vpnStatusController.stream
         .listen(_vpnStatusChanged);
     final interval = const Duration(hours: 1);
@@ -31,6 +36,10 @@ class BackgroundTaskService {
   }
 
   void dispose() {
+    if (_observingLifecycle) {
+      WidgetsBinding.instance.removeObserver(this);
+      _observingLifecycle = false;
+    }
     _timer?.cancel();
     _timer = null;
     _vpnStatusSubscription?.cancel();
@@ -38,23 +47,27 @@ class BackgroundTaskService {
     _vpnConnected = false;
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(checkDataUpdate());
+  }
+
   Future<void> checkDataUpdate({
     bool updateSubscription = true,
     bool updateGeoData = true,
-    bool? vpnConnected,
   }) async {
     await DataUpdateService().checkAndRun(
       updateSubscription: updateSubscription,
       updateGeoData: updateGeoData,
-      vpnConnected: vpnConnected ?? _vpnConnected,
     );
   }
 
   void _vpnStatusChanged(VpnStatus status) {
     switch (status) {
       case VpnStatus.connected:
+        if (_vpnConnected) return;
         _vpnConnected = true;
-        unawaited(_checkGeoDataUpdateAfterVpnConnected());
+        unawaited(_checkDataUpdateAfterVpnConnected());
         break;
       default:
         _vpnConnected = false;
@@ -62,11 +75,11 @@ class BackgroundTaskService {
     }
   }
 
-  Future<void> _checkGeoDataUpdateAfterVpnConnected() async {
+  Future<void> _checkDataUpdateAfterVpnConnected() async {
     await Future.delayed(const Duration(seconds: 3));
     if (!_vpnConnected) {
       return;
     }
-    await checkDataUpdate(updateSubscription: false, vpnConnected: true);
+    await checkDataUpdate();
   }
 }

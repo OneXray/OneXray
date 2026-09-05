@@ -1,3 +1,4 @@
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -10,7 +11,10 @@ from app.command_line import download_file, run_command
 
 class BuilderTest(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
+        fixtures = (Path(__file__).resolve().parents[3] / "references" /
+                    "onexray-refactor-validation" / "build-scripts")
+        fixtures.mkdir(parents=True, exist_ok=True)
+        self.temp_dir = tempfile.TemporaryDirectory(dir=fixtures, prefix="builder-")
         self.addCleanup(self.temp_dir.cleanup)
         self.root_dir = Path(self.temp_dir.name)
         self.builder = Builder.__new__(Builder)
@@ -51,34 +55,53 @@ class BuilderTest(unittest.TestCase):
         destination = workspace / "OneXray" / "windows" / "app" / "OneXrayCore.exe"
         self.assertEqual(destination.read_bytes(), b"libXray Core")
 
-    def test_core_build_uses_standard_libxray_build(self):
-        workspace = self.root_dir / "workspace"
-        self.builder.workspace_dir = str(workspace)
-
+    def test_core_build_copies_artifacts_without_metadata(self):
         for system, command in (
             ("linux", [sys.executable, "build/main.py", "linux"]),
             ("macos", [sys.executable, "build/main.py", "apple", "go"]),
         ):
             with self.subTest(system=system):
+                workspace = self.root_dir / system
+                lib_dir = workspace / "libXray"
+                library_name = "LibXray.xcframework" if system == "macos" else "libXray.so"
+                library_file = f"{library_name}/libXray.a" if system == "macos" else library_name
+                library = lib_dir / library_file
+                library.parent.mkdir(parents=True)
+                library.write_bytes(b"fixture library")
+                geodata = lib_dir / "dat" / "geoip.dat"
+                geodata.parent.mkdir()
+                geodata.write_bytes(b"fixture geodata")
+                self.builder.workspace_dir = str(workspace)
                 self.builder.system = system
                 self.builder.project_dir = str(workspace / "OneXray" / system)
                 self.builder.project_config = {
                     "core.dir": "libXray",
                     f"core.lib.dst.dir.{system}": "app",
-                    f"core.lib.src.files.{system}": [],
+                    f"core.lib.src.files.{system}": [library_name],
                     "core.dat.dst.dir": "assets/dat",
                 }
-
-                with (
-                    mock.patch("app.builder.run_command") as run,
-                    mock.patch("app.builder.check_and_create_dir"),
-                    mock.patch("app.builder.check_and_delete_dir"),
-                    mock.patch("app.builder.shutil.copytree"),
-                    mock.patch.object(self.builder, "build_core_binary"),
-                ):
+                with mock.patch("app.builder.run_command") as run:
                     self.builder.build_core()
 
-                run.assert_called_once_with(command, cwd=str(workspace / "libXray"))
+                run.assert_called_once_with(command, cwd=str(lib_dir))
+                destination = Path(self.builder.project_dir)
+                self.assertEqual((destination / "app" / library_file).read_bytes(), b"fixture library")
+                self.assertEqual((destination / "assets/dat/geoip.dat").read_bytes(), b"fixture geodata")
+                self.assertFalse((lib_dir / "build").exists())
+
+    def test_core_build_failure_propagates_before_copying_artifacts(self):
+        self.builder.workspace_dir = str(self.root_dir)
+        self.builder.system = "linux"
+        self.builder.project_config = {"core.dir": "libXray"}
+        failure = subprocess.CalledProcessError(1, ["core-build"])
+        with (
+            mock.patch("app.builder.run_command", side_effect=failure),
+            mock.patch("app.builder.check_and_create_dir") as prepare_destination,
+            self.assertRaises(subprocess.CalledProcessError) as raised,
+        ):
+            self.builder.build_core()
+        self.assertIs(raised.exception, failure)
+        prepare_destination.assert_not_called()
 
     def test_download_file_uses_standard_url_handler(self):
         source = self.root_dir / "source.bin"
@@ -102,7 +125,7 @@ class BuilderTest(unittest.TestCase):
             env={"RESULT": str(result)},
         )
 
-        self.assertEqual(Path(result.read_text()), self.root_dir)
+        self.assertEqual(Path(result.read_text()).resolve(), self.root_dir.resolve())
 
 
 if __name__ == "__main__":

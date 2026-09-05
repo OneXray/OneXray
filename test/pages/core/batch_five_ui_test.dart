@@ -1,14 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/controller.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
-import 'package:onexray/pages/core/main/controller.dart';
-import 'package:onexray/pages/core/main/page.dart';
 import 'package:onexray/pages/core/ping/page.dart';
+import 'package:onexray/pages/widget/page_action_bar.dart';
+import 'package:onexray/pages/widget/setting_row.dart';
+import 'package:onexray/pages/settings/auto_update/page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/ping/state.dart';
@@ -31,9 +31,10 @@ void main() {
     await eventBus.close();
   });
 
-  Widget app(Widget child) {
+  Widget app(Widget child, {Locale locale = const Locale('en')}) {
     return MaterialApp(
       theme: AppTheme.light,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, appChild) => ShadTheme(
@@ -47,32 +48,6 @@ void main() {
     );
   }
 
-  testWidgets('core overview exposes log files without an index page', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    final controller = CoreRootController();
-    addTearDown(controller.close);
-    await tester.pumpWidget(
-      app(
-        BlocProvider.value(
-          value: controller,
-          child: const Scaffold(body: SafeArea(child: CoreContent())),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.text('Network & Runtime'), findsOneWidget);
-    expect(find.text('Run Mode'), findsNothing);
-    expect(find.text('Data & Updates'), findsOneWidget);
-    expect(find.text('Log'), findsOneWidget);
-    expect(find.text('Xray config file'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('ping settings remain scrollable on phone', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -80,11 +55,31 @@ void main() {
     await tester.pumpWidget(app(const PingPage()));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Resolved URL'), findsOneWidget);
-    expect(find.text('Auto ping new nodes'), findsOneWidget);
+    expect(find.text('Speed test URL'), findsWidgets);
+    expect(find.text('Auto ping new nodes'), findsNothing);
+    expect(find.byType(PageActionBar), findsOneWidget);
+    expect(find.byType(Slider), findsNothing);
+    expect(find.byType(SettingSelect<double>), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  for (final locale in AppLocalizations.supportedLocales) {
+    testWidgets('runtime preference fields fit ${locale.toLanguageTag()}', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      for (final page in [const PingPage(), const AutoUpdatePage()]) {
+        await tester.pumpWidget(app(page, locale: locale));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.byType(PageActionBar), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
 
   testWidgets('ping settings restore a custom URL', (tester) async {
     final pingState = PingState()
@@ -95,7 +90,7 @@ void main() {
     await tester.pumpWidget(app(const PingPage()));
     await tester.pump(const Duration(milliseconds: 100));
 
-    final input = tester.widget<ShadInput>(find.byType(ShadInput));
+    final input = tester.widget<TextField>(find.byType(TextField));
     expect(input.controller?.text, 'https://example.com/ping');
     expect(find.text('Resolved URL'), findsNothing);
     expect(tester.takeException(), isNull);

@@ -2,17 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:drift/drift.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/tools/empty.dart';
-import 'package:onexray/service/localizations/service.dart';
 import 'package:onexray/service/ping/batch.dart';
 import 'package:onexray/service/ping/state.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_reader.dart';
-import 'package:onexray/service/xray/multi_node_outbound/state_validator.dart';
+import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/xray/outbound/map.dart';
 import 'package:onexray/service/xray/outbound/state_db.dart';
 
@@ -21,41 +20,52 @@ class PingService {
 
   factory PingService() => _singleton;
 
-  PingService._internal();
+  PingService._internal() : _databaseOverride = null, _batchOverride = null;
+
+  PingService.forTesting({
+    required AppDatabase database,
+    required Future<List<PingBatchResult>> Function(
+      List<PingBatchSource>,
+      PingState,
+    )
+    runBatch,
+  }) : _databaseOverride = database,
+       _batchOverride = runBatch;
+
+  final AppDatabase? _databaseOverride;
+  final Future<List<PingBatchResult>> Function(
+    List<PingBatchSource>,
+    PingState,
+  )?
+  _batchOverride;
+
+  AppDatabase get _database => _databaseOverride ?? AppDatabase();
 
   Future<void> _scheduledPingQueue = Future.value();
   var _pingingTaskCount = 0;
 
-  Future<void> pingOutboundConfigs(int subId) async {
-    final db = AppDatabase();
-    await _runPinging(() async {
-      final rows = await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId);
-      await _pingConfigs(db, rows);
-    });
-  }
-
-  Future<void> pingHomeNodeConfigs(int subId) async {
-    final db = AppDatabase();
-    await _runPinging(() async {
-      final rows = await db.coreConfigDao.allHomeNodeRowsWithDataBySubId(subId);
-      await _pingConfigs(db, rows);
-    });
-  }
-
   void schedulePingConfigIds(List<int> ids) {
+    unawaited(pingConfigIds(ids));
+  }
+
+  /// Shares the existing serialized queue with automatic imports. Each batch
+  /// commits independently, so DB watchers may finish selecting before this does.
+  Future<void> pingConfigIds(List<int> ids, {bool force = false}) {
     final targetIds = ids
         .where((id) => id > DBConstants.defaultId)
         .toSet()
         .toList();
     if (targetIds.isEmpty) {
-      return;
+      return Future.value();
     }
-    _enqueueAutoPing(() async {
-      final db = AppDatabase();
+    return _enqueuePing(() async {
+      final db = _database;
       final rows = <CoreConfigData>[];
       for (final id in targetIds) {
         final row = await db.coreConfigDao.searchRow(id);
-        if (row != null && _isPingableConfig(row)) {
+        if (row != null &&
+            _isPingableConfig(row) &&
+            (force || isUnmeasured(row))) {
           rows.add(row);
         }
       }
@@ -78,44 +88,53 @@ class PingService {
     if (targetSubIds.isEmpty) {
       return;
     }
-    _enqueueAutoPing(() async {
-      final db = AppDatabase();
-      final rows = <CoreConfigData>[];
-      for (final subId in targetSubIds) {
-        rows.addAll(
-          await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId),
-        );
-      }
-      if (rows.isEmpty) {
-        return;
-      }
-      await _runPinging(() => _pingConfigs(db, rows));
-    });
-  }
-
-  void _enqueueAutoPing(Future<void> Function() task) {
-    _scheduledPingQueue = _scheduledPingQueue.then((_) async {
-      try {
-        final pingState = PingState();
-        await pingState.readFromPreferences();
-        if (!pingState.autoPingNewConfigs) {
+    unawaited(
+      _enqueuePing(() async {
+        final db = _database;
+        final rows = <CoreConfigData>[];
+        for (final subId in targetSubIds) {
+          rows.addAll(
+            (await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId))
+                .where(isUnmeasured),
+          );
+        }
+        if (rows.isEmpty) {
           return;
         }
-        await task();
-      } catch (e, stackTrace) {
-        ygLogger("Auto ping failed: $e\n$stackTrace");
-      }
-    });
+        await _runPinging(() => _pingConfigs(db, rows));
+      }),
+    );
   }
 
-  Future<void> _runPinging(Future<void> Function() task) async {
-    _startPinging();
-    try {
+  Future<void> _enqueuePing(Future<void> Function() task) {
+    final previous = _scheduledPingQueue;
+    // Register while queued, not after waiting: restore must not finish and
+    // then receive a stale job against restored rows with the same IDs.
+    final next = DataMaintenance.run(() async {
+      await previous;
       await task();
-    } finally {
-      _stopPinging();
-    }
+    });
+    _scheduledPingQueue = next.catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
+    });
+    return next;
   }
+
+  static bool isUnmeasured(CoreConfigData row) =>
+      row.delay == PingDelayConstants.unknown;
+
+  Future<void> _runPinging(Future<void> Function() task) =>
+      DataMaintenance.run(() async {
+        _startPinging();
+        try {
+          await task();
+        } finally {
+          _stopPinging();
+        }
+      });
 
   void _startPinging() {
     _pingingTaskCount += 1;
@@ -134,10 +153,7 @@ class PingService {
   }
 
   bool _isPingableConfig(CoreConfigData row) {
-    final type = CoreConfigType.fromString(row.type);
-    return type == CoreConfigType.outbound ||
-        type == CoreConfigType.raw ||
-        type == CoreConfigType.multiNodeOutbound;
+    return CoreConfigType.fromString(row.type) == CoreConfigType.outbound;
   }
 
   Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
@@ -146,25 +162,27 @@ class PingService {
 
     for (final rowSlice in rows.slices(PingBatchRunner.maxBatchSize)) {
       final batchRows = <CoreConfigData>[];
-      final failedMultiNodeOutboundRows = <CoreConfigData>[];
       final sources = <PingBatchSource>[];
       for (final row in rowSlice) {
         final source = _makePingSource(row);
         if (source != null) {
           batchRows.add(row);
           sources.add(source);
-        } else if (CoreConfigType.fromString(row.type) ==
-            CoreConfigType.multiNodeOutbound) {
-          failedMultiNodeOutboundRows.add(row);
         }
       }
-      final results = await PingBatchRunner.run(sources, pingState);
+      final results = await (_batchOverride ?? PingBatchRunner.run)(
+        sources,
+        pingState,
+      );
       await db.transaction(() async {
-        for (final row in failedMultiNodeOutboundRows) {
-          await _updateRow(db, row, PingDelayConstants.error);
-        }
         for (var index = 0; index < results.length; index++) {
-          await _updateRow(db, batchRows[index], results[index].delay);
+          final result = results[index];
+          final delay = result.success
+              ? result.delay
+              : result.delay == PingDelayConstants.timeout
+              ? PingDelayConstants.timeout
+              : PingDelayConstants.error;
+          await _updateRow(db, batchRows[index], delay, result.countryCode);
         }
       });
     }
@@ -184,43 +202,36 @@ class PingService {
         case CoreConfigType.raw:
           final bytes = base64Decode(row.data!);
           return PingBatchSource(utf8.decode(bytes));
-        case CoreConfigType.multiNodeOutbound:
-          final multiNodeOutbound = readMultiNodeOutboundFromDbData(row);
-          if (!validateMultiNodeOutboundFields(multiNodeOutbound).item1) {
-            return null;
-          }
-          return PingBatchSource(encodeMultiNodeOutboundMap(multiNodeOutbound));
         default:
           return null;
       }
-    } catch (error, stackTrace) {
-      ygLogger("Prepare ping source failed: ${row.id}, $error\n$stackTrace");
+    } catch (error) {
+      ygLogger("Prepare ping source failed: ${row.id}, ${error.runtimeType}");
       return null;
     }
   }
 
-  Future<void> _updateRow(AppDatabase db, CoreConfigData row, int delay) async {
-    var newRow = row;
-    if (delay != PingDelayConstants.unknown) {
-      newRow = newRow.copyWith(delay: delay);
-    }
-    await db.coreConfigDao.updateRow(newRow);
-  }
-
-  String parsePingResponse(int delay) {
-    var content = "";
-    switch (delay) {
-      case PingDelayConstants.timeout:
-        content = appLocalizationsNoContext().pingTimeout;
-        break;
-      case PingDelayConstants.error:
-        content = appLocalizationsNoContext().pingError;
-        break;
-      default:
-        content = "${delay}ms";
-        break;
-    }
-
-    return content;
+  Future<void> _updateRow(
+    AppDatabase db,
+    CoreConfigData row,
+    int delay,
+    String? countryCode,
+  ) async {
+    if (delay == PingDelayConstants.unknown || row.data == null) return;
+    final country =
+        countryCode != null && RegExp(r'^[A-Z]{2}$').hasMatch(countryCode)
+        ? countryCode
+        : null;
+    // A slow result must not overwrite an edit, favorite, or restored asset.
+    await (db.update(db.coreConfig)..where(
+          (table) =>
+              table.id.equals(row.id) &
+              table.subId.equals(row.subId) &
+              table.type.equals(row.type) &
+              table.data.equals(row.data!),
+        ))
+        .write(
+          CoreConfigCompanion(delay: Value(delay), countryCode: Value(country)),
+        );
   }
 }

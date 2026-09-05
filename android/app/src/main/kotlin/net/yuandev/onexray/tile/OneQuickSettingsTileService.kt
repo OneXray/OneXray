@@ -10,7 +10,6 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import net.yuandev.onexray.MainActivity
 import net.yuandev.onexray.R
 import net.yuandev.onexray.vpn.VpnController
 import net.yuandev.onexray.vpn.OneVpnService
@@ -70,19 +69,7 @@ class OneQuickSettingsTileService : TileService() {
             return
         }
 
-        when (VpnController.startVpnWithLastProfile(this)) {
-            VpnController.StartResult.STARTED -> {
-                updateTileState(
-                    state = Tile.STATE_UNAVAILABLE,
-                    subtitle = getString(R.string.quick_settings_tile_status_connecting),
-                    iconRes = R.drawable.play_light,
-                )
-                VpnController.requestTileRefresh(this)
-            }
-            VpnController.StartResult.MISSING_START_SNAPSHOT,
-            VpnController.StartResult.NEED_PERMISSION,
-            VpnController.StartResult.FAILED -> launchMainActivity()
-        }
+        launchMainActivity()
     }
 
     private fun refreshTile() {
@@ -91,9 +78,7 @@ class OneQuickSettingsTileService : TileService() {
     }
 
     private fun launchMainActivity() {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        }
+        val intent = VpnController.buildShortcutStartIntent(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val pendingIntent = PendingIntent.getActivity(
                 this,
@@ -122,12 +107,10 @@ class OneQuickSettingsTileService : TileService() {
     }
 
     private fun updateTileForVpnStatus(running: Boolean) {
-        val hasStartSnapshot = VpnController.hasStartSnapshot(this)
         updateTileState(
             state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE,
             subtitle = when {
                 running -> getString(R.string.quick_settings_tile_status_connected)
-                hasStartSnapshot -> getString(R.string.quick_settings_tile_status_disconnected)
                 else -> getString(R.string.quick_settings_tile_status_open_app)
             },
             iconRes = if (running) R.drawable.pause_light else R.drawable.play_light,

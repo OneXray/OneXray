@@ -16,6 +16,7 @@ enum AppHostApiError: Error {
 @MainActor
 final class AppHostApi: @preconcurrency BridgeHostApi {
     private let flutterApi: AppFlutterApi
+    private nonisolated static let invokeLock = NSLock()
     init(flutterApi: AppFlutterApi) {
         self.flutterApi = flutterApi
     }
@@ -31,11 +32,19 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
 
     func readVpnStatus(completion: @escaping (Result<NativeVpnCommandResult, any Error>) -> Void) {
         Task {
-            let installed = await VPNManager.shared.refreshVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
+            let installed = VPNManager.shared.refreshVpnResult(from: permission)
             flutterApi.refreshVpn(result: installed)
             flutterApi.vpnStatusChanged()
-            completion(.success(commandSuccess(permission: permission)))
+            if permission.state == .failed {
+                completion(.success(NativeVpnCommandResult(
+                    state: .failed,
+                    permission: permission,
+                    message: permission.message
+                )))
+            } else {
+                completion(.success(commandSuccess(permission: permission)))
+            }
         }
     }
     
@@ -67,6 +76,9 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
     }
 
     private nonisolated static func invoke(_ requestJson: String) -> Result<String, any Error> {
+        // Temporary cores share process-global Xray state; the VPN uses its extension.
+        invokeLock.lock()
+        defer { invokeLock.unlock() }
         let res = requestJson.withCString { p in
             let p0 = UnsafeMutablePointer(mutating: p)
             return CGoInvoke(p0)
@@ -104,6 +116,25 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
     /// macOS
     func useSystemExtension(completion: @escaping (Result<Bool, any Error>) -> Void) {
         completion(.success(Constants.useSystemExtension))
+    }
+
+    func appleVpnCapabilities(completion: @escaping (Result<AppleVpnCapabilities, any Error>) -> Void) {
+        let serviceExclusions: Bool
+        let deviceCommunication: Bool
+        if #available(iOS 16.4, macOS 13.3, *) {
+            serviceExclusions = true
+        } else {
+            serviceExclusions = false
+        }
+        if #available(iOS 17.4, macOS 14.4, *) {
+            deviceCommunication = true
+        } else {
+            deviceCommunication = false
+        }
+        completion(.success(AppleVpnCapabilities(
+            serviceExclusions: serviceExclusions,
+            deviceCommunication: deviceCommunication
+        )))
     }
 
     func queryLaunchAtLogin(

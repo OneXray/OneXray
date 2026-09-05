@@ -11,14 +11,13 @@ extension StartVpnRequestWriter on StartVpnRequest {
     final data = JsonTool.encoder.convert(toJson());
     final filePath = VpnConstants.startPath;
     await Directory(File(filePath).parent.path).create(recursive: true);
-    if (!Platform.isWindows) {
-      await File(filePath).writeAsString(data, flush: true);
-      return;
-    }
-
     final temporary = File('$filePath.tmp');
     try {
       await temporary.writeAsString(data, flush: true);
+      if (!Platform.isWindows) {
+        await temporary.rename(filePath);
+        return;
+      }
       using((arena) {
         final result = MoveFileEx(
           arena.pcwstr(temporary.path),

@@ -44,21 +44,13 @@ data class TunJson(
 )
 
 @Serializable
-data class XrayInboundAccount(
-    val user: String?,
-    val pass: String?,
-)
-
-@Serializable
 data class StartVpnRequest(
     val tun: TunJson?,
     val socksPort: String? = null,
-    val pingPort: String?,
-    val pingAuth: XrayInboundAccount?,
     val metricsPort: String?,
     val coreInvokeText: String?,
-    val configId: Long? = null,
     val snapshotToken: String? = null,
+    val metadataJson: String? = null,
 )
 
 @Serializable
@@ -97,6 +89,15 @@ enum class LibXrayMethod {
 @Serializable
 data class RunXrayRequest(
     val xrayJson: String? = null,
+    val runtime: ManagedRuntimeRequest? = null,
+)
+
+@Serializable
+data class ManagedRuntimeRequest(
+    val statePath: String,
+    val inboundTag: String,
+    val listen: String? = null,
+    val token: String? = null,
 )
 
 @Serializable
@@ -111,7 +112,7 @@ data class XrayEnv(
 
 @Serializable
 data class LibXrayInvokeRequest(
-    val apiVersion: Int? = 2,
+    val apiVersion: Int? = 3,
     val method: LibXrayMethod? = null,
     val payload: RunXrayRequest? = null,
 )

@@ -184,7 +184,7 @@ def _copy_vcore_artifacts(source: str, destination: str, architecture: str) -> N
     if (
         not isinstance(manifest, dict)
         or manifest.get("formatVersion") != 1
-        or manifest.get("windowsPackageIntegrationRevision") != 2
+        or manifest.get("windowsPackageIntegrationRevision") != 3
         or manifest.get("architecture") != architecture
         or manifest.get("buildIdentity") != _VCORE_IDENTITY
         or not isinstance(manifest.get("artifacts"), dict)

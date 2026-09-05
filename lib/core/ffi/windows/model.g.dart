@@ -136,25 +136,61 @@ Map<String, dynamic> _$WindowsVpnNetworkSettingsToJson(
   'dnsIpv6Address': instance.dnsIpv6Address,
 };
 
+WindowsVpnPolicy _$WindowsVpnPolicyFromJson(Map<String, dynamic> json) {
+  $checkKeys(
+    json,
+    allowedKeys: const ['alwaysOn', 'allowLocalNetwork', 'excludedCidrs'],
+    requiredKeys: const ['alwaysOn', 'allowLocalNetwork', 'excludedCidrs'],
+  );
+  return WindowsVpnPolicy(
+    alwaysOn: json['alwaysOn'] as bool,
+    allowLocalNetwork: json['allowLocalNetwork'] as bool,
+    excludedCidrs: (json['excludedCidrs'] as List<dynamic>)
+        .map((e) => e as String)
+        .toList(),
+  );
+}
+
+Map<String, dynamic> _$WindowsVpnPolicyToJson(WindowsVpnPolicy instance) =>
+    <String, dynamic>{
+      'alwaysOn': instance.alwaysOn,
+      'allowLocalNetwork': instance.allowLocalNetwork,
+      'excludedCidrs': instance.excludedCidrs,
+    };
+
 WindowsStartVpnPayload _$WindowsStartVpnPayloadFromJson(
   Map<String, dynamic> json,
-) => WindowsStartVpnPayload(
-  configYaml: json['configYaml'] as String,
-  networkSettings: WindowsVpnNetworkSettings.fromJson(
-    json['networkSettings'] as Map<String, dynamic>,
-  ),
-  sessionBackend: json['sessionBackend'] == null
-      ? null
-      : WindowsSessionBackend.fromJson(
-          json['sessionBackend'] as Map<String, dynamic>,
-        ),
-);
+) {
+  $checkKeys(
+    json,
+    allowedKeys: const [
+      'configYaml',
+      'networkSettings',
+      'policy',
+      'sessionBackend',
+    ],
+    requiredKeys: const ['policy'],
+  );
+  return WindowsStartVpnPayload(
+    configYaml: json['configYaml'] as String,
+    networkSettings: WindowsVpnNetworkSettings.fromJson(
+      json['networkSettings'] as Map<String, dynamic>,
+    ),
+    policy: WindowsVpnPolicy.fromJson(json['policy'] as Map<String, dynamic>),
+    sessionBackend: json['sessionBackend'] == null
+        ? null
+        : WindowsSessionBackend.fromJson(
+            json['sessionBackend'] as Map<String, dynamic>,
+          ),
+  );
+}
 
 Map<String, dynamic> _$WindowsStartVpnPayloadToJson(
   WindowsStartVpnPayload instance,
 ) => <String, dynamic>{
   'configYaml': instance.configYaml,
   'networkSettings': instance.networkSettings.toJson(),
+  'policy': instance.policy.toJson(),
   'sessionBackend': ?instance.sessionBackend?.toJson(),
 };
 

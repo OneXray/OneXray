@@ -4,13 +4,14 @@
 
 ## 文档索引
 
-- [Xray 配置合同](xray-configuration.md)：Outbound、Profile、多节点出站、Raw JSON、运行时物化和兼容边界。
+- [Xray 配置合同](xray-configuration.md)：节点、Smart/Custom、Raw JSON、配置编译和连接生命周期。
 - [导航与界面](app-navigation.md)：主入口、关键交互、平台差异和响应式结构。
 - [订阅、导入与分享](subscriptions-and-sharing.md)：订阅更新、导入来源、OneXray App Link 和分享边界。
 - [Age 加密订阅](age-encrypted-subscriptions.md)：密钥、下载、解密、备份与安全边界。
-- [App 启动行为](app-startup.md)：启动时连接、桌面隐藏启动和登录时启动。
+- [App 启动行为](app-startup.md)：正常启动、首次初始化、权限检查和桌面启动行为。
 - [数据管理](data-management.md)：GeoData、自动更新、备份和恢复。
 - [Windows 构建](windows-build.md)：VCore/MSIX 打包、本地签名和 GitHub Actions 构建矩阵。
+- [验证边界](refactor-validation.md)：按改动选择检查项、平台验证限制和验证数据隔离。
 
 ## 维护原则
 

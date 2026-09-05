@@ -20,7 +20,7 @@ final class WindowsNativeInvokeRequest {
   const WindowsNativeInvokeRequest({
     required this.method,
     this.payload = const {},
-  }) : bridgeVersion = 2;
+  }) : bridgeVersion = 3;
 
   Map<String, dynamic> toJson() => _$WindowsNativeInvokeRequestToJson(this);
 }
@@ -127,15 +127,43 @@ final class WindowsVpnNetworkSettings {
   Map<String, dynamic> toJson() => _$WindowsVpnNetworkSettingsToJson(this);
 }
 
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
+@JsonSerializable(disallowUnrecognizedKeys: true)
+final class WindowsVpnPolicy {
+  @JsonKey(required: true)
+  final bool alwaysOn;
+  @JsonKey(required: true)
+  final bool allowLocalNetwork;
+  @JsonKey(required: true)
+  final List<String> excludedCidrs;
+
+  const WindowsVpnPolicy({
+    required this.alwaysOn,
+    required this.allowLocalNetwork,
+    required this.excludedCidrs,
+  });
+
+  factory WindowsVpnPolicy.fromJson(Map<String, dynamic> json) =>
+      _$WindowsVpnPolicyFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WindowsVpnPolicyToJson(this);
+}
+
+@JsonSerializable(
+  explicitToJson: true,
+  includeIfNull: false,
+  disallowUnrecognizedKeys: true,
+)
 final class WindowsStartVpnPayload {
   final String configYaml;
   final WindowsVpnNetworkSettings networkSettings;
+  @JsonKey(required: true)
+  final WindowsVpnPolicy policy;
   final WindowsSessionBackend? sessionBackend;
 
   const WindowsStartVpnPayload({
     required this.configYaml,
     required this.networkSettings,
+    required this.policy,
     this.sessionBackend,
   });
 

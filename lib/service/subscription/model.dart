@@ -56,13 +56,50 @@ final class SubscriptionInsertResult {
     required this.status,
     this.subId = 0,
     this.count = 0,
+    this.parseFailureCount,
   });
 
   final SubscriptionUpdateResult status;
   final int subId;
   final int count;
+  final int? parseFailureCount;
 
   bool get success => status == SubscriptionUpdateResult.success && count > 0;
+}
+
+final class SubscriptionNodeReferences {
+  const SubscriptionNodeReferences({
+    this.runningIds = const {},
+    this.fixedId,
+    this.finalExitId,
+  });
+
+  final Set<int> runningIds;
+  final int? fixedId;
+  final int? finalExitId;
+
+  Set<int> get protectedIds => {
+    ...runningIds.where((id) => id > 0),
+    if (fixedId != null && fixedId! > 0) fixedId!,
+    if (finalExitId != null && finalExitId! > 0) finalExitId!,
+  };
+}
+
+final class SubscriptionRefreshResult {
+  const SubscriptionRefreshResult({
+    required this.status,
+    this.count = 0,
+    this.parseFailureCount,
+    this.superseded = false,
+  });
+
+  final SubscriptionUpdateResult status;
+  final int count;
+  final int? parseFailureCount;
+  final bool superseded;
+
+  bool get success =>
+      !superseded && status == SubscriptionUpdateResult.success && count > 0;
 }
 
 enum SubscriptionUpdateResult {

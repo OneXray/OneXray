@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/home/share/controller.dart';
 import 'package:onexray/pages/home/share/params.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 
 class SharePage extends StatelessWidget {
   const SharePage({super.key, required this.params});
@@ -15,285 +18,263 @@ class SharePage extends StatelessWidget {
   final SharePageParams params;
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => ShareController(params),
-      child: BlocBuilder<ShareController, SharePageState>(
-        builder: (context, state) => Scaffold(
-          appBar: AppBar(
-            title: Text(AppLocalizations.of(context)!.sharePageTitle),
-          ),
-          body: SafeArea(child: _body(context, state)),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => ShareController(params),
+    child: BlocBuilder<ShareController, SharePageState>(
+      builder: (context, state) {
+        final l = AppLocalizations.of(context)!;
+        final controller = context.read<ShareController>();
+        return AppDialog(
+          title: params.type == ShareType.subscription
+              ? l.prototypeShareSubscription
+              : l.prototypeShareServer,
+          subtitle: state.name.isEmpty ? null : state.name,
+          body: _body(context, state),
+          actions: [
+            ConnectDialogButton(
+              label: l.prototypeCancel,
+              secondary: true,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ConnectDialogButton(
+              label: AppPlatform.isLinux
+                  ? l.sharePageCopyLink
+                  : l.prototypeShare,
+              icon: LucideIcons.share2,
+              busy: state.sharing,
+              onPressed:
+                  state.loading || state.sharing || state.selectedLink.isEmpty
+                  ? null
+                  : () => controller.shareSelectedLink(context),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 
   Widget _body(BuildContext context, SharePageState state) {
-    final description = state.showLinkSection
-        ? state.linkSection
-        : state.showAppLinkSection
-        ? AppLocalizations.of(context)!.sharePageAppLink
-        : state.showTextSection
-        ? state.textSection
-        : "";
-    if (!state.showLinkSection &&
-        !state.showAppLinkSection &&
-        !state.showTextSection &&
-        !state.showJsonFileSection &&
-        state.linkError.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    final controller = context.read<ShareController>();
+    if (state.loading) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
-    return SingleChildScrollView(
-      child: ResponsiveContent(
-        desktopMaxWidth: 760,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 18, 16, 28),
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      borderSide: BorderSide(color: palette.border),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          label: l.prototypeLinkFormat,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(22, 16, 22, 0),
+            decoration: BoxDecoration(
+              color: palette.card,
+              border: Border.all(color: palette.border),
+              borderRadius: BorderRadius.circular(AppRadii.control),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              height: 41,
+              child: Row(
+                children: [
+                  for (final format in ShareLinkFormat.values)
+                    Expanded(
+                      child: _formatChoice(
+                        context,
+                        format,
+                        selected: state.format == format,
+                        onPressed: () => controller.selectFormat(format),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (description.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsetsDirectional.symmetric(horizontal: 2),
-                  child: Text(
-                    description,
-                    style: AppTypography.supporting.copyWith(
-                      color: ColorManager.secondaryText(context),
+              Text(
+                params.type == ShareType.subscription
+                    ? l.prototypeSubscriptionLink
+                    : l.prototypeServerShareLink,
+                style: AppTypography.subscriptionField.copyWith(
+                  color: palette.mutedStrong,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 92,
+                child: TextFormField(
+                  key: ValueKey(state.format),
+                  initialValue: state.selectedLink,
+                  readOnly: true,
+                  textDirection: TextDirection.ltr,
+                  textAlignVertical: TextAlignVertical.top,
+                  expands: true,
+                  minLines: null,
+                  maxLines: null,
+                  style: AppTypography.shareLink.copyWith(
+                    color: palette.foreground,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor: palette.muted,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
+                    border: border,
+                    enabledBorder: border,
+                    focusedBorder: border.copyWith(
+                      borderSide: BorderSide(color: palette.primary),
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
-              ],
-              if (state.linkError.isNotEmpty) ...[
-                Text(
-                  state.linkError,
-                  style: AppTypography.supporting.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-                const SizedBox(height: 18),
-              ],
-              if (state.showLinkSection) ..._linkSections(context, state),
-              if (state.showAppLinkSection) ..._appLinkSections(context),
-              if (state.showTextSection) ..._textSections(context),
-              if (state.showJsonFileSection) ..._jsonFileSections(context),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _appLinkSections(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final controller = context.read<ShareController>();
-    return [
-      _ShareActionSection(
-        title: localizations.sharePageOneXrayLink,
-        actions: [
-          _ShareAction(
-            title: localizations.sharePageShareLink,
-            icon: LucideIcons.share2,
-            onTap: () => controller.shareAppLink(context),
-          ),
-          _ShareAction(
-            title: localizations.sharePageCopyLink,
-            icon: LucideIcons.copy,
-            onTap: () => controller.copyAppLink(context),
-          ),
-        ],
-      ),
-      const SizedBox(height: 18),
-    ];
-  }
-
-  List<Widget> _linkSections(BuildContext context, SharePageState state) {
-    final localizations = AppLocalizations.of(context)!;
-    final controller = context.read<ShareController>();
-    return [
-      if (state.linkQrcodeSuccess) ...[
-        _ShareActionSection(
-          title: localizations.sharePageQRCode,
-          actions: [
-            if (!AppPlatform.isLinux)
-              _ShareAction(
-                title: localizations.sharePageShareQRCode,
-                icon: LucideIcons.share2,
-                onTap: () => controller.shareLinkQrcode(context),
               ),
-            _ShareAction(
-              title: localizations.sharePageSaveQRCode,
-              icon: LucideIcons.imageDown,
-              onTap: () => controller.saveLinkQrcode(context),
-            ),
-            _ShareAction(
-              title: localizations.sharePageShowQRCode,
-              icon: LucideIcons.qrCode,
-              onTap: () => controller.showLinkQrcode(context),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-      ],
-      _ShareActionSection(
-        title: localizations.sharePageLink,
-        actions: [
-          _ShareAction(
-            title: localizations.sharePageShareLink,
-            icon: LucideIcons.share2,
-            onTap: () => controller.shareLinkUrl(context),
-          ),
-          _ShareAction(
-            title: localizations.sharePageCopyLink,
-            icon: LucideIcons.copy,
-            onTap: () => controller.copyLinkUrl(context),
-          ),
-        ],
-      ),
-      const SizedBox(height: 18),
-    ];
-  }
-
-  List<Widget> _textSections(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final controller = context.read<ShareController>();
-    return [
-      _ShareActionSection(
-        title: localizations.sharePageText,
-        actions: [
-          _ShareAction(
-            title: localizations.sharePageShareText,
-            icon: LucideIcons.share2,
-            onTap: () => controller.shareText(context),
-          ),
-          _ShareAction(
-            title: localizations.sharePageCopyText,
-            icon: LucideIcons.copy,
-            onTap: () => controller.copyText(context),
-          ),
-        ],
-      ),
-      const SizedBox(height: 18),
-    ];
-  }
-
-  List<Widget> _jsonFileSections(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final controller = context.read<ShareController>();
-    return [
-      _ShareActionSection(
-        title: localizations.sharePageJsonFile,
-        actions: [
-          if (!AppPlatform.isLinux)
-            _ShareAction(
-              title: localizations.sharePageShareJsonFile,
-              icon: LucideIcons.share2,
-              onTap: () => controller.shareJsonFile(context),
-            ),
-          _ShareAction(
-            title: localizations.sharePageSaveJsonFile,
-            icon: LucideIcons.fileJson,
-            onTap: () => controller.saveJsonFile(context),
-          ),
-        ],
-      ),
-    ];
-  }
-}
-
-class _ShareAction {
-  const _ShareAction({
-    required this.title,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final IconData icon;
-  final VoidCallback onTap;
-}
-
-class _ShareActionSection extends StatelessWidget {
-  const _ShareActionSection({required this.title, required this.actions});
-
-  final String title;
-  final List<_ShareAction> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsetsDirectional.only(start: 2, bottom: 7),
-          child: Text(
-            title,
-            style: AppTypography.supporting.copyWith(
-              fontWeight: FontWeight.w600,
-              color: ColorManager.secondaryText(context),
-            ),
-          ),
-        ),
-        ShadCard(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          radius: const BorderRadius.all(Radius.circular(8)),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (var index = 0; index < actions.length; index++) ...[
-                if (index > 0)
-                  Divider(height: 1, color: ColorManager.border(context)),
-                _ShareActionRow(action: actions[index]),
+              if (state.selectedLink.isEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  state.linkError.isEmpty ? l.resultFailed : state.linkError,
+                  style: AppTypography.shareHint.copyWith(
+                    color: palette.destructive,
+                  ),
+                ),
               ],
             ],
           ),
         ),
+        if (params.type == ShareType.subscription &&
+            state.format == ShareLinkFormat.onexray)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
+            child: Text(
+              l.prototypeSubscriptionShareAgeHint,
+              style: AppTypography.shareHint.copyWith(
+                color: palette.mutedForeground,
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                button: true,
+                toggled: state.qrExpanded,
+                child: InkWell(
+                  onTap: state.selectedLink.isEmpty
+                      ? null
+                      : controller.toggleQr,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (state.qrExpanded &&
+                          state.qrCode == null &&
+                          state.qrError.isEmpty)
+                        const ButtonProgressIndicator(size: 18)
+                      else
+                        const Icon(LucideIcons.qrCode, size: 18),
+                      const SizedBox(width: 8),
+                      Text(l.sharePageShowQRCode, style: AppTypography.shareQr),
+                    ],
+                  ),
+                ),
+              ),
+              if (state.qrExpanded) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: state.qrCode != null
+                          ? Image.memory(
+                              state.qrCode!,
+                              width: 200,
+                              height: 200,
+                              filterQuality: FilterQuality.none,
+                              semanticLabel: l.sharePageQRCode,
+                            )
+                          : Center(
+                              child: state.qrError.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : Text(
+                                      state.qrError,
+                                      style: AppTypography.shareHint.copyWith(
+                                        color: palette.destructive,
+                                      ),
+                                    ),
+                            ),
+                    ),
+                  ),
+                ),
+                ConnectDialogButton(
+                  label: l.sharePageSaveQRCode,
+                  icon: LucideIcons.download,
+                  secondary: true,
+                  busy: state.savingQr,
+                  onPressed: state.qrCode == null || state.savingQr
+                      ? null
+                      : () => controller.saveQr(context),
+                ),
+              ],
+            ],
+          ),
+        ),
+        ConnectCallout(
+          icon: LucideIcons.circleAlert,
+          warning: true,
+          text: params.type == ShareType.subscription
+              ? l.prototypeSubscriptionShareWarning
+              : l.prototypeServerShareWarning,
+        ),
       ],
     );
   }
-}
 
-class _ShareActionRow extends StatelessWidget {
-  const _ShareActionRow({required this.action});
-
-  final _ShareAction action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
+  Widget _formatChoice(
+    BuildContext context,
+    ShareLinkFormat format, {
+    required bool selected,
+    required VoidCallback onPressed,
+  }) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Semantics(
+      button: true,
+      selected: selected,
       child: InkWell(
-        onTap: action.onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Padding(
-            padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary
-                        .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(
-                    action.icon,
-                    size: 15,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(action.title, style: AppTypography.rowTitle),
-                ),
-              ],
+        onTap: onPressed,
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          decoration: BoxDecoration(
+            color: selected ? palette.selectedSurface : palette.card,
+            border: selected
+                ? Border.all(color: palette.primary)
+                : format == ShareLinkFormat.original
+                ? BorderDirectional(end: BorderSide(color: palette.border))
+                : null,
+          ),
+          child: Text(
+            format == ShareLinkFormat.original
+                ? l.prototypeOriginalLink
+                : l.sharePageOneXrayLink,
+            textAlign: TextAlign.center,
+            style: AppTypography.subscriptionField.copyWith(
+              color: selected ? palette.primary : palette.mutedStrong,
             ),
           ),
         ),

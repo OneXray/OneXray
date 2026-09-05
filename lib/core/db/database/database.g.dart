@@ -76,6 +76,32 @@ class $CoreConfigTable extends CoreConfig
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _countryCodeMeta = const VerificationMeta(
+    'countryCode',
+  );
+  @override
+  late final GeneratedColumn<String> countryCode = GeneratedColumn<String>(
+    'country_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _favoriteMeta = const VerificationMeta(
+    'favorite',
+  );
+  @override
+  late final GeneratedColumn<bool> favorite = GeneratedColumn<bool>(
+    'favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -85,6 +111,8 @@ class $CoreConfigTable extends CoreConfig
     data,
     delay,
     subId,
+    countryCode,
+    favorite,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -147,6 +175,21 @@ class $CoreConfigTable extends CoreConfig
     } else if (isInserting) {
       context.missing(_subIdMeta);
     }
+    if (data.containsKey('country_code')) {
+      context.handle(
+        _countryCodeMeta,
+        countryCode.isAcceptableOrUnknown(
+          data['country_code']!,
+          _countryCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('favorite')) {
+      context.handle(
+        _favoriteMeta,
+        favorite.isAcceptableOrUnknown(data['favorite']!, _favoriteMeta),
+      );
+    }
     return context;
   }
 
@@ -184,6 +227,14 @@ class $CoreConfigTable extends CoreConfig
         DriftSqlType.int,
         data['${effectivePrefix}sub_id'],
       )!,
+      countryCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country_code'],
+      ),
+      favorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}favorite'],
+      )!,
     );
   }
 
@@ -201,6 +252,8 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
   final String? data;
   final int delay;
   final int subId;
+  final String? countryCode;
+  final bool favorite;
   const CoreConfigData({
     required this.id,
     required this.name,
@@ -209,6 +262,8 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     this.data,
     required this.delay,
     required this.subId,
+    this.countryCode,
+    required this.favorite,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -222,6 +277,10 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     }
     map['delay'] = Variable<int>(delay);
     map['sub_id'] = Variable<int>(subId);
+    if (!nullToAbsent || countryCode != null) {
+      map['country_code'] = Variable<String>(countryCode);
+    }
+    map['favorite'] = Variable<bool>(favorite);
     return map;
   }
 
@@ -234,6 +293,10 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       data: data == null && nullToAbsent ? const Value.absent() : Value(data),
       delay: Value(delay),
       subId: Value(subId),
+      countryCode: countryCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countryCode),
+      favorite: Value(favorite),
     );
   }
 
@@ -250,6 +313,8 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       data: serializer.fromJson<String?>(json['data']),
       delay: serializer.fromJson<int>(json['delay']),
       subId: serializer.fromJson<int>(json['subId']),
+      countryCode: serializer.fromJson<String?>(json['countryCode']),
+      favorite: serializer.fromJson<bool>(json['favorite']),
     );
   }
   @override
@@ -263,6 +328,8 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       'data': serializer.toJson<String?>(data),
       'delay': serializer.toJson<int>(delay),
       'subId': serializer.toJson<int>(subId),
+      'countryCode': serializer.toJson<String?>(countryCode),
+      'favorite': serializer.toJson<bool>(favorite),
     };
   }
 
@@ -274,6 +341,8 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     Value<String?> data = const Value.absent(),
     int? delay,
     int? subId,
+    Value<String?> countryCode = const Value.absent(),
+    bool? favorite,
   }) => CoreConfigData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -282,6 +351,8 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
     data: data.present ? data.value : this.data,
     delay: delay ?? this.delay,
     subId: subId ?? this.subId,
+    countryCode: countryCode.present ? countryCode.value : this.countryCode,
+    favorite: favorite ?? this.favorite,
   );
   CoreConfigData copyWithCompanion(CoreConfigCompanion data) {
     return CoreConfigData(
@@ -292,6 +363,10 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
       data: data.data.present ? data.data.value : this.data,
       delay: data.delay.present ? data.delay.value : this.delay,
       subId: data.subId.present ? data.subId.value : this.subId,
+      countryCode: data.countryCode.present
+          ? data.countryCode.value
+          : this.countryCode,
+      favorite: data.favorite.present ? data.favorite.value : this.favorite,
     );
   }
 
@@ -304,13 +379,25 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
           ..write('tags: $tags, ')
           ..write('data: $data, ')
           ..write('delay: $delay, ')
-          ..write('subId: $subId')
+          ..write('subId: $subId, ')
+          ..write('countryCode: $countryCode, ')
+          ..write('favorite: $favorite')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, tags, data, delay, subId);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    type,
+    tags,
+    data,
+    delay,
+    subId,
+    countryCode,
+    favorite,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -321,7 +408,9 @@ class CoreConfigData extends DataClass implements Insertable<CoreConfigData> {
           other.tags == this.tags &&
           other.data == this.data &&
           other.delay == this.delay &&
-          other.subId == this.subId);
+          other.subId == this.subId &&
+          other.countryCode == this.countryCode &&
+          other.favorite == this.favorite);
 }
 
 class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
@@ -332,6 +421,8 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
   final Value<String?> data;
   final Value<int> delay;
   final Value<int> subId;
+  final Value<String?> countryCode;
+  final Value<bool> favorite;
   const CoreConfigCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -340,6 +431,8 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     this.data = const Value.absent(),
     this.delay = const Value.absent(),
     this.subId = const Value.absent(),
+    this.countryCode = const Value.absent(),
+    this.favorite = const Value.absent(),
   });
   CoreConfigCompanion.insert({
     this.id = const Value.absent(),
@@ -349,6 +442,8 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     this.data = const Value.absent(),
     required int delay,
     required int subId,
+    this.countryCode = const Value.absent(),
+    this.favorite = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        tags = Value(tags),
@@ -362,6 +457,8 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     Expression<String>? data,
     Expression<int>? delay,
     Expression<int>? subId,
+    Expression<String>? countryCode,
+    Expression<bool>? favorite,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -371,6 +468,8 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
       if (data != null) 'data': data,
       if (delay != null) 'delay': delay,
       if (subId != null) 'sub_id': subId,
+      if (countryCode != null) 'country_code': countryCode,
+      if (favorite != null) 'favorite': favorite,
     });
   }
 
@@ -382,6 +481,8 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     Value<String?>? data,
     Value<int>? delay,
     Value<int>? subId,
+    Value<String?>? countryCode,
+    Value<bool>? favorite,
   }) {
     return CoreConfigCompanion(
       id: id ?? this.id,
@@ -391,6 +492,8 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
       data: data ?? this.data,
       delay: delay ?? this.delay,
       subId: subId ?? this.subId,
+      countryCode: countryCode ?? this.countryCode,
+      favorite: favorite ?? this.favorite,
     );
   }
 
@@ -418,6 +521,12 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
     if (subId.present) {
       map['sub_id'] = Variable<int>(subId.value);
     }
+    if (countryCode.present) {
+      map['country_code'] = Variable<String>(countryCode.value);
+    }
+    if (favorite.present) {
+      map['favorite'] = Variable<bool>(favorite.value);
+    }
     return map;
   }
 
@@ -430,7 +539,9 @@ class CoreConfigCompanion extends UpdateCompanion<CoreConfigData> {
           ..write('tags: $tags, ')
           ..write('data: $data, ')
           ..write('delay: $delay, ')
-          ..write('subId: $subId')
+          ..write('subId: $subId, ')
+          ..write('countryCode: $countryCode, ')
+          ..write('favorite: $favorite')
           ..write(')'))
         .toString();
   }
@@ -1393,17 +1504,484 @@ class GeoDataCompanion extends UpdateCompanion<GeoDataData> {
   }
 }
 
+class $RoutingProfileTable extends RoutingProfile
+    with TableInfo<$RoutingProfileTable, RoutingProfileData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RoutingProfileTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, data];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'routing_profile';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RoutingProfileData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RoutingProfileData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RoutingProfileData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      )!,
+    );
+  }
+
+  @override
+  $RoutingProfileTable createAlias(String alias) {
+    return $RoutingProfileTable(attachedDatabase, alias);
+  }
+}
+
+class RoutingProfileData extends DataClass
+    implements Insertable<RoutingProfileData> {
+  final int id;
+  final String name;
+  final String data;
+  const RoutingProfileData({
+    required this.id,
+    required this.name,
+    required this.data,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['data'] = Variable<String>(data);
+    return map;
+  }
+
+  RoutingProfileCompanion toCompanion(bool nullToAbsent) {
+    return RoutingProfileCompanion(
+      id: Value(id),
+      name: Value(name),
+      data: Value(data),
+    );
+  }
+
+  factory RoutingProfileData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RoutingProfileData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      data: serializer.fromJson<String>(json['data']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'data': serializer.toJson<String>(data),
+    };
+  }
+
+  RoutingProfileData copyWith({int? id, String? name, String? data}) =>
+      RoutingProfileData(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        data: data ?? this.data,
+      );
+  RoutingProfileData copyWithCompanion(RoutingProfileCompanion data) {
+    return RoutingProfileData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      data: data.data.present ? data.data.value : this.data,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RoutingProfileData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, data);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RoutingProfileData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.data == this.data);
+}
+
+class RoutingProfileCompanion extends UpdateCompanion<RoutingProfileData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> data;
+  const RoutingProfileCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.data = const Value.absent(),
+  });
+  RoutingProfileCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required String data,
+  }) : name = Value(name),
+       data = Value(data);
+  static Insertable<RoutingProfileData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? data,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (data != null) 'data': data,
+    });
+  }
+
+  RoutingProfileCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? data,
+  }) {
+    return RoutingProfileCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      data: data ?? this.data,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RoutingProfileCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ConnectionConfigTable extends ConnectionConfig
+    with TableInfo<$ConnectionConfigTable, ConnectionConfigData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ConnectionConfigTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _configurationJsonMeta = const VerificationMeta(
+    'configurationJson',
+  );
+  @override
+  late final GeneratedColumn<String> configurationJson =
+      GeneratedColumn<String>(
+        'configuration_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('{}'),
+      );
+  @override
+  List<GeneratedColumn> get $columns => [id, configurationJson];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'connection_config';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ConnectionConfigData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('configuration_json')) {
+      context.handle(
+        _configurationJsonMeta,
+        configurationJson.isAcceptableOrUnknown(
+          data['configuration_json']!,
+          _configurationJsonMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ConnectionConfigData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ConnectionConfigData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      configurationJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}configuration_json'],
+      )!,
+    );
+  }
+
+  @override
+  $ConnectionConfigTable createAlias(String alias) {
+    return $ConnectionConfigTable(attachedDatabase, alias);
+  }
+}
+
+class ConnectionConfigData extends DataClass
+    implements Insertable<ConnectionConfigData> {
+  final int id;
+  final String configurationJson;
+  const ConnectionConfigData({
+    required this.id,
+    required this.configurationJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['configuration_json'] = Variable<String>(configurationJson);
+    return map;
+  }
+
+  ConnectionConfigCompanion toCompanion(bool nullToAbsent) {
+    return ConnectionConfigCompanion(
+      id: Value(id),
+      configurationJson: Value(configurationJson),
+    );
+  }
+
+  factory ConnectionConfigData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ConnectionConfigData(
+      id: serializer.fromJson<int>(json['id']),
+      configurationJson: serializer.fromJson<String>(json['configurationJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'configurationJson': serializer.toJson<String>(configurationJson),
+    };
+  }
+
+  ConnectionConfigData copyWith({int? id, String? configurationJson}) =>
+      ConnectionConfigData(
+        id: id ?? this.id,
+        configurationJson: configurationJson ?? this.configurationJson,
+      );
+  ConnectionConfigData copyWithCompanion(ConnectionConfigCompanion data) {
+    return ConnectionConfigData(
+      id: data.id.present ? data.id.value : this.id,
+      configurationJson: data.configurationJson.present
+          ? data.configurationJson.value
+          : this.configurationJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectionConfigData(')
+          ..write('id: $id, ')
+          ..write('configurationJson: $configurationJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, configurationJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConnectionConfigData &&
+          other.id == this.id &&
+          other.configurationJson == this.configurationJson);
+}
+
+class ConnectionConfigCompanion extends UpdateCompanion<ConnectionConfigData> {
+  final Value<int> id;
+  final Value<String> configurationJson;
+  const ConnectionConfigCompanion({
+    this.id = const Value.absent(),
+    this.configurationJson = const Value.absent(),
+  });
+  ConnectionConfigCompanion.insert({
+    this.id = const Value.absent(),
+    this.configurationJson = const Value.absent(),
+  });
+  static Insertable<ConnectionConfigData> custom({
+    Expression<int>? id,
+    Expression<String>? configurationJson,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (configurationJson != null) 'configuration_json': configurationJson,
+    });
+  }
+
+  ConnectionConfigCompanion copyWith({
+    Value<int>? id,
+    Value<String>? configurationJson,
+  }) {
+    return ConnectionConfigCompanion(
+      id: id ?? this.id,
+      configurationJson: configurationJson ?? this.configurationJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (configurationJson.present) {
+      map['configuration_json'] = Variable<String>(configurationJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ConnectionConfigCompanion(')
+          ..write('id: $id, ')
+          ..write('configurationJson: $configurationJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $CoreConfigTable coreConfig = $CoreConfigTable(this);
   late final $SubscriptionTable subscription = $SubscriptionTable(this);
   late final $GeoDataTable geoData = $GeoDataTable(this);
+  late final $RoutingProfileTable routingProfile = $RoutingProfileTable(this);
+  late final $ConnectionConfigTable connectionConfig = $ConnectionConfigTable(
+    this,
+  );
   late final CoreConfigDao coreConfigDao = CoreConfigDao(this as AppDatabase);
   late final SubscriptionDao subscriptionDao = SubscriptionDao(
     this as AppDatabase,
   );
   late final GeoDataDao geoDataDao = GeoDataDao(this as AppDatabase);
+  late final RoutingProfileDao routingProfileDao = RoutingProfileDao(
+    this as AppDatabase,
+  );
+  late final ConnectionConfigDao connectionConfigDao = ConnectionConfigDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1412,6 +1990,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     coreConfig,
     subscription,
     geoData,
+    routingProfile,
+    connectionConfig,
   ];
 }
 
@@ -1423,6 +2003,8 @@ typedef $$CoreConfigTableCreateCompanionBuilder = CoreConfigCompanion Function({
   Value<String?> data,
   required int delay,
   required int subId,
+  Value<String?> countryCode,
+  Value<bool> favorite,
 });
 typedef $$CoreConfigTableUpdateCompanionBuilder = CoreConfigCompanion Function({
   Value<int> id,
@@ -1432,6 +2014,8 @@ typedef $$CoreConfigTableUpdateCompanionBuilder = CoreConfigCompanion Function({
   Value<String?> data,
   Value<int> delay,
   Value<int> subId,
+  Value<String?> countryCode,
+  Value<bool> favorite,
 });
 
 class $$CoreConfigTableFilterComposer
@@ -1475,6 +2059,16 @@ class $$CoreConfigTableFilterComposer
 
   ColumnFilters<int> get subId => $composableBuilder(
     column: $table.subId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get favorite => $composableBuilder(
+    column: $table.favorite,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1522,6 +2116,16 @@ class $$CoreConfigTableOrderingComposer
     column: $table.subId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get favorite => $composableBuilder(
+    column: $table.favorite,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CoreConfigTableAnnotationComposer
@@ -1553,6 +2157,14 @@ class $$CoreConfigTableAnnotationComposer
 
   GeneratedColumn<int> get subId =>
       $composableBuilder(column: $table.subId, builder: (column) => column);
+
+  GeneratedColumn<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get favorite =>
+      $composableBuilder(column: $table.favorite, builder: (column) => column);
 }
 
 class $$CoreConfigTableTableManager
@@ -1593,6 +2205,8 @@ class $$CoreConfigTableTableManager
                 Value<String?> data = const Value.absent(),
                 Value<int> delay = const Value.absent(),
                 Value<int> subId = const Value.absent(),
+                Value<String?> countryCode = const Value.absent(),
+                Value<bool> favorite = const Value.absent(),
               }) => CoreConfigCompanion(
                 id: id,
                 name: name,
@@ -1601,6 +2215,8 @@ class $$CoreConfigTableTableManager
                 data: data,
                 delay: delay,
                 subId: subId,
+                countryCode: countryCode,
+                favorite: favorite,
               ),
           createCompanionCallback:
               ({
@@ -1611,6 +2227,8 @@ class $$CoreConfigTableTableManager
                 Value<String?> data = const Value.absent(),
                 required int delay,
                 required int subId,
+                Value<String?> countryCode = const Value.absent(),
+                Value<bool> favorite = const Value.absent(),
               }) => CoreConfigCompanion.insert(
                 id: id,
                 name: name,
@@ -1619,9 +2237,20 @@ class $$CoreConfigTableTableManager
                 data: data,
                 delay: delay,
                 subId: subId,
+                countryCode: countryCode,
+                favorite: favorite,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$CoreConfigTable, CoreConfigData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CoreConfigTable,
+                    CoreConfigData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -1876,7 +2505,16 @@ class $$SubscriptionTableTableManager
                 expanded: expanded,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SubscriptionTable, SubscriptionData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SubscriptionTable,
+                    SubscriptionData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -2108,7 +2746,16 @@ class $$GeoDataTableTableManager
                 ruleCount: ruleCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$GeoDataTable, GeoDataData>(table),
+                  BaseReferences<_$AppDatabase, $GeoDataTable, GeoDataData>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -2129,6 +2776,327 @@ typedef $$GeoDataTableProcessedTableManager =
       GeoDataData,
       PrefetchHooks Function()
     >;
+typedef $$RoutingProfileTableCreateCompanionBuilder =
+    RoutingProfileCompanion Function({
+      Value<int> id,
+      required String name,
+      required String data,
+    });
+typedef $$RoutingProfileTableUpdateCompanionBuilder =
+    RoutingProfileCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> data,
+    });
+
+class $$RoutingProfileTableFilterComposer
+    extends Composer<_$AppDatabase, $RoutingProfileTable> {
+  $$RoutingProfileTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RoutingProfileTableOrderingComposer
+    extends Composer<_$AppDatabase, $RoutingProfileTable> {
+  $$RoutingProfileTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RoutingProfileTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RoutingProfileTable> {
+  $$RoutingProfileTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+}
+
+class $$RoutingProfileTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RoutingProfileTable,
+          RoutingProfileData,
+          $$RoutingProfileTableFilterComposer,
+          $$RoutingProfileTableOrderingComposer,
+          $$RoutingProfileTableAnnotationComposer,
+          $$RoutingProfileTableCreateCompanionBuilder,
+          $$RoutingProfileTableUpdateCompanionBuilder,
+          (
+            RoutingProfileData,
+            BaseReferences<
+              _$AppDatabase,
+              $RoutingProfileTable,
+              RoutingProfileData
+            >,
+          ),
+          RoutingProfileData,
+          PrefetchHooks Function()
+        > {
+  $$RoutingProfileTableTableManager(
+    _$AppDatabase db,
+    $RoutingProfileTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RoutingProfileTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RoutingProfileTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RoutingProfileTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> data = const Value.absent(),
+          }) => RoutingProfileCompanion(id: id, name: name, data: data),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            required String data,
+          }) => RoutingProfileCompanion.insert(id: id, name: name, data: data),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RoutingProfileTable, RoutingProfileData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $RoutingProfileTable,
+                    RoutingProfileData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RoutingProfileTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RoutingProfileTable,
+      RoutingProfileData,
+      $$RoutingProfileTableFilterComposer,
+      $$RoutingProfileTableOrderingComposer,
+      $$RoutingProfileTableAnnotationComposer,
+      $$RoutingProfileTableCreateCompanionBuilder,
+      $$RoutingProfileTableUpdateCompanionBuilder,
+      (
+        RoutingProfileData,
+        BaseReferences<_$AppDatabase, $RoutingProfileTable, RoutingProfileData>,
+      ),
+      RoutingProfileData,
+      PrefetchHooks Function()
+    >;
+typedef $$ConnectionConfigTableCreateCompanionBuilder =
+    ConnectionConfigCompanion Function({
+      Value<int> id,
+      Value<String> configurationJson,
+    });
+typedef $$ConnectionConfigTableUpdateCompanionBuilder =
+    ConnectionConfigCompanion Function({
+      Value<int> id,
+      Value<String> configurationJson,
+    });
+
+class $$ConnectionConfigTableFilterComposer
+    extends Composer<_$AppDatabase, $ConnectionConfigTable> {
+  $$ConnectionConfigTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get configurationJson => $composableBuilder(
+    column: $table.configurationJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ConnectionConfigTableOrderingComposer
+    extends Composer<_$AppDatabase, $ConnectionConfigTable> {
+  $$ConnectionConfigTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get configurationJson => $composableBuilder(
+    column: $table.configurationJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ConnectionConfigTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ConnectionConfigTable> {
+  $$ConnectionConfigTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get configurationJson => $composableBuilder(
+    column: $table.configurationJson,
+    builder: (column) => column,
+  );
+}
+
+class $$ConnectionConfigTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ConnectionConfigTable,
+          ConnectionConfigData,
+          $$ConnectionConfigTableFilterComposer,
+          $$ConnectionConfigTableOrderingComposer,
+          $$ConnectionConfigTableAnnotationComposer,
+          $$ConnectionConfigTableCreateCompanionBuilder,
+          $$ConnectionConfigTableUpdateCompanionBuilder,
+          (
+            ConnectionConfigData,
+            BaseReferences<
+              _$AppDatabase,
+              $ConnectionConfigTable,
+              ConnectionConfigData
+            >,
+          ),
+          ConnectionConfigData,
+          PrefetchHooks Function()
+        > {
+  $$ConnectionConfigTableTableManager(
+    _$AppDatabase db,
+    $ConnectionConfigTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ConnectionConfigTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ConnectionConfigTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ConnectionConfigTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> configurationJson = const Value.absent(),
+              }) => ConnectionConfigCompanion(
+                id: id,
+                configurationJson: configurationJson,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> configurationJson = const Value.absent(),
+              }) => ConnectionConfigCompanion.insert(
+                id: id,
+                configurationJson: configurationJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ConnectionConfigTable, ConnectionConfigData>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ConnectionConfigTable,
+                    ConnectionConfigData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ConnectionConfigTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ConnectionConfigTable,
+      ConnectionConfigData,
+      $$ConnectionConfigTableFilterComposer,
+      $$ConnectionConfigTableOrderingComposer,
+      $$ConnectionConfigTableAnnotationComposer,
+      $$ConnectionConfigTableCreateCompanionBuilder,
+      $$ConnectionConfigTableUpdateCompanionBuilder,
+      (
+        ConnectionConfigData,
+        BaseReferences<
+          _$AppDatabase,
+          $ConnectionConfigTable,
+          ConnectionConfigData
+        >,
+      ),
+      ConnectionConfigData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2139,4 +3107,8 @@ class $AppDatabaseManager {
       $$SubscriptionTableTableManager(_db, _db.subscription);
   $$GeoDataTableTableManager get geoData =>
       $$GeoDataTableTableManager(_db, _db.geoData);
+  $$RoutingProfileTableTableManager get routingProfile =>
+      $$RoutingProfileTableTableManager(_db, _db.routingProfile);
+  $$ConnectionConfigTableTableManager get connectionConfig =>
+      $$ConnectionConfigTableTableManager(_db, _db.connectionConfig);
 }

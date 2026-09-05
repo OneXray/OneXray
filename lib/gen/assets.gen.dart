@@ -64,6 +64,16 @@ class $AssetsDatGen {
   ];
 }
 
+class $AssetsGeodataGen {
+  const $AssetsGeodataGen();
+
+  /// File path: assets/geodata/regions.json
+  String get regions => 'assets/geodata/regions.json';
+
+  /// List of all assets
+  List<String> get values => [regions];
+}
+
 class $AssetsIconGen {
   const $AssetsIconGen();
 
@@ -117,23 +127,13 @@ class $AssetsMacosIconGen {
   List<AssetGenImage> get values => [black, blue, green, orange, purple, red];
 }
 
-class $AssetsMdGen {
-  const $AssetsMdGen();
-
-  /// File path: assets/md/privacy.md
-  String get privacy => 'assets/md/privacy.md';
-
-  /// List of all assets
-  List<String> get values => [privacy];
-}
-
 abstract final class Assets {
   static const $AssetsAppIconGen appIcon = $AssetsAppIconGen();
   static const $AssetsDatGen dat = $AssetsDatGen();
+  static const $AssetsGeodataGen geodata = $AssetsGeodataGen();
   static const $AssetsIconGen icon = $AssetsIconGen();
   static const AssetGenImage logo = AssetGenImage('assets/logo.png');
   static const $AssetsMacosIconGen macosIcon = $AssetsMacosIconGen();
-  static const $AssetsMdGen md = $AssetsMdGen();
 
   /// List of all assets
   static List<AssetGenImage> get values => [logo];

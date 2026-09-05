@@ -10,12 +10,10 @@ PingJson _$PingJsonFromJson(Map<String, dynamic> json) => PingJson(
   (json['timeout'] as num?)?.toDouble(),
   json['url'] as String?,
   json['customUrl'] as String?,
-  json['autoPingNewConfigs'] as bool?,
 );
 
 Map<String, dynamic> _$PingJsonToJson(PingJson instance) => <String, dynamic>{
   'timeout': ?instance.timeout,
   'url': ?instance.url,
   'customUrl': ?instance.customUrl,
-  'autoPingNewConfigs': ?instance.autoPingNewConfigs,
 };

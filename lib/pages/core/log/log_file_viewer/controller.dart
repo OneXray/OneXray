@@ -1,8 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/xray/runtime_files.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 
 class LogFileViewerPageState {
@@ -11,6 +16,7 @@ class LogFileViewerPageState {
   final bool fileExists;
   final bool followTail;
   final bool truncated;
+  final bool exporting;
 
   const LogFileViewerPageState({
     this.title = "",
@@ -18,6 +24,7 @@ class LogFileViewerPageState {
     this.fileExists = false,
     this.followTail = true,
     this.truncated = false,
+    this.exporting = false,
   });
 
   LogFileViewerPageState copyWith({
@@ -26,6 +33,7 @@ class LogFileViewerPageState {
     bool? fileExists,
     bool? followTail,
     bool? truncated,
+    bool? exporting,
   }) {
     return LogFileViewerPageState(
       title: title ?? this.title,
@@ -33,6 +41,7 @@ class LogFileViewerPageState {
       fileExists: fileExists ?? this.fileExists,
       followTail: followTail ?? this.followTail,
       truncated: truncated ?? this.truncated,
+      exporting: exporting ?? this.exporting,
     );
   }
 }
@@ -46,71 +55,52 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
   Timer? _timer;
   int _offset = 0;
   var _droppedContent = false;
+  var _reading = false;
   List<int> _buffer = const [];
 
   LogFileViewerController(this.params)
     : super(LogFileViewerPageState(title: params.title)) {
-    _loadTail();
+    _poll();
     _timer = Timer.periodic(_pollInterval, (_) => _poll());
   }
 
-  Future<void> _loadTail() async {
-    try {
-      final file = File(params.path);
-      if (!await file.exists()) {
-        _resetMissingFile();
-        return;
-      }
-
-      final length = await file.length();
-      var start = length > _maxBufferBytes ? length - _maxBufferBytes : 0;
-      var bytes = await _readRange(file, start, length);
-      final truncated = start > 0;
-      _droppedContent = truncated;
-      if (truncated) {
-        bytes = _dropPartialFirstLine(bytes);
-      }
-      _offset = length;
-      _buffer = _trimBuffer(bytes);
-      _emitBuffer(fileExists: true, truncated: truncated);
-    } on FileSystemException {
-      _resetMissingFile();
-    }
-  }
-
   Future<void> _poll() async {
+    if (_reading || !isPageActive) return;
+    _reading = true;
     try {
-      final file = File(params.path);
-      if (!await file.exists()) {
+      var replace = !state.fileExists;
+      var chunk = await RuntimeDiagnosticFiles.readLog(
+        params.path,
+        offset: replace ? -1 : _offset,
+      );
+      if (chunk != null &&
+          !replace &&
+          (chunk.size < _offset || chunk.size - _offset > _maxBufferBytes)) {
+        chunk = await RuntimeDiagnosticFiles.readLog(params.path);
+        replace = true;
+      }
+      if (chunk == null) {
         _resetMissingFile();
         return;
       }
-
-      final length = await file.length();
-      if (length < _offset) {
-        await _loadTail();
-        return;
+      if (replace) {
+        _droppedContent = chunk.offset > 0;
+        _buffer = chunk.offset > 0
+            ? _dropPartialFirstLine(chunk.data)
+            : chunk.data;
+      } else {
+        _buffer = _trimBuffer([..._buffer, ...chunk.data]);
       }
-      if (length == _offset) {
-        return;
-      }
-
-      final bytes = await _readRange(file, _offset, length);
-      _offset = length;
-      _buffer = _trimBuffer([..._buffer, ...bytes]);
-      _emitBuffer(fileExists: true, truncated: state.truncated);
-    } on FileSystemException {
+      _offset = chunk.offset + chunk.data.length;
+      _emitBuffer(
+        fileExists: true,
+        truncated: replace ? _droppedContent : state.truncated,
+      );
+    } catch (_) {
+      // An unavailable file must not leave a stale successful view.
       _resetMissingFile();
-    }
-  }
-
-  Future<List<int>> _readRange(File file, int start, int end) async {
-    final raf = await file.open();
-    try {
-      await raf.setPosition(start);
-      return await raf.read(end - start);
     } finally {
-      await raf.close();
+      _reading = false;
     }
   }
 
@@ -162,6 +152,34 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
       return;
     }
     emit(state.copyWith(followTail: value));
+  }
+
+  Future<void> export(BuildContext context) async {
+    if (state.exporting || !state.fileExists) return;
+    final l = AppLocalizations.of(context)!;
+    emit(state.copyWith(exporting: true));
+    try {
+      final confirmed = await AppConfirmationDialog(
+        title: l.prototypeExport,
+        subject: p.basename(params.path),
+        content: l.prototypeLocalLogNotice,
+        cancelLabel: l.prototypeCancel,
+        confirmLabel: l.prototypeExport,
+      ).show(context);
+      if (confirmed != true || !isPageActive) return;
+      await RuntimeDiagnosticFiles.exportLog(
+        params.path,
+        p.basename(params.path),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.prototypeTemporarilyUnavailable)),
+        );
+      }
+    } finally {
+      emit(state.copyWith(exporting: false));
+    }
   }
 
   @override

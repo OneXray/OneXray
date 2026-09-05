@@ -1,129 +1,256 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/ping/controller.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:onexray/pages/widget/settings_page.dart';
 import 'package:onexray/service/ping/state.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 class PingPage extends StatelessWidget {
   const PingPage({super.key});
-
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => PingController(),
-      child: BlocBuilder<PingController, PingPageState>(
-        builder: (context, state) {
-          final controller = context.read<PingController>();
-          final localizations = AppLocalizations.of(context)!;
-          return SettingsPageScaffold(
-            title: localizations.pingPageTitle,
-            saveLabel: localizations.buttonSave,
-            onSave: () => controller.save(context),
-            body: _body(context, state, controller),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _body(
-    BuildContext context,
-    PingPageState state,
-    PingController controller,
-  ) {
-    return SettingsPageScroll(
-      desktopMaxWidth: 920,
-      child: _section(context, state, controller),
-    );
-  }
-
-  Widget _section(
-    BuildContext context,
-    PingPageState state,
-    PingController controller,
-  ) {
-    return SettingSection(
-      title: "",
-      description: AppLocalizations.of(context)!.pingPageDescription,
-      children: [
-        _timeout(context, state, controller),
-        _url(context, state, controller),
-        if (state.pingState.url == PingUrl.custom)
-          _customUrl(context, controller)
-        else
-          _realUrl(context, state),
-        _autoPingNewConfigs(context, state, controller),
-      ],
-    );
-  }
-
-  Widget _autoPingNewConfigs(
-    BuildContext context,
-    PingPageState state,
-    PingController controller,
-  ) {
-    return SwitchSettingRow(
-      title: AppLocalizations.of(context)!.pingPageAutoPingNewConfigs,
-      subtitle: AppLocalizations.of(context)!
-          .pingPageAutoPingNewConfigsDescription,
-      leading: const Icon(LucideIcons.wifi),
-      value: state.pingState.autoPingNewConfigs,
-      onChanged: (value) => controller.updateAutoPingNewConfigs(value),
-    );
-  }
-
-  Widget _timeout(
-    BuildContext context,
-    PingPageState state,
-    PingController controller,
-  ) {
-    return SliderSettingRow(
-      title: AppLocalizations.of(context)!.pingPageTimeout,
-      subtitle: AppLocalizations.of(context)!.pingPageTimeoutDescription,
-      leading: const Icon(LucideIcons.activity),
-      min: PingTimeout.min,
-      max: PingTimeout.max,
-      divisions: PingTimeout.divisions,
-      label: "${state.pingState.timeout.round()}s",
-      value: state.pingState.timeout,
-      onChanged: (value) => controller.updateTimeout(value),
-    );
-  }
-
-  Widget _url(
-    BuildContext context,
-    PingPageState state,
-    PingController controller,
-  ) {
-    return SelectSettingRow(
-      title: AppLocalizations.of(context)!.pingPageUrl,
-      leading: const Icon(LucideIcons.globe2),
-      value: state.pingState.url.name,
-      selections: PingUrl.names,
-      onSelected: (value) => controller.updateUrl(value),
-    );
-  }
-
-  Widget _realUrl(BuildContext context, PingPageState state) {
-    return SettingRow(
-      title: AppLocalizations.of(context)!.pingPageResolvedUrl,
-      subtitle: state.pingState.realUrl,
-      leading: const Icon(LucideIcons.link),
-      onTap: () => context.read<PingController>().copyResolvedUrl(context),
-      trailing: const Icon(LucideIcons.copy),
-    );
-  }
-
-  Widget _customUrl(BuildContext context, PingController controller) {
-    return TextFieldSettingRow(
-      controller: controller.customUrlController,
-      label: AppLocalizations.of(context)!.pingPageUrl,
-      hintText: AppLocalizations.of(context)!.pingPageUrl,
-      leading: const Icon(LucideIcons.link),
-      keyboardType: TextInputType.url,
-    );
-  }
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => PingController(),
+    child: BlocBuilder<PingController, PingPageState>(
+      builder: (context, state) {
+        final controller = context.read<PingController>();
+        final l = AppLocalizations.of(context)!;
+        final value = state.pingState;
+        final palette = ColorManager.palette(context);
+        final width = MediaQuery.sizeOf(context).width;
+        final mobile = width <= AppLayout.mobileBreakpoint;
+        final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
+        return Scaffold(
+          appBar: AppBar(title: Text(l.prototypeSpeedTest)),
+          bottomNavigationBar: PageActionBar(
+            maxWidth: AppLayout.advancedMaxWidth,
+            expandDesktop: true,
+            horizontalPadding: mobile ? null : gutter,
+            spacing: mobile ? AppSpacing.actionGap : 13,
+            children: [
+              OutlinedButton(
+                onPressed: () => controller.cancel(context),
+                child: Text(l.prototypeCancel),
+              ),
+              FilledButton(
+                onPressed: !state.loaded || state.saving
+                    ? null
+                    : () => controller.save(context),
+                child: ButtonProgress(
+                  busy: state.saving,
+                  child: Text(l.prototypeSave),
+                ),
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: state.loading
+                ? const Center(child: CircularProgressIndicator())
+                : !state.loaded
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(l.prototypeTemporarilyUnavailable),
+                        TextButton(
+                          onPressed: controller.load,
+                          child: Text(l.prototypeRetry),
+                        ),
+                      ],
+                    ),
+                  )
+                : SettingsPageScroll(
+                    desktopMaxWidth: AppLayout.advancedMaxWidth,
+                    padding: EdgeInsets.zero,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        gutter,
+                        mobile ? 12 : 48,
+                        gutter,
+                        mobile ? 26 : 24,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SettingSection(
+                            title: l.prototypeTimeout,
+                            icon: LucideIcons.activity,
+                            description: l.prototypeTimeoutHint,
+                            descriptionBelow: true,
+                            padding: EdgeInsets.zero,
+                            children: [
+                              SettingRow(
+                                title: l.prototypeTimeout,
+                                titleStyle: AppTypography.settingsSelect,
+                                contentPadding:
+                                    const EdgeInsetsDirectional.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                trailing: SettingSelect<double>(
+                                  value: value.timeout,
+                                  entries: {
+                                    for (
+                                      var seconds = PingTimeout.min;
+                                      seconds <= PingTimeout.max;
+                                      seconds++
+                                    )
+                                      seconds: l.prototypeSeconds(
+                                        seconds.round(),
+                                      ),
+                                  },
+                                  onChanged: state.saving
+                                      ? null
+                                      : (seconds) {
+                                          if (seconds != null) {
+                                            controller.updateTimeout(seconds);
+                                          }
+                                        },
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: mobile ? 25 : 28),
+                          SettingSection(
+                            title: l.prototypeSpeedTestUrl,
+                            icon: LucideIcons.globe,
+                            description: l.prototypeSpeedTestUrlHint,
+                            descriptionBelow: true,
+                            padding: EdgeInsets.zero,
+                            dividerIndent: 0,
+                            children: [
+                              SettingRow(
+                                title: l.prototypeSpeedTestUrl,
+                                titleStyle: AppTypography.settingsSelect,
+                                contentPadding:
+                                    const EdgeInsetsDirectional.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                trailing: SettingSelect<String>(
+                                  value: value.url.name,
+                                  entries: {
+                                    for (final option in PingUrl.values)
+                                      option.name: option == PingUrl.custom
+                                          ? l.prototypeCustom
+                                          : option.name,
+                                  },
+                                  onChanged: state.saving
+                                      ? null
+                                      : (url) {
+                                          if (url != null) {
+                                            controller.updateUrl(url);
+                                          }
+                                        },
+                                ),
+                              ),
+                              if (value.url == PingUrl.custom)
+                                Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        l.prototypeCustomUrl,
+                                        style: AppTypography.settingsInput
+                                            .copyWith(
+                                              color: palette.foreground,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 9),
+                                      TextField(
+                                        controller:
+                                            controller.customUrlController,
+                                        enabled: !state.saving,
+                                        textDirection: TextDirection.ltr,
+                                        textAlign: TextAlign.left,
+                                        keyboardType: TextInputType.url,
+                                        autocorrect: false,
+                                        style: AppTypography.settingsInput
+                                            .copyWith(
+                                              color: palette.foreground,
+                                            ),
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          constraints: const BoxConstraints(
+                                            minHeight: 40,
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 8,
+                                              ),
+                                          hintText: 'https://example.com/generate_204',
+                                          hintTextDirection: TextDirection.ltr,
+                                          hintStyle: AppTypography.settingsInput
+                                              .copyWith(
+                                                color: palette.mutedForeground,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                SizedBox(
+                                  height: 46,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                    ),
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: SelectableText(
+                                        value.realUrl,
+                                        textDirection: TextDirection.ltr,
+                                        textAlign: TextAlign.left,
+                                        style:
+                                            (mobile
+                                                    ? AppTypography
+                                                          .settingsDetailNote
+                                                    : AppTypography
+                                                          .settingsInput)
+                                                .copyWith(
+                                                  color: palette.mutedStrong,
+                                                ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          SizedBox(height: mobile ? 35 : 38),
+                          Text(
+                            l.prototypeSpeedTestSavedNotice,
+                            style: AppTypography.settingsDetailNote.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                          ),
+                          if (state.error != null)
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                top: 10,
+                              ),
+                              child: Text(
+                                l.prototypeTemporarilyUnavailable,
+                                style: AppTypography.settingsDetailNote
+                                    .copyWith(color: palette.destructive),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        );
+      },
+    ),
+  );
 }

@@ -7,9 +7,8 @@ class PingJson {
   double? timeout;
   String? url;
   String? customUrl;
-  bool? autoPingNewConfigs;
 
-  PingJson(this.timeout, this.url, this.customUrl, this.autoPingNewConfigs);
+  PingJson(this.timeout, this.url, this.customUrl);
 
   factory PingJson.fromJson(Map<String, dynamic> json) =>
       _$PingJsonFromJson(json);

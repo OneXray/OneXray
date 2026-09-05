@@ -28,7 +28,6 @@ void main() {
     expect(await first, 1);
     expect(await second, 2);
     expect(events, ['start-1', 'end-1', 'start-2', 'end-2']);
-    expect(executor.currentGeneration, 2);
   });
 
   test(

@@ -17,7 +17,6 @@ void main() {
       ..url = PingUrl.custom
       ..customUrl = 'https://example.com/ping';
 
-    expect(PingUrl.names, contains('Custom'));
     expect(state.realUrl, 'https://example.com/ping');
   });
 
@@ -29,12 +28,11 @@ void main() {
     expect(PingUrl.isValidCustomUrl('ftp://example.com/ping'), isFalse);
   });
 
-  test('custom URL and automatic ping setting round trip', () async {
+  test('custom URL round trips', () async {
     final original = PingState()
       ..timeout = 8
       ..url = PingUrl.custom
-      ..customUrl = 'https://example.com/ping'
-      ..autoPingNewConfigs = true;
+      ..customUrl = 'https://example.com/ping';
 
     await original.saveToPreferences();
 
@@ -45,7 +43,6 @@ void main() {
     expect(restored.url, PingUrl.custom);
     expect(restored.customUrl, 'https://example.com/ping');
     expect(restored.realUrl, 'https://example.com/ping');
-    expect(restored.autoPingNewConfigs, isTrue);
   });
 
   test(
@@ -62,7 +59,6 @@ void main() {
 
       expect(restored.url, PingUrl.custom);
       expect(restored.customUrl, 'https://legacy.example.com/ping');
-      expect(restored.autoPingNewConfigs, isFalse);
     },
   );
 
@@ -83,7 +79,6 @@ void main() {
       expect(restored.url, PingUrl.cloudflare, reason: customUrl);
       expect(restored.customUrl, customUrl, reason: customUrl);
       expect(restored.realUrl, PingUrl.cloudflare.url, reason: customUrl);
-      expect(restored.autoPingNewConfigs, isFalse, reason: customUrl);
     }
   });
 }

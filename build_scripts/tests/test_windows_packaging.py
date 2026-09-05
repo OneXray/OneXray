@@ -171,15 +171,17 @@ class WindowsPackagingTest(unittest.TestCase):
         with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):
             self.assertEqual(WindowsBuilder._target_architecture(), "arm64")
 
-    def test_windows_jobs_track_and_record_vcore_main(self):
+    def test_windows_jobs_resolve_vcore_main_once_and_record_sha(self):
         workflow = (
             Path(__file__).resolve().parents[2] / ".github/workflows/build.yml"
         ).read_text(encoding="utf-8")
         self.assertIn("VCORE_REF: main", workflow)
         self.assertIn(
-            'echo "${VCORE_REF}" > release-metadata/vcore-sha.txt',
+            'echo "$vcore_sha" > release-metadata/vcore-sha.txt',
             workflow,
         )
+        self.assertEqual(workflow.count("ref: ${{ env.VCORE_REF }}"), 1)
+        self.assertIn("ref: ${{ needs.release_metadata.outputs.vcore_sha }}", workflow)
 
     def test_local_signing_requires_certificate_and_publisher(self):
         with self.assertRaises(ValueError):
@@ -212,6 +214,9 @@ class WindowsPackagingTest(unittest.TestCase):
         mutations = {
             "revision": lambda manifest: manifest.update(
                 windowsPackageIntegrationRevision=1
+            ),
+            "previous revision": lambda manifest: manifest.update(
+                windowsPackageIntegrationRevision=2
             ),
             "architecture": lambda manifest: manifest.update(architecture="arm64"),
             "identity": lambda manifest: manifest.update(buildIdentity="old"),
@@ -358,7 +363,7 @@ def _write_vcore_set(path):
         hashes[name] = hashlib.sha256(contents).hexdigest()
     manifest = {
         "formatVersion": 1,
-        "windowsPackageIntegrationRevision": 2,
+        "windowsPackageIntegrationRevision": 3,
         "architecture": "x64",
         "buildIdentity": _VCORE_IDENTITY,
         "artifacts": hashes,

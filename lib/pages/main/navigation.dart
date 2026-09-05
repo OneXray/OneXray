@@ -7,98 +7,89 @@ abstract final class AppDialogRoutePath {
   static const appUpdate = "/app-update";
 }
 
-enum AppPrimaryRoute {
-  home("/home"),
-  subscriptions("/subscriptions"),
-  core("/core"),
+enum AppPrimaryDestination {
+  connect("/connect"),
+  servers("/servers"),
+  advanced("/advanced"),
   settings("/settings");
 
   final String rootPath;
 
-  const AppPrimaryRoute(this.rootPath);
+  const AppPrimaryDestination(this.rootPath);
 
-  static AppPrimaryRoute fromPath(String path) {
-    for (final primary in values) {
-      if (path == primary.rootPath || path.startsWith("${primary.rootPath}/")) {
-        return primary;
+  static AppPrimaryDestination fromPath(String path) {
+    for (final destination in values) {
+      if (path == destination.rootPath ||
+          path.startsWith("${destination.rootPath}/")) {
+        return destination;
       }
     }
-    return home;
+    return connect;
   }
 }
 
 enum AppSecondaryDestination {
-  overview("overview"),
-  nodeInfo("node-info"),
-  qrcode("qrcode"),
+  serversImport("servers-import"),
+  serverGroup("server-group"),
+  serverEditor("server-editor"),
+  serverFinalExitPicker("server-final-exit-picker"),
+  rawEditor("raw-editor"),
+  smartRouting("smart-routing"),
+  directRegions("direct-regions"),
+  customRouting("custom-routing"),
+  customRule("custom-rule"),
+  appleVpn("apple-vpn"),
+  appleWifi("apple-wifi"),
+  androidVpn("android-vpn"),
+  androidApps("android-apps"),
+  windowsVpn("windows-vpn"),
+  outboundInterface("outbound-interface"),
+  routingData("routing-data"),
+  routingDataFile("routing-data-file"),
   share("share"),
-  outboundSelect("outbound-select"),
-  subscriptionList("subscription-list"),
-  subscriptionNodes("subscription-nodes"),
-  subscriptionAdd("subscription-add"),
   subscriptionEdit("subscription-edit"),
-  tun("tun"),
-  onDemandRule("on-demand-rule"),
-  networkInterface("network-interface"),
-  selectedApp("selected-app"),
-  installedApp("installed-app"),
-  xray("xray"),
-  // Legacy route segment retained for navigation compatibility.
-  xrayMultiNodeOutbound("xray-full-config"),
-  xrayProfileSimple("xray-profile-simple"),
-  xrayProfileUI("xray-profile-ui"),
-  outboundUI("outbound-ui"),
-  xrayRaw("xray-raw"),
-  xrayRawEdit("xray-raw-edit"),
-  geoData("geo-data"),
-  geoDatAdd("geo-data-add"),
-  geoDatSelect("geo-data-select"),
-  geoDatShow("geo-data-show"),
   ping("ping"),
   logFile("log-file"),
   configFileViewer("config-file-viewer"),
-  generalSettings("general-settings"),
   autoUpdate("auto-update"),
   desktopSettings("desktop-settings"),
   backup("backup"),
   appIcon("app-icon"),
   theme("theme"),
   language("language"),
-  support("support");
+  aboutOneXray("about-onexray");
 
   final String segment;
 
   const AppSecondaryDestination(this.segment);
+
+  static const dialogs = {serversImport, serverEditor, share, subscriptionEdit};
 }
 
 extension AppNavigationContext on BuildContext {
-  AppPrimaryRoute get currentPrimaryRoute {
+  AppPrimaryDestination get currentPrimaryDestination {
     final path = GoRouterState.of(this).uri.path;
-    return AppPrimaryRoute.fromPath(path);
+    return AppPrimaryDestination.fromPath(path);
   }
 
   String scopedPath(AppSecondaryDestination destination) {
-    final primary = currentPrimaryRoute;
+    final primary = currentPrimaryDestination;
     return "${primary.rootPath}/${destination.segment}";
   }
 
   void goPrimary(
     StatefulNavigationShell navigationShell,
-    AppPrimaryRoute primary,
+    AppPrimaryDestination destination,
   ) {
-    final index = AppPrimaryRoute.values.indexOf(primary);
+    final index = AppPrimaryDestination.values.indexOf(destination);
     navigationShell.goBranch(
       index,
       initialLocation: navigationShell.currentIndex == index,
     );
   }
 
-  void goPrimaryRoot(AppPrimaryRoute primary) {
-    go(primary.rootPath);
-  }
-
-  void goScoped(AppSecondaryDestination destination, {Object? extra}) {
-    go(scopedPath(destination), extra: extra);
+  void goPrimaryRoot(AppPrimaryDestination destination) {
+    go(destination.rootPath);
   }
 
   Future<T?> pushScoped<T>(

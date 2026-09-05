@@ -3,25 +3,10 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:app_links/app_links.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/service/db/config_writer.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/share/app_link_importer.dart';
-import 'package:onexray/service/share/app_link_parser.dart';
-import 'package:onexray/service/share/xray_share_reader.dart';
-import 'package:onexray/service/subscription/model.dart';
-import 'package:onexray/service/subscription/service.dart';
-import 'package:onexray/service/toast/service.dart';
-import 'package:path/path.dart' as p;
 import 'package:zxing2/qrcode.dart';
 
 final class ShareService {
@@ -34,10 +19,10 @@ final class ShareService {
   //==========================
 
   final Queue<Uri> _pendingAppLinks = Queue<Uri>();
-  final OneXrayAppLinkImporter _appLinkImporter = OneXrayAppLinkImporter();
   StreamSubscription<Uri>? _appLinkSubscription;
   var _appLinksReady = false;
   var _processingAppLinks = false;
+  Future<void> Function(String)? onIncomingShare;
 
   void startAppLinks() {
     if (_appLinkSubscription != null) {
@@ -56,12 +41,13 @@ final class ShareService {
 
   Future<void> init() async {
     startAppLinks();
-    _appLinksReady = true;
+    _appLinksReady = onIncomingShare != null;
     await _processAppLinks();
   }
 
   void dispose() {
     _appLinksReady = false;
+    onIncomingShare = null;
     _pendingAppLinks.clear();
     final subscription = _appLinkSubscription;
     _appLinkSubscription = null;
@@ -78,13 +64,9 @@ final class ShareService {
     try {
       while (_appLinksReady && _pendingAppLinks.isNotEmpty) {
         final uri = _pendingAppLinks.removeFirst();
-        final link = OneXrayAppLinkParser.parse(uri);
-        final success = link != null && await _appLinkImporter.importLink(link);
-        ToastService().showToast(
-          success
-              ? appLocalizationsNoContext().homeOutboundViewImportSuccess
-              : appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-        );
+        // All external imports go through the same user-visible preview/add
+        // flow as clipboard input. Setup leaves this queue paused.
+        await onIncomingShare?.call(uri.toString());
       }
     } finally {
       _processingAppLinks = false;
@@ -94,46 +76,11 @@ final class ShareService {
     }
   }
 
-  @visibleForTesting
-  static List<SubscriptionImportEntry> parseSubscriptionImportEntries(
-    String text,
-  ) {
-    final entries = <SubscriptionImportEntry>[];
-    for (final rawLine in text.split('\n')) {
-      final line = rawLine.trim();
-      if (!line.startsWith('https://')) {
-        continue;
-      }
-
-      final uri = Uri.tryParse(line);
-      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
-        continue;
-      }
-
-      entries.add(
-        SubscriptionImportEntry(
-          url: SubscriptionUrl.normalize(line),
-          name: Uri.decodeComponent(uri.fragment),
-        ),
-      );
+  /// Decode only; callers own preview and explicit import confirmation.
+  Future<String?> readImageFile(String path) async {
+    if (await File(path).length() > 16 * 1024 * 1024) {
+      throw const FormatException('Image is too large');
     }
-    return entries;
-  }
-
-  Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      final text = await _readImageFile(image.path);
-      await readShareText(text);
-    } else {
-      ToastService().showToast(
-        appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-      );
-    }
-  }
-
-  Future<String?> _readImageFile(String path) async {
     if (AppPlatform.isIOS || AppPlatform.isMacOS || AppPlatform.isAndroid) {
       return _readImageFileByMobileScanner(path);
     }
@@ -142,18 +89,12 @@ final class ShareService {
 
   Future<String?> _readImageFileByMobileScanner(String path) async {
     final controller = MobileScannerController();
-    final capture = await controller.analyzeImage(path);
-    if (capture != null) {
-      if (capture.barcodes.isNotEmpty) {
-        final code = capture.barcodes.first;
-        if (code.rawValue != null) {
-          await controller.dispose();
-          return code.rawValue;
-        }
-      }
+    try {
+      final capture = await controller.analyzeImage(path);
+      return capture?.barcodes.firstOrNull?.rawValue;
+    } finally {
+      await controller.dispose();
     }
-    await controller.dispose();
-    return null;
   }
 
   Future<String?> _readImageFileByZxing(String path) async {
@@ -176,120 +117,5 @@ final class ShareService {
       } catch (_) {}
     }
     return null;
-  }
-
-  Future<void> pickFile() async {
-    final textFiles = <String>["txt", "json", "yaml", "yml"];
-    final imageFiles = <String>["png", "jpg", "jpeg"];
-    final allowedExtensions = <String>[];
-    allowedExtensions.addAll(textFiles);
-    allowedExtensions.addAll(imageFiles);
-    final file = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: allowedExtensions,
-    );
-
-    if (file == null) {
-      ygLogger('User canceled file picking');
-      return;
-    }
-
-    final path = file.path;
-    if (path == null) {
-      ToastService().showToast(
-        appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-      );
-      return;
-    }
-
-    final extension = p
-        .extension(file.name)
-        .toLowerCase()
-        .replaceFirst('.', '');
-    if (imageFiles.contains(extension)) {
-      final text = await _readImageFile(path);
-      await readShareText(text);
-    } else {
-      final pFile = File(path);
-      final text = await pFile.readAsString();
-      await readShareText(text);
-    }
-  }
-
-  Future<void> readPasteboard() async {
-    final hasStrings = await Clipboard.hasStrings();
-    if (!hasStrings) {
-      ToastService().showToast(
-        appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-      );
-      return;
-    }
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data == null) {
-      ToastService().showToast(
-        appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-      );
-      return;
-    }
-
-    final text = data.text;
-    if (text == null) {
-      ToastService().showToast(
-        appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-      );
-      return;
-    }
-    await readShareText(text);
-  }
-
-  Future<void> readShareText(String? text) async {
-    var success = false;
-    if (text != null) {
-      final eventBus = AppEventBus.instance;
-      eventBus.updateDownloading(true);
-      try {
-        final url = text.trim();
-        if (url.startsWith('onexray://')) {
-          final links = OneXrayAppLinkParser.parseText(url);
-          for (final link in links) {
-            if (await _appLinkImporter.importLink(link, showLoading: false)) {
-              success = true;
-            }
-          }
-        } else if (url.startsWith("https://")) {
-          final entries = parseSubscriptionImportEntries(url);
-          final imported = await SubscriptionService().importSubscriptions(
-            entries,
-          );
-          success = imported > 0;
-        } else {
-          final rows = await XrayShareReader().parseShareText(url);
-          if (rows.isNotEmpty) {
-            final writeResult = await ConfigWriter.writeRowsWithResult(
-              rows,
-              null,
-            );
-            if (writeResult.count > 0) {
-              PingService().schedulePingConfigIds(writeResult.ids);
-              success = true;
-            }
-          }
-        }
-      } catch (error, stackTrace) {
-        ygLogger('import share text failed: $error\n$stackTrace');
-      } finally {
-        eventBus.updateDownloading(false);
-      }
-    }
-
-    if (success) {
-      ToastService().showToast(
-        appLocalizationsNoContext().homeOutboundViewImportSuccess,
-      );
-    } else {
-      ToastService().showToast(
-        appLocalizationsNoContext().homeOutboundViewNoValidConfig,
-      );
-    }
   }
 }

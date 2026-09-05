@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import LibXray
 import NetworkExtension
@@ -9,6 +10,7 @@ enum TunnelError: Error {
     case noXrayJson
     case startXrayTimeout
     case startXrayFailed(String)
+    case noRoutingData
 }
 
 final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
@@ -55,10 +57,21 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         completionHandler: @escaping @Sendable (Error?) -> Void
     ) {
         let startedByApp = options != nil
+        let systemExtensionRequest: StartVpnRequest?
+        do {
+            if Constants.useSystemExtension {
+                systemExtensionRequest = try prepareSystemExtensionRequest()
+            } else {
+                systemExtensionRequest = nil
+            }
+        } catch {
+            completionHandler(error)
+            return
+        }
         Task {
             do {
-                if Constants.useSystemExtension {
-                    try await startTunnelSE(startedByApp: startedByApp)
+                if let systemExtensionRequest {
+                    try await startTunnelSE(request: systemExtensionRequest, startedByApp: startedByApp)
                 } else {
                     try await startTunnelLegacy()
                 }
@@ -82,7 +95,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         YGLog("startTunnel finished")
     }
 
-    private func startTunnelSE(startedByApp: Bool) async throws {
+    // Set up before the asynchronous start task so provider messages can use
+    // the shared runtime directories immediately.
+    private func prepareSystemExtensionRequest() throws -> StartVpnRequest {
         guard let providerConfig = (self.protocolConfiguration as? NETunnelProviderProtocol)?.providerConfiguration else {
             YGLog("startTunnel no providerConfiguration")
             throw TunnelError.noStartModel
@@ -92,27 +107,48 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             YGLog("startTunnel decode request failed")
             throw TunnelError.noStartModel
         }
+        guard request.coreInvokeText?.isEmpty == false else {
+            throw TunnelError.noStartModel
+        }
 
         guard let extGroupURL = extensionGroupContainerURL() else {
             YGLog("startTunnel noGroupContainer")
             throw TunnelError.noGroupContainer
         }
-
-        // Prepare extension-side directories.
-        let datDir = extGroupURL.adaptedAppendPath(path: "dat")
-        let stagingDir = extGroupURL.adaptedAppendPath(path: "dat.staging")
         let fm = FileManager.default
-        try? fm.createDirectory(at: datDir, withIntermediateDirectories: true)
-        // Abandoned staging from an aborted previous sync → discard.
-        try? fm.removeItem(at: stagingDir)
+        let runDirectory = extGroupURL.adaptedAppendPath(path: "run")
+        if try !runtimeDirectoryExists(runDirectory) {
+            try fm.createDirectory(at: runDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        }
+        for name in ["access.log", "error.log"] {
+            let file = runDirectory.adaptedAppendPath(path: name)
+            var attributes = stat()
+            if lstat(file.adaptedPath(), &attributes) == 0 {
+                try fm.removeItem(at: file)
+            } else if errno != ENOENT {
+                throw RuntimeStateError.invalid
+            }
+        }
+        // A failed transfer may leave only this shared temporary directory.
+        let staging = extGroupURL.adaptedAppendPath(path: "dat.staging")
+        if try runtimeDirectoryExists(staging) { try fm.removeItem(at: staging) }
+        Self.stateQueue.sync {
+            self.pendingStartSignal = false
+        }
+        return request
+    }
 
-        // App-driven path waits for the dat sync + start_xray signal.
-        // On-demand path skips the wait and uses whatever is already in dat/.
+    private func startTunnelSE(request: StartVpnRequest, startedByApp: Bool) async throws {
+        // App-driven starts synchronize the shared root first. On Demand reuses
+        // the last complete root published by an App-driven start.
         if startedByApp {
             YGLog("startTunnel awaiting start_xray signal")
             try await waitStartSignal(timeout: 30)
         } else {
             YGLog("startTunnel on-demand, skipping XPC sync")
+        }
+        guard let dat = datDir(), try routingDataReady(dat) else {
+            throw TunnelError.noRoutingData
         }
 
         let settings = buildSettings(request: request)
@@ -124,7 +160,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     }
 
     private func buildSettings(request: StartVpnRequest) -> NEPacketTunnelNetworkSettings {
-        let ipv4 = NEIPv4Settings(addresses: ["192.168.20.2"], subnetMasks: ["255.255.255.0"])
+        let ipv4 = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.254.0.0"])
         ipv4.includedRoutes = [NEIPv4Route.default()]
 
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: ProxyHost)
@@ -136,7 +172,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
                 servers.append(tunDnsIPv4)
             }
             if let enableIPv6 = tun.enableIPv6, enableIPv6 {
-                let ipv6 = NEIPv6Settings(addresses: ["FC00::0001"], networkPrefixLengths: [7])
+                let ipv6 = NEIPv6Settings(addresses: ["fc00::1"], networkPrefixLengths: [64])
                 ipv6.includedRoutes = [NEIPv6Route.default()]
                 settings.ipv6Settings = ipv6
                 if let tunDnsIPv6 = tun.tunDnsIPv6 {
@@ -225,6 +261,27 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         return try? TunnelMessageCoder.encode(response)
     }
 
+    private func logFile(access: Bool) throws -> URL? {
+        guard Constants.useSystemExtension, let container = extensionGroupContainerURL() else {
+            throw RuntimeStateError.unsupported
+        }
+        let directory = container.adaptedAppendPath(path: "run")
+        guard try runtimeDirectoryExists(directory) else { return nil }
+        return directory.adaptedAppendPath(path: access ? "access.log" : "error.log")
+    }
+
+    private func runtimeDirectoryExists(_ directory: URL) throws -> Bool {
+        do {
+            let values = try directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            guard values.isDirectory == true, values.isSymbolicLink != true else {
+                throw RuntimeStateError.invalid
+            }
+            return true
+        } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
+            return false
+        }
+    }
+
     // MARK: - dat staging operations
 
     private func datDir() -> URL? {
@@ -235,16 +292,25 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         extensionGroupContainerURL()?.adaptedAppendPath(path: "dat.staging")
     }
 
+    private func routingDataReady(_ directory: URL) throws -> Bool {
+        guard try runtimeDirectoryExists(directory) else { return false }
+        for name in ["geosite.dat", "geoip.dat"] {
+            let values = try directory.adaptedAppendPath(path: name).resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
+            guard values.isRegularFile == true, values.isSymbolicLink != true, (values.fileSize ?? 0) > 0 else { return false }
+        }
+        return true
+    }
+
     private func listDatManifest() -> [String: Int64] {
         let fm = FileManager.default
         guard let dir = datDir(),
-              let entries = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey]) else {
+              let entries = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey]) else {
             return [:]
         }
         var result: [String: Int64] = [:]
         for url in entries {
-            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
-            guard values?.isRegularFile == true, let mtime = values?.contentModificationDate else { continue }
+            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey])
+            guard values?.isRegularFile == true, values?.isSymbolicLink != true, let mtime = values?.contentModificationDate else { continue }
             result[url.lastPathComponent] = Int64(mtime.timeIntervalSince1970 * 1000)
         }
         return result
@@ -255,7 +321,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         guard let dir = stagingDir() else { return false }
         try? fm.removeItem(at: dir)
         do {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             return true
         } catch {
             YGLog("clearStaging error: \(error)")
@@ -268,14 +334,14 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         guard let dir = stagingDir() else { return false }
         // Reject path traversal. File names must be single segments.
         let sanitized = (name as NSString).lastPathComponent
-        guard !sanitized.isEmpty, sanitized == name else {
+        guard !sanitized.isEmpty, sanitized == name, name != ".", name != ".." else {
             YGLog("putStaged invalid name: \(name)")
             return false
         }
-        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         let target = dir.adaptedAppendPath(path: sanitized)
         do {
-            try content.write(to: target)
+            guard try runtimeDirectoryExists(dir) else { return false }
+            try content.write(to: target, options: .atomic)
             let date = Date(timeIntervalSince1970: TimeInterval(mtimeMs) / 1000.0)
             try fm.setAttributes([.modificationDate: date], ofItemAtPath: target.adaptedPath())
             return true
@@ -288,9 +354,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
     private func commitStaging() -> Bool {
         let fm = FileManager.default
         guard let staging = stagingDir(), let dat = datDir() else { return false }
-        var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: staging.adaptedPath(), isDirectory: &isDir), isDir.boolValue else {
-            YGLog("commitStaging: staging missing")
+        guard (try? routingDataReady(staging)) == true else {
+            YGLog("commitStaging: incomplete routing data")
             return false
         }
         let parent = dat.deletingLastPathComponent()
@@ -367,6 +432,16 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             let datPath = dat.adaptedPath()
             env.assetLocation = datPath
             env.certLocation = datPath
+            if var log = root["log"] as? [String: Any] {
+                for (key, access) in [("access", true), ("error", false)] {
+                    guard let path = log[key] as? String, !path.isEmpty, path != "none" else { continue }
+                    guard let file = try logFile(access: access) else {
+                        throw TunnelError.noGroupContainer
+                    }
+                    log[key] = file.adaptedPath()
+                }
+                root["log"] = log
+            }
         }
         root["env"] = try env.toObject()
         let data = try JsonTool.encodeObject(root)
@@ -376,6 +451,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         var updatedRequest = request
         var payload = request.payload ?? RunXrayRequest(xrayJson: nil)
         payload.xrayJson = updatedJson
+        if var runtime = payload.runtime {
+            guard let container = extensionGroupContainerURL() else {
+                throw TunnelError.noGroupContainer
+            }
+            let runDirectory = container.adaptedAppendPath(path: "run")
+            try FileManager.default.createDirectory(
+                at: runDirectory,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            runtime.statePath = runDirectory.adaptedAppendPath(path: "runtime.json").adaptedPath()
+            payload.runtime = runtime
+        }
         updatedRequest.payload = payload
         return updatedRequest
     }

@@ -17,6 +17,8 @@ class DesktopSettingsPageState {
   final bool hideDockIcon;
   final bool loading;
   final bool changingLaunchAtLogin;
+  final bool changingBehavior;
+  final bool openingSystemSettings;
 
   const DesktopSettingsPageState({
     this.launchAtLogin = const LaunchAtLoginStatus.unavailable(),
@@ -24,6 +26,8 @@ class DesktopSettingsPageState {
     this.hideDockIcon = false,
     this.loading = true,
     this.changingLaunchAtLogin = false,
+    this.changingBehavior = false,
+    this.openingSystemSettings = false,
   });
 
   bool get launchToggleEnabled =>
@@ -32,7 +36,7 @@ class DesktopSettingsPageState {
       launchAtLogin.state != LaunchAtLoginState.unavailable &&
       launchAtLogin.state != LaunchAtLoginState.error;
 
-  bool get behaviorSettingsEnabled => !loading;
+  bool get behaviorSettingsEnabled => !loading && !changingBehavior;
 
   bool get requiresApproval =>
       launchAtLogin.state == LaunchAtLoginState.requiresApproval;
@@ -43,6 +47,8 @@ class DesktopSettingsPageState {
     bool? hideDockIcon,
     bool? loading,
     bool? changingLaunchAtLogin,
+    bool? changingBehavior,
+    bool? openingSystemSettings,
   }) {
     return DesktopSettingsPageState(
       launchAtLogin: launchAtLogin ?? this.launchAtLogin,
@@ -51,6 +57,9 @@ class DesktopSettingsPageState {
       loading: loading ?? this.loading,
       changingLaunchAtLogin:
           changingLaunchAtLogin ?? this.changingLaunchAtLogin,
+      changingBehavior: changingBehavior ?? this.changingBehavior,
+      openingSystemSettings:
+          openingSystemSettings ?? this.openingSystemSettings,
     );
   }
 }
@@ -76,6 +85,7 @@ class DesktopSettingsController extends PageCubit<DesktopSettingsPageState>
   }
 
   Future<void> _readSettings() async {
+    if (state.changingBehavior || state.changingLaunchAtLogin) return;
     if (isPageActive) {
       emit(state.copyWith(loading: true));
     }
@@ -148,28 +158,68 @@ class DesktopSettingsController extends PageCubit<DesktopSettingsPageState>
     }
   }
 
-  Future<void> updateStartHidden(bool enabled) async {
-    await PreferencesKey().saveDesktopStartHidden(enabled);
-    if (isPageActive) {
+  Future<void> updateStartHidden(bool enabled, {BuildContext? context}) async {
+    if (!state.behaviorSettingsEnabled) return;
+    emit(state.copyWith(changingBehavior: true));
+    try {
+      await PreferencesKey().saveDesktopStartHidden(enabled);
       emit(state.copyWith(startHidden: enabled));
+    } catch (error) {
+      if (context != null && context.mounted) {
+        _behaviorFailed(context, error);
+      } else {
+        _behaviorFailed(null, error);
+      }
+    } finally {
+      emit(state.copyWith(changingBehavior: false));
     }
   }
 
-  Future<void> updateHideDockIcon(bool enabled) async {
-    await PreferencesKey().saveHideDockIcon(enabled);
-    await windowManager.setSkipTaskbar(enabled);
-    if (isPageActive) {
+  Future<void> updateHideDockIcon(bool enabled, {BuildContext? context}) async {
+    if (!state.behaviorSettingsEnabled) return;
+    final previous = state.hideDockIcon;
+    emit(state.copyWith(changingBehavior: true));
+    try {
+      await windowManager.setSkipTaskbar(enabled);
+      await PreferencesKey().saveHideDockIcon(enabled);
       emit(state.copyWith(hideDockIcon: enabled));
+    } catch (error) {
+      try {
+        await windowManager.setSkipTaskbar(previous);
+      } catch (_) {}
+      if (context != null && context.mounted) {
+        _behaviorFailed(context, error);
+      } else {
+        _behaviorFailed(null, error);
+      }
+    } finally {
+      emit(state.copyWith(changingBehavior: false));
+    }
+  }
+
+  void _behaviorFailed(BuildContext? context, Object error) {
+    ygLogger('update desktop behavior failed: $error');
+    if (context != null && context.mounted) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+      );
     }
   }
 
   Future<void> openSystemSettings(BuildContext context) async {
-    final opened = await AppStartupService().openLaunchAtLoginSettings();
-    if (!opened && context.mounted) {
-      ContextAlert.showToast(
-        context,
-        AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,
-      );
+    if (state.openingSystemSettings) return;
+    emit(state.copyWith(openingSystemSettings: true));
+    try {
+      final opened = await AppStartupService().openLaunchAtLoginSettings();
+      if (!opened && context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,
+        );
+      }
+    } finally {
+      emit(state.copyWith(openingSystemSettings: false));
     }
   }
 }

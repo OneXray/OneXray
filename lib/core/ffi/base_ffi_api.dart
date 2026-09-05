@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -19,8 +20,12 @@ List<String> desktopCoreRunArguments({
   required String dns,
   required String interfaceName,
   required String configPath,
+  String? runtimePath,
 }) {
-  if (dns.isEmpty || interfaceName.isEmpty || configPath.isEmpty) {
+  if (dns.isEmpty ||
+      interfaceName.isEmpty ||
+      configPath.isEmpty ||
+      runtimePath?.isEmpty == true) {
     throw const FormatException(
       'Desktop Core DNS, interface, or config path is missing',
     );
@@ -33,6 +38,7 @@ List<String> desktopCoreRunArguments({
     interfaceName,
     '-config',
     configPath,
+    if (runtimePath != null) ...['-runtime', runtimePath],
   ];
 }
 
@@ -94,23 +100,39 @@ abstract class BaseFfiApi {
     return true;
   }
 
-  Future<String?> materializeRunXrayConfig(LibXrayRunConfig request) async {
+  Future<({String configPath, String? runtimePath})?> materializeRunXrayConfig(
+    LibXrayRunConfig request,
+  ) async {
+    final runPath = p.join(await getTunFilesDir(), 'run');
+    final root = Directory(p.join(runPath, 'core-inputs'));
+    final type = await FileSystemEntity.type(root.path, followLinks: false);
+    if (type == FileSystemEntityType.directory) {
+      await root.delete(recursive: true);
+    } else if (type != FileSystemEntityType.notFound) {
+      throw const FormatException('Invalid desktop Core input directory');
+    }
+    await root.create(recursive: true);
     final xrayJson = request.request.xrayJson;
     if (xrayJson == null || xrayJson.isEmpty) {
       return null;
     }
 
-    final runDir = Directory(p.join(await getTunFilesDir(), "run"));
-    await runDir.create(recursive: true);
-    final configPath = p.join(runDir.path, "xray.json");
-    final temporary = File("$configPath.tmp");
-    await temporary.writeAsString(xrayJson, flush: true);
-    final config = File(configPath);
-    if (Platform.isWindows && await config.exists()) {
-      await config.delete();
+    final runtime = request.request.runtime;
+    final directory = await root.createTemp('input-');
+    try {
+      final config = File(p.join(directory.path, 'xray.json'));
+      await config.writeAsString(xrayJson, flush: true);
+      String? runtimePath;
+      if (runtime != null) {
+        runtimePath = p.join(directory.path, 'runtime-config.json');
+        await File(runtimePath)
+            .writeAsString(jsonEncode(runtime.toJson()), flush: true);
+      }
+      return (configPath: config.path, runtimePath: runtimePath);
+    } catch (_) {
+      if (await directory.exists()) await directory.delete(recursive: true);
+      rethrow;
     }
-    await temporary.rename(configPath);
-    return configPath;
   }
 
   Future<bool> stopCore() async => true;

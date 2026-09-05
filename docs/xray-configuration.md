@@ -1,181 +1,159 @@
 # Xray 配置合同
 
-本文描述 OneXray 当前支持的配置类型、编辑边界、运行时物化和兼容约束。历史上的整体重构方案和实施批次不再是有效设计。
+普通模式使用节点、智能/自定义路由和 App 平台策略；专家模式使用完整 Raw JSON。
+旧 Profile（`setting`）和多节点出站（`full`）不参与新业务，不是新配置的运行依赖。
 
-## 配置类型
+## 持久数据
 
-| 类型 | 持久内容 | 运行时角色 |
-| --- | --- | --- |
-| 单节点出站（Outbound） | 一个完整的 outbound 对象，外层使用 `{"outbounds":[...]}` | 写入当前 Profile 的 `proxy`，可与 Final Outbound 组成链路 |
-| 简单 Profile | Preferences 中的产品级选项 | 生成基础 Profile 映射 |
-| 自定义 Profile | OneXray 支持的完整根级映射 | 提供共享的 inbounds、DNS、routing、日志和系统 outbound |
-| 多节点出站 | `name`、`outbounds`、`dns`、`routing` | 覆盖当前 Profile 的三个 Xray 根字段 |
-| Raw JSON | 独立 Xray JSON 对象 | 作为运行主体，但仍接受 App 的 inbound 和运行时修补 |
+- `CoreConfig` 原库增量升级，保留 ID、subId、已有 Base64 data；新 JSON 仍使用 Base64。
+  本地节点、订阅和全部旧 Raw 保留。退休类型留在原库但不显示、不运行。
+- 单节点以完整 outbound 映射为事实源，名称只用 `tag`；仅当 `tag` 键不存在时把旧
+  `name` 作为别名，然后移除 outbound 的 `name`。`sendThrough` 不参与命名。
+- Custom 使用新表保存原生 Xray JSON；`outbounds` 中 1–3 个空对象表示接入数量。
+- Custom 最多三份、名称唯一；Raw 新增最多三份，旧库超过三份不裁剪、不隐藏旧行。
+- 连接选择、Smart、隧道和日志策略在同一数据库事务提交；外观等非运行偏好仍可用 Preferences。
+  `ConnectionConfig` 只保存当前连接配置 JSON，不保存 VPN 状态或运行历史。
+  配置写入经协调器串行执行，保留旧草稿内容校验与独占维护门，不额外保存提交修订号。
 
-所有数据库内容继续使用现有 Base64 JSON 包装。`name` 是 OneXray 扩展字段：Profile 根节点、多节点出站根节点和 outbound 对象中的 `name` 都必须保留。
+## 普通配置编译
 
-兼容值保持不变：Profile 的数据库类型仍为 `setting`；多节点出站的数据库类型和 App Link `type` 仍为 `full`；历史路由段仍为 `xray-full-config`。这些序列化值不用于用户可见名称。
+`ConnectionCompiler` 接收不可变输入，在副本中产生配置，不自行读库、分配端口或启动 Core。
+`XrayJson` 是普通模式配置生成的唯一结构。运行编译直接构造模型及嵌套模型，完成运行设置后
+一次序列化；不能先拼完整 Map，再经过 `fromJson → toJson` 筛选或重新组装。`fromJson` 用于
+外部输入和数据库读取，不作为内部构造器。模型不解析 Raw JSON；outbounds 的元素保持
+`Map<String, dynamic>`，便于完整保留代理协议字段。
+`XrayJson` 文件只定义字段映射和标准 `fromJson` / `toJson`，不负责协议分派、校验或
+运行配置构造。TUN、SOCKS 入站与系统出站由 `runtime_inbounds.dart` 和
+`runtime_outbounds.dart` 返回类型模型，只在模型声明的 Map 字段处序列化对应 payload；系统出站的最小
+`streamSettings.sockopt` 只包含实际生成的 `dialerProxy` 和 `interface`。
+运行设置直接填入模型字段，不得向普通配置注入模型外字段。
+Raw 使用独立的 Map 编译路径，未由 App 管理的根字段和嵌套字段原样保留。
 
-## 自定义 Profile
+节点测速、导入和编辑校验使用模型封装单节点或节点列表；启动前 `testXray` 与实际 `runXray`
+使用同一份已编译 JSON，不再次生成配置。智能路由预览直接消费 `XrayRoutingRule`，自定义
+规则由编辑 State 生成模型；界面预览与运行编译共用规则生成逻辑。
 
-自定义 Profile 允许以下根字段：
+接入按选择范围与测速结果确定；已运行节点不会因后台测速或订阅更新而被热替换。
+测速状态直接由已有延迟值区分未检测、成功、失败与超时；地区使用出口国家代码，不保存
+测量来源或时间，也不引入时间过期判定或新的“是否测过”字段。
 
-```text
-name
-log
-routing
-dns
-inbounds
-outbounds
-policy
-metrics
-stats
-fakeDns
-observatory
-burstObservatory
-```
+普通配置中显式选择代理的规则始终使用 `balancerTag: proxy`，即使只有一个节点。
+selector 填写生成节点完整 tag，采用 round-robin，回退出站为 `direct`（直连）。未命中规则的流量不
+经过 balancer，而是遵循 Xray 默认行为使用第一个 outbound。智能路由最终出口独立于
+接入；每条接入链使用自己的出口副本，副本的 `dialerProxy` 指向对应接入节点，避免链式
+依赖互相覆盖。Custom 不绑定具体节点或最终出口。
 
-约束如下：
+没有最终出口时，接入节点按用户选择顺序放在 `outbounds` 最顶部；存在最终出口时，最终
+出口副本按接入顺序位于顶部，随后才是它们依赖的接入节点。显式代理规则通过 balancer 在
+这些副本间负载均衡，未命中规则的流量默认使用第一份完整链路。其后追加系统出站。普通
+配置不再生成内部 loopback outbound。
+系统出站的 tag 固定为 `direct`、`block`、`dnsOut`。普通配置不在 outbound 的 `settings` 或
+`streamSettings.sockopt` 中写入 `domainStrategy`；完整 Raw JSON 中的用户字段不属于此
+简化范围。
 
-- `name` 必须是非空字符串。
-- `inbounds`、`outbounds` 必须是数组；`fakeDns` 可以是对象或数组；其余 Xray 根字段必须是对象或 `null`。
-- `env` 由 App 在运行时写入，用户不能自定义。
-- `api`、`version`、`geodata`、Xray-core 已废弃的根字段和未知根字段不受支持。
-- 根字段内部保持开放。App 不维护完整 Xray schema，最终语义由 Xray-core 校验。
+智能路由 IP 补匹配打开时使用 `IPIfNonMatch`：域名首轮未命中才解析为 IP 重新匹配；
+关闭为 `AsIs`，按请求已有域名或 IP 匹配。这里配置的是 `routing.domainStrategy`；App
+生成的所有 rule 均省略可选的 `type: field`，且不增加无条件 catch-all 提前截断 IP
+第二轮匹配。Custom 导入将 `type` 视为不支持的字段并直接拒绝；完整 Raw JSON 保留用户
+原文，包括用户自行填写的 `type`。
 
-新建自定义 Profile 会包含基础 DNS、routing、App 保留的 inbounds/outbounds、FakeDNS，以及启用流量统计的 `policy.system`。`metrics` 和 `stats` 在高级区显示运行时默认值，不提供字段级编辑入口，但完整 Raw JSON 编辑器仍可修改整个 Profile 文档。
+智能路由将局域网、Apple 服务和所选地区的直连条件合并：域名与 IP 各输出一条规则，
+同类条件去重后以 OR 匹配，域名和 IP 不合并到同一条规则。没有对应条件时省略该类规则，
+不生成空条件规则；广告阻断仍排在这两条直连规则之前。
 
-页面只为常用内容提供结构化 UI：
+App DNS 固定两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。direct server 的
+domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不宣称已判断 IP、端口
+或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
+`queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
 
-- `inbounds`、`outbounds`：根字段 JSON。
-- `routing`：`domainStrategy` 和根字段 JSON。
-- `dns`：服务器的 `address`、`port`、顺序和根字段 JSON。
-- `fakeDns`：IPv4/IPv6 pool 和根字段 JSON。
-- `log`：常用日志字段和根字段 JSON。
-- `policy`、`observatory`、`burstObservatory`：高级根字段 JSON。
-- `metrics`、`stats`：只读展示；需要时使用完整 Raw JSON。
+## 自定义路由
 
-结构化 UI 无法安全识别某个值的 JSON 结构时，该部分只能通过 Raw JSON 编辑，原映射不会回落到默认值。
+普通 Custom 的持久化链路固定为 `RoutingProfile` 表 ↔ `XrayJson` ↔
+`RoutingProfileState`：数据库适配层负责 Base64 解码、模型解析和规范化重编码，业务与 UI
+只使用 State。名称仍保存在 `RoutingProfile.name` 列，不写入配置根部。
+`XrayJson.geodata` 只承载导入所需的 `assets`，每项仅含 `file` / `url`；导入完成后保存前
+移除 `geodata`。完整 Raw JSON 使用独立 Map 链路，不经过上述转换。
 
-## 多节点出站
+规则只允许域名、IP、端口、网络四类条件。不同条件为 AND，同类多值为 OR；建议只填
+一种条件。规则顺序决定匹配顺序，名称使用原生 `ruleTag`，没有启用/停用自定义字段。
+动作只允许 `balancerTag: proxy` 或 `outboundTag: direct|block`。
 
-多节点出站不是完整 Xray 配置，只允许：
+编辑器支持逐条域名/IP 输入及实际安装 Geodata 分类补全。不支持的结构拒绝导入为
+Custom，不静默丢字段；完整高级配置使用 Raw。导入、导出的根部允许 `name`。
 
-```text
-name
-outbounds
-dns
-routing
-```
+分享 JSON 可携带 `geodata.assets: [{"file":"other.dat","url":"https://…"}]`，省略默认
+geoip/geosite。导入先在同级临时目录下载、校验并生成索引，文件名冲突拒绝；资产发布到
+`VpnConstants.datDir` 的平铺根目录且路由成功提交后，持久 JSON 删除导入专用 `geodata`
+字段。详见 [数据管理](data-management.md)。
 
-其中 `name` 只用于 OneXray 身份。覆盖 Profile 时只处理 `outbounds`、`dns`、`routing`：
+## Raw JSON
 
-| 根字段状态 | 物化行为 |
-| --- | --- |
-| 缺失 | 继承 Profile 对应根字段 |
-| `null` | 删除 Profile 对应根字段 |
-| 其它值 | 整根替换，不递归合并 |
+Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校验改写原始 inbounds。
+运行时直接解析为 Map 并在深副本上应用 App 策略。运行副本保留用户
+额外入站，但 App 接管 `tunIn`、metrics、统计、日志、IPv6、运行路径及适用
+平台的出口网卡；额外 TUN、保留端口冲突或无法满足平台网络策略的配置明确失败。
 
-保存前必须满足：
+Windows 的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore Provider/Session Host 转交；
+Android、Apple、Linux 使用平台 TUN。Windows 只给 Xray 绑定所选网卡，不给 VCore 新增
+绑定要求。iOS Debug 本地代理仅替换调试入口，不改变正常持久配置或正常 UI 逻辑。
 
-- `outbounds` 中存在唯一 tag 为 `proxy` 的主出站。
-- 所有 outbound tag 非空且唯一。
-- `direct`、`fragment`、`block`、`dnsOut` 使用约定的保留协议。
-- `dialerProxy` 与 `proxySettings.tag` 不冲突；依赖存在且没有循环。
-- Shadowsocks method 和 VMess security 使用 App 支持的规范值。
+Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建或启动 Xray instance。
+构建器仍可能读取本地资产、证书并应用根 `env`；校验成功只说明配置可以构建，不保证
+运行时资源可用、VPN 可以启动或网络可以连接。节点延迟和位置检测使用 `pingBatch`。
 
-页面仅有 Outbounds、Routing、DNS 三个分区。每个分区提供有限的结构化 UI 和对应根字段 JSON；页面顶部的 Raw JSON 编辑器只编辑四字段文档。编辑尚未持久化的 DNS 或 Routing 时，可以从当前 Profile 复制有效根字段作为草稿，取消编辑不会写回。
+## 运行协调与统计
 
-## 单节点出站
+`ConnectionCoordinator` 串行完成内存准备、停止旧运行、启动并确认新运行，最后提交数据库
+设置。`ConnectionRuntime` 不单独序列化；`run/start.json` 是唯一原生启动请求，其中
+`coreInvokeText` 保存实际 Xray 输入，`metadataJson` 只保存重开 App 后显示运行路径和保护
+节点所需的配置及节点信息。不另存运行计划、快照或跨进程提交日志。
 
-Outbound 全链路以完整 `Map<String, dynamic>` 为事实源。表单只映射常用浅层字段；无法映射或分享协议无法表达的内容通过完整 Raw Xray JSON 编辑。普通表单只修改目标字段，不应重建整个对象或删除未知的同级字段。
+准备阶段先完成 Windows/Linux 出口网卡存在性检查，再对最终配置执行一次
+`libXray.testXray` 构建校验；两者均发生在停止旧运行或启动原生 VPN 之前。
+`testXray` 在加载配置前拒绝同进程已有的受管理 Xray instance；调用方负责进程隔离。
 
-结构化 UI 当前支持：
+准备失败且尚未触碰宿主时，当前运行不变。一旦已请求停止或启动原生 VPN，后续启动、确认、
+资产写入或数据库提交失败时，协调器尽力停止本次运行并进入 `failed`；不重新启动旧连接，
+也不恢复旧输入。若停止无法确认，原生状态仍是 VPN 状态依据，并继续显示能够确认的实际
+运行信息；metrics 或运行描述不可用不等于已断开。重试时重新查询宿主，不从缓存推断状态。
 
-- 协议：VLESS、VMess、Shadowsocks、Trojan、SOCKS、Hysteria2。
-- Transport：`raw`、`ws`、`grpc`、`httpupgrade`、`xhttp`；Hysteria2 使用固定的 `hysteria` transport。
-- TLS：`serverName`、`fingerprint`、`echConfigList`、`pinnedPeerCertSha256`、`verifyPeerCertByName`。
-- REALITY：`serverName`、`fingerprint`、`password/publicKey`、`shortId`、`mldsa65Verify`、`spiderX`。
+Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清理整个 `run/core-inputs`，
+再创建唯一的 `core-inputs/input-*/xray.json`；托管运行同时写同目录的
+`runtime-config.json`。输入目录不复用，也不保留历史。Windows 的 `snapshotToken` 仅用于
+VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行快照；Linux 只额外保存
+验证进程归属所需的 PID、启动时间和本次输入路径。
 
-当前没有 ALPN、KCP、`tcp`、`websocket`、`splithttp` 或已废弃 `allowInsecure` 的结构化 UI。已有 JSON 不会因此被自动改写；用户可继续通过 Raw JSON 编辑。
+普通运行环境的 `xray.location.asset` 与 `xray.location.cert` 始终指向唯一、平铺的
+`VpnConstants.datDir`，VPN 准备和启动不复制资产。发布事务与 macOS System Extension
+跨容器传输边界见 [Geodata 发布](data-management.md#geodata-发布)。
 
-Outbound Raw 编辑器使用以下完整根对象，并要求 `outbounds` 恰好包含一个对象：
+状态同步与实时流量读取分开：初始化先订阅原生通知，再校准一次状态；恢复前台时再校准
+一次。Apple/Android 使用原生状态通知，不常驻轮询。Windows 暂用前台 5 秒状态查询兜底；
+Linux 仅在接管已有进程、没有当前 `Process` 退出通知时使用相同兜底。启停操作保留有界
+状态/就绪确认。查询回包仍广播，重复值仅抑制重复日志与重复状态处理。
 
-```json
-{
-  "outbounds": [
-    {}
-  ]
-}
-```
+仅在 App 前台、连接页或其流量弹窗可见且已连接时，按秒读取 Xray 原生 metrics；切换
+Tab、打开其他全页、进入后台或断开后停止。重新显示先建立速率基线，不把隐藏时间摊入
+实时速率；高级页运行时长使用独立的可见性受控本地时钟，不触发 metrics 查询。
 
-Shadowsocks method 和 VMess security 是 App 额外维护的最小规范值检查。集合外的值必须在导入、保存、验证、Ping、运行和标准分享路径明确失败；其它 Xray 字段交给 Xray-core 验证。
+libXray 以 30 秒为目标原子覆盖本次会话的 `runtime.json`，正常停止时尽力最终保存；新会话
+直接覆盖旧会话。带 Bearer 认证的回环 `GET /runtime` 只返回当前会话计数，不提供会话
+归档、VPN 启停或累计清零；实时计数继续读取 Xray 原生 metrics。
 
-## Raw JSON 配置
+所有平台使用同一统计读取链路，App 不读 libXray 会话文件，macOS SE 也不再通过原生
+消息代读；libXray 自己持有文件权限，DAT 同步继续使用独立原生消息。HTTP 地址与随机
+令牌属于私有启动请求，不允许 Raw 覆盖，不写入日志或分享内容。App 重开从
+`run/start.json` 定位当前候选端点，但只有原生状态与 HTTP 当前会话能够确认实际运行。
 
-Raw JSON 不使用自定义 Profile 的根字段白名单，但 JSON 顶层必须是对象，并包含非空 `name`。
+App 在 `traffic-totals.json` 中只保存设备累计、一个会话的消费水位和最后显示值。离线清零
+保留当前水位，不影响本次连接后续增量。这里不做严格计费：异常退出可能丢失尚未保存的
+尾部；若 App 未观察到两个 Core 启动之间的完整会话，该会话也可能全部丢失。统计 HTTP
+随 Core 停止，端点不可用时只显示 App 缓存，不把缓存当成当前连接事实。
 
-保存时 App 会将 `inbounds` 规范化为内部 `pingIn`。运行时：
+## 实现入口
 
-- Android、Apple 和 Linux 从当前 Profile 复制 inbounds，再生成或合并 TUN 协议的 `tunIn` 和 `pingIn`。
-- Windows 将 `tunIn` 物化为只监听 `127.0.0.1` 的无认证 SOCKS5 入站，tag 仍为 `tunIn`，端口由 App 在每次启动时动态分配。VCore Session Host 将系统 VPN 数据送入该内部端口。
-- iOS Debug Proxy 模式移除全部原有入站，只加入 App `pingIn`。
-- `env`、DNS query strategy、日志、metrics、Ping routing rule 和平台网络设置仍由 App 修补。
-
-因此 Raw JSON 是运行主体，但用户定义的运行时入站不拥有最终控制权。需要额外入站时，应在自定义 Profile 中配置；Proxy 模式不保留这些额外入站。
-
-## 编辑与验证边界
-
-完整 Raw 编辑器替换整个目标文档；根字段编辑器只接受空对象或只含目标根字段的对象：
-
-```json
-{}
-```
-
-空对象表示从当前文档删除该根；只含目标根字段的对象会原样保存它的值，不执行递归合并，也不提供 JSON Patch。`null` 在 Profile 中只是原样保存；只有多节点出站覆盖 Profile 时，`null` 才表示删除对应根。
-
-验证分为两层：
-
-1. App 检查 JSON 根结构、名称、保留 tag、Outbound 依赖和两个规范值集合。
-2. App 在副本上补齐验证所需的运行时字段，再调用 Xray-core `testXray` 检查完整语义。
-
-Profile 验证直接使用 Profile 副本；多节点出站验证会先覆盖当前 Profile。Ping 路径并未统一成单一编译器：Outbound 使用单节点包装，Raw JSON 使用保存文本，多节点出站当前只使用自身四字段文档，不覆盖 Profile。文档和代码不得声称验证、Ping、运行已完全共用同一物化结果。
-
-## 运行时物化
-
-启动前先读取当前 Profile 和 TUN Settings，然后按选中配置生成副本：
-
-- 普通 Outbound：写入 `proxy`；配置了 Final Outbound 时，选中节点成为 `chainProxy`，Final Outbound 成为 `proxy`。
-- 多节点出站：按三态规则覆盖 Profile 的 `outbounds`、`dns`、`routing`。
-- Raw JSON：保留自身主体，并从 Profile 接管运行时入站。
-- Direct 且选中项不是多节点出站：忽略选中节点，直接从 Profile 生成配置。
-
-随后 App 写入 `env`、SOCKS/Ping/Metrics 动态端口、inbounds、Ping rule、日志、metrics 和 DNS query strategy。Linux 将用户明确选择的 interface 绑定到 TUN；Windows 将同一 interface 写入每个 outbound。所有修改都发生在副本上，不反写数据库中的 JSON 映射。
-
-Windows 另生成一份最小的 VCore YAML：将 TUN Settings 的 `enableIPv6` 写入顶层 `ipv6`，启用 TUN，以动态 loopback SOCKS5 为唯一 outbound，关闭 VCore DNS，并用 `MATCH` 转发全部进入 Provider 的流量。节点、DNS、业务路由和 metrics 仍只由 Xray 配置负责。
-
-Core 运行模式与路由模式是两个独立维度。正式版本和非 iOS 平台仍走受管 Core 生命周期；Windows 的系统 TUN 由 VCore Provider 提供，而 Xray 的实际主入站是其内部 SOCKS5。Proxy 仅在 iOS Debug 中可选。
-
-路由模式当前行为：
-
-- Rule：保留配置中的 DNS 和 routing。
-- Global：移除 DNS 和 routing。Profile、Outbound 和多节点出站路径验证 `proxy` 依赖后将它放在首位并保留其它 outbounds；Raw JSON 路径只保留 `proxy` 及其依赖链。
-- Direct：不要求普通选中节点，移除 DNS 和 routing，将 `direct` 放在首位并清除它的代理依赖。多节点出站仍先覆盖 Profile，再应用 Direct。
-
-## 分享与兼容
-
-- libXray Invoke API 保持 v2。完整 Xray JSON 导入只读取其中的 outbounds。
-- 分享链接和 Clash YAML 导入直接保存 libXray 返回的 outbound 映射，不经过 App DTO 重建。
-- 标准协议分享使用 libXray 白名单投影，天然可能丢失协议无法表达的字段；OneXray App Link 保存完整持久映射。
-- `sendThrough` 只在标准分享边界充当名称载体，导入后提升为 OneXray `name` 并从 outbound 中移除。
-- KCP 分享不支持 seed/header；`allowInsecure` 已移除。
-- Profile 和 Multi-node Outbound 不支持 `geodata` 根字段。GeoData 文件仍由 App 的独立数据功能管理，详见 [数据管理](data-management.md)。
-
-## 主要实现入口
-
-- 根字段、复制、根编辑与覆盖：`lib/service/xray/config_map.dart`
-- Outbound 映射与 UI 字段映射：`lib/service/xray/outbound/`
-- Profile：`lib/service/xray/profile/`
-- Multi-node Outbound：`lib/service/xray/multi_node_outbound/`
-- Raw JSON 修补：`lib/service/xray/raw/`
-- 最终运行配置：`lib/service/vpn/runtime_config.dart`
+- 编译、选择与运行：`lib/service/connection/`
+- 自定义模板与地区：`lib/service/routing/`
+- 节点映射及兼容：`lib/service/xray/outbound/map.dart`、`state_db.dart`
+- Raw 存储与边界：`lib/service/xray/raw/db.dart`、`validator.dart`
+- 订阅与分享：[交换合同](subscriptions-and-sharing.md)；升级与恢复：[数据管理](data-management.md)

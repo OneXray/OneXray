@@ -6,6 +6,7 @@ from app.apple import AppleBuilder
 from app.builder import Builder
 from app.command_line import cp_dir_files, dart_command, flutter_command, run_command
 from app.linux import LinuxBuilder
+from app.provenance import begin_build, finish_build
 from app.windows import WindowsBuilder
 
 
@@ -16,7 +17,8 @@ class FlutterBuilder(Builder):
         system: str,
         build_scripts_dir: str,
     ):
-        new_system = self.prepare_macos_se(system, build_scripts_dir)
+        self.requested_system = system
+        new_system = "macos" if system == "macos_se" else system
         super().__init__(project, new_system, build_scripts_dir)
         builder_types = {
             "ios": AppleBuilder,
@@ -63,11 +65,14 @@ class FlutterBuilder(Builder):
         return "macos"
 
     def build(self):
+        receipt = begin_build(self, self.requested_system)
         self.before_build()
         self.build_app()
         self.after_build()
+        finish_build(self, receipt)
 
     def before_build(self):
+        self.prepare_macos_se(self.requested_system, os.path.join(self.root_dir, "build_scripts"))
         super().before_build()
         self.update_build_number()
         self.pub_get()

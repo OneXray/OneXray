@@ -1,13 +1,11 @@
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/core/desktop_startup/platform.dart';
-import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
-import 'package:onexray/service/geo_data/system_dat_service.dart';
 import 'package:onexray/service/menu/tray/service.dart';
 import 'package:onexray/service/menu/window/service.dart';
-import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/connection/coordinator.dart';
 
 final class AppStartupService {
   static final AppStartupService _singleton = AppStartupService._internal();
@@ -92,14 +90,16 @@ final class AppStartupService {
       return;
     }
 
+    if (ConnectionCoordinator.instance.state.value.issue ==
+        'permissionRequired') {
+      await showMainWindow();
+      return;
+    }
+
     try {
-      await SystemGeoDatService().checkAssets();
-      final result = await VpnService().startDefaultVpn();
-      if (result.state != NativeVpnCommandState.success) {
-        ygLogger(
-          "connect on app launch failed: "
-          "${result.message ?? result.state.name}",
-        );
+      await ConnectionCoordinator.instance.connect();
+      if (ConnectionCoordinator.instance.state.value.phase !=
+          ConnectionPhase.connected) {
         await showMainWindow();
       }
     } catch (error, stackTrace) {

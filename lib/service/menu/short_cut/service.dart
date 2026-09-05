@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'package:onexray/service/localizations/service.dart';
-import 'package:onexray/service/vpn/service.dart';
+import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/notification/service.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
 
@@ -14,6 +15,7 @@ final class ShortCutService {
 
   //==========================
   final quickActions = const QuickActions();
+  VoidCallback? onConnectionFailure;
 
   Future<void> asyncInit(BuildContext context) async {
     if (!AppPlatform.isMobile) {
@@ -43,7 +45,9 @@ final class ShortCutService {
     ]);
   }
 
-  void dispose() {}
+  void dispose() {
+    onConnectionFailure = null;
+  }
 
   Future<void> _onShortCutClick(String action) async {
     final key = _ShortCutKey.fromString(action);
@@ -51,13 +55,25 @@ final class ShortCutService {
       return;
     }
 
-    switch (key) {
-      case _ShortCutKey.startVpn:
-        await VpnService().startDefaultVpn();
-        break;
-      case _ShortCutKey.stopVpn:
-        await VpnService().stopDefaultVpn();
-        break;
+    try {
+      switch (key) {
+        case _ShortCutKey.startVpn:
+          try {
+            await ConnectionCoordinator.instance.connect();
+          } catch (_) {
+            await NotificationService().pushNotification(
+              appLocalizationsNoContext().prototypeConnectionFailed,
+            );
+            rethrow;
+          }
+          break;
+        case _ShortCutKey.stopVpn:
+          await ConnectionCoordinator.instance.disconnect();
+          break;
+      }
+    } catch (_) {
+      // The shortcut already opened the App; let its UI show the failed action.
+      onConnectionFailure?.call();
     }
   }
 }

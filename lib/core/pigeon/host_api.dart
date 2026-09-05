@@ -11,8 +11,11 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
+import 'package:path/path.dart' as p;
 
 class AppHostApi {
+  Future<AppleVpnCapabilities> appleVpnCapabilities() =>
+      _api.appleVpnCapabilities();
   final _api = BridgeHostApi();
   final _windows = WindowsNativeApi();
 
@@ -28,25 +31,35 @@ class AppHostApi {
   var _windowsPackageAvailable = false;
 
   bool get windowsPackageAvailable => _windowsPackageAvailable;
-  String? get windowsSnapshotToken => WindowsFfiApi().snapshotToken;
+  bool get needsVpnStatusPolling =>
+      AppPlatform.isWindows ||
+      (AppPlatform.isLinux && LinuxFfiApi().needsVpnStatusPolling);
 
   Future<void> initTunFilesDir() async {
     if (AppPlatform.isLinux) {
-      _tunFilesDir = await LinuxFfiApi().getTunFilesDir();
+      _setTunFilesDir(await LinuxFfiApi().getTunFilesDir());
     } else if (AppPlatform.isWindows) {
       try {
         final environment = await _windows.getEnvironment();
-        _tunFilesDir = environment.packageLocalDataDir;
+        _setTunFilesDir(environment.packageLocalDataDir);
         WindowsFfiApi().usePackageLocalDataDir(_tunFilesDir);
         _windowsPackageAvailable = true;
       } catch (error, stackTrace) {
         _windowsPackageAvailable = false;
         _reportUnexpected('getWindowsEnvironment', error, stackTrace);
-        _tunFilesDir = await WindowsFfiApi().getTunFilesDir();
+        _setTunFilesDir(await WindowsFfiApi().getTunFilesDir());
       }
     } else {
-      _tunFilesDir = await _api.getTunFilesDir();
+      _setTunFilesDir(await _api.getTunFilesDir());
     }
+  }
+
+  void _setTunFilesDir(String value) {
+    if (value.isEmpty || !p.isAbsolute(value)) {
+      _tunFilesDir = '';
+      throw StateError('VPN data directory is unavailable');
+    }
+    _tunFilesDir = p.normalize(value);
   }
 
   Future<bool?> cleanupStaleDesktopCore() async {
@@ -83,9 +96,18 @@ class AppHostApi {
   Future<NativeVpnCommandResult> startVpn({
     String? windowsConfigYaml,
     WindowsVpnNetworkSettings? windowsNetworkSettings,
+    WindowsVpnPolicy windowsPolicy = const WindowsVpnPolicy(
+      alwaysOn: false,
+      allowLocalNetwork: true,
+      excludedCidrs: [],
+    ),
   }) async {
     try {
-      return await _startVpn(windowsConfigYaml, windowsNetworkSettings);
+      return await _startVpn(
+        windowsConfigYaml,
+        windowsNetworkSettings,
+        windowsPolicy,
+      );
     } catch (error, stackTrace) {
       _reportUnexpected('startVpn', error, stackTrace);
       return _commandFailed(error.toString());
@@ -95,6 +117,7 @@ class AppHostApi {
   Future<NativeVpnCommandResult> _startVpn(
     String? windowsConfigYaml,
     WindowsVpnNetworkSettings? windowsNetworkSettings,
+    WindowsVpnPolicy windowsPolicy,
   ) async {
     if (AppPlatform.isLinux) {
       return LinuxFfiApi().startVpn();
@@ -105,6 +128,7 @@ class AppHostApi {
       return WindowsFfiApi().startVpn(
         configYaml: windowsConfigYaml,
         networkSettings: windowsNetworkSettings,
+        policy: windowsPolicy,
       );
     } else {
       return _api.startVpn();
@@ -155,25 +179,43 @@ class AppHostApi {
     return [];
   }
 
-  Future<Map<String, dynamic>> convertShareLinksToXrayJsonStrict(
+  Future<ConvertShareLinksReport> convertShareLinksToXrayJson(
     String text, {
     String? ageSecretKey,
   }) async {
     final key = ageSecretKey?.trim();
-    final res = await _invoke(
-      LibXrayInvokeRequest(
-        method: LibXrayMethod.convertShareLinksToXrayJson,
-        payload: ConvertShareLinksToXrayJsonRequest(
-          text,
-          age: key == null || key.isEmpty ? null : AgeDecryptConfig(key),
-        ).toJson(),
+    final response = LibXrayInvokeResponseParser.parse(
+      await _invoke(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.convertShareLinksToXrayJson,
+          payload: ConvertShareLinksToXrayJsonRequest(
+            text,
+            age: key == null || key.isEmpty ? null : AgeDecryptConfig(key),
+          ).toJson(),
+        ),
       ),
     );
-    final resp = LibXrayInvokeResponseParser.parse(res);
-    if (resp.success && resp.data != null) {
-      return resp.data!;
+    final data = response.data;
+    if (data == null) {
+      throw LibXrayInvokeException(response.error);
     }
-    throw LibXrayInvokeException(resp.error);
+    if (data['config'] is! Map<String, dynamic> ||
+        data['usableCount'] is! int ||
+        data['failedCount'] is! int) {
+      throw const FormatException('Invalid import statistics');
+    }
+    // An identified document may report zero usable items as a structured
+    // failure. It is useful feedback, never permission to overwrite assets.
+    final report = ConvertShareLinksReport.fromJson(data);
+    final outbounds = report.config['outbounds'];
+    if (report.usableCount < 0 ||
+        report.failedCount < 0 ||
+        outbounds is! List ||
+        outbounds.length != report.usableCount ||
+        response.success != (report.usableCount > 0)) {
+      throw const FormatException('Invalid import statistics');
+    }
+    return report;
   }
 
   Future<GenerateAgeKeyPairResponse> generateAgeKeyPair({
@@ -314,24 +356,6 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<bool> getXrayState() async {
-    if (!AppPlatform.isIOS) {
-      return false;
-    }
-    try {
-      final res = await _invoke(
-        LibXrayInvokeRequest(method: LibXrayMethod.getXrayState),
-      );
-      final resp = LibXrayInvokeResponseParser.parse(res);
-      if (resp.success && resp.data != null) {
-        return GetXrayStateResponse.fromJson(resp.data!).running ?? false;
-      }
-    } catch (error, stackTrace) {
-      _reportUnexpected('getXrayState', error, stackTrace);
-    }
-    return false;
-  }
-
   Future<String> xrayVersion() async {
     try {
       final res = await _invoke(
@@ -363,9 +387,7 @@ class AppHostApi {
     LibXrayInvokeLimits.validate(responseJson, "response");
     final response = LibXrayInvokeResponseParser.parse(responseJson);
     if (!response.success) {
-      ygLogger(
-        "libXray ${request.method?.name ?? 'unknown'} failed: ${response.error}",
-      );
+      ygLogger("libXray ${request.method?.name ?? 'unknown'} failed");
     }
     return responseJson;
   }
@@ -476,6 +498,9 @@ class AppHostApi {
     Object error,
     StackTrace stackTrace,
   ) {
-    ygLogger('AppHostApi.$operation failed: $error\n$stackTrace');
+    // Native parser errors can contain the offending JSON or credentials.
+    ygLogger(
+      'AppHostApi.$operation failed (${error.runtimeType})\n$stackTrace',
+    );
   }
 }

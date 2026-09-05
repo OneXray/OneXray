@@ -49,6 +49,9 @@ abstract class BridgeHostApi {
   bool useSystemExtension();
 
   @asyncCallback
+  AppleVpnCapabilities appleVpnCapabilities();
+
+  @asyncCallback
   NativeLaunchAtLoginResult queryLaunchAtLogin();
 
   @asyncCallback
@@ -67,10 +70,19 @@ abstract class BridgeHostApi {
 
 enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
-// macOS only
+class AppleVpnCapabilities {
+  AppleVpnCapabilities({
+    required this.serviceExclusions,
+    required this.deviceCommunication,
+  });
+  final bool serviceExclusions;
+  final bool deviceCommunication;
+}
+
+// Apple VPN profile and System Extension readiness.
 enum RefreshVpnResult { installed, notInstalled, waitForApproval }
 
-enum PlatformPermissionKind { none, androidVpn, macosSystemExtension }
+enum PlatformPermissionKind { none, androidVpn, macosSystemExtension, appleVpn }
 
 enum PlatformPermissionState {
   notRequired,

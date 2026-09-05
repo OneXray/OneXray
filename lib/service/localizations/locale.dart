@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 
 abstract final class AppLocalePolicy {
+  static const english = Locale("en");
+
   static const simplifiedChinese = Locale.fromSubtags(
     languageCode: "zh",
     scriptCode: "Hans",
@@ -30,7 +32,7 @@ abstract final class AppLocalePolicy {
   static Locale resolve(Locale? locale, Iterable<Locale> supportedLocales) {
     final locales = supportedLocales.toList(growable: false);
     if (locale == null) {
-      return locales.first;
+      return english;
     }
 
     final exactLocale = _findExact(locale, locales);
@@ -58,7 +60,7 @@ abstract final class AppLocalePolicy {
         return supportedLocale;
       }
     }
-    return locales.first;
+    return english;
   }
 
   static Locale? _findExact(Locale locale, Iterable<Locale> locales) {

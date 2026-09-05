@@ -29,27 +29,4 @@ class XrayRawDb {
     );
     return row;
   }
-
-  static Future<int> insertToDb(String name, String rawText) async {
-    final db = AppDatabase();
-    final newRow = configCompanion(name, rawText);
-    final res = await db.coreConfigDao.insertRow(newRow);
-    return res;
-  }
-
-  static Future<bool> updateToDb(
-    String name,
-    String rawText,
-    CoreConfigData configData,
-  ) async {
-    final bytes = utf8.encode(rawText);
-    final base64Data = base64Encode(bytes);
-    final row = configData.copyWith(
-      name: name,
-      data: Value<String>(base64Data),
-    );
-    final db = AppDatabase();
-    final res = await db.coreConfigDao.updateRow(row);
-    return res;
-  }
 }

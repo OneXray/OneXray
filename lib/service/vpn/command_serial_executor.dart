@@ -4,8 +4,6 @@ final class CommandSerialExecutor {
   Future<void> _tail = Future<void>.value();
   var _generation = 0;
 
-  int get currentGeneration => _generation;
-
   bool isCurrent(int generation) => generation == _generation;
 
   void invalidate() {

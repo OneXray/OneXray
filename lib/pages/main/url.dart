@@ -1,68 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/pages/core/geo_data/add/page.dart';
-import 'package:onexray/pages/core/geo_data/list/page.dart';
-import 'package:onexray/pages/core/geo_data/list/params.dart';
-import 'package:onexray/pages/core/geo_data/select/page.dart';
-import 'package:onexray/pages/core/geo_data/select/params.dart';
-import 'package:onexray/pages/core/geo_data/show/page.dart';
-import 'package:onexray/pages/core/geo_data/show/params.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/page.dart';
 import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
 import 'package:onexray/pages/core/ping/page.dart';
-import 'package:onexray/pages/core/tun/installed_app/page.dart';
-import 'package:onexray/pages/core/tun/installed_app/params.dart';
-import 'package:onexray/pages/core/tun/network_interface/page.dart';
-import 'package:onexray/pages/core/tun/network_interface/params.dart';
-import 'package:onexray/pages/core/tun/on_demand_rule/page.dart';
-import 'package:onexray/pages/core/tun/on_demand_rule/params.dart';
-import 'package:onexray/pages/core/tun/selected_app/page.dart';
-import 'package:onexray/pages/core/tun/selected_app/params.dart';
-import 'package:onexray/pages/core/tun/ui/page.dart';
-import 'package:onexray/pages/core/xray/outbound/page.dart';
-import 'package:onexray/pages/core/xray/outbound/params.dart';
-import 'package:onexray/pages/core/xray/multi_node_outbound/page.dart';
-import 'package:onexray/pages/core/xray/multi_node_outbound/params.dart';
-import 'package:onexray/pages/core/xray/raw/page.dart';
-import 'package:onexray/pages/core/xray/raw/params.dart';
-import 'package:onexray/pages/core/xray/raw_edit/page.dart';
-import 'package:onexray/pages/core/xray/raw_edit/params.dart';
-import 'package:onexray/pages/core/xray/profile/simple/page.dart';
-import 'package:onexray/pages/core/xray/profile/ui/page.dart';
-import 'package:onexray/pages/core/xray/profile/ui/params.dart';
-import 'package:onexray/pages/core/xray/profile_list/page.dart';
-import 'package:onexray/pages/home/main/page.dart';
-import 'package:onexray/pages/home/node_info/page.dart';
-import 'package:onexray/pages/home/node_info/params.dart';
-import 'package:onexray/pages/home/outbound_select/page.dart';
-import 'package:onexray/pages/home/outbound_select/params.dart';
-import 'package:onexray/pages/home/qrcode/page.dart';
+import 'package:onexray/pages/preferences/page.dart';
+import 'package:onexray/pages/advanced/tunnel/apple.dart';
+import 'package:onexray/pages/advanced/tunnel/android.dart';
+import 'package:onexray/pages/advanced/tunnel/apps.dart';
+import 'package:onexray/pages/advanced/tunnel/windows.dart';
+import 'package:onexray/pages/advanced/tunnel/interface.dart';
+import 'package:onexray/pages/advanced/geodata/page.dart';
+import 'package:onexray/pages/advanced/geodata/detail.dart';
+import 'package:onexray/service/connection/policy_editor.dart';
+import 'package:onexray/service/routing/state.dart';
 import 'package:onexray/pages/home/share/page.dart';
 import 'package:onexray/pages/home/share/params.dart';
-import 'package:onexray/pages/launch/first_run/page.dart';
-import 'package:onexray/pages/launch/privacy/page.dart';
 import 'package:onexray/pages/launch/splash/page.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/launch/setup/page.dart';
+import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/servers/import/page.dart';
+import 'package:onexray/pages/servers/page.dart';
+import 'package:onexray/pages/servers/exit_picker.dart';
+import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/servers/editor/page.dart';
+import 'package:onexray/pages/servers/import/subscription_editor.dart';
+import 'package:onexray/pages/connect/raw_editor/page.dart';
+import 'package:onexray/pages/routing/smart/page.dart';
+import 'package:onexray/pages/routing/smart/regions.dart';
+import 'package:onexray/pages/routing/custom/page.dart';
+import 'package:onexray/pages/routing/custom/rule_page.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/settings/auto_update/page.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
-import 'package:onexray/pages/settings/general/page.dart';
 import 'package:onexray/pages/settings/language/page.dart';
-import 'package:onexray/pages/settings/main/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
-import 'package:onexray/pages/subscriptions/add/page.dart';
-import 'package:onexray/pages/subscriptions/edit/page.dart';
 import 'package:onexray/pages/subscriptions/edit/params.dart';
-import 'package:onexray/pages/subscriptions/list/page.dart';
-import 'package:onexray/pages/subscriptions/nodes/page.dart';
-import 'package:onexray/pages/subscriptions/nodes/params.dart';
+import 'package:onexray/pages/theme/theme.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: "root",
@@ -72,10 +56,8 @@ abstract final class RouterPath {
   static const splash = "/splash";
   static const privacy = "/privacy";
   static const firstRun = "/firstRun";
-  static const home = "/home";
-  static const subscriptions = "/subscriptions";
-  static const core = "/core";
-  static const settings = "/settings";
+  static const setup = "/setup";
+  static const connect = "/connect";
 
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -83,17 +65,53 @@ abstract final class RouterPath {
     debugLogDiagnostics: true,
     routes: [
       GoRoute(path: RouterPath.splash, builder: (_, _) => const SplashPage()),
-      GoRoute(path: RouterPath.privacy, builder: (_, _) => const PrivacyPage()),
       GoRoute(
-        path: RouterPath.firstRun,
-        builder: (_, _) => const FirstRunPage(),
+        path: RouterPath.setup,
+        builder: (_, _) => SetupPage(
+          addServers: (context, action) async {
+            await context.push('/setup/servers', extra: action);
+          },
+        ),
       ),
+      GoRoute(
+        path: '/setup/servers',
+        pageBuilder: (context, state) => AppDialogPage<dynamic>(
+          key: state.pageKey,
+          barrierColor: ColorManager.palette(context).overlay,
+          useSafeArea: false,
+          builder: (_) => AppDialogFrame(
+            child: ServersImportPage(
+              setup: true,
+              initialAction: state.extra as ServerImportAction?,
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/setup/privacy',
+        builder: (_, _) => const SetupPrivacyPage(),
+      ),
+      GoRoute(
+        path: '/setup/interface',
+        redirect: (_, state) =>
+            state.extra is SetupInterfaceParams ? null : RouterPath.setup,
+        builder: (_, state) =>
+            SetupInterfacePage(params: state.extra as SetupInterfaceParams),
+      ),
+      GoRoute(
+        path: '/setup/region',
+        redirect: (_, state) =>
+            state.extra is SetupRegionParams ? null : RouterPath.setup,
+        builder: (_, state) =>
+            SetupRegionPage(params: state.extra as SetupRegionParams),
+      ),
+      GoRoute(path: RouterPath.privacy, redirect: (_, _) => RouterPath.setup),
+      GoRoute(path: RouterPath.firstRun, redirect: (_, _) => RouterPath.setup),
       GoRoute(
         path: AppDialogRoutePath.appUpdate,
         pageBuilder: (_, state) => AppDialogPage<void>(
           builder: (_) => _withDialogExtra<AppUpdateDialogParams>(
             state,
-            "AppUpdateDialogParams",
             (params) => AppUpdateDialog(params: params),
           ),
         ),
@@ -102,18 +120,20 @@ abstract final class RouterPath {
         builder: (_, _, navigationShell) {
           return AdaptiveMainShell(navigationShell: navigationShell);
         },
-        branches: AppPrimaryRoute.values.map(_buildPrimaryBranch).toList(),
+        branches: AppPrimaryDestination.values
+            .map(_buildPrimaryBranch)
+            .toList(),
       ),
     ],
   );
 }
 
 final _primaryNavigatorKeys = {
-  for (final primary in AppPrimaryRoute.values)
+  for (final primary in AppPrimaryDestination.values)
     primary: GlobalKey<NavigatorState>(debugLabel: "${primary.name}Branch"),
 };
 
-StatefulShellBranch _buildPrimaryBranch(AppPrimaryRoute primary) {
+StatefulShellBranch _buildPrimaryBranch(AppPrimaryDestination primary) {
   return StatefulShellBranch(
     navigatorKey: _primaryNavigatorKeys[primary],
     routes: [
@@ -129,10 +149,27 @@ StatefulShellBranch _buildPrimaryBranch(AppPrimaryRoute primary) {
 List<GoRoute> _buildSharedSecondaryRoutes() {
   return _sharedSecondaryRoutes
       .map(
-        (route) => GoRoute(
-          path: route.destination.segment,
-          builder: (context, state) => route.builder(context, state),
-        ),
+        (route) => AppSecondaryDestination.dialogs.contains(route.destination)
+            ? GoRoute(
+                path: route.destination.segment,
+                parentNavigatorKey: _rootNavigatorKey,
+                pageBuilder: (context, state) => AppDialogPage<dynamic>(
+                  key: state.pageKey,
+                  barrierColor: ColorManager.palette(context).overlay,
+                  useSafeArea: false,
+                  builder: (context) =>
+                      AppDialogFrame(child: route.builder(context, state)),
+                ),
+              )
+            : GoRoute(
+                path: route.destination.segment,
+                builder: (context, state) => Theme(
+                  data: AppTheme.secondaryPage(context),
+                  child: Builder(
+                    builder: (context) => route.builder(context, state),
+                  ),
+                ),
+              ),
       )
       .toList();
 }
@@ -157,157 +194,151 @@ _SharedSecondaryRoute _route(
 }
 
 final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
-  _route(AppSecondaryDestination.overview, (_, _) => const HomePage()),
   _route(
-    AppSecondaryDestination.nodeInfo,
-    (_, state) => _withExtra<NodeInfoPageParams>(
+    AppSecondaryDestination.appleVpn,
+    (_, state) => _withExtra<PolicyEditorDraft>(
       state,
-      AppSecondaryDestination.nodeInfo,
-      (params) => NodeInfoPage(params: params),
+      (draft) => AppleVpnPage(
+        draft: draft,
+        openWifi: (context, draft) => context.pushScoped<bool>(
+          AppSecondaryDestination.appleWifi,
+          extra: draft,
+        ),
+      ),
     ),
   ),
-  _route(AppSecondaryDestination.qrcode, (_, _) => const QrcodePage()),
+  _route(
+    AppSecondaryDestination.appleWifi,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      (draft) => AppleWifiPage(draft: draft),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.androidVpn,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      (draft) => AndroidVpnPage(
+        draft: draft,
+        openApps: (context, mode, selected) => context.pushScoped<List<String>>(
+          AppSecondaryDestination.androidApps,
+          extra: (mode, selected),
+        ),
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.androidApps,
+    (_, state) => _withExtra<(String, List<String>)>(
+      state,
+      (params) => AndroidAppsPage(mode: params.$1, selected: params.$2),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.windowsVpn,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      (draft) => WindowsVpnPage(
+        draft: draft,
+        openInterface: (context, draft) => context.pushScoped<bool>(
+          AppSecondaryDestination.outboundInterface,
+          extra: draft,
+        ),
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.outboundInterface,
+    (_, state) => _withExtra<PolicyEditorDraft>(
+      state,
+      (draft) => OutboundInterfacePage(draft: draft),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.routingData,
+    (_, _) => GeoDataPage(
+      openFile: (context, id) => context.pushScoped(
+        AppSecondaryDestination.routingDataFile,
+        extra: id,
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.routingDataFile,
+    (_, state) => _withExtra<int>(state, (id) => GeoDataFilePage(fileId: id)),
+  ),
+  _route(
+    AppSecondaryDestination.serversImport,
+    (_, state) => ServersImportPage(initialText: state.extra as String?),
+  ),
+  _route(
+    AppSecondaryDestination.serverGroup,
+    (_, state) => _withExtra<ServerGroupParams>(
+      state,
+      (params) => ServerGroupPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.serverEditor,
+    (_, state) =>
+        _withExtra<int>(state, (id) => ServerEditorPage(serverId: id)),
+  ),
+  _route(
+    AppSecondaryDestination.serverFinalExitPicker,
+    (_, state) => _withExtra<ServerExitPickerParams>(
+      state,
+      (params) => ServerExitPickerPage(params: params),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.rawEditor,
+    (_, state) => RawEditorPage(rawId: state.extra as int?),
+  ),
+  _route(
+    AppSecondaryDestination.smartRouting,
+    (_, _) => SmartRoutingEditorPage(
+      openRegions: (context, selected) => context.pushScoped<List<String>>(
+        AppSecondaryDestination.directRegions,
+        extra: selected,
+      ),
+      openFinalExit: (context, params) => context.pushScoped<ServerExitChoice>(
+        AppSecondaryDestination.serverFinalExitPicker,
+        extra: params,
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.directRegions,
+    (_, state) => DirectRegionsPage(
+      selectedCodes: (state.extra as List?)?.cast<String>() ?? [],
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.customRouting,
+    (_, state) => CustomRoutingEditorPage(
+      profileId: state.extra as int?,
+      openRule: (context, rule) => context.pushScoped<RoutingRuleState>(
+        AppSecondaryDestination.customRule,
+        extra: rule,
+      ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.customRule,
+    (_, state) => CustomRoutingRulePage(rule: state.extra as RoutingRuleState?),
+  ),
   _route(
     AppSecondaryDestination.share,
     (_, state) => _withExtra<SharePageParams>(
       state,
-      AppSecondaryDestination.share,
       (params) => SharePage(params: params),
     ),
-  ),
-  _route(
-    AppSecondaryDestination.outboundSelect,
-    (_, state) => _withExtra<OutboundSelectParams>(
-      state,
-      AppSecondaryDestination.outboundSelect,
-      (params) => OutboundSelectPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.subscriptionList,
-    (_, _) => const SubscriptionListPage(),
-  ),
-  _route(
-    AppSecondaryDestination.subscriptionNodes,
-    (_, state) => _withExtra<SubscriptionNodesParams>(
-      state,
-      AppSecondaryDestination.subscriptionNodes,
-      (params) => SubscriptionNodesPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.subscriptionAdd,
-    (_, _) => const SubscriptionAddPage(),
   ),
   _route(
     AppSecondaryDestination.subscriptionEdit,
     (_, state) => _withExtra<SubscriptionEditParams>(
       state,
-      AppSecondaryDestination.subscriptionEdit,
-      (params) => SubscriptionEditPage(params: params),
-    ),
-  ),
-  _route(AppSecondaryDestination.tun, (_, _) => const TunSettingsPage()),
-  _route(
-    AppSecondaryDestination.onDemandRule,
-    (_, state) => _withExtra<OnDemandRuleParams>(
-      state,
-      AppSecondaryDestination.onDemandRule,
-      (params) => OnDemandRulePage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.networkInterface,
-    (_, state) => _withExtra<NetworkInterfaceParams>(
-      state,
-      AppSecondaryDestination.networkInterface,
-      (params) => NetworkInterfacePage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.selectedApp,
-    (_, state) => _withExtra<SelectedAppParams>(
-      state,
-      AppSecondaryDestination.selectedApp,
-      (params) => SelectedAppPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.installedApp,
-    (_, state) => _withExtra<InstalledAppParams>(
-      state,
-      AppSecondaryDestination.installedApp,
-      (params) => InstalledAppPage(params: params),
-    ),
-  ),
-  _route(AppSecondaryDestination.xray, (_, _) => const XrayProfileListPage()),
-  _route(
-    AppSecondaryDestination.xrayMultiNodeOutbound,
-    (_, state) => _withExtra<XrayMultiNodeOutboundParams>(
-      state,
-      AppSecondaryDestination.xrayMultiNodeOutbound,
-      (params) => XrayMultiNodeOutboundPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.xrayProfileSimple,
-    (_, _) => const XrayProfileSimplePage(),
-  ),
-  _route(
-    AppSecondaryDestination.xrayProfileUI,
-    (_, state) => _withExtra<XrayProfileUIParams>(
-      state,
-      AppSecondaryDestination.xrayProfileUI,
-      (params) => XrayProfileUIPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.outboundUI,
-    (_, state) => _withExtra<OutboundUIParams>(
-      state,
-      AppSecondaryDestination.outboundUI,
-      (params) => OutboundUIPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.xrayRaw,
-    (_, state) => _withExtra<XrayRawParams>(
-      state,
-      AppSecondaryDestination.xrayRaw,
-      (params) => XrayRawPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.xrayRawEdit,
-    (_, state) => _withExtra<XrayRawEditParams>(
-      state,
-      AppSecondaryDestination.xrayRawEdit,
-      (params) => XrayRawEditPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.geoData,
-    (_, state) => _withExtra<GeoDataListParams>(
-      state,
-      AppSecondaryDestination.geoData,
-      (params) => GeoDataListPage(params: params),
-    ),
-  ),
-  _route(AppSecondaryDestination.geoDatAdd, (_, _) => const GeoDatAddPage()),
-  _route(
-    AppSecondaryDestination.geoDatSelect,
-    (_, state) => _withExtra<GeoDatSelectParams>(
-      state,
-      AppSecondaryDestination.geoDatSelect,
-      (params) => GeoDatSelectPage(params: params),
-    ),
-  ),
-  _route(
-    AppSecondaryDestination.geoDatShow,
-    (_, state) => _withExtra<GeoDatShowParams>(
-      state,
-      AppSecondaryDestination.geoDatShow,
-      (params) => GeoDatShowPage(params: params),
+      (params) => SubscriptionEditorPage(subscriptionId: params.id),
     ),
   ),
   _route(AppSecondaryDestination.ping, (_, _) => const PingPage()),
@@ -315,7 +346,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.logFile,
     (_, state) => _withExtra<LogFileViewerParams>(
       state,
-      AppSecondaryDestination.logFile,
       (params) => LogFileViewerPage(params: params),
     ),
   ),
@@ -323,13 +353,8 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.configFileViewer,
     (_, state) => _withExtra<ConfigFileViewerParams>(
       state,
-      AppSecondaryDestination.configFileViewer,
       (params) => ConfigFileViewerPage(params: params),
     ),
-  ),
-  _route(
-    AppSecondaryDestination.generalSettings,
-    (_, _) => const GeneralSettingsPage(),
   ),
   _route(AppSecondaryDestination.autoUpdate, (_, _) => const AutoUpdatePage()),
   _route(
@@ -340,53 +365,48 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   _route(AppSecondaryDestination.appIcon, (_, _) => const AppIconPage()),
   _route(AppSecondaryDestination.theme, (_, _) => const ThemePage()),
   _route(AppSecondaryDestination.language, (_, _) => const LanguagePage()),
-  _route(AppSecondaryDestination.support, (_, _) => const SettingsPage()),
+  _route(
+    AppSecondaryDestination.aboutOneXray,
+    (_, _) => const AboutOneXrayPage(),
+  ),
 ];
 
-Widget _withExtra<T>(
-  GoRouterState state,
-  AppSecondaryDestination destination,
-  Widget Function(T params) builder,
-) {
+Widget _withExtra<T>(GoRouterState state, Widget Function(T params) builder) {
   final extra = state.extra;
   if (extra is T) {
     return builder(extra);
   }
-  return _InvalidRoutePage(destination: destination, expectedType: "$T");
+  return const _InvalidRoutePage();
 }
 
 Widget _withDialogExtra<T>(
   GoRouterState state,
-  String expectedType,
   Widget Function(T params) builder,
 ) {
   final extra = state.extra;
   if (extra is T) {
     return builder(extra);
   }
-  return _InvalidRouteDialog(expectedType: expectedType);
+  return const _InvalidRouteDialog();
 }
 
 class _InvalidRoutePage extends StatelessWidget {
-  const _InvalidRoutePage({
-    required this.destination,
-    required this.expectedType,
-  });
-
-  final AppSecondaryDestination destination;
-  final String expectedType;
+  const _InvalidRoutePage();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Invalid route")),
+      appBar: AppBar(
+        title: Text(
+          AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              "Missing or invalid route parameters for "
-              "${destination.segment}. Expected $expectedType.",
+              AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
               textAlign: TextAlign.center,
             ),
           ),
@@ -397,21 +417,21 @@ class _InvalidRoutePage extends StatelessWidget {
 }
 
 class _InvalidRouteDialog extends StatelessWidget {
-  const _InvalidRouteDialog({required this.expectedType});
-
-  final String expectedType;
+  const _InvalidRouteDialog();
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Invalid route"),
+      title: Text(
+        AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+      ),
       content: Text(
-        "Missing or invalid route parameters. Expected $expectedType.",
+        AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text("Close"),
+          child: Text(AppLocalizations.of(context)!.prototypeClose),
         ),
       ],
     );

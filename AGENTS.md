@@ -1,107 +1,79 @@
-# Project Overview
+# OneXray App
 
-OneXray App is a cross-platform Flutter Xray-core client. Supported platforms include iOS, macOS, macOS SE, Android, Windows, and Linux. Use “Multi-node Outbound（多节点出站）” for a runnable configuration source that groups multiple outbound nodes with its DNS and routing policy; avoid “Full Config”, “Multi Outbounds”, and “多出站配置”.
+Cross-platform Flutter Xray-core client. Current contracts are indexed in
+[docs](docs/README.md); old refactor plans and progress logs are historical evidence.
 
-The app manages nodes, subscriptions, Xray Profiles, Multi-node Outbounds, Raw Json configs, and GeoData. Before startup, it composes and writes the final runtime Xray JSON. Production builds use platform TUN on Android, Apple, and Linux. Packaged Windows declares one manifest Application while retaining VCore's AppContainer VPN Provider and full-trust Session Host to feed a private loopback SOCKS inbound in OneXrayCore. Proxy mode is an in-memory iOS Debug-only tool.
+## Engineering boundaries
 
-# Repository Layout
+- Dependencies flow `pages → service → core`, never backwards. Services own
+  business logic; pages compose UI and bind callbacks to their controllers.
+- Custom page controllers extend `PageCubit`; use Bloc for observable state,
+  including dialogs, loading and expansion. Text/scroll/focus and third-party
+  controllers are UI resources, not a second state-management system.
+- `ServiceManager` owns normal startup, storage, Geodata and platform/permission
+  checks; normal startup must not depend on Setup. Establish a valid absolute
+  native data root before storage access.
+- Route connection actions, shortcuts and tray actions through
+  `ConnectionCoordinator`. Native VPN state is authoritative. After a failed
+  stop/start transition, do not restart the previous connection.
+- Normal configuration uses `XrayJson`; Raw JSON retains its source and uses
+  a separate Map compilation path. Database JSON stays Base64; preserve legacy
+  Raw rows above the new-item limit and keep retired Profile/Multi-node rows
+  outside product flows.
+- Live traffic comes from Xray metrics; saved session counters come from
+  libXray HTTP, not file reads. The App owns cumulative totals/reset.
+  Keep the iOS Debug local proxy separate from normal UI and business state.
+- Prefer shared theme changes in `lib/pages/theme/`. Use `AppTheme.appBarTheme`
+  for AppBar styling, `ThemeData.textTheme`/`AppTypography` for typography, and
+  `LucideIcons` for icons. Pages must not hardcode font sizes, families, letter spacing
+  or line heights; override AppBar styling only when the theme cannot express it.
+- UI-only work preserves fields, semantics, platform visibility, persistence
+  and validation unless the user explicitly requests those changes.
+- Edit source models, ARB files, `pigeon/message.dart` or FFI definitions, then
+  regenerate the corresponding outputs. Never hand-edit generated Dart,
+  Kotlin, Swift, Drift, FFI or localization code. ARB files are source files.
 
-| Path | Purpose |
-| --- | --- |
-| `lib/` | Main Flutter / Dart application code. |
-| `assets/` | App icons, tray icons, bundled GeoData, Markdown files, and other static assets. |
-| `pigeon/` | Pigeon API definitions used to generate Dart / Kotlin / Swift bridge code. |
-| `swift/` | Shared Apple Swift code, App bridge, Tunnel provider, and shared macOS resources. |
-| `android/` | Android Flutter host, VPN service, Kotlin bridge, and Fastlane configuration. |
-| `ios/` | iOS Runner, Tunnel extension, and Fastlane configuration. |
-| `macos/` | Mac App Store Runner, Tunnel extension, and Fastlane configuration. |
-| `macos_se/` | Developer ID / System Extension macOS package project. |
-| `windows/` | Windows Runner, FFI / Core startup code, and packaging resources. |
-| `linux/` | Linux Runner, packaging configuration, and runtime resource installation logic. |
-| `build_scripts/` | App build scripts, platform packaging scripts, and libXray artifact build/copy logic. |
-| `c/include/` | Native C headers used for Dart FFI binding generation. |
+## Read for the task
 
-# Dart Architecture
+- Startup, recovery or permissions: [app startup](docs/app-startup.md).
+- Configuration, Raw JSON, connection lifecycle or statistics:
+  [Xray configuration](docs/xray-configuration.md).
+- Database, migration, Geodata, updates or backup:
+  [data management](docs/data-management.md).
+- Import, links or sharing: [subscriptions and sharing](docs/subscriptions-and-sharing.md);
+  for age keys/decryption, also read [age subscriptions](docs/age-encrypted-subscriptions.md).
+- UI/navigation: [navigation](docs/app-navigation.md). For prototype parity,
+  use the approved [product model](../references/onexray-app-prototype/PRODUCT-MODEL.md)
+  and [prototype source](../references/onexray-app-prototype/src/); reuse its
+  approved translations rather than translating again.
+- Native contracts: `lib/core/pigeon/`, `pigeon/message.dart`, `swift/`,
+  Android's Kotlin bridge, and [libXray API](../libXray/README.md#api).
+  Before packaging, read [build scripts](build_scripts/README.md) and, for Windows,
+  [Windows builds](docs/windows-build.md). Apple/Android release scripts may
+  upload to stores; they are not local validation commands.
+- GitHub work: [issue tracker](docs/agents/issue-tracker.md); triage:
+  [labels](docs/agents/triage-labels.md); domain/ADR work:
+  [domain guidance](docs/agents/domain.md).
 
-`lib/core` is the infrastructure layer. It contains database access, FFI, Pigeon wrappers, common models, network client code, platform tools, and JSON utilities.
+## Verification
 
-`lib/service` is the business layer. It contains subscriptions, sharing, backup, GeoData, Ping, VPN startup, TUN Settings, Xray JSON writing, and runtime fix logic.
+All `flutter` and `dart` commands must run serially across terminals, tool calls
+and agents: they share `.dart_tool` and native-asset state.
 
-`lib/pages` is the UI and routing layer. It is organized by page domain. Page controllers and cubits should handle UI state and page actions only; non-trivial business logic should live in `lib/service`.
-
-`lib/gen` and `lib/l10n` contain generated output. Do not edit generated files in these directories manually.
-
-# Runtime Flow
-
-After a node is selected on Home, `VpnService` reads the selected node, selected Xray Profile, and TUN Settings. Production builds and non-iOS platforms always resolve the runtime mode to TUN. iOS Debug builds may select Proxy mode for development, and that selection is not persisted.
-
-When starting a normal Outbound node, the selected node is written as the runtime `proxy` outbound. When starting a Multi-node Outbound, it overrides the selected Xray Profile's `outbounds`, `routing`, and `dns`; FakeDNS remains managed by the selected Xray Profile. When starting a Raw Json config, Raw Json remains the main JSON body, but its user-defined inbounds are ignored. Runtime inbounds always come from the selected Xray Profile: Android, Apple, and Linux write the TUN `tunIn`; Windows replaces it with a loopback SOCKS inbound that retains the `tunIn` tag; both also write Profile-owned additional inbounds and `pingIn`. The iOS Debug-only Proxy mode writes only `pingIn`. Additional inbound routing is always user-authored; the runtime does not generate routing rules for dokodemo-door.
-
-After the final runtime Xray JSON is written, Android, Apple, and Linux enter the platform VPN / TUN startup path. Packaged Windows submits root-level `OneXrayCore.exe` and its `run -dns <IP:port> -interface <name> -config <xray.json>` argv through VCore bridge revision 2; the per-session VCore Session Host owns that process in its Job Object for the VPN lifetime. The backend contract supervises process liveness only and does not inspect the SOCKS5 port or readiness. On iOS Debug builds only, Proxy mode starts local Xray core without the platform VPN; only the internal `pingIn` inbound is App-managed.
-
-# Native Bridge
-
-Pigeon is defined in `pigeon/message.dart` and generates Dart, Kotlin, and Swift bridge code. Regenerate the corresponding files after changing the Pigeon API.
-
-Shared Apple Swift models, logging, and utilities live in `swift/All`. The App bridge lives in `swift/App`, and the Tunnel provider lives in `swift/Tunnel`.
-
-The Android native bridge and VPN service live under `android/app/src/main/kotlin/net/yuandev/onexray`.
-
-Windows and Linux desktop builds use Dart FFI, generated bindings, platform runners, and libXray's packaged `OneXrayCore` binary. Its process-wide Go resolver sends bootstrap DNS through the selected physical interface. Windows additionally calls revision-2 `VCoreWindowsVpnInvoke` from `vcore.dll`; this bridge requires MSIX package identity and owns the Windows VPN profile, Session Snapshot, optional session backend, and StartupTask. Linux retains App-owned process management and grants the capabilities required by TUN.
-
-# Generated Files
-
-The following files or directories are generated and should not be edited manually:
-
-- `*.g.dart`
-- `lib/core/pigeon/messages.g.dart`
-- `android/app/src/main/kotlin/net/yuandev/onexray/pigeon/Messages.g.kt`
-- `swift/App/pigeon/Messages.g.swift`
-- Flutter l10n generated outputs
-- Drift generated database code
-- FFI generated bindings
-
-When source models, ARB files, Pigeon definitions, or Drift schema files change, run the matching generation command instead of editing generated output directly.
-
-# Validation Commands
-
-Run every `flutter` and `dart` command serially. Wait for the current command to exit before starting another `flutter` or `dart` command. This rule applies across terminal sessions, parallel tool calls, and agents; these commands must never overlap because they share `.dart_tool` and native-asset build state.
-
-Common validation commands:
-
-```shell
-flutter gen-l10n
-dart run build_runner build --delete-conflicting-outputs
-dart run tool/check_native_model_contract.dart
-dart run tool/check_layer_dependencies.dart
-dart format --output=none --set-exit-if-changed <changed Dart files>
-flutter analyze
-flutter test
-flutter build macos --debug
-git diff --check
-```
-
-Choose validation commands based on the change scope. Changes touching Pigeon, JSON models, l10n, Drift, or native bridge code must also run the matching generation and platform build checks.
-
-# Development Rules
-
-1. The app's `core`, `service`, and `pages` layers must strictly follow the layering rules. Reverse calls are forbidden.
-2. Page and view files must not contain business logic. Data access, validation, data transformation, navigation decisions, and page actions must be managed by the corresponding controller. Pages and views should only compose UI and bind callbacks.
-3. UI refactoring may reorganize UI elements and change interaction patterns. It must not add or remove fields without explicit approval from the project owner. Existing field semantics, platform visibility, persistence, validation, and runtime behavior must remain intact.
-4. App bar visual styling must be defined by `AppTheme.appBarTheme`. Page-level `AppBar` instances should only declare semantic content such as `title`, `leading`, `actions`, and `bottom`, unless a behavior cannot be expressed by the shared theme.
-5. Flutter UI icons must use `LucideIcons`. Do not introduce Material `Icons` or `CupertinoIcons` constants.
-6. UI typography must use `ThemeData.textTheme` or semantic styles from `AppTypography`. Page and view files must not define numeric font sizes, font families, letter spacing, or line heights directly. Code, logs, metrics, and compact labels must use their corresponding `AppTypography` styles.
-
-## Agent skills
-
-### Issue tracker
-
-Issues are tracked in GitHub Issues for `OneXray/OneXray`. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Use the five canonical triage labels. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-This is a single-context repo. See `docs/agents/domain.md`.
+- Match generation/checks to the change. Common commands:
+  `flutter gen-l10n`, `dart run build_runner build --delete-conflicting-outputs`,
+  `dart run tool/check_native_model_contract.dart`,
+  `dart run tool/check_layer_dependencies.dart`,
+  `dart format --output=none --set-exit-if-changed <changed Dart files>`,
+  `flutter analyze`, `flutter test`, `flutter build macos --debug`.
+  Regenerate Pigeon outputs from `pigeon/message.dart`; verify changed native
+  contracts with the relevant supported platform build.
+- UI validation follows [platform limits](docs/refactor-validation.md#平台边界):
+  Android emulator may start VPN; macOS must not start VPN or take screenshots.
+  Skip Windows/Linux builds and runs on the current macOS host; record skips.
+- Keep demos and evidence in workspace `references/`, not system temp.
+  Use isolated test data, never the developer's main database; keep demos minimal.
+- Run `git diff --check`. Documentation-only work needs path/link checks,
+  not Flutter tests or native builds. Broaden or repeat verification only for
+  new changes, failures or unresolved concerns; distinguish static checks from
+  actual device/VPN validation.

@@ -11,18 +11,27 @@ Map<String, dynamic> readOutboundFromDbData(CoreConfigData row) {
   if (data == null || data.isEmpty) {
     throw const FormatException('Outbound database data is empty');
   }
-  return decodeSingleOutbound(utf8.decode(base64Decode(data)));
+  return decodeSingleOutbound(
+    utf8.decode(base64Decode(data)),
+    nameAlias: row.name,
+  );
 }
 
 CoreConfigCompanion outboundCompanion(
   Map<String, dynamic> outbound, {
   String? databaseName,
 }) {
-  final saved = copyOutboundMap(outbound);
+  final saved = copyOutboundMap(outbound, nameAlias: databaseName);
   requireCanonicalOutbound(saved);
-  final name = outboundDisplayName(saved, fallback: databaseName);
-  if (outboundString(saved, 'name')?.isNotEmpty != true && name.isNotEmpty) {
-    saved['name'] = name;
+  if (!saved.containsKey('tag')) {
+    final protocol = outboundString(saved, 'protocol');
+    if (protocol != null && protocol.isNotEmpty) {
+      saved['tag'] = protocol;
+    }
+  }
+  final name = outboundString(saved, 'tag') ?? '';
+  if (name.isEmpty) {
+    throw const FormatException('Outbound tag must be a non-empty string');
   }
   return CoreConfigCompanion.insert(
     name: name,
@@ -32,20 +41,4 @@ CoreConfigCompanion outboundCompanion(
     delay: PingDelayConstants.unknown,
     subId: DBConstants.defaultId,
   );
-}
-
-Future<int> insertOutboundToDb(Map<String, dynamic> outbound) =>
-    AppDatabase().coreConfigDao.insertRow(outboundCompanion(outbound));
-
-Future<bool> updateOutboundToDb(
-  Map<String, dynamic> outbound,
-  CoreConfigData row,
-) async {
-  final companion = outboundCompanion(outbound, databaseName: row.name);
-  final saved = row.copyWith(
-    name: companion.name.value,
-    tags: companion.tags.value,
-    data: companion.data,
-  );
-  return AppDatabase().coreConfigDao.updateRow(saved);
 }
