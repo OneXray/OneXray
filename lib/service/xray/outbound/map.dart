@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/xray/outbound/enum.dart';
 
@@ -40,9 +41,7 @@ Map<String, dynamic> decodeSingleOutbound(String text, {String? nameAlias}) {
 }
 
 String encodeSingleOutbound(Map<String, dynamic> outbound) =>
-    JsonTool.encoder.convert({
-      'outbounds': [outbound],
-    });
+    JsonTool.encoder.convert(XrayJson(outbounds: [outbound]).toJson());
 
 String? outboundString(Map<String, dynamic> outbound, String key) {
   final value = outbound[key];

@@ -183,8 +183,8 @@ final class RoutingProfileState {
     return XrayJson(
       outbounds: [
         for (var index = 0; index < entryCount; index++) <String, dynamic>{},
-        {'tag': 'direct', 'protocol': 'freedom'},
-        {'tag': 'block', 'protocol': 'blackhole'},
+        XrayOutbound(tag: 'direct', protocol: 'freedom').toJson(),
+        XrayOutbound(tag: 'block', protocol: 'blackhole').toJson(),
       ],
       routing: hasRouting
           ? XrayRouting(

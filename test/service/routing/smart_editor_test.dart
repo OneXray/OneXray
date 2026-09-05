@@ -192,16 +192,27 @@ void main() {
       blockAds: true,
     );
     final rules = ConnectionCompiler.smartRules(smart, regions);
-    expect(rules.map((rule) => rule['ruleTag']), [
+    expect(rules.map((rule) => rule.ruleTag), [
       'app-smart-ads',
-      'app-smart-private-domain',
-      'app-smart-private-ip',
-      'app-smart-apple',
-      'app-smart-regions-domain',
-      'app-smart-regions-ip',
+      'app-smart-direct-domain',
+      'app-smart-direct-ip',
     ]);
-    expect(rules[4]['domain'], ['geosite:CATEGORY-RU', 'geosite:CN']);
-    expect(rules[5]['ip'], ['geoip:RU', 'geoip:CN']);
+    expect(rules[0].outboundTag, 'block');
+    expect(rules[1].toJson(), {
+      'ruleTag': 'app-smart-direct-domain',
+      'domain': [
+        'geosite:PRIVATE',
+        'geosite:APPLE',
+        'geosite:CATEGORY-RU',
+        'geosite:CN',
+      ],
+      'outboundTag': 'direct',
+    });
+    expect(rules[2].toJson(), {
+      'ruleTag': 'app-smart-direct-ip',
+      'ip': ['geoip:PRIVATE', 'geoip:RU', 'geoip:CN'],
+      'outboundTag': 'direct',
+    });
     expect(regions.regionCodes, ['CN', 'RU']);
     final original = ConnectionSettings(
       selection: const ServerSelection.server(8),

@@ -119,20 +119,16 @@ class SmartRoutingEditorService {
       final rules = ConnectionCompiler.smartRules(value, regions);
       // Region order does not change a rule's OR set or the direct DNS set.
       for (final rule in rules) {
-        for (final field in ['domain', 'ip']) {
-          if (rule[field] case final List<String> values) {
-            values.sort();
-          }
-        }
+        rule.domain?.sort();
+        rule.ip?.sort();
       }
       return {
-        'rules': rules,
+        'rules': [for (final rule in rules) rule.toJson()],
         'resolveIpOnNoMatch': value.resolveIpOnNoMatch,
         'dnsDomains': value.directDns
             ? [
                 for (final rule in rules)
-                  if (rule['outboundTag'] == 'direct')
-                    ...((rule['domain'] as List<String>?) ?? const <String>[]),
+                  if (rule.outboundTag == 'direct') ...?rule.domain,
               ]
             : <String>[],
         'entryCount': original.selection.kind == SelectionKind.server

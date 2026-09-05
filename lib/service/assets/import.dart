@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/db/config_writer.dart';
@@ -316,11 +317,7 @@ class ServerImportService {
               nameAlias: link.name.isEmpty ? null : link.name,
             );
             requireCanonicalOutbound(outbound);
-            final error = await _validate(
-              jsonEncode({
-                'outbounds': [outbound],
-              }),
-            );
+            final error = await _validate(encodeSingleOutbound(outbound));
             if (error.isNotEmpty) {
               throw const FormatException('Invalid outbound');
             }
@@ -425,7 +422,13 @@ class ServerImportService {
       requireCanonicalOutbound(outbound);
       rows.add(outboundCompanion(outbound));
     }
-    final error = await _validate(jsonEncode({'outbounds': json['outbounds']}));
+    final error = await _validate(
+      jsonEncode(
+        XrayJson(
+          outbounds: (json['outbounds'] as List).cast<Map<String, dynamic>>(),
+        ).toJson(),
+      ),
+    );
     if (error.isNotEmpty) {
       // Do not display native errors containing imported credentials.
       throw const FormatException('Invalid Xray node JSON');

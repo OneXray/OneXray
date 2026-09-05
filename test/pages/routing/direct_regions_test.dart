@@ -1,17 +1,65 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
 import 'package:onexray/l10n/localizations/app_localizations_fa.dart';
 import 'package:onexray/l10n/localizations/app_localizations_ru.dart';
 import 'package:onexray/l10n/localizations/app_localizations_zh.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/routing/smart/controller.dart';
 import 'package:onexray/pages/routing/smart/regions.dart';
+import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
+import 'package:onexray/service/routing/smart_editor.dart';
 
 void main() {
+  test('Smart preview retains direct sources after merging rules', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    final coordinator = ConnectionCoordinator(database: db);
+    addTearDown(coordinator.dispose);
+    final controller = SmartRoutingEditorController(
+      service: SmartRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+      ),
+    );
+    addTearDown(controller.close);
+    final l = AppLocalizationsZh();
+    expect(controller.directPreview(l), l.prototypeNone);
+    controller.emit(
+      SmartRoutingEditorState(
+        original: SmartRoutingEditorDraft(
+          configuration: ConnectionConfiguration(),
+          regions: RegionCatalog.fromJson(
+            {'geosite': <String, dynamic>{}, 'geoip': <String, dynamic>{}},
+            geositeCodes: [],
+            geoipCodes: [],
+          ),
+        ),
+        busy: false,
+      ),
+    );
+    expect(controller.rulesFor('direct'), hasLength(2));
+    expect(
+      controller.directPreview(l),
+      [
+        l.prototypeLocalNetworkPrivateAddresses,
+        l.prototypeAppleServices,
+      ].join(' / '),
+    );
+    controller.update('directPrivate', false);
+    expect(controller.directPreview(l), l.prototypeAppleServices);
+    controller.update('directApple', false);
+    expect(controller.rulesFor('direct'), isEmpty);
+    expect(controller.directPreview(l), l.prototypeNone);
+  });
+
   test('direct regions use installed categories, support many selections and stay draft-only', () async {
     final selected = ['CN', 'IR'];
     var available = ['CN', 'RU', 'US', 'JP'];

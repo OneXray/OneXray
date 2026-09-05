@@ -18,15 +18,20 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     final queued = <int>[];
+    final validated = <Map<String, dynamic>>[];
     final service = ServerImportService(
       database: db,
-      validate: (_) async => '',
+      validate: (text) async {
+        validated.add(jsonDecode(text) as Map<String, dynamic>);
+        return '';
+      },
       write: (rows) => ConfigWriter.writeRowsInTransaction(db, rows, null),
       schedule: queued.addAll,
     );
     const source =
         '{"outbounds":[{"tag":"one","protocol":"freedom"},{"tag":"two","protocol":"freedom"}]}';
     final preview = await service.preview(source, manual: true);
+    expect(validated, [jsonDecode(source)]);
     expect(preview.count, 2);
     expect(preview.failureCount, 0);
     expect(await db.coreConfigDao.allOutboundRowsWithDataBySubId(0), isEmpty);

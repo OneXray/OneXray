@@ -12,22 +12,27 @@
 - Custom 使用新表保存原生 Xray JSON；`outbounds` 中 1–3 个空对象表示接入数量。
 - Custom 最多三份、名称唯一；Raw 新增最多三份，旧库超过三份不裁剪、不隐藏旧行。
 - 连接选择、Smart、隧道和日志策略在同一数据库事务提交；外观等非运行偏好仍可用 Preferences。
-  `ConnectionConfig` 只保存当前连接配置 JSON，不保存 VPN 状态、`confirmedPlanId`、运行快照
-  或提交日志。
+  `ConnectionConfig` 只保存当前连接配置 JSON，不保存 VPN 状态或运行历史。
   配置写入经协调器串行执行，保留旧草稿内容校验与独占维护门，不额外保存提交修订号。
 
 ## 普通配置编译
 
 `ConnectionCompiler` 接收不可变输入，在副本中产生配置，不自行读库、分配端口或启动 Core。
-`XrayJson` 是普通模式最终配置的唯一结构；除明确声明为 Map 的 payload 外不保留未知
-字段，也不解析 Raw JSON。outbounds 的元素保持 `Map<String, dynamic>`，便于直接插入
-完整代理节点。
+`XrayJson` 是普通模式配置生成的唯一结构。运行编译直接构造模型及嵌套模型，完成运行设置后
+一次序列化；不能先拼完整 Map，再经过 `fromJson → toJson` 筛选或重新组装。`fromJson` 用于
+外部输入和数据库读取，不作为内部构造器。模型不解析 Raw JSON；outbounds 的元素保持
+`Map<String, dynamic>`，便于完整保留代理协议字段。
 `XrayJson` 文件只定义字段映射和标准 `fromJson` / `toJson`，不负责协议分派、校验或
-运行配置构造。TUN、SOCKS、HTTP 入站设置及系统出站使用类型模型，具体运行配置由
-`runtime_inbounds.dart` 和 `runtime_outbounds.dart` 构造后写入对应 Map；系统出站的最小
+运行配置构造。TUN、SOCKS 入站与系统出站由 `runtime_inbounds.dart` 和
+`runtime_outbounds.dart` 返回类型模型，只在模型声明的 Map 字段处序列化对应 payload；系统出站的最小
 `streamSettings.sockopt` 只包含实际生成的 `dialerProxy` 和 `interface`。
-运行时调整后仍须由 `XrayJson` 重新序列化，不得向普通配置注入模型外字段。
+运行设置直接填入模型字段，不得向普通配置注入模型外字段。
 Raw 使用独立的 Map 编译路径，未由 App 管理的根字段和嵌套字段原样保留。
+
+节点测速、导入和编辑校验使用模型封装单节点或节点列表；启动前 `testXray` 与实际 `runXray`
+使用同一份已编译 JSON，不再次生成配置。智能路由预览直接消费 `XrayRoutingRule`，自定义
+规则由编辑 State 生成模型；界面预览与运行编译共用规则生成逻辑。
+
 接入按选择范围与测速结果确定；已运行节点不会因后台测速或订阅更新而被热替换。
 测速状态直接由已有延迟值区分未检测、成功、失败与超时；地区使用出口国家代码，不保存
 测量来源或时间，也不引入时间过期判定或新的“是否测过”字段。
@@ -52,6 +57,10 @@ selector 填写生成节点完整 tag，采用 round-robin，失败回退为阻�
 第二轮匹配。Custom 导入将 `type` 视为不支持的字段并直接拒绝；完整 Raw JSON 保留用户
 原文，包括用户自行填写的 `type`。
 
+智能路由将局域网、Apple 服务和所选地区的直连条件合并：域名与 IP 各输出一条规则，
+同类条件去重后以 OR 匹配，域名和 IP 不合并到同一条规则。没有对应条件时省略该类规则，
+不生成空条件规则；广告阻断仍排在这两条直连规则之前。
+
 App DNS 固定两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。direct server 的
 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不宣称已判断 IP、端口
 或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
@@ -70,7 +79,7 @@ domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段
 动作只允许 `balancerTag: proxy` 或 `outboundTag: direct|block`。
 
 编辑器支持逐条域名/IP 输入及实际安装 Geodata 分类补全。不支持的结构拒绝导入为
-Custom，不静默丢字段；完整高级配置使用 Raw。根部允许 `name`。
+Custom，不静默丢字段；完整高级配置使用 Raw。导入、导出的根部允许 `name`。
 
 分享 JSON 可携带 `geodata.assets: [{"file":"other.dat","url":"https://…"}]`，省略默认
 geoip/geosite。导入先在同级临时目录下载、校验并生成索引，文件名冲突拒绝；资产发布到
@@ -97,8 +106,7 @@ Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建�
 `ConnectionCoordinator` 串行完成内存准备、停止旧运行、启动并确认新运行，最后提交数据库
 设置。`ConnectionRuntime` 不单独序列化；`run/start.json` 是唯一原生启动请求，其中
 `coreInvokeText` 保存实际 Xray 输入，`metadataJson` 只保存重开 App 后显示运行路径和保护
-节点所需的配置及节点信息。不创建 `ConnectionPlan`、`run/plans/<id>`、`confirmedPlanId`
-或跨进程提交日志。
+节点所需的配置及节点信息。不另存运行计划、快照或跨进程提交日志。
 
 准备阶段先完成 Windows/Linux 出口网卡存在性检查，再对最终配置执行一次
 `libXray.testXray` 构建校验；两者均发生在停止旧运行或启动原生 VPN 之前。
@@ -115,10 +123,9 @@ Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清�
 VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行快照；Linux 只额外保存
 验证进程归属所需的 PID、启动时间和本次输入路径。
 
-`VpnConstants.datDir` 是 App 管理的唯一 Geodata 读写目录，DAT、同名索引和时间戳均平铺
-存放。普通运行环境的 `xray.location.asset` 与 `xray.location.cert` 始终指向该目录，VPN
-准备和启动过程不创建 Geodata 快照。macOS System Extension 因容器隔离可以沿用现有 Swift
-实现传输 Geodata；这是原生平台边界的唯一例外，不改变 App 侧单目录合同。
+普通运行环境的 `xray.location.asset` 与 `xray.location.cert` 始终指向唯一、平铺的
+`VpnConstants.datDir`，VPN 准备和启动不复制资产。发布事务与 macOS System Extension
+跨容器传输边界见 [Geodata 发布](data-management.md#geodata-发布)。
 
 状态同步与实时流量读取分开：初始化先订阅原生通知，再校准一次状态；恢复前台时再校准
 一次。Apple/Android 使用原生状态通知，不常驻轮询。Windows 暂用前台 5 秒状态查询兜底；
@@ -130,9 +137,8 @@ Tab、打开其他全页、进入后台或断开后停止。重新显示先建�
 实时速率；高级页运行时长使用独立的可见性受控本地时钟，不触发 metrics 查询。
 
 libXray 以 30 秒为目标原子覆盖本次会话的 `runtime.json`，正常停止时尽力最终保存；新会话
-直接覆盖旧会话。带 Bearer 认证的回环 `GET /runtime` 只返回当前会话计数，不创建
-`runtime-sessions`，也没有归档、ACK 或清理接口。该接口不提供 VPN 启停或累计清零；实时
-计数继续读取 Xray 原生 metrics，不修改 VCore。
+直接覆盖旧会话。带 Bearer 认证的回环 `GET /runtime` 只返回当前会话计数，不提供会话
+归档、VPN 启停或累计清零；实时计数继续读取 Xray 原生 metrics。
 
 所有平台使用同一统计读取链路，App 不读 libXray 会话文件，macOS SE 也不再通过原生
 消息代读；libXray 自己持有文件权限，日志与 DAT 的原生消息保持独立。HTTP 地址与随机

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
@@ -100,21 +101,19 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
     );
   }
 
-  List<Map<String, dynamic>> rulesFor(String action) => state.original == null
+  List<XrayRoutingRule> rulesFor(String action) => state.original == null
       ? []
       : ConnectionCompiler.smartRules(
           state.draft,
           state.original!.regions,
-        ).where((rule) => rule['outboundTag'] == action).toList();
+        ).where((rule) => rule.outboundTag == action).toList();
 
   String directPreview(AppLocalizations l) {
-    final tags = rulesFor('direct').map((rule) => rule['ruleTag']).toSet();
-    final regions = state.original?.regions.regionCodes ?? const <String>[];
+    if (state.original == null) return l.prototypeNone;
+    final regions = state.original!.regions.regionCodes;
     final labels = <String>{
-      if (tags.contains('app-smart-private-domain') ||
-          tags.contains('app-smart-private-ip'))
-        l.prototypeLocalNetworkPrivateAddresses,
-      if (tags.contains('app-smart-apple')) l.prototypeAppleServices,
+      if (state.draft.directPrivate) l.prototypeLocalNetworkPrivateAddresses,
+      if (state.draft.directApple) l.prototypeAppleServices,
       for (final code in state.draft.directRegions)
         if (regions.contains(code.toUpperCase()))
           setupRegionLabel(l, code.toUpperCase()),

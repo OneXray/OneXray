@@ -118,7 +118,7 @@ class CompiledConnection {
 }
 
 /// Pure value compilation. Never opens a database, edits an asset, allocates a
-/// port or starts Xray. Runtime files and successful commits belong to P3.
+/// port or starts Xray. Runtime files and commits belong to the coordinator.
 class ConnectionCompiler {
   static Map<String, dynamic> parseRawJson(String text) {
     final value = jsonDecode(text);
@@ -135,7 +135,7 @@ class ConnectionCompiler {
     RuntimeOptions options,
   ) {
     final value = parseRawJson(text)..remove('name');
-    return _runtimeMap(value, options, raw: true);
+    return _rawRuntimeMap(value, options);
   }
 
   static const dnsProxy = 'app-dns-proxy';
@@ -144,46 +144,39 @@ class ConnectionCompiler {
   static const ipv6Block = 'app-ipv6-block';
 
   /// The editor and runtime share these exact built-in rules and their order.
-  static List<Map<String, dynamic>> smartRules(
+  static List<XrayRoutingRule> smartRules(
     SmartRoutingSettings smart,
     RegionCatalog regions,
   ) {
-    final rules = <Map<String, dynamic>>[];
-    void add(String reason, Map<String, dynamic> fields) {
-      rules.add({'ruleTag': 'app-smart-$reason', ...fields});
-    }
-
-    if (smart.blockAds) {
-      add('ads', {
-        'domain': ['geosite:CATEGORY-ADS-ALL'],
-        'outboundTag': 'block',
-      });
-    }
-    if (smart.directPrivate) {
-      add('private-domain', {
-        'domain': ['geosite:PRIVATE'],
-        'outboundTag': 'direct',
-      });
-      add('private-ip', {
-        'ip': ['geoip:PRIVATE'],
-        'outboundTag': 'direct',
-      });
-    }
-    if (smart.directApple) {
-      add('apple', {
-        'domain': ['geosite:APPLE'],
-        'outboundTag': 'direct',
-      });
-    }
-    final domains = regions.domainRules(smart.directRegions);
-    final ips = regions.ipRules(smart.directRegions);
-    if (domains.isNotEmpty) {
-      add('regions-domain', {'domain': domains, 'outboundTag': 'direct'});
-    }
-    if (ips.isNotEmpty) {
-      add('regions-ip', {'ip': ips, 'outboundTag': 'direct'});
-    }
-    return rules;
+    final domains = <String>{
+      if (smart.directPrivate) 'geosite:PRIVATE',
+      if (smart.directApple) 'geosite:APPLE',
+      ...regions.domainRules(smart.directRegions),
+    }.toList();
+    final ips = <String>{
+      if (smart.directPrivate) 'geoip:PRIVATE',
+      ...regions.ipRules(smart.directRegions),
+    }.toList();
+    return [
+      if (smart.blockAds)
+        XrayRoutingRule(
+          ruleTag: 'app-smart-ads',
+          domain: ['geosite:CATEGORY-ADS-ALL'],
+          outboundTag: 'block',
+        ),
+      if (domains.isNotEmpty)
+        XrayRoutingRule(
+          ruleTag: 'app-smart-direct-domain',
+          domain: domains,
+          outboundTag: 'direct',
+        ),
+      if (ips.isNotEmpty)
+        XrayRoutingRule(
+          ruleTag: 'app-smart-direct-ip',
+          ip: ips,
+          outboundTag: 'direct',
+        ),
+    ];
   }
 
   static CompiledConnection compile({
@@ -203,7 +196,7 @@ class ConnectionCompiler {
           'Raw configuration is required without normal nodes',
         );
       }
-      config = _runtimeMap(raw, options, raw: true);
+      config = _rawRuntimeMap(raw, options);
     } else {
       final required = settings.requiredEntries(
         customEntryCount: custom?.entryCount,
@@ -223,7 +216,7 @@ class ConnectionCompiler {
       if (settings.trafficMode == TrafficMode.custom && custom == null) {
         throw const FormatException('Custom route is required');
       }
-      final rules = <Map<String, dynamic>>[];
+      final rules = <XrayRoutingRule>[];
       var domainStrategy = 'AsIs';
       if (settings.trafficMode == TrafficMode.smart) {
         final smart = settings.smart;
@@ -232,8 +225,7 @@ class ConnectionCompiler {
       } else if (settings.trafficMode == TrafficMode.custom) {
         domainStrategy = custom!.domainStrategy;
         for (final (index, rule) in custom.rules.indexed) {
-          final tag = 'app-custom-$index';
-          rules.add({...rule.xrayJson.toJson(), 'ruleTag': tag});
+          rules.add(rule.xrayJson..ruleTag = 'app-custom-$index');
         }
       }
       final entriesOutbounds = <Map<String, dynamic>>[];
@@ -259,80 +251,100 @@ class ConnectionCompiler {
         if (finalExit == null) ...entriesOutbounds else ...exits,
         if (finalExit != null) ...entriesOutbounds,
       ];
+      _applyOutboundPolicy(outbounds, options, raw: false);
       outbounds.addAll([
-        createFreedomOutboundMap(
+        createFreedomOutbound(
           tag: 'direct',
           interfaceName:
               options.platform == ConnectionPlatform.windows ||
                   options.platform == ConnectionPlatform.linux
               ? options.interfaceName
               : null,
-        ),
-        createBlackholeOutboundMap(tag: 'block'),
-        createDnsOutboundMap(tag: dnsOutbound, dialerProxy: 'direct'),
+        ).toJson(),
+        createBlackholeOutbound(tag: 'block').toJson(),
+        createDnsOutbound(tag: dnsOutbound, dialerProxy: 'direct').toJson(),
       ]);
       final directDomains = <String>{};
       if (settings.trafficMode != TrafficMode.smart ||
           settings.smart.directDns) {
         for (final rule in rules.where(
-          (rule) => rule['outboundTag'] == 'direct',
+          (rule) => rule.outboundTag == 'direct',
         )) {
-          directDomains.addAll((rule['domain'] as List?)?.cast<String>() ?? []);
+          directDomains.addAll(rule.domain ?? []);
         }
       }
-      final source = XrayJson.fromJson({
-        'outbounds': outbounds,
-        'observatory': {'subjectSelector': <String>[]},
-        'dns': {
-          'servers': [
-            {'address': '8.8.8.8', 'tag': dnsProxy},
-            {
-              'address': '8.8.8.8',
-              'tag': dnsDirect,
-              'domains': directDomains.toList(),
-              'skipFallback': true,
-            },
+      final queryStrategy = options.ipv6 ? 'UseIP' : 'UseIPv4';
+      config = XrayJson(
+        env: XrayEnv(
+          assetLocation: VpnConstants.datDir,
+          certLocation: VpnConstants.datDir,
+        ),
+        inbounds: [_runtimeInbound(options)],
+        log: _runtimeLog(options),
+        stats: XrayStats(),
+        metrics: XrayMetrics(listen: '127.0.0.1:${options.metricsPort}'),
+        policy: XrayPolicy(system: _runtimeStatsPolicy()),
+        outbounds: outbounds,
+        observatory: XrayObservatory(subjectSelector: []),
+        dns: XrayDns(
+          servers: [
+            XrayDnsServer(
+              address: '8.8.8.8',
+              tag: dnsProxy,
+              queryStrategy: queryStrategy,
+            ),
+            XrayDnsServer(
+              address: '8.8.8.8',
+              tag: dnsDirect,
+              domains: directDomains.toList(),
+              skipFallback: true,
+              queryStrategy: queryStrategy,
+            ),
           ],
-        },
-        'routing': {
-          'domainStrategy': domainStrategy,
-          'balancers': [
-            {
-              'tag': 'proxy',
-              'selector': selector,
-              'strategy': {'type': 'roundRobin'},
-              'fallbackTag': 'block',
-            },
+        ),
+        routing: XrayRouting(
+          domainStrategy: domainStrategy,
+          balancers: [
+            XrayBalancer(
+              tag: 'proxy',
+              selector: selector,
+              strategy: XrayBalancingStrategy(type: 'roundRobin'),
+              fallbackTag: 'block',
+            ),
           ],
-          'rules': [
-            {
-              'ruleTag': 'app-default',
-              'inboundTag': [dnsProxy],
-              'balancerTag': 'proxy',
-            },
-            {
-              'ruleTag': 'app-direct-dns',
-              'inboundTag': [dnsDirect],
-              'outboundTag': 'direct',
-            },
-            {
-              'ruleTag': 'app-tunnel-dns',
-              'inboundTag': ['tunIn'],
-              'port': '53',
-              'outboundTag': dnsOutbound,
-            },
-            {
-              'ruleTag': 'app-tunnel-dot',
-              'inboundTag': ['tunIn'],
-              'port': '853',
-              'balancerTag': 'proxy',
-            },
+          rules: [
+            if (!options.ipv6)
+              XrayRoutingRule(
+                ruleTag: ipv6Block,
+                ip: ['::/0'],
+                outboundTag: 'block',
+              ),
+            XrayRoutingRule(
+              ruleTag: 'app-default',
+              inboundTag: [dnsProxy],
+              balancerTag: 'proxy',
+            ),
+            XrayRoutingRule(
+              ruleTag: 'app-direct-dns',
+              inboundTag: [dnsDirect],
+              outboundTag: 'direct',
+            ),
+            XrayRoutingRule(
+              ruleTag: 'app-tunnel-dns',
+              inboundTag: ['tunIn'],
+              port: '53',
+              outboundTag: dnsOutbound,
+            ),
+            XrayRoutingRule(
+              ruleTag: 'app-tunnel-dot',
+              inboundTag: ['tunIn'],
+              port: '853',
+              balancerTag: 'proxy',
+            ),
             ...rules,
           ],
-        },
-      });
-      final runtime = _runtimeMap(source.toJson(), options, raw: false);
-      config = XrayJson.fromJson(runtime).toJson();
+        ),
+      ).toJson();
     }
     return CompiledConnection(
       xrayJson: jsonEncode(config),
@@ -377,11 +389,43 @@ class ConnectionCompiler {
     return value.cast<Map<String, dynamic>>().toList();
   }
 
-  static Map<String, dynamic> _runtimeMap(
+  static XrayInbound _runtimeInbound(RuntimeOptions options) {
+    if (options.platform == ConnectionPlatform.windows) {
+      return createSocksInbound('${options.socksPort}');
+    }
+    final linux = options.platform == ConnectionPlatform.linux;
+    return createTunInbound(
+      gateway: linux ? ['198.18.0.1/15', if (options.ipv6) 'fc00::1/64'] : null,
+      dns: linux ? ['8.8.8.8', if (options.ipv6) '2001:4860:4860::8888'] : null,
+      autoSystemRoutingTable: linux
+          ? ['0.0.0.0/0', if (options.ipv6) '::/0']
+          : null,
+      autoOutboundsInterface: linux ? options.interfaceName : null,
+    );
+  }
+
+  static XrayLog _runtimeLog(RuntimeOptions options) {
+    final enabled = options.logEnabled && options.logFilesSupported;
+    return XrayLog(
+      access: enabled ? '${options.sessionDirectory}/access.log' : 'none',
+      error: enabled ? '${options.sessionDirectory}/error.log' : 'none',
+      logLevel: enabled ? options.logLevel : 'none',
+      dnsLog: enabled && options.dnsLog,
+      maskAddress: options.maskAddress,
+    );
+  }
+
+  static XrayPolicySystem _runtimeStatsPolicy() => XrayPolicySystem(
+    statsInboundUplink: true,
+    statsInboundDownlink: true,
+    statsOutboundUplink: false,
+    statsOutboundDownlink: false,
+  );
+
+  static Map<String, dynamic> _rawRuntimeMap(
     Map<String, dynamic> source,
-    RuntimeOptions options, {
-    required bool raw,
-  }) {
+    RuntimeOptions options,
+  ) {
     final config = jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
     validateLocalDnsNetworkPolicy(
       config,
@@ -421,42 +465,19 @@ class ConnectionCompiler {
       }
     }
     inbounds.removeWhere((inbound) => inbound['tag'] == 'tunIn');
-    final tun = options.platform == ConnectionPlatform.windows
-        ? createSocksInboundMap('${options.socksPort}')
-        : createTunInboundMap();
-    if (options.platform == ConnectionPlatform.linux) {
-      (tun['settings'] as Map<String, dynamic>).addAll({
-        'gateway': ['198.18.0.1/15', if (options.ipv6) 'fc00::1/64'],
-        'dns': ['8.8.8.8', if (options.ipv6) '2001:4860:4860::8888'],
-        'autoSystemRoutingTable': ['0.0.0.0/0', if (options.ipv6) '::/0'],
-        'autoOutboundsInterface': options.interfaceName,
-      });
-    }
-    config['inbounds'] = [tun, ...inbounds];
+    config['inbounds'] = [_runtimeInbound(options).toJson(), ...inbounds];
     final env = _object(config, 'env');
     env['xray.location.asset'] = VpnConstants.datDir;
     env['xray.location.cert'] = VpnConstants.datDir;
     config.remove(
       'geodata',
     ); // App controls installed files, never core-side remote downloads.
-    final log = options.logEnabled && options.logFilesSupported;
-    config['log'] = {
-      'access': log ? '${options.sessionDirectory}/access.log' : 'none',
-      'error': log ? '${options.sessionDirectory}/error.log' : 'none',
-      'loglevel': log ? options.logLevel : 'none',
-      'dnsLog': log && options.dnsLog,
-      'maskAddress': options.maskAddress,
-    };
+    config['log'] = _runtimeLog(options).toJson();
     config['stats'] = <String, dynamic>{};
     config['metrics'] = {'listen': '127.0.0.1:${options.metricsPort}'};
     final policy = _object(config, 'policy');
     final system = _object(policy, 'system');
-    system.addAll({
-      'statsInboundUplink': true,
-      'statsInboundDownlink': true,
-      'statsOutboundUplink': false,
-      'statsOutboundDownlink': false,
-    });
+    system.addAll(_runtimeStatsPolicy().toJson());
     final levels = policy['levels'];
     if (levels is Map<String, dynamic>) {
       for (final level in levels.values) {
@@ -468,13 +489,13 @@ class ConnectionCompiler {
     }
     final dns = _object(config, 'dns');
     final queryStrategy = options.ipv6 ? 'UseIP' : 'UseIPv4';
-    if (raw) dns['queryStrategy'] = queryStrategy;
+    dns['queryStrategy'] = queryStrategy;
     for (final server in (dns['servers'] as List? ?? [])) {
       if (server is Map<String, dynamic>) {
         server['queryStrategy'] = queryStrategy;
       }
     }
-    if (raw && options.bootstrapAddresses.isNotEmpty) {
+    if (options.bootstrapAddresses.isNotEmpty) {
       final hosts = _object(dns, 'hosts');
       for (final entry in options.bootstrapAddresses.entries) {
         if (entry.value.isEmpty ||
@@ -489,6 +510,35 @@ class ConnectionCompiler {
         hosts[entry.key] = entry.value;
       }
     }
+    _applyOutboundPolicy(outbounds, options, raw: true);
+    final routing = _object(config, 'routing');
+    final rules = _objects(routing, 'rules');
+    if (!options.ipv6) {
+      if (tags.contains(ipv6Block)) {
+        throw const FormatException('Reserved IPv6 tag conflict');
+      }
+      outbounds.add(createBlackholeOutbound(tag: ipv6Block).toJson());
+      rules.insert(
+        0,
+        XrayRoutingRule(
+          ruleTag: ipv6Block,
+          ip: ['::/0'],
+          outboundTag: ipv6Block,
+        ).toJson(),
+      );
+    }
+    routing['rules'] = rules;
+    config['outbounds'] = outbounds;
+    return config;
+  }
+
+  // Proxy payloads remain maps in both modes; only their App-owned network
+  // fields are changed here, without decoding the full config into a model.
+  static void _applyOutboundPolicy(
+    List<Map<String, dynamic>> outbounds,
+    RuntimeOptions options, {
+    required bool raw,
+  }) {
     for (final outbound in outbounds) {
       if (['blackhole', 'loopback', 'dns'].contains(outbound['protocol'])) {
         continue;
@@ -532,26 +582,6 @@ class ConnectionCompiler {
       if (sockopt.isEmpty) stream.remove('sockopt');
       if (stream.isEmpty) outbound.remove('streamSettings');
     }
-    final routing = _object(config, 'routing');
-    final rules = _objects(routing, 'rules');
-    if (!options.ipv6) {
-      var blockTag = 'block';
-      if (raw) {
-        if (tags.contains(ipv6Block)) {
-          throw const FormatException('Reserved IPv6 tag conflict');
-        }
-        blockTag = ipv6Block;
-        outbounds.add({'tag': blockTag, 'protocol': 'blackhole'});
-      }
-      rules.insert(0, {
-        'ruleTag': ipv6Block,
-        'ip': ['::/0'],
-        'outboundTag': blockTag,
-      });
-    }
-    routing['rules'] = rules;
-    config['outbounds'] = outbounds;
-    return config;
   }
 
   static bool portIncludes(Object? value, int port) {

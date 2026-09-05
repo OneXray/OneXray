@@ -99,7 +99,7 @@ class IOSDebugProxy {
     if (indices.length != 1) {
       throw const FormatException('Invalid managed Debug inbound');
     }
-    inbounds[indices.single] = createSocksInboundMap('$port');
+    inbounds[indices.single] = createSocksInbound('$port').toJson();
     config.invoke.payload!['xrayJson'] = jsonEncode(xray);
     return jsonEncode(config.invoke.toJson());
   }

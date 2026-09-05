@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connection/compiler.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/routing/region_catalog.dart';
@@ -96,6 +97,24 @@ void main() {
           ),
           false,
         );
+        final directRules = (config['routing']['rules'] as List)
+            .cast<Map>()
+            .where((rule) => rule['outboundTag'] == 'direct');
+        final domainRule = directRules.singleWhere(
+          (rule) => rule.containsKey('domain'),
+        );
+        final ipRule = directRules.singleWhere(
+          (rule) => rule.containsKey('ip'),
+        );
+        expect(domainRule['domain'], [
+          'geosite:PRIVATE',
+          'geosite:APPLE',
+          'geosite:CN',
+        ]);
+        expect(domainRule.containsKey('ip'), false);
+        expect(ipRule['ip'], ['geoip:PRIVATE', 'geoip:CN']);
+        expect(ipRule.containsKey('domain'), false);
+        expect(config['dns']['servers'].last['domains'], domainRule['domain']);
         expect(plan.nodeTags.values, entries.map((entry) => entry.id));
         expect(entries.first.outbound['tag'], 'Same user tag');
         expect(XrayJson.fromJson(config).toJson(), config);
@@ -303,6 +322,51 @@ void main() {
     _fixture('custom', plan);
   });
 
+  test('Smart omits empty direct rule types', () {
+    for (final (smart, expected) in [
+      (
+        SmartRoutingSettings(
+          directPrivate: false,
+          directApple: false,
+          directRegions: [],
+        ),
+        <Map<String, dynamic>>[],
+      ),
+      (
+        SmartRoutingSettings(directPrivate: false, directRegions: []),
+        [
+          {
+            'ruleTag': 'app-smart-direct-domain',
+            'domain': ['geosite:APPLE'],
+            'outboundTag': 'direct',
+          },
+        ],
+      ),
+      (
+        SmartRoutingSettings(
+          directPrivate: false,
+          directApple: false,
+          directRegions: ['US', 'US'],
+        ),
+        [
+          {
+            'ruleTag': 'app-smart-direct-ip',
+            'ip': ['geoip:US'],
+            'outboundTag': 'direct',
+          },
+        ],
+      ),
+    ]) {
+      expect(
+        ConnectionCompiler.smartRules(
+          smart,
+          catalog,
+        ).map((rule) => rule.toJson()),
+        expected,
+      );
+    }
+  });
+
   test('Smart IP strategy does not add a first-pass catch-all', () {
     for (final resolve in [true, false]) {
       final plan = ConnectionCompiler.compile(
@@ -448,6 +512,101 @@ void main() {
       );
     }
   });
+
+  test(
+    'normal runtime models retain platform, DNS, logging and statistics policy',
+    () {
+      for (final platform in ConnectionPlatform.values) {
+        for (final ipv6 in [false, true]) {
+          for (final (enabled, supported, dnsLog) in [
+            (false, true, true),
+            (true, false, true),
+            (true, true, false),
+            (true, true, true),
+          ]) {
+            final desktop =
+                platform == ConnectionPlatform.windows ||
+                platform == ConnectionPlatform.linux;
+            final config = ConnectionCompiler.compile(
+              settings: ConnectionSettings(trafficMode: TrafficMode.allVpn),
+              entries: [node(1, address: '192.0.2.1')],
+              regions: catalog,
+              options: RuntimeOptions(
+                platform: platform,
+                sessionDirectory: '/unused-session',
+                metricsPort: 18186,
+                socksPort: 18187,
+                ipv6: ipv6,
+                interfaceName: 'selected-interface',
+                logEnabled: enabled,
+                logFilesSupported: supported,
+                logLevel: 'debug',
+                dnsLog: dnsLog,
+                maskAddress: 'half',
+              ),
+            ).config;
+            final logging = enabled && supported;
+            expect(config['log'], {
+              'access': logging ? '/unused-session/access.log' : 'none',
+              'error': logging ? '/unused-session/error.log' : 'none',
+              'loglevel': logging ? 'debug' : 'none',
+              'dnsLog': logging && dnsLog,
+              'maskAddress': 'half',
+            });
+            expect(config['env'], {
+              'xray.location.asset': VpnConstants.datDir,
+              'xray.location.cert': VpnConstants.datDir,
+            });
+            expect(config['stats'], isEmpty);
+            expect(config['metrics'], {'listen': '127.0.0.1:18186'});
+            expect(config['policy'], {
+              'system': {
+                'statsInboundUplink': true,
+                'statsInboundDownlink': true,
+                'statsOutboundUplink': false,
+                'statsOutboundDownlink': false,
+              },
+            });
+            expect(config['dns']['servers'], [
+              {
+                'address': '8.8.8.8',
+                'tag': ConnectionCompiler.dnsProxy,
+                'queryStrategy': ipv6 ? 'UseIP' : 'UseIPv4',
+              },
+              {
+                'address': '8.8.8.8',
+                'tag': ConnectionCompiler.dnsDirect,
+                'domains': <String>[],
+                'skipFallback': true,
+                'queryStrategy': ipv6 ? 'UseIP' : 'UseIPv4',
+              },
+            ]);
+            final direct = (config['outbounds'] as List).singleWhere(
+              (outbound) => outbound['tag'] == 'direct',
+            );
+            expect(direct, {
+              'tag': 'direct',
+              'protocol': 'freedom',
+              if (desktop)
+                'streamSettings': {
+                  'sockopt': {'interface': 'selected-interface'},
+                },
+            });
+            if (platform == ConnectionPlatform.linux) {
+              expect(config['inbounds'].single['settings'], {
+                'name': 'OneXrayTun',
+                'mtu': VpnConstants.tunMtu,
+                'gateway': ['198.18.0.1/15', if (ipv6) 'fc00::1/64'],
+                'dns': ['8.8.8.8', if (ipv6) '2001:4860:4860::8888'],
+                'autoSystemRoutingTable': ['0.0.0.0/0', if (ipv6) '::/0'],
+                'autoOutboundsInterface': 'selected-interface',
+              });
+            }
+          }
+        }
+      }
+    },
+  );
 
   test('Windows/Linux require an interface and stay within XrayJson', () {
     expect(
