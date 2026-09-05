@@ -70,7 +70,7 @@ void main() {
           balancer['selector'],
           List.generate(count, (i) => 'app-entry-$i'),
         );
-        expect(balancer['fallbackTag'], 'block');
+        expect(balancer['fallbackTag'], 'direct');
         expect(config['observatory']['subjectSelector'], isEmpty);
         final outbounds = (config['outbounds'] as List).cast<Map>();
         expect(

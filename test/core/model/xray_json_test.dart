@@ -47,7 +47,7 @@ void main() {
             'tag': 'proxy',
             'selector': ['app-entry-0'],
             'strategy': {'type': 'roundRobin'},
-            'fallbackTag': 'block',
+            'fallbackTag': 'direct',
           },
         ],
       },

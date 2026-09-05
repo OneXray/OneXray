@@ -309,7 +309,7 @@ class ConnectionCompiler {
               tag: 'proxy',
               selector: selector,
               strategy: XrayBalancingStrategy(type: 'roundRobin'),
-              fallbackTag: 'block',
+              fallbackTag: 'direct',
             ),
           ],
           rules: [

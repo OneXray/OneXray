@@ -38,7 +38,7 @@ Raw 使用独立的 Map 编译路径，未由 App 管理的根字段和嵌套字
 测量来源或时间，也不引入时间过期判定或新的“是否测过”字段。
 
 普通配置中显式选择代理的规则始终使用 `balancerTag: proxy`，即使只有一个节点。
-selector 填写生成节点完整 tag，采用 round-robin，失败回退为阻止。未命中规则的流量不
+selector 填写生成节点完整 tag，采用 round-robin，回退出站为 `direct`（直连）。未命中规则的流量不
 经过 balancer，而是遵循 Xray 默认行为使用第一个 outbound。智能路由最终出口独立于
 接入；每条接入链使用自己的出口副本，副本的 `dialerProxy` 指向对应接入节点，避免链式
 依赖互相覆盖。Custom 不绑定具体节点或最终出口。
