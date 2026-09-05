@@ -13,6 +13,20 @@ from app.command_line import dart_command, flutter_command, get_env
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PACKAGE_SUFFIXES = {".ipa", ".pkg", ".zip", ".deb", ".msix", ".apk", ".aab"}
+# Public packages produced by Build, excluding App Store / Play Store outputs.
+_GITHUB_RELEASE_PACKAGES = {
+    ("ios", None): ("ios/OneXray-ios.ipa",),
+    ("macos_se", None): ("macos_se/OneXray-macos-universal.zip",),
+    ("android", None): ("android-universal/OneXray-android-universal.apk",),
+    ("linux", "x86_64"): (
+        "linux-x64/OneXray-linux-x86_64.zip",
+        "linux-x64/OneXray-linux-x86_64.deb",
+    ),
+    ("linux", "aarch64"): (
+        "linux-arm64/OneXray-linux-aarch64.zip",
+        "linux-arm64/OneXray-linux-aarch64.deb",
+    ),
+}
 
 
 def sha256(path: Path) -> str:
@@ -186,8 +200,8 @@ def finish_build(builder, receipt: dict) -> Path:
 
 
 def verify_release(artifacts: Path, run: dict, *, tag: str | None = None,
-                   tag_sha: str | None = None, windows_only: bool = False) -> None:
-    """Fail closed before any release mutation, including manual build runs."""
+                   tag_sha: str | None = None, windows_only: bool = False) -> list[Path]:
+    """Return the channel's complete upload list, or fail before any mutation."""
     metadata = artifacts / "release-metadata"
     def value(name: str) -> str:
         result = (metadata / f"{name}.txt").read_text(encoding="utf-8").strip()
@@ -219,6 +233,7 @@ def verify_release(artifacts: Path, run: dict, *, tag: str | None = None,
         raise ValueError("Missing per-platform build provenance")
     package_hashes = {}
     windows_arches = set()
+    receipts = {}
     for manifest in manifests:
         receipt = json.loads(manifest.read_text(encoding="utf-8"))
         sources = receipt.get("sources", {})
@@ -239,6 +254,10 @@ def verify_release(artifacts: Path, run: dict, *, tag: str | None = None,
             if sources.get("VCore") != expected["VCore"]:
                 raise ValueError("VCore checkout does not match build metadata")
             windows_arches.add(receipt.get("architecture"))
+        key = (target, receipt.get("architecture") if target in {"windows", "linux"} else None)
+        if key in receipts:
+            raise ValueError(f"Duplicate build provenance: {key}")
+        receipts[key] = receipt["packages"]
         for name, digest in receipt["packages"].items():
             if name in package_hashes and package_hashes[name] != digest:
                 raise ValueError(f"Conflicting package provenance: {name}")
@@ -258,3 +277,28 @@ def verify_release(artifacts: Path, run: dict, *, tag: str | None = None,
     for path in packages:
         if package_hashes.get(path.name) != sha256(path):
             raise ValueError(f"Package hash mismatch or missing provenance: {path.name}")
+
+    build_target = value("target")
+    if windows_only:
+        if build_target not in {"all", "windows"}:
+            raise ValueError("Build target does not include Windows Store packages")
+        return sorted(packages)
+
+    # A macOS Build also produces MAS output, but GitHub publishes only SE.
+    release_target = "macos_se" if build_target == "macos" else build_target
+    required = {key: paths for key, paths in _GITHUB_RELEASE_PACKAGES.items()
+                if build_target == "all" or key[0] == release_target}
+    if not required:
+        raise ValueError(f"Build target has no GitHub release packages: {build_target}")
+    release_files = []
+    for key, paths in required.items():
+        if key not in receipts:
+            raise ValueError(f"Missing required build provenance: {key}")
+        for relative in paths:
+            path = artifacts / relative
+            if not path.is_file() or path.is_symlink():
+                raise ValueError(f"Missing required release package: {relative}")
+            if path.name not in receipts[key]:
+                raise ValueError(f"Package missing from target provenance: {relative}")
+            release_files.append(path)
+    return release_files

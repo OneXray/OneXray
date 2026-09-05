@@ -14,5 +14,6 @@ if __name__ == "__main__":
     parser.add_argument("--tag-sha")
     parser.add_argument("--windows-only", action="store_true")
     args = parser.parse_args()
-    verify_release(args.artifacts, json.loads(args.run_json.read_text()),
-                   tag=args.tag, tag_sha=args.tag_sha, windows_only=args.windows_only)
+    files = verify_release(args.artifacts, json.loads(args.run_json.read_text()),
+                           tag=args.tag, tag_sha=args.tag_sha, windows_only=args.windows_only)
+    print("\n".join(str(path) for path in files))

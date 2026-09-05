@@ -26,6 +26,12 @@
   exemption. Microsoft Store bundling additionally requires both architectures.
   If a failed run is retried, rerun the metadata job together with the platform
   jobs; receipts from different run attempts are intentionally not mixed.
+- GitHub publishing follows the Build's recorded `target.txt`: a single-platform
+  build publishes only that platform, while `all` requires every GitHub release
+  target. The verifier requires the matching receipts and all expected packages
+  before emitting the exact list used for both asset replacement and upload.
+  Linux requires ZIP and DEB for x64 and arm64. MAS PKG and Play AAB are not GitHub
+  assets; Windows continues through the separate Microsoft Store workflow.
 - These are provenance checks, not platform release acceptance. Tool versions
   remain recorded rather than all pinned; store deployment still happens inside
   the existing Apple/Android Fastlane commands. Do not run them as local tests.
@@ -34,6 +40,12 @@
 依赖锁、原生库、GeoData 与包摘要。不能把本地未发布的提交写成上游可用版本。
 发布入口拒绝缺失元数据、构建前源树未提交、来源不一致和摘要不一致；
 这些检查不替代各平台实机/渠道验收。保持使用干净构建目录，避免混入之前构建的产物。
+
+允许单平台发布，范围由该次 Build 的 `target.txt` 决定；`all` 必须具备全部 GitHub
+发布目标的凭证和安装包。Linux 的两种架构都需要 ZIP 与 DEB，macOS 只发布 SE ZIP，
+Android 只发布通用 APK；商店 PKG/AAB 不要求出现在 GitHub 产物目录，Windows 保留
+独立的 Microsoft Store 流程。校验成功后输出精确文件清单，删除和上传均只使用该清单，
+单平台发布不删除其他平台已有资产。`verify_release.py` 的标准输出为这份清单，失败时不输出。
 
 无需构建或安装依赖的脚本验证（Python 3.12+）：
 

@@ -67,16 +67,22 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Verify build metadata
+        id: verify
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag_name }}
         run: |
           tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq '.sha')"
           python3 build_scripts/verify_release.py artifacts build-run.json \
-            --tag "$RELEASE_TAG" --tag-sha "$tag_sha"
+            --tag "$RELEASE_TAG" --tag-sha "$tag_sha" > release-files.txt
+          {
+            echo 'files<<EOF'
+            cat release-files.txt
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: List release files
-        run: find artifacts -type f | sort
+        run: cat release-files.txt
 
       - name: Delete matching existing release assets
         env:
@@ -88,17 +94,13 @@ jobs:
             exit 0
           fi
 
-          find artifacts -type f \
-            ! -path '*/release-metadata/*' \
-            ! -path '*/provenance-*/*' \
-            ! -path '*/windows-store/*' \
-            ! -path '*/windows-store-*/*' | while IFS= read -r file; do
+          while IFS= read -r file; do
             asset="$(basename "$file")"
             echo "Deleting existing asset if present: $asset"
             gh release delete-asset "$RELEASE_TAG" "$asset" \
               --repo "${{ github.repository }}" \
               --yes >/dev/null 2>&1 || true
-          done
+          done < release-files.txt
 
       - name: Publish GitHub pre-release
         uses: softprops/action-gh-release@v3
@@ -106,11 +108,6 @@ jobs:
           tag_name: ${{ steps.release.outputs.tag }}
           prerelease: true
           make_latest: false
-          files: |
-            artifacts/ios/**/*
-            artifacts/macos_se/**/*
-            artifacts/android-universal/**/*
-            artifacts/linux-x64/**/*
-            artifacts/linux-arm64/**/*
-          fail_on_unmatched_files: false
+          files: ${{ steps.verify.outputs.files }}
+          fail_on_unmatched_files: true
           generate_release_notes: true
