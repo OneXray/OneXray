@@ -206,6 +206,7 @@ enum PlatformPermissionKind: Int, CaseIterable {
   case androidVpn = 1
   case macosSystemExtension = 2
   case appleVpn = 3
+  case androidLocalNetwork = 4
 }
 
 enum PlatformPermissionState: Int, CaseIterable {

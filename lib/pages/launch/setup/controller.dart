@@ -255,7 +255,10 @@ class SetupController extends PageCubit<SetupPageState>
 
   String failureText(AppLocalizations l10n) =>
       switch (state.failure?.component) {
-        'permission' => l10n.prototypeVpnPermissionRequired,
+        'permission' =>
+          state.permission?.kind == PlatformPermissionKind.androidLocalNetwork
+              ? l10n.prototypePermissionNotGranted
+              : l10n.prototypeVpnPermissionRequired,
         'interface' => l10n.prototypeChooseInterfaceNotice,
         'region' => l10n.prototypeCheckNetwork,
         _ => l10n.prototypeTemporarilyUnavailable,

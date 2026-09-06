@@ -42,6 +42,41 @@ void _desktop(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('system step identifies missing local network permission', (
+    tester,
+  ) async {
+    _mobile(tester);
+    final actions = <SetupAction>[];
+    await tester.pumpWidget(
+      _app(
+        SetupView(
+          state: SetupPageState(
+            step: SetupStep.system,
+            busy: false,
+            localReady: true,
+            permission: PlatformPermissionResult(
+              kind: PlatformPermissionKind.androidLocalNetwork,
+              state: PlatformPermissionState.notDetermined,
+            ),
+          ),
+          requiresInterface: false,
+          supportsScan: true,
+          onAction: actions.add,
+          onAddServer: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final hint = find.text(
+      'Allow access to devices and services on the local network.',
+    );
+    expect(hint, findsOneWidget);
+    expect(find.text('VPN permission'), findsNothing);
+    await tester.tap(hint);
+    expect(actions, [SetupAction.permission]);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final locale in const [Locale('zh'), Locale('ru'), Locale('fa')]) {
     testWidgets('welcome points remain centered and wrap for $locale', (
       tester,

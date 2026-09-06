@@ -82,7 +82,13 @@ class AppleVpnCapabilities {
 // Apple VPN profile and System Extension readiness.
 enum RefreshVpnResult { installed, notInstalled, waitForApproval }
 
-enum PlatformPermissionKind { none, androidVpn, macosSystemExtension, appleVpn }
+enum PlatformPermissionKind {
+  none,
+  androidVpn,
+  macosSystemExtension,
+  appleVpn,
+  androidLocalNetwork,
+}
 
 enum PlatformPermissionState {
   notRequired,

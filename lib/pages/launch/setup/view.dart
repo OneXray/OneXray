@@ -204,6 +204,17 @@ class SetupView extends StatelessWidget {
   List<Widget> _system(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
+    final localNetwork =
+        state.permission?.kind == PlatformPermissionKind.androidLocalNetwork;
+    final permissionTitle = localNetwork
+        ? l.prototypeAllowLocalNetwork
+        : l.prototypeVpnPermission;
+    final permissionHint = localNetwork
+        ? l.prototypeAllowLocalNetworkHint
+        : l.prototypeAllowAddVpn;
+    final permissionIcon = localNetwork
+        ? LucideIcons.network
+        : LucideIcons.shieldCheck;
     final denied =
         state.permission?.state == PlatformPermissionState.denied ||
         state.failure?.component == 'permission';
@@ -259,14 +270,10 @@ class SetupView extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          LucideIcons.shieldCheck,
-                          size: 36,
-                          color: palette.primary,
-                        ),
+                        Icon(permissionIcon, size: 36, color: palette.primary),
                         const SizedBox(height: 24),
                         Text(
-                          l.prototypeAllowAddVpn,
+                          permissionHint,
                           textAlign: TextAlign.center,
                           style: AppTypography.setupPermission.copyWith(
                             color: palette.mutedStrong,
@@ -280,16 +287,18 @@ class SetupView extends StatelessWidget {
             : Column(
                 children: [
                   _SetupRow(
-                    icon: LucideIcons.shieldCheck,
-                    title: l.prototypeVpnPermission,
+                    icon: permissionIcon,
+                    title: permissionTitle,
                     busy: state.activeAction == SetupAction.permission,
-                    description: l.prototypeAllowAddVpn,
+                    description: permissionHint,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           state.authorized
                               ? l.prototypeAuthorized
+                              : localNetwork
+                              ? l.prototypeAllowLocalNetwork
                               : l.prototypeSetUpVpn,
                           style:
                               (mobile

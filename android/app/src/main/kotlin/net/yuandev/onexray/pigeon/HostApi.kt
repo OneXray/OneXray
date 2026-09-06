@@ -3,6 +3,7 @@ package net.yuandev.onexray.pigeon
 import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.VpnService
@@ -36,7 +37,7 @@ class AppHostApi(
             val callback = permissionCallback
             permissionCallback = null
             if (it.resultCode == RESULT_OK) {
-                callback?.invoke(androidPermissionGranted())
+                callback?.invoke(queryPermissionNow())
             } else {
                 callback?.invoke(androidPermissionDenied())
                 onVpnStatusChanged(false)
@@ -160,7 +161,7 @@ class AppHostApi(
             }
             val prepare = VpnService.prepare(context)
             if (prepare == null) {
-                callback(Result.success(androidPermissionGranted()))
+                callback(Result.success(queryPermissionNow()))
                 return@launch
             }
             if (permissionCallback != null) {
@@ -301,15 +302,24 @@ class AppHostApi(
 
     private fun queryPermissionNow(): PlatformPermissionResult {
         val prepare = VpnService.prepare(context)
-        return if (prepare == null) {
-            androidPermissionGranted()
-        } else {
-            PlatformPermissionResult(
+        if (prepare != null) {
+            return PlatformPermissionResult(
                 PlatformPermissionKind.ANDROID_VPN,
                 PlatformPermissionState.NOT_DETERMINED,
                 null,
             )
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN &&
+            context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return PlatformPermissionResult(
+                PlatformPermissionKind.ANDROID_LOCAL_NETWORK,
+                PlatformPermissionState.NOT_DETERMINED,
+                null,
+            )
+        }
+        return androidPermissionGranted()
     }
 
     private fun commandFailed(permission: PlatformPermissionResult): NativeVpnCommandResult =

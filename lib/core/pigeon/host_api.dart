@@ -12,6 +12,7 @@ import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:permission_handler/permission_handler.dart';
 
 class AppHostApi {
   Future<AppleVpnCapabilities> appleVpnCapabilities() =>
@@ -409,7 +410,22 @@ class AppHostApi {
       return _platformPermissionNotRequired();
     }
     try {
-      return await _api.requestPlatformPermission();
+      final permission = await _api.requestPlatformPermission();
+      if (permission.kind != PlatformPermissionKind.androidLocalNetwork) {
+        return permission;
+      }
+      if (await Permission.accessLocalNetwork.isPermanentlyDenied) {
+        await openAppSettings();
+        return permission;
+      }
+      final status = await Permission.accessLocalNetwork.request();
+      if (!status.isGranted) {
+        return PlatformPermissionResult(
+          kind: PlatformPermissionKind.androidLocalNetwork,
+          state: PlatformPermissionState.denied,
+        );
+      }
+      return await _api.queryPlatformPermission();
     } catch (error, stackTrace) {
       _reportUnexpected('requestPlatformPermission', error, stackTrace);
       return _platformPermissionFailed();

@@ -115,7 +115,13 @@ enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
 enum RefreshVpnResult { installed, notInstalled, waitForApproval }
 
-enum PlatformPermissionKind { none, androidVpn, macosSystemExtension, appleVpn }
+enum PlatformPermissionKind {
+  none,
+  androidVpn,
+  macosSystemExtension,
+  appleVpn,
+  androidLocalNetwork,
+}
 
 enum PlatformPermissionState {
   notRequired,
