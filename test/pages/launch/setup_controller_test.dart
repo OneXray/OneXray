@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/setup/controller.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/launch/setup/view.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/service/connection/platform_policy.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/launch/setup.dart';
@@ -117,18 +120,26 @@ void main() {
     },
   );
 
-  for (final platform in [
-    ConnectionPlatform.ios,
-    ConnectionPlatform.windows,
-    ConnectionPlatform.linux,
+  for (final (platform, savedInterface) in [
+    (ConnectionPlatform.ios, ''),
+    (ConnectionPlatform.windows, ''),
+    (ConnectionPlatform.linux, ''),
+    (ConnectionPlatform.windows, 'Missing Ethernet'),
+    (ConnectionPlatform.linux, 'Missing Ethernet'),
   ]) {
     final interface = platform != ConnectionPlatform.ios;
     testWidgets(
-      'selecting ${interface ? 'interface' : 'region'} on ${platform.name} advances without confirmation',
+      'selecting ${interface ? 'interface' : 'region'} on ${platform.name} advances without confirmation'
+      ' (saved interface: "$savedInterface")',
       (tester) async {
+        tester.view.physicalSize = const Size(1160, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
         final service = _SetupService(platform: platform)
           ..step = SetupStep.system
           ..granted = true
+          ..savedInterface = savedInterface
           ..suggestedRegion = interface ? 'RU' : null;
         final controller = SetupController(service: service);
         addTearDown(controller.close);
@@ -137,18 +148,32 @@ void main() {
           controller.state.step,
           interface ? SetupStep.system : SetupStep.region,
         );
+        if (savedInterface.isNotEmpty) {
+          expect(controller.state.failure?.component, 'interface');
+          expect(controller.state.interfaceName, savedInterface);
+          expect(controller.state.busy, isFalse);
+        }
         final router = GoRouter(
           routes: [
             GoRoute(
               path: '/',
-              builder: (context, _) => Scaffold(
-                body: TextButton(
-                  onPressed: () => interface
-                      ? controller.chooseInterface(context)
-                      : controller.chooseRegion(context),
-                  child: const Text('Choose'),
-                ),
-              ),
+              builder: (context, _) =>
+                  BlocBuilder<SetupController, SetupPageState>(
+                    bloc: controller,
+                    builder: (context, state) => SetupView(
+                      state: state,
+                      requiresInterface: service.requiresInterface,
+                      supportsScan: false,
+                      failureText: state.failure == null
+                          ? null
+                          : controller.failureText(
+                              AppLocalizations.of(context)!,
+                            ),
+                      onAction: (action) =>
+                          controller.handleAction(context, action),
+                      onAddServer: (_) => fail('No import expected'),
+                    ),
+                  ),
             ),
             ...RouterPath.router.configuration.routes
                 .whereType<GoRoute>()
@@ -172,14 +197,31 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Choose'));
+        if (savedInterface.isNotEmpty) {
+          expect(find.text(savedInterface), findsOneWidget);
+          expect(find.byType(FilledButton), findsNothing);
+        }
+        await tester.tap(
+          find
+              .text(
+                interface
+                    ? 'Xray outbound interface'
+                    : 'Choose your country or region',
+              )
+              .first,
+        );
         await tester.pumpAndSettle();
+        expect(
+          find.byType(interface ? SetupInterfacePage : SetupRegionPage),
+          findsOneWidget,
+        );
         expect(find.text('Done'), findsNothing);
         await tester.tap(find.text(interface ? 'Ethernet' : 'Russia').last);
         await tester.pumpAndSettle();
         expect(find.byType(SetupRegionPage), findsNothing);
         expect(find.byType(SetupInterfacePage), findsNothing);
         expect(controller.state.step, SetupStep.servers);
+        expect(controller.state.failure, isNull);
         expect(service.savedRegion, 'RU');
         if (interface) expect(service.savedInterface, 'Ethernet');
         expect(tester.takeException(), isNull);
@@ -245,7 +287,11 @@ class _SetupService extends SetupService {
 
   @override
   Future<ConnectionConfiguration> configuration() async =>
-      ConnectionConfiguration();
+      ConnectionConfiguration(
+        policy: PlatformPolicy.fromJson({
+          'xrayOutboundInterfaceName': savedInterface ?? '',
+        }),
+      );
   @override
   Future<List<String>> regionCodes() async => ['CN', 'RU', 'US'];
   @override
@@ -267,6 +313,10 @@ class _SetupService extends SetupService {
   ];
   @override
   Future<void> continueSystem(String name) async {
+    if (requiresInterface &&
+        !(await interfaces()).any((item) => item.name == name)) {
+      throw const SetupFailure('interface');
+    }
     savedInterface = name;
     step = SetupStep.region;
   }
