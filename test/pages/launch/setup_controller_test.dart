@@ -117,19 +117,19 @@ void main() {
     },
   );
 
-  for (final interface in [false, true]) {
+  for (final platform in [
+    ConnectionPlatform.ios,
+    ConnectionPlatform.windows,
+    ConnectionPlatform.linux,
+  ]) {
+    final interface = platform != ConnectionPlatform.ios;
     testWidgets(
-      'selecting ${interface ? 'interface' : 'region'} advances without confirmation',
+      'selecting ${interface ? 'interface' : 'region'} on ${platform.name} advances without confirmation',
       (tester) async {
-        final service =
-            _SetupService(
-                platform: interface
-                    ? ConnectionPlatform.windows
-                    : ConnectionPlatform.ios,
-              )
-              ..step = SetupStep.system
-              ..granted = true
-              ..suggestedRegion = interface ? 'RU' : null;
+        final service = _SetupService(platform: platform)
+          ..step = SetupStep.system
+          ..granted = true
+          ..suggestedRegion = interface ? 'RU' : null;
         final controller = SetupController(service: service);
         addTearDown(controller.close);
         await _idle(controller);
@@ -220,7 +220,7 @@ Future<void> _idle(SetupController controller) async {
 
 // Controller checks only. Real persistence and preflight are covered by setup_test.
 class _SetupService extends SetupService {
-  _SetupService({super.platform});
+  _SetupService({super.platform = ConnectionPlatform.ios});
   SetupStep step = SetupStep.welcome;
   bool granted = false;
   bool localFailure = false;

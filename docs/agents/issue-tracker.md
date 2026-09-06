@@ -6,6 +6,7 @@ Because this clone's `origin` points to `yiguo.dev`, include `--repo OneXray/One
 
 ## Conventions
 
+- **Language**: Use English for PR titles, descriptions, and user communication.
 - **Create an issue**: `gh issue create --repo OneXray/OneXray --title "..." --body "..."`
 - **Read an issue**: `gh issue view <number> --repo OneXray/OneXray --comments`
 - **List issues**: `gh issue list --repo OneXray/OneXray --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
