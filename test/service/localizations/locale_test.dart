@@ -1,8 +1,15 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/event_bus/enum.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/localizations/locale.dart';
+import 'package:onexray/service/localizations/service.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
@@ -55,12 +62,49 @@ void main() {
     expect(AppLocalePolicy.resolve(null, reversedLocales), const Locale("en"));
   });
 
+  test("new or invalid appearance preferences follow the system", () {
+    for (final value in [null, "unsupported", "system"]) {
+      expect(LanguageCode.fromString(value).name, LanguageCode.system.name);
+      expect(ThemeCode.fromString(value).name, ThemeCode.system.name);
+    }
+    for (final language in LanguageCode.values) {
+      expect(LanguageCode.fromString(language.name), language);
+    }
+    for (final theme in ThemeCode.values) {
+      expect(ThemeCode.fromString(theme.name), theme);
+    }
+  });
+
   test(
-    "a new or invalid language preference defaults to Simplified Chinese",
-    () {
-      expect(LanguageCode.fromString(null), LanguageCode.zh);
-      expect(LanguageCode.fromString("unsupported"), LanguageCode.zh);
-      expect(LanguageCode.fromString("system"), LanguageCode.system);
+    "startup uses English on an English system without overwriting preferences",
+    () async {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      addTearDown(binding.platformDispatcher.clearLocaleTestValue);
+      binding.platformDispatcher.localeTestValue = const Locale("en", "US");
+      final bus = AppEventBus();
+      addTearDown(bus.close);
+
+      await bus.asyncInitTheme();
+
+      expect(appLocalizationsNoContext().localeName, "en");
+      expect(bus.state.languageCode, LanguageCode.system);
+      expect(bus.state.themeCode.themeMode, ThemeMode.system);
+      expect(await PreferencesKey().readLanguageCode(), isNull);
+      expect(await PreferencesKey().readThemeCode(), isNull);
+
+      await bus.updateLanguageCode(LanguageCode.zh);
+      await bus.updateThemeCode(ThemeCode.dark);
+      await bus.asyncInitTheme();
+      expect(bus.state.languageCode, LanguageCode.zh);
+      expect(bus.state.themeCode.themeMode, ThemeMode.dark);
+      expect(appLocalizationsNoContext().localeName, "zh");
+
+      await bus.updateLanguageCode(LanguageCode.system);
+      await bus.updateThemeCode(ThemeCode.system);
+      binding.platformDispatcher.localeTestValue = const Locale("fa", "IR");
+      expect(appLocalizationsNoContext().localeName, "fa");
+      expect(bus.state.themeCode.themeMode, ThemeMode.system);
     },
   );
 

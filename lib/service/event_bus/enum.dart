@@ -82,7 +82,7 @@ enum LanguageCode {
 
   static LanguageCode fromString(String? name) {
     if (name == null) {
-      return LanguageCode.zh;
+      return LanguageCode.system;
     }
     final value = LanguageCode.values.firstWhereOrNull(
       (value) => value.name == name,
@@ -90,7 +90,7 @@ enum LanguageCode {
     if (value != null) {
       return value;
     }
-    return LanguageCode.zh;
+    return LanguageCode.system;
   }
 
   Locale get locale {
