@@ -33,7 +33,8 @@ android {
     defaultConfig {
         applicationId = "net.yuandev.onexray"
         minSdk = 29
-        targetSdk = 37
+        // Target 37 requires ACCESS_LOCAL_NETWORK runtime permission handling first.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         if (!splitPerAbi) {
