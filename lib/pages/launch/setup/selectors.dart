@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/launch/setup/widgets.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -90,11 +89,10 @@ class _ChoiceController extends PageCubit<_ChoiceState> {
     : _all = choices,
       super(_ChoiceState(selected, choices));
 
-  void select(String id) {
-    if (id != state.selected) emit(_ChoiceState(id, state.choices));
+  void select(BuildContext context, String id) {
+    context.pop(id);
   }
 
-  bool get canSave => _all.any((choice) => choice.id == state.selected);
   void search(String text) {
     final search = text.trim().toLowerCase();
     emit(
@@ -111,9 +109,6 @@ class _ChoiceController extends PageCubit<_ChoiceState> {
   }
 
   void cancel(BuildContext context) => context.pop();
-  void save(BuildContext context) {
-    if (canSave) context.pop(state.selected);
-  }
 }
 
 class _SetupSelector extends StatelessWidget {
@@ -304,7 +299,8 @@ class _SetupSelector extends StatelessWidget {
                                   borderRadius: radius,
                                   clipBehavior: Clip.antiAlias,
                                   child: InkWell(
-                                    onTap: () => controller.select(choice.id),
+                                    onTap: () =>
+                                        controller.select(context, choice.id),
                                     child: Container(
                                       constraints: const BoxConstraints(
                                         minHeight: 68,
@@ -336,7 +332,10 @@ class _SetupSelector extends StatelessWidget {
                                             onChanged: (value) {
                                               if (value != null &&
                                                   value != state.selected) {
-                                                controller.select(value);
+                                                controller.select(
+                                                  context,
+                                                  value,
+                                                );
                                               }
                                             },
                                             items: [
@@ -399,21 +398,6 @@ class _SetupSelector extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-          bottomNavigationBar: SetupFooter(
-            children: [
-              SetupActionButton(
-                label: l10n.prototypeCancel,
-                outline: true,
-                onPressed: () => controller.cancel(context),
-              ),
-              SetupActionButton(
-                label: l10n.prototypeDone,
-                onPressed: controller.canSave
-                    ? () => controller.save(context)
-                    : null,
-              ),
-            ],
           ),
         );
       },

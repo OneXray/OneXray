@@ -7,7 +7,6 @@ import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
-import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/launch/setup.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -123,7 +122,7 @@ void main() {
   );
 
   testWidgets(
-    'system states gate Continue but never request permission in build',
+    'system states expose permission actions without a Continue confirmation',
     (tester) async {
       _mobile(tester);
       final actions = <SetupAction>[];
@@ -183,13 +182,11 @@ void main() {
         ),
       );
       await show(ready, interface: true);
-      expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull,
-      );
+      expect(find.text('Continue'), findsNothing);
+      expect(find.byType(FilledButton), findsOneWidget);
       await show(ready);
-      await tester.tap(find.text('Continue'));
-      expect(actions.last, SetupAction.continueSystem);
+      expect(find.text('Continue'), findsNothing);
+      expect(find.byType(FilledButton), findsNothing);
     },
   );
 
@@ -222,18 +219,20 @@ void main() {
     expect(find.text('Welcome & privacy'), findsOneWidget);
     expect(find.text('System setup'), findsOneWidget);
     expect(find.text('This process will not start the VPN.'), findsOneWidget);
-    expect(find.text('Set up VPN'), findsOneWidget);
+    expect(find.text('Set up VPN'), findsNWidgets(2));
     final back = tester.getRect(find.widgetWithText(OutlinedButton, 'Back'));
-    final next = tester.getRect(find.widgetWithText(FilledButton, 'Continue'));
+    final next = tester.getRect(
+      find.widgetWithText(FilledButton, 'Set up VPN'),
+    );
     expect(back.width, 210);
     expect(next.width, 210);
     expect(back.left, 40);
     expect(next.right, 1120);
     expect(
       tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Set up VPN'))
           .onPressed,
-      isNull,
+      isNotNull,
     );
     expect(tester.takeException(), isNull);
   });
@@ -260,25 +259,9 @@ void main() {
           find.text('Scan QR code'),
           supportsScan ? findsOneWidget : findsNothing,
         );
-        expect(
-          tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-          isNull,
-        );
-        final style = tester
-            .widget<FilledButton>(find.byType(FilledButton))
-            .style!;
-        final palette = ColorManager.palette(
-          tester.element(find.byType(SetupView)),
-        );
-        expect(
-          style.backgroundColor!.resolve({WidgetState.disabled}),
-          palette.border.withValues(alpha: .7),
-        );
-        expect(
-          style.foregroundColor!.resolve({WidgetState.disabled}),
-          palette.mutedForeground.withValues(alpha: .7),
-        );
-        expect(style.backgroundColor!.resolve({}), isNull);
+        expect(find.text('Go to home'), findsNothing);
+        expect(find.text('Add later'), findsOneWidget);
+        expect(find.byType(FilledButton), findsNothing);
         imports.clear();
         for (final label in [
           'Paste link',
@@ -302,66 +285,65 @@ void main() {
     },
   );
 
-  testWidgets('region selection is a route-local draft until Done', (
-    tester,
-  ) async {
-    _mobile(tester);
-    String? selected;
-    final router = GoRouter(
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, _) => Scaffold(
-            body: TextButton(
-              onPressed: () async =>
-                  selected = await context.push<String>('/region'),
-              child: const Text('Open region'),
+  testWidgets(
+    'region selection returns immediately; Back leaves it unchanged',
+    (tester) async {
+      _mobile(tester);
+      String? selected;
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, _) => Scaffold(
+              body: TextButton(
+                onPressed: () async =>
+                    selected = await context.push<String>('/region'),
+                child: const Text('Open region'),
+              ),
             ),
           ),
-        ),
-        GoRoute(
-          path: '/region',
-          builder: (context, _) => const SetupRegionPage(
-            params: SetupRegionParams(['CN', 'RU', 'IR', 'US'], 'CN'),
+          GoRoute(
+            path: '/region',
+            builder: (context, _) => const SetupRegionPage(
+              params: SetupRegionParams(['CN', 'RU', 'IR', 'US'], 'CN'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          theme: AppTheme.material(Brightness.light, mobile: true),
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          builder: (context, child) => ShadTheme(
+            data: AppTheme.shad(Brightness.light, mobile: true),
+            child: child!,
           ),
         ),
-      ],
-    );
-    addTearDown(router.dispose);
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router,
-        theme: AppTheme.material(Brightness.light, mobile: true),
-        locale: const Locale('en'),
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        builder: (context, child) => ShadTheme(
-          data: AppTheme.shad(Brightness.light, mobile: true),
-          child: child!,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Open region'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AppBar), findsNothing);
-    expect(tester.getSize(find.widgetWithText(TextButton, 'Back')).height, 38);
-    await tester.enterText(find.byType(TextField), 'Russia');
-    await tester.pumpAndSettle();
-    expect(find.text('Mainland China'), findsNothing);
-    await tester.tap(find.text('Russia').last);
-    await tester.pumpAndSettle();
-    expect(selected, isNull);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(selected, isNull);
-    await tester.tap(find.text('Open region'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Russia'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
-    expect(selected, 'RU');
-    expect(tester.takeException(), isNull);
-  });
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open region'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppBar), findsNothing);
+      expect(
+        tester.getSize(find.widgetWithText(TextButton, 'Back')).height,
+        38,
+      );
+      await tester.enterText(find.byType(TextField), 'Russia');
+      await tester.pumpAndSettle();
+      expect(find.text('Mainland China'), findsNothing);
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(selected, isNull);
+      await tester.tap(find.text('Open region'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Russia'));
+      await tester.pumpAndSettle();
+      expect(selected, 'RU');
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

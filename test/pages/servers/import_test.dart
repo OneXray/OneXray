@@ -21,6 +21,56 @@ import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  for (final notify in [true, false]) {
+    testWidgets('node import success toast follows the entry point ($notify)', (
+      tester,
+    ) async {
+      var writes = 0;
+      ServerImportResult? result;
+      final controller = ServerImportController(
+        showSuccessToast: notify,
+        loadSubscription: (_) async => null,
+        service: ServerImportService(
+          write: (rows) async {
+            writes++;
+            return ConfigWriteResult(count: rows.length, ids: [1]);
+          },
+          schedule: (_) {},
+        ),
+      );
+      addTearDown(controller.close);
+      final preview = ServerImportPreview([
+        outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
+      ]);
+      await tester.pumpWidget(
+        _app(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                result = await showAppDialog<ServerImportResult>(
+                  context,
+                  (_) => ServerImportPreviewPage(
+                    controller: controller,
+                    preview: preview,
+                  ),
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await _tapVisible(tester, find.text('Confirm add'));
+      await tester.pumpAndSettle();
+      expect(writes, 1);
+      expect(result?.count, 1);
+      expect(find.byType(ShadToast), notify ? findsOneWidget : findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   test('submit availability follows text, HTTPS, and Age state', () async {
     final controller = ServerImportController(
       loadSubscription: (_) async => null,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -94,49 +95,66 @@ void main() {
       expect(palette.foreground, const Color(0xFFF2F5F8));
     });
 
-    test('typography roles only define size and rounded weight', () {
-      final material = AppTheme.light;
-      final shad = AppTheme.shad(Brightness.light);
+    test(
+      'typography keeps size, rounded weight and platform glyph fallback',
+      () {
+        final material = AppTheme.light;
+        final shad = AppTheme.shad(Brightness.light);
 
-      expect(material.textTheme.bodyMedium?.fontFamily, AppFontFamily.sans);
-      expect(material.textTheme.bodyMedium?.fontSize, 13);
-      expect(material.textTheme.bodySmall?.fontSize, 12);
-      expect(material.textTheme.labelSmall?.fontSize, 12);
-      expect(shad.textTheme.family, AppFontFamily.sans);
-      expect(shad.textTheme.p.fontSize, 13);
-      expect(shad.textTheme.small.fontSize, 13);
-      expect(shad.textTheme.muted.fontSize, 12);
-      expect(AppTypography.pageTitle.fontSize, 31);
-      expect(AppTypography.panelTitle.fontSize, 19);
-      expect(AppTypography.supporting.fontSize, 12);
-      expect(AppTypography.navigationLabel.fontSize, 16);
-      expect(AppTypography.badge.fontSize, 12);
-      expect(AppTypography.code.fontSize, 12);
-      expect(AppTypography.metric.fontSize, 20);
-      for (final (style, size, weight) in [
-        (AppTypography.connectStatusTitle, 17, FontWeight.w700),
-        (AppTypography.connectButton, 16, FontWeight.w700),
-        (AppTypography.connectCaption, 12, FontWeight.w600),
-        (AppTypography.connectChoiceLabel, 12, FontWeight.w500),
-        (AppTypography.connectChoiceTitle, 14, FontWeight.w600),
-        (AppTypography.connectChoiceMeta, 12, FontWeight.w600),
-        (AppTypography.connectTrafficTitle, 15, FontWeight.w700),
-        (AppTypography.connectTrafficGroupTitle, 12, FontWeight.w500),
-        (AppTypography.connectTrafficValue, 15, FontWeight.w600),
-        (AppTypography.connectRawTitle, 12, FontWeight.w700),
-        (AppTypography.connectRawCount, 12, FontWeight.w600),
-        (AppTypography.dialogTitle, 18, FontWeight.w700),
-        (AppTypography.dialogSubtitle, 13, FontWeight.w400),
-      ]) {
-        expect(style.fontSize, size);
-        expect(style.fontWeight, weight);
-        expect(style.height, isNull);
-        expect(style.fontVariations, isNull);
-        expect(style.letterSpacing, isNull);
-        expect(style.fontFeatures, isNull);
-        expect(style.fontFamily, isNull);
-      }
-    });
+        expect(material.textTheme.bodyMedium?.fontFamily, AppFontFamily.sans);
+        expect(material.textTheme.bodyMedium?.fontSize, 13);
+        expect(material.textTheme.bodySmall?.fontSize, 12);
+        expect(material.textTheme.labelSmall?.fontSize, 12);
+        expect(shad.textTheme.family, AppFontFamily.sans);
+        expect(shad.textTheme.p.fontSize, 13);
+        expect(shad.textTheme.small.fontSize, 13);
+        expect(shad.textTheme.muted.fontSize, 12);
+        expect(AppTypography.pageTitle.fontSize, 31);
+        expect(AppTypography.panelTitle.fontSize, 19);
+        expect(AppTypography.supporting.fontSize, 12);
+        expect(AppTypography.navigationLabel.fontSize, 16);
+        expect(AppTypography.badge.fontSize, 12);
+        expect(AppTypography.code.fontSize, 12);
+        expect(AppTypography.metric.fontSize, 20);
+        for (final (style, size, weight) in [
+          (AppTypography.connectStatusTitle, 17, FontWeight.w700),
+          (AppTypography.connectButton, 16, FontWeight.w700),
+          (AppTypography.connectCaption, 12, FontWeight.w600),
+          (AppTypography.connectChoiceLabel, 12, FontWeight.w500),
+          (AppTypography.connectChoiceTitle, 14, FontWeight.w600),
+          (AppTypography.connectChoiceMeta, 12, FontWeight.w600),
+          (AppTypography.connectTrafficTitle, 15, FontWeight.w700),
+          (AppTypography.connectTrafficGroupTitle, 12, FontWeight.w500),
+          (AppTypography.connectTrafficValue, 15, FontWeight.w600),
+          (AppTypography.connectRawTitle, 12, FontWeight.w700),
+          (AppTypography.connectRawCount, 12, FontWeight.w600),
+          (AppTypography.dialogTitle, 18, FontWeight.w700),
+          (AppTypography.dialogSubtitle, 13, FontWeight.w400),
+        ]) {
+          expect(style.fontSize, size);
+          expect(style.fontWeight, weight);
+          expect(style.height, isNull);
+          expect(style.fontVariations, isNull);
+          expect(style.letterSpacing, isNull);
+          expect(style.fontFeatures, isNull);
+          expect(style.fontFamily, isNull);
+          expect(style.fontFamilyFallback, AppFontFamily.sansFallback);
+        }
+        expect(AppFontFamily.windowsSansFallback, [
+          'Microsoft YaHei UI',
+          'Microsoft YaHei',
+        ]);
+        expect(
+          AppFontFamily.sansFallback,
+          AppPlatform.isWindows ? AppFontFamily.windowsSansFallback : null,
+        );
+        expect(
+          material.textTheme.bodyMedium?.fontFamilyFallback,
+          AppFontFamily.sansFallback,
+        );
+        expect(shad.textTheme.p.fontFamilyFallback, AppFontFamily.sansFallback);
+      },
+    );
 
     test(
       'both themes keep solid button colors separate from interactive text',

@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 abstract final class AppFontFamily {
   static const sans = "packages/shadcn_ui/Geist";
   static const mono = "packages/shadcn_ui/GeistMono";
+  static const windowsSansFallback = <String>[
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+  ];
+
+  static List<String>? get sansFallback =>
+      AppPlatform.isWindows ? windowsSansFallback : null;
 }
 
 abstract final class AppTypography {
@@ -12,6 +20,7 @@ abstract final class AppTypography {
   static TextStyle _style(int size, [int weight = 400]) => TextStyle(
     fontSize: size.toDouble(),
     fontWeight: FontWeight.values[weight ~/ 100 - 1],
+    fontFamilyFallback: AppFontFamily.sansFallback,
   );
 
   static final pageTitle = _style(31, 700);

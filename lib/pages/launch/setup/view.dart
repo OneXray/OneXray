@@ -106,7 +106,7 @@ class SetupView extends StatelessWidget {
                 note: !mobile && state.step == SetupStep.system
                     ? l.prototypeSetupDoesNotStartVpn
                     : null,
-                children: _actions(l, mobile),
+                children: _actions(l),
               ),
       ),
     );
@@ -385,19 +385,12 @@ class SetupView extends StatelessWidget {
       const SizedBox(height: 28),
       _SetupRow(
         icon: LucideIcons.globe2,
-        title: setupRegionLabel(l, state.region),
+        title: state.region.isEmpty
+            ? l.prototypeChooseCountryRegion
+            : setupRegionLabel(l, state.region),
         busy: state.activeAction == SetupAction.chooseRegion,
         outlined: true,
         onTap: _action(SetupAction.chooseRegion),
-      ),
-      const SizedBox(height: 14),
-      Text(
-        state.regionSuggested
-            ? l.prototypeRegionSuggested
-            : l.prototypeRegionSelectedManually,
-        style: AppTypography.setupHint.copyWith(
-          color: ColorManager.palette(context).mutedForeground,
-        ),
       ),
     ];
   }
@@ -483,63 +476,51 @@ class SetupView extends StatelessWidget {
       ? null
       : () => onAction(action);
 
-  List<Widget> _actions(AppLocalizations l, bool mobile) =>
-      switch (state.step) {
-        SetupStep.welcome => [
-          SetupActionButton(
-            label: l.prototypeAgreeAndContinue,
-            busy: state.activeAction == SetupAction.acceptPrivacy,
-            onPressed: _action(SetupAction.acceptPrivacy),
-          ),
-        ],
-        SetupStep.system => [
-          SetupActionButton(
-            label: l.prototypeBack,
-            outline: true,
-            onPressed: _action(SetupAction.back),
-          ),
-          SetupActionButton(
-            label: mobile && !state.authorized
-                ? l.prototypeSetUpVpn
-                : l.prototypeContinue,
-            busy:
-                state.activeAction == SetupAction.permission ||
-                state.activeAction == SetupAction.continueSystem,
-            onPressed: mobile && !state.authorized
-                ? _action(SetupAction.permission)
-                : state.ready(requiresInterface: requiresInterface)
-                ? _action(SetupAction.continueSystem)
-                : null,
-          ),
-        ],
-        SetupStep.region => [
-          SetupActionButton(
-            label: l.prototypeSkip,
-            busy: state.activeAction == SetupAction.skipRegion,
-            outline: true,
-            onPressed: _action(SetupAction.skipRegion),
-          ),
-          SetupActionButton(
-            label: l.prototypeConfirmAndContinue,
-            busy: state.activeAction == SetupAction.confirmRegion,
-            onPressed: _action(SetupAction.confirmRegion),
-          ),
-        ],
-        SetupStep.servers => [
-          SetupActionButton(
-            label: l.prototypeAddLater,
-            busy: state.activeAction == SetupAction.finishLater,
-            outline: true,
-            onPressed: _action(SetupAction.finishLater),
-          ),
-          SetupActionButton(
-            label: l.prototypeGoToHome,
-            busy: state.activeAction == SetupAction.finish,
-            onPressed: state.hasServers ? _action(SetupAction.finish) : null,
-          ),
-        ],
-        SetupStep.complete => const [],
-      };
+  List<Widget> _actions(AppLocalizations l) => switch (state.step) {
+    SetupStep.welcome => [
+      SetupActionButton(
+        label: l.prototypeAgreeAndContinue,
+        busy: state.activeAction == SetupAction.acceptPrivacy,
+        onPressed: _action(SetupAction.acceptPrivacy),
+      ),
+    ],
+    SetupStep.system => [
+      SetupActionButton(
+        label: l.prototypeBack,
+        outline: true,
+        onPressed: _action(SetupAction.back),
+      ),
+      if (!state.authorized)
+        SetupActionButton(
+          label: l.prototypeSetUpVpn,
+          busy: state.activeAction == SetupAction.permission,
+          onPressed: _action(SetupAction.permission),
+        )
+      else if (requiresInterface && state.interfaceName.isEmpty)
+        SetupActionButton(
+          label: l.prototypeXrayOutboundInterface,
+          busy: state.activeAction == SetupAction.chooseInterface,
+          onPressed: _action(SetupAction.chooseInterface),
+        ),
+    ],
+    SetupStep.region => [
+      SetupActionButton(
+        label: l.prototypeSkip,
+        busy: state.activeAction == SetupAction.skipRegion,
+        outline: true,
+        onPressed: _action(SetupAction.skipRegion),
+      ),
+    ],
+    SetupStep.servers => [
+      SetupActionButton(
+        label: l.prototypeAddLater,
+        busy: state.activeAction == SetupAction.finishLater,
+        outline: true,
+        onPressed: _action(SetupAction.finishLater),
+      ),
+    ],
+    SetupStep.complete => const [],
+  };
 }
 
 class _SetupProgress extends StatelessWidget {
