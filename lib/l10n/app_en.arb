@@ -1,5 +1,9 @@
 {
   "@@locale": "en",
+  "serverTestInProgress": "A speed test is already running. Please wait for it to finish before trying again.",
+  "@serverTestInProgress": {
+    "description": "Shown when a manual speed test is requested while another test is running."
+  },
   "buttonRetry": "Retry",
   "validationNameRequired": "name required",
   "validationNameDuplicate": "name has existed",

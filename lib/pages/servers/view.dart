@@ -701,6 +701,7 @@ class ServerGroupView extends StatelessWidget {
   Widget _actions(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
+    final testing = controller.testingGroup(group);
     return Wrap(
       alignment: WrapAlignment.end,
       spacing: 8,
@@ -708,9 +709,13 @@ class ServerGroupView extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         OutlinedButton(
-          onPressed: group.rows.isEmpty || group.rows.any(controller.serverBusy)
+          onPressed: testing
+              ? controller.state.cancellingServerTest
+                    ? null
+                    : controller.cancelTest
+              : group.rows.isEmpty || group.rows.any(controller.serverBusy)
               ? null
-              : () => controller.test(context, group.rows),
+              : () => controller.test(context, group.rows, groupId: group.id),
           style: OutlinedButton.styleFrom(
             minimumSize: Size(
               0,
@@ -732,12 +737,18 @@ class ServerGroupView extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (controller.testing(group.rows))
+              if (testing)
                 const ButtonProgressIndicator()
               else
                 const Icon(LucideIcons.refreshCw, size: 16),
               const SizedBox(width: 8),
-              Text(l.prototypeTestServers),
+              Text(
+                testing
+                    ? controller.state.cancellingServerTest
+                          ? l.prototypePleaseWait
+                          : l.prototypeCancel
+                    : l.prototypeTestServers,
+              ),
             ],
           ),
         ),
@@ -1137,11 +1148,7 @@ class ServerMenu extends StatelessWidget {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: const RoundedRectangleBorder(),
       ),
-      icon:
-          controller.serverBusy(row) &&
-              !controller.favoritingIds.contains(row.id)
-          ? const ButtonProgressIndicator()
-          : const Icon(LucideIcons.ellipsis),
+      icon: const Icon(LucideIcons.ellipsis),
     );
   }
 }
@@ -1182,9 +1189,7 @@ class SourceMenu extends StatelessWidget {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: const RoundedRectangleBorder(),
       ),
-      icon: controller.sourceBusy(source.id)
-          ? const ButtonProgressIndicator()
-          : const Icon(LucideIcons.ellipsis),
+      icon: const Icon(LucideIcons.ellipsis),
     );
   }
 }

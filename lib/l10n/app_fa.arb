@@ -1,5 +1,6 @@
 {
     "@@locale": "fa",
+    "serverTestInProgress": "آزمون سرعت در حال اجراست. لطفاً پس از پایان آن دوباره تلاش کنید.",
     "buttonRetry": "تلاش دوباره",
     "validationNameRequired": "نام لازم است",
     "validationNameDuplicate": "نام قبلاً وجود دارد",

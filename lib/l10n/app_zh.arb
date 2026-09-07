@@ -1,5 +1,6 @@
 {
   "@@locale": "zh",
+  "serverTestInProgress": "测速中，请等待测速完成后再试。",
   "buttonRetry": "重试",
   "validationNameRequired": "请输入名称",
   "validationNameDuplicate": "名称重复",

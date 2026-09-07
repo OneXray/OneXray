@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
@@ -14,10 +15,18 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/page_empty_state.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/ping/service.dart';
+import 'package:shadcn_ui/shadcn_ui.dart'
+    show ShadTheme, ShadToaster, ShadToast;
 
 class _Controller extends ServersController {
-  _Controller({required super.database, required super.coordinator});
+  _Controller({
+    required super.database,
+    required super.coordinator,
+    super.ping,
+  });
 
   bool? browsedOnMobile;
   bool helpOpened = false;
@@ -43,6 +52,11 @@ class _Controller extends ServersController {
   Future<void> addServers(BuildContext context) async {
     addOpened = true;
   }
+}
+
+class _BusyPingService extends Fake implements PingService {
+  @override
+  bool get isPinging => true;
 }
 
 CoreConfigData _server(int id, String country, {bool favorite = false}) =>
@@ -104,6 +118,10 @@ void main() {
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => ShadTheme(
+          data: AppTheme.shad(Brightness.light),
+          child: ShadToaster(child: child!),
+        ),
         home: Scaffold(
           body: Row(
             children: [
@@ -135,6 +153,136 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  for (final width in [427.0, 1160.0]) {
+    for (final grouping in ServerGrouping.values) {
+      testWidgets(
+        'group test can be cancelled without locking menus: $grouping at $width',
+        (tester) async {
+          controller.groupBy(grouping);
+          controller.sources = [
+            SubscriptionData(
+              id: 4,
+              name: 'Source',
+              url: 'https://example.test/sub',
+              timestamp: DateTime(2026),
+            ),
+          ];
+          controller.servers = [_server(1, 'JP').copyWith(subId: 4)];
+          await pumpBrowser(tester, width, groupPage: true);
+          final l = AppLocalizations.of(
+            tester.element(find.byType(ServerGroupView)),
+          )!;
+          final group = controller.groups(l).single;
+          controller.emit(
+            controller.state.copyWith(
+              testingServerIds: {1},
+              testingServerGroupId: group.id,
+            ),
+          );
+          expect(controller.testingGroup(group), isTrue);
+          await tester.pump();
+          await tester.pump();
+
+          for (final menu in [
+            find.byType(ServerMenu),
+            find.byType(SourceMenu),
+          ]) {
+            for (final element in menu.evaluate()) {
+              final button = tester.widget<IconButton>(
+                find.descendant(
+                  of: find.byWidget(element.widget),
+                  matching: find.byType(IconButton),
+                ),
+              );
+              expect(button.onPressed, isNotNull);
+              expect(button.icon, isA<Icon>());
+              expect((button.icon as Icon).icon, LucideIcons.ellipsis);
+            }
+          }
+          expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+          await tester.tap(
+            find.widgetWithText(OutlinedButton, l.prototypeCancel),
+          );
+          await tester.pump();
+          await tester.pump();
+          expect(controller.state.cancellingServerTest, isTrue);
+          expect(
+            tester
+                .widget<OutlinedButton>(
+                  find.widgetWithText(OutlinedButton, l.prototypePleaseWait),
+                )
+                .onPressed,
+            isNull,
+          );
+
+          controller.emit(
+            controller.state.copyWith(
+              testingServerIds: {},
+              testingServerGroupId: null,
+              cancellingServerTest: false,
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+            findsOneWidget,
+          );
+          expect(find.byType(ButtonProgressIndicator), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  testWidgets(
+    'automatic probing shows the wait toast instead of queuing a manual test',
+    (tester) async {
+      await controller.close();
+      controller = _Controller(
+        database: db,
+        coordinator: coordinator,
+        ping: _BusyPingService(),
+      )..servers = [_server(1, 'JP')];
+      await pumpBrowser(tester, 427, groupPage: true);
+      final l = AppLocalizations.of(
+        tester.element(find.byType(ServerGroupView)),
+      )!;
+
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(l.serverTestInProgress), findsOneWidget);
+      expect(controller.testingIds, isEmpty);
+      expect(find.byType(ButtonProgressIndicator), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('retesting from an open node menu shows the wait toast', (
+    tester,
+  ) async {
+    controller.servers = [_server(1, 'JP')];
+    await pumpBrowser(tester, 427, groupPage: true, locale: const Locale('zh'));
+    final l = AppLocalizations.of(
+      tester.element(find.byType(ServerGroupView)),
+    )!;
+    controller.emit(controller.state.copyWith(testingServerIds: {1}));
+    await tester.pump();
+    expect(controller.serverBusy(controller.servers.single), isFalse);
+    expect(find.byType(ButtonProgressIndicator), findsNothing);
+
+    await tester.tap(find.byTooltip('${l.prototypeMoreActions}: Node 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l.prototypeTestAgain));
+    await tester.pumpAndSettle();
+    expect(find.byType(ShadToast), findsOneWidget);
+    expect(find.text('测速中，请等待测速完成后再试。'), findsOneWidget);
+    expect(controller.testingIds, {1});
+    expect(tester.takeException(), isNull);
+  });
 
   for (final locale in const [Locale('en'), Locale('ru'), Locale('fa')]) {
     testWidgets(

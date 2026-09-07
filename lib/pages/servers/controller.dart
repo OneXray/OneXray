@@ -68,12 +68,14 @@ class ServersController extends ConnectController {
     super.database,
     super.coordinator,
     ServerAssetService? assets,
-  }) {
+    PingService? ping,
+  }) : _ping = ping ?? PingService() {
     this.assets =
         assets ?? ServerAssetService(database: db, coordinator: coordinator);
     search.addListener(_searchChanged);
   }
   late final ServerAssetService assets;
+  final PingService _ping;
   final search = TextEditingController();
   ServerGrouping get grouping =>
       ServerGrouping.values[state.serverGroupingIndex];
@@ -110,8 +112,8 @@ class ServersController extends ConnectController {
       servers.any(
         (row) => row.subId == id && _pending.contains('server:${row.id}'),
       );
-  bool testing(Iterable<CoreConfigData> rows) =>
-      rows.any((row) => testingIds.contains(row.id));
+  bool testingGroup(ServerGroup group) =>
+      state.testingServerGroupId == group.id;
   bool selectingGroup(ServerSelection value) =>
       selecting != null &&
       jsonEncode(selecting!.toJson()) == jsonEncode(value.toJson());
@@ -462,17 +464,49 @@ class ServersController extends ConnectController {
         }
       }, ids: {row.id});
 
-  Future<void> test(BuildContext context, Iterable<CoreConfigData> rows) async {
+  Future<void> test(
+    BuildContext context,
+    Iterable<CoreConfigData> rows, {
+    String? groupId,
+  }) async {
+    if (testingIds.isNotEmpty || _ping.isPinging) {
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.serverTestInProgress,
+      );
+      return;
+    }
     final ids = rows.map((row) => row.id).toSet();
     if (ids.isEmpty) return;
-    await perform(context, () async {
-      emit(state.copyWith(testingServerIds: {...testingIds, ...ids}));
+    await run(context, () async {
+      emit(
+        state.copyWith(
+          testingServerIds: ids,
+          testingServerGroupId: groupId,
+          cancellingServerTest: false,
+        ),
+      );
       try {
-        await PingService().pingConfigIds(ids.toList(), force: true);
+        await _ping.pingConfigIds(
+          ids.toList(),
+          force: true,
+          isCancelled: () => !isPageActive || state.cancellingServerTest,
+        );
       } finally {
-        emit(state.copyWith(testingServerIds: {...testingIds}..removeAll(ids)));
+        emit(
+          state.copyWith(
+            testingServerIds: {},
+            testingServerGroupId: null,
+            cancellingServerTest: false,
+          ),
+        );
       }
-    }, ids: ids);
+    });
+  }
+
+  void cancelTest() {
+    if (testingIds.isEmpty) return;
+    emit(state.copyWith(cancellingServerTest: true));
   }
 
   Future<void> serverAction(
@@ -547,7 +581,11 @@ class ServersController extends ConnectController {
           }
         }, sourceId: source.id);
       case SourceAction.test:
-        await test(context, servers.where((row) => row.subId == source.id));
+        await test(
+          context,
+          servers.where((row) => row.subId == source.id),
+          groupId: 'subscription:${source.id}',
+        );
       case SourceAction.edit:
         await context.pushScoped(
           AppSecondaryDestination.subscriptionEdit,

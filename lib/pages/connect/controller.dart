@@ -48,6 +48,8 @@ class ConnectPageState {
     this.serverSearchQuery = '',
     Set<String> pendingServerActions = const {},
     Set<int> testingServerIds = const {},
+    this.testingServerGroupId,
+    this.cancellingServerTest = false,
     Set<int> favoritingServerIds = const {},
     this.selectingServers,
     Map<int, String> sourceErrors = const {},
@@ -84,6 +86,8 @@ class ConnectPageState {
   final String serverSearchQuery;
   final Set<String> pendingServerActions;
   final Set<int> testingServerIds;
+  final String? testingServerGroupId;
+  final bool cancellingServerTest;
   final Set<int> favoritingServerIds;
   final ServerSelection? selectingServers;
   final Map<int, String> sourceErrors;
@@ -108,6 +112,8 @@ class ConnectPageState {
     String? serverSearchQuery,
     Set<String>? pendingServerActions,
     Set<int>? testingServerIds,
+    Object? testingServerGroupId = _unchanged,
+    bool? cancellingServerTest,
     Set<int>? favoritingServerIds,
     Object? selectingServers = _unchanged,
     Map<int, String>? sourceErrors,
@@ -136,6 +142,10 @@ class ConnectPageState {
     serverSearchQuery: serverSearchQuery ?? this.serverSearchQuery,
     pendingServerActions: pendingServerActions ?? this.pendingServerActions,
     testingServerIds: testingServerIds ?? this.testingServerIds,
+    testingServerGroupId: identical(testingServerGroupId, _unchanged)
+        ? this.testingServerGroupId
+        : testingServerGroupId as String?,
+    cancellingServerTest: cancellingServerTest ?? this.cancellingServerTest,
     favoritingServerIds: favoritingServerIds ?? this.favoritingServerIds,
     selectingServers: identical(selectingServers, _unchanged)
         ? this.selectingServers

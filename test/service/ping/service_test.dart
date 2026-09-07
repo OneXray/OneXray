@@ -135,6 +135,65 @@ void main() {
     expect(selected.map((node) => node.id), ids.take(2));
   });
 
+  test(
+    'cancelling finishes the current batch without cancelling queued work',
+    () async {
+      final ids = <int>[];
+      for (var index = 0; index < 7; index++) {
+        ids.add(await db.coreConfigDao.insertRow(_node('Node $index')));
+      }
+      final automaticId = await db.coreConfigDao.insertRow(_node('Automatic'));
+      final started = Completer<void>();
+      final release = Completer<void>();
+      final sizes = <int>[];
+      var cancelled = false;
+      final service = PingService.forTesting(
+        database: db,
+        runBatch: (sources, _) async {
+          sizes.add(sources.length);
+          if (sizes.length == 1) {
+            started.complete();
+            await release.future;
+          }
+          return _successes(sources.length);
+        },
+      );
+      final manual = service.pingConfigIds(
+        ids,
+        force: true,
+        isCancelled: () => cancelled,
+      );
+      addTearDown(() async {
+        if (!release.isCompleted) release.complete();
+        await manual;
+      });
+      expect(service.isPinging, isTrue);
+      await started.future;
+      final automatic = service.pingConfigIds([automaticId]);
+      cancelled = true;
+      expect(service.isPinging, isTrue);
+      expect(sizes, [5]);
+
+      release.complete();
+      await manual;
+      await automatic;
+
+      expect(sizes, [5, 1]);
+      for (final id in ids.take(5)) {
+        expect((await db.coreConfigDao.searchRow(id))!.delay, 20);
+      }
+      for (final id in ids.skip(5)) {
+        expect(
+          (await db.coreConfigDao.searchRow(id))!.delay,
+          PingDelayConstants.unknown,
+        );
+      }
+      expect((await db.coreConfigDao.searchRow(automaticId))!.delay, 20);
+      expect(service.isPinging, isFalse);
+      expect(AppEventBus.instance.state.pinging, isFalse);
+    },
+  );
+
   test('failed results cannot look healthy and delayed writes preserve edits and favorites', () async {
     final first = await db.coreConfigDao.insertRow(_node('Failure'));
     final second = await db.coreConfigDao.insertRow(_node('Edited'));

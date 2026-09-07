@@ -1,5 +1,6 @@
 {
   "@@locale": "ru",
+  "serverTestInProgress": "Проверка скорости уже выполняется. Дождитесь её завершения и повторите попытку.",
   "buttonRetry": "Повторить",
   "validationNameRequired": "Имя?",
   "validationNameDuplicate": "Дубликат имени",

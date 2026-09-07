@@ -44,13 +44,19 @@ class PingService {
   Future<void> _scheduledPingQueue = Future.value();
   var _pingingTaskCount = 0;
 
+  bool get isPinging => _pingingTaskCount > 0;
+
   void schedulePingConfigIds(List<int> ids) {
     unawaited(pingConfigIds(ids));
   }
 
   /// Shares the existing serialized queue with automatic imports. Each batch
   /// commits independently, so DB watchers may finish selecting before this does.
-  Future<void> pingConfigIds(List<int> ids, {bool force = false}) {
+  Future<void> pingConfigIds(
+    List<int> ids, {
+    bool force = false,
+    bool Function()? isCancelled,
+  }) {
     final targetIds = ids
         .where((id) => id > DBConstants.defaultId)
         .toSet()
@@ -72,7 +78,9 @@ class PingService {
       if (rows.isEmpty) {
         return;
       }
-      await _runPinging(() => _pingConfigs(db, rows));
+      await DataMaintenance.run(
+        () => _pingConfigs(db, rows, isCancelled: isCancelled),
+      );
     });
   }
 
@@ -101,7 +109,7 @@ class PingService {
         if (rows.isEmpty) {
           return;
         }
-        await _runPinging(() => _pingConfigs(db, rows));
+        await DataMaintenance.run(() => _pingConfigs(db, rows));
       }),
     );
   }
@@ -111,8 +119,13 @@ class PingService {
     // Register while queued, not after waiting: restore must not finish and
     // then receive a stale job against restored rows with the same IDs.
     final next = DataMaintenance.run(() async {
-      await previous;
-      await task();
+      _startPinging();
+      try {
+        await previous;
+        await task();
+      } finally {
+        _stopPinging();
+      }
     });
     _scheduledPingQueue = next.catchError((
       Object error,
@@ -125,16 +138,6 @@ class PingService {
 
   static bool isUnmeasured(CoreConfigData row) =>
       row.delay == PingDelayConstants.unknown;
-
-  Future<void> _runPinging(Future<void> Function() task) =>
-      DataMaintenance.run(() async {
-        _startPinging();
-        try {
-          await task();
-        } finally {
-          _stopPinging();
-        }
-      });
 
   void _startPinging() {
     _pingingTaskCount += 1;
@@ -156,11 +159,18 @@ class PingService {
     return CoreConfigType.fromString(row.type) == CoreConfigType.outbound;
   }
 
-  Future<void> _pingConfigs(AppDatabase db, List<CoreConfigData> rows) async {
+  Future<void> _pingConfigs(
+    AppDatabase db,
+    List<CoreConfigData> rows, {
+    bool Function()? isCancelled,
+  }) async {
     final pingState = PingState();
     await pingState.readFromPreferences();
 
     for (final rowSlice in rows.slices(PingBatchRunner.maxBatchSize)) {
+      // ponytail: finish and save the current batch; native cancellation can
+      // be added if stopping up to five in-flight probes immediately is needed.
+      if (isCancelled?.call() ?? false) break;
       final batchRows = <CoreConfigData>[];
       final sources = <PingBatchSource>[];
       for (final row in rowSlice) {
