@@ -224,7 +224,8 @@ enum class PlatformPermissionKind(val raw: Int) {
   NONE(0),
   ANDROID_VPN(1),
   MACOS_SYSTEM_EXTENSION(2),
-  APPLE_VPN(3);
+  APPLE_VPN(3),
+  ANDROID_LOCAL_NETWORK(4);
 
   companion object {
     fun ofRaw(raw: Int): PlatformPermissionKind? {

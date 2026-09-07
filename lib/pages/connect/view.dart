@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -555,7 +556,10 @@ class ConnectView extends StatelessWidget {
       ConnectionPhase.disconnecting => l.prototypeFinishingConnection,
       ConnectionPhase.failed =>
         view.issue == 'permissionRequired'
-            ? l.prototypeVpnPermissionRequired
+            ? view.permission?.kind ==
+                      PlatformPermissionKind.androidLocalNetwork
+                  ? l.prototypeAllowLocalNetworkHint
+                  : l.prototypeVpnPermissionRequired
             : view.issue == 'interfaceRequired' ||
                   view.issue == 'interfaceUnavailable'
             ? l.prototypeChooseInterfaceNotice

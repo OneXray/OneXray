@@ -33,7 +33,7 @@ android {
     defaultConfig {
         applicationId = "net.yuandev.onexray"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         if (!splitPerAbi) {
@@ -90,11 +90,11 @@ flutter {
 }
 
 dependencies {
-    val coreVersion = "1.18.0"
+    val coreVersion = "1.19.0"
     implementation("androidx.core:core-ktx:$coreVersion")
     implementation("androidx.core:core-splashscreen:1.2.0")
 
-    implementation("androidx.fragment:fragment-ktx:1.8.9")
+    implementation("androidx.fragment:fragment-ktx:1.9.0")
     implementation("androidx.activity:activity-ktx:1.13.0")
 
     val kotlinxCoroutinesVersion = "1.11.0"

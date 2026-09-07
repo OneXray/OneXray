@@ -73,6 +73,47 @@ void main() {
   });
 
   test(
+    'startup and foreground refresh track local network permission',
+    () async {
+      var permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.androidLocalNetwork,
+        state: PlatformPermissionState.notDetermined,
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => null,
+          inspect: (_) async =>
+              HostConnection(VpnStatus.disconnected, permission: permission),
+        ),
+      );
+      expect(coordinator.state.value.issue, 'permissionRequired');
+      expect(
+        coordinator.state.value.permission?.kind,
+        PlatformPermissionKind.androidLocalNetwork,
+      );
+
+      permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.androidVpn,
+        state: PlatformPermissionState.granted,
+      );
+      await coordinator.refresh();
+      expect(coordinator.state.value.issue, isNull);
+
+      permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.androidLocalNetwork,
+        state: PlatformPermissionState.denied,
+      );
+      await coordinator.refresh();
+      expect(coordinator.state.value.issue, 'permissionRequired');
+      expect(
+        coordinator.state.value.permission?.kind,
+        PlatformPermissionKind.androidLocalNetwork,
+      );
+    },
+  );
+
+  test(
     'foreground reconciliation clears a resolved permission issue',
     () async {
       var permission = PlatformPermissionResult(

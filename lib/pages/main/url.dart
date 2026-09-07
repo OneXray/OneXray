@@ -67,25 +67,7 @@ abstract final class RouterPath {
       GoRoute(path: RouterPath.splash, builder: (_, _) => const SplashPage()),
       GoRoute(
         path: RouterPath.setup,
-        builder: (_, _) => SetupPage(
-          addServers: (context, action) async {
-            await context.push('/setup/servers', extra: action);
-          },
-        ),
-      ),
-      GoRoute(
-        path: '/setup/servers',
-        pageBuilder: (context, state) => AppDialogPage<dynamic>(
-          key: state.pageKey,
-          barrierColor: ColorManager.palette(context).overlay,
-          useSafeArea: false,
-          builder: (_) => AppDialogFrame(
-            child: ServersImportPage(
-              setup: true,
-              initialAction: state.extra as ServerImportAction?,
-            ),
-          ),
-        ),
+        builder: (_, _) => const SetupPage(addServers: openServerImportAction),
       ),
       GoRoute(
         path: '/setup/privacy',

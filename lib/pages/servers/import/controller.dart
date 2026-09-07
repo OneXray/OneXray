@@ -124,6 +124,7 @@ class ServerImportPageState {
 class ServerImportController extends PageCubit<ServerImportPageState> {
   final ServerImportService service;
   final int? subscriptionId;
+  final bool showSuccessToast;
   final Future<SubscriptionData?> Function(int) _loadSubscription;
   final Future<SubscriptionUpdateResult> Function(int, SubscriptionInput)
   _saveSubscriptionInput;
@@ -131,6 +132,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   ServerImportController({
     ServerImportService? service,
     this.subscriptionId,
+    this.showSuccessToast = true,
     Future<SubscriptionData?> Function(int)? loadSubscription,
     Future<SubscriptionUpdateResult> Function(int, SubscriptionInput)?
     saveSubscriptionInput,
@@ -264,7 +266,11 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     }
   }
 
-  Future<void> open(BuildContext context, ServerImportAction action) async {
+  Future<void> open(
+    BuildContext context,
+    ServerImportAction action, {
+    bool closeParent = true,
+  }) async {
     if (state.busy) return;
     _closingFlow = false;
     emit(state.copyWith(error: null, committedResult: null));
@@ -306,9 +312,27 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         ),
       );
     }
-    if ((result != null || _closingFlow) && context.mounted) {
+    if (!context.mounted) return;
+    if (closeParent && (result != null || _closingFlow)) {
       Navigator.of(context)
           .pop(result ?? state.committedResult ?? _subscriptionResult);
+    } else if (!closeParent &&
+        result == null &&
+        (action == ServerImportAction.file ||
+            action == ServerImportAction.scan)) {
+      // Direct actions have no method dialog to display import failures.
+      final l10n = AppLocalizations.of(context)!;
+      final messages = [
+        ?state.error,
+        if (showSuccessToast && state.importedSubscriptionCount > 0)
+          l10n.prototypeUsableNodes(state.importedSubscriptionNodes),
+        for (final item in state.subscriptionImports)
+          if (!item.result.success)
+            '${item.name}: ${subscriptionError(l10n, item.result.status)}',
+      ];
+      if (messages.isNotEmpty) {
+        ContextAlert.showToast(context, messages.join('\n'));
+      }
     }
   }
 
@@ -412,7 +436,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         return null;
       }
       if (context.mounted) {
-        ContextAlert.showToast(
+        _showSuccess(
           context,
           AppLocalizations.of(context)!.prototypeUsableNodes(result.count),
         );
@@ -566,7 +590,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
           emit(state.copyWith(committedResult: result));
           return;
         }
-        ContextAlert.showToast(
+        _showSuccess(
           context,
           result.count > 0
               ? l10n.prototypeUsableNodes(result.count)
@@ -638,7 +662,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         final status = await _saveSubscriptionInput(subscriptionId!, input);
         if (!context.mounted) return;
         if (status == SubscriptionUpdateResult.success) {
-          ContextAlert.showToast(
+          _showSuccess(
             context,
             AppLocalizations.of(context)!.prototypeSubscriptionSaved,
           );
@@ -662,7 +686,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         emit(state.copyWith(error: subscriptionError(l10n, result.status)));
         return;
       }
-      ContextAlert.showToast(
+      _showSuccess(
         context,
         result.parseFailureCount == null
             ? l10n.prototypeUsableNodes(result.count)
@@ -688,6 +712,10 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     } finally {
       emit(state.copyWith(busy: false));
     }
+  }
+
+  void _showSuccess(BuildContext context, String message) {
+    if (showSuccessToast) ContextAlert.showToast(context, message);
   }
 
   static String subscriptionError(

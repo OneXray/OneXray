@@ -1834,9 +1834,9 @@
   "@prototypeVpnTunnel": {
     "description": "Approved prototype copy: VPN tunnel"
   },
-  "prototypeXrayRuntimeDiagnostics": "Xray runtime and diagnostics",
+  "prototypeXrayRuntimeDiagnostics": "Xray",
   "@prototypeXrayRuntimeDiagnostics": {
-    "description": "Approved prototype copy: Xray runtime and diagnostics"
+    "description": "Xray tab in the Advanced page"
   },
   "prototypeSystemVpn": "System VPN",
   "@prototypeSystemVpn": {
@@ -2716,9 +2716,9 @@
   "@prototypeTunAddress": {
     "description": "Approved prototype copy: TUN address"
   },
-  "prototypeSettingsLocationNote": "Manage subscriptions in Servers. Data updates and Geodata are in Advanced → Xray runtime and diagnostics.",
+  "prototypeSettingsLocationNote": "Manage subscriptions in Servers. Data updates and Geodata are in Advanced → Xray.",
   "@prototypeSettingsLocationNote": {
-    "description": "Approved prototype copy: Manage subscriptions in Servers. Data updates and Geodata are in Advanced → Xray runtime and diagnostics."
+    "description": "Locations of subscription management and data updates"
   },
   "@prototypeCloseDialog": {
     "description": "Approved prototype copy: Close dialog"

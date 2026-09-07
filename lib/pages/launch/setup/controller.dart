@@ -15,13 +15,10 @@ enum SetupAction {
   privacy,
   back,
   permission,
-  continueSystem,
   chooseInterface,
   chooseRegion,
   skipRegion,
-  confirmRegion,
   finishLater,
-  finish,
   retry,
 }
 
@@ -35,7 +32,6 @@ class SetupPageState {
   final PlatformPermissionResult? permission;
   final String interfaceName;
   final String region;
-  final bool regionSuggested;
   final List<String> regionCodes;
   final SetupFailure? failure;
 
@@ -48,8 +44,7 @@ class SetupPageState {
     this.hasServers = false,
     this.permission,
     this.interfaceName = '',
-    this.region = 'CN',
-    this.regionSuggested = false,
+    this.region = '',
     this.regionCodes = const [],
     this.failure,
   });
@@ -73,7 +68,6 @@ class SetupPageState {
     PlatformPermissionResult? permission,
     String? interfaceName,
     String? region,
-    bool? regionSuggested,
     List<String>? regionCodes,
     SetupFailure? failure,
     bool clearFailure = false,
@@ -87,7 +81,6 @@ class SetupPageState {
     permission: permission ?? this.permission,
     interfaceName: interfaceName ?? this.interfaceName,
     region: region ?? this.region,
-    regionSuggested: regionSuggested ?? this.regionSuggested,
     regionCodes: regionCodes ?? this.regionCodes,
     failure: clearFailure ? null : failure ?? this.failure,
   );
@@ -126,18 +119,13 @@ class SetupController extends PageCubit<SetupPageState>
         showWelcome();
       case SetupAction.permission:
         unawaited(requestPermission());
-      case SetupAction.continueSystem:
-        unawaited(continueSystem());
       case SetupAction.chooseInterface:
         unawaited(chooseInterface(context));
       case SetupAction.chooseRegion:
         unawaited(chooseRegion(context));
       case SetupAction.skipRegion:
-        unawaited(continueRegion(confirm: false));
-      case SetupAction.confirmRegion:
-        unawaited(continueRegion(confirm: true));
+        unawaited(skipRegion());
       case SetupAction.finishLater:
-      case SetupAction.finish:
         unawaited(finish());
       case SetupAction.retry:
         unawaited(retry());
@@ -168,8 +156,6 @@ class SetupController extends PageCubit<SetupPageState>
       state.copyWith(
         localReady: true,
         interfaceName: configuration.policy.xrayOutboundInterfaceName,
-        region:
-            configuration.connection.smart.directRegions.firstOrNull ?? 'CN',
         regionCodes: codes,
       ),
     );
@@ -179,11 +165,6 @@ class SetupController extends PageCubit<SetupPageState>
         (service.requiresInterface && state.interfaceName.isEmpty)) {
       emit(state.copyWith(step: SetupStep.system));
       return;
-    }
-    if (step == SetupStep.servers) {
-      final hasServers = await service.hasServers();
-      emit(state.copyWith(hasServers: hasServers));
-      if (hasServers) await _finish();
     }
   }
 
@@ -205,23 +186,12 @@ class SetupController extends PageCubit<SetupPageState>
     if (!SetupService.permissionReady(permission)) {
       throw SetupFailure('permission', permission: permission);
     }
-  });
-
-  Future<void> continueSystem() => _perform(() async {
-    await service.continueSystem(state.interfaceName);
     await _load();
-    final suggested = await service.suggestRegion();
-    if (suggested != null && state.regionCodes.contains(suggested)) {
-      emit(state.copyWith(region: suggested, regionSuggested: true));
-    }
   });
 
-  Future<void> continueRegion({required bool confirm}) => _perform(() async {
-    await service.continueRegion(confirm ? state.region : null);
+  Future<void> skipRegion() => _perform(() async {
+    await service.continueRegion(null);
     emit(state.copyWith(step: SetupStep.servers));
-    final existing = await service.hasServers();
-    emit(state.copyWith(hasServers: existing));
-    if (existing) await _finish();
   });
 
   Future<void> chooseInterface(BuildContext context) => _perform(() async {
@@ -240,7 +210,7 @@ class SetupController extends PageCubit<SetupPageState>
       extra: SetupRegionParams(state.regionCodes, state.region),
     );
     if (code != null) {
-      emit(state.copyWith(region: code, regionSuggested: false));
+      emit(state.copyWith(region: code));
     }
   });
 
@@ -251,8 +221,28 @@ class SetupController extends PageCubit<SetupPageState>
   ) => _perform(() async {
     emit(state.copyWith(activeImport: action));
     await open(context, action);
-    emit(state.copyWith(hasServers: await service.hasServers()));
   });
+
+  Future<void> _advance() async {
+    if (state.step == SetupStep.system && ready) {
+      await service.continueSystem(state.interfaceName);
+      emit(state.copyWith(step: SetupStep.region, clearAction: true));
+    }
+    if (state.step == SetupStep.region) {
+      final region = state.regionCodes.contains(state.region)
+          ? state.region
+          : await service.suggestRegion();
+      if (region == null || !state.regionCodes.contains(region)) return;
+      emit(state.copyWith(region: region));
+      await service.continueRegion(region);
+      emit(state.copyWith(step: SetupStep.servers));
+    }
+    if (state.step == SetupStep.servers) {
+      final hasServers = await service.hasServers();
+      emit(state.copyWith(hasServers: hasServers));
+      if (hasServers) await _finish();
+    }
+  }
 
   Future<void> finish() => _perform(_finish);
 
@@ -265,7 +255,10 @@ class SetupController extends PageCubit<SetupPageState>
 
   String failureText(AppLocalizations l10n) =>
       switch (state.failure?.component) {
-        'permission' => l10n.prototypeVpnPermissionRequired,
+        'permission' =>
+          state.permission?.kind == PlatformPermissionKind.androidLocalNetwork
+              ? l10n.prototypePermissionNotGranted
+              : l10n.prototypeVpnPermissionRequired,
         'interface' => l10n.prototypeChooseInterfaceNotice,
         'region' => l10n.prototypeCheckNetwork,
         _ => l10n.prototypeTemporarilyUnavailable,
@@ -279,6 +272,7 @@ class SetupController extends PageCubit<SetupPageState>
     emit(state.copyWith(busy: true, clearFailure: true));
     try {
       await action();
+      await _advance();
     } catch (error) {
       final failure = error is SetupFailure
           ? error
@@ -288,11 +282,13 @@ class SetupController extends PageCubit<SetupPageState>
         state.copyWith(
           failure: failure,
           permission: failure.permission,
-          step: failure.component == 'local' || failure.component == 'system'
-              ? SetupStep.system
-              : step == SetupStep.complete
-              ? state.step
-              : step,
+          step: switch (failure.component) {
+            'local' ||
+            'system' ||
+            'permission' ||
+            'interface' => SetupStep.system,
+            _ => step == SetupStep.complete ? state.step : step,
+          },
         ),
       );
     } finally {

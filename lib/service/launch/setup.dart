@@ -180,7 +180,7 @@ class SetupService {
     return catalog.regionCodes;
   }
 
-  /// An explicit suggestion request only. Do not persist the IP or response,
+  /// A Setup region lookup only. Do not persist the IP or response,
   /// send app identifiers, or use the VPN's proxy/metrics endpoint.
   Future<String?> suggestRegion() async {
     final client = HttpClient()

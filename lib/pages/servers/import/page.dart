@@ -20,16 +20,21 @@ export 'controller.dart' show ServerImportAction;
 
 export 'package:onexray/service/assets/import.dart' show ServerImportResult;
 
+Future<void> openServerImportAction(
+  BuildContext context,
+  ServerImportAction action,
+) async {
+  final controller = ServerImportController(showSuccessToast: false);
+  try {
+    await controller.open(context, action, closeParent: false);
+  } finally {
+    await controller.close();
+  }
+}
+
 class ServersImportPage extends StatefulWidget {
-  final bool setup;
-  final ServerImportAction? initialAction;
   final String? initialText;
-  const ServersImportPage({
-    super.key,
-    this.setup = false,
-    this.initialAction,
-    this.initialText,
-  });
+  const ServersImportPage({super.key, this.initialText});
 
   @override
   State<ServersImportPage> createState() => _ServersImportPageState();
@@ -41,16 +46,11 @@ class _ServersImportPageState extends State<ServersImportPage> {
   @override
   void initState() {
     super.initState();
-    final action = widget.initialAction;
     final input = widget.initialText;
-    if (action != null || input != null) {
+    if (input != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          if (input != null) {
-            controller.openText(context, input);
-          } else {
-            controller.open(context, action!);
-          }
+          controller.openText(context, input);
         }
       });
     }
