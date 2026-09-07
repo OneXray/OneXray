@@ -1315,14 +1315,6 @@
   "@windowsServices": {
     "description": "Windows services label in the Smart Routing direct-traffic preview."
   },
-  "prototypeResolveUnmatchedDomains": "Resolve unmatched domains for IP rules",
-  "@prototypeResolveUnmatchedDomains": {
-    "description": "Approved prototype copy: Resolve unmatched domains for IP rules"
-  },
-  "prototypeResolveUnmatchedDomainsHint": "When enabled, if no rule matches a domain request, resolve the domain to IP addresses and retry. When disabled, match the available domain or IP without extra DNS resolution for routing.",
-  "@prototypeResolveUnmatchedDomainsHint": {
-    "description": "Approved prototype copy: When enabled, if no rule matches a domain request, resolve the domain to IP addresses and retry. When disabled, match the available domain or IP without extra DNS resolution for routing."
-  },
   "prototypeBlockAdDomains": "Block common ad domains",
   "@prototypeBlockAdDomains": {
     "description": "Approved prototype copy: Block common ad domains"

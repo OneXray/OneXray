@@ -58,9 +58,10 @@ selector 填写生成节点完整 tag，采用 round-robin，回退出站为 `di
 `streamSettings.sockopt` 中写入 `domainStrategy`；完整 Raw JSON 中的用户字段不属于此
 简化范围。
 
-智能路由 IP 补匹配打开时使用 `IPIfNonMatch`：域名首轮未命中才解析为 IP 重新匹配；
-关闭为 `AsIs`，按请求已有域名或 IP 匹配。这里配置的是 `routing.domainStrategy`；App
-生成的所有 rule 均省略可选的 `type: field`，且不增加无条件 catch-all 提前截断 IP
+智能路由和自定义路由的 `routing.domainStrategy` 固定为 `IPIfNonMatch`，不提供开关：
+域名首轮未命中才解析为 IP 重新匹配。自定义路由的导入、读取不保留该字段的定制值，
+保存、导出、校验及运行编译统一输出固定值；Raw JSON 保留用户设置，全部使用 VPN 仍为 `AsIs`。
+App 生成的所有 rule 均省略可选的 `type: field`，且不增加无条件 catch-all 提前截断 IP
 第二轮匹配。Custom 导入将 `type` 视为不支持的字段并直接拒绝；完整 Raw JSON 保留用户
 原文，包括用户自行填写的 `type`。
 

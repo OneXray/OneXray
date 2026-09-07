@@ -202,14 +202,10 @@ class ConnectionCompiler {
       }
       final allVpn = settings.trafficMode == TrafficMode.allVpn;
       final rules = <XrayRoutingRule>[];
-      var domainStrategy = 'AsIs';
       if (settings.trafficMode == TrafficMode.smart) {
-        final smart = settings.smart;
-        domainStrategy = smart.resolveIpOnNoMatch ? 'IPIfNonMatch' : 'AsIs';
-        rules.addAll(smartRules(smart, regions));
+        rules.addAll(smartRules(settings.smart, regions));
       } else if (settings.trafficMode == TrafficMode.custom) {
-        domainStrategy = custom!.domainStrategy;
-        for (final (index, rule) in custom.rules.indexed) {
+        for (final (index, rule) in custom!.rules.indexed) {
           rules.add(rule.xrayJson..ruleTag = 'app-custom-$index');
         }
       }
@@ -292,7 +288,7 @@ class ConnectionCompiler {
           ],
         ),
         routing: XrayRouting(
-          domainStrategy: domainStrategy,
+          domainStrategy: allVpn ? 'AsIs' : 'IPIfNonMatch',
           balancers: [
             XrayBalancer(
               tag: 'proxy',

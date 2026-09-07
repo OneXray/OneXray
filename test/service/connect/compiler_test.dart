@@ -282,7 +282,6 @@ void main() {
     final template = RoutingProfileState(
       name: 'Custom',
       entryCount: 2,
-      domainStrategy: 'IPIfNonMatch',
       rules: [
         RoutingRuleState(
           ruleTag: 'Same',
@@ -338,7 +337,6 @@ void main() {
       expect(smart.directPrivate, true);
       expect(smart.directApple, true);
       expect(smart.directWindows, true);
-      expect(smart.resolveIpOnNoMatch, true);
       expect(smart.directDns, true);
       expect(smart.blockAds, false);
     }
@@ -457,23 +455,21 @@ void main() {
     expect(disabled..remove('dns'), enabled..remove('dns'));
   });
 
-  test('Smart IP strategy does not add a first-pass catch-all', () {
-    for (final resolve in [true, false]) {
+  test('Smart and Custom use IPIfNonMatch without a first-pass catch-all', () {
+    for (final mode in [TrafficMode.smart, TrafficMode.custom]) {
       final plan = ConnectionCompiler.compile(
         settings: ConnectionSettings(
-          smart: SmartRoutingSettings(
-            resolveIpOnNoMatch: resolve,
-            directDns: false,
-          ),
+          trafficMode: mode,
+          smart: SmartRoutingSettings(directDns: false),
         ),
         entries: [node(1)],
+        custom: mode == TrafficMode.custom
+            ? RoutingProfileState(name: 'Custom')
+            : null,
         regions: catalog,
         options: options(),
       );
-      expect(
-        plan.config['routing']['domainStrategy'],
-        resolve ? 'IPIfNonMatch' : 'AsIs',
-      );
+      expect(plan.config['routing']['domainStrategy'], 'IPIfNonMatch');
       expect(plan.config['dns']['servers'].last['domains'], isEmpty);
       expect(
         (plan.config['routing']['rules'] as List).any(
@@ -494,7 +490,7 @@ void main() {
     const source = ''' {"inbounds":[{"tag":"tunIn","protocol":"tun","settings":{"name":"ignored"}},
       {"tag":"extra","protocol":"socks","listen":"127.0.0.1","port":18185}],
       "outbounds":[{"tag":"custom-direct","protocol":"freedom","streamSettings":{"sockopt":{"domainStrategy":"UseIPv4"}}}],
-      "routing":{"rules":[{"type":"field","domain":["full:example.test"],"outboundTag":"custom-direct","futureRule":{"keep":true}}]},
+      "routing":{"domainStrategy":"IPOnDemand","rules":[{"type":"field","domain":["full:example.test"],"outboundTag":"custom-direct","futureRule":{"keep":true}}]},
       "dns":{"hosts":{"example.test":"127.0.0.1"},"servers":["localhost"],"futureDns":{"keep":true}},
       "policy":{"levels":{"0":{"handshake":7,"statsUserUplink":true}},"system":{"statsOutboundUplink":true}},
       "log":{"error":"user-file","loglevel":"debug"},"metrics":{"listen":"0.0.0.0:8080"},
@@ -525,6 +521,7 @@ void main() {
     expect(runtime['futureRoot'], jsonDecode(source)['futureRoot']);
     expect(runtime['dns']['futureDns'], jsonDecode(source)['dns']['futureDns']);
     expect(runtime.containsKey('geodata'), false);
+    expect(runtime['routing']['domainStrategy'], 'IPOnDemand');
     expect(
       runtime['outbounds'].first['streamSettings']['sockopt']['domainStrategy'],
       'UseIPv4',

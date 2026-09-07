@@ -53,6 +53,7 @@ void main() {
       expect(routingProfile.name, 'Custom');
       final routingJson = _decodeBase64Json(routingProfile.data);
       expect(routingJson, {
+        'routing': {'domainStrategy': 'IPIfNonMatch'},
         'outbounds': [{}],
       });
       expect(routingJson, isNot(contains('name')));
@@ -184,6 +185,7 @@ void main() {
         (await database.routingProfileDao.allRows).single.data,
       );
       expect(routingJson, {
+        'routing': {'domainStrategy': 'IPIfNonMatch'},
         'outbounds': [{}],
       });
       final orphan = await database.coreConfigDao.searchRow(2);

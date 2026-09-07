@@ -352,8 +352,6 @@
   "directWindowsServices": "Windows 服务直连",
   "directWindowsServicesHint": "Microsoft 和 Bing 分类中的域名使用直连。",
   "windowsServices": "Windows 服务",
-  "prototypeResolveUnmatchedDomains": "域名未匹配时再按 IP 判断",
-  "prototypeResolveUnmatchedDomainsHint": "开启时，域名请求未匹配任何规则后，解析为 IP 重新匹配；关闭时，只按已有域名或 IP 匹配，不为路由额外解析域名。",
   "prototypeBlockAdDomains": "阻止常见广告域名",
   "prototypeBlockAdDomainsHint": "使用内置广告域名列表，个别网站可能受到影响。",
   "prototypeDirectRegions": "直连地区",

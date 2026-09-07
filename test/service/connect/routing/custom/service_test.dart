@@ -12,7 +12,6 @@ void main() {
     final state = RoutingProfileState(
       name: 'Route',
       entryCount: 3,
-      domainStrategy: 'IPOnDemand',
       rules: [RoutingRuleState(port: 0, network: 'TCP')],
     );
     final source = state.encode();
@@ -28,7 +27,7 @@ void main() {
         {'tag': 'direct', 'protocol': 'freedom'},
         {'tag': 'block', 'protocol': 'blackhole'},
       ]);
-      expect(config['routing']['domainStrategy'], 'IPOnDemand');
+      expect(config['routing']['domainStrategy'], 'IPIfNonMatch');
       expect(config['routing']['rules'], [state.rules.single.toJson()]);
       expect(config['routing']['balancers'].single, {
         'tag': 'proxy',
@@ -96,6 +95,8 @@ void main() {
       expect(roundTrip.id, id);
       expect(roundTrip.name, 'One');
       expect(roundTrip.entryCount, 1);
+      expect(roundTrip.xrayJson.routing!.domainStrategy, 'IPIfNonMatch');
+      expect(stored['routing']['domainStrategy'], 'IPIfNonMatch');
       expect(roundTrip.rules.single.toJson(), state.rules.single.toJson());
       await service.save(RoutingProfileState(name: 'Two'));
       await service.save(RoutingProfileState(name: 'Three'));
@@ -105,6 +106,12 @@ void main() {
       );
       await service.save(state.copyWith(id: id, name: 'Edited'));
       expect((await database.routingProfileDao.searchRow(id))!.name, 'Edited');
+      expect(
+        CustomRoutingService.read(
+          (await database.routingProfileDao.searchRow(id))!,
+        ).xrayJson.routing!.domainStrategy,
+        'IPIfNonMatch',
+      );
       await expectLater(
         service.save(state.copyWith(id: id, name: 'Hidden', entryCount: 4)),
         throwsFormatException,

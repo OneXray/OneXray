@@ -31,7 +31,6 @@ class CustomRoutingEditorState {
   final List<Object> ruleKeys;
   final Object? selectedRuleKey;
   final int entryCount;
-  final String domainStrategy;
   final bool processing;
   final bool transferBusy;
   final bool saving;
@@ -48,7 +47,6 @@ class CustomRoutingEditorState {
     Iterable<Object> ruleKeys = const [],
     this.selectedRuleKey,
     this.entryCount = 1,
-    this.domainStrategy = 'AsIs',
     this.processing = true,
     this.transferBusy = false,
     this.saving = false,
@@ -73,7 +71,6 @@ class CustomRoutingEditorState {
     Iterable<Object>? ruleKeys,
     Object? selectedRuleKey = _unchangedCustomRoutingValue,
     int? entryCount,
-    String? domainStrategy,
     bool? processing,
     bool? transferBusy,
     bool? saving,
@@ -93,7 +90,6 @@ class CustomRoutingEditorState {
         ? this.selectedRuleKey
         : selectedRuleKey,
     entryCount: entryCount ?? this.entryCount,
-    domainStrategy: domainStrategy ?? this.domainStrategy,
     processing: processing ?? this.processing,
     transferBusy: transferBusy ?? this.transferBusy,
     saving: saving ?? this.saving,
@@ -204,7 +200,6 @@ class CustomRoutingEditorController
           ruleKeys: keys,
           selectedRuleKey: selected,
           entryCount: value.entryCount,
-          domainStrategy: value.domainStrategy,
           processing: false,
           transferBusy: transfer.state.busy,
           inlineEditing: state.inlineEditing,
@@ -243,7 +238,6 @@ class CustomRoutingEditorController
     id: profileId,
     name: state.name.trim(),
     entryCount: state.entryCount,
-    domainStrategy: state.domainStrategy,
     rules: state.rules,
   );
 
@@ -266,7 +260,6 @@ class CustomRoutingEditorController
       state.copyWith(
         name: nextName,
         entryCount: value.entryCount,
-        domainStrategy: value.domainStrategy,
         rules: value.rules,
         ruleKeys: keys,
         selectedRuleKey: selected,

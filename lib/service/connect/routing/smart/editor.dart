@@ -124,7 +124,6 @@ class SmartRoutingEditorService {
       }
       return {
         'rules': [for (final rule in rules) rule.toJson()],
-        'resolveIpOnNoMatch': value.resolveIpOnNoMatch,
         'dnsDomains': value.directDns
             ? [
                 for (final rule in rules)

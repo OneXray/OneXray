@@ -175,14 +175,6 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             state,
           ),
           _switch(
-            l.prototypeResolveUnmatchedDomains,
-            l.prototypeResolveUnmatchedDomainsHint,
-            LucideIcons.terminal,
-            'resolveIpOnNoMatch',
-            smart.resolveIpOnNoMatch,
-            state,
-          ),
-          _switch(
             l.prototypeDirectDns,
             l.prototypeDirectDnsHint,
             LucideIcons.earth,

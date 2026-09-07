@@ -47,7 +47,6 @@ class SmartRoutingSettings {
   final bool directPrivate;
   final bool directApple;
   final bool directWindows;
-  final bool resolveIpOnNoMatch;
   final bool directDns;
   final bool blockAds;
 
@@ -58,7 +57,6 @@ class SmartRoutingSettings {
     this.directPrivate = true,
     this.directApple = true,
     this.directWindows = true,
-    this.resolveIpOnNoMatch = true,
     this.directDns = true,
     this.blockAds = false,
   }) : directRegions = List.unmodifiable(directRegions) {
@@ -76,7 +74,6 @@ class SmartRoutingSettings {
         directPrivate: value['directPrivate'] as bool? ?? true,
         directApple: value['directApple'] as bool? ?? true,
         directWindows: value['directWindows'] as bool? ?? true,
-        resolveIpOnNoMatch: value['resolveIpOnNoMatch'] as bool? ?? true,
         directDns: value['directDns'] as bool? ?? true,
         blockAds: value['blockAds'] as bool? ?? false,
       );
@@ -88,7 +85,6 @@ class SmartRoutingSettings {
     'directPrivate': directPrivate,
     'directApple': directApple,
     'directWindows': directWindows,
-    'resolveIpOnNoMatch': resolveIpOnNoMatch,
     'directDns': directDns,
     'blockAds': blockAds,
   };

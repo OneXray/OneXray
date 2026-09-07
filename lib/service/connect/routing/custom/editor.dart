@@ -216,7 +216,6 @@ class CustomRoutingEditorService {
   ) {
     Object semantic(RoutingProfileState state) => {
       'entries': state.entryCount,
-      'strategy': state.domainStrategy,
       'rules': [
         for (final rule in state.rules) {...rule.toJson()}..remove('ruleTag'),
       ],

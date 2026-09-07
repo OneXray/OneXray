@@ -85,14 +85,12 @@ final class RoutingProfileState {
   final int? id;
   final String name;
   final int entryCount;
-  final String domainStrategy;
   final List<RoutingRuleState> rules;
 
   RoutingProfileState({
     this.id,
     required this.name,
     this.entryCount = 1,
-    this.domainStrategy = 'AsIs',
     Iterable<RoutingRuleState> rules = const [],
   }) : rules = List.unmodifiable(rules);
 
@@ -128,7 +126,6 @@ final class RoutingProfileState {
       id: id,
       name: name,
       entryCount: outbounds.length,
-      domainStrategy: xrayJson.routing?.domainStrategy ?? 'AsIs',
       rules: [
         for (final rule in xrayJson.routing?.rules ?? const [])
           RoutingRuleState.fromXrayJson(rule),
@@ -140,19 +137,14 @@ final class RoutingProfileState {
 
   XrayJson get xrayJson {
     validate();
-    final hasRouting = domainStrategy != 'AsIs' || rules.isNotEmpty;
     return XrayJson(
       outbounds: [
         for (var index = 0; index < entryCount; index++) <String, dynamic>{},
       ],
-      routing: hasRouting
-          ? XrayRouting(
-              domainStrategy: domainStrategy == 'AsIs' ? null : domainStrategy,
-              rules: rules.isEmpty
-                  ? null
-                  : [for (final rule in rules) rule.xrayJson],
-            )
-          : null,
+      routing: XrayRouting(
+        domainStrategy: 'IPIfNonMatch',
+        rules: rules.isEmpty ? null : [for (final rule in rules) rule.xrayJson],
+      ),
     );
   }
 
@@ -163,13 +155,11 @@ final class RoutingProfileState {
     bool clearId = false,
     String? name,
     int? entryCount,
-    String? domainStrategy,
     Iterable<RoutingRuleState>? rules,
   }) => RoutingProfileState(
     id: clearId ? null : id ?? this.id,
     name: name ?? this.name,
     entryCount: entryCount ?? this.entryCount,
-    domainStrategy: domainStrategy ?? this.domainStrategy,
     rules: rules ?? this.rules,
   );
 

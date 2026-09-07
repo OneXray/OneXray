@@ -352,8 +352,6 @@
   "directWindowsServices": "Службы Windows напрямую",
   "directWindowsServicesHint": "Подключаться напрямую к доменам из категорий Microsoft и Bing.",
   "windowsServices": "Службы Windows",
-  "prototypeResolveUnmatchedDomains": "Разрешать домены без совпадений для проверки IP",
-  "prototypeResolveUnmatchedDomainsHint": "Если включено и домен не совпал ни с одним правилом, получить его IP-адреса и повторить проверку. Если выключено, проверять только имеющийся домен или IP без дополнительного DNS-запроса для маршрутизации.",
   "prototypeBlockAdDomains": "Блокировать известные рекламные домены",
   "prototypeBlockAdDomainsHint": "Использовать встроенный список рекламных доменов. Некоторые сайты могут работать некорректно.",
   "prototypeDirectRegions": "Регионы прямого доступа",

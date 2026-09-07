@@ -34,7 +34,7 @@ void main() {
 
     expect(state.name, '  My routes  ');
     expect(state.entryCount, 2);
-    expect(state.domainStrategy, 'IPIfNonMatch');
+    expect(state.xrayJson.routing!.domainStrategy, 'IPIfNonMatch');
     expect(state.rules.map((rule) => rule.toJson()), [first, second, third]);
     expect(jsonDecode(state.encode()), {
       'routing': {
@@ -55,6 +55,7 @@ void main() {
     expect(() => state.rules.add(rule), throwsUnsupportedError);
     expect(XrayJson.fromJson(jsonDecode(state.encode())).toJson(), {
       'routing': {
+        'domainStrategy': 'IPIfNonMatch',
         'rules': [
           {
             'domain': ['domain:example.com'],
@@ -73,7 +74,7 @@ void main() {
       ).state;
       expect(state.entryCount, count);
       expect(state.name, isEmpty);
-      expect(state.domainStrategy, 'AsIs');
+      expect(state.xrayJson.routing!.domainStrategy, 'IPIfNonMatch');
       expect(state.rules, isEmpty);
     }
     for (final action in RoutingRuleAction.values) {
@@ -207,38 +208,35 @@ void main() {
     },
   );
 
-  test(
-    'rule values and domain strategy are passed through for libXray validation',
-    () {
-      for (final rule in [
-        {'balancerTag': 'proxy'},
-        {
-          ..._rule(),
-          'domain': [''],
-          'ip': ['  '],
-        },
-        for (final port in [[], '', 'abc', '3-2', 0, 65536, 1.5])
-          {..._rule(), 'port': port},
-        for (final network in [
-          '',
-          [],
-          [1],
-          'unix',
-          'TCP',
-          'tcp,other',
-        ])
-          {..._rule(), 'network': network},
-      ]) {
-        final document = _document();
-        (document['routing'] as Map)
-          ..['domainStrategy'] = 'IPOnDemand'
-          ..['rules'] = [rule];
-        final state = RoutingProfileDocument.parse(jsonEncode(document)).state;
-        expect(state.domainStrategy, 'IPOnDemand');
-        expect(state.rules.single.toJson(), rule);
-      }
-    },
-  );
+  test('rule values pass through for libXray with a fixed domain strategy', () {
+    for (final rule in [
+      {'balancerTag': 'proxy'},
+      {
+        ..._rule(),
+        'domain': [''],
+        'ip': ['  '],
+      },
+      for (final port in [[], '', 'abc', '3-2', 0, 65536, 1.5])
+        {..._rule(), 'port': port},
+      for (final network in [
+        '',
+        [],
+        [1],
+        'unix',
+        'TCP',
+        'tcp,other',
+      ])
+        {..._rule(), 'network': network},
+    ]) {
+      final document = _document();
+      (document['routing'] as Map)
+        ..['domainStrategy'] = 'IPOnDemand'
+        ..['rules'] = [rule];
+      final state = RoutingProfileDocument.parse(jsonEncode(document)).state;
+      expect(state.xrayJson.routing!.domainStrategy, 'IPIfNonMatch');
+      expect(state.rules.single.toJson(), rule);
+    }
+  });
 
   test('rejects unsafe geodata assets', () {
     for (final file in [

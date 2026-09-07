@@ -256,18 +256,6 @@ void main() {
       ),
       false,
     );
-    expect(
-      SmartRoutingEditorService.sameRuntime(
-        original,
-        SmartRoutingSettings(
-          directRegions: ['CN', 'RU'],
-          blockAds: true,
-          resolveIpOnNoMatch: false,
-        ),
-        regions,
-      ),
-      false,
-    );
   });
 }
 
