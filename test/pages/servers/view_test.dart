@@ -248,8 +248,10 @@ void main() {
           final group = controller.groups(l).single;
           controller.emit(
             controller.state.copyWith(
-              testingServerIds: {1},
-              testingServerGroupId: group.id,
+              serverTests: {
+                Object(): (groupId: group.id, cancelling: false),
+                Object(): (groupId: null, cancelling: false),
+              },
             ),
           );
           AppEventBus.instance.updatePinging(true);
@@ -279,7 +281,8 @@ void main() {
           );
           await tester.pump();
           await tester.pump();
-          expect(controller.state.cancellingServerTest, isTrue);
+          expect(controller.cancellingGroup(group), isTrue);
+          expect(controller.state.serverTests.values.last.cancelling, isFalse);
           expect(
             tester
                 .widget<OutlinedButton>(
@@ -289,13 +292,7 @@ void main() {
             isNull,
           );
 
-          controller.emit(
-            controller.state.copyWith(
-              testingServerIds: {},
-              testingServerGroupId: null,
-              cancellingServerTest: false,
-            ),
-          );
+          controller.emit(controller.state.copyWith(serverTests: {}));
           AppEventBus.instance.updatePinging(false);
           await tester.pumpAndSettle();
           expect(
@@ -321,13 +318,15 @@ void main() {
       late Completer<void> started;
       late Completer<void> release;
       late PingService ping;
+      var batches = 0;
       final row = await tester.runAsync(() async {
         started = Completer<void>();
         release = Completer<void>();
         ping = PingService.forTesting(
           database: db,
           runBatch: (_, _) async {
-            started.complete();
+            batches++;
+            if (!started.isCompleted) started.complete();
             await release.future;
             return const [PingBatchResult(true, 20, '', countryCode: 'JP')];
           },
@@ -354,7 +353,7 @@ void main() {
         await tester.pump();
         expect(ping.isPinging, isTrue);
         expect(AppEventBus.instance.state.pinging, isTrue);
-        expect(controller.testingIds, isEmpty);
+        expect(controller.state.serverTests, isEmpty);
         expect(
           find.byType(ButtonProgressIndicator),
           width > AppLayout.mobileBreakpoint && !groupPage
@@ -373,48 +372,66 @@ void main() {
                 .onPressed,
             isNotNull,
           );
+          await tester.runAsync(() async {
+            await tester.tap(
+              find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+            );
+          });
+          await tester.pump();
+          expect(find.byType(ShadToast), findsNothing);
+          expect(controller.state.serverTests, hasLength(1));
+          expect(batches, 1);
+        }
+        if (groupPage) {
+          // A queued group must not reject single-node requests. Cancelling
+          // that group must leave both node requests queued and independent.
+          for (var index = 0; index < 2; index++) {
+            await tester.runAsync(() async {
+              await tester.tap(
+                find.byTooltip('${l.prototypeMoreActions}: Imported'),
+              );
+            });
+            await tester.pump(const Duration(seconds: 1));
+            await tester.runAsync(() async {
+              await tester.tap(find.text(l.prototypeTestAgain));
+            });
+            await tester.pump(const Duration(seconds: 1));
+          }
+          expect(controller.state.serverTests, hasLength(3));
+          expect(find.byType(ShadToast), findsNothing);
+          expect(batches, 1);
           await tester.tap(
-            find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+            find.widgetWithText(OutlinedButton, l.prototypeCancel),
           );
           await tester.pump();
-          expect(find.text(l.serverTestInProgress), findsOneWidget);
-          expect(controller.testingIds, isEmpty);
+          expect(
+            controller.state.serverTests.values.map((test) => test.cancelling),
+            [true, false, false],
+          );
         }
       } finally {
         await tester.runAsync(() async {
           release.complete();
           // Wait for the scheduled task's database write and event update.
-          await ping.pingConfigIds([row.id]);
+          await ping
+              .pingConfigIds([row.id])
+              .timeout(const Duration(seconds: 5));
         });
       }
       await tester.pumpAndSettle();
+      expect(
+        batches,
+        groupPage
+            ? 3
+            : width > AppLayout.mobileBreakpoint
+            ? 2
+            : 1,
+      );
+      expect(controller.state.serverTests, isEmpty);
       expect(find.byType(ButtonProgressIndicator), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
-
-  testWidgets('retesting from an open node menu shows the wait toast', (
-    tester,
-  ) async {
-    controller.servers = [_server(1, 'JP')];
-    await pumpBrowser(tester, 427, groupPage: true, locale: const Locale('zh'));
-    final l = AppLocalizations.of(
-      tester.element(find.byType(ServerGroupView)),
-    )!;
-    controller.emit(controller.state.copyWith(testingServerIds: {1}));
-    await tester.pump();
-    expect(controller.serverBusy(controller.servers.single), isFalse);
-    expect(find.byType(ButtonProgressIndicator), findsNothing);
-
-    await tester.tap(find.byTooltip('${l.prototypeMoreActions}: Node 1'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(l.prototypeTestAgain));
-    await tester.pumpAndSettle();
-    expect(find.byType(ShadToast), findsOneWidget);
-    expect(find.text('测速中，请等待测速完成后再试。'), findsOneWidget);
-    expect(controller.testingIds, {1});
-    expect(tester.takeException(), isNull);
-  });
 
   for (final locale in const [Locale('en'), Locale('ru'), Locale('fa')]) {
     testWidgets(

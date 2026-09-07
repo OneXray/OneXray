@@ -30,7 +30,7 @@ class DirectRegionsState {
     this.busy = true,
     this.failed = false,
   }) : codes = List.unmodifiable(codes),
-       selected = Set.unmodifiable(selected);
+       selected = Set.unmodifiable(selected.take(1));
 
   DirectRegionsState copyWith({
     Iterable<String>? codes,
@@ -105,11 +105,9 @@ class DirectRegionsController extends PageCubit<DirectRegionsState> {
     emit(state.copyWith(query: value));
   }
 
-  void toggle(String code) {
+  void select(String code) {
     if (!state.codes.contains(code)) return;
-    final selected = state.selected.toSet();
-    if (!selected.remove(code)) selected.add(code);
-    emit(state.copyWith(selected: selected));
+    emit(state.copyWith(selected: [code]));
   }
 
   void clear() => emit(state.copyWith(selected: const []));
@@ -124,13 +122,21 @@ class DirectRegionsController extends PageCubit<DirectRegionsState> {
 
 class DirectRegionsPage extends StatefulWidget {
   final List<String> selectedCodes;
-  const DirectRegionsPage({super.key, required this.selectedCodes});
+  final Future<RegionCatalog> Function()? loadRegions;
+  const DirectRegionsPage({
+    super.key,
+    required this.selectedCodes,
+    this.loadRegions,
+  });
   @override
   State<DirectRegionsPage> createState() => _DirectRegionsPageState();
 }
 
 class _DirectRegionsPageState extends State<DirectRegionsPage> {
-  late final controller = DirectRegionsController(widget.selectedCodes);
+  late final controller = DirectRegionsController(
+    widget.selectedCodes,
+    loadRegions: widget.loadRegions,
+  );
   @override
   void initState() {
     super.initState();
@@ -371,10 +377,11 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
     final selected = state.selected.contains(code);
     return Semantics(
       checked: selected,
+      inMutuallyExclusiveGroup: true,
       child: Material(
         color: selected ? palette.selectedSurface : palette.card,
         child: InkWell(
-          onTap: () => controller.toggle(code),
+          onTap: () => controller.select(code),
           child: Container(
             constraints: const BoxConstraints(minHeight: 62),
             padding: EdgeInsets.symmetric(

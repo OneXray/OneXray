@@ -84,9 +84,9 @@ abstract final class RouterPath {
       GoRoute(
         path: '/setup/region',
         redirect: (_, state) =>
-            state.extra is SetupRegionParams ? null : RouterPath.setup,
+            state.extra is List<String> ? null : RouterPath.setup,
         builder: (_, state) =>
-            SetupRegionPage(params: state.extra as SetupRegionParams),
+            DirectRegionsPage(selectedCodes: state.extra as List<String>),
       ),
       GoRoute(path: RouterPath.privacy, redirect: (_, _) => RouterPath.setup),
       GoRoute(path: RouterPath.firstRun, redirect: (_, _) => RouterPath.setup),

@@ -130,16 +130,17 @@ class SetupService {
     await _preferences.saveSetupStep(SetupStep.region.name);
   }
 
-  Future<void> continueRegion(String? region) async {
-    if (region != null) {
-      if (!(await regionCodes()).contains(region)) {
+  Future<void> continueRegion(List<String>? regions) async {
+    if (regions != null) {
+      final available = await regionCodes();
+      if (!regions.every(available.contains)) {
         throw const SetupFailure('region');
       }
       final previous = await configuration();
       final connection = previous.connection.toJson();
       connection['smart'] = {
         ...previous.connection.smart.toJson(),
-        'directRegions': [region],
+        'directRegions': regions,
       };
       await _save(
         ConnectionConfiguration(

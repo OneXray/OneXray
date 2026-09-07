@@ -1,6 +1,7 @@
 {
   "@@locale": "zh",
-  "serverTestInProgress": "测速中，请等待测速完成后再试。",
+  "iosDebugLocalProxy": "仅本地代理",
+  "iosDebugLocalProxyHint": "下次连接生效，重启 App 后恢复关闭。",
   "buttonRetry": "重试",
   "validationNameRequired": "请输入名称",
   "validationNameDuplicate": "名称重复",

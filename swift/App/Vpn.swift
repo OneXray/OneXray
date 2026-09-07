@@ -89,6 +89,14 @@ class VPNManager {
     }
 
     func queryPlatformPermission() async -> PlatformPermissionResult {
+        #if targetEnvironment(simulator)
+        // The simulator cannot query NetworkExtension VPN preferences.
+        return PlatformPermissionResult(
+            kind: .appleVpn,
+            state: .notRequired,
+            message: nil
+        )
+        #else
         #if os(macOS)
         if Constants.useSystemExtension {
             let state = await querySystemExtensionIfNeeded()
@@ -112,6 +120,7 @@ class VPNManager {
                 message: error.localizedDescription
             )
         }
+        #endif
     }
 
     func requestPlatformPermission() async -> PlatformPermissionResult {

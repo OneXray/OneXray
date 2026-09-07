@@ -715,6 +715,7 @@ class ServerGroupView extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final testing = controller.testingGroup(group);
+    final cancelling = controller.cancellingGroup(group);
     return Wrap(
       alignment: WrapAlignment.end,
       spacing: 8,
@@ -723,9 +724,9 @@ class ServerGroupView extends StatelessWidget {
       children: [
         OutlinedButton(
           onPressed: testing
-              ? controller.state.cancellingServerTest
+              ? cancelling
                     ? null
-                    : controller.cancelTest
+                    : () => controller.cancelTest(group.id)
               : group.rows.isEmpty || group.rows.any(controller.serverBusy)
               ? null
               : () => controller.test(context, group.rows, groupId: group.id),
@@ -758,7 +759,7 @@ class ServerGroupView extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 testing
-                    ? controller.state.cancellingServerTest
+                    ? cancelling
                           ? l.prototypePleaseWait
                           : l.prototypeCancel
                     : l.prototypeTestServers,

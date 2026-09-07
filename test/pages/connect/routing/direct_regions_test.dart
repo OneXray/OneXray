@@ -74,8 +74,8 @@ void main() {
     expect(controller.directPreview(l), l.prototypeNone);
   });
 
-  test('direct regions use installed categories, support many selections and stay draft-only', () async {
-    final selected = ['CN', 'IR'];
+  test('direct regions use installed categories, allow one selection and stay draft-only', () async {
+    final selected = ['CN', 'RU'];
     var available = ['CN', 'RU', 'US', 'JP'];
     final controller = DirectRegionsController(
       selected,
@@ -93,15 +93,18 @@ void main() {
       ),
     );
     addTearDown(controller.close);
+    expect(controller.state.selected, {'CN'});
     await controller.load();
     expect(controller.state.codes, ['CN', 'JP', 'RU', 'US']);
     expect(controller.state.selected, {'CN'});
     for (final code in ['RU', 'US', 'JP']) {
-      controller.toggle(code);
+      controller.select(code);
+      expect(controller.state.selected, {code});
     }
-    expect(controller.state.selected.length, 4);
-    controller.toggle('IR');
-    expect(controller.state.selected.contains('IR'), false);
+    controller.select('JP');
+    expect(controller.state.selected, {'JP'});
+    controller.select('IR');
+    expect(controller.state.selected, {'JP'});
     controller.search('russia');
     expect(controller.visibleCodes(AppLocalizationsEn()), ['RU']);
     expect(controller.visibleCodes(AppLocalizationsZh()), ['RU']);
@@ -111,7 +114,7 @@ void main() {
     expect(controller.visibleCodes(AppLocalizationsEn()), ['RU', 'US']);
     controller.clear();
     expect(controller.state.selected, isEmpty);
-    expect(selected, ['CN', 'IR']);
+    expect(selected, ['CN', 'RU']);
     available = ['US'];
     await controller.load();
     expect(controller.state.codes, ['US']);

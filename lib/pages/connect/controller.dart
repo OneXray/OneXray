@@ -28,6 +28,8 @@ import 'package:onexray/service/connect/routing/custom/state.dart';
 
 const _unchanged = Object();
 
+typedef PendingServerTest = ({String? groupId, bool cancelling});
+
 class ConnectPageState {
   ConnectPageState({
     ConnectionConfiguration? configuration,
@@ -47,9 +49,7 @@ class ConnectPageState {
     this.activeServerGroupId,
     this.serverSearchQuery = '',
     Set<String> pendingServerActions = const {},
-    Set<int> testingServerIds = const {},
-    this.testingServerGroupId,
-    this.cancellingServerTest = false,
+    Map<Object, PendingServerTest> serverTests = const {},
     Set<int> favoritingServerIds = const {},
     this.selectingServers,
     Map<int, String> sourceErrors = const {},
@@ -61,7 +61,7 @@ class ConnectPageState {
        sources = List.unmodifiable(sources),
        deletingRawIds = Set.unmodifiable(deletingRawIds),
        pendingServerActions = Set.unmodifiable(pendingServerActions),
-       testingServerIds = Set.unmodifiable(testingServerIds),
+       serverTests = Map.unmodifiable(serverTests),
        favoritingServerIds = Set.unmodifiable(favoritingServerIds),
        sourceErrors = Map.unmodifiable(sourceErrors);
 
@@ -85,9 +85,7 @@ class ConnectPageState {
   final String? activeServerGroupId;
   final String serverSearchQuery;
   final Set<String> pendingServerActions;
-  final Set<int> testingServerIds;
-  final String? testingServerGroupId;
-  final bool cancellingServerTest;
+  final Map<Object, PendingServerTest> serverTests;
   final Set<int> favoritingServerIds;
   final ServerSelection? selectingServers;
   final Map<int, String> sourceErrors;
@@ -111,9 +109,7 @@ class ConnectPageState {
     Object? activeServerGroupId = _unchanged,
     String? serverSearchQuery,
     Set<String>? pendingServerActions,
-    Set<int>? testingServerIds,
-    Object? testingServerGroupId = _unchanged,
-    bool? cancellingServerTest,
+    Map<Object, PendingServerTest>? serverTests,
     Set<int>? favoritingServerIds,
     Object? selectingServers = _unchanged,
     Map<int, String>? sourceErrors,
@@ -141,11 +137,7 @@ class ConnectPageState {
         : activeServerGroupId as String?,
     serverSearchQuery: serverSearchQuery ?? this.serverSearchQuery,
     pendingServerActions: pendingServerActions ?? this.pendingServerActions,
-    testingServerIds: testingServerIds ?? this.testingServerIds,
-    testingServerGroupId: identical(testingServerGroupId, _unchanged)
-        ? this.testingServerGroupId
-        : testingServerGroupId as String?,
-    cancellingServerTest: cancellingServerTest ?? this.cancellingServerTest,
+    serverTests: serverTests ?? this.serverTests,
     favoritingServerIds: favoritingServerIds ?? this.favoritingServerIds,
     selectingServers: identical(selectingServers, _unchanged)
         ? this.selectingServers

@@ -19,7 +19,6 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/ping/service.dart';
-import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 
 enum ServerGrouping { subscription, location }
@@ -86,7 +85,6 @@ class ServersController extends ConnectController {
   set activeGroupId(String? value) =>
       emit(state.copyWith(activeServerGroupId: value));
   Set<String> get _pending => state.pendingServerActions;
-  Set<int> get testingIds => state.testingServerIds;
   Set<int> get favoritingIds => state.favoritingServerIds;
   ServerSelection? get selecting => state.selectingServers;
   set selecting(ServerSelection? value) =>
@@ -114,7 +112,10 @@ class ServersController extends ConnectController {
         (row) => row.subId == id && _pending.contains('server:${row.id}'),
       );
   bool testingGroup(ServerGroup group) =>
-      state.testingServerGroupId == group.id;
+      state.serverTests.values.any((test) => test.groupId == group.id);
+  bool cancellingGroup(ServerGroup group) => state.serverTests.values
+      .where((test) => test.groupId == group.id)
+      .every((test) => test.cancelling);
   bool selectingGroup(ServerSelection value) =>
       selecting != null &&
       jsonEncode(selecting!.toJson()) == jsonEncode(value.toJson());
@@ -461,44 +462,46 @@ class ServersController extends ConnectController {
     Iterable<CoreConfigData> rows, {
     String? groupId,
   }) async {
-    if (testingIds.isNotEmpty || AppEventBus.instance.state.pinging) {
-      ContextAlert.showToast(
-        context,
-        AppLocalizations.of(context)!.serverTestInProgress,
-      );
-      return;
-    }
     final ids = rows.map((row) => row.id).toSet();
     if (ids.isEmpty) return;
     await run(context, () async {
+      final request = Object();
       emit(
         state.copyWith(
-          testingServerIds: ids,
-          testingServerGroupId: groupId,
-          cancellingServerTest: false,
+          serverTests: {
+            ...state.serverTests,
+            request: (groupId: groupId, cancelling: false),
+          },
         ),
       );
       try {
         await _ping.pingConfigIds(
           ids.toList(),
           force: true,
-          isCancelled: () => !isPageActive || state.cancellingServerTest,
+          isCancelled: () =>
+              !isPageActive || (state.serverTests[request]?.cancelling ?? true),
         );
       } finally {
         emit(
-          state.copyWith(
-            testingServerIds: {},
-            testingServerGroupId: null,
-            cancellingServerTest: false,
-          ),
+          state.copyWith(serverTests: {...state.serverTests}..remove(request)),
         );
       }
     });
   }
 
-  void cancelTest() {
-    if (testingIds.isEmpty) return;
-    emit(state.copyWith(cancellingServerTest: true));
+  void cancelTest(String groupId) {
+    emit(
+      state.copyWith(
+        serverTests: state.serverTests.map(
+          (id, test) => MapEntry(
+            id,
+            test.groupId == groupId
+                ? (groupId: groupId, cancelling: true)
+                : test,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> serverAction(

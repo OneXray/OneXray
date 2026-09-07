@@ -12,6 +12,7 @@ import 'package:onexray/pages/shared/widgets/settings_page.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadSwitch;
 
 /// Embedded below Advanced's tabs; the footer belongs to this full-page body.
 class VpnTunnelPane extends StatelessWidget {
@@ -192,6 +193,30 @@ class VpnTunnelPane extends StatelessWidget {
                       l.prototypeWindowsSystemVpn,
                       l.prototypeWindowsVpnDescription,
                       TunnelDestination.windows,
+                    ),
+                  if (controller.debugProxySupported)
+                    _section(
+                      icon: LucideIcons.bug,
+                      title: 'iOS Debug',
+                      description: l.iosDebugLocalProxyHint,
+                      children: [
+                        SettingRow(
+                          title: l.iosDebugLocalProxy,
+                          titleMaxLines: 4,
+                          minHeight: mobile ? 52 : 56,
+                          titleStyle: mobile
+                              ? AppTypography.settingsFieldTitle
+                              : AppTypography.settingsRow,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: mobile ? 13 : 14,
+                            vertical: 10,
+                          ),
+                          trailing: ShadSwitch(
+                            value: state.debugProxyEnabled,
+                            onChanged: controller.setDebugProxyEnabled,
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),

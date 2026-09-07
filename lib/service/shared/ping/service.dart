@@ -41,7 +41,7 @@ class PingService {
 
   AppDatabase get _database => _databaseOverride ?? AppDatabase();
 
-  Future<void> _scheduledPingQueue = Future.value();
+  Future<void> _pingQueue = Future.value();
   var _pingingTaskCount = 0;
 
   bool get isPinging => _pingingTaskCount > 0;
@@ -78,9 +78,7 @@ class PingService {
       if (rows.isEmpty) {
         return;
       }
-      await DataMaintenance.run(
-        () => _pingConfigs(db, rows, isCancelled: isCancelled),
-      );
+      await _pingConfigs(db, rows, isCancelled: isCancelled);
     });
   }
 
@@ -93,29 +91,21 @@ class PingService {
         .where((id) => id > DBConstants.defaultId)
         .toSet()
         .toList(growable: false);
-    if (targetSubIds.isEmpty) {
-      return;
+    for (final subId in targetSubIds) {
+      unawaited(
+        _enqueuePing(() async {
+          final db = _database;
+          final rows = (await db.coreConfigDao.allOutboundRowsWithDataBySubId(
+            subId,
+          )).where(isUnmeasured).toList();
+          if (rows.isNotEmpty) await _pingConfigs(db, rows);
+        }),
+      );
     }
-    unawaited(
-      _enqueuePing(() async {
-        final db = _database;
-        final rows = <CoreConfigData>[];
-        for (final subId in targetSubIds) {
-          rows.addAll(
-            (await db.coreConfigDao.allOutboundRowsWithDataBySubId(subId))
-                .where(isUnmeasured),
-          );
-        }
-        if (rows.isEmpty) {
-          return;
-        }
-        await DataMaintenance.run(() => _pingConfigs(db, rows));
-      }),
-    );
   }
 
   Future<void> _enqueuePing(Future<void> Function() task) {
-    final previous = _scheduledPingQueue;
+    final previous = _pingQueue;
     // Register while queued, not after waiting: restore must not finish and
     // then receive a stale job against restored rows with the same IDs.
     final next = DataMaintenance.run(() async {
@@ -127,10 +117,7 @@ class PingService {
         _stopPinging();
       }
     });
-    _scheduledPingQueue = next.catchError((
-      Object error,
-      StackTrace stackTrace,
-    ) {
+    _pingQueue = next.catchError((Object error, StackTrace stackTrace) {
       ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
     });
     return next;
@@ -167,7 +154,13 @@ class PingService {
     final pingState = PingState();
     await pingState.readFromPreferences();
 
-    for (final rowSlice in rows.slices(PingBatchRunner.maxBatchSize)) {
+    // Location/manual selections may span subscriptions too. Never mix them
+    // within a native batch; finish one subscription before starting the next.
+    final batches = rows
+        .groupListsBy((row) => row.subId)
+        .values
+        .expand((group) => group.slices(PingBatchRunner.maxBatchSize));
+    for (final rowSlice in batches) {
       // ponytail: finish and save the current batch; native cancellation can
       // be added if stopping up to five in-flight probes immediately is needed.
       if (isCancelled?.call() ?? false) break;

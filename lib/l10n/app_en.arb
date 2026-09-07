@@ -1,8 +1,12 @@
 {
   "@@locale": "en",
-  "serverTestInProgress": "A speed test is already running. Please wait for it to finish before trying again.",
-  "@serverTestInProgress": {
-    "description": "Shown when a manual speed test is requested while another test is running."
+  "iosDebugLocalProxy": "Local proxy only",
+  "@iosDebugLocalProxy": {
+    "description": "Developer-only switch in Advanced > VPN tunnel, shown only in iOS Debug builds."
+  },
+  "iosDebugLocalProxyHint": "Applies to the next connection. Resets when the app restarts.",
+  "@iosDebugLocalProxyHint": {
+    "description": "The Debug switch is in-memory only and does not modify saved VPN settings."
   },
   "buttonRetry": "Retry",
   "validationNameRequired": "name required",

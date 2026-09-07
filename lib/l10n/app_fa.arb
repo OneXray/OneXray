@@ -1,6 +1,7 @@
 {
     "@@locale": "fa",
-    "serverTestInProgress": "آزمون سرعت در حال اجراست. لطفاً پس از پایان آن دوباره تلاش کنید.",
+    "iosDebugLocalProxy": "فقط پراکسی محلی",
+    "iosDebugLocalProxyHint": "در اتصال بعدی اعمال می‌شود. با راه‌اندازی مجدد برنامه خاموش می‌شود.",
     "buttonRetry": "تلاش دوباره",
     "validationNameRequired": "نام لازم است",
     "validationNameDuplicate": "نام قبلاً وجود دارد",

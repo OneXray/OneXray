@@ -239,6 +239,121 @@ void main() {
   });
 
   test(
+    'subscriptions and single nodes share FIFO without mixed batches',
+    () async {
+      final first = await db.coreConfigDao.insertRow(_node('S1-A', subId: 11));
+      await db.coreConfigDao.insertRow(_node('S1-B', subId: 11));
+      final second = await db.coreConfigDao.insertRow(_node('S2-A', subId: 12));
+      final local = await db.coreConfigDao.insertRow(_node('Local'));
+      final started = Completer<void>();
+      final release = Completer<void>();
+      final batches = <List<String>>[];
+      var active = 0;
+      var maximumActive = 0;
+      final service = PingService.forTesting(
+        database: db,
+        runBatch: (sources, _) async {
+          active++;
+          if (active > maximumActive) maximumActive = active;
+          batches.add([
+            for (final source in sources)
+              jsonDecode(source.xrayJson)['outbounds'][0]['tag'] as String,
+          ]);
+          if (!started.isCompleted) started.complete();
+          await release.future;
+          active--;
+          return _successes(sources.length);
+        },
+      );
+      service.schedulePingSubscriptions([11, 12]);
+      await started.future.timeout(const Duration(seconds: 2));
+      final single = service.pingConfigIds([local], force: true);
+      final repeated = service.pingConfigIds([local], force: true);
+      final mixed = service.pingConfigIds([first, second, local], force: true);
+      release.complete();
+      await Future.wait([single, repeated, mixed]);
+
+      expect(batches, [
+        ['S1-A', 'S1-B'],
+        ['S2-A'],
+        ['Local'],
+        ['Local'],
+        ['S1-A'],
+        ['S2-A'],
+        ['Local'],
+      ]);
+      expect(maximumActive, 1);
+      expect(service.isPinging, isFalse);
+      expect(AppEventBus.instance.state.pinging, isFalse);
+    },
+  );
+
+  test(
+    'a failed queued task does not block later requests or leave loading',
+    () async {
+      final failed = await db.coreConfigDao.insertRow(_node('Failed'));
+      final next = await db.coreConfigDao.insertRow(_node('Next'));
+      var calls = 0;
+      final service = PingService.forTesting(
+        database: db,
+        runBatch: (sources, _) async {
+          if (++calls == 1) throw StateError('Native probe failed');
+          return _successes(sources.length);
+        },
+      );
+      final failure = expectLater(
+        service.pingConfigIds([failed]),
+        throwsStateError,
+      );
+      final succeeding = service.pingConfigIds([next]);
+      await Future.wait([failure, succeeding]);
+
+      expect(calls, 2);
+      expect((await db.coreConfigDao.searchRow(next))!.delay, 20);
+      expect(service.isPinging, isFalse);
+      expect(AppEventBus.instance.state.pinging, isFalse);
+    },
+  );
+
+  test(
+    'queued subscription probes finish before pending maintenance',
+    () async {
+      final first = await db.coreConfigDao.insertRow(_node('First', subId: 11));
+      final second = await db.coreConfigDao.insertRow(
+        _node('Second', subId: 12),
+      );
+      final started = Completer<void>();
+      final release = Completer<void>();
+      var calls = 0;
+      final service = PingService.forTesting(
+        database: db,
+        runBatch: (sources, _) async {
+          calls++;
+          if (!started.isCompleted) started.complete();
+          await release.future;
+          return _successes(sources.length);
+        },
+      );
+      service.schedulePingSubscription(11);
+      await started.future.timeout(const Duration(seconds: 2));
+      service.schedulePingSubscription(12);
+      final drained = AppEventBus.instance.stream.firstWhere(
+        (state) => !state.pinging,
+      );
+      final maintenance = DataMaintenance.exclusive(() async {});
+      release.complete();
+      await Future.wait([drained, maintenance])
+          .timeout(const Duration(seconds: 2));
+
+      expect(calls, 2, reason: 'The queued subscription must not be rejected');
+      for (final id in [first, second]) {
+        expect((await db.coreConfigDao.searchRow(id))!.delay, 20);
+      }
+      expect(service.isPinging, isFalse);
+    },
+  );
+
+  test(
     'maintenance drains registered queued work before restoring the same IDs',
     () async {
       final first = await db.coreConfigDao.insertRow(_node('First'));
@@ -251,7 +366,7 @@ void main() {
         database: db,
         runBatch: (sources, _) async {
           calls++;
-          started.complete();
+          if (!started.isCompleted) started.complete();
           await release.future;
           return _successes(sources.length);
         },
@@ -263,9 +378,8 @@ void main() {
       });
       await started.future.timeout(const Duration(seconds: 5));
       final queued = service.pingConfigIds([second]);
-      final queuedRejected = expectLater(queued, throwsStateError);
       final restoring = DataMaintenance.exclusive(() async {
-        expect(calls, 1);
+        expect(calls, 2);
         await db.transaction(() async {
           await db.delete(db.coreConfig).go();
           for (final id in [first, second]) {
@@ -279,11 +393,11 @@ void main() {
       expect(restored, isFalse);
       release.complete();
       await active;
-      await queuedRejected;
+      await queued;
       await restoring;
 
       expect(restored, isTrue);
-      expect(calls, 1);
+      expect(calls, 2);
       for (final id in [first, second]) {
         final row = (await db.coreConfigDao.searchRow(id))!;
         expect(row.name, 'Restored');

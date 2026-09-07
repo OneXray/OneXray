@@ -33,7 +33,7 @@ class SetupPageState {
   final bool hasServers;
   final PlatformPermissionResult? permission;
   final String interfaceName;
-  final String region;
+  final List<String>? regions;
   final List<String> regionCodes;
   final SetupFailure? failure;
 
@@ -46,7 +46,7 @@ class SetupPageState {
     this.hasServers = false,
     this.permission,
     this.interfaceName = '',
-    this.region = '',
+    this.regions,
     this.regionCodes = const [],
     this.failure,
   });
@@ -69,7 +69,7 @@ class SetupPageState {
     bool? hasServers,
     PlatformPermissionResult? permission,
     String? interfaceName,
-    String? region,
+    List<String>? regions,
     List<String>? regionCodes,
     SetupFailure? failure,
     bool clearFailure = false,
@@ -82,7 +82,7 @@ class SetupPageState {
     hasServers: hasServers ?? this.hasServers,
     permission: permission ?? this.permission,
     interfaceName: interfaceName ?? this.interfaceName,
-    region: region ?? this.region,
+    regions: regions == null ? this.regions : List.unmodifiable(regions),
     regionCodes: regionCodes ?? this.regionCodes,
     failure: clearFailure ? null : failure ?? this.failure,
   );
@@ -177,10 +177,10 @@ class SetupController extends PageCubit<SetupPageState>
       emit(state.copyWith(step: SetupStep.system));
       return;
     }
-    if (state.step == SetupStep.region && !codes.contains(state.region)) {
+    if (state.step == SetupStep.region && state.regions == null) {
       final region = await service.suggestRegion();
       if (region != null && codes.contains(region)) {
-        emit(state.copyWith(region: region));
+        emit(state.copyWith(regions: [region]));
       }
     }
     if (state.step == SetupStep.servers) await _watchServers();
@@ -221,7 +221,9 @@ class SetupController extends PageCubit<SetupPageState>
   });
 
   Future<void> continueRegion() => _perform(() async {
-    await service.continueRegion(state.region);
+    final regions = state.regions;
+    if (regions == null) throw const SetupFailure('region');
+    await service.continueRegion(regions);
     emit(state.copyWith(step: SetupStep.servers, clearAction: true));
     await _load();
   });
@@ -237,12 +239,12 @@ class SetupController extends PageCubit<SetupPageState>
   });
 
   Future<void> chooseRegion(BuildContext context) => _perform(() async {
-    final code = await context.push<String>(
+    final regions = await context.push<List<String>>(
       '${RouterPath.setup}/region',
-      extra: SetupRegionParams(state.regionCodes, state.region),
+      extra: state.regions ?? const <String>[],
     );
-    if (code != null) {
-      emit(state.copyWith(region: code));
+    if (regions != null) {
+      emit(state.copyWith(regions: regions));
     }
   });
 

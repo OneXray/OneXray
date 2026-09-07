@@ -11,12 +11,14 @@ import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/launch/setup/controller.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/launch/setup/view.dart';
+import 'package:onexray/pages/connect/routing/smart/regions.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/launch/setup.dart';
 import 'package:onexray/service/advanced/tunnel/interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -58,11 +60,11 @@ void main() {
       expect(controller.state.step, SetupStep.system);
       await controller.continueSystem();
       expect(controller.state.step, SetupStep.region);
-      expect(controller.state.region, 'RU');
+      expect(controller.state.regions, ['RU']);
       expect(service.savedRegion, isNull);
       await controller.continueRegion();
       expect(controller.state.step, SetupStep.servers);
-      expect(service.savedRegion, 'RU');
+      expect(service.savedRegion, ['RU']);
       expect(service.finishes, 0);
     },
   );
@@ -102,7 +104,10 @@ void main() {
       await _idle(controller);
       await controller.continueSystem();
       expect(controller.state.step, SetupStep.region);
-      expect(controller.state.region, isEmpty);
+      expect(controller.state.regions, isNull);
+      expect(service.savedRegion, isNull);
+      await controller.continueRegion();
+      expect(controller.state.step, SetupStep.region);
       expect(service.savedRegion, isNull);
       await controller.skipRegion();
       expect(controller.state.step, SetupStep.servers);
@@ -239,6 +244,34 @@ void main() {
                   (route) =>
                       route.path == '/setup/interface' ||
                       route.path == '/setup/region',
+                )
+                .map(
+                  (route) => route.path == '/setup/region'
+                      ? GoRoute(
+                          path: route.path,
+                          redirect: route.redirect,
+                          builder: (context, state) {
+                            final page = route.builder!(
+                              context,
+                              state,
+                            ) as DirectRegionsPage;
+                            return DirectRegionsPage(
+                              selectedCodes: page.selectedCodes,
+                              loadRegions: () async => RegionCatalog.fromJson(
+                                {
+                                  'geosite': <String, dynamic>{},
+                                  'geoip': {
+                                    for (final code in ['CN', 'RU', 'US'])
+                                      code: [code],
+                                  },
+                                },
+                                geositeCodes: [],
+                                geoipCodes: ['CN', 'RU', 'US'],
+                              ),
+                            );
+                          },
+                        )
+                      : route,
                 ),
           ],
         );
@@ -270,13 +303,21 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(
-          find.byType(interface ? SetupInterfacePage : SetupRegionPage),
+          find.byType(interface ? SetupInterfacePage : DirectRegionsPage),
           findsOneWidget,
         );
-        expect(find.text('Done'), findsNothing);
+        expect(find.text('Done'), interface ? findsNothing : findsOneWidget);
         await tester.tap(find.text(interface ? 'Ethernet' : 'Russia').last);
         await tester.pumpAndSettle();
-        expect(find.byType(SetupRegionPage), findsNothing);
+        if (!interface) {
+          expect(find.byType(DirectRegionsPage), findsOneWidget);
+          expect(controller.state.regions, isNull);
+          await tester.tap(find.text('Mainland China'));
+          await tester.tap(find.text('Done'));
+          await tester.pumpAndSettle();
+          expect(controller.state.regions, ['CN']);
+        }
+        expect(find.byType(DirectRegionsPage), findsNothing);
         expect(find.byType(SetupInterfacePage), findsNothing);
         expect(
           controller.state.step,
@@ -300,7 +341,7 @@ void main() {
         await tester.tap(find.text('Continue'));
         await tester.pumpAndSettle();
         expect(controller.state.step, SetupStep.servers);
-        expect(service.savedRegion, 'RU');
+        expect(service.savedRegion, interface ? ['RU'] : ['CN']);
         if (interface) expect(service.savedInterface, 'Ethernet');
         expect(tester.takeException(), isNull);
       },
@@ -358,7 +399,7 @@ class _SetupService extends SetupService {
   }
 
   String? suggestedRegion = 'RU';
-  String? savedRegion;
+  List<String>? savedRegion;
   String? savedInterface;
   int permissionRequests = 0;
   int finishes = 0;
@@ -414,8 +455,8 @@ class _SetupService extends SetupService {
   @override
   Future<String?> suggestRegion() async => suggestedRegion;
   @override
-  Future<void> continueRegion(String? region) async {
-    savedRegion = region;
+  Future<void> continueRegion(List<String>? regions) async {
+    savedRegion = regions;
     step = SetupStep.servers;
   }
 

@@ -5,6 +5,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/debug_proxy.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -41,6 +42,7 @@ class PolicyEditorPageState {
   final List<OutboundInterfaceOption> interfaces;
   final bool interfacesLoading;
   final bool interfacesFailed;
+  final bool debugProxyEnabled;
 
   PolicyEditorPageState({
     this.draft,
@@ -53,6 +55,7 @@ class PolicyEditorPageState {
     List<OutboundInterfaceOption> interfaces = const [],
     this.interfacesLoading = true,
     this.interfacesFailed = false,
+    this.debugProxyEnabled = false,
   }) : androidAppNames = Map<String, String>.unmodifiable(androidAppNames),
        interfaces = List<OutboundInterfaceOption>.unmodifiable(interfaces);
 
@@ -67,6 +70,7 @@ class PolicyEditorPageState {
     List<OutboundInterfaceOption>? interfaces,
     bool? interfacesLoading,
     bool? interfacesFailed,
+    bool? debugProxyEnabled,
   }) => PolicyEditorPageState(
     draft: identical(draft, _notProvided)
         ? this.draft
@@ -83,6 +87,7 @@ class PolicyEditorPageState {
     interfaces: interfaces ?? this.interfaces,
     interfacesLoading: interfacesLoading ?? this.interfacesLoading,
     interfacesFailed: interfacesFailed ?? this.interfacesFailed,
+    debugProxyEnabled: debugProxyEnabled ?? this.debugProxyEnabled,
   );
 }
 
@@ -99,6 +104,7 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
         PolicyEditorPageState(
           draft: draft?.copy(),
           connection: service.coordinator.state.value,
+          debugProxyEnabled: IOSDebugProxy().enabled,
         ),
       ) {
     service.coordinator.state.addListener(_connectionChanged);
@@ -111,6 +117,7 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
   bool get connected => state.connection.phase == ConnectionPhase.connected;
   bool get blocked => state.busy;
   bool get runtimeBusy => state.connection.busy;
+  bool get debugProxySupported => IOSDebugProxy().supported;
   Map<String, dynamic> get value => state.draft!.policy;
   Map<String, dynamic> group(String key) => value[key] as Map<String, dynamic>;
   List<String> strings(String groupName, String key) =>
@@ -120,6 +127,11 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
 
   String androidAppName(String packageName) =>
       state.androidAppNames[packageName] ?? packageName;
+
+  void setDebugProxyEnabled(bool enabled) {
+    IOSDebugProxy().enabled = enabled;
+    emit(state.copyWith(debugProxyEnabled: IOSDebugProxy().enabled));
+  }
 
   Future<void> loadAndroidAppNames() async {
     final apps = await AppHostApi().getInstalledApps();

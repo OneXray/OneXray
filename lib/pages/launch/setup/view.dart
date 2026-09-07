@@ -400,9 +400,11 @@ class SetupView extends StatelessWidget {
       const SizedBox(height: 28),
       _SetupRow(
         icon: LucideIcons.globe2,
-        title: state.region.isEmpty
-            ? l.prototypeChooseCountryRegion
-            : setupRegionLabel(l, state.region),
+        title: switch (state.regions) {
+          null => l.prototypeChooseCountryRegion,
+          [] => l.prototypeNoDirectRegions,
+          [final code, ...] => setupRegionLabel(l, code),
+        },
         busy: state.activeAction == SetupAction.chooseRegion,
         outlined: true,
         onTap: _action(SetupAction.chooseRegion),
@@ -540,7 +542,7 @@ class SetupView extends StatelessWidget {
       SetupActionButton(
         label: l.prototypeContinue,
         busy: state.activeAction == SetupAction.continueRegion,
-        onPressed: state.regionCodes.contains(state.region)
+        onPressed: state.regions?.every(state.regionCodes.contains) == true
             ? _action(SetupAction.continueRegion)
             : null,
       ),

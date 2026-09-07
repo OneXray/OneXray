@@ -144,16 +144,22 @@ void main() {
     expect(await service.currentStep(), SetupStep.complete);
   });
 
-  test('confirmed region persists before progress; skip preserves configuration and Raw activation', () async {
+  test('confirmed regions persist before progress; skip preserves configuration and Raw activation', () async {
     await setup.acceptPrivacy();
     await setup.continueSystem('');
     final expert = ConnectionConfiguration(
       connection: ConnectionSettings(expert: true, rawId: 7),
     );
     await db.connectionConfigDao.commit(configurationJson: expert.encode());
-    await setup.continueRegion('RU');
+    await expectLater(
+      setup.continueRegion(['RU', 'UNKNOWN']),
+      throwsA(isA<SetupFailure>()),
+    );
+    expect(await setup.currentStep(), SetupStep.region);
+    expect((await setup.configuration()).encode(), expert.encode());
+    await setup.continueRegion(['RU', 'CN']);
     final saved = await setup.configuration();
-    expect(saved.connection.smart.directRegions, ['RU']);
+    expect(saved.connection.smart.directRegions, ['RU', 'CN']);
     expect(saved.connection.expert, isTrue);
     expect(saved.connection.rawId, 7);
     expect(await setup.currentStep(), SetupStep.servers);
@@ -161,10 +167,15 @@ void main() {
     await setup.continueRegion(null);
     expect(writes, previousWrites);
     expect((await setup.configuration()).encode(), saved.encode());
+    await setup.continueRegion([]);
+    final cleared = await setup.configuration();
+    expect(cleared.connection.smart.directRegions, isEmpty);
+    expect(cleared.connection.expert, isTrue);
+    expect(cleared.connection.rawId, 7);
     expect(await preferences.readFirstRun(), isTrue);
     await setup.finish();
     expect(await setup.currentStep(), SetupStep.complete);
-    expect((await setup.configuration()).encode(), saved.encode());
+    expect((await setup.configuration()).encode(), cleared.encode());
   });
 
   test(
@@ -216,7 +227,7 @@ void main() {
 
       await direct.acceptPrivacy();
       await direct.continueSystem('');
-      await direct.continueRegion('RU');
+      await direct.continueRegion(['RU']);
 
       expect((await direct.configuration()).connection.smart.directRegions, [
         'RU',

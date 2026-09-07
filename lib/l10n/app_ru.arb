@@ -1,6 +1,7 @@
 {
   "@@locale": "ru",
-  "serverTestInProgress": "Проверка скорости уже выполняется. Дождитесь её завершения и повторите попытку.",
+  "iosDebugLocalProxy": "Только локальный прокси",
+  "iosDebugLocalProxyHint": "Применяется при следующем подключении. Отключается после перезапуска приложения.",
   "buttonRetry": "Повторить",
   "validationNameRequired": "Имя?",
   "validationNameDuplicate": "Дубликат имени",
