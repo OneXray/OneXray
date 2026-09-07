@@ -221,12 +221,9 @@ class ConnectController extends PageCubit<ConnectPageState> {
           }, onError: _readFailed),
         );
         _subscriptions.add(
-          (db.select(db.coreConfig)
-                ..where((row) => row.type.equals('outbound')))
-              .watch()
-              .listen((rows) {
-                servers = rows;
-              }, onError: _readFailed),
+          db.coreConfigDao.watchOutbounds().listen((rows) {
+            servers = rows;
+          }, onError: _readFailed),
         );
         _subscriptions.add(
           db.coreConfigDao.allRawRowsWithDataStream.listen((rows) {

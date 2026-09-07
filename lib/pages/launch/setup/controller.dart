@@ -89,6 +89,7 @@ class SetupPageState {
 class SetupController extends PageCubit<SetupPageState>
     with WidgetsBindingObserver {
   final SetupService service;
+  StreamSubscription<bool>? _serversSubscription;
 
   SetupController({SetupService? service})
     : service = service ?? SetupService(),
@@ -238,10 +239,44 @@ class SetupController extends PageCubit<SetupPageState>
       emit(state.copyWith(step: SetupStep.servers));
     }
     if (state.step == SetupStep.servers) {
-      final hasServers = await service.hasServers();
-      emit(state.copyWith(hasServers: hasServers));
-      if (hasServers) await _finish();
+      await _watchServers();
+      if (state.hasServers) await _finish();
     }
+  }
+
+  Future<void> _watchServers() async {
+    if (_serversSubscription != null || !isPageActive) return;
+    final first = Completer<void>();
+    _serversSubscription = service.watchHasServers().listen(
+      (hasServers) {
+        emit(state.copyWith(hasServers: hasServers));
+        if (!first.isCompleted) {
+          first.complete();
+        } else if (isPageActive &&
+            hasServers &&
+            !state.busy &&
+            state.step == SetupStep.servers &&
+            state.failure == null) {
+          unawaited(_perform(_finish));
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        unawaited(_serversSubscription?.cancel());
+        _serversSubscription = null;
+        if (!first.isCompleted) {
+          first.completeError(error, stackTrace);
+        }
+        emit(
+          state.copyWith(
+            step: SetupStep.system,
+            localReady: false,
+            hasServers: false,
+            failure: const SetupFailure('local'),
+          ),
+        );
+      },
+    );
+    await first.future;
   }
 
   Future<void> finish() => _perform(_finish);
@@ -297,7 +332,8 @@ class SetupController extends PageCubit<SetupPageState>
   }
 
   @override
-  void disposePageResources() {
+  Future<void> disposePageResources() async {
     WidgetsBinding.instance.removeObserver(this);
+    await _serversSubscription?.cancel();
   }
 }

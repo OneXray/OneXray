@@ -15,8 +15,6 @@ final _source = SubscriptionData(
   name: 'Example subscription',
   url: 'https://example.test/subscription',
   timestamp: DateTime(2026, 9, 1, 9, 42),
-  count: 99,
-  expanded: true,
 );
 
 CoreConfigData _server(int id, {int source = 0}) => CoreConfigData(
@@ -143,7 +141,6 @@ void main() {
     expect(find.byType(ServerSourcesDialog), findsNothing);
     expect(find.byType(SourceActionsMenu), findsOneWidget);
     expect(find.text(l.prototypeServerCount(2)), findsOneWidget);
-    expect(find.text(l.prototypeServerCount(99)), findsNothing);
     await tester.tap(find.byTooltip(l.prototypeCloseDialog));
     await tester.pumpAndSettle();
     expect(find.byType(ServerSourcesDialog), findsNothing);

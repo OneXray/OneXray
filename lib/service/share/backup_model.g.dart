@@ -54,9 +54,7 @@ BackupSubscriptionJson _$BackupSubscriptionJsonFromJson(
   json['ageSecretKey'] as String?,
   json['agePublicKey'] as String?,
   (json['timestamp'] as num?)?.toInt(),
-  json['expanded'] as bool?,
   id: (json['id'] as num?)?.toInt(),
-  count: (json['count'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$BackupSubscriptionJsonToJson(
@@ -68,8 +66,6 @@ Map<String, dynamic> _$BackupSubscriptionJsonToJson(
   'ageSecretKey': ?instance.ageSecretKey,
   'agePublicKey': ?instance.agePublicKey,
   'timestamp': ?instance.timestamp,
-  'expanded': ?instance.expanded,
-  'count': ?instance.count,
 };
 
 BackupGeoDataJson _$BackupGeoDataJsonFromJson(Map<String, dynamic> json) =>

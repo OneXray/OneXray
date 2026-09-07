@@ -276,7 +276,5 @@ SubscriptionData _subscription({
     ageSecretKey: ageSecretKey,
     agePublicKey: agePublicKey,
     timestamp: DateTime(2026),
-    count: 1,
-    expanded: true,
   );
 }

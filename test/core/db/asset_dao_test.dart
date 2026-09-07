@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,6 +41,53 @@ void main() {
       throwsArgumentError,
     );
     expect(await dao.allOutboundRowsWithDataBySubId(0), hasLength(1));
+  });
+
+  test(
+    'outbound UI stream follows inserts, probe ordering and deletions',
+    () async {
+      final dao = database.coreConfigDao;
+      final rows = StreamIterator(dao.watchOutbounds());
+      addTearDown(rows.cancel);
+      await rows.moveNext();
+      expect(rows.current, isEmpty);
+      await database.transaction(() async {
+        await dao.insertRow(_config('raw'));
+        await dao.insertRow(_config('setting'));
+        for (final delay in [300, 10, 100]) {
+          await dao.insertRow(
+            _config('outbound').copyWith(delay: Value(delay)),
+          );
+        }
+      });
+      await rows.moveNext();
+      expect(rows.current.map((row) => row.delay), [10, 100, 300]);
+      final slow = rows.current.last;
+      await dao.updateRow(slow.copyWith(delay: 0, favorite: true));
+      await rows.moveNext();
+      expect(rows.current.map((row) => row.delay), [0, 10, 100]);
+      expect(rows.current.first.id, slow.id);
+      expect(rows.current.first.favorite, isTrue);
+      await dao.deleteRow(slow);
+      await rows.moveNext();
+      expect(rows.current.map((row) => row.delay), [10, 100]);
+    },
+  );
+
+  test('node existence stream ignores Raw and missing data', () async {
+    final dao = database.coreConfigDao;
+    await dao.insertRow(_config('raw'));
+    await dao.insertRow(_config('outbound').copyWith(data: const Value(null)));
+    final exists = StreamIterator(dao.watchHasOutbounds());
+    addTearDown(exists.cancel);
+    await exists.moveNext();
+    expect(exists.current, isFalse);
+    final id = await dao.insertRow(_config('outbound'));
+    await exists.moveNext();
+    expect(exists.current, isTrue);
+    await dao.deleteRow((await dao.searchRow(id))!);
+    await exists.moveNext();
+    expect(exists.current, isFalse);
   });
 
   test(

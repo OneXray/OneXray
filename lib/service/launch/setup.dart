@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -144,14 +143,7 @@ class SetupService {
     await _preferences.saveSetupStep(SetupStep.servers.name);
   }
 
-  Future<bool> hasServers() async =>
-      (await (_db.select(_db.coreConfig)
-                ..where(
-                  (row) => row.type.equals('outbound') & row.data.isNotNull(),
-                )
-                ..limit(1))
-              .get())
-          .isNotEmpty;
+  Stream<bool> watchHasServers() => _db.coreConfigDao.watchHasOutbounds();
 
   Future<void> finish() async {
     if (await currentStep() != SetupStep.servers) {

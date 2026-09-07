@@ -228,6 +228,7 @@ class ServersController extends ConnectController {
                   (row) =>
                       row.id != finalExit && ServerAssetService.selectable(row),
                 )
+                .take(count)
                 .length >=
             count;
   }
@@ -383,18 +384,20 @@ class ServersController extends ConnectController {
       : l.prototypeAvailableLatency(row.delay);
 
   String summary(AppLocalizations l, ServerGroup group) {
-    final available = group.rows.where(ServerAssetService.selectable).length;
-    final delays =
-        group.rows
-            .where(ServerAssetService.selectable)
-            .where(ServerAssetService.healthy)
-            .map((row) => row.delay)
-            .toList()
-          ..sort();
+    var available = 0;
+    int? fastest;
+    for (final row in group.rows) {
+      if (!ServerAssetService.selectable(row)) continue;
+      available++;
+      if (ServerAssetService.healthy(row) &&
+          (fastest == null || row.delay < fastest)) {
+        fastest = row.delay;
+      }
+    }
     return l.prototypeGroupAvailability(
       available,
       group.rows.length,
-      delays.firstOrNull ?? '—',
+      fastest ?? '—',
     );
   }
 

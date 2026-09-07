@@ -56,18 +56,14 @@ class BackupSubscriptionJson {
   final String? ageSecretKey;
   final String? agePublicKey;
   final int? timestamp;
-  final bool? expanded;
-  final int? count;
 
   const BackupSubscriptionJson(
     this.name,
     this.url,
     this.ageSecretKey,
     this.agePublicKey,
-    this.timestamp,
-    this.expanded, {
+    this.timestamp, {
     this.id,
-    this.count,
   });
 
   factory BackupSubscriptionJson.fromJson(Map<String, dynamic> json) =>

@@ -12,8 +12,4 @@ class Subscription extends Table {
   TextColumn get agePublicKey => text().nullable()();
 
   DateTimeColumn get timestamp => dateTime()();
-
-  IntColumn get count => integer()();
-
-  BoolColumn get expanded => boolean()();
 }

@@ -75,6 +75,8 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(subscription, subscription.ageSecretKey);
         await migrator.addColumn(subscription, subscription.agePublicKey);
       }
+      await migrator.dropColumn(subscription, 'count');
+      await migrator.dropColumn(subscription, 'expanded');
       await migrator.addColumn(coreConfig, coreConfig.countryCode);
       await migrator.addColumn(coreConfig, coreConfig.favorite);
       await migrator.createTable(routingProfile);

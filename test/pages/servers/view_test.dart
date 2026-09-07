@@ -91,6 +91,7 @@ void main() {
     WidgetTester tester,
     double width, {
     Locale locale = const Locale('en'),
+    bool groupPage = false,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 900);
@@ -116,8 +117,14 @@ void main() {
                 child: ResponsiveContent(
                   child: BlocBuilder<_Controller, ConnectPageState>(
                     bloc: controller,
-                    builder: (context, _) =>
-                        ServerBrowser(controller: controller, scroll: scroll),
+                    builder: (context, _) => groupPage
+                        ? ServerGroupView(
+                            controller: controller,
+                            group: controller
+                                .groups(AppLocalizations.of(context)!)
+                                .first,
+                          )
+                        : ServerBrowser(controller: controller, scroll: scroll),
                   ),
                 ),
               ),
@@ -131,7 +138,7 @@ void main() {
 
   for (final locale in const [Locale('en'), Locale('ru'), Locale('fa')]) {
     testWidgets(
-      'desktop tabs use equal-width cards and one scroll surface: $locale',
+      'desktop tabs use equal-width cards and independent scrolls: $locale',
       (tester) async {
         await pumpBrowser(tester, 1160, locale: locale);
         final browser = find.byType(ServerBrowser);
@@ -148,7 +155,7 @@ void main() {
                   widget.axisDirection == AxisDirection.down,
             ),
           ),
-          findsOneWidget,
+          findsNWidgets(2),
         );
         expect(find.byType(ServerNodeRow), findsNWidgets(2));
         expect(
@@ -196,6 +203,82 @@ void main() {
     expect(controller.browsedOnMobile, isTrue);
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in [427.0, 900.0, 1160.0]) {
+    testWidgets('node lists build lazily and scroll independently at $width', (
+      tester,
+    ) async {
+      final mobile = width <= AppLayout.mobileBreakpoint;
+      controller.servers = [
+        for (var id = 1; id <= 200; id++) _server(id, 'JP'),
+        for (final (index, country) in [
+          'AR',
+          'AT',
+          'AU',
+          'BE',
+          'BR',
+          'CA',
+          'CH',
+          'DE',
+          'DK',
+          'ES',
+          'FI',
+          'FR',
+          'GB',
+          'HK',
+          'IE',
+          'IN',
+          'IT',
+          'KR',
+          'NL',
+          'SG',
+        ].indexed)
+          _server(201 + index, country),
+      ];
+      await pumpBrowser(tester, width, groupPage: mobile);
+      final group = find.byType(ServerGroupView);
+      final rows = find.descendant(
+        of: group,
+        matching: find.byType(ServerNodeRow),
+      );
+      final groupScroll = find.descendant(
+        of: group,
+        matching: find.byType(Scrollable),
+      );
+      final list = tester.widget<ListView>(
+        find.descendant(of: group, matching: find.byType(ListView)),
+      );
+      expect(list.childrenDelegate, isA<SliverChildBuilderDelegate>());
+      expect(list.shrinkWrap, isFalse);
+      expect(rows.evaluate().length, inInclusiveRange(1, 25));
+      expect(find.byKey(const ValueKey(200)), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey(200)),
+        1000,
+        scrollable: groupScroll,
+        maxScrolls: 40,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey(200)), findsOneWidget);
+      expect(rows.evaluate().length, lessThan(25));
+      final last = tester.widget<ServerNodeRow>(
+        find.byKey(const ValueKey(200)),
+      );
+      expect(last.showDivider, isFalse);
+      if (!mobile) {
+        expect(scroll.offset, 0);
+        final position = tester.state<ScrollableState>(groupScroll).position;
+        final offset = position.pixels;
+        expect(offset, greaterThan(0));
+        scroll.jumpTo(200);
+        await tester.pumpAndSettle();
+        expect(scroll.offset, 200);
+        expect(position.pixels, offset);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('empty server browser replaces browsing controls with actions', (
     tester,

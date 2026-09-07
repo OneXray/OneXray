@@ -63,9 +63,7 @@ final class BackupDatabaseContents {
                 row.ageSecretKey,
                 row.agePublicKey,
                 row.timestamp.millisecondsSinceEpoch,
-                row.expanded,
                 id: row.id,
-                count: row.count,
               ),
           ],
           geoDataList: [
@@ -106,7 +104,6 @@ final class BackupDatabaseContents {
       if (row.name == null ||
           row.url == null ||
           row.timestamp == null ||
-          row.expanded == null ||
           ((row.ageSecretKey == null) != (row.agePublicKey == null))) {
         throw const FormatException('Invalid backup subscription metadata');
       }
@@ -159,11 +156,6 @@ final class BackupDatabaseContents {
         throw const FormatException('Invalid backup node metadata');
       }
     }
-    for (final row in subscriptions) {
-      if (row.count == null || row.count! < 0) {
-        throw const FormatException('Invalid backup subscription counts');
-      }
-    }
   }
 
   /// Full replacement bypasses only the ordinary Raw creation limit.
@@ -185,8 +177,6 @@ final class BackupDatabaseContents {
             ageSecretKey: Value(row.ageSecretKey),
             agePublicKey: Value(row.agePublicKey),
             timestamp: DateTime.fromMillisecondsSinceEpoch(row.timestamp!),
-            count: _isCurrent ? row.count! : 0,
-            expanded: row.expanded!,
           ),
         );
       }

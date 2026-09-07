@@ -35,8 +35,6 @@ void main() {
         ageSecretKey: const Value('AGE-SECRET-KEY-1PRIVATE'),
         agePublicKey: const Value('age1public'),
         timestamp: DateTime(2026, 9, 1),
-        count: 2,
-        expanded: true,
       ),
     );
     controller = ShareController(

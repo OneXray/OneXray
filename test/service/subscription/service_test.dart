@@ -113,8 +113,6 @@ void main() {
             name: entry.key,
             url: 'https://example.com/${Uri.encodeComponent(entry.key)}',
             timestamp: now.subtract(entry.value),
-            count: 0,
-            expanded: false,
           ),
         );
       }
@@ -176,7 +174,7 @@ void main() {
   });
 
   test(
-    'nonempty import reports recognition failures without persisting them',
+    'nonempty import reports usable and failed counts without persisting them',
     () async {
       final imported = _node('Imported');
       final pings = <int>[];
@@ -198,7 +196,8 @@ void main() {
       expect(result.count, 1);
       expect(result.parseFailureCount, 4);
       final source = (await database.subscriptionDao.allRows).single;
-      expect(source.count, 1);
+      expect(source.toJson(), isNot(contains('count')));
+      expect(source.toJson(), isNot(contains('expanded')));
       expect(source.toJson(), isNot(contains('parseFailureCount')));
       final row = (await database.coreConfigDao.allOutboundRowsWithDataBySubId(
         source.id,
@@ -262,8 +261,7 @@ void main() {
         hasLength(7),
       );
       final updated = (await database.subscriptionDao.searchRow(source.id))!;
-      expect(updated.count, 2);
-      expect(updated.expanded, source.expanded);
+      expect(updated.timestamp.isAfter(source.timestamp), isTrue);
       expect(updated.ageSecretKey, source.ageSecretKey);
       expect(updated.agePublicKey, source.agePublicKey);
 
@@ -300,7 +298,7 @@ void main() {
   );
 
   test(
-    'empty or failed results leave nodes, source settings and counts intact',
+    'empty or failed results leave nodes and source metadata intact',
     () async {
       final source = await _source(database);
       final nodeId = await database.coreConfigDao.insertRow(
@@ -626,8 +624,6 @@ Future<SubscriptionData> _source(AppDatabase database) async {
       ageSecretKey: const Value('old-secret'),
       agePublicKey: const Value('old-public'),
       timestamp: DateTime.utc(2024),
-      count: 1,
-      expanded: false,
     ),
   );
   return (await database.subscriptionDao.searchRow(id))!;

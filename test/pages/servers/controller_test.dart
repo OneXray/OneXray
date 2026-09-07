@@ -107,16 +107,12 @@ void main() {
         name: 'Used source',
         url: 'https://example.test/used',
         timestamp: DateTime(2026, 9, 4),
-        count: 1,
-        expanded: true,
       ),
       SubscriptionData(
         id: 5,
         name: 'Empty source',
         url: 'https://example.test/empty',
         timestamp: DateTime(2026, 9, 4),
-        count: 0,
-        expanded: true,
       ),
     ];
 
@@ -154,6 +150,24 @@ void main() {
       isNull,
     );
   });
+
+  test(
+    'group summary counts eligible nodes and keeps the fastest zero delay',
+    () async {
+      final row = await server('one');
+      controller.servers = [
+        row.copyWith(delay: 500),
+        row.copyWith(delay: PingDelayConstants.unknown),
+        row.copyWith(delay: PingDelayConstants.error),
+        row.copyWith(delay: 0),
+        row.copyWith(delay: 20),
+      ];
+      expect(
+        controller.summary(l, controller.groups(l).single),
+        l.prototypeGroupAvailability(4, 5, 0),
+      );
+    },
+  );
 
   test('Use N follows normal route and excludes final exit, not the current fixed selection', () async {
     final one = await server('one');

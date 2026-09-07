@@ -46,7 +46,6 @@ void main() {
       expect(cached.delay, PingDelayConstants.unknown);
       final subscription = (await database.subscriptionDao.allRows).single;
       expect(subscription.id, 7);
-      expect(subscription.count, 1);
       expect(subscription.ageSecretKey, 'AGE-SECRET-KEY-TEST');
       expect(subscription.agePublicKey, 'age1test');
       final routingProfile = (await database.routingProfileDao.allRows).single;
@@ -88,7 +87,6 @@ void main() {
             version == 4 ? 'AGE-SECRET-KEY-TEST' : null,
             version == 4 ? 'age1test' : null,
             1000,
-            true,
           ),
         ],
         geoDataList: const [],
@@ -105,7 +103,7 @@ void main() {
       ]);
       expect(raw.every((row) => row.subId == 0 && !row.favorite), isTrue);
       expect(raw.every((row) => row.countryCode == null), isTrue);
-      expect(subscriptions.single.count, 0);
+      expect(subscriptions.single.name, 'Legacy subscription');
       expect(
         subscriptions.single.ageSecretKey,
         version == 4 ? 'AGE-SECRET-KEY-TEST' : null,
@@ -223,7 +221,6 @@ void main() {
           'secret',
           null,
           1,
-          true,
         ),
       ],
       geoDataList: const [],
@@ -320,8 +317,6 @@ Future<void> _seedAssets(AppDatabase database) async {
       ageSecretKey: const Value('AGE-SECRET-KEY-TEST'),
       agePublicKey: const Value('age1test'),
       timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
-      count: 1,
-      expanded: true,
     ),
   );
   for (final id in [1, 2, 30, 31, 32, 33, 99]) {

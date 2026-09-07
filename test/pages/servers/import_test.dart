@@ -329,8 +329,6 @@ void main() {
         ageSecretKey: 'secret',
         agePublicKey: 'public',
         timestamp: DateTime(2026),
-        count: 2,
-        expanded: true,
       ),
       validateSubscription: (_, id) async {
         expect(id, 7);
@@ -436,8 +434,6 @@ void main() {
           name: 'Provider',
           url: 'https://provider.example/list',
           timestamp: DateTime(2026),
-          count: 2,
-          expanded: true,
         ),
       );
       await pending;

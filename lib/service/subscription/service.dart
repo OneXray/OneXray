@@ -215,8 +215,6 @@ class SubscriptionService {
           ageSecretKey: Value(input.normalizedAgeSecretKey),
           agePublicKey: Value(input.normalizedAgePublicKey),
           timestamp: DateTime.now(),
-          count: rows.length,
-          expanded: true,
         );
         final nextSubId = await db.subscriptionDao.insertRow(row);
         if (nextSubId <= DBConstants.defaultId) {
@@ -564,7 +562,6 @@ class SubscriptionService {
             ? const Value.absent()
             : Value(editedInput.normalizedAgePublicKey),
         timestamp: DateTime.now(),
-        count: count,
       );
       _ensureCurrent(expected.id, generation);
       if (!await db.subscriptionDao.updateRow(updated)) {

@@ -130,7 +130,7 @@ void main() {
           ),
         );
       }
-      expect(await setup.hasServers(), isFalse);
+      expect(await setup.watchHasServers().first, isFalse);
       await db.coreConfigDao.insertRow(
         CoreConfigCompanion.insert(
           name: 'Unmeasured server',
@@ -143,7 +143,7 @@ void main() {
           ),
         ),
       );
-      expect(await setup.hasServers(), isTrue);
+      expect(await setup.watchHasServers().first, isTrue);
     },
   );
 

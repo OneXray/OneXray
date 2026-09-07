@@ -24,6 +24,25 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(table) => OrderingTerm.asc(table.id)]))
           .watch();
 
+  Stream<List<CoreConfigData>> watchOutbounds() =>
+      (select(coreConfig)
+            ..where((row) => row.type.equals(CoreConfigType.outbound.name))
+            ..orderBy([(row) => OrderingTerm.asc(row.delay)]))
+          .watch();
+
+  Stream<bool> watchHasOutbounds() =>
+      (selectOnly(coreConfig)
+            ..addColumns([coreConfig.id])
+            ..where(
+              coreConfig.type.equals(CoreConfigType.outbound.name) &
+                  coreConfig.data.isNotNull(),
+            )
+            ..orderBy([OrderingTerm.asc(coreConfig.delay)])
+            ..limit(1))
+          .watch()
+          .map((rows) => rows.isNotEmpty)
+          .distinct();
+
   Future<List<CoreConfigData>> allOutboundRowsWithDataBySubId(
     int subId,
   ) async =>
@@ -111,7 +130,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     final res = await (delete(
       coreConfig,
     )..where((tbl) => tbl.id.equals(entry.id))).go();
-    // Subscription.count records the last successful import, not retained rows.
     notifyUpdates({TableUpdate.onTable(coreConfig, kind: UpdateKind.delete)});
     return res;
   }

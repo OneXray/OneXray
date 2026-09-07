@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,6 +85,25 @@ void main() {
       expect(service.savedRegion, isNull);
       await controller.finish();
       expect(controller.state.step, SetupStep.complete);
+    },
+  );
+
+  test(
+    'nodes added outside the setup action automatically finish setup',
+    () async {
+      final service = _SetupService()
+        ..step = SetupStep.servers
+        ..granted = true;
+      final controller = SetupController(service: service);
+      addTearDown(controller.close);
+      await _idle(controller);
+      expect(controller.state.step, SetupStep.servers);
+      final completed = controller.stream.firstWhere(
+        (state) => state.step == SetupStep.complete && !state.busy,
+      );
+      service.hasNodes = true;
+      await completed;
+      expect(service.finishes, 1);
     },
   );
 
@@ -262,11 +283,19 @@ Future<void> _idle(SetupController controller) async {
 
 // Controller checks only. Real persistence and preflight are covered by setup_test.
 class _SetupService extends SetupService {
-  _SetupService({super.platform = ConnectionPlatform.ios});
+  _SetupService({super.platform = ConnectionPlatform.ios}) {
+    addTearDown(_nodes.close);
+  }
   SetupStep step = SetupStep.welcome;
   bool granted = false;
   bool localFailure = false;
-  bool hasNodes = false;
+  final _nodes = StreamController<bool>.broadcast(sync: true);
+  bool _hasNodes = false;
+  set hasNodes(bool value) {
+    _hasNodes = value;
+    _nodes.add(value);
+  }
+
   String? suggestedRegion = 'RU';
   String? savedRegion;
   String? savedInterface;
@@ -330,7 +359,11 @@ class _SetupService extends SetupService {
   }
 
   @override
-  Future<bool> hasServers() async => hasNodes;
+  Stream<bool> watchHasServers() {
+    scheduleMicrotask(() => _nodes.add(_hasNodes));
+    return _nodes.stream;
+  }
+
   @override
   Future<void> finish() async {
     finishes++;

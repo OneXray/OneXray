@@ -18,7 +18,6 @@ void main() {
     expect(subscription.ageSecretKey, isNull);
     expect(subscription.agePublicKey, isNull);
     expect(subscription.id, isNull);
-    expect(subscription.count, isNull);
   });
 
   test(
@@ -54,11 +53,11 @@ void main() {
         'secret',
         'public',
         1000,
-        true,
         id: 7,
-        count: 1,
       );
       expect(subscription.toJson(), isNot(contains('autoUpdate')));
+      expect(subscription.toJson(), isNot(contains('count')));
+      expect(subscription.toJson(), isNot(contains('expanded')));
       expect(
         BackupSubscriptionJson.fromJson(subscription.toJson()).toJson(),
         subscription.toJson(),
@@ -73,7 +72,6 @@ void main() {
       'AGE-SECRET-KEY-1TEST',
       'age1test',
       1,
-      true,
     );
 
     expect(

@@ -42,8 +42,9 @@ class ServerBrowser extends StatelessWidget {
       return _mobileBrowser(context, groups, favorites);
     }
     final active = _activeGroup(groups);
-    return SingleChildScrollView(
-      controller: scroll,
+    final compact =
+        MediaQuery.sizeOf(context).width <= AppLayout.compactDesktopBreakpoint;
+    return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.page,
         AppSpacing.desktopPageTop,
@@ -55,52 +56,44 @@ class ServerBrowser extends StatelessWidget {
         children: [
           _search(context),
           const SizedBox(height: 15),
-          if (MediaQuery.sizeOf(context).width <=
-              AppLayout.compactDesktopBreakpoint)
-            Column(
+          Expanded(
+            child: Flex(
+              direction: compact ? Axis.vertical : Axis.horizontal,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _locationList(context, groups, favorites),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scroll,
+                    child: _locationList(context, groups, favorites),
+                  ),
+                ),
                 if (active != null) ...[
-                  const SizedBox(height: 16),
-                  ServerGroupView(
-                    controller: controller,
-                    group: active,
-                    embedded: true,
+                  SizedBox(width: compact ? 0 : 16, height: compact ? 16 : 0),
+                  Expanded(
+                    child: ServerGroupView(
+                      controller: controller,
+                      group: active,
+                      embedded: true,
+                    ),
                   ),
                 ],
               ],
-            )
-          else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _locationList(context, groups, favorites)),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: active == null
-                      ? const SizedBox.shrink()
-                      : ServerGroupView(
-                          controller: controller,
-                          group: active,
-                          embedded: true,
-                        ),
-                ),
-              ],
             ),
+          ),
         ],
       ),
     );
   }
 
-  ServerGroup? _activeGroup(List<ServerGroup> groups) =>
-      groups
-          .where((group) => group.id == controller.activeGroupId)
-          .firstOrNull ??
-      groups
-          .where((group) => group.id == controller.currentGroupId)
-          .firstOrNull ??
-      groups.firstOrNull;
+  ServerGroup? _activeGroup(List<ServerGroup> groups) {
+    final active = groups
+        .where((group) => group.id == controller.activeGroupId)
+        .firstOrNull;
+    if (active != null) return active;
+    final currentId = controller.currentGroupId;
+    return groups.where((group) => group.id == currentId).firstOrNull ??
+        groups.firstOrNull;
+  }
 
   Widget _mobileBrowser(
     BuildContext context,
@@ -551,8 +544,7 @@ class ServerGroupView extends StatelessWidget {
     if (embedded) {
       return card;
     }
-    return ListView(
-      key: PageStorageKey('servers:${group.id}'),
+    return Padding(
       padding: mobile
           ? const EdgeInsets.fromLTRB(15, 13, 15, 22)
           : const EdgeInsets.fromLTRB(
@@ -561,7 +553,7 @@ class ServerGroupView extends StatelessWidget {
               AppSpacing.page,
               AppSpacing.desktopPageBottom,
             ),
-      children: [card],
+      child: card,
     );
   }
 
@@ -577,44 +569,53 @@ class ServerGroupView extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(1),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              constraints: BoxConstraints(minHeight: mobile ? 0 : 88),
-              padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: palette.border)),
-              ),
-              child: mobile
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _heading(context, mobile),
-                        const SizedBox(height: 12),
-                        _actions(context, mobile),
-                      ],
-                    )
-                  : LayoutBuilder(
-                      builder: (context, constraints) => Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 12,
-                        runSpacing: 12,
+        child: ListView.builder(
+          key: PageStorageKey('servers:${group.id}'),
+          primary: !embedded,
+          padding: EdgeInsets.zero,
+          itemCount:
+              1 + (group.visibleRows.isEmpty ? 1 : group.visibleRows.length),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Container(
+                constraints: BoxConstraints(minHeight: mobile ? 0 : 88),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 17,
+                  vertical: 15,
+                ),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: palette.border)),
+                ),
+                child: mobile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: constraints.maxWidth,
-                            ),
-                            child: _heading(context, mobile),
-                          ),
+                          _heading(context, mobile),
+                          const SizedBox(height: 12),
                           _actions(context, mobile),
                         ],
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) => Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth,
+                              ),
+                              child: _heading(context, mobile),
+                            ),
+                            _actions(context, mobile),
+                          ],
+                        ),
                       ),
-                    ),
-            ),
-            if (group.visibleRows.isEmpty)
-              Padding(
+              );
+            }
+            if (group.visibleRows.isEmpty) {
+              return Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
                   vertical: 28,
@@ -626,17 +627,19 @@ class ServerGroupView extends StatelessWidget {
                     color: palette.mutedForeground,
                   ),
                 ),
-              ),
-            for (final row in group.visibleRows)
-              ServerNodeRow(
-                controller: controller,
-                row: row,
-                detail: group.country != null
-                    ? controller.sourceName(l, row)
-                    : controller.countryName(l, row.countryCode),
-                showDivider: row != group.visibleRows.last,
-              ),
-          ],
+              );
+            }
+            final row = group.visibleRows[index - 1];
+            return ServerNodeRow(
+              key: ValueKey(row.id),
+              controller: controller,
+              row: row,
+              detail: group.country != null
+                  ? controller.sourceName(l, row)
+                  : controller.countryName(l, row.countryCode),
+              showDivider: index != group.visibleRows.length,
+            );
+          },
         ),
       ),
     );

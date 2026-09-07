@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +21,99 @@ import 'package:onexray/service/connection/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  test(
+    'all node-list controllers react to database changes in delay order',
+    () async {
+      final coordinator = _Coordinator();
+      final db = coordinator.db;
+      final controllers = <ConnectController>[
+        ConnectController(database: db, coordinator: coordinator),
+        ServersController(database: db, coordinator: coordinator),
+        ServerExitPickerController(
+          const ServerExitPickerParams(),
+          database: db,
+          coordinator: coordinator,
+        ),
+      ];
+      addTearDown(() async {
+        for (final controller in controllers) {
+          await controller.close();
+        }
+        coordinator.dispose();
+        await db.close();
+      });
+      for (final controller in controllers) {
+        await controller.initialize();
+      }
+      final inserted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.servers.length == 2),
+      ]);
+      await db.transaction(() async {
+        for (final delay in [300, 10]) {
+          await db.coreConfigDao.insertAssetRow(
+            CoreConfigCompanion.insert(
+              name: 'Node $delay',
+              type: 'outbound',
+              tags: '',
+              delay: delay,
+              subId: 0,
+            ),
+          );
+        }
+      });
+      await inserted;
+      for (final controller in controllers) {
+        expect(controller.servers.map((row) => row.delay), [10, 300]);
+      }
+      final slow = controllers.first.servers.last;
+      final reordered = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere(
+            (state) => state.servers.first.delay == 0,
+          ),
+      ]);
+      await db.coreConfigDao.updateRow(slow.copyWith(delay: 0, favorite: true));
+      await reordered;
+      for (final controller in controllers) {
+        expect(controller.servers.map((row) => row.delay), [0, 10]);
+        expect(controller.servers.first.favorite, isTrue);
+      }
+      final deleted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.servers.length == 1),
+      ]);
+      await db.coreConfigDao.deleteRow(slow);
+      await deleted;
+      expect(
+        controllers.every(
+          (controller) => controller.servers.single.delay == 10,
+        ),
+        isTrue,
+      );
+
+      final rawInserted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.raws.length == 1),
+      ]);
+      await db.coreConfigDao.insertAssetRow(
+        CoreConfigCompanion.insert(
+          name: 'Raw',
+          type: 'raw',
+          tags: '',
+          delay: 0,
+          subId: 0,
+          data: const Value('e30='),
+        ),
+      );
+      await rawInserted;
+      expect(
+        controllers.every((controller) => controller.servers.length == 1),
+        isTrue,
+      );
+    },
+  );
+
   testWidgets(
     'connection labels use configured counts and only the running node probe',
     (tester) async {

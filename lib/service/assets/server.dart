@@ -66,9 +66,7 @@ class ServerAssetService {
        _validate = validate ?? AppHostApi().testXray,
        _schedule = schedule ?? PingService().schedulePingConfigIds;
 
-  Stream<List<CoreConfigData>> watch() => (db.select(
-    db.coreConfig,
-  )..where((row) => row.type.equals('outbound'))).watch();
+  Stream<List<CoreConfigData>> watch() => db.coreConfigDao.watchOutbounds();
 
   Future<List<CoreConfigData>> rows() => (db.select(
     db.coreConfig,

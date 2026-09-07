@@ -48,12 +48,8 @@ class ConnectionResolver {
   }) : _rows = rows ?? _databaseRows,
        _probe = probe ?? PingService().pingConfigIds;
 
-  static Stream<List<CoreConfigData>> _databaseRows() {
-    final db = AppDatabase();
-    return (db.select(
-      db.coreConfig,
-    )..where((row) => row.type.equals('outbound'))).watch();
-  }
+  static Stream<List<CoreConfigData>> _databaseRows() =>
+      AppDatabase().coreConfigDao.watchOutbounds();
 
   /// Cancellation ends only this wait. Already scheduled probes keep updating
   /// candidate caches and cannot change resolved inputs or a running VPN.
