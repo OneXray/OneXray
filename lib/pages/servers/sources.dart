@@ -8,9 +8,9 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/pages/widget/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
 
 class ServerSourcesDialog extends StatelessWidget {
   const ServerSourcesDialog({super.key, required this.controller});

@@ -39,9 +39,9 @@ Age 订阅的 OneXray App Link 只包含算法类型，不携带公钥或私钥�
 
 ## 主要实现入口
 
-- 数据合同与错误状态：`lib/service/subscription/model.dart`
-- 下载和事务替换：`lib/service/subscription/service.dart`
+- 数据合同与错误状态：`lib/service/servers/subscription/model.dart`
+- 下载和事务替换：`lib/service/servers/subscription/service.dart`
 - 请求头与网络行为：`lib/core/network/`
-- App Link：`lib/service/share/app_link_parser.dart`、`app_link_generator.dart`、`app_link_importer.dart`
-- 备份：`lib/service/share/backup.dart`
+- App Link：`lib/service/shared/share/app_link_parser.dart`、`app_link_generator.dart`；导入由 `lib/service/servers/import.dart` 处理。
+- 备份：`lib/service/settings/backup/backup.dart`
 - libXray 调用边界：`lib/core/pigeon/host_api.dart`

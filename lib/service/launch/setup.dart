@@ -4,14 +4,14 @@ import 'dart:io';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/service/connection/platform_policy.dart';
-import 'package:onexray/service/connection/platform_requirements.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/geo_data/service.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/connect/platform_requirements.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/launch/storage_preparation.dart';
-import 'package:onexray/service/routing/geodata_suggestions.dart';
-import 'package:onexray/service/tun_settings/interface.dart';
+import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
+import 'package:onexray/service/advanced/tunnel/interface.dart';
 
 enum SetupStep { welcome, system, region, servers, complete }
 

@@ -9,11 +9,11 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
 import 'package:onexray/pages/servers/controller.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/routing/custom_service.dart';
-import 'package:onexray/service/xray/outbound/state_db.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/routing/custom/service.dart';
+import 'package:onexray/service/servers/outbound/state_db.dart';
 
 void main() {
   late AppDatabase db;

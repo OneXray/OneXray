@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/app_update/service.dart';
-import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 enum AppUpdateDialogAction { skip }

@@ -6,20 +6,20 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
-import 'package:onexray/pages/subscriptions/widget/form_view.dart';
+import 'package:onexray/pages/servers/subscription/form_view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/pages/widget/app_activity.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/pages/widget/outbound_json_editor.dart';
-import 'package:onexray/service/assets/import.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/outbound_json_editor.dart';
+import 'package:onexray/service/servers/import.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 export 'controller.dart' show ServerImportAction;
 
-export 'package:onexray/service/assets/import.dart' show ServerImportResult;
+export 'package:onexray/service/servers/import.dart' show ServerImportResult;
 
 Future<void> openServerImportAction(
   BuildContext context,

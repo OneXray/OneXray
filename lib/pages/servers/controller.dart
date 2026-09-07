@@ -6,21 +6,21 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
-import 'package:onexray/pages/home/share/params.dart';
+import 'package:onexray/pages/shared/share/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
-import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/sources.dart';
-import 'package:onexray/pages/subscriptions/edit/params.dart';
+import 'package:onexray/pages/servers/subscription/params.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/service/assets/server.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/subscription/service.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/service/servers/server.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/servers/subscription/service.dart';
 
 enum ServerGrouping { subscription, location }
 

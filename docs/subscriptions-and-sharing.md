@@ -56,9 +56,9 @@ manifest 收敛。连接准备和启动不复制这些资产。Raw 保留用户�
 
 ## 实现入口
 
-- 新导入：`lib/service/assets/import.dart`、`lib/pages/servers/import/`
-- 订阅：`lib/service/subscription/`
-- 标准解析：`lib/service/share/xray_share_reader.dart`
-- 链接：`lib/service/share/app_link_parser.dart`、`app_link_generator.dart`
-- Raw/Custom 交换：`lib/service/share/configuration_transfer.dart`
-- 节点/订阅分享页：`lib/pages/home/share/`
+- 新导入：`lib/service/servers/import.dart`、`lib/pages/servers/import/`
+- 订阅：`lib/service/servers/subscription/`
+- 标准解析：`lib/service/shared/share/xray_share_reader.dart`
+- 链接：`lib/service/shared/share/app_link_parser.dart`、`app_link_generator.dart`
+- Raw/Custom 交换：`lib/service/shared/share/configuration_transfer.dart`
+- 节点/订阅分享页：`lib/pages/shared/share/`

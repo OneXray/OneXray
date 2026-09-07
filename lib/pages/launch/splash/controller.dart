@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/pages/launch/route.dart';
 import 'package:onexray/service/launch/bootstrap.dart';
-import 'package:onexray/service/app_startup/service.dart';
+import 'package:onexray/service/launch/app_startup.dart';
 
 class SplashPageState {
   final String? route;

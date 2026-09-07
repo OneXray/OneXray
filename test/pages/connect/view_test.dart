@@ -7,12 +7,12 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/json_editor.dart';
-import 'package:onexray/pages/widget/page_action_bar.dart';
-import 'package:onexray/pages/widget/page_empty_state.dart';
+import 'package:onexray/pages/shared/widgets/json_editor.dart';
+import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
+import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/traffic_accounting.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/traffic_accounting.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {

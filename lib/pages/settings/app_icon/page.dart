@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/gen/assets.gen.dart';
@@ -8,8 +8,8 @@ import 'package:onexray/pages/settings/app_icon/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
-import 'package:onexray/pages/widget/page_action_bar.dart';
+import 'package:onexray/pages/shared/widgets/settings_page.dart';
+import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AppIconPage extends StatelessWidget {

@@ -16,14 +16,14 @@ import 'package:onexray/pages/servers/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/page_empty_state.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/ping/batch.dart';
-import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/xray/outbound/state_db.dart';
+import 'package:onexray/pages/shared/widgets/responsive_content.dart';
+import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/ping/batch.dart';
+import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/servers/outbound/state_db.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 // ignore: depend_on_referenced_packages

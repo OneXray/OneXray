@@ -13,11 +13,11 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/connection/compiler.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/connect/compiler.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -481,7 +481,7 @@ void main() {
 }
 
 /// Exercises the controller's result handling; native transaction
-/// behavior is covered by service/connection/coordinator_test.dart.
+/// behavior is covered by service/connect/coordinator_test.dart.
 class _Coordinator extends ConnectionCoordinator {
   _Coordinator({this.fail = false})
     : super(database: AppDatabase.forTesting(NativeDatabase.memory())) {

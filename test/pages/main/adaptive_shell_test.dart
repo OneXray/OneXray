@@ -10,9 +10,9 @@ import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/service/app_update/service.dart';
-import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 
 void main() {
   test('primary destinations use product names and URLs', () {

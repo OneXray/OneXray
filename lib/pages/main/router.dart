@@ -4,10 +4,10 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/event_bus/state.dart';
-import 'package:onexray/service/event_bus/enum.dart';
-import 'package:onexray/service/localizations/locale.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/event_bus/state.dart';
+import 'package:onexray/service/shared/event_bus/enum.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class GoRouteApp extends StatelessWidget {

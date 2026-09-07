@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/policy_editor.dart';
-import 'package:onexray/service/connection/platform_policy.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/tun_settings/interface.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/advanced/policy_editor.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/advanced/tunnel/interface.dart';
 
 enum TunnelDestination { apple, android, windows, interface }
 

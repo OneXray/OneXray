@@ -4,8 +4,8 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/main/router.dart';
-import 'package:onexray/service/app_startup/service.dart';
-import 'package:onexray/service/share/service.dart';
+import 'package:onexray/service/launch/app_startup.dart';
+import 'package:onexray/service/shared/share/service.dart';
 import 'package:window_manager/window_manager.dart';
 
 const _desktopWindowSize = Size(1160, 720);

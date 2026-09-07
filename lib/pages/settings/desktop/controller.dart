@@ -6,9 +6,9 @@ import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/app_startup/service.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/launch/app_startup.dart';
 import 'package:window_manager/window_manager.dart';
 
 class DesktopSettingsPageState {

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/theme/controller.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
-import 'package:onexray/service/event_bus/enum.dart';
+import 'package:onexray/pages/shared/widgets/setting_row.dart';
+import 'package:onexray/pages/shared/widgets/settings_page.dart';
+import 'package:onexray/service/shared/event_bus/enum.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class ThemePage extends StatelessWidget {

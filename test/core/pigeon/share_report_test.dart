@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/service/share/xray_share_reader.dart';
+import 'package:onexray/service/shared/share/xray_share_reader.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

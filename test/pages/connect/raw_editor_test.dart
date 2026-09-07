@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/raw_editor/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/json_editor.dart';
-import 'package:onexray/service/assets/raw_editor.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/geo_data/model.dart';
+import 'package:onexray/pages/shared/widgets/json_editor.dart';
+import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {

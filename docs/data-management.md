@@ -110,8 +110,8 @@ ZIP 未加密，可能包含节点凭据、订阅 URL 与 Age 私钥，必须提
 ## 实现入口
 
 - 启动存储准备与缺库信号：`lib/service/launch/storage_preparation.dart`
-- 升级与维护门：`lib/service/maintenance/`
-- 数据发布：`lib/service/geo_data/service.dart`
-- 更新：`lib/service/background_task/service.dart`、`lib/service/data_update/service.dart`
-- ZIP：`lib/service/share/backup.dart`、`backup_archive.dart`、`backup_database.dart`
-- 清理：`lib/service/data_cleanup/`
+- 升级与维护门：`lib/service/shared/maintenance/`
+- 数据发布：`lib/service/advanced/xray/geodata/service.dart`
+- 更新：`lib/service/advanced/xray/data_update/scheduler.dart`、`lib/service/advanced/xray/data_update/service.dart`
+- ZIP：`lib/service/settings/backup/backup.dart`、`backup_archive.dart`、`backup_database.dart`
+- 清理：`lib/service/settings/data_cleanup.dart`

@@ -184,8 +184,8 @@ App 在 `traffic-totals.json` 中只保存设备累计、一个会话的消费�
 
 ## 实现入口
 
-- 编译、选择与运行：`lib/service/connection/`
-- 自定义模板与地区：`lib/service/routing/`
-- 节点映射及兼容：`lib/service/xray/outbound/map.dart`、`state_db.dart`
-- Raw 存储与边界：`lib/service/xray/raw/db.dart`、`validator.dart`
+- 编译、选择与运行：`lib/service/connect/`
+- 自定义模板与地区：`lib/service/connect/routing/`
+- 节点映射及兼容：`lib/service/servers/outbound/map.dart`、`state_db.dart`
+- Raw 存储与边界：`lib/service/connect/raw/db.dart`、`validator.dart`
 - 订阅与分享：[交换合同](subscriptions-and-sharing.md)；升级与恢复：[数据管理](data-management.md)

@@ -1,14 +1,14 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/sources.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connect/coordinator.dart';
 
 const _open = Key('open-sources');
 final _source = SubscriptionData(

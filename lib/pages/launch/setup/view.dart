@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/pages/widget/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/setup/controller.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';

@@ -8,8 +8,8 @@ import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/page.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/pages/shared/widgets/setting_row.dart';
+import 'package:onexray/pages/shared/widgets/settings_page.dart';
 
 class AdvancedPage extends StatelessWidget {
   final WidgetBuilder? xrayBuilder;

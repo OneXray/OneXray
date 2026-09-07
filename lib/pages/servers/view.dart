@@ -7,10 +7,10 @@ import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/pages/widget/app_activity.dart';
-import 'package:onexray/pages/widget/page_empty_state.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
+import 'package:onexray/service/connect/settings.dart';
 
 class ServerBrowser extends StatelessWidget {
   final ServersController controller;

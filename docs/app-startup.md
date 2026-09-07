@@ -86,13 +86,13 @@ App 在 XDG autostart 目录管理 `net.yuandev.onexray.desktop`。优先使用 
 
 ## 主要实现入口
 
-- 启动编排：`lib/service/app_startup/service.dart`
+- 启动编排：`lib/service/launch/app_startup.dart`
 - 平台分发：`lib/core/desktop_startup/`
 - 隐私与首次初始化路由：`lib/service/launch/bootstrap.dart`、`lib/pages/launch/`
 - 正常服务初始化：`lib/service/manager.dart`
 - 偏好：`lib/core/constants/preferences.dart`
 - 存储准备：`lib/service/launch/storage_preparation.dart`
 - 首次初始化：`lib/service/launch/setup.dart`
-- 平台前置条件与权限：`lib/service/connection/platform_requirements.dart`
-- 连接协调：`lib/service/connection/coordinator.dart`
-- 系统 GeoData：`lib/service/geo_data/service.dart`
+- 平台前置条件与权限：`lib/service/connect/platform_requirements.dart`
+- 连接协调：`lib/service/connect/coordinator.dart`
+- 系统 GeoData：`lib/service/advanced/xray/geodata/service.dart`

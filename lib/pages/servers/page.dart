@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:onexray/pages/widget/app_activity.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
@@ -11,7 +11,7 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/shared/widgets/responsive_content.dart';
 
 class ServersPage extends StatefulWidget {
   const ServersPage({super.key});

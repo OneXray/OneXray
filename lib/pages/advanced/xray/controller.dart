@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/controller.dart';
-import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
-import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/platform_policy.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/ping/state.dart';
-import 'package:onexray/service/xray/runtime_files.dart';
-import 'package:onexray/service/xray/runtime_settings.dart';
+import 'package:onexray/pages/advanced/xray/config/params.dart';
+import 'package:onexray/pages/advanced/xray/log/params.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/shared/ping/state.dart';
+import 'package:onexray/service/advanced/xray/runtime_files.dart';
+import 'package:onexray/service/advanced/xray/log_policy.dart';
 
 const _notProvided = Object();
 

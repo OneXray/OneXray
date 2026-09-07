@@ -5,7 +5,7 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 
 const _open = Key('open-server-menu');
 const _size = Size(390, 844);

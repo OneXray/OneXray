@@ -6,7 +6,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/main/page_visibility.dart';
-import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connect/coordinator.dart';
 
 void main() {
   for (final width in [390.0, 1200.0]) {

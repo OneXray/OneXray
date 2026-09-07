@@ -10,17 +10,17 @@ import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/servers/import/page.dart';
-import 'package:onexray/pages/subscriptions/widget/form_view.dart';
+import 'package:onexray/pages/servers/subscription/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/assets/import.dart';
-import 'package:onexray/service/db/config_writer.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/share/app_link_model.dart';
-import 'package:onexray/service/share/xray_share_reader.dart';
-import 'package:onexray/service/subscription/model.dart';
-import 'package:onexray/service/xray/outbound/state_db.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/servers/import.dart';
+import 'package:onexray/service/shared/db/config_writer.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/share/app_link_model.dart';
+import 'package:onexray/service/shared/share/xray_share_reader.dart';
+import 'package:onexray/service/servers/subscription/model.dart';
+import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {

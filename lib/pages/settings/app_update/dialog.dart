@@ -6,8 +6,8 @@ import 'package:onexray/pages/settings/app_update/controller.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/app_update/service.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AppUpdateDialog extends StatelessWidget {

@@ -79,9 +79,15 @@ iOS Debug 本地代理开关是独立调试工具，不作为正常页面的模�
 
 ## 实现入口
 
+`lib/pages/` 和 `lib/service/` 按相同的业务归属组织：`connect`、`servers`、
+`advanced`、`settings`；`launch` 负责启动与初始化，`shared` 保存跨页面复用的实现。
+页面仍只依赖服务与 Core，服务不反向引用页面；目录位置不改变路由 URL 或导航栈。
+
 - 路由和响应式外壳：`lib/pages/main/`
-- 连接与 Raw：`lib/pages/connect/`；路由编辑：`lib/pages/routing/`
-- 服务器与订阅：`lib/pages/servers/`
-- 高级：`lib/pages/advanced/`；复用日志与测速：`lib/pages/core/`
-- 设置：`lib/pages/preferences/`、`lib/pages/settings/`
+- 连接：`connect/`；智能与自定义路由归 `connect/routing/`，Raw 编辑和运行配置也归连接。
+- 服务器：`servers/`；订阅表单、导入和节点管理集中在该入口，不保留独立订阅根目录。
+- 高级：`advanced/tunnel/` 放平台 VPN 配置；`advanced/xray/` 放路由数据、日志、运行配置、测速设置和数据更新。
+- 设置：`settings/` 放根页、关于、外观、语言、备份及 App 更新；备份实现不混在分享协议目录。
+- 共享：`lib/pages/shared/` 放公共控件、页面状态和分享页；`lib/service/shared/` 放分享协议、测速执行、事件状态和通用运行支持。
+- 主题：`lib/pages/theme/` 继续作为唯一公共主题入口；对应测试按相同归属组织在 `test/pages/` 和 `test/service/`。
 - 运行与提交：[Xray 配置合同](xray-configuration.md)

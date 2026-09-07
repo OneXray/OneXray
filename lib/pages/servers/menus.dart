@@ -4,7 +4,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 
 Future<ServerAction?> showServerActionsMenu(
   BuildContext context, {

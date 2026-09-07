@@ -6,17 +6,17 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/page.dart';
 import 'package:onexray/pages/main/advanced.dart';
 import 'package:onexray/pages/main/navigation.dart';
-import 'package:onexray/pages/preferences/page.dart';
+import 'package:onexray/pages/settings/page.dart';
 import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/service/app_update/service.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/event_bus/state.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/event_bus/state.dart';
 import 'package:onexray/service/manager.dart';
-import 'package:onexray/service/menu/short_cut/service.dart';
-import 'package:onexray/service/share/service.dart';
+import 'package:onexray/service/shared/menu/short_cut/service.dart';
+import 'package:onexray/service/shared/share/service.dart';
 
 class AdaptiveMainShell extends StatefulWidget {
   const AdaptiveMainShell({
@@ -400,7 +400,7 @@ class PrimaryRootContent extends StatelessWidget {
       AppPrimaryDestination.connect => const ConnectPage(),
       AppPrimaryDestination.servers => const ServersPage(),
       AppPrimaryDestination.advanced => const AdvancedRootPage(),
-      AppPrimaryDestination.settings => const PreferencesPage(),
+      AppPrimaryDestination.settings => const SettingsPage(),
     };
   }
 }

@@ -6,8 +6,8 @@ import 'package:onexray/pages/servers/editor/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/pages/widget/outbound_json_editor.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/outbound_json_editor.dart';
 
 class ServerEditorPage extends StatelessWidget {
   final int serverId;

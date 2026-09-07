@@ -7,8 +7,8 @@ import 'package:onexray/pages/settings/desktop/controller.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/app_update/service.dart';
-import 'package:onexray/service/event_bus/enum.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
+import 'package:onexray/service/shared/event_bus/enum.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
