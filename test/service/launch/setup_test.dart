@@ -43,6 +43,7 @@ void main() {
     setup = SetupService(
       database: db,
       platform: ConnectionPlatform.ios,
+      debugMode: false,
       prepareLocal: () async {
         if (failLocal) throw const SetupFailure('local');
       },
@@ -91,6 +92,57 @@ void main() {
       expect((await setup.configuration()).policy.ipv6Enabled, isTrue);
     },
   );
+
+  test(
+    'only iOS Debug skips native VPN permission checks and requests',
+    () async {
+      for (final platform in ConnectionPlatform.values) {
+        for (final debugMode in [false, true]) {
+          final calls = <bool>[];
+          final service = SetupService(
+            platform: platform,
+            debugMode: debugMode,
+            permission: (request) async {
+              calls.add(request);
+              return PlatformPermissionResult(
+                kind: PlatformPermissionKind.appleVpn,
+                state: PlatformPermissionState.denied,
+              );
+            },
+          );
+          final skip = platform == ConnectionPlatform.ios && debugMode;
+          for (final request in [false, true]) {
+            final result = await service.checkPermission(request: request);
+            expect(
+              result.state,
+              skip
+                  ? PlatformPermissionState.notRequired
+                  : PlatformPermissionState.denied,
+            );
+          }
+          expect(calls, skip ? isEmpty : [false, true]);
+        }
+      }
+    },
+  );
+
+  test('iOS Debug completes setup without setting up a VPN', () async {
+    final service = SetupService(
+      database: db,
+      platform: ConnectionPlatform.ios,
+      debugMode: true,
+      prepareLocal: () async {},
+      permission: (_) async => fail('iOS Debug must not access system VPN'),
+      readRegionCodes: () async => ['CN', 'RU'],
+    );
+    await service.acceptPrivacy();
+    await service.continueSystem('');
+    expect(await service.currentStep(), SetupStep.region);
+    await service.continueRegion(null);
+    expect(await service.currentStep(), SetupStep.servers);
+    await service.finish();
+    expect(await service.currentStep(), SetupStep.complete);
+  });
 
   test('confirmed region persists before progress; skip preserves configuration and Raw activation', () async {
     await setup.acceptPrivacy();
@@ -153,6 +205,7 @@ void main() {
       final direct = SetupService(
         database: db,
         platform: ConnectionPlatform.ios,
+        debugMode: false,
         prepareLocal: () async {},
         permission: (_) async => PlatformPermissionResult(
           kind: PlatformPermissionKind.appleVpn,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -31,6 +32,7 @@ class SetupService {
   final Future<List<String>> Function()? _readRegionCodes;
   final PreferencesKey _preferences = PreferencesKey();
   final ConnectionPlatform platform;
+  final bool _debugMode;
 
   SetupService({
     this._database,
@@ -38,6 +40,7 @@ class SetupService {
     this._permission,
     this._saveConfiguration,
     this._readRegionCodes,
+    this._debugMode = kDebugMode,
     ConnectionPlatform? platform,
   }) : platform = platform ?? connectionPlatform;
 
@@ -90,6 +93,12 @@ class SetupService {
   Future<PlatformPermissionResult> checkPermission({
     bool request = false,
   }) async {
+    if (_debugMode && platform == ConnectionPlatform.ios) {
+      return PlatformPermissionResult(
+        kind: PlatformPermissionKind.appleVpn,
+        state: PlatformPermissionState.notRequired,
+      );
+    }
     final permission = _permission;
     if (permission != null) return permission(request);
     return ConnectionPlatformRequirements(platform: platform)

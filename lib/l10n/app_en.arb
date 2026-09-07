@@ -370,10 +370,6 @@
   "@prototypeServersReadyForHome": {
     "description": "Approved prototype copy: Servers added. You are ready to go to Home."
   },
-  "prototypeExistingServersSkip": "This step is skipped when servers are already configured.",
-  "@prototypeExistingServersSkip": {
-    "description": "Approved prototype copy: This step is skipped when servers are already configured."
-  },
   "prototypeAddLater": "Add later",
   "@prototypeAddLater": {
     "description": "Approved prototype copy: Add later"

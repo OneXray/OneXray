@@ -159,7 +159,6 @@
   "prototypeAddServers": "新增伺服器",
   "prototypeImportServersSubtitle": "匯入你的伺服器或訂閱。",
   "prototypeServersReadyForHome": "伺服器已新增，可以進入首頁。",
-  "prototypeExistingServersSkip": "已有伺服器時自動跳過此步。",
   "prototypeAddLater": "稍後新增",
   "prototypeGoToHome": "進入首頁",
   "prototypeStartUsingOneXray": "開始使用 OneXray",

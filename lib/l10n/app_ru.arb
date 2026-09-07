@@ -159,7 +159,6 @@
   "prototypeAddServers": "Добавить серверы",
   "prototypeImportServersSubtitle": "Импортируйте свои серверы или подписку.",
   "prototypeServersReadyForHome": "Серверы добавлены. Можно перейти на главный экран.",
-  "prototypeExistingServersSkip": "Если серверы уже настроены, этот шаг пропускается.",
   "prototypeAddLater": "Добавить позже",
   "prototypeGoToHome": "На главный экран",
   "prototypeStartUsingOneXray": "Начните пользоваться OneXray",

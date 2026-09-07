@@ -37,7 +37,7 @@ void main() {
   });
 
   test(
-    'privacy and permission stay explicit, then ready steps advance',
+    'privacy, permission and ready steps require explicit actions',
     () async {
       final service = _SetupService();
       final controller = SetupController(service: service);
@@ -51,27 +51,44 @@ void main() {
       service.granted = true;
       await controller.requestPermission();
       expect(service.permissionRequests, 1);
+      expect(controller.state.step, SetupStep.system);
+      expect(service.savedRegion, isNull);
+      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await _idle(controller);
+      expect(controller.state.step, SetupStep.system);
+      await controller.continueSystem();
+      expect(controller.state.step, SetupStep.region);
+      expect(controller.state.region, 'RU');
+      expect(service.savedRegion, isNull);
+      await controller.continueRegion();
       expect(controller.state.step, SetupStep.servers);
       expect(service.savedRegion, 'RU');
       expect(service.finishes, 0);
     },
   );
 
-  test(
-    'ready startup finishes automatically when servers already exist',
-    () async {
-      final service = _SetupService()
-        ..step = SetupStep.system
-        ..granted = true
-        ..hasNodes = true;
-      final controller = SetupController(service: service);
-      addTearDown(controller.close);
-      await _idle(controller);
-      expect(controller.state.step, SetupStep.complete);
-      expect(service.finishes, 1);
-      expect(service.permissionRequests, 0);
-    },
-  );
+  test('ready startup and existing servers never skip setup steps', () async {
+    final service = _SetupService()
+      ..step = SetupStep.system
+      ..granted = true
+      ..hasNodes = true;
+    final controller = SetupController(service: service);
+    addTearDown(controller.close);
+    await _idle(controller);
+    expect(controller.state.step, SetupStep.system);
+    expect(service.finishes, 0);
+    await controller.continueSystem();
+    expect(controller.state.step, SetupStep.region);
+    expect(service.savedRegion, isNull);
+    await controller.continueRegion();
+    expect(controller.state.step, SetupStep.servers);
+    expect(controller.state.hasServers, isTrue);
+    expect(service.finishes, 0);
+    await controller.finish();
+    expect(controller.state.step, SetupStep.complete);
+    expect(service.finishes, 1);
+    expect(service.permissionRequests, 0);
+  });
 
   test(
     'unrecognized region never uses default CN; Skip stays available',
@@ -83,6 +100,7 @@ void main() {
       final controller = SetupController(service: service);
       addTearDown(controller.close);
       await _idle(controller);
+      await controller.continueSystem();
       expect(controller.state.step, SetupStep.region);
       expect(controller.state.region, isEmpty);
       expect(service.savedRegion, isNull);
@@ -95,7 +113,7 @@ void main() {
   );
 
   test(
-    'nodes added outside the setup action automatically finish setup',
+    'nodes added outside setup update readiness without finishing',
     () async {
       final service = _SetupService()
         ..step = SetupStep.servers
@@ -104,33 +122,33 @@ void main() {
       addTearDown(controller.close);
       await _idle(controller);
       expect(controller.state.step, SetupStep.servers);
-      final completed = controller.stream.firstWhere(
-        (state) => state.step == SetupStep.complete && !state.busy,
+      final ready = controller.stream.firstWhere(
+        (state) => state.hasServers && !state.busy,
       );
       service.hasNodes = true;
-      await completed;
+      await ready;
+      expect(controller.state.step, SetupStep.servers);
+      expect(service.finishes, 0);
+      await controller.finish();
       expect(service.finishes, 1);
     },
   );
 
-  test(
-    'local failures and denied permission stop automatic progress',
-    () async {
-      final service = _SetupService()
-        ..step = SetupStep.system
-        ..localFailure = true;
-      final controller = SetupController(service: service);
-      addTearDown(controller.close);
-      await _idle(controller);
-      expect(controller.state.failure?.component, 'local');
-      expect(controller.state.step, SetupStep.system);
-      service.localFailure = false;
-      await controller.requestPermission();
-      expect(controller.state.failure?.component, 'permission');
-      expect(controller.state.step, SetupStep.system);
-      expect(service.finishes, 0);
-    },
-  );
+  test('local failures and denied permission keep the required step', () async {
+    final service = _SetupService()
+      ..step = SetupStep.system
+      ..localFailure = true;
+    final controller = SetupController(service: service);
+    addTearDown(controller.close);
+    await _idle(controller);
+    expect(controller.state.failure?.component, 'local');
+    expect(controller.state.step, SetupStep.system);
+    service.localFailure = false;
+    await controller.requestPermission();
+    expect(controller.state.failure?.component, 'permission');
+    expect(controller.state.step, SetupStep.system);
+    expect(service.finishes, 0);
+  });
 
   test(
     'revoked permission stays on System even when progress was saved later',
@@ -144,6 +162,15 @@ void main() {
       expect(controller.state.step, SetupStep.system);
       expect(service.savedRegion, isNull);
       expect(service.finishes, 0);
+      service.granted = true;
+      await controller.requestPermission();
+      expect(controller.state.step, SetupStep.system);
+      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await _idle(controller);
+      expect(controller.state.step, SetupStep.system);
+      await controller.continueSystem();
+      expect(controller.state.step, SetupStep.region);
+      expect(service.savedRegion, isNull);
     },
   );
 
@@ -156,7 +183,7 @@ void main() {
   ]) {
     final interface = platform != ConnectionPlatform.ios;
     testWidgets(
-      'selecting ${interface ? 'interface' : 'region'} on ${platform.name} advances without confirmation'
+      'selecting ${interface ? 'interface' : 'region'} on ${platform.name} waits for Continue'
       ' (saved interface: "$savedInterface")',
       (tester) async {
         tester.view.physicalSize = const Size(1160, 800);
@@ -171,6 +198,10 @@ void main() {
         final controller = SetupController(service: service);
         addTearDown(controller.close);
         await _idle(controller);
+        expect(controller.state.step, SetupStep.system);
+        if (!interface || savedInterface.isNotEmpty) {
+          await controller.continueSystem();
+        }
         expect(
           controller.state.step,
           interface ? SetupStep.system : SetupStep.region,
@@ -226,7 +257,7 @@ void main() {
         await tester.pumpAndSettle();
         if (savedInterface.isNotEmpty) {
           expect(find.text(savedInterface), findsOneWidget);
-          expect(find.byType(FilledButton), findsNothing);
+          expect(find.text('Continue'), findsOneWidget);
         }
         await tester.tap(
           find
@@ -247,8 +278,28 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(SetupRegionPage), findsNothing);
         expect(find.byType(SetupInterfacePage), findsNothing);
-        expect(controller.state.step, SetupStep.servers);
+        expect(
+          controller.state.step,
+          interface ? SetupStep.system : SetupStep.region,
+        );
         expect(controller.state.failure, isNull);
+        expect(service.savedRegion, isNull);
+        if (interface) {
+          expect(service.savedInterface, savedInterface);
+          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+          await _idle(controller);
+          await tester.pumpAndSettle();
+          expect(controller.state.step, SetupStep.system);
+          expect(controller.state.interfaceName, 'Ethernet');
+          await tester.tap(find.text('Continue'));
+          await tester.pumpAndSettle();
+          expect(controller.state.step, SetupStep.region);
+          expect(service.savedInterface, 'Ethernet');
+          expect(service.savedRegion, isNull);
+        }
+        await tester.tap(find.text('Continue'));
+        await tester.pumpAndSettle();
+        expect(controller.state.step, SetupStep.servers);
         expect(service.savedRegion, 'RU');
         if (interface) expect(service.savedInterface, 'Ethernet');
         expect(tester.takeException(), isNull);
@@ -256,7 +307,7 @@ void main() {
     );
   }
 
-  testWidgets('cancelled import stays; available nodes finish immediately', (
+  testWidgets('cancelled and successful imports stay until explicit finish', (
     tester,
   ) async {
     final service = _SetupService()
@@ -276,6 +327,10 @@ void main() {
     await controller.addServers(context, ServerImportAction.file, (_, _) async {
       service.hasNodes = true;
     });
+    expect(controller.state.step, SetupStep.servers);
+    expect(controller.state.hasServers, isTrue);
+    expect(service.finishes, 0);
+    await controller.finish();
     expect(controller.state.step, SetupStep.complete);
     expect(service.finishes, 1);
   });

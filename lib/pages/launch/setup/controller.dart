@@ -16,9 +16,11 @@ enum SetupAction {
   back,
   permission,
   chooseInterface,
+  continueSystem,
   chooseRegion,
+  continueRegion,
   skipRegion,
-  finishLater,
+  finish,
   retry,
 }
 
@@ -95,10 +97,13 @@ class SetupController extends PageCubit<SetupPageState>
     : service = service ?? SetupService(),
       super(const SetupPageState()) {
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_perform(_load, initial: true));
+    unawaited(
+      _perform(() async {
+        emit(state.copyWith(step: await this.service.currentStep()));
+        await _load();
+      }, initial: true),
+    );
   }
-
-  bool get ready => state.ready(requiresInterface: service.requiresInterface);
 
   void handleAction(BuildContext context, SetupAction action) {
     if (action == SetupAction.privacy) {
@@ -122,11 +127,15 @@ class SetupController extends PageCubit<SetupPageState>
         unawaited(requestPermission());
       case SetupAction.chooseInterface:
         unawaited(chooseInterface(context));
+      case SetupAction.continueSystem:
+        unawaited(continueSystem());
       case SetupAction.chooseRegion:
         unawaited(chooseRegion(context));
+      case SetupAction.continueRegion:
+        unawaited(continueRegion());
       case SetupAction.skipRegion:
         unawaited(skipRegion());
-      case SetupAction.finishLater:
+      case SetupAction.finish:
         unawaited(finish());
       case SetupAction.retry:
         unawaited(retry());
@@ -143,8 +152,7 @@ class SetupController extends PageCubit<SetupPageState>
   }
 
   Future<void> _load() async {
-    final step = await service.currentStep();
-    emit(state.copyWith(step: step));
+    final step = state.step;
     if (step == SetupStep.welcome || step == SetupStep.complete) return;
     try {
       await service.prepareLocal();
@@ -156,7 +164,9 @@ class SetupController extends PageCubit<SetupPageState>
     emit(
       state.copyWith(
         localReady: true,
-        interfaceName: configuration.policy.xrayOutboundInterfaceName,
+        interfaceName: state.interfaceName.isEmpty
+            ? configuration.policy.xrayOutboundInterfaceName
+            : state.interfaceName,
         regionCodes: codes,
       ),
     );
@@ -167,6 +177,13 @@ class SetupController extends PageCubit<SetupPageState>
       emit(state.copyWith(step: SetupStep.system));
       return;
     }
+    if (state.step == SetupStep.region && !codes.contains(state.region)) {
+      final region = await service.suggestRegion();
+      if (region != null && codes.contains(region)) {
+        emit(state.copyWith(region: region));
+      }
+    }
+    if (state.step == SetupStep.servers) await _watchServers();
   }
 
   Future<void> retry() => _perform(_load);
@@ -176,6 +193,7 @@ class SetupController extends PageCubit<SetupPageState>
 
   Future<void> acceptPrivacy() => _perform(() async {
     await service.acceptPrivacy();
+    emit(state.copyWith(step: SetupStep.system, clearAction: true));
     await _load();
   });
 
@@ -192,7 +210,20 @@ class SetupController extends PageCubit<SetupPageState>
 
   Future<void> skipRegion() => _perform(() async {
     await service.continueRegion(null);
-    emit(state.copyWith(step: SetupStep.servers));
+    emit(state.copyWith(step: SetupStep.servers, clearAction: true));
+    await _load();
+  });
+
+  Future<void> continueSystem() => _perform(() async {
+    await service.continueSystem(state.interfaceName);
+    emit(state.copyWith(step: SetupStep.region, clearAction: true));
+    await _load();
+  });
+
+  Future<void> continueRegion() => _perform(() async {
+    await service.continueRegion(state.region);
+    emit(state.copyWith(step: SetupStep.servers, clearAction: true));
+    await _load();
   });
 
   Future<void> chooseInterface(BuildContext context) => _perform(() async {
@@ -224,26 +255,6 @@ class SetupController extends PageCubit<SetupPageState>
     await open(context, action);
   });
 
-  Future<void> _advance() async {
-    if (state.step == SetupStep.system && ready) {
-      await service.continueSystem(state.interfaceName);
-      emit(state.copyWith(step: SetupStep.region, clearAction: true));
-    }
-    if (state.step == SetupStep.region) {
-      final region = state.regionCodes.contains(state.region)
-          ? state.region
-          : await service.suggestRegion();
-      if (region == null || !state.regionCodes.contains(region)) return;
-      emit(state.copyWith(region: region));
-      await service.continueRegion(region);
-      emit(state.copyWith(step: SetupStep.servers));
-    }
-    if (state.step == SetupStep.servers) {
-      await _watchServers();
-      if (state.hasServers) await _finish();
-    }
-  }
-
   Future<void> _watchServers() async {
     if (_serversSubscription != null || !isPageActive) return;
     final first = Completer<void>();
@@ -252,12 +263,6 @@ class SetupController extends PageCubit<SetupPageState>
         emit(state.copyWith(hasServers: hasServers));
         if (!first.isCompleted) {
           first.complete();
-        } else if (isPageActive &&
-            hasServers &&
-            !state.busy &&
-            state.step == SetupStep.servers &&
-            state.failure == null) {
-          unawaited(_perform(_finish));
         }
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -307,7 +312,6 @@ class SetupController extends PageCubit<SetupPageState>
     emit(state.copyWith(busy: true, clearFailure: true));
     try {
       await action();
-      await _advance();
     } catch (error) {
       final failure = error is SetupFailure
           ? error

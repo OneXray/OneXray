@@ -163,7 +163,7 @@ void main() {
   );
 
   testWidgets(
-    'system states expose permission actions without a Continue confirmation',
+    'system states require Continue after permission and interface setup',
     (tester) async {
       _mobile(tester);
       final actions = <SetupAction>[];
@@ -226,10 +226,98 @@ void main() {
       expect(find.text('Continue'), findsNothing);
       expect(find.byType(FilledButton), findsOneWidget);
       await show(ready);
-      expect(find.text('Continue'), findsNothing);
-      expect(find.byType(FilledButton), findsNothing);
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.byType(FilledButton), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      expect(actions.last, SetupAction.continueSystem);
+
+      await show(
+        ready.copyWith(
+          permission: PlatformPermissionResult(
+            kind: PlatformPermissionKind.appleVpn,
+            state: PlatformPermissionState.notRequired,
+          ),
+        ),
+      );
+      expect(find.text('Set up VPN'), findsNothing);
+      expect(
+        find.text('Allow OneXray to add a VPN configuration.'),
+        findsNothing,
+      );
+      expect(find.text('Authorized'), findsNothing);
+      await tester.tap(find.text('Continue'));
+      expect(actions.last, SetupAction.continueSystem);
     },
   );
+
+  testWidgets('suggested region waits for Continue or Skip', (tester) async {
+    _mobile(tester);
+    final actions = <SetupAction>[];
+    Future<void> show(String region) async {
+      await tester.pumpWidget(
+        _app(
+          SetupView(
+            state: SetupPageState(
+              step: SetupStep.region,
+              busy: false,
+              region: region,
+              regionCodes: const ['CN', 'RU'],
+            ),
+            requiresInterface: false,
+            supportsScan: true,
+            onAction: actions.add,
+            onAddServer: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await show('');
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+          .onPressed,
+      isNull,
+    );
+    await show('RU');
+    expect(find.text('Russia'), findsOneWidget);
+    await tester.tap(find.text('Continue'));
+    await tester.tap(find.text('Skip'));
+    expect(actions, [SetupAction.continueRegion, SetupAction.skipRegion]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('configured servers expose an explicit Go to Home action', (
+    tester,
+  ) async {
+    _mobile(tester);
+    final actions = <SetupAction>[];
+    await tester.pumpWidget(
+      _app(
+        SetupView(
+          state: const SetupPageState(
+            step: SetupStep.servers,
+            busy: false,
+            hasServers: true,
+          ),
+          requiresInterface: false,
+          supportsScan: true,
+          onAction: actions.add,
+          onAddServer: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Servers added. You are ready to go to Home.'),
+      findsOneWidget,
+    );
+    expect(find.text('Add later'), findsNothing);
+    await tester.tap(find.text('Go to Home'));
+    expect(actions, [SetupAction.finish]);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('desktop setup uses the full stepper and distributed footer', (
     tester,

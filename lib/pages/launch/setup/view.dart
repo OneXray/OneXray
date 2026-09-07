@@ -50,14 +50,11 @@ class SetupView extends StatelessWidget {
         SetupStep.complete => const <Widget>[],
       },
       if (state.step != SetupStep.system) ..._feedback(context),
-      if (state.step == SetupStep.region ||
-          state.step == SetupStep.servers) ...[
+      if (state.step == SetupStep.region) ...[
         const Spacer(),
         const SizedBox(height: 28),
         Text(
-          state.step == SetupStep.region
-              ? l.prototypeRegionSkipNotice
-              : l.prototypeExistingServersSkip,
+          l.prototypeRegionSkipNotice,
           style: AppTypography.setupSkipNote.copyWith(
             color: palette.mutedForeground,
           ),
@@ -205,6 +202,8 @@ class SetupView extends StatelessWidget {
   List<Widget> _system(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
+    final permissionRequired =
+        state.permission?.state != PlatformPermissionState.notRequired;
     final localNetwork =
         state.permission?.kind == PlatformPermissionKind.androidLocalNetwork;
     final permissionTitle = localNetwork
@@ -255,93 +254,99 @@ class SetupView extends StatelessWidget {
         SizedBox(height: mobile ? 40 : 36),
       ] else
         const SizedBox(height: 30),
-      DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: palette.border)),
-        ),
-        child: mobile && !requiresInterface
-            ? InkWell(
-                onTap: state.authorized
-                    ? null
-                    : _action(SetupAction.permission),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 170),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(permissionIcon, size: 36, color: palette.primary),
-                        const SizedBox(height: 24),
-                        Text(
-                          permissionHint,
-                          textAlign: TextAlign.center,
-                          style: AppTypography.setupPermission.copyWith(
-                            color: palette.mutedStrong,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            : Column(
-                children: [
-                  _SetupRow(
-                    icon: permissionIcon,
-                    title: permissionTitle,
-                    busy: state.activeAction == SetupAction.permission,
-                    description: permissionHint,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          state.authorized
-                              ? l.prototypeAuthorized
-                              : localNetwork
-                              ? l.prototypeAllowLocalNetwork
-                              : l.prototypeSetUpVpn,
-                          style:
-                              (mobile
-                                      ? AppTypography.setupHint
-                                      : AppTypography.setupDesktopTrailing)
-                                  .copyWith(
-                                    color: state.authorized
-                                        ? palette.running
-                                        : palette.primary,
-                                  ),
-                        ),
-                        if (!mobile) ...[
-                          const SizedBox(width: 12),
+      if (permissionRequired || requiresInterface)
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: palette.border)),
+          ),
+          child: mobile && !requiresInterface
+              ? InkWell(
+                  onTap: state.authorized
+                      ? null
+                      : _action(SetupAction.permission),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 170),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                           Icon(
-                            state.authorized
-                                ? LucideIcons.circleCheck
-                                : LucideIcons.chevronRightDir,
-                            size: 19,
-                            color: state.authorized
-                                ? palette.running
-                                : palette.mutedStrong,
+                            permissionIcon,
+                            size: 36,
+                            color: palette.primary,
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            permissionHint,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.setupPermission.copyWith(
+                              color: palette.mutedStrong,
+                            ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                    onTap: state.authorized
-                        ? null
-                        : _action(SetupAction.permission),
                   ),
-                  if (requiresInterface)
-                    _SetupRow(
-                      icon: LucideIcons.network,
-                      title: l.prototypeXrayOutboundInterface,
-                      busy: state.activeAction == SetupAction.chooseInterface,
-                      description: state.interfaceName.isEmpty
-                          ? l.prototypeNotSelected
-                          : state.interfaceName,
-                      onTap: _action(SetupAction.chooseInterface),
-                    ),
-                ],
-              ),
-      ),
+                )
+              : Column(
+                  children: [
+                    if (permissionRequired)
+                      _SetupRow(
+                        icon: permissionIcon,
+                        title: permissionTitle,
+                        busy: state.activeAction == SetupAction.permission,
+                        description: permissionHint,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              state.authorized
+                                  ? l.prototypeAuthorized
+                                  : localNetwork
+                                  ? l.prototypeAllowLocalNetwork
+                                  : l.prototypeSetUpVpn,
+                              style:
+                                  (mobile
+                                          ? AppTypography.setupHint
+                                          : AppTypography.setupDesktopTrailing)
+                                      .copyWith(
+                                        color: state.authorized
+                                            ? palette.running
+                                            : palette.primary,
+                                      ),
+                            ),
+                            if (!mobile) ...[
+                              const SizedBox(width: 12),
+                              Icon(
+                                state.authorized
+                                    ? LucideIcons.circleCheck
+                                    : LucideIcons.chevronRightDir,
+                                size: 19,
+                                color: state.authorized
+                                    ? palette.running
+                                    : palette.mutedStrong,
+                              ),
+                            ],
+                          ],
+                        ),
+                        onTap: state.authorized
+                            ? null
+                            : _action(SetupAction.permission),
+                      ),
+                    if (requiresInterface)
+                      _SetupRow(
+                        icon: LucideIcons.network,
+                        title: l.prototypeXrayOutboundInterface,
+                        busy: state.activeAction == SetupAction.chooseInterface,
+                        description: state.interfaceName.isEmpty
+                            ? l.prototypeNotSelected
+                            : state.interfaceName,
+                        onTap: _action(SetupAction.chooseInterface),
+                      ),
+                  ],
+                ),
+        ),
       if (requiresInterface) ...[
         const SizedBox(height: 14),
         Text(
@@ -351,7 +356,7 @@ class SetupView extends StatelessWidget {
           ),
         ),
       ],
-      if (!requiresInterface) ...[
+      if (!requiresInterface && permissionRequired) ...[
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -515,6 +520,14 @@ class SetupView extends StatelessWidget {
           label: l.prototypeXrayOutboundInterface,
           busy: state.activeAction == SetupAction.chooseInterface,
           onPressed: _action(SetupAction.chooseInterface),
+        )
+      else
+        SetupActionButton(
+          label: l.prototypeContinue,
+          busy: state.activeAction == SetupAction.continueSystem,
+          onPressed: state.ready(requiresInterface: requiresInterface)
+              ? _action(SetupAction.continueSystem)
+              : null,
         ),
     ],
     SetupStep.region => [
@@ -524,13 +537,20 @@ class SetupView extends StatelessWidget {
         outline: true,
         onPressed: _action(SetupAction.skipRegion),
       ),
+      SetupActionButton(
+        label: l.prototypeContinue,
+        busy: state.activeAction == SetupAction.continueRegion,
+        onPressed: state.regionCodes.contains(state.region)
+            ? _action(SetupAction.continueRegion)
+            : null,
+      ),
     ],
     SetupStep.servers => [
       SetupActionButton(
-        label: l.prototypeAddLater,
-        busy: state.activeAction == SetupAction.finishLater,
-        outline: true,
-        onPressed: _action(SetupAction.finishLater),
+        label: state.hasServers ? l.prototypeGoToHome : l.prototypeAddLater,
+        busy: state.activeAction == SetupAction.finish,
+        outline: !state.hasServers,
+        onPressed: _action(SetupAction.finish),
       ),
     ],
     SetupStep.complete => const [],

@@ -159,7 +159,6 @@
     "prototypeAddServers": "افزودن سرورها",
     "prototypeImportServersSubtitle": "سرورها یا اشتراک خود را وارد کنید.",
     "prototypeServersReadyForHome": "سرورها اضافه شدند. می‌توانید به صفحهٔ اصلی بروید.",
-    "prototypeExistingServersSkip": "اگر سرورها از قبل پیکربندی شده باشند، این مرحله رد می‌شود.",
     "prototypeAddLater": "افزودن در فرصتی دیگر",
     "prototypeGoToHome": "رفتن به صفحهٔ اصلی",
     "prototypeStartUsingOneXray": "شروع استفاده از OneXray",
