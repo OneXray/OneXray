@@ -52,6 +52,7 @@ class GeoDataService {
   final Future<void> Function(String) _copyBundled;
   final _commands = CommandSerialExecutor();
   final _activeImportStages = <String>{};
+  bool _installationPrepared = false;
   AppDatabase get _db => _database ?? AppDatabase();
   String get _root => _directory ?? VpnConstants.datDir;
 
@@ -83,8 +84,40 @@ class GeoDataService {
   Future<T> _cleanup<T>(Future<T> Function() action) =>
       DataMaintenance.cleanup(() => _commands.run((_) => action()));
 
-  Future<void> ensureInstalled({bool resetOrphanedFiles = false}) =>
-      _maintain(() => _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles));
+  Future<void> ensureInstalled({bool resetOrphanedFiles = false}) async {
+    // Cold startup must recover import journals. Later checks only read valid
+    // files, so opening Home or Geodata cannot drain/reject background probes.
+    if (_installationPrepared && await DataMaintenance.run(_checkInstalled)) {
+      return;
+    }
+    await _maintain(
+      () => _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles),
+    );
+    _installationPrepared = true;
+  }
+
+  Future<bool> _checkInstalled() async {
+    final rows = await _db.geoDataDao.publishedRows;
+    final existing = await _flatNames(Directory(_root));
+    if (!rows.any((row) => row.id < 0) || existing.isEmpty) return false;
+    await _checkPublication(rows, existing);
+    return true;
+  }
+
+  Future<void> _checkPublication(
+    List<GeoDataData> rows,
+    Set<String> existing,
+  ) async {
+    final expected = {
+      ..._bundledNames,
+      for (final row in rows) '${row.name}.dat',
+      for (final row in rows) '${row.name}.json',
+    };
+    if (existing.length != expected.length || !existing.containsAll(expected)) {
+      throw StateError('Routing data files do not match the manifest');
+    }
+    await _readAll(rows);
+  }
 
   /// App data cleanup already owns [DataMaintenance.exclusive].
   Future<void> resetAfterDataClear() =>
@@ -104,16 +137,7 @@ class GeoDataService {
         (resetOrphanedFiles && rows.isEmpty);
     if (!resetPublication) {
       if (rows.isNotEmpty) {
-        final expected = {
-          ..._bundledNames,
-          for (final row in rows) '${row.name}.dat',
-          for (final row in rows) '${row.name}.json',
-        };
-        if (existing.length != expected.length ||
-            !existing.containsAll(expected)) {
-          throw StateError('Routing data files do not match the manifest');
-        }
-        await _readAll(rows);
+        await _checkPublication(rows, existing);
         if (rows.any((row) => row.id < 0)) return;
 
         // v1/v2 stored only custom rows. Adopt that exact flat publication by

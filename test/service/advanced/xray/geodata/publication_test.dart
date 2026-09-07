@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,12 +6,21 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/shared/ping/batch.dart';
+import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/servers/subscription/model.dart';
+import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:path/path.dart' as p;
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   late Directory workspace;
@@ -160,6 +170,97 @@ void main() {
     },
   );
 
+  test('home readiness does not wait for setup import probes', () async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    await service.ensureInstalled();
+    final started = Completer<void>();
+    final release = Completer<void>();
+    final ping = PingService.forTesting(
+      database: db,
+      runBatch: (sources, _) async {
+        if (!started.isCompleted) started.complete();
+        await release.future;
+        return [for (final _ in sources) const PingBatchResult(true, 20, '')];
+      },
+    );
+    final subscriptions = SubscriptionService.forTesting(
+      database: db,
+      loadRows: (_) async => SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [
+          CoreConfigCompanion.insert(
+            name: 'Setup node',
+            type: 'outbound',
+            subId: 0,
+            tags: 'socks',
+            delay: PingDelayConstants.unknown,
+            data: Value(
+              base64Encode(
+                utf8.encode(
+                  jsonEncode({
+                    'outbounds': [
+                      {
+                        'tag': 'Setup node',
+                        'protocol': 'socks',
+                        'settings': {'address': '127.0.0.1', 'port': 1080},
+                      },
+                    ],
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      schedulePing: ping.schedulePingSubscription,
+    );
+    Future<void>? homeReady;
+    final drained = AppEventBus.instance.stream
+        .skipWhile((state) => !state.pinging)
+        .firstWhere((state) => !state.pinging);
+    addTearDown(() async {
+      if (!release.isCompleted) release.complete();
+      await drained;
+      await homeReady;
+    });
+    for (final name in ['First', 'Second']) {
+      final result = await subscriptions.insertSubscription(
+        SubscriptionInput(name: name, url: 'https://example.com/$name'),
+      );
+      expect(result.success, isTrue);
+    }
+    await started.future;
+    expect(
+      await DataMaintenance.run(service.publishedFiles)
+          .timeout(const Duration(seconds: 1)),
+      hasLength(2),
+    );
+
+    // ServiceManager awaits this check before building the home page.
+    homeReady = service.ensureInstalled();
+    await homeReady.timeout(const Duration(seconds: 1));
+    expect(ping.isPinging, isTrue);
+    expect(release.isCompleted, isFalse);
+    release.complete();
+    await drained;
+    expect(ping.isPinging, isFalse);
+    expect((await db.select(db.coreConfig).get()).map((row) => row.delay), [
+      20,
+      20,
+    ]);
+  });
+
+  test('failed initial installation can be retried', () async {
+    failIndex = 'geosite';
+    await expectLater(service.ensureInstalled(), throwsFormatException);
+    failIndex = null;
+
+    await service.ensureInstalled();
+
+    expect(await service.publishedFiles(), hasLength(2));
+  });
+
   test('deleted dat directory rebuilds a clean default publication', () async {
     await service.ensureInstalled();
     await service.add(input());
@@ -274,6 +375,7 @@ void main() {
       final bytes = await rootBytes();
       final previousDownloads = downloads;
 
+      await expectLater(service.ensureInstalled(), throwsA(anything));
       await expectLater(createService(db).ensureInstalled(), throwsA(anything));
 
       expect(await db.geoDataDao.publishedRows, rows);
