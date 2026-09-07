@@ -67,8 +67,10 @@ selector 填写生成节点完整 tag，采用 round-robin，回退出站为 `di
 智能路由将局域网、Apple 服务、Windows 服务和所选地区的直连条件合并：域名与 IP 各输出一条规则，
 同类条件去重后以 OR 匹配，域名和 IP 不合并到同一条规则。没有对应条件时省略该类规则，
 不生成空条件规则；广告阻断仍排在这两条直连规则之前。
-Windows 服务直连开关在所有平台显示，默认关闭；开启后直连 Microsoft、Windows、Office、
-Bing 四类 Geosite 域名，与其他直连条件共用预览、保存和重连逻辑。
+智能路由除广告拦截外，所有开关默认开启；已保存的开关值保持不变。
+Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bing 两类 Geosite
+域名，Windows、Office 的相关域名已包含在 Microsoft 分类中；与其他直连条件共用预览、
+保存和重连逻辑。
 
 “所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
 及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。
@@ -77,11 +79,26 @@ direct server 的 domains 从当前 direct 规则提取，且不作为通用 fal
 宣称已判断 IP、端口或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
 `queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
 
+## IPv6 策略
+
+关闭 IPv6 时，Apple、Android 不配置隧道 IPv6 地址、路由和 DNS，传给 Native 的 TUN
+参数也不携带 IPv6 地址和 DNS。Linux 由 Xray-core 创建网卡，其 `tunIn.settings` 中同样
+省略 IPv6 网卡参数。Windows 的 tun2socks / VCore 配置不受此次简化影响，保持原有处理。
+
+除此之外，Dart 编译只将 DNS 查询策略设为 `UseIPv4`，开启时为 `UseIP`：普通模式设置
+每个 DNS server 的 `queryStrategy`，Raw 同时设置根级和对象形式 server 的查询策略。
+不生成 IPv6 阻断规则、不注入 `ForceIPv4` 或 DNS hosts、不预解析节点域名，也不因关闭
+IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts、出站解析策略和地址
+保持不变；关闭开关不代表 Xray 的所有 IPv6 流量都被禁止。
+
 ## 自定义路由
 
 普通 Custom 的持久化链路固定为 `RoutingProfile` 表 ↔ `XrayJson` ↔
 `RoutingProfileState`：数据库适配层负责 Base64 解码、模型解析和规范化重编码，业务与 UI
 只使用 State。名称仍保存在 `RoutingProfile.name` 列，不写入配置根部。
+存储和导出的 `outbounds` 仅包含 1–3 个空接入槽；导入、读取拒绝任何非空出站定义，
+包括 `direct` / `block`，不进行旧格式转换。系统出站仅在校验和运行编译时生成，
+规则中的 `outboundTag: direct|block` 动作引用保留。
 `XrayJson.geodata` 只承载导入所需的 `assets`，每项仅含 `file` / `url`；导入完成后保存前
 移除 `geodata`。完整 Raw JSON 使用独立 Map 链路，不经过上述转换。
 
@@ -105,7 +122,7 @@ geoip/geosite。导入先在同级临时目录下载、校验并生成索引，�
 
 Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校验改写原始 inbounds。
 运行时直接解析为 Map 并在深副本上应用 App 策略。运行副本保留用户
-额外入站，但 App 接管 `tunIn`、metrics、统计、日志、IPv6、运行路径及适用
+额外入站，但 App 接管 `tunIn`、metrics、统计、日志、DNS 查询策略、运行路径及适用
 平台的出口网卡；额外 TUN、保留端口冲突或无法满足平台网络策略的配置明确失败。
 
 Windows 的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore Provider/Session Host 转交；

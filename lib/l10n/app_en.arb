@@ -702,9 +702,9 @@
   "@prototypeCompleteXrayConfiguration": {
     "description": "Approved prototype copy: Complete Xray configuration"
   },
-  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, IPv6, and related runtime features in Raw JSON do not take effect.",
+  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, and related runtime features in Raw JSON do not take effect.",
   "@prototypeRawRuntimeOverrideNotice": {
-    "description": "Approved prototype copy: A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, IPv6, and related runtime features in Raw JSON do not take effect."
+    "description": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, and related runtime features in Raw JSON do not take effect."
   },
   "prototypeAddServersToOneXray": "Add servers to OneXray",
   "@prototypeAddServersToOneXray": {
@@ -1307,9 +1307,9 @@
   "@directWindowsServices": {
     "description": "Smart Routing switch for direct connections to Windows-related services."
   },
-  "directWindowsServicesHint": "Connect directly to domains in the Microsoft, Windows, Office, and Bing categories.",
+  "directWindowsServicesHint": "Connect directly to domains in the Microsoft and Bing categories.",
   "@directWindowsServicesHint": {
-    "description": "The four Geosite categories covered by the Windows services switch."
+    "description": "The Microsoft and Bing Geosite categories covered by the Windows services switch."
   },
   "windowsServices": "Windows services",
   "@windowsServices": {

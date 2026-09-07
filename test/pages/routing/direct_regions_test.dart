@@ -51,11 +51,17 @@ void main() {
       [
         l.prototypeLocalNetworkPrivateAddresses,
         l.prototypeAppleServices,
+        l.windowsServices,
       ].join(' / '),
     );
     controller.update('directPrivate', false);
-    expect(controller.directPreview(l), l.prototypeAppleServices);
+    expect(
+      controller.directPreview(l),
+      [l.prototypeAppleServices, l.windowsServices].join(' / '),
+    );
     controller.update('directApple', false);
+    expect(controller.directPreview(l), l.windowsServices);
+    controller.update('directWindows', false);
     expect(controller.rulesFor('direct'), isEmpty);
     expect(controller.directPreview(l), l.prototypeNone);
     controller.update('directWindows', true);

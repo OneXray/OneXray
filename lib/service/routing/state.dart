@@ -117,27 +117,9 @@ final class RoutingProfileState {
     if (outbounds == null) {
       throw const FormatException('outbounds must be an array');
     }
-    var entryCount = 0;
-    final tags = <String>{};
-    for (final outbound in outbounds) {
-      if (outbound.isEmpty) {
-        entryCount++;
-        continue;
-      }
-      if (outbound.keys.any(
-            (key) => !const {'tag', 'protocol', 'settings'}.contains(key),
-          ) ||
-          (outbound['tag'] != 'direct' && outbound['tag'] != 'block') ||
-          outbound['protocol'] !=
-              (outbound['tag'] == 'direct' ? 'freedom' : 'blackhole') ||
-          !tags.add(outbound['tag'] as String) ||
-          (outbound.containsKey('settings') &&
-              (outbound['settings'] is! Map ||
-                  (outbound['settings'] as Map).isNotEmpty))) {
-        throw const FormatException('Unsupported Custom routing outbound');
-      }
-    }
-    if (entryCount < 1 || entryCount > 3) {
+    if (outbounds.isEmpty ||
+        outbounds.length > 3 ||
+        outbounds.any((outbound) => outbound.isNotEmpty)) {
       throw const FormatException(
         'outbounds must contain 1–3 empty object slots',
       );
@@ -145,7 +127,7 @@ final class RoutingProfileState {
     final state = RoutingProfileState(
       id: id,
       name: name,
-      entryCount: entryCount,
+      entryCount: outbounds.length,
       domainStrategy: xrayJson.routing?.domainStrategy ?? 'AsIs',
       rules: [
         for (final rule in xrayJson.routing?.rules ?? const [])
@@ -162,8 +144,6 @@ final class RoutingProfileState {
     return XrayJson(
       outbounds: [
         for (var index = 0; index < entryCount; index++) <String, dynamic>{},
-        XrayOutbound(tag: 'direct', protocol: 'freedom').toJson(),
-        XrayOutbound(tag: 'block', protocol: 'blackhole').toJson(),
       ],
       routing: hasRouting
           ? XrayRouting(

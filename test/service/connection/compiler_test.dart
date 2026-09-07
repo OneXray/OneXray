@@ -109,6 +109,8 @@ void main() {
         expect(domainRule['domain'], [
           'geosite:PRIVATE',
           'geosite:APPLE',
+          'geosite:MICROSOFT',
+          'geosite:BING',
           'geosite:CN',
         ]);
         expect(domainRule.containsKey('ip'), false);
@@ -297,6 +299,7 @@ void main() {
       ],
     );
     final original = template.encode();
+    expect(jsonDecode(original)['outbounds'], [{}, {}]);
     final plan = ConnectionCompiler.compile(
       settings: ConnectionSettings(
         trafficMode: TrafficMode.custom,
@@ -307,6 +310,10 @@ void main() {
       custom: template,
       regions: catalog,
       options: options(),
+    );
+    expect(
+      (plan.config['outbounds'] as List).map((outbound) => outbound['tag']),
+      ['app-entry-0', 'app-entry-1', 'direct', 'block', 'dnsOut'],
     );
     final first = (plan.config['routing']['rules'] as List).singleWhere(
       (rule) => rule['ruleTag'] == 'app-custom-0',
@@ -322,9 +329,22 @@ void main() {
     _fixture('custom', plan);
   });
 
+  test('Smart enables every switch except ad blocking by default', () {
+    for (final smart in [
+      SmartRoutingSettings(),
+      SmartRoutingSettings.fromJson({}),
+      ConnectionSettings.fromJson({}).smart,
+    ]) {
+      expect(smart.directPrivate, true);
+      expect(smart.directApple, true);
+      expect(smart.directWindows, true);
+      expect(smart.resolveIpOnNoMatch, true);
+      expect(smart.directDns, true);
+      expect(smart.blockAds, false);
+    }
+  });
+
   test('Windows services share one direct rule and follow direct DNS', () {
-    expect(SmartRoutingSettings().directWindows, false);
-    expect(SmartRoutingSettings.fromJson({}).directWindows, false);
     for (final enabled in [false, true]) {
       for (final directDns in [false, true]) {
         final smart = SmartRoutingSettings.fromJson(
@@ -343,12 +363,7 @@ void main() {
         final domains = [
           'geosite:PRIVATE',
           'geosite:APPLE',
-          if (enabled) ...[
-            'geosite:MICROSOFT',
-            'geosite:WINDOWS',
-            'geosite:OFFICE',
-            'geosite:BING',
-          ],
+          if (enabled) ...['geosite:MICROSOFT', 'geosite:BING'],
           'geosite:CN',
         ];
         final rules = (config['routing']['rules'] as List).cast<Map>();
@@ -379,12 +394,17 @@ void main() {
         SmartRoutingSettings(
           directPrivate: false,
           directApple: false,
+          directWindows: false,
           directRegions: [],
         ),
         <Map<String, dynamic>>[],
       ),
       (
-        SmartRoutingSettings(directPrivate: false, directRegions: []),
+        SmartRoutingSettings(
+          directPrivate: false,
+          directWindows: false,
+          directRegions: [],
+        ),
         [
           {
             'ruleTag': 'app-smart-direct-domain',
@@ -397,6 +417,7 @@ void main() {
         SmartRoutingSettings(
           directPrivate: false,
           directApple: false,
+          directWindows: false,
           directRegions: ['US', 'US'],
         ),
         [
@@ -416,6 +437,24 @@ void main() {
         expected,
       );
     }
+  });
+
+  test('normal IPv6 policy only changes DNS query strategies', () {
+    Map<String, dynamic> compile(bool ipv6) => ConnectionCompiler.compile(
+      settings: ConnectionSettings(),
+      entries: [node(1, address: '2001:db8::1')],
+      regions: catalog,
+      options: options(ipv6: ipv6),
+    ).config;
+    final disabled = compile(false);
+    final enabled = compile(true);
+    expect(
+      (disabled['dns']['servers'] as List).every(
+        (server) => server['queryStrategy'] == 'UseIPv4',
+      ),
+      true,
+    );
+    expect(disabled..remove('dns'), enabled..remove('dns'));
   });
 
   test('Smart IP strategy does not add a first-pass catch-all', () {
@@ -538,7 +577,7 @@ void main() {
     );
 
     expect(plan.config['outbounds'].first.containsKey('tag'), false);
-    expect(plan.config['routing']['rules'], isEmpty);
+    expect(plan.config, isNot(contains('routing')));
   });
 
   test('Raw reserved tags/ports conflict clearly, rather than renaming user references', () {
@@ -704,8 +743,8 @@ void main() {
         ['app-entry-0', 'direct', 'block', 'dnsOut'],
       );
       expect(
-        (plan.config['routing']['rules'] as List).first['outboundTag'],
-        'block',
+        (plan.config['routing']['rules'] as List).first['ruleTag'],
+        'app-default',
       );
       expect(plan.config['dns'].containsKey('hosts'), false);
       expect(plan.config['dns'].containsKey('queryStrategy'), false);

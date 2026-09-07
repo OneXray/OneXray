@@ -204,6 +204,8 @@ void main() {
       'domain': [
         'geosite:PRIVATE',
         'geosite:APPLE',
+        'geosite:MICROSOFT',
+        'geosite:BING',
         'geosite:CATEGORY-RU',
         'geosite:CN',
       ],
@@ -224,7 +226,7 @@ void main() {
         original,
         SmartRoutingSettings.fromJson({
           ...smart.toJson(),
-          'directWindows': true,
+          'directWindows': false,
         }),
         regions,
       ),

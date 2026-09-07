@@ -53,11 +53,7 @@ void main() {
       expect(routingProfile.name, 'Custom');
       final routingJson = _decodeBase64Json(routingProfile.data);
       expect(routingJson, {
-        'outbounds': [
-          <String, dynamic>{},
-          {'tag': 'direct', 'protocol': 'freedom'},
-          {'tag': 'block', 'protocol': 'blackhole'},
-        ],
+        'outbounds': [{}],
       });
       expect(routingJson, isNot(contains('name')));
       expect(routingJson, isNot(contains('geodata')));
@@ -140,6 +136,8 @@ void main() {
         '{"outbounds":[{}],"dns":{"servers":["localhost"]}}',
         '{"name":"Embedded","outbounds":[{}]}',
         '{"outbounds":[{}],"geodata":{"assets":[]}}',
+        '{"outbounds":[{},{"tag":"direct","protocol":"freedom"}]}',
+        '{"outbounds":[{},{"tag":"block","protocol":"blackhole"}]}',
       ]) {
         final payload = BackupDatabaseContents(
           version: 5,
@@ -186,11 +184,7 @@ void main() {
         (await database.routingProfileDao.allRows).single.data,
       );
       expect(routingJson, {
-        'outbounds': [
-          <String, dynamic>{},
-          {'tag': 'direct', 'protocol': 'freedom'},
-          {'tag': 'block', 'protocol': 'blackhole'},
-        ],
+        'outbounds': [{}],
       });
       final orphan = await database.coreConfigDao.searchRow(2);
       final original = before.coreConfigs.singleWhere((row) => row.id == 2);

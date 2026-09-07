@@ -164,33 +164,14 @@ class ConnectionPreparation {
       geoipCodes: RegionCatalog.codesFromIndex(await readIndex('geoip')),
     );
     final rawConfig = raw == null ? null : ConnectionCompiler.parseRawJson(raw);
-    List<Map<String, dynamic>> rawObjectArray(String key) {
-      final value = rawConfig?[key];
-      if (value == null) return [];
-      if (value is! List ||
-          value.any((entry) => entry is! Map<String, dynamic>)) {
-        throw FormatException('$key must be an object array');
-      }
-      return value.cast<Map<String, dynamic>>();
+    final rawInbounds = rawConfig?['inbounds'] ?? [];
+    if (rawInbounds is! List ||
+        rawInbounds.any((entry) => entry is! Map<String, dynamic>)) {
+      throw const FormatException('inbounds must be an object array');
     }
-
-    final rawInbounds = rawObjectArray('inbounds');
-    final rawOutbounds = rawObjectArray('outbounds');
-    final ports = await allocateRuntimePorts(rawInbounds);
-    final bootstrap = <String, List<String>>{};
-    if (!policy.ipv6Enabled && rawConfig != null) {
-      for (final address in rawOutbounds.expand(outboundAddresses).toSet()) {
-        if (InternetAddress.tryParse(address) != null) continue;
-        final addresses = await InternetAddress.lookup(
-          address,
-          type: InternetAddressType.IPv4,
-        ).timeout(const Duration(seconds: 10));
-        if (addresses.isEmpty) {
-          throw const FormatException('No IPv4 bootstrap address');
-        }
-        bootstrap[address] = addresses.map((ip) => ip.address).toSet().toList();
-      }
-    }
+    final ports = await allocateRuntimePorts(
+      rawInbounds.cast<Map<String, dynamic>>(),
+    );
     final compiled = ConnectionCompiler.compile(
       settings: settings,
       entries: entries,
@@ -209,7 +190,6 @@ class ConnectionPreparation {
         logLevel: policy.logLevel,
         dnsLog: policy.recordDns,
         maskAddress: policy.maskAddress,
-        bootstrapAddresses: bootstrap,
       ),
     );
     final validation = await AppHostApi().testXray(compiled.xrayJson);

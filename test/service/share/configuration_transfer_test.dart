@@ -44,12 +44,7 @@ void main() {
     expect(content.name, 'Route');
     expect(content.assets.single.fileName, 'rules.dat');
     expect(content.assets.single.type, GeoDataType.domain);
-    expect((json['outbounds'] as List), [
-      {},
-      {},
-      {'tag': 'direct', 'protocol': 'freedom'},
-      {'tag': 'block', 'protocol': 'blackhole'},
-    ]);
+    expect(json['outbounds'], [{}, {}]);
     expect(
       (json['routing']['rules'] as List).single['ruleTag'],
       'Local websites',
@@ -127,12 +122,7 @@ void main() {
       expect(link.type, OneXrayConfigLinkType.custom);
       expect(link.name, 'Shared');
       expect(jsonDecode(link.xrayJson)['name'], 'Shared');
-      expect(jsonDecode(link.xrayJson)['outbounds'], [
-        {},
-        {},
-        {'tag': 'direct', 'protocol': 'freedom'},
-        {'tag': 'block', 'protocol': 'blackhole'},
-      ]);
+      expect(jsonDecode(link.xrayJson)['outbounds'], [{}, {}]);
     },
   );
 

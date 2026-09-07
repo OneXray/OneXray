@@ -16,6 +16,7 @@ void main() {
       rules: [RoutingRuleState(port: 0, network: 'TCP')],
     );
     final source = state.encode();
+    expect(jsonDecode(source)['outbounds'], [{}, {}, {}]);
     var calls = 0;
     Future<String> check(String text) async {
       calls++;
@@ -88,6 +89,7 @@ void main() {
       final id = await service.save(state);
       final row = (await database.routingProfileDao.searchRow(id))!;
       final stored = jsonDecode(utf8.decode(base64Decode(row.data))) as Map;
+      expect(stored['outbounds'], [{}]);
       expect(stored.containsKey('name'), false);
       expect(stored.containsKey('geodata'), false);
       final roundTrip = CustomRoutingService.read(row);

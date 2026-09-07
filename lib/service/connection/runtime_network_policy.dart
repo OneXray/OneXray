@@ -1,13 +1,11 @@
-import 'dart:io';
-
 /// Local DNS URLs dial outside Xray routing and do not receive outbound
-/// sockopt.interface or DNS-host bootstrap overrides. Reject what cannot obey
-/// the global policy; never silently change the user's transport or address.
+/// sockopt.interface. Reject them when an outbound interface is required;
+/// never silently change the user's transport or address.
 void validateLocalDnsNetworkPolicy(
   Map<String, dynamic> config, {
-  required bool ipv6,
   required bool requiresInterface,
 }) {
+  if (!requiresInterface) return;
   final dns = config['dns'];
   if (dns is! Map) return;
   final servers = dns['servers'];
@@ -15,42 +13,10 @@ void validateLocalDnsNetworkPolicy(
   for (final server in servers) {
     final address = server is Map ? server['address'] : server;
     if (address is! String) continue;
-    // Desktop's ordinary system resolver is already bound to the App-selected
-    // interface / 8.8.8.8. FakeDNS has no remote DNS transport.
-    if (address.toLowerCase() == 'localhost' ||
-        address.toLowerCase() == 'fakedns') {
-      continue;
-    }
-
-    var host = address;
-    var local = false;
-    if (address.contains('://')) {
-      final uri = Uri.tryParse(address);
-      if (uri == null) continue;
-      host = uri.host;
-      local = uri.scheme.toLowerCase().endsWith('+local');
-    }
-    if (host.startsWith('[')) {
-      final closing = host.indexOf(']');
-      if (closing < 0) continue;
-      host = host.substring(1, closing);
-    }
-    final ip = InternetAddress.tryParse(host);
-    if (!ipv6 && ip?.type == InternetAddressType.IPv6) {
-      throw const FormatException(
-        'IPv6 DNS endpoints are unavailable while IPv6 is disabled',
-      );
-    }
-    // Local DNS transports do not guarantee the selected interface or IP
-    // family. Keep these combinations rejected; routing cannot protect them.
-    if (local && requiresInterface) {
+    if (Uri.tryParse(address)?.scheme.toLowerCase().endsWith('+local') ==
+        true) {
       throw const FormatException(
         'Local DNS URLs cannot use the required network interface',
-      );
-    }
-    if (local && !ipv6 && ip?.type != InternetAddressType.IPv4) {
-      throw const FormatException(
-        'Local DNS hostnames cannot guarantee IPv4-only resolution',
       );
     }
   }

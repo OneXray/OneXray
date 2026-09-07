@@ -47,6 +47,23 @@ void main() {
     },
   );
 
+  test('IPv6-off native TUN configuration omits IPv6 addresses and DNS', () {
+    for (final platform in ConnectionPlatform.values) {
+      final policy = PlatformPolicy.fromJson({
+        'ipv6Enabled': false,
+        'xrayOutboundInterfaceName': 'selected-interface',
+      });
+      final tun = policy.toTun(platform);
+      expect(tun.enableIPv6, false);
+      expect(tun.tunIPv4, PlatformPolicy.tunIpv4Address);
+      expect(tun.tunDnsIPv4, PlatformPolicy.dnsIpv4Address);
+      expect(tun.tunIPv6, isNull);
+      expect(tun.tunDnsIPv6, isNull);
+      expect(tun.toJson(), isNot(contains('tunIPv6')));
+      expect(tun.toJson(), isNot(contains('tunDnsIPv6')));
+    }
+  });
+
   test(
     'policy and converted native values cannot mutate the stored snapshot',
     () {

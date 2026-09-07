@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/xray_json.dart';
@@ -59,7 +58,6 @@ class RuntimeOptions {
   final String logLevel;
   final bool dnsLog;
   final String maskAddress;
-  final Map<String, List<String>> bootstrapAddresses;
 
   RuntimeOptions({
     required this.platform,
@@ -73,12 +71,7 @@ class RuntimeOptions {
     this.logLevel = 'warning',
     this.dnsLog = true,
     this.maskAddress = '',
-    Map<String, List<String>> bootstrapAddresses = const {},
-  }) : bootstrapAddresses = Map.unmodifiable(
-         bootstrapAddresses.map(
-           (key, value) => MapEntry(key, List<String>.unmodifiable(value)),
-         ),
-       ) {
+  }) {
     if (metricsPort == socksPort) {
       throw const FormatException('Runtime ports are invalid');
     }
@@ -132,7 +125,6 @@ class ConnectionCompiler {
   static const dnsProxy = 'app-dns-proxy';
   static const dnsDirect = 'app-dns-direct';
   static const dnsOutbound = 'dnsOut';
-  static const ipv6Block = 'app-ipv6-block';
 
   /// The editor and runtime share these exact built-in rules and their order.
   static List<XrayRoutingRule> smartRules(
@@ -142,12 +134,7 @@ class ConnectionCompiler {
     final domains = <String>{
       if (smart.directPrivate) 'geosite:PRIVATE',
       if (smart.directApple) 'geosite:APPLE',
-      if (smart.directWindows) ...[
-        'geosite:MICROSOFT',
-        'geosite:WINDOWS',
-        'geosite:OFFICE',
-        'geosite:BING',
-      ],
+      if (smart.directWindows) ...['geosite:MICROSOFT', 'geosite:BING'],
       ...regions.domainRules(smart.directRegions),
     }.toList();
     final ips = <String>{
@@ -315,12 +302,6 @@ class ConnectionCompiler {
             ),
           ],
           rules: [
-            if (!options.ipv6)
-              XrayRoutingRule(
-                ruleTag: ipv6Block,
-                ip: ['::/0'],
-                outboundTag: 'block',
-              ),
             XrayRoutingRule(
               ruleTag: 'app-default',
               inboundTag: [dnsProxy],
@@ -428,7 +409,6 @@ class ConnectionCompiler {
     final config = jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
     validateLocalDnsNetworkPolicy(
       config,
-      ipv6: options.ipv6,
       requiresInterface:
           options.platform == ConnectionPlatform.windows ||
           options.platform == ConnectionPlatform.linux,
@@ -480,39 +460,7 @@ class ConnectionCompiler {
         server['queryStrategy'] = queryStrategy;
       }
     }
-    if (options.bootstrapAddresses.isNotEmpty) {
-      final hosts = _object(dns, 'hosts');
-      for (final entry in options.bootstrapAddresses.entries) {
-        if (entry.value.isEmpty ||
-            entry.value.any(
-              (ip) =>
-                  InternetAddress.tryParse(ip) == null ||
-                  (!options.ipv6 &&
-                      InternetAddress(ip).type != InternetAddressType.IPv4),
-            )) {
-          throw const FormatException('Invalid bootstrap address');
-        }
-        hosts[entry.key] = entry.value;
-      }
-    }
     _applyOutboundPolicy(outbounds, options, raw: true);
-    final routing = _object(config, 'routing');
-    final rules = _objects(routing, 'rules');
-    if (!options.ipv6) {
-      if (outbounds.any((outbound) => outbound['tag'] == ipv6Block)) {
-        throw const FormatException('Reserved IPv6 tag conflict');
-      }
-      outbounds.add(createBlackholeOutbound(tag: ipv6Block).toJson());
-      rules.insert(
-        0,
-        XrayRoutingRule(
-          ruleTag: ipv6Block,
-          ip: ['::/0'],
-          outboundTag: ipv6Block,
-        ).toJson(),
-      );
-    }
-    routing['rules'] = rules;
     config['outbounds'] = outbounds;
     return config;
   }
@@ -543,27 +491,6 @@ class ConnectionCompiler {
           settings.remove('domainStrategy');
         }
       }
-      if (!options.ipv6) {
-        for (final address in outboundAddresses(outbound)) {
-          final ip = InternetAddress.tryParse(address);
-          if (ip?.type == InternetAddressType.IPv6) {
-            throw const FormatException('IPv6 is disabled');
-          }
-          if (raw &&
-              ip == null &&
-              !options.bootstrapAddresses.containsKey(address)) {
-            throw const FormatException(
-              'IPv4 bootstrap resolution is required',
-            );
-          }
-        }
-        if (raw) {
-          sockopt['domainStrategy'] = 'ForceIPv4';
-          if (outbound['protocol'] == 'freedom') {
-            _object(outbound, 'settings')['domainStrategy'] = 'ForceIPv4';
-          }
-        }
-      }
       if (sockopt.isEmpty) stream.remove('sockopt');
       if (stream.isEmpty) outbound.remove('streamSettings');
     }
@@ -580,34 +507,5 @@ class ConnectionCompiler {
       }
     }
     return false;
-  }
-}
-
-/// Endpoint hosts only, never TLS SNI/HTTP Host; used for pre-start bootstrap
-/// resolution when IPv6 is disabled. No query or target dial occurs here.
-Iterable<String> outboundAddresses(Map<String, dynamic> outbound) sync* {
-  final settings = outbound['settings'];
-  if (settings is! Map) return;
-  if (settings['address'] is String) yield settings['address'] as String;
-  for (final key in ['servers', 'vnext']) {
-    final entries = settings[key];
-    if (entries is List) {
-      for (final entry in entries) {
-        if (entry is Map && entry['address'] is String) {
-          yield entry['address'] as String;
-        }
-      }
-    }
-  }
-  if (outbound['protocol'] == 'wireguard') {
-    final peers = settings['peers'];
-    if (peers is! List) return;
-    for (final peer in peers) {
-      final endpoint = peer is Map ? peer['endpoint'] : null;
-      final uri = endpoint is String ? Uri.tryParse('//$endpoint') : null;
-      if (uri != null && uri.host.isNotEmpty) {
-        yield uri.host;
-      }
-    }
   }
 }

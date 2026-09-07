@@ -83,9 +83,9 @@ final class PlatformPolicy {
     final policy = toJson();
     final tun = <String, dynamic>{
       'tunIPv4': tunIpv4Address,
-      'tunIPv6': tunIpv6Address,
+      if (policy['ipv6Enabled'] == true) 'tunIPv6': tunIpv6Address,
       'tunDnsIPv4': dnsIpv4Address,
-      'tunDnsIPv6': dnsIpv6Address,
+      if (policy['ipv6Enabled'] == true) 'tunDnsIPv6': dnsIpv6Address,
       'dnsServerName': dnsServerName,
       'enableIPv6': policy['ipv6Enabled'],
       'metricsEnabled': true,

@@ -41,12 +41,7 @@ void main() {
         'domainStrategy': 'IPIfNonMatch',
         'rules': [first, second, third],
       },
-      'outbounds': [
-        {},
-        {},
-        {'tag': 'direct', 'protocol': 'freedom'},
-        {'tag': 'block', 'protocol': 'blackhole'},
-      ],
+      'outbounds': [{}, {}],
     });
   });
 
@@ -67,11 +62,7 @@ void main() {
           },
         ],
       },
-      'outbounds': [
-        {},
-        {'tag': 'direct', 'protocol': 'freedom'},
-        {'tag': 'block', 'protocol': 'blackhole'},
-      ],
+      'outbounds': [{}],
     });
   });
 
@@ -190,6 +181,8 @@ void main() {
       }
       for (final outbound in [
         {'tag': 'node', 'protocol': 'socks'},
+        {'tag': 'direct', 'protocol': 'freedom'},
+        {'tag': 'block', 'protocol': 'blackhole'},
         {'tag': 'direct', 'protocol': 'blackhole'},
         {'tag': 'direct', 'protocol': 'freedom', 'settings': null},
         {
@@ -281,11 +274,7 @@ void main() {
 
 Map<String, dynamic> _document([int count = 1]) => {
   'name': 'Custom',
-  'outbounds': [
-    ...List.generate(count, (_) => <String, dynamic>{}),
-    {'tag': 'direct', 'protocol': 'freedom'},
-    {'tag': 'block', 'protocol': 'blackhole'},
-  ],
+  'outbounds': List.generate(count, (_) => <String, dynamic>{}),
   'routing': <String, dynamic>{'rules': <dynamic>[]},
 };
 
