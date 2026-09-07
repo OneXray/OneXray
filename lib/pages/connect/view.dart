@@ -1221,45 +1221,38 @@ class TrafficReadout extends StatelessWidget {
     label: '$label $value',
     excludeSemantics: true,
     child: Padding(
-      padding: desktop
-          ? const EdgeInsetsDirectional.fromSTEB(40, 0, 18, 0)
-          : const EdgeInsetsDirectional.fromSTEB(12, 0, 8, 0),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.controlHorizontal,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsetsDirectional.only(
-              start: desktop ? 30 : 24,
-              bottom: desktop ? 10 : 5,
-            ),
-            child: Text(
-              label,
-              style:
-                  (desktop
-                          ? AppTypography.connectDesktopTrafficLabel
-                          : AppTypography.connectTrafficLabel)
-                      .copyWith(
-                        color: ColorManager.palette(context).mutedStrong,
-                      ),
-            ),
-          ),
           Row(
             children: [
               Icon(icon, size: desktop ? 24 : 19, color: color),
-              SizedBox(width: desktop ? 13 : 7),
-              Flexible(
+              const SizedBox(width: AppSpacing.actionRunGap),
+              Expanded(
                 child: Text(
-                  value,
-                  textDirection: TextDirection.ltr,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: desktop
-                      ? AppTypography.metric
-                      : AppTypography.connectTrafficValue,
+                  label,
+                  style:
+                      (desktop
+                              ? AppTypography.connectDesktopTrafficLabel
+                              : AppTypography.connectTrafficLabel)
+                          .copyWith(
+                            color: ColorManager.palette(context).mutedStrong,
+                          ),
                 ),
               ),
             ],
+          ),
+          SizedBox(height: desktop ? 10 : 5),
+          Text(
+            value,
+            textDirection: TextDirection.ltr,
+            style: desktop
+                ? AppTypography.metric
+                : AppTypography.connectTrafficValue,
           ),
         ],
       ),

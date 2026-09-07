@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -11,6 +12,7 @@ import 'package:onexray/pages/widget/page_action_bar.dart';
 import 'package:onexray/pages/widget/page_empty_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connection/traffic_accounting.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {
@@ -103,6 +105,75 @@ void main() {
     ),
     home: Scaffold(body: child),
   );
+
+  testWidgets('connection traffic shows complete values and units', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final view = ConnectionView(
+      phase: ConnectionPhase.connected,
+      metricsAvailable: true,
+      downloadSpeed: (248.72 * 1024).round(),
+      uploadSpeed: (32.8 * 1024).round(),
+      traffic: RuntimeSnapshot(
+        sessionId: 'traffic-layout',
+        startedAtMs: 0,
+        endedAtMs: 0,
+        uplink: (158.91 * 1024).round(),
+        downlink: (999.99 * 1024 * 1024).round(),
+        totalUplink: (123.45 * 1024 * 1024 * 1024).round(),
+        totalDownlink: (999.99 * 1024 * 1024 * 1024 * 1024).round(),
+        available: true,
+        sampledAtMs: 0,
+        savedAtMs: 0,
+        error: '',
+      ),
+    );
+    for (final (width, scale, locale) in [
+      (1160.0, 1.0, const Locale('en')),
+      (901.0, 1.0, const Locale('en')),
+      (390.0, 1.0, const Locale('en')),
+      (320.0, 1.0, const Locale('en')),
+      (1160.0, 1.3, const Locale('ru')),
+      (390.0, 1.3, const Locale('fa')),
+    ]) {
+      await tester.binding.setSurfaceSize(Size(width, 900));
+      await tester.pumpWidget(
+        app(
+          width > AppLayout.mobileBreakpoint
+              ? Row(
+                  children: [
+                    const SizedBox(width: AppLayout.desktopSidebarWidth),
+                    Expanded(child: screen(view: view)),
+                  ],
+                )
+              : screen(view: view),
+          locale: locale,
+          scale: scale,
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (final value in [
+        '248.72 KB/s',
+        '32.8 KB/s',
+        '158.91 KB',
+        '999.99 MB',
+        '123.45 GB',
+        '999.99 TB',
+      ]) {
+        expect(find.text(value), findsOneWidget);
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.text(value),
+        );
+        expect(
+          paragraph.didExceedMaxLines,
+          isFalse,
+          reason: '$value must not be truncated at $width / $scale / $locale',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   for (final expert in [false, true]) {
     testWidgets('desktop connection shares one panel, expert=$expert', (
