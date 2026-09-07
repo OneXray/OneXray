@@ -596,7 +596,7 @@
   "prototypeAppleSystemVpn": "Системный VPN Apple",
   "prototypeAppleVpnDescription": "Настройки Network Extension",
   "prototypeCaptureAllTraffic": "Перехватывать весь трафик",
-  "prototypeCaptureAllTrafficHint": "Направлять весь сетевой трафик устройства через VPN.",
+  "prototypeCaptureAllTrafficHint": "Направлять весь сетевой трафик устройства через VPN.\nНеправильная настройка может привести к потере доступа к сети.",
   "prototypeAllowLocalNetwork": "Разрешить локальную сеть",
   "prototypeAllowLocalNetworkHint": "Разрешить доступ к устройствам и службам локальной сети.",
   "prototypeBypassCellularServices": "Обходить услуги оператора",

@@ -101,6 +101,12 @@ void main() {
 
     final selector = find.byKey(const ValueKey('apple-network-action-choice'));
     expect(
+      find.textContaining(
+        'Incorrect configuration may cause loss of network connectivity.',
+      ),
+      findsOneWidget,
+    );
+    expect(
       find.descendant(of: selector, matching: find.byType(Expanded)),
       findsNothing,
     );
@@ -130,7 +136,12 @@ void main() {
       );
       expect(find.text('System VPN policy'), findsNothing);
       expect(find.byType(ShadSwitch), findsNWidgets(4));
+      final warning = find.textContaining(
+        'Incorrect configuration may cause loss of network connectivity.',
+      );
+      expect(warning, findsOneWidget);
       await _tap(tester, _toggle('captureAllTraffic'));
+      expect(warning, findsOneWidget);
       expect(find.byType(ShadSwitch), findsNWidgets(8));
       expect(
         tester.widget<ShadSwitch>(_toggle('allowLocalNetwork')).value,
@@ -297,6 +308,13 @@ void main() {
         ),
       );
       final l = AppLocalizations.of(tester.element(find.byType(AppleVpnView)))!;
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('captureAllTraffic')),
+          matching: find.text(l.prototypeCaptureAllTrafficHint),
+        ),
+        findsOneWidget,
+      );
       expect(find.text(l.prototypeEthernet), findsOneWidget);
       expect(find.text(l.prototypeCellularNetwork), findsNothing);
       await _tap(

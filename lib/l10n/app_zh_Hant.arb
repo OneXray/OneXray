@@ -596,7 +596,7 @@
   "prototypeAppleSystemVpn": "Apple 系統 VPN",
   "prototypeAppleVpnDescription": "Network Extension 設定",
   "prototypeCaptureAllTraffic": "接管全部流量",
-  "prototypeCaptureAllTrafficHint": "將裝置所有網路流量通過 VPN 處理。",
+  "prototypeCaptureAllTrafficHint": "將裝置所有網路流量通過 VPN 處理。\n設定不當可能導致網路無法使用。",
   "prototypeAllowLocalNetwork": "允許區域網路",
   "prototypeAllowLocalNetworkHint": "允許存取區域網路中的裝置和服務。",
   "prototypeBypassCellularServices": "繞過行動網路服務",

@@ -596,7 +596,7 @@
     "prototypeAppleSystemVpn": "VPN سیستم Apple",
     "prototypeAppleVpnDescription": "تنظیمات Network Extension",
     "prototypeCaptureAllTraffic": "گرفتن همهٔ ترافیک",
-    "prototypeCaptureAllTrafficHint": "همهٔ ترافیک شبکهٔ دستگاه از VPN عبور کند.",
+    "prototypeCaptureAllTrafficHint": "همهٔ ترافیک شبکهٔ دستگاه از VPN عبور کند.\nپیکربندی نادرست ممکن است دسترسی به شبکه را قطع کند.",
     "prototypeAllowLocalNetwork": "اجازهٔ دسترسی به شبکهٔ محلی",
     "prototypeAllowLocalNetworkHint": "اجازهٔ دسترسی به دستگاه‌ها و سرویس‌های شبکهٔ محلی.",
     "prototypeBypassCellularServices": "عبور مستقیم خدمات تلفن همراه",

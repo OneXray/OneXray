@@ -2339,9 +2339,9 @@
   "@prototypeCaptureAllTraffic": {
     "description": "Approved prototype copy: Capture all traffic"
   },
-  "prototypeCaptureAllTrafficHint": "Send all device network traffic through the VPN.",
+  "prototypeCaptureAllTrafficHint": "Send all device network traffic through the VPN.\nIncorrect configuration may cause loss of network connectivity.",
   "@prototypeCaptureAllTrafficHint": {
-    "description": "Approved prototype copy: Send all device network traffic through the VPN."
+    "description": "Description and network connectivity warning below the Apple VPN Capture all traffic switch."
   },
   "prototypeAllowLocalNetwork": "Allow local network",
   "@prototypeAllowLocalNetwork": {
