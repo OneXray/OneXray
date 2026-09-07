@@ -183,6 +183,7 @@
     "prototypeAutomaticOneEntry": "انتخاب خودکار · ۱ گره ورودی",
     "prototypeAutomaticEntries": "انتخاب خودکار · {count} گره ورودی",
     "prototypeChooseBySpeedAvailability": "انتخاب بر اساس سرعت و دسترس‌پذیری",
+    "prototypeFastLatency": "سریع · {latency} میلی‌ثانیه",
     "prototypeAvailableLatency": "در دسترس · {latency} میلی‌ثانیه",
     "prototypeSlowLatency": "کند · {latency} میلی‌ثانیه",
     "prototypeTemporarilyUnavailable": "موقتاً در دسترس نیست",

@@ -319,6 +319,17 @@ class ConnectController extends PageCubit<ConnectPageState> {
           ? null
           : l10n.prototypeChooseBySpeedAvailability);
 
+  String health(AppLocalizations l, CoreConfigData row) =>
+      row.delay == PingDelayConstants.unknown
+      ? l.prototypeNotTested
+      : !PingDelayConstants.isSuccessful(row.delay)
+      ? l.prototypeTemporarilyUnavailable
+      : row.delay <= 500
+      ? l.prototypeFastLatency(row.delay)
+      : row.delay <= 1000
+      ? l.prototypeSlowLatency(row.delay)
+      : l.prototypeAvailableLatency(row.delay);
+
   // The runtime chooses the node identity; the badge shows that node's latest
   // successful probe, not a measurement of this session or a new selection.
   String? selectionHealth(AppLocalizations l10n) {
@@ -331,7 +342,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
     if (row == null || !PingDelayConstants.isSuccessful(row.delay)) {
       return null;
     }
-    return l10n.prototypeAvailableLatency(row.delay);
+    return health(l10n, row);
   }
 
   String homeMethodTitle(AppLocalizations l10n) =>

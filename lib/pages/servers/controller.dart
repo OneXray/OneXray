@@ -377,15 +377,6 @@ class ServersController extends ConnectController {
         }
       : {};
 
-  String health(AppLocalizations l, CoreConfigData row) =>
-      !ServerAssetService.measured(row)
-      ? l.prototypeNotTested
-      : !ServerAssetService.healthy(row)
-      ? l.prototypeTemporarilyUnavailable
-      : row.delay >= 300
-      ? l.prototypeSlowLatency(row.delay)
-      : l.prototypeAvailableLatency(row.delay);
-
   String summary(AppLocalizations l, ServerGroup group) {
     var available = 0;
     int? fastest;

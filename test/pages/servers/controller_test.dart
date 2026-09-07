@@ -203,9 +203,14 @@ void main() {
     final row = await server('one');
     for (final (delay, label, selectable) in [
       (PingDelayConstants.unknown, l.prototypeNotTested, true),
-      (0, l.prototypeAvailableLatency(0), true),
+      (0, l.prototypeFastLatency(0), true),
       (-1, l.prototypeTemporarilyUnavailable, false),
-      (320, l.prototypeSlowLatency(320), true),
+      (499, l.prototypeFastLatency(499), true),
+      (500, l.prototypeFastLatency(500), true),
+      (501, l.prototypeSlowLatency(501), true),
+      (999, l.prototypeSlowLatency(999), true),
+      (1000, l.prototypeSlowLatency(1000), true),
+      (1001, l.prototypeAvailableLatency(1001), true),
       (PingDelayConstants.error, l.prototypeTemporarilyUnavailable, false),
       (PingDelayConstants.timeout, l.prototypeTemporarilyUnavailable, false),
     ]) {
@@ -215,7 +220,7 @@ void main() {
       controller.servers = [candidate];
       expect(
         controller.automaticResult(l),
-        delay == 0 || delay == 320
+        PingDelayConstants.isSuccessful(delay)
             ? l.prototypeCurrentServerLatency('one', delay)
             : isNull,
       );

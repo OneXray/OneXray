@@ -183,6 +183,7 @@
   "prototypeAutomaticOneEntry": "Автовыбор · 1 входной узел",
   "prototypeAutomaticEntries": "Автовыбор · входных узлов: {count}",
   "prototypeChooseBySpeedAvailability": "Выбирать по скорости и доступности",
+  "prototypeFastLatency": "Быстрый · {latency} мс",
   "prototypeAvailableLatency": "Доступен · {latency} мс",
   "prototypeSlowLatency": "Медленный · {latency} мс",
   "prototypeTemporarilyUnavailable": "Временно недоступен",

@@ -166,23 +166,24 @@ void main() {
         controller.selectionTitle(l),
         'Automatic selection · 2 entry nodes',
       );
-      expect(controller.selectionHealth(l), 'Available · 42 ms');
+      expect(controller.selectionHealth(l), 'Fast · 42 ms');
       final running = controller.servers.first;
-      for (final delay in [
-        0,
-        -1,
-        PingDelayConstants.unknown,
-        PingDelayConstants.error,
-        PingDelayConstants.timeout,
+      for (final (delay, label) in [
+        (0, 'Fast · 0 ms'),
+        (500, 'Fast · 500 ms'),
+        (501, 'Slow · 501 ms'),
+        (1000, 'Slow · 1000 ms'),
+        (1001, 'Available · 1001 ms'),
+        (-1, null),
+        (PingDelayConstants.unknown, null),
+        (PingDelayConstants.error, null),
+        (PingDelayConstants.timeout, null),
       ]) {
         controller.servers = [
           running.copyWith(delay: delay),
           controller.servers.last,
         ];
-        expect(
-          controller.selectionHealth(l),
-          delay == 0 ? 'Available · 0 ms' : isNull,
-        );
+        expect(controller.selectionHealth(l), label);
       }
       expect(
         controller.selectionDetail(l),

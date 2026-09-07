@@ -484,6 +484,15 @@
   "@prototypeChooseBySpeedAvailability": {
     "description": "Approved prototype copy: Choose by speed and availability"
   },
+  "prototypeFastLatency": "Fast · {latency} ms",
+  "@prototypeFastLatency": {
+    "description": "Node latency at or below 500 ms",
+    "placeholders": {
+      "latency": {
+        "type": "int"
+      }
+    }
+  },
   "prototypeAvailableLatency": "Available · {latency} ms",
   "@prototypeAvailableLatency": {
     "description": "Approved prototype copy: Available · {latency} ms",
