@@ -70,9 +70,11 @@ selector 填写生成节点完整 tag，采用 round-robin，回退出站为 `di
 Windows 服务直连开关在所有平台显示，默认关闭；开启后直连 Microsoft、Windows、Office、
 Bing 四类 Geosite 域名，与其他直连条件共用预览、保存和重连逻辑。
 
-App DNS 固定两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。direct server 的
-domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不宣称已判断 IP、端口
-或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
+“所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
+及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。
+智能路由和自定义路由保留两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。
+direct server 的 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不
+宣称已判断 IP、端口或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
 `queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
 
 ## 自定义路由

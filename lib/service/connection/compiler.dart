@@ -213,6 +213,7 @@ class ConnectionCompiler {
       if (settings.trafficMode == TrafficMode.custom && custom == null) {
         throw const FormatException('Custom route is required');
       }
+      final allVpn = settings.trafficMode == TrafficMode.allVpn;
       final rules = <XrayRoutingRule>[];
       var domainStrategy = 'AsIs';
       if (settings.trafficMode == TrafficMode.smart) {
@@ -259,7 +260,10 @@ class ConnectionCompiler {
               : null,
         ).toJson(),
         createBlackholeOutbound(tag: 'block').toJson(),
-        createDnsOutbound(tag: dnsOutbound, dialerProxy: 'direct').toJson(),
+        createDnsOutbound(
+          tag: dnsOutbound,
+          dialerProxy: allVpn ? selector.single : 'direct',
+        ).toJson(),
       ]);
       final directDomains = <String>{};
       if (settings.trafficMode != TrafficMode.smart ||
@@ -290,13 +294,14 @@ class ConnectionCompiler {
               tag: dnsProxy,
               queryStrategy: queryStrategy,
             ),
-            XrayDnsServer(
-              address: '8.8.8.8',
-              tag: dnsDirect,
-              domains: directDomains.toList(),
-              skipFallback: true,
-              queryStrategy: queryStrategy,
-            ),
+            if (!allVpn)
+              XrayDnsServer(
+                address: '8.8.8.8',
+                tag: dnsDirect,
+                domains: directDomains.toList(),
+                skipFallback: true,
+                queryStrategy: queryStrategy,
+              ),
           ],
         ),
         routing: XrayRouting(
@@ -321,11 +326,12 @@ class ConnectionCompiler {
               inboundTag: [dnsProxy],
               balancerTag: 'proxy',
             ),
-            XrayRoutingRule(
-              ruleTag: 'app-direct-dns',
-              inboundTag: [dnsDirect],
-              outboundTag: 'direct',
-            ),
+            if (!allVpn)
+              XrayRoutingRule(
+                ruleTag: 'app-direct-dns',
+                inboundTag: [dnsDirect],
+                outboundTag: 'direct',
+              ),
             XrayRoutingRule(
               ruleTag: 'app-tunnel-dns',
               inboundTag: ['tunIn'],

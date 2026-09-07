@@ -624,14 +624,24 @@ void main() {
                 'tag': ConnectionCompiler.dnsProxy,
                 'queryStrategy': ipv6 ? 'UseIP' : 'UseIPv4',
               },
-              {
-                'address': '8.8.8.8',
-                'tag': ConnectionCompiler.dnsDirect,
-                'domains': <String>[],
-                'skipFallback': true,
-                'queryStrategy': ipv6 ? 'UseIP' : 'UseIPv4',
-              },
             ]);
+            final rules = (config['routing']['rules'] as List).cast<Map>();
+            expect(
+              rules.singleWhere((rule) => rule['ruleTag'] == 'app-default'),
+              {
+                'ruleTag': 'app-default',
+                'inboundTag': [ConnectionCompiler.dnsProxy],
+                'balancerTag': 'proxy',
+              },
+            );
+            expect(rules.any((rule) => rule['outboundTag'] == 'direct'), false);
+            final dnsOutbound = (config['outbounds'] as List).singleWhere(
+              (outbound) => outbound['tag'] == ConnectionCompiler.dnsOutbound,
+            );
+            expect(
+              dnsOutbound['streamSettings']['sockopt']['dialerProxy'],
+              'app-entry-0',
+            );
             final direct = (config['outbounds'] as List).singleWhere(
               (outbound) => outbound['tag'] == 'direct',
             );
