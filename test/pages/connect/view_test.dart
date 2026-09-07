@@ -196,7 +196,7 @@ void main() {
         final context = tester.element(find.byType(ConnectView));
         final l = AppLocalizations.of(context)!;
         expect(find.text(l.prototypeCurrentSpeed), findsOneWidget);
-        expect(find.text(l.prototypeConnectionLocation), findsOneWidget);
+        expect(find.text(l.prototypeServers), findsOneWidget);
         expect(
           Directionality.of(context),
           locale.languageCode == 'fa' ? TextDirection.rtl : TextDirection.ltr,

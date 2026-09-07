@@ -118,7 +118,7 @@ class ConnectView extends StatelessWidget {
                                 _choice(
                                   context,
                                   LucideIcons.earth,
-                                  l.prototypeConnectionLocation,
+                                  l.prototypeServers,
                                   location,
                                   onServer,
                                   detail: locationDetail ?? runningPath,
@@ -219,7 +219,7 @@ class ConnectView extends StatelessWidget {
                   _desktopChoice(
                     context,
                     LucideIcons.earth,
-                    l.prototypeConnectionLocation,
+                    l.prototypeServers,
                     location,
                     onServer,
                     detail: locationDetail ?? runningPath,

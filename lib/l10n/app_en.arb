@@ -459,10 +459,6 @@
       }
     }
   },
-  "prototypeConnectionLocation": "Connection location",
-  "@prototypeConnectionLocation": {
-    "description": "Approved prototype copy: Connection location"
-  },
   "prototypeAutomaticSelection": "Automatic selection",
   "@prototypeAutomaticSelection": {
     "description": "Approved prototype copy: Automatic selection"

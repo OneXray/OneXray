@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/view.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
@@ -112,6 +114,7 @@ void main() {
     WidgetTester tester,
     double width, {
     Locale locale = const Locale('en'),
+    Brightness brightness = Brightness.light,
     bool groupPage = false,
   }) async {
     tester.view.devicePixelRatio = 1;
@@ -121,12 +124,12 @@ void main() {
     final mobile = width <= AppLayout.mobileBreakpoint;
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.material(Brightness.light, mobile: mobile),
+        theme: AppTheme.material(brightness, mobile: mobile),
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => ShadTheme(
-          data: AppTheme.shad(Brightness.light),
+          data: AppTheme.shad(brightness),
           child: ShadToaster(child: child!),
         ),
         home: Scaffold(
@@ -159,6 +162,67 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  for (final brightness in Brightness.values) {
+    for (final width in [427.0, 1160.0]) {
+      testWidgets(
+        'node latency colors preserve metadata ($brightness, $width)',
+        (tester) async {
+          final palette = AppColorTokens.fallback(brightness).palette;
+          final samples = [
+            (0, palette.runningBadge),
+            (500, palette.runningBadge),
+            (501, palette.restartingText),
+            (1000, palette.restartingText),
+            (1001, palette.primaryHover),
+            (PingDelayConstants.unknown, palette.mutedForeground),
+            (PingDelayConstants.error, palette.mutedForeground),
+            (PingDelayConstants.timeout, palette.mutedForeground),
+          ];
+          controller.servers = [
+            for (final (index, (delay, _)) in samples.indexed)
+              _server(index + 1, 'JP').copyWith(delay: delay),
+          ];
+          await pumpBrowser(
+            tester,
+            width,
+            brightness: brightness,
+            groupPage: true,
+          );
+          final l = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+          for (final (index, (delay, color)) in samples.indexed) {
+            final label = controller.health(l, controller.servers[index]);
+            final prefix = '${l.countryRegionName('JP')} · ';
+            final text = tester.widget<Text>(
+              find.descendant(
+                of: find.byKey(ValueKey(index + 1)),
+                matching: find.text('$prefix$label'),
+              ),
+            );
+            final span = text.textSpan! as TextSpan;
+            expect(span.text, prefix);
+            expect(text.style!.color, palette.mutedForeground);
+            expect(span.children!.single.style!.color, color);
+            if (PingDelayConstants.isSuccessful(delay)) {
+              for (final background in [
+                palette.card,
+                palette.selectedSurface,
+              ]) {
+                final foregroundLuminance = color.computeLuminance() + 0.05;
+                final backgroundLuminance =
+                    background.computeLuminance() + 0.05;
+                final contrast = foregroundLuminance > backgroundLuminance
+                    ? foregroundLuminance / backgroundLuminance
+                    : backgroundLuminance / foregroundLuminance;
+                expect(contrast, greaterThanOrEqualTo(4.5));
+              }
+            }
+          }
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
   }
 
   for (final width in [427.0, 1160.0]) {

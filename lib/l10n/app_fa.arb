@@ -178,7 +178,6 @@
     "prototypeJustConnected": "همین حالا متصل شد",
     "prototypeProtectedMinutes": "{minutes} دقیقه تحت محافظت",
     "prototypeProtectedHoursMinutes": "{hours} ساعت و {minutes} دقیقه تحت محافظت",
-    "prototypeConnectionLocation": "مکان اتصال",
     "prototypeAutomaticSelection": "انتخاب خودکار",
     "prototypeAutomaticOneEntry": "انتخاب خودکار · ۱ گره ورودی",
     "prototypeAutomaticEntries": "انتخاب خودکار · {count} گره ورودی",

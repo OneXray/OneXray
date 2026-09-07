@@ -178,7 +178,6 @@
   "prototypeJustConnected": "Только что подключено",
   "prototypeProtectedMinutes": "Под защитой {minutes} мин",
   "prototypeProtectedHoursMinutes": "Под защитой {hours} ч {minutes} мин",
-  "prototypeConnectionLocation": "Расположение подключения",
   "prototypeAutomaticSelection": "Автовыбор",
   "prototypeAutomaticOneEntry": "Автовыбор · 1 входной узел",
   "prototypeAutomaticEntries": "Автовыбор · входных узлов: {count}",

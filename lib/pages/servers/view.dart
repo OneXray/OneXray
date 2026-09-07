@@ -1049,8 +1049,22 @@ class ServerNodeRow extends StatelessWidget {
                                           ),
                                         ],
                                         const SizedBox(height: 3),
-                                        Text(
-                                          '$rowDetail · ${controller.health(l, row)}',
+                                        Text.rich(
+                                          TextSpan(
+                                            text: '$rowDetail · ',
+                                            children: [
+                                              TextSpan(
+                                                text: controller.health(l, row),
+                                                style: TextStyle(
+                                                  color:
+                                                      ColorManager.nodeLatency(
+                                                        context,
+                                                        row.delay,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                           style: AppTypography.metadata
                                               .copyWith(
                                                 color: palette.mutedForeground,
