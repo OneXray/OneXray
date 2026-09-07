@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/servers/subscription/form_view.dart';
@@ -661,7 +662,7 @@ Widget _app(Widget child) => MaterialApp(
   theme: AppTheme.light,
   locale: const Locale('en'),
   supportedLocales: AppLocalizations.supportedLocales,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   builder: (_, child) => ShadTheme(
     data: AppTheme.shad(Brightness.light),
     child: ShadToaster(child: child!),

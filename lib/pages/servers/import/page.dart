@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -706,7 +706,13 @@ class ServerImportScannerPage extends StatelessWidget {
             ),
           ],
         ),
-        body: SafeArea(child: MobileScanner(onDetect: onDetect)),
+        body: SafeArea(
+          // mobile_scanner still uses the SDK's Material widgets.
+          // ignore: deprecated_member_use
+          child: MaterialUiCompatibilityBridge(
+            child: MobileScanner(onDetect: onDetect),
+          ),
+        ),
       ),
     ),
   );

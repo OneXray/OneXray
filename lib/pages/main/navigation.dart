@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/service/settings/app_update/service.dart';

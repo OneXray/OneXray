@@ -13,6 +13,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  material_ui: ^1.1.1
+
   #---------- flutter.dev plugin
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5

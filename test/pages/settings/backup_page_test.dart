@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
@@ -30,7 +31,7 @@ void main() {
           MaterialApp(
             theme: AppTheme.material(Brightness.light, mobile: false),
             locale: locale,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: AppLocalePolicy.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             builder: (context, child) => ShadTheme(
               data: AppTheme.shad(Brightness.light, mobile: false),

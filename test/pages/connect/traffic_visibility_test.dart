@@ -1,9 +1,10 @@
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/main/page_visibility.dart';
 import 'package:onexray/service/connect/coordinator.dart';
@@ -70,7 +71,7 @@ void main() {
             routerConfig: router,
             locale: const Locale('en'),
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           ),
         );
         await tester.pumpAndSettle();

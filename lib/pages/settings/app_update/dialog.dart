@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -104,22 +104,23 @@ class AppUpdateDialogView extends StatelessWidget {
                             style: AppTypography.updateNotesHeading,
                           ),
                           const SizedBox(height: 10),
-                          MarkdownBody(
-                            data: notes,
-                            selectable: true,
-                            styleSheet:
-                                MarkdownStyleSheet.fromTheme(
-                                  Theme.of(context),
-                                ).copyWith(
-                                  p: AppTypography.updateNotes,
-                                  listBullet: AppTypography.updateNotes,
-                                  listIndent: 20,
-                                  listBulletPadding:
-                                      const EdgeInsetsDirectional.only(end: 4)
-                                          .resolve(Directionality.of(context)),
-                                  blockSpacing: 6,
-                                ),
-                            onTapLink: (_, href, _) => onOpenLink(href),
+                          // flutter_markdown_plus still uses SDK Material.
+                          // ignore: deprecated_member_use
+                          MaterialUiCompatibilityBridge(
+                            child: MarkdownBody(
+                              data: notes,
+                              selectable: true,
+                              styleSheet: MarkdownStyleSheet(
+                                p: AppTypography.updateNotes,
+                                listBullet: AppTypography.updateNotes,
+                                listIndent: 20,
+                                listBulletPadding:
+                                    const EdgeInsetsDirectional.only(end: 4)
+                                        .resolve(Directionality.of(context)),
+                                blockSpacing: 6,
+                              ),
+                              onTapLink: (_, href, _) => onOpenLink(href),
+                            ),
                           ),
                         ],
                       ),

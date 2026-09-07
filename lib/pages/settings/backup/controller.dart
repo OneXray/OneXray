@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Progress belongs to the action that started it; the label remains readable.
 class ButtonProgress extends StatelessWidget {

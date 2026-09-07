@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -85,7 +86,7 @@ class _AlertTestApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: AppTheme.light,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: AppLocalePolicy.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => ShadTheme(
         data: AppTheme.shad(Brightness.light),

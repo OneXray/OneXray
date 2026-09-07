@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -13,7 +14,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.material(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: AppLocalePolicy.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Builder(
@@ -57,7 +58,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.material(Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: AppLocalePolicy.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Builder(
@@ -96,7 +97,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.material(brightness, mobile: true),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) => MediaQuery(
             data: const MediaQueryData(

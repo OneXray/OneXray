@@ -1,8 +1,9 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
@@ -21,7 +22,7 @@ Future<void> _openDialog(
     MaterialApp(
       theme: AppTheme.material(Brightness.light, mobile: true),
       locale: const Locale('en'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: AppLocalePolicy.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => ValueListenableBuilder<double>(
         valueListenable: keyboard,

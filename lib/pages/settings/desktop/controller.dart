@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/core/tools/logger.dart';

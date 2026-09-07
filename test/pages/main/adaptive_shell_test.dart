@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
@@ -116,7 +117,7 @@ void main() {
         child: MaterialApp.router(
           theme: AppTheme.light,
           routerConfig: router,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
         ),
       ),
@@ -285,7 +286,7 @@ void main() {
         value: eventBus,
         child: MaterialApp.router(
           routerConfig: router,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
         ),
       ),
@@ -329,4 +330,100 @@ void main() {
     );
     expect(attempts, 2);
   });
+
+  testWidgets(
+    'iOS edge swipe pops the detail without losing its primary branch',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final eventBus = AppEventBus();
+      addTearDown(eventBus.close);
+      final router = GoRouter(
+        initialLocation: AppPrimaryDestination.connect.rootPath,
+        routes: [
+          StatefulShellRoute.indexedStack(
+            builder: (_, _, shell) => AdaptiveMainShell(
+              navigationShell: shell,
+              initializeServices: (_) async {},
+            ),
+            branches: [
+              for (final primary in AppPrimaryDestination.values)
+                StatefulShellBranch(
+                  routes: [
+                    GoRoute(
+                      path: primary.rootPath,
+                      builder: (context, _) => Scaffold(
+                        body: Center(
+                          child: TextButton(
+                            onPressed: () => context.pushScoped(
+                              AppSecondaryDestination.theme,
+                            ),
+                            child: Text('open-${primary.name}'),
+                          ),
+                        ),
+                      ),
+                      routes: [
+                        GoRoute(
+                          path: AppSecondaryDestination.theme.segment,
+                          builder: (_, _) => Scaffold(
+                            appBar: AppBar(
+                              title: Text('detail-${primary.name}'),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        BlocProvider.value(
+          value: eventBus,
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: AppTheme.material(Brightness.light, mobile: true),
+            localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final primary in AppPrimaryDestination.values) {
+        await tester.tap(
+          find.byKey(ValueKey('primary-navigation-${primary.name}')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('open-${primary.name}'));
+        await tester.pumpAndSettle();
+        final route = ModalRoute.of(
+          tester.element(find.text('detail-${primary.name}')),
+        )!;
+        expect(route.settings, isA<MaterialPage<void>>());
+        expect(route.popGestureEnabled, isTrue);
+
+        await tester.dragFrom(const Offset(1, 400), const Offset(330, 0));
+        await tester.pumpAndSettle();
+
+        expect(find.text('detail-${primary.name}'), findsNothing);
+        expect(find.text('open-${primary.name}'), findsOneWidget);
+        expect(
+          router.routeInformationProvider.value.uri.path,
+          primary.rootPath,
+        );
+        expect(
+          tester
+              .widget<NavigationBar>(find.byType(NavigationBar))
+              .selectedIndex,
+          primary.index,
+        );
+        expect(tester.takeException(), isNull);
+      }
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
 }

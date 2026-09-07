@@ -1,9 +1,10 @@
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/wifi.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/widgets.dart';
@@ -35,7 +36,7 @@ Widget _app(
   Brightness brightness = Brightness.light,
 }) => MaterialApp(
   locale: locale,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   theme: AppTheme.material(brightness, mobile: true),
   builder: (context, child) =>

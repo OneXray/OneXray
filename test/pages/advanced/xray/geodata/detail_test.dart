@@ -1,11 +1,12 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/advanced/xray/geodata/detail.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
@@ -44,7 +45,7 @@ void main() {
             theme: AppTheme.light,
             locale: locale,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: AppLocalePolicy.localizationsDelegates,
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context)
                   .copyWith(textScaler: TextScaler.linear(1.5)),

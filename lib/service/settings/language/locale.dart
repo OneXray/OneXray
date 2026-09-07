@@ -1,6 +1,13 @@
-import 'package:flutter/widgets.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
 
 abstract final class AppLocalePolicy {
+  // gen-l10n still emits the SDK's legacy Material/Cupertino delegates.
+  static const localizationsDelegates = [
+    AppLocalizations.delegate,
+    ...GlobalMaterialLocalizations.delegates,
+  ];
+
   static const english = Locale("en");
 
   static const simplifiedChinese = Locale.fromSubtags(

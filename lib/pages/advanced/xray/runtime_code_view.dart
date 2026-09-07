@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/pages/theme/color.dart';

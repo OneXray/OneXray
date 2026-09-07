@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
 import 'package:onexray/pages/settings/desktop/controller.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
@@ -15,7 +16,7 @@ void main() {
   Widget app(Widget child) {
     return MaterialApp(
       theme: AppTheme.light,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: AppLocalePolicy.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, appChild) => ShadTheme(
         data: ShadThemeData(

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/advanced/xray/geodata/view.dart';
 import 'package:onexray/pages/advanced/xray/geodata/controller.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
@@ -31,7 +32,7 @@ void main() {
       late BuildContext context;
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: Builder(
@@ -85,7 +86,7 @@ void main() {
           theme: AppTheme.light,
           locale: const Locale('ru'),
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           home: Scaffold(
             body: GeoDataRows(
               files: [first, second],
@@ -145,7 +146,7 @@ void main() {
               theme: AppTheme.light,
               locale: locale,
               supportedLocales: AppLocalizations.supportedLocales,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localizationsDelegates: AppLocalePolicy.localizationsDelegates,
               home: Scaffold(
                 body: Center(
                   child: SizedBox(

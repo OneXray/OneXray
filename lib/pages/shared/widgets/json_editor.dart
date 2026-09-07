@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -33,45 +33,52 @@ class AppJsonEditor extends StatelessWidget {
       fontFamily: AppFontFamily.mono,
     );
 
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: CodeEditor(
-        controller: controller,
-        autofocus: false,
-        autocompleteSymbols: true,
-        wordWrap: false,
-        padding: const EdgeInsets.all(14),
-        border: Border.all(color: palette.border),
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        clipBehavior: Clip.antiAlias,
-        style: CodeEditorStyle(
-          fontFamily: AppFontFamily.mono,
-          fontSize: style.fontSize,
-          textColor: palette.foreground,
-          backgroundColor: palette.muted,
-          selectionColor: palette.selection,
-          cursorColor: palette.primary,
-          cursorLineColor: palette.primary.withValues(alpha: .05),
-          codeTheme: CodeHighlightTheme(
-            languages: {'json': CodeHighlightThemeMode(mode: langJson)},
-            theme: codeTheme,
+    // re_editor still uses the SDK's Material/Cupertino widgets.
+    // ignore: deprecated_member_use
+    return MaterialUiCompatibilityBridge(
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: CodeEditor(
+          controller: controller,
+          autofocus: false,
+          autocompleteSymbols: true,
+          wordWrap: false,
+          padding: const EdgeInsets.all(14),
+          border: Border.all(color: palette.border),
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          clipBehavior: Clip.antiAlias,
+          style: CodeEditorStyle(
+            fontFamily: AppFontFamily.mono,
+            fontSize: style.fontSize,
+            textColor: palette.foreground,
+            backgroundColor: palette.muted,
+            selectionColor: palette.selection,
+            cursorColor: palette.primary,
+            cursorLineColor: palette.primary.withValues(alpha: .05),
+            codeTheme: CodeHighlightTheme(
+              languages: {'json': CodeHighlightThemeMode(mode: langJson)},
+              theme: codeTheme,
+            ),
           ),
-        ),
-        indicatorBuilder: (context, editingController, _, notifier) =>
-            Container(
-              color: Color.lerp(palette.card, palette.surfaceHover, .76),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 14),
-              child: DefaultCodeLineNumber(
-                controller: editingController,
-                notifier: notifier,
-                textStyle: lineNumberStyle,
-                focusedTextStyle: lineNumberStyle.copyWith(
-                  color: palette.primary,
-                  fontWeight: FontWeight.w600,
+          indicatorBuilder: (context, editingController, _, notifier) =>
+              Container(
+                color: Color.lerp(palette.card, palette.surfaceHover, .76),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 14,
+                ),
+                child: DefaultCodeLineNumber(
+                  controller: editingController,
+                  notifier: notifier,
+                  textStyle: lineNumberStyle,
+                  focusedTextStyle: lineNumberStyle.copyWith(
+                    color: palette.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-        leadingDivider: Container(width: 1, color: palette.border),
+          leadingDivider: Container(width: 1, color: palette.border),
+        ),
       ),
     );
   }

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
@@ -20,7 +21,7 @@ Widget _app(
   theme: AppTheme.material(Brightness.light, mobile: mobile),
   locale: locale,
   supportedLocales: AppLocalizations.supportedLocales,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   builder: (context, child) => ShadTheme(
     data: AppTheme.shad(Brightness.light, mobile: mobile),
     child: child!,
@@ -357,7 +358,7 @@ void main() {
           theme: AppTheme.material(Brightness.light, mobile: true),
           locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           builder: (context, child) => ShadTheme(
             data: AppTheme.shad(Brightness.light, mobile: true),
             child: child!,

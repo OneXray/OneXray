@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Retained root tabs stay mounted. A page is visible only while its branch is
 /// active and no full page is above it in that branch's Navigator.

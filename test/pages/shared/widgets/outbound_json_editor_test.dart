@@ -1,8 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/outbound_json_editor.dart';
 import 'package:re_editor/re_editor.dart';
@@ -36,7 +37,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.material(Brightness.light, mobile: width < 720),
           locale: const Locale('fa'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (_, child) => ShadTheme(
             data: AppTheme.shad(Brightness.light, mobile: width < 720),

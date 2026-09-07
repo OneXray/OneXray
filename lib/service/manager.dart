@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/launch/app_startup.dart';

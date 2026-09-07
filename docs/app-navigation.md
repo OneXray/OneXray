@@ -4,6 +4,12 @@
 宽窗口使用侧边导航；功能与数据合同不随尺寸变化。详情使用页面间导航，共享底部操作栏
 固定显示；弹窗保留自己的操作区。
 
+Material 控件和主题统一使用 `material_ui`，与 `go_router` 的页面类型识别保持一致；
+普通页面保留平台默认转场和 iOS 侧滑返回，不自行模拟返回手势。
+系统控件本地化使用 `AppLocalePolicy.localizationsDelegates`，不使用生成文件中旧版 SDK 的
+代理列表。尚未迁移的第三方 JSON 编辑器、Markdown 和扫码控件仅在各自边界使用官方
+`MaterialUiCompatibilityBridge`；第三方依赖迁移后移除对应桥接。
+
 ## 公共主题与布局
 
 原型公共配置按语义映射到 [主题目录](../lib/pages/theme/)，App 不在运行时读取原型 JSON。

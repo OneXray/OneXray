@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -93,7 +94,7 @@ void main() {
     theme: AppTheme.light,
     locale: locale,
     supportedLocales: AppLocalizations.supportedLocales,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: AppLocalePolicy.localizationsDelegates,
     builder: (context, child) => LayoutBuilder(
       builder: (context, constraints) => MediaQuery(
         data: MediaQuery.of(context).copyWith(

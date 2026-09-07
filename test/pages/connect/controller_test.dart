@@ -3,13 +3,14 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -284,7 +285,7 @@ void main() {
           theme: AppTheme.material(Brightness.light, mobile: true),
           locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           builder: (_, child) => ShadTheme(
             data: AppTheme.shad(Brightness.light, mobile: true),
             child: ShadToaster(child: child!),
@@ -378,7 +379,7 @@ void main() {
           theme: AppTheme.light,
           locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           builder: (_, child) => ShadTheme(
             data: AppTheme.shad(Brightness.light),
             child: ShadToaster(child: child!),
@@ -556,7 +557,7 @@ Widget _testApp(Widget home) => MaterialApp(
   theme: AppTheme.light,
   locale: const Locale('en'),
   supportedLocales: AppLocalizations.supportedLocales,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   home: home,
 );
 

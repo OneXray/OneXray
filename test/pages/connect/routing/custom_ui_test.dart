@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/routing/custom/controller.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_page.dart';
@@ -27,7 +28,7 @@ void _phone(WidgetTester tester) {
 Widget _app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
   theme: AppTheme.material(Brightness.light, mobile: true),
   locale: locale,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   builder: (context, child) => ShadTheme(
     data: AppTheme.shad(Brightness.light, mobile: true),

@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/servers/subscription/form_view.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -70,7 +71,7 @@ void main() {
   Widget app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
     theme: AppTheme.light,
     locale: locale,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: AppLocalePolicy.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (context, appChild) =>
         ShadTheme(data: AppTheme.shad(Brightness.light), child: appChild!),
