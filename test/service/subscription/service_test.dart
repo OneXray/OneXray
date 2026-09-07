@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/auto_update/state.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/subscription/model.dart';
 import 'package:onexray/service/subscription/service.dart';
@@ -14,6 +15,8 @@ void main() {
   late AppDatabase database;
 
   setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
     database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
   });
@@ -45,7 +48,7 @@ void main() {
         schedulePing: (_) {},
       );
 
-      final result = await service.refreshSubscriptionResult(source, false);
+      final result = await service.refreshSubscriptionResult(source);
       expect(result.status, SubscriptionUpdateResult.success);
       expect(await database.coreConfigDao.searchRow(fixedId), isNotNull);
       expect(await database.coreConfigDao.searchRow(exitId), isNotNull);
@@ -90,11 +93,10 @@ void main() {
     expect(saved.timestamp, source.timestamp);
     await service.refreshOutdatedSubscription(
       autoUpdateState: AutoUpdateState()..subscriptionEnabled = false,
-      updateDownloading: false,
     );
     expect(downloads, 0);
     expect(await database.subscriptionDao.searchRow(source.id), saved);
-    final result = await service.refreshSubscriptionResult(saved, false);
+    final result = await service.refreshSubscriptionResult(saved);
     expect(result.success, isTrue);
     expect(downloads, 1);
   });
@@ -128,17 +130,11 @@ void main() {
         ..subscriptionEnabled = true
         ..subscriptionInterval = AutoUpdateInterval.oneDay;
 
-      await service.refreshOutdatedSubscription(
-        autoUpdateState: settings,
-        updateDownloading: false,
-      );
+      await service.refreshOutdatedSubscription(autoUpdateState: settings);
       expect(downloads, unorderedEquals(['Due A', 'Due B']));
 
       downloads.clear();
-      await service.refreshOutdatedSubscription(
-        autoUpdateState: settings,
-        updateDownloading: false,
-      );
+      await service.refreshOutdatedSubscription(autoUpdateState: settings);
       expect(downloads, isEmpty);
     },
   );
@@ -155,8 +151,9 @@ void main() {
         rows: [_node('Obsolete')],
       );
     });
-    final refresh = service.refreshSubscriptionResult(source, false);
+    final refresh = service.refreshSubscriptionResult(source);
     await started.future;
+    expect(AppEventBus.instance.state.downloading, isTrue);
     expect(
       await service.saveSubscriptionInput(
         source.id,
@@ -166,6 +163,7 @@ void main() {
     );
     release.complete();
     expect((await refresh).superseded, isTrue);
+    expect(AppEventBus.instance.state.downloading, isFalse);
     expect((await database.subscriptionDao.searchRow(source.id))!.name, 'New');
     expect(
       await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id),
@@ -189,7 +187,6 @@ void main() {
       );
       final result = await service.insertSubscription(
         const SubscriptionInput(name: 'Source', url: 'https://example.com/sub'),
-        false,
       );
 
       expect(result.success, isTrue);
@@ -248,7 +245,7 @@ void main() {
         readReferences: () => references,
       );
 
-      final result = await service.refreshSubscriptionResult(source, false);
+      final result = await service.refreshSubscriptionResult(source);
       expect(result.success, isTrue);
       expect(result.count, 2);
       expect(result.parseFailureCount, 7);
@@ -271,10 +268,7 @@ void main() {
         finalExitId: originals[3].id,
       );
       parseFailures = null;
-      final nextResult = await service.refreshSubscriptionResult(
-        updated,
-        false,
-      );
+      final nextResult = await service.refreshSubscriptionResult(updated);
       expect(nextResult.parseFailureCount, isNull);
       expect(await database.coreConfigDao.searchRow(originals[0].id), isNull);
       expect(await database.coreConfigDao.searchRow(originals[1].id), isNull);
@@ -286,7 +280,7 @@ void main() {
       await database.coreConfigDao.updateRow(
         originals[4].copyWith(favorite: false),
       );
-      await service.refreshSubscriptionResult(updated, false);
+      await service.refreshSubscriptionResult(updated);
       for (final row in originals) {
         expect(await database.coreConfigDao.searchRow(row.id), isNull);
       }
@@ -314,12 +308,11 @@ void main() {
           name: 'Empty',
           url: 'https://example.com/empty',
         ),
-        false,
       );
       expect(inserted.success, isFalse);
       expect(inserted.status, SubscriptionUpdateResult.invalidContent);
       expect(await database.subscriptionDao.allRows, hasLength(1));
-      final empty = await service.refreshSubscriptionResult(source, false);
+      final empty = await service.refreshSubscriptionResult(source);
       expect(empty.success, isFalse);
       expect(empty.status, SubscriptionUpdateResult.invalidContent);
       expect(
@@ -329,14 +322,13 @@ void main() {
             name: 'Changed',
             url: 'https://example.com/new',
           ),
-          showLoading: false,
         ),
         SubscriptionUpdateResult.invalidContent,
       );
       loaded = const SubscriptionLoadResult(
         status: SubscriptionUpdateResult.downloadFailed,
       );
-      final failed = await service.refreshSubscriptionResult(source, false);
+      final failed = await service.refreshSubscriptionResult(source);
       expect(failed.status, SubscriptionUpdateResult.downloadFailed);
       expect(await database.subscriptionDao.searchRow(source.id), source);
       expect(await database.coreConfigDao.searchRow(nodeId), before);
@@ -360,7 +352,7 @@ void main() {
           parseFailureCount: 6,
         ),
       );
-      final result = await service.refreshSubscriptionResult(source, false);
+      final result = await service.refreshSubscriptionResult(source);
       expect(result.status, SubscriptionUpdateResult.writeFailed);
       expect(await database.coreConfigDao.searchRow(oldId), before);
       expect(await database.subscriptionDao.searchRow(source.id), source);
@@ -387,8 +379,8 @@ void main() {
           parseFailureCount: 2,
         );
       });
-      final first = service.refreshSubscriptionResult(source, false);
-      final duplicate = service.refreshSubscriptionResult(source, false);
+      final first = service.refreshSubscriptionResult(source);
+      final duplicate = service.refreshSubscriptionResult(source);
       await started.future;
       expect(
         await service.updateSubscription(
@@ -399,7 +391,6 @@ void main() {
             ageSecretKey: 'new-secret',
             agePublicKey: 'new-public',
           ),
-          showLoading: false,
         ),
         SubscriptionUpdateResult.success,
       );
@@ -437,7 +428,7 @@ void main() {
         started.complete();
         return response.future;
       });
-      final refresh = service.refreshSubscriptionResult(source, false);
+      final refresh = service.refreshSubscriptionResult(source);
       await started.future;
       final edited = source.copyWith(
         agePublicKey: const Value('changed-public'),
@@ -469,10 +460,9 @@ void main() {
     final edit = service.updateSubscription(
       source.id,
       const SubscriptionInput(name: 'Edited', url: 'https://example.com/new'),
-      showLoading: false,
     );
     await started.future;
-    final background = await service.refreshSubscriptionResult(source, false);
+    final background = await service.refreshSubscriptionResult(source);
     expect(background.superseded, isTrue);
     response.complete(
       SubscriptionLoadResult(
@@ -500,7 +490,7 @@ void main() {
         started.complete();
         return response.future;
       });
-      final oldRequest = service.refreshSubscriptionResult(source, false);
+      final oldRequest = service.refreshSubscriptionResult(source);
       await started.future;
       var restoreStarted = false;
       final restoring = DataMaintenance.exclusive(() async {
@@ -527,7 +517,7 @@ void main() {
       });
       expect(restoreStarted, isFalse);
       await expectLater(
-        service.refreshSubscriptionResult(source, false),
+        service.refreshSubscriptionResult(source),
         throwsStateError,
       );
       response.complete(

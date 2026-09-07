@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
@@ -53,6 +54,10 @@ String _label(AppLocalizations l, SourceAction action) => switch (action) {
 };
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   late AppDatabase db;
   late ConnectionCoordinator coordinator;
   late _Controller controller;

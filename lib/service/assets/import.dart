@@ -141,12 +141,8 @@ class ServerImportService {
                (await GeoDataValidator.validate(link.name, link.url)).item1),
        _writeGeoData =
            writeGeoData ??
-           ((link) => GeoDataService().insertGeoDat(
-             link.name,
-             link.type,
-             link.url,
-             showLoading: false,
-           ));
+           ((link) =>
+               GeoDataService().insertGeoDat(link.name, link.type, link.url));
 
   static void _checkSize(String text) {
     if (text.trim().isEmpty || utf8.encode(text).length > 16 * 1024 * 1024) {
@@ -209,7 +205,7 @@ class ServerImportService {
     final service = SubscriptionService();
     for (final row in await AppDatabase().subscriptionDao.allRows) {
       if (row.url != link.url) continue;
-      final result = await service.refreshSubscriptionResult(row, false);
+      final result = await service.refreshSubscriptionResult(row);
       return SubscriptionInsertResult(
         status: result.status,
         subId: row.id,
@@ -246,7 +242,6 @@ class ServerImportService {
         ageSecretKey: secretKey,
         agePublicKey: publicKey,
       ),
-      false,
     );
   }
 

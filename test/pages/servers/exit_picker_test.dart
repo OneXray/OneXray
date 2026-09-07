@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -37,6 +38,10 @@ CoreConfigData _server(int id, {int delay = 20}) => CoreConfigData(
 );
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   late AppDatabase db;
   late ConnectionCoordinator coordinator;
   late ServerExitPickerController controller;

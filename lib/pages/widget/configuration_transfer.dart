@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -291,19 +292,27 @@ class ConfigurationTransferTools extends StatelessWidget {
                       onPressed: busy
                           ? null
                           : () => controller.import(context, clipboard: false),
-                      icon: state.action == ConfigurationTransferAction.file
-                          ? const ButtonProgressIndicator()
-                          : const Icon(LucideIcons.upload, size: 16),
+                      icon: AppActivityBuilder(
+                        builder: (context, activity) =>
+                            activity.downloading ||
+                                state.action == ConfigurationTransferAction.file
+                            ? const ButtonProgressIndicator()
+                            : const Icon(LucideIcons.upload, size: 16),
+                      ),
                       label: Text(l10n.prototypeImportFile),
                     ),
                     OutlinedButton.icon(
                       onPressed: busy
                           ? null
                           : () => controller.import(context, clipboard: true),
-                      icon:
-                          state.action == ConfigurationTransferAction.clipboard
-                          ? const ButtonProgressIndicator()
-                          : const Icon(LucideIcons.clipboard, size: 16),
+                      icon: AppActivityBuilder(
+                        builder: (context, activity) =>
+                            activity.downloading ||
+                                state.action ==
+                                    ConfigurationTransferAction.clipboard
+                            ? const ButtonProgressIndicator()
+                            : const Icon(LucideIcons.clipboard, size: 16),
+                      ),
                       label: Text(l10n.prototypeReadClipboard),
                     ),
                     OutlinedButton.icon(

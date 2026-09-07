@@ -27,16 +27,14 @@ class GeoDataService {
     downloadGeoData,
     _countNative,
     copyBundledTo,
-    (value) => AppEventBus.instance.updateDownloading(value),
   );
   factory GeoDataService() => _singleton;
   GeoDataService._(
     this._database,
     this._directory,
-    this._download,
+    this._downloadFile,
     this._count,
     this._copyBundled,
-    this._setDownloading,
   );
 
   factory GeoDataService.forTesting({
@@ -45,21 +43,13 @@ class GeoDataService {
     required Future<void> Function(String, File) download,
     required Future<void> Function(String, String, GeoDataType) count,
     required Future<void> Function(String) copyBundled,
-  }) => GeoDataService._(
-    database,
-    directory,
-    download,
-    count,
-    copyBundled,
-    (_) {},
-  );
+  }) => GeoDataService._(database, directory, download, count, copyBundled);
 
   final AppDatabase? _database;
   final String? _directory;
-  final Future<void> Function(String, File) _download;
+  final Future<void> Function(String, File) _downloadFile;
   final Future<void> Function(String, String, GeoDataType) _count;
   final Future<void> Function(String) _copyBundled;
-  final void Function(bool) _setDownloading;
   final _commands = CommandSerialExecutor();
   final _activeImportStages = <String>{};
   AppDatabase get _db => _database ?? AppDatabase();
@@ -84,19 +74,11 @@ class GeoDataService {
 
   /// File publication is exclusive with connection preparation/start so the
   /// shared directory cannot change while a runtime consumes it.
-  Future<T> _maintain<T>(
-    Future<T> Function() action, {
-    bool downloading = false,
-  }) => DataMaintenance.exclusive(
-    () => _commands.run((_) async {
-      if (downloading) _setDownloading(true);
-      try {
-        return await action();
-      } finally {
-        if (downloading) _setDownloading(false);
-      }
-    }),
-  );
+  Future<T> _maintain<T>(Future<T> Function() action) =>
+      DataMaintenance.exclusive(() => _commands.run((_) => action()));
+
+  Future<void> _download(String url, File destination) =>
+      AppEventBus.instance.trackDownload(() => _downloadFile(url, destination));
 
   Future<T> _cleanup<T>(Future<T> Function() action) =>
       DataMaintenance.cleanup(() => _commands.run((_) => action()));
@@ -196,7 +178,7 @@ class GeoDataService {
   Stream<List<PublishedGeoData>> watchPublished() =>
       _db.geoDataDao.publishedRowsStream.asyncMap(_readAll);
 
-  Future<void> add(GeoDataInput input, {bool downloading = true}) {
+  Future<void> add(GeoDataInput input) {
     final normalized = GeoDataInput(
       fileName: GeoDataInput.canonicalFileName(input.fileName),
       type: input.type,
@@ -213,10 +195,10 @@ class GeoDataService {
       } finally {
         await draft.dispose();
       }
-    }, downloading: downloading);
+    });
   }
 
-  Future<void> updateDefaults({bool downloading = true}) => _maintain(() async {
+  Future<void> updateDefaults() => _maintain(() async {
     await _ensureInstalled();
     final stage = await _newStage('download-');
     _FlatFileChange? change;
@@ -239,53 +221,52 @@ class GeoDataService {
     } finally {
       if (change == null) await _deleteStage(stage);
     }
-  }, downloading: downloading);
+  });
 
-  Future<void> updateCustom(GeoDataData original, {bool downloading = true}) =>
-      _maintain(() async {
-        if (original.id <= 0) {
-          throw StateError('Default routing data updates together');
-        }
-        _checkName(original.name);
-        GeoDataInput.httpsUri(original.url);
-        final stage = await _newStage('download-');
-        _FlatFileChange? change;
-        try {
-          await _download(
-            original.url,
-            File(p.join(stage.path, '${original.name}.dat')),
-          );
-          final index = await _index(
-            stage.path,
-            original.name,
-            _type(original.type),
-          );
-          change = await _applyFiles(await _stageFiles(stage));
-          try {
-            await _db.transaction(() async {
-              final current = await _db.geoDataDao.searchRow(original.id);
-              if (current == null || current != original) {
-                throw StateError('Routing data source changed during update');
-              }
-              if (!await _db.geoDataDao.updateRow(
-                current.copyWith(
-                  timestamp: DateTime.now(),
-                  categoryCount: index.categoryCount!,
-                  ruleCount: index.ruleCount!,
-                ),
-              )) {
-                throw StateError('Routing data source is unavailable');
-              }
-            });
-          } catch (_) {
-            await change.rollback();
-            rethrow;
+  Future<void> updateCustom(GeoDataData original) => _maintain(() async {
+    if (original.id <= 0) {
+      throw StateError('Default routing data updates together');
+    }
+    _checkName(original.name);
+    GeoDataInput.httpsUri(original.url);
+    final stage = await _newStage('download-');
+    _FlatFileChange? change;
+    try {
+      await _download(
+        original.url,
+        File(p.join(stage.path, '${original.name}.dat')),
+      );
+      final index = await _index(
+        stage.path,
+        original.name,
+        _type(original.type),
+      );
+      change = await _applyFiles(await _stageFiles(stage));
+      try {
+        await _db.transaction(() async {
+          final current = await _db.geoDataDao.searchRow(original.id);
+          if (current == null || current != original) {
+            throw StateError('Routing data source changed during update');
           }
-          await change.complete();
-        } finally {
-          if (change == null) await _deleteStage(stage);
-        }
-      }, downloading: downloading);
+          if (!await _db.geoDataDao.updateRow(
+            current.copyWith(
+              timestamp: DateTime.now(),
+              categoryCount: index.categoryCount!,
+              ruleCount: index.ruleCount!,
+            ),
+          )) {
+            throw StateError('Routing data source is unavailable');
+          }
+        });
+      } catch (_) {
+        await change.rollback();
+        rethrow;
+      }
+      await change.complete();
+    } finally {
+      if (change == null) await _deleteStage(stage);
+    }
+  });
 
   Future<void> deleteGeoDat(GeoDataData row) => _maintain(() async {
     if (row.id <= 0) throw StateError('Default routing data cannot be deleted');
@@ -313,10 +294,8 @@ class GeoDataService {
 
   /// Download and validate in a sibling directory, then install new files in
   /// the canonical root. The caller commits metadata with its configuration.
-  Future<GeoDataImportDraft> prepareImports(
-    List<GeoDataInput> inputs, {
-    bool downloading = false,
-  }) => _maintain(() => _prepareImports(inputs), downloading: downloading);
+  Future<GeoDataImportDraft> prepareImports(List<GeoDataInput> inputs) =>
+      _maintain(() => _prepareImports(inputs));
 
   Future<GeoDataImportDraft> _prepareImports(
     List<GeoDataInput> inputs, {
@@ -557,30 +536,23 @@ class GeoDataService {
     String name,
     GeoDataType type,
     String url, {
-    bool showLoading = true,
     bool needDownload = true,
   }) async {
     if (!needDownload) return false;
     try {
-      await add(
-        GeoDataInput(fileName: name, type: type, url: url),
-        downloading: showLoading,
-      );
+      await add(GeoDataInput(fileName: name, type: type, url: url));
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  Future<bool> updateGeoDat(
-    GeoDataData row, {
-    bool updateDownloading = true,
-  }) async {
+  Future<bool> updateGeoDat(GeoDataData row) async {
     try {
       if (row.id < 0) {
-        await updateDefaults(downloading: updateDownloading);
+        await updateDefaults();
       } else {
-        await updateCustom(row, downloading: updateDownloading);
+        await updateCustom(row);
       }
       return true;
     } catch (_) {
@@ -588,10 +560,7 @@ class GeoDataService {
     }
   }
 
-  Future<void> refreshSystemGeoDat(
-    List<GeoDataData> _, {
-    bool updateDownloading = true,
-  }) => updateDefaults(downloading: updateDownloading);
+  Future<void> refreshSystemGeoDat(List<GeoDataData> _) => updateDefaults();
 
   Future<void> _publishDefaults(String directory, DateTime timestamp) async {
     await _validateDefaultFiles(directory);

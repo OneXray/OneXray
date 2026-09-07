@@ -11,6 +11,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/widget/outbound_json_editor.dart';
 import 'package:onexray/service/assets/import.dart';
@@ -34,14 +35,15 @@ Future<void> openServerImportAction(
 
 class ServersImportPage extends StatefulWidget {
   final String? initialText;
-  const ServersImportPage({super.key, this.initialText});
+  final ServerImportController? controller;
+  const ServersImportPage({super.key, this.initialText, this.controller});
 
   @override
   State<ServersImportPage> createState() => _ServersImportPageState();
 }
 
 class _ServersImportPageState extends State<ServersImportPage> {
-  late final controller = ServerImportController();
+  late final controller = widget.controller ?? ServerImportController();
 
   @override
   void initState() {
@@ -185,10 +187,14 @@ class _ServersImportPageState extends State<ServersImportPage> {
             ),
         child: Row(
           children: [
-            if (controller.state.openingAction == action)
-              const ButtonProgressIndicator(size: 22)
-            else
-              Icon(icon, size: 22),
+            AppActivityBuilder(
+              builder: (context, activity) =>
+                  controller.state.openingAction == action ||
+                      (controller.state.activeAction == action &&
+                          (activity.downloading || controller.state.busy))
+                  ? const ButtonProgressIndicator(size: 22)
+                  : Icon(icon, size: 22),
+            ),
             const SizedBox(width: 10),
             Expanded(child: Text(title)),
             const SizedBox(width: 10),
@@ -270,20 +276,24 @@ class ServerImportFormPage extends StatelessWidget {
                     ? null
                     : onClose ?? () => controller.closeFlow(context),
               ),
-              ConnectDialogButton(
-                label: subscription
-                    ? controller.editingSubscription
-                          ? l10n.prototypeSave
-                          : l10n.prototypeAddSubscription
-                    : manual
-                    ? l10n.prototypeDetect
-                    : l10n.prototypeImportLinks,
-                busy: state.submitting,
-                onPressed: !controller.canSubmit(action)
-                    ? null
-                    : () => subscription
-                          ? controller.subscribe(context)
-                          : controller.detect(context, action),
+              AppActivityBuilder(
+                builder: (context, activity) => ConnectDialogButton(
+                  label: subscription
+                      ? controller.editingSubscription
+                            ? l10n.prototypeSave
+                            : l10n.prototypeAddSubscription
+                      : manual
+                      ? l10n.prototypeDetect
+                      : l10n.prototypeImportLinks,
+                  busy:
+                      state.submitting ||
+                      (!controller.editingSubscription && activity.downloading),
+                  onPressed: !controller.canSubmit(action)
+                      ? null
+                      : () => subscription
+                            ? controller.subscribe(context)
+                            : controller.detect(context, action),
+                ),
               ),
             ],
           ),
@@ -589,14 +599,20 @@ class ServerImportPreviewPage extends StatelessWidget {
                     ? null
                     : onClose ?? () => controller.closeFlow(context),
               ),
-              ConnectDialogButton(
-                label: committed == null
-                    ? l10n.prototypeConfirmAdd
-                    : l10n.prototypeDone,
-                busy: state.submitting,
-                onPressed: state.busy || !preview.hasItems
-                    ? null
-                    : () => controller.confirm(context, preview),
+              AppActivityBuilder(
+                builder: (context, activity) => ConnectDialogButton(
+                  label: committed == null
+                      ? l10n.prototypeConfirmAdd
+                      : l10n.prototypeDone,
+                  busy:
+                      state.submitting ||
+                      (committed == null &&
+                          preview.geoData.isNotEmpty &&
+                          activity.downloading),
+                  onPressed: state.busy || !preview.hasItems
+                      ? null
+                      : () => controller.confirm(context, preview),
+                ),
               ),
             ],
           ),

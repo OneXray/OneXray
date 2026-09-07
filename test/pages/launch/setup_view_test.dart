@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -42,6 +43,10 @@ void _desktop(WidgetTester tester) {
 }
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   testWidgets('system step identifies missing local network permission', (
     tester,
   ) async {

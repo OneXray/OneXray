@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
+import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
@@ -51,7 +53,11 @@ class _ServersPageState extends State<ServersPage> {
               if (!mobileRoot && !empty) ...[
                 OutlinedButton.icon(
                   onPressed: () => controller.openSources(context),
-                  icon: const Icon(LucideIcons.refreshCw),
+                  icon: AppActivityBuilder(
+                    builder: (context, activity) => activity.downloading
+                        ? const ButtonProgressIndicator()
+                        : const Icon(LucideIcons.refreshCw),
+                  ),
                   label: Text(l.prototypeUpdatesAndSources),
                 ),
                 const SizedBox(width: 10),
@@ -124,7 +130,10 @@ class ServerGroupPage extends StatelessWidget {
               .where((row) => row.id == params.groupId)
               .firstOrNull;
           return Scaffold(
-            appBar: AppBar(title: Text(group?.name ?? l.prototypeServers)),
+            appBar: AppBar(
+              title: Text(group?.name ?? l.prototypeServers),
+              actions: const [AppActivityIndicator(pinging: false)],
+            ),
             body: SafeArea(
               child: ResponsiveContent(
                 child: group == null

@@ -33,6 +33,7 @@ class ServerImportPageState {
     this.busy = false,
     this.loadingSubscription = false,
     this.openingAction,
+    this.activeAction,
     this.generatingAgeKeyType,
     this.obscureSecret = true,
     this.loadFailed = false,
@@ -53,6 +54,7 @@ class ServerImportPageState {
   final bool busy;
   final bool loadingSubscription;
   final ServerImportAction? openingAction;
+  final ServerImportAction? activeAction;
   final AgeKeyType? generatingAgeKeyType;
   final bool obscureSecret;
   final bool loadFailed;
@@ -84,6 +86,7 @@ class ServerImportPageState {
     bool? busy,
     bool? loadingSubscription,
     Object? openingAction = _unset,
+    Object? activeAction = _unset,
     Object? generatingAgeKeyType = _unset,
     bool? obscureSecret,
     bool? loadFailed,
@@ -105,6 +108,9 @@ class ServerImportPageState {
     openingAction: identical(openingAction, _unset)
         ? this.openingAction
         : openingAction as ServerImportAction?,
+    activeAction: identical(activeAction, _unset)
+        ? this.activeAction
+        : activeAction as ServerImportAction?,
     generatingAgeKeyType: identical(generatingAgeKeyType, _unset)
         ? this.generatingAgeKeyType
         : generatingAgeKeyType as AgeKeyType?,
@@ -273,7 +279,9 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   }) async {
     if (state.busy) return;
     _closingFlow = false;
-    emit(state.copyWith(error: null, committedResult: null));
+    emit(
+      state.copyWith(error: null, committedResult: null, activeAction: action),
+    );
     ServerImportResult? result;
     if (action == ServerImportAction.file ||
         action == ServerImportAction.scan) {
@@ -312,6 +320,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         ),
       );
     }
+    emit(state.copyWith(activeAction: null));
     if (!context.mounted) return;
     if (closeParent && (result != null || _closingFlow)) {
       Navigator.of(context)
@@ -338,10 +347,15 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
 
   Future<void> openText(BuildContext context, String input) async {
     _closingFlow = false;
-    final result = await _importText(context, input);
-    if ((result != null || _closingFlow) && context.mounted) {
-      Navigator.of(context)
-          .pop(result ?? state.committedResult ?? _subscriptionResult);
+    emit(state.copyWith(activeAction: ServerImportAction.paste));
+    try {
+      final result = await _importText(context, input);
+      if ((result != null || _closingFlow) && context.mounted) {
+        Navigator.of(context)
+            .pop(result ?? state.committedResult ?? _subscriptionResult);
+      }
+    } finally {
+      emit(state.copyWith(activeAction: null));
     }
   }
 
@@ -676,10 +690,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         }
         return;
       }
-      final result = await SubscriptionService().insertSubscription(
-        input,
-        false,
-      );
+      final result = await SubscriptionService().insertSubscription(input);
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
       if (!result.success) {

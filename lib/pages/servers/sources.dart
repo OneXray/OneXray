@@ -10,6 +10,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 
 class ServerSourcesDialog extends StatelessWidget {
   const ServerSourcesDialog({super.key, required this.controller});
@@ -36,6 +37,10 @@ class ServerSourcesDialog extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: AppActivityIndicator(pinging: false),
+                ),
                 if (controller.sources.isEmpty && localCount == 0)
                   Padding(
                     padding: const EdgeInsets.all(24),
@@ -315,7 +320,12 @@ class _SourceRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.link2, size: 20, color: palette.primary),
+          AppActivityBuilder(
+            builder: (context, activity) =>
+                subscription && busy && activity.downloading
+                ? const ButtonProgressIndicator(size: 20)
+                : Icon(LucideIcons.link2, size: 20, color: palette.primary),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -349,9 +359,11 @@ class _SourceRow extends StatelessWidget {
                 tooltip: l.prototypeCheckForUpdates,
                 style: actionStyle,
                 onPressed: onUpdate,
-                icon: busy
-                    ? const ButtonProgressIndicator()
-                    : const Icon(LucideIcons.refreshCw),
+                icon: AppActivityBuilder(
+                  builder: (context, activity) => busy && activity.downloading
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.refreshCw),
+                ),
               ),
             ],
             const SizedBox(width: 10),

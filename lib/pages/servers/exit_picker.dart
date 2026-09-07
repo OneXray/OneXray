@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
@@ -61,7 +62,10 @@ class ServerExitPickerView extends StatelessWidget {
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         final groups = controller.selectionGroups(l);
         return Scaffold(
-          appBar: AppBar(title: Text(l.prototypeVpnFinalExit)),
+          appBar: AppBar(
+            title: Text(l.prototypeVpnFinalExit),
+            actions: const [AppActivityIndicator()],
+          ),
           body: SafeArea(
             child: ServerLoadState(
               controller: controller,

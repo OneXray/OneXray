@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/auto_update/controller.dart';
@@ -27,7 +28,10 @@ class AutoUpdatePage extends StatelessWidget {
         final mobile = width <= AppLayout.mobileBreakpoint;
         final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
         return Scaffold(
-          appBar: AppBar(title: Text(l.prototypeDataUpdates)),
+          appBar: AppBar(
+            title: Text(l.prototypeDataUpdates),
+            actions: const [AppActivityIndicator(pinging: false)],
+          ),
           bottomNavigationBar: PageActionBar(
             maxWidth: AppLayout.advancedMaxWidth,
             expandDesktop: true,

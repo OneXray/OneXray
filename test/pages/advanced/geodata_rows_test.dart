@@ -13,8 +13,13 @@ import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/service/geo_data/service.dart';
+import 'package:onexray/service/event_bus/service.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   testWidgets(
     'Geodata updates guard only the same file and release on failure',
     (tester) async {
@@ -73,6 +78,8 @@ void main() {
       final actions = <int>[];
       final first = _file(42, 'first-long-custom-dataset-name', 100);
       final second = _file(43, 'second', 100);
+      final release = Completer<void>();
+      final download = AppEventBus.instance.trackDownload(() => release.future);
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
@@ -106,6 +113,10 @@ void main() {
       await tester.tap(find.text(l.prototypeUpdate).last);
       expect(actions, [42, 43]);
       expect(tester.takeException(), isNull);
+      release.complete();
+      await tester.pump();
+      await download;
+      expect(find.byType(ButtonProgressIndicator), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -247,9 +258,11 @@ class _PendingGeoDataService implements GeoDataService {
   Stream<List<PublishedGeoData>> watchPublished() => Stream.value(files);
 
   @override
-  Future<void> updateCustom(GeoDataData original, {bool downloading = true}) {
+  Future<void> updateCustom(GeoDataData original) {
     calls.add(original.id);
-    return (pending[original.id] = Completer<void>()).future;
+    return AppEventBus.instance.trackDownload(
+      () => (pending[original.id] = Completer<void>()).future,
+    );
   }
 
   @override

@@ -19,6 +19,7 @@ import 'package:onexray/service/connection/coordinator.dart';
 import 'package:onexray/service/connection/runtime.dart';
 import 'package:onexray/service/connection/settings.dart';
 import 'package:onexray/service/ping/service.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/subscription/service.dart';
 
 enum ServerGrouping { location, subscription }
@@ -469,7 +470,7 @@ class ServersController extends ConnectController {
     Iterable<CoreConfigData> rows, {
     String? groupId,
   }) async {
-    if (testingIds.isNotEmpty || _ping.isPinging) {
+    if (testingIds.isNotEmpty || AppEventBus.instance.state.pinging) {
       ContextAlert.showToast(
         context,
         AppLocalizations.of(context)!.serverTestInProgress,
@@ -549,7 +550,6 @@ class ServersController extends ConnectController {
         await perform(context, () async {
           final result = await SubscriptionService().refreshSubscriptionResult(
             source,
-            false,
           );
           if (!context.mounted) return;
           final l = AppLocalizations.of(context)!;

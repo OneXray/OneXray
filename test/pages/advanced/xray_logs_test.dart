@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/controller.dart';
@@ -12,6 +13,10 @@ import 'package:onexray/service/connection/runtime.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   for (final mobile in [true, false]) {
     for (final systemExtension in [true, false]) {
       testWidgets(

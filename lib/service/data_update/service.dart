@@ -24,8 +24,6 @@ class DataUpdateService {
     }
 
     _running = true;
-    final eventBus = AppEventBus.instance;
-    var downloading = false;
     try {
       final autoUpdateState = AutoUpdateState();
       await autoUpdateState.readFromPreferences();
@@ -34,12 +32,9 @@ class DataUpdateService {
       final shouldUpdateGeoData =
           updateGeoData && autoUpdateState.geoDataEnable;
       if (!shouldUpdateSubscription && !shouldUpdateGeoData) return;
-      eventBus.updateDownloading(true);
-      downloading = true;
       if (shouldUpdateSubscription) {
         await SubscriptionService().refreshOutdatedSubscription(
           autoUpdateState: autoUpdateState,
-          updateDownloading: false,
         );
       }
       if (shouldUpdateGeoData) {
@@ -48,7 +43,6 @@ class DataUpdateService {
     } catch (_) {
       ygLogger('Data update check failed');
     } finally {
-      if (downloading) eventBus.updateDownloading(false);
       _running = false;
     }
   }
@@ -59,10 +53,7 @@ class DataUpdateService {
     final systemGeoData = await SystemGeoDatState.system;
     if (_expired(systemGeoData, now, interval)) {
       try {
-        await GeoDataService().refreshSystemGeoDat(
-          systemGeoData,
-          updateDownloading: false,
-        );
+        await GeoDataService().refreshSystemGeoDat(systemGeoData);
       } catch (_) {
         // Keep the default pair due, but do not starve independent custom data.
         ygLogger('Default Geodata update failed');
@@ -72,7 +63,7 @@ class DataUpdateService {
     final customGeoData = await AppDatabase().geoDataDao.allRows;
     for (final geoData in customGeoData) {
       if (now.difference(geoData.timestamp).inHours >= interval) {
-        await GeoDataService().updateGeoDat(geoData, updateDownloading: false);
+        await GeoDataService().updateGeoDat(geoData);
       }
     }
   }

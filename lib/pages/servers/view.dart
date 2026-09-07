@@ -8,6 +8,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/pages/widget/page_empty_state.dart';
 import 'package:onexray/service/connection/settings.dart';
 
@@ -276,10 +277,14 @@ class ServerBrowser extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      Icon(
-                        LucideIcons.refreshCw,
-                        size: 17,
-                        color: palette.primary,
+                      AppActivityBuilder(
+                        builder: (context, activity) => activity.downloading
+                            ? const ButtonProgressIndicator()
+                            : Icon(
+                                LucideIcons.refreshCw,
+                                size: 17,
+                                color: palette.primary,
+                              ),
                       ),
                       const SizedBox(width: 9),
                       Expanded(
@@ -346,12 +351,20 @@ class ServerBrowser extends StatelessWidget {
                     color: palette.selectedSurface,
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child:
-                      controller.selectingGroup(
-                        const ServerSelection.automatic(),
-                      )
-                      ? const Center(child: ButtonProgressIndicator())
-                      : Icon(LucideIcons.zap, size: 20, color: palette.primary),
+                  child: AppActivityBuilder(
+                    builder: (context, activity) =>
+                        activity.pinging ||
+                            activity.downloading ||
+                            controller.selectingGroup(
+                              const ServerSelection.automatic(),
+                            )
+                        ? const Center(child: ButtonProgressIndicator())
+                        : Icon(
+                            LucideIcons.zap,
+                            size: 20,
+                            color: palette.primary,
+                          ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -737,10 +750,11 @@ class ServerGroupView extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (testing)
-                const ButtonProgressIndicator()
-              else
-                const Icon(LucideIcons.refreshCw, size: 16),
+              AppActivityBuilder(
+                builder: (context, activity) => activity.pinging
+                    ? const ButtonProgressIndicator()
+                    : const Icon(LucideIcons.refreshCw, size: 16),
+              ),
               const SizedBox(width: 8),
               Text(
                 testing

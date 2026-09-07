@@ -1,0 +1,3 @@
+https://example.com/personal.txt#Personal
+https://example.com/travel.txt#Travel
+https://example.com/work.txt#Work

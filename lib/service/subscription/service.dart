@@ -166,25 +166,12 @@ class SubscriptionService {
 
   Future<SubscriptionInsertResult> insertSubscription(
     SubscriptionInput input,
-    bool showLoading,
-  ) => DataMaintenance.run(
-    () => _insertSubscriptionWithLoading(input, showLoading),
-  );
+  ) => DataMaintenance.run(() => _insertAndProbeSubscription(input));
 
-  Future<SubscriptionInsertResult> _insertSubscriptionWithLoading(
+  Future<SubscriptionInsertResult> _insertAndProbeSubscription(
     SubscriptionInput input,
-    bool showLoading,
   ) async {
-    final eventBus = showLoading ? AppEventBus.instance : null;
-    eventBus?.updateDownloading(true);
-    var result = const SubscriptionInsertResult(
-      status: SubscriptionUpdateResult.writeFailed,
-    );
-    try {
-      result = await _insertSubscription(input);
-    } finally {
-      eventBus?.updateDownloading(false);
-    }
+    final result = await _insertSubscription(input);
 
     if (result.success) {
       _schedulePing(result.subId);
@@ -247,9 +234,8 @@ class SubscriptionService {
 
   Future<SubscriptionUpdateResult> updateSubscription(
     int id,
-    SubscriptionInput input, {
-    bool showLoading = true,
-  }) => DataMaintenance.run(() => _saveSubscription(id, input, showLoading));
+    SubscriptionInput input,
+  ) => DataMaintenance.run(() => _saveSubscription(id, input));
 
   /// Editing a source changes future downloads, not its current node assets.
   Future<SubscriptionUpdateResult> saveSubscriptionInput(
@@ -301,7 +287,6 @@ class SubscriptionService {
   Future<SubscriptionUpdateResult> _saveSubscription(
     int id,
     SubscriptionInput input,
-    bool showLoading,
   ) async {
     if (input.hasIncompleteAgeKeyPair) {
       return SubscriptionUpdateResult.invalidAgeSecretKey;
@@ -309,7 +294,7 @@ class SubscriptionService {
     _refreshes.remove(id);
     final generation = _beginUpdate(id);
     try {
-      return await _updateSubscription(id, input, generation, showLoading);
+      return await _updateSubscription(id, input, generation);
     } on _SupersededSubscriptionUpdate {
       return SubscriptionUpdateResult.writeFailed;
     } catch (error, stackTrace) {
@@ -358,7 +343,6 @@ class SubscriptionService {
     int id,
     SubscriptionInput input,
     int generation,
-    bool showLoading,
   ) async {
     final db = _database;
     final subscription = await db.subscriptionDao.searchRow(id);
@@ -390,36 +374,27 @@ class SubscriptionService {
       });
     }
 
-    final eventBus = showLoading ? AppEventBus.instance : null;
-    eventBus?.updateDownloading(true);
-    try {
-      final loaded = await _loadRows(input);
-      _ensureCurrent(id, generation);
-      if (!loaded.hasUsableRows) {
-        return loaded.status == SubscriptionUpdateResult.success
-            ? SubscriptionUpdateResult.invalidContent
-            : loaded.status;
-      }
-      final result = await _replaceSubscription(
-        subscription,
-        loaded,
-        generation,
-        editedInput: input,
-      );
-      if (result.success) {
-        _schedulePing(subscription.id);
-      }
-      return result.status;
-    } finally {
-      eventBus?.updateDownloading(false);
+    final loaded = await _loadRows(input);
+    _ensureCurrent(id, generation);
+    if (!loaded.hasUsableRows) {
+      return loaded.status == SubscriptionUpdateResult.success
+          ? SubscriptionUpdateResult.invalidContent
+          : loaded.status;
     }
+    final result = await _replaceSubscription(
+      subscription,
+      loaded,
+      generation,
+      editedInput: input,
+    );
+    if (result.success) {
+      _schedulePing(subscription.id);
+    }
+    return result.status;
   }
 
-  Future<int> refreshSubscription(
-    SubscriptionData subscription,
-    bool showLoading,
-  ) async {
-    final result = await refreshSubscriptionResult(subscription, showLoading);
+  Future<int> refreshSubscription(SubscriptionData subscription) async {
+    final result = await refreshSubscriptionResult(subscription);
     return result.success ? result.count : 0;
   }
 
@@ -427,14 +402,10 @@ class SubscriptionService {
   /// success, and unavailable parse statistics remain null.
   Future<SubscriptionRefreshResult> refreshSubscriptionResult(
     SubscriptionData subscription,
-    bool showLoading,
-  ) => DataMaintenance.run(
-    () => _refreshSubscriptionResult(subscription, showLoading),
-  );
+  ) => DataMaintenance.run(() => _refreshSubscriptionResult(subscription));
 
   Future<SubscriptionRefreshResult> _refreshSubscriptionResult(
     SubscriptionData subscription,
-    bool showLoading,
   ) {
     final pending = _refreshes[subscription.id];
     if (pending != null) {
@@ -451,24 +422,20 @@ class SubscriptionService {
     }
     final generation = _beginUpdate(subscription.id);
     late final Future<SubscriptionRefreshResult> task;
-    task = _refreshSubscription(subscription.id, showLoading, generation)
-        .whenComplete(() {
-          if (identical(_refreshes[subscription.id], task)) {
-            _refreshes.remove(subscription.id);
-          }
-          _finishUpdate(subscription.id, generation);
-        });
+    task = _refreshSubscription(subscription.id, generation).whenComplete(() {
+      if (identical(_refreshes[subscription.id], task)) {
+        _refreshes.remove(subscription.id);
+      }
+      _finishUpdate(subscription.id, generation);
+    });
     _refreshes[subscription.id] = task;
     return task;
   }
 
   Future<SubscriptionRefreshResult> _refreshSubscription(
     int id,
-    bool showLoading,
     int generation,
   ) async {
-    final eventBus = showLoading ? AppEventBus.instance : null;
-    eventBus?.updateDownloading(true);
     try {
       final subscription = await _database.subscriptionDao.searchRow(id);
       _ensureCurrent(id, generation);
@@ -515,8 +482,6 @@ class SubscriptionService {
       return const SubscriptionRefreshResult(
         status: SubscriptionUpdateResult.writeFailed,
       );
-    } finally {
-      eventBus?.updateDownloading(false);
     }
   }
 
@@ -584,7 +549,12 @@ class SubscriptionService {
       current.ageSecretKey == expected.ageSecretKey &&
       current.agePublicKey == expected.agePublicKey;
 
-  Future<SubscriptionLoadResult> _loadRows(SubscriptionInput input) async {
+  Future<SubscriptionLoadResult> _loadRows(SubscriptionInput input) =>
+      AppEventBus.instance.trackDownload(() => _readSubscription(input));
+
+  Future<SubscriptionLoadResult> _readSubscription(
+    SubscriptionInput input,
+  ) async {
     if (input.hasIncompleteAgeKeyPair) {
       return const SubscriptionLoadResult(
         status: SubscriptionUpdateResult.invalidAgeSecretKey,
@@ -650,35 +620,26 @@ class SubscriptionService {
 
   Future<void> refreshOutdatedSubscription({
     AutoUpdateState? autoUpdateState,
-    bool updateDownloading = true,
-  }) => DataMaintenance.run(
-    () => _refreshOutdatedSubscription(autoUpdateState, updateDownloading),
-  );
+  }) =>
+      DataMaintenance.run(() => _refreshOutdatedSubscription(autoUpdateState));
 
   Future<void> _refreshOutdatedSubscription(
     AutoUpdateState? autoUpdateState,
-    bool updateDownloading,
   ) async {
-    final eventBus = updateDownloading ? AppEventBus.instance : null;
-    eventBus?.updateDownloading(true);
-    try {
-      final updateState = autoUpdateState ?? AutoUpdateState();
-      if (autoUpdateState == null) {
-        await updateState.readFromPreferences();
+    final updateState = autoUpdateState ?? AutoUpdateState();
+    if (autoUpdateState == null) {
+      await updateState.readFromPreferences();
+    }
+    if (!updateState.subscriptionEnabled) {
+      return;
+    }
+    final interval = updateState.subscriptionInterval.value;
+    final subs = await _database.subscriptionDao.allRows;
+    final now = DateTime.now();
+    for (final sub in subs) {
+      if (now.difference(sub.timestamp).inHours >= interval) {
+        await _refreshSubscriptionResult(sub);
       }
-      if (!updateState.subscriptionEnabled) {
-        return;
-      }
-      final interval = updateState.subscriptionInterval.value;
-      final subs = await _database.subscriptionDao.allRows;
-      final now = DateTime.now();
-      for (final sub in subs) {
-        if (now.difference(sub.timestamp).inHours >= interval) {
-          await _refreshSubscriptionResult(sub, false);
-        }
-      }
-    } finally {
-      eventBus?.updateDownloading(false);
     }
   }
 }

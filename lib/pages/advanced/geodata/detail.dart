@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/geodata/controller.dart';
@@ -45,7 +46,10 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                 MediaQuery.sizeOf(context).width,
               );
         return Scaffold(
-          appBar: AppBar(title: Text(file?.fileName ?? l.prototypeRoutingData)),
+          appBar: AppBar(
+            title: Text(file?.fileName ?? l.prototypeRoutingData),
+            actions: const [AppActivityIndicator(pinging: false)],
+          ),
           body: SafeArea(
             child: ResponsiveContent(
               desktopMaxWidth: AppLayout.advancedMaxWidth,

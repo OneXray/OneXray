@@ -9,6 +9,7 @@ class AppEventBus extends Cubit<AppEventBusState> {
   static late AppEventBus instance;
 
   bool _closing = false;
+  int _downloads = 0;
 
   bool get _isActive => !_closing && !isClosed;
 
@@ -34,8 +35,13 @@ class AppEventBus extends Cubit<AppEventBusState> {
     emit(state.copyWith(pinging: value));
   }
 
-  void updateDownloading(bool value) {
-    emit(state.copyWith(downloading: value));
+  Future<T> trackDownload<T>(Future<T> Function() action) async {
+    if (_downloads++ == 0) emit(state.copyWith(downloading: true));
+    try {
+      return await action();
+    } finally {
+      if (--_downloads == 0) emit(state.copyWith(downloading: false));
+    }
   }
 
   void updateAppUpdateInfo(AppUpdateInfo? value) {

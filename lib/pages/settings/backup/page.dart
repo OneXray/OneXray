@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/backup/controller.dart';
@@ -30,6 +31,7 @@ class BackupPage extends StatelessWidget {
           appBar: AppBar(
             title: Text(l10n.prototypeBackupRestore),
             leading: BackButton(onPressed: () => controller.cancel(context)),
+            actions: const [AppActivityIndicator(pinging: false)],
           ),
           body: SafeArea(
             child: SettingsPageScroll(

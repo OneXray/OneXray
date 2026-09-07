@@ -639,7 +639,8 @@ class AboutOneXrayPage extends StatelessWidget {
                                 : l10n.prototypeVersionAvailable(
                                     preferences.appUpdateInfo!.latestVersion,
                                   ),
-                            trailing: state.checkingUpdate
+                            trailing:
+                                preferences.downloading || state.checkingUpdate
                                 ? const ButtonProgressIndicator(size: 20)
                                 : Stack(
                                     clipBehavior: Clip.none,

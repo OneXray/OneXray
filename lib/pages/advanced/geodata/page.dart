@@ -10,6 +10,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/pages/widget/setting_row.dart';
 import 'package:shadcn_ui/shadcn_ui.dart' show ShadInput;
 
@@ -86,9 +87,15 @@ class _GeoDataPageState extends State<GeoDataPage> {
                               onPressed: state.fileBusy(-1)
                                   ? null
                                   : () => controller.update(context, null),
-                              icon: state.updating.contains(-1)
-                                  ? const ButtonProgressIndicator()
-                                  : const Icon(LucideIcons.refreshCw, size: 16),
+                              icon: AppActivityBuilder(
+                                builder: (context, activity) =>
+                                    activity.downloading
+                                    ? const ButtonProgressIndicator()
+                                    : const Icon(
+                                        LucideIcons.refreshCw,
+                                        size: 16,
+                                      ),
+                              ),
                               label: Text(l.prototypeUpdate),
                             ),
                           ),
@@ -210,9 +217,11 @@ class _GeoDataPageState extends State<GeoDataPage> {
           onPressed: !state.canUpdateAll
               ? null
               : () => controller.updateAll(context),
-          icon: state.updatingAll
-              ? const ButtonProgressIndicator(size: 15)
-              : const Icon(LucideIcons.refreshCw, size: 15),
+          icon: AppActivityBuilder(
+            builder: (context, activity) => activity.downloading
+                ? const ButtonProgressIndicator(size: 15)
+                : const Icon(LucideIcons.refreshCw, size: 15),
+          ),
           label: Text(l.prototypeUpdateAll),
         ),
         const SizedBox(height: 5),
@@ -377,9 +386,11 @@ class _GeoDataPageState extends State<GeoDataPage> {
           child: FilledButton(
             style: buttonStyle,
             onPressed: state.formBusy ? null : () => controller.add(context),
-            child: ButtonProgress(
-              busy: state.formBusy,
-              child: Text(l.prototypeAdd),
+            child: AppActivityBuilder(
+              builder: (context, activity) => ButtonProgress(
+                busy: activity.downloading || state.formBusy,
+                child: Text(l.prototypeAdd),
+              ),
             ),
           ),
         ),

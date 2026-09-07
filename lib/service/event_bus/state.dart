@@ -2,7 +2,10 @@ import 'package:onexray/service/app_update/service.dart';
 import 'package:onexray/service/event_bus/enum.dart';
 
 class AppEventBusState {
+  /// Includes queued and automatic node probes, not just page-owned tests.
   final bool pinging;
+
+  /// True while any subscription, Geodata or App update download is running.
   final bool downloading;
   final AppUpdateInfo? appUpdateInfo;
   final ThemeCode themeCode;

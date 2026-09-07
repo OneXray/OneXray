@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/raw_editor/controller.dart';
@@ -14,6 +15,10 @@ import 'package:onexray/service/geo_data/model.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   testWidgets(
     'Raw save follows name and JSON while draft loading does not connect',
     (tester) async {

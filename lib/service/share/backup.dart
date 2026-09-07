@@ -10,7 +10,6 @@ import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/data_cleanup/service.dart';
-import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:onexray/service/share/backup_archive.dart';
 import 'package:onexray/service/geo_data/model.dart';
@@ -100,9 +99,6 @@ class BackupService {
   Future<void> backup() => DataMaintenance.exclusive(_backup);
 
   Future<void> _backup() async {
-    final eventBus = AppEventBus.instance;
-    eventBus.updateDownloading(true);
-
     final cacheDir = await FileTool.makeCacheDir();
     final stagingDir = p.join(cacheDir, "staging");
     final createdAt = DateTime.now();
@@ -133,7 +129,6 @@ class BackupService {
       rethrow;
     } finally {
       await FileTool.deleteDirIfExists(cacheDir);
-      eventBus.updateDownloading(false);
     }
   }
 
@@ -141,9 +136,6 @@ class BackupService {
     List<SubscriptionData> legacySubscriptions = const [];
     final success = await DataMaintenance.exclusive(() async {
       _lastRestoreSkippedCoreConfigCount = 0;
-      final eventBus = AppEventBus.instance;
-      eventBus.updateDownloading(true);
-
       final cacheDir = await FileTool.makeCacheDir();
       GeoDataRestoreDraft? datRestore;
       try {
@@ -184,7 +176,6 @@ class BackupService {
       } finally {
         await datRestore?.dispose();
         await FileTool.deleteDirIfExists(cacheDir);
-        eventBus.updateDownloading(false);
       }
     });
     // Legacy ZIPs have no subscription cache. Refresh only after maintenance
@@ -397,7 +388,7 @@ class BackupService {
   ) async {
     for (final subscription in subscriptions) {
       try {
-        await SubscriptionService().refreshSubscription(subscription, false);
+        await SubscriptionService().refreshSubscription(subscription);
       } catch (e, stackTrace) {
         ygLogger(
           "refresh restored subscription error (${e.runtimeType})\n$stackTrace",

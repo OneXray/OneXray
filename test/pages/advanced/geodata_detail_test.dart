@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -10,6 +11,10 @@ import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/geo_data/model.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   for (final locale in [const Locale('en'), const Locale('fa')]) {
     testWidgets(
       'jumping to the final Geodata category builds a bounded number of rows ($locale)',

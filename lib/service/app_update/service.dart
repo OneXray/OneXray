@@ -3,6 +3,7 @@ import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -73,7 +74,9 @@ class AppUpdateService {
         return const AppUpdateCheckResult.failed();
       }
 
-      final releaseJson = await NetClient().getJson(_githubLatestReleaseApi);
+      final releaseJson = await AppEventBus.instance.trackDownload(
+        () => NetClient().getJson(_githubLatestReleaseApi),
+      );
       if (releaseJson == null) {
         return const AppUpdateCheckResult.failed();
       }

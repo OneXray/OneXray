@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/geo_data/model.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/geo_data/service.dart';
 import 'package:onexray/service/maintenance/data_maintenance.dart';
 import 'package:path/path.dart' as p;
@@ -60,6 +61,8 @@ void main() {
   }
 
   setUp(() async {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
     final fixtures = await Directory('../references/onexray-tests').absolute
         .create(recursive: true);
     workspace = await fixtures.createTemp('geodata-');
@@ -78,6 +81,7 @@ void main() {
       database: db,
       directory: datRoot.path,
       download: (url, file) async {
+        expect(AppEventBus.instance.state.downloading, isTrue);
         downloads++;
         if (p.basenameWithoutExtension(file.path) == failDownload) {
           throw const SocketException('Fixture download failed');

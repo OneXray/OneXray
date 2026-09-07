@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -17,7 +18,14 @@ import 'package:onexray/pages/widget/responsive_content.dart';
 import 'package:onexray/pages/widget/page_empty_state.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/ping/batch.dart';
 import 'package:onexray/service/ping/service.dart';
+import 'package:onexray/service/xray/outbound/state_db.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart'
     show ShadTheme, ShadToaster, ShadToast;
 
@@ -54,11 +62,6 @@ class _Controller extends ServersController {
   }
 }
 
-class _BusyPingService extends Fake implements PingService {
-  @override
-  bool get isPinging => true;
-}
-
 CoreConfigData _server(int id, String country, {bool favorite = false}) =>
     CoreConfigData(
       id: id,
@@ -87,6 +90,10 @@ void main() {
   late ScrollController scroll;
 
   setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    final bus = AppEventBus();
+    addTearDown(bus.close);
     db = AppDatabase.forTesting(NativeDatabase.memory());
     coordinator = ConnectionCoordinator(database: db);
     controller = _Controller(database: db, coordinator: coordinator)
@@ -180,6 +187,7 @@ void main() {
               testingServerGroupId: group.id,
             ),
           );
+          AppEventBus.instance.updatePinging(true);
           expect(controller.testingGroup(group), isTrue);
           await tester.pump();
           await tester.pump();
@@ -223,6 +231,7 @@ void main() {
               cancellingServerTest: false,
             ),
           );
+          AppEventBus.instance.updatePinging(false);
           await tester.pumpAndSettle();
           expect(
             find.widgetWithText(OutlinedButton, l.prototypeTestServers),
@@ -235,31 +244,89 @@ void main() {
     }
   }
 
-  testWidgets(
-    'automatic probing shows the wait toast instead of queuing a manual test',
-    (tester) async {
+  for (final (width, groupPage) in [
+    (427.0, false),
+    (427.0, true),
+    (1160.0, false),
+    (1160.0, true),
+  ]) {
+    testWidgets('automatic probing shows loading ($width, group: $groupPage)', (
+      tester,
+    ) async {
+      late Completer<void> started;
+      late Completer<void> release;
+      late PingService ping;
+      final row = await tester.runAsync(() async {
+        started = Completer<void>();
+        release = Completer<void>();
+        ping = PingService.forTesting(
+          database: db,
+          runBatch: (_, _) async {
+            started.complete();
+            await release.future;
+            return const [PingBatchResult(true, 20, '', countryCode: 'JP')];
+          },
+        );
+        final id = await db.coreConfigDao.insertRow(
+          outboundCompanion({'tag': 'Imported', 'protocol': 'socks'}),
+        );
+        return db.coreConfigDao.searchRow(id);
+      });
       await controller.close();
       controller = _Controller(
         database: db,
         coordinator: coordinator,
-        ping: _BusyPingService(),
-      )..servers = [_server(1, 'JP')];
-      await pumpBrowser(tester, 427, groupPage: true);
-      final l = AppLocalizations.of(
-        tester.element(find.byType(ServerGroupView)),
-      )!;
-
-      await tester.tap(
-        find.widgetWithText(OutlinedButton, l.prototypeTestServers),
-      );
+        ping: ping,
+      )..servers = [row!];
+      await pumpBrowser(tester, width, groupPage: groupPage);
+      final l = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+      try {
+        await tester.runAsync(() async {
+          ping.schedulePingConfigIds([row.id]);
+          await started.future.timeout(const Duration(seconds: 5));
+        });
+        await tester.pump();
+        await tester.pump();
+        expect(ping.isPinging, isTrue);
+        expect(AppEventBus.instance.state.pinging, isTrue);
+        expect(controller.testingIds, isEmpty);
+        expect(
+          find.byType(ButtonProgressIndicator),
+          width > AppLayout.mobileBreakpoint && !groupPage
+              ? findsNWidgets(2)
+              : findsOneWidget,
+        );
+        if (groupPage || width > AppLayout.mobileBreakpoint) {
+          expect(
+            tester
+                .widget<IconButton>(
+                  find.descendant(
+                    of: find.byType(ServerMenu),
+                    matching: find.byType(IconButton),
+                  ),
+                )
+                .onPressed,
+            isNotNull,
+          );
+          await tester.tap(
+            find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+          );
+          await tester.pump();
+          expect(find.text(l.serverTestInProgress), findsOneWidget);
+          expect(controller.testingIds, isEmpty);
+        }
+      } finally {
+        await tester.runAsync(() async {
+          release.complete();
+          // Wait for the scheduled task's database write and event update.
+          await ping.pingConfigIds([row.id]);
+        });
+      }
       await tester.pumpAndSettle();
-
-      expect(find.text(l.serverTestInProgress), findsOneWidget);
-      expect(controller.testingIds, isEmpty);
       expect(find.byType(ButtonProgressIndicator), findsNothing);
       expect(tester.takeException(), isNull);
-    },
-  );
+    });
+  }
 
   testWidgets('retesting from an open node menu shows the wait toast', (
     tester,

@@ -10,6 +10,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:onexray/service/geo_data/model.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 
 /// Default and custom datasets share file rows, never a second detail screen
 /// embedded in the list. Only custom rows expose their dataset actions.
@@ -273,9 +274,13 @@ class GeoDataRows extends StatelessWidget {
                       visualDensity: VisualDensity.standard,
                     ),
                     onPressed: _busy(file) ? null : () => onUpdate(file),
-                    child: ButtonProgress(
-                      busy: updating.contains(file.row.id),
-                      child: Text(l.prototypeUpdate),
+                    child: AppActivityBuilder(
+                      builder: (context, activity) => ButtonProgress(
+                        busy:
+                            activity.downloading &&
+                            (busy || updating.contains(file.row.id)),
+                        child: Text(l.prototypeUpdate),
+                      ),
                     ),
                   ),
                   IconButton(
@@ -336,12 +341,16 @@ class GeoDataRows extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             onPressed: _busy(file) ? null : () => onUpdate(file),
-            child: ButtonProgress(
-              busy: updating.contains(file.row.id),
-              child: Text(
-                l.prototypeUpdate,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            child: AppActivityBuilder(
+              builder: (context, activity) => ButtonProgress(
+                busy:
+                    activity.downloading &&
+                    (busy || updating.contains(file.row.id)),
+                child: Text(
+                  l.prototypeUpdate,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ),

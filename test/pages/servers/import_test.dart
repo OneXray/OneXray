@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +16,7 @@ import 'package:onexray/pages/widget/adaptive_dialog.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
 import 'package:onexray/service/assets/import.dart';
 import 'package:onexray/service/db/config_writer.dart';
+import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/share/app_link_model.dart';
 import 'package:onexray/service/share/xray_share_reader.dart';
 import 'package:onexray/service/subscription/model.dart';
@@ -21,6 +24,89 @@ import 'package:onexray/service/xray/outbound/state_db.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
+  testWidgets('file import keeps loading while subscriptions download', (
+    tester,
+  ) async {
+    final previous = FilePickerPlatform.instance;
+    FilePickerPlatform.instance = _SubscriptionFilePicker();
+    addTearDown(() => FilePickerPlatform.instance = previous);
+    late Completer<void> started;
+    late Completer<SubscriptionInsertResult> release;
+    await tester.runAsync(() async {
+      started = Completer<void>();
+      release = Completer<SubscriptionInsertResult>();
+    });
+    final urls = <String>[];
+    final service = ServerImportService(
+      subscribe: (link) {
+        urls.add(link.url);
+        if (!started.isCompleted) started.complete();
+        return AppEventBus.instance.trackDownload(() => release.future);
+      },
+    );
+    final controller = ServerImportController(
+      service: service,
+      loadSubscription: (_) async => null,
+    );
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showAppDialog<ServerImportResult>(
+              context,
+              (_) => ServersImportPage(controller: controller),
+            ),
+            child: const Text('Open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Import file'));
+      await started.future.timeout(const Duration(seconds: 5));
+    });
+    await tester.pump();
+    try {
+      expect(urls, ['https://example.com/personal.txt']);
+      expect(controller.state.busy, isTrue);
+      expect(controller.state.openingAction, isNull);
+      expect(
+        find.descendant(
+          of: find.widgetWithText(OutlinedButton, 'Import file'),
+          matching: find.byType(ButtonProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+    } finally {
+      await tester.runAsync(() async {
+        release.complete(
+          const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.downloadFailed,
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      });
+      await tester.pumpAndSettle();
+    }
+    expect(urls.length, 3);
+    expect(find.byType(ButtonProgressIndicator), findsNothing);
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Import file'),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   for (final notify in [true, false]) {
     testWidgets('node import success toast follows the entry point ($notify)', (
       tester,
@@ -582,3 +668,28 @@ Widget _app(Widget child) => MaterialApp(
   ),
   home: Scaffold(body: child),
 );
+
+class _SubscriptionFilePicker extends FilePickerPlatform {
+  @override
+  Future<PlatformFile?> pickFile({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    int compressionQuality = 0,
+    AndroidOptions androidOptions = const AndroidOptions(),
+    DarwinOptions darwinOptions = const DarwinOptions(),
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
+  }) async => _SubscriptionFile();
+}
+
+base class _SubscriptionFile extends PlatformFile {
+  @override
+  String get path => File('test/pages/servers/fixtures/sub.txt').absolute.path;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tab_visibility.dart';
 import 'package:onexray/pages/advanced/xray/controller.dart';
@@ -122,7 +123,12 @@ class XrayRuntimePage extends StatelessWidget {
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: mobile ? 13 : 14,
                                 ),
-                                trailing: _chevron(context),
+                                trailing: AppActivityBuilder(
+                                  builder: (context, activity) =>
+                                      activity.downloading
+                                      ? const ButtonProgressIndicator()
+                                      : _chevron(context),
+                                ),
                                 onTap: () => onGeodata(context),
                               ),
                             ],
@@ -138,7 +144,12 @@ class XrayRuntimePage extends StatelessWidget {
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: mobile ? 13 : 14,
                                 ),
-                                trailing: _chevron(context),
+                                trailing: AppActivityBuilder(
+                                  builder: (context, activity) =>
+                                      activity.downloading
+                                      ? const ButtonProgressIndicator()
+                                      : _chevron(context),
+                                ),
                                 onTap: () => onUpdates(context),
                               ),
                             ],
@@ -164,7 +175,12 @@ class XrayRuntimePage extends StatelessWidget {
                                         ),
                                       ),
                                 ),
-                                trailing: _chevron(context),
+                                trailing: AppActivityBuilder(
+                                  builder: (context, activity) =>
+                                      activity.pinging
+                                      ? const ButtonProgressIndicator()
+                                      : _chevron(context),
+                                ),
                                 onTap: () => onSpeedTest(context),
                               ),
                             ],

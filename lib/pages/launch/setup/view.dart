@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:onexray/pages/widget/app_activity.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -428,6 +429,10 @@ class SetupView extends StatelessWidget {
         mobile,
         l.prototypeAddServers,
         l.prototypeImportServersSubtitle,
+      ),
+      const Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: AppActivityIndicator(),
       ),
       if (state.hasServers) ...[
         const SizedBox(height: 24),
