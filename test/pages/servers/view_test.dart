@@ -372,7 +372,7 @@ void main() {
           ),
           findsNWidgets(2),
         );
-        expect(find.byType(ServerNodeRow), findsNWidgets(2));
+        expect(find.byType(ServerNodeRow), findsNWidgets(3));
         expect(
           find.byType(TabBar),
           findsNothing,
@@ -380,10 +380,11 @@ void main() {
         expect(find.byType(VerticalDivider), findsNothing);
         expect(find.byType(PopupMenuButton<ServerAction>), findsNothing);
 
-        controller.groupBy(ServerGrouping.subscription);
+        controller.groupBy(ServerGrouping.location);
         await tester.pumpAndSettle();
         expect(group, findsOneWidget);
         expect(tester.getSize(group).width, closeTo(columnWidth, 1));
+        expect(find.byType(ServerNodeRow), findsNWidgets(2));
         expect(tester.takeException(), isNull);
       },
     );
@@ -392,6 +393,7 @@ void main() {
   testWidgets(
     'compact desktop stacks cards and browsing updates the shared detail',
     (tester) async {
+      controller.groupBy(ServerGrouping.location);
       await pumpBrowser(tester, 900);
       final group = find.byType(ServerGroupView);
       expect(tester.getSize(group).width, closeTo(900 - 190 - 56, 1));
@@ -413,6 +415,19 @@ void main() {
     expect(find.byType(TabBar), findsOneWidget);
     expect(find.byType(ServerGroupView), findsNothing);
     final l = AppLocalizations.of(tester.element(find.byType(ServerBrowser)))!;
+    expect(controller.grouping, ServerGrouping.subscription);
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.tabs.map((tab) => (tab as Tab).text), [
+      l.prototypeBySubscription,
+      l.prototypeByNodeLocation,
+    ]);
+    expect(
+      DefaultTabController.of(tester.element(find.byType(TabBar))).index,
+      0,
+    );
+    await tester.tap(find.widgetWithText(Tab, l.prototypeByNodeLocation));
+    await tester.pumpAndSettle();
+    expect(controller.grouping, ServerGrouping.location);
     await tester.tap(find.text(l.countryRegionName('SG')));
     await tester.pumpAndSettle();
     expect(controller.browsedOnMobile, isTrue);
@@ -424,6 +439,7 @@ void main() {
       tester,
     ) async {
       final mobile = width <= AppLayout.mobileBreakpoint;
+      controller.groupBy(ServerGrouping.location);
       controller.servers = [
         for (var id = 1; id <= 200; id++) _server(id, 'JP'),
         for (final (index, country) in [

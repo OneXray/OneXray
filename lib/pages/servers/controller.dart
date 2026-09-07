@@ -22,7 +22,7 @@ import 'package:onexray/service/ping/service.dart';
 import 'package:onexray/service/event_bus/service.dart';
 import 'package:onexray/service/subscription/service.dart';
 
-enum ServerGrouping { location, subscription }
+enum ServerGrouping { subscription, location }
 
 enum ServerAction { edit, test, copy, share, delete }
 

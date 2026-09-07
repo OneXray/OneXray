@@ -84,8 +84,8 @@ class _ServersPageState extends State<ServersPage> {
                     ),
                     labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                     tabs: [
-                      Tab(text: l.prototypeByNodeLocation),
                       Tab(text: l.prototypeBySubscription),
+                      Tab(text: l.prototypeByNodeLocation),
                     ],
                     onTap: (index) =>
                         controller.groupBy(ServerGrouping.values[index]),

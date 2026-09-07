@@ -115,8 +115,8 @@ class ServerBrowser extends StatelessWidget {
             unselectedLabelColor: palette.mutedStrong,
             labelPadding: const EdgeInsets.symmetric(horizontal: 4),
             tabs: [
-              Tab(text: l.prototypeByNodeLocation),
               Tab(text: l.prototypeBySubscription),
+              Tab(text: l.prototypeByNodeLocation),
             ],
           ),
         ),

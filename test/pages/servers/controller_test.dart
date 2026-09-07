@@ -83,10 +83,16 @@ void main() {
   );
 
   test('location/source grouping shares rows; searching never changes connection settings', () async {
+    expect(ServerGrouping.values, [
+      ServerGrouping.subscription,
+      ServerGrouping.location,
+    ]);
+    expect(controller.grouping, ServerGrouping.subscription);
     final one = await server('Tokyo', source: 4, favorite: true);
     final two = await server('Osaka', source: 4);
     controller.servers = [one, two];
     final before = controller.configuration.encode();
+    controller.groupBy(ServerGrouping.location);
     expect(controller.groups(l).single.rows, [one, two]);
     controller.search.text = 'Tokyo';
     expect(controller.groups(l).single.visibleRows, [one]);
