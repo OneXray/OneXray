@@ -11,6 +11,11 @@ import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/advanced/policy_editor.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/service.dart';
@@ -32,6 +37,7 @@ void main() {
   String? failDownload;
   String? failIndex;
   var downloads = 0;
+  Future<void> Function()? beforeDownload;
 
   Future<void> count(String path, String name, GeoDataType type) async {
     if (failIndex == name) throw const FormatException('Invalid fixture data');
@@ -87,12 +93,14 @@ void main() {
     failDownload = null;
     failIndex = null;
     downloads = 0;
+    beforeDownload = null;
     service = GeoDataService.forTesting(
       database: db,
       directory: datRoot.path,
       download: (url, file) async {
         expect(AppEventBus.instance.state.downloading, isTrue);
         downloads++;
+        await beforeDownload?.call();
         if (p.basenameWithoutExtension(file.path) == failDownload) {
           throw const SocketException('Fixture download failed');
         }
@@ -113,6 +121,94 @@ void main() {
     type: GeoDataType.domain,
     url: 'https://example.com/$name',
   );
+
+  test(
+    'Geodata download does not block tunnel save or installed reads',
+    () async {
+      await service.ensureInstalled();
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        prepare: (_, _) async => throw StateError('Must not prepare'),
+        start: (_) async => throw StateError('Must not start'),
+        stop: () async => throw StateError('Must not stop'),
+      );
+      addTearDown(coordinator.dispose);
+      await coordinator.initialize(poll: false, registerReferences: false);
+      final editor = PolicyEditorService(
+        coordinator: coordinator,
+        platform: ConnectionPlatform.ios,
+      );
+      final draft = await editor.load();
+      draft.policy['ipv6Enabled'] = false;
+      final started = Completer<void>();
+      final release = Completer<void>();
+      beforeDownload = () async {
+        if (!started.isCompleted) started.complete();
+        await release.future;
+      };
+      final update = service.updateDefaults();
+      await started.future;
+      final saving = editor.save(
+        draft: draft,
+        confirm: (_) async => fail('Must not reconnect'),
+      );
+      try {
+        expect(await saving.timeout(const Duration(seconds: 1)), isTrue);
+        expect(
+          await service.publishedFiles().timeout(const Duration(seconds: 1)),
+          hasLength(2),
+        );
+        expect((await coordinator.configuration).policy.ipv6Enabled, isFalse);
+        expect(release.isCompleted, isFalse);
+      } finally {
+        release.complete();
+        await update;
+        await saving;
+      }
+    },
+  );
+
+  test('publication waits for file readers but unrelated tasks keep running', () async {
+    await service.ensureInstalled();
+    final downloading = Completer<void>();
+    final releaseDownload = Completer<void>();
+    final reading = Completer<void>();
+    final releaseReader = Completer<void>();
+    beforeDownload = () async {
+      if (!downloading.isCompleted) downloading.complete();
+      await releaseDownload.future;
+    };
+    var published = false;
+    final update = service.updateDefaults().then((_) => published = true);
+    await downloading.future;
+    final reader = service.withFiles(() async {
+      // A nested read shares the same access, instead of queuing behind itself.
+      expect(await service.publishedFiles(), hasLength(2));
+      reading.complete();
+      await releaseReader.future;
+      expect(
+        await File(p.join(datRoot.path, 'geoip.dat')).readAsString(),
+        'bundled',
+      );
+    });
+    try {
+      await reading.future;
+      releaseDownload.complete();
+      expect(await DataMaintenance.run(() async => 1), 1);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(published, isFalse);
+    } finally {
+      if (!releaseDownload.isCompleted) releaseDownload.complete();
+      releaseReader.complete();
+      await reader;
+      await update;
+    }
+    expect(
+      await File(p.join(datRoot.path, 'geoip.dat')).readAsString(),
+      revision,
+    );
+  });
 
   GeoDataService createService(AppDatabase database) =>
       GeoDataService.forTesting(

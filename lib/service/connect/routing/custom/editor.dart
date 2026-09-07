@@ -7,6 +7,7 @@ import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 class CustomRoutingEditorException implements Exception {
   final String reason;
@@ -58,7 +59,7 @@ class CustomRoutingEditorService {
     CustomRoutingEditorDraft draft, {
     required Future<bool> Function() confirmReconnect,
     GeoDataImportDraft? geodata,
-  }) async {
+  }) => DataMaintenance.run(() async {
     final name = draft.state.name.trim();
     if (name.isEmpty || name.runes.length > 32) {
       throw const CustomRoutingEditorException('name');
@@ -132,7 +133,7 @@ class CustomRoutingEditorService {
       await geodata?.rollback();
       Error.throwWithStackTrace(error, stackTrace);
     }
-  }
+  });
 
   Future<bool> delete(
     RoutingProfileData original, {

@@ -458,42 +458,43 @@ class ServerImportService {
     }
   }
 
-  Future<ServerImportResult> commit(ServerImportPreview preview) async {
-    if (!preview.hasItems) {
-      throw const FormatException('No usable servers');
-    }
-    final dependencies = preview.dependencies;
-    await dependencies?.publish();
-    try {
-      if (dependencies != null) {
-        for (final route in preview.customRoutes) {
-          await CustomRoutingService.validate(
-            RoutingProfileDocument.parse(
-              route.text,
-              allowMetadata: false,
-            ).state,
-            testXray: _validate,
-          );
+  Future<ServerImportResult> commit(ServerImportPreview preview) =>
+      DataMaintenance.run(() async {
+        if (!preview.hasItems) {
+          throw const FormatException('No usable servers');
         }
-        for (final row in preview.rows.where(
-          (row) => row.type.value == 'raw',
-        )) {
-          final data = row.data.value;
-          if (data == null ||
-              !await _validateRaw(
-                utf8.decode(base64Decode(data)),
-                dependencies,
-              )) {
-            throw const FormatException('Invalid Raw');
+        final dependencies = preview.dependencies;
+        await dependencies?.publish();
+        try {
+          if (dependencies != null) {
+            for (final route in preview.customRoutes) {
+              await CustomRoutingService.validate(
+                RoutingProfileDocument.parse(
+                  route.text,
+                  allowMetadata: false,
+                ).state,
+                testXray: _validate,
+              );
+            }
+            for (final row in preview.rows.where(
+              (row) => row.type.value == 'raw',
+            )) {
+              final data = row.data.value;
+              if (data == null ||
+                  !await _validateRaw(
+                    utf8.decode(base64Decode(data)),
+                    dependencies,
+                  )) {
+                throw const FormatException('Invalid Raw');
+              }
+            }
           }
+          return await _commitPreview(preview);
+        } catch (error, stackTrace) {
+          await dependencies?.rollback();
+          Error.throwWithStackTrace(error, stackTrace);
         }
-      }
-      return await _commitPreview(preview);
-    } catch (error, stackTrace) {
-      await dependencies?.rollback();
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-  }
+      });
 
   Future<ServerImportResult> _commitPreview(ServerImportPreview preview) async {
     late final db = _database ?? AppDatabase();
@@ -519,7 +520,7 @@ class ServerImportService {
 
     final result =
         preview.dependencies != null || preview.customRoutes.isNotEmpty
-        ? await DataMaintenance.run(() => db.transaction(write))
+        ? await GeoDataService().withFiles(() => db.transaction(write))
         : await write();
     await preview.dependencies?.complete();
     if (result != null) {

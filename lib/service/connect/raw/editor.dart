@@ -66,7 +66,7 @@ class RawEditorService {
     RawEditorDraft draft, {
     required Future<bool> Function() confirmReconnect,
     GeoDataImportDraft? geodata,
-  }) async {
+  }) => DataMaintenance.run(() async {
     await geodata?.publish();
     try {
       final result = await _save(
@@ -84,7 +84,7 @@ class RawEditorService {
       await geodata?.rollback();
       Error.throwWithStackTrace(error, stackTrace);
     }
-  }
+  });
 
   Future<int?> _save(
     RawEditorDraft draft, {

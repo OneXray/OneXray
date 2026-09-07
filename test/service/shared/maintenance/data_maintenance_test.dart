@@ -35,19 +35,22 @@ void main() {
   );
 
   test(
-    'nested work rejected during maintenance lets its parent finish',
+    'registered work can finish nested writes after replacement is requested',
     () async {
       final release = Completer<void>();
       var restored = false;
+      var written = false;
       final oldWrite = DataMaintenance.run(() async {
         await release.future;
-        await DataMaintenance.run(() async => fail('must not run nested work'));
+        await DataMaintenance.run(() async => written = true);
       });
-      final oldFailure = expectLater(oldWrite, throwsStateError);
-      final restore = DataMaintenance.exclusive(() async => restored = true);
+      final restore = DataMaintenance.exclusive(() async {
+        expect(written, isTrue);
+        restored = true;
+      });
       release.complete();
 
-      await oldFailure;
+      await oldWrite;
       await restore.timeout(const Duration(seconds: 1));
       expect(restored, isTrue);
     },
@@ -74,43 +77,46 @@ void main() {
     },
   );
 
-  test('cleanup waits for maintenance instead of being dropped', () async {
-    final release = Completer<void>();
-    final order = <String>[];
-    final maintenance = DataMaintenance.exclusive(() async {
-      order.add('maintenance started');
-      await release.future;
-      order.add('maintenance finished');
+  test('an expired task scope cannot admit work during replacement', () async {
+    final releaseLateWork = Completer<void>();
+    final releaseRestore = Completer<void>();
+    late Future<void> lateWork;
+    await DataMaintenance.run(() async {
+      lateWork = releaseLateWork.future.then(
+        (_) => DataMaintenance.run(() async => fail('Stale scope')),
+      );
     });
-    final cleanup = DataMaintenance.cleanup(() async {
-      order.add('cleanup');
-    });
-
-    await Future<void>.delayed(Duration.zero);
-    expect(order, ['maintenance started']);
-    release.complete();
-    await maintenance;
-    await cleanup;
-    expect(order, ['maintenance started', 'maintenance finished', 'cleanup']);
+    final restore = DataMaintenance.exclusive(() => releaseRestore.future);
+    final rejected = expectLater(lateWork, throwsStateError);
+    try {
+      releaseLateWork.complete();
+      await rejected;
+    } finally {
+      releaseRestore.complete();
+      await restore;
+    }
   });
 
-  test('cleanup waits for active readers and blocks new readers', () async {
-    final releaseReader = Completer<void>();
-    final order = <String>[];
-    final reader = DataMaintenance.run(() async {
-      order.add('reader started');
-      await releaseReader.future;
-      order.add('reader finished');
-    });
-    final cleanup = DataMaintenance.cleanup(() async {
-      order.add('cleanup');
-    });
-    await Future<void>.delayed(Duration.zero);
-    expect(order, ['reader started']);
-    await expectLater(DataMaintenance.run(() async {}), throwsStateError);
-    releaseReader.complete();
-    await reader;
-    await cleanup;
-    expect(order, ['reader started', 'reader finished', 'cleanup']);
-  });
+  test(
+    'replacement also drains children scheduled by an admitted import',
+    () async {
+      final releaseImport = Completer<void>();
+      final releaseProbe = Completer<void>();
+      late Future<void> probe;
+      var restored = false;
+      final importing = DataMaintenance.run(() async {
+        await releaseImport.future;
+        probe = DataMaintenance.run(() => releaseProbe.future);
+      });
+      final restore = DataMaintenance.exclusive(() async => restored = true);
+      releaseImport.complete();
+      await importing;
+      await Future<void>.delayed(Duration.zero);
+      expect(restored, isFalse);
+      releaseProbe.complete();
+      await probe;
+      await restore.timeout(const Duration(seconds: 1));
+      expect(restored, isTrue);
+    },
+  );
 }

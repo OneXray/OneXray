@@ -96,18 +96,24 @@ class BackupService {
     }
   }
 
-  Future<void> backup() => DataMaintenance.exclusive(_backup);
-
-  Future<void> _backup() async {
-    final cacheDir = await FileTool.makeCacheDir();
+  Future<void> backup() async {
+    // Compression no longer holds maintenance; keep its private input outside
+    // the cache directory that Clear data removes.
+    final cacheDir = (await Directory(await backupDir).createTemp('.staging-'))
+        .path;
     final stagingDir = p.join(cacheDir, "staging");
     final createdAt = DateTime.now();
     try {
-      final contents = await BackupDatabaseContents.read(AppDatabase());
-      contents.validate();
-      await FileTool.checkDir(stagingDir);
+      final contents = await DataMaintenance.run(
+        () => GeoDataService().withFiles(() async {
+          final contents = await BackupDatabaseContents.read(AppDatabase());
+          contents.validate();
+          await FileTool.checkDir(stagingDir);
+          await _backupGeoData(stagingDir, contents.geoDataList);
+          return contents;
+        }),
+      );
       await _writeManifest(stagingDir, createdAt);
-      await _backupGeoData(stagingDir, contents.geoDataList);
       await _writeJsonToFile(
         contents.coreConfigs,
         p.join(stagingDir, _coreConfigsFile),
@@ -134,50 +140,54 @@ class BackupService {
 
   Future<bool> restore(String zipPath) async {
     List<SubscriptionData> legacySubscriptions = const [];
-    final success = await DataMaintenance.exclusive(() async {
-      _lastRestoreSkippedCoreConfigCount = 0;
-      final cacheDir = await FileTool.makeCacheDir();
-      GeoDataRestoreDraft? datRestore;
-      try {
-        final payload = await _readBackupPayload(zipPath, cacheDir);
-        if (payload == null) {
-          return false;
-        }
+    final cacheDir = (await Directory(await backupDir).createTemp('.restore-'))
+        .path;
+    bool success;
+    try {
+      final payload = await _readBackupPayload(zipPath, cacheDir);
+      if (payload == null) return false;
+      success = await DataMaintenance.exclusive(
+        () => GeoDataService().withFiles(() async {
+          _lastRestoreSkippedCoreConfigCount = 0;
+          GeoDataRestoreDraft? datRestore;
+          try {
+            final cleanupService = AppDataCleanupService();
+            if (!await cleanupService.prepareForBackupRestore()) {
+              return false;
+            }
 
-        final cleanupService = AppDataCleanupService();
-        if (!await cleanupService.prepareForBackupRestore()) {
-          return false;
-        }
-
-        final datDirectory = p.join(payload.rootDir, _datDir);
-        await Directory(datDirectory).create(recursive: true);
-        datRestore = await GeoDataService().prepareRestore(datDirectory);
-        final database = AppDatabase();
-        final subscriptions = await database.transaction(() async {
-          final rows = await payload.contents.restore(database);
-          await datRestore!.commit();
-          return rows;
-        });
-        await datRestore.complete();
-        if (payload.contents.version < _backupVersion) {
-          legacySubscriptions = subscriptions;
-        }
-        _lastRestoreSkippedCoreConfigCount =
-            payload.contents.skippedCoreConfigCount;
-        if (_lastRestoreSkippedCoreConfigCount > 0) {
-          ygLogger(
-            'backup restore skipped $_lastRestoreSkippedCoreConfigCount retired configs',
-          );
-        }
-        return true;
-      } catch (e, stackTrace) {
-        ygLogger("restore backup error (${e.runtimeType})\n$stackTrace");
-        return false;
-      } finally {
-        await datRestore?.dispose();
-        await FileTool.deleteDirIfExists(cacheDir);
-      }
-    });
+            final datDirectory = p.join(payload.rootDir, _datDir);
+            await Directory(datDirectory).create(recursive: true);
+            datRestore = await GeoDataService().prepareRestore(datDirectory);
+            final database = AppDatabase();
+            final subscriptions = await database.transaction(() async {
+              final rows = await payload.contents.restore(database);
+              await datRestore!.commit();
+              return rows;
+            });
+            await datRestore.complete();
+            if (payload.contents.version < _backupVersion) {
+              legacySubscriptions = subscriptions;
+            }
+            _lastRestoreSkippedCoreConfigCount =
+                payload.contents.skippedCoreConfigCount;
+            if (_lastRestoreSkippedCoreConfigCount > 0) {
+              ygLogger(
+                'backup restore skipped $_lastRestoreSkippedCoreConfigCount retired configs',
+              );
+            }
+            return true;
+          } catch (e, stackTrace) {
+            ygLogger("restore backup error (${e.runtimeType})\n$stackTrace");
+            return false;
+          } finally {
+            await datRestore?.dispose();
+          }
+        }),
+      );
+    } finally {
+      await FileTool.deleteDirIfExists(cacheDir);
+    }
     // Legacy ZIPs have no subscription cache. Refresh only after maintenance
     // releases its gate, so ordinary subscription writes do not re-enter it.
     if (success && legacySubscriptions.isNotEmpty) {

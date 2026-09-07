@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -51,6 +52,8 @@ class GeoDataService {
   final Future<void> Function(String, String, GeoDataType) _count;
   final Future<void> Function(String) _copyBundled;
   final _commands = CommandSerialExecutor();
+  final _fileScopeKey = Object();
+  Object? _fileScope;
   final _activeImportStages = <String>{};
   bool _installationPrepared = false;
   AppDatabase get _db => _database ?? AppDatabase();
@@ -73,28 +76,40 @@ class GeoDataService {
       ];
   static final _bundledNames = Assets.dat.values.map(p.basename).toSet();
 
-  /// File publication is exclusive with connection preparation/start so the
-  /// shared directory cannot change while a runtime consumes it.
-  Future<T> _maintain<T>(Future<T> Function() action) =>
-      DataMaintenance.exclusive(() => _commands.run((_) => action()));
+  /// Only readers/publications of the canonical directory share this queue.
+  /// Downloads and indexing of independent staging files stay outside it.
+  Future<T> withFiles<T>(Future<T> Function() action) {
+    if (_fileScope != null &&
+        identical(Zone.current[_fileScopeKey], _fileScope)) {
+      return action();
+    }
+    return _commands.run((_) async {
+      final scope = Object();
+      _fileScope = scope;
+      try {
+        return await runZoned(action, zoneValues: {_fileScopeKey: scope});
+      } finally {
+        _fileScope = null;
+      }
+    });
+  }
 
   Future<void> _download(String url, File destination) =>
       AppEventBus.instance.trackDownload(() => _downloadFile(url, destination));
 
-  Future<T> _cleanup<T>(Future<T> Function() action) =>
-      DataMaintenance.cleanup(() => _commands.run((_) => action()));
-
-  Future<void> ensureInstalled({bool resetOrphanedFiles = false}) async {
-    // Cold startup must recover import journals. Later checks only read valid
-    // files, so opening Home or Geodata cannot drain/reject background probes.
-    if (_installationPrepared && await DataMaintenance.run(_checkInstalled)) {
-      return;
-    }
-    await _maintain(
-      () => _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles),
-    );
-    _installationPrepared = true;
-  }
+  Future<void> ensureInstalled({
+    bool resetOrphanedFiles = false,
+  }) => DataMaintenance.run(
+    () => withFiles(() async {
+      // Cold startup must recover import journals. Later checks only read valid
+      // files, so opening Home or Geodata cannot drain/reject background probes.
+      if (_installationPrepared && await _checkInstalled()) {
+        return;
+      }
+      await _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles);
+      _installationPrepared = true;
+    }),
+  );
 
   Future<bool> _checkInstalled() async {
     final rows = await _db.geoDataDao.publishedRows;
@@ -121,7 +136,7 @@ class GeoDataService {
 
   /// App data cleanup already owns [DataMaintenance.exclusive].
   Future<void> resetAfterDataClear() =>
-      _commands.run((_) => _ensureInstalled(resetOrphanedFiles: true));
+      withFiles(() => _ensureInstalled(resetOrphanedFiles: true));
 
   Future<void> _ensureInstalled({bool resetOrphanedFiles = false}) async {
     final root = Directory(_root);
@@ -196,11 +211,11 @@ class GeoDataService {
     }
   }
 
-  Future<List<PublishedGeoData>> publishedFiles() async =>
-      _readAll(await _db.geoDataDao.publishedRows);
+  Future<List<PublishedGeoData>> publishedFiles() =>
+      withFiles(() async => _readAll(await _db.geoDataDao.publishedRows));
 
   Stream<List<PublishedGeoData>> watchPublished() =>
-      _db.geoDataDao.publishedRowsStream.asyncMap(_readAll);
+      _db.geoDataDao.publishedRowsStream.asyncMap((_) => publishedFiles());
 
   Future<void> add(GeoDataInput input) {
     final normalized = GeoDataInput(
@@ -208,22 +223,22 @@ class GeoDataService {
       type: input.type,
       url: input.url.trim(),
     );
-    return _maintain(() async {
-      final draft = await _prepareImports([
-        normalized,
-      ], disposeWithinMaintenance: true);
-      try {
-        await draft.publish();
-        await draft.commit();
-        await draft.complete();
-      } finally {
-        await draft.dispose();
-      }
+    return DataMaintenance.run(() async {
+      final draft = await _prepareImports([normalized]);
+      await withFiles(() async {
+        try {
+          await draft.publish();
+          await draft.commit();
+          await draft.complete();
+        } finally {
+          await draft.dispose();
+        }
+      });
     });
   }
 
-  Future<void> updateDefaults() => _maintain(() async {
-    await _ensureInstalled();
+  Future<void> updateDefaults() => DataMaintenance.run(() async {
+    await withFiles(() => _ensureInstalled());
     final stage = await _newStage('download-');
     _FlatFileChange? change;
     try {
@@ -234,51 +249,86 @@ class GeoDataService {
         );
         await _index(stage.path, source.name, source.type);
       }
-      change = await _applyFiles(await _stageFiles(stage));
-      try {
-        await _db.transaction(() => _publishDefaults(_root, DateTime.now()));
-      } catch (_) {
-        await change.rollback();
-        rethrow;
-      }
-      await change.complete();
+      await withFiles(() async {
+        change = await _applyFiles(await _stageFiles(stage));
+        try {
+          await _db.transaction(() => _publishDefaults(_root, DateTime.now()));
+        } catch (_) {
+          await change!.rollback();
+          rethrow;
+        }
+        await change!.complete();
+      });
     } finally {
       if (change == null) await _deleteStage(stage);
     }
   });
 
-  Future<void> updateCustom(GeoDataData original) => _maintain(() async {
-    if (original.id <= 0) {
-      throw StateError('Default routing data updates together');
-    }
-    _checkName(original.name);
-    GeoDataInput.httpsUri(original.url);
-    final stage = await _newStage('download-');
-    _FlatFileChange? change;
-    try {
-      await _download(
-        original.url,
-        File(p.join(stage.path, '${original.name}.dat')),
-      );
-      final index = await _index(
-        stage.path,
-        original.name,
-        _type(original.type),
-      );
-      change = await _applyFiles(await _stageFiles(stage));
+  Future<void> updateCustom(GeoDataData original) =>
+      DataMaintenance.run(() async {
+        if (original.id <= 0) {
+          throw StateError('Default routing data updates together');
+        }
+        _checkName(original.name);
+        GeoDataInput.httpsUri(original.url);
+        final stage = await _newStage('download-');
+        _FlatFileChange? change;
+        try {
+          await _download(
+            original.url,
+            File(p.join(stage.path, '${original.name}.dat')),
+          );
+          final index = await _index(
+            stage.path,
+            original.name,
+            _type(original.type),
+          );
+          await withFiles(() async {
+            change = await _applyFiles(await _stageFiles(stage));
+            try {
+              await _db.transaction(() async {
+                final current = await _db.geoDataDao.searchRow(original.id);
+                if (current == null || current != original) {
+                  throw StateError('Routing data source changed during update');
+                }
+                if (!await _db.geoDataDao.updateRow(
+                  current.copyWith(
+                    timestamp: DateTime.now(),
+                    categoryCount: index.categoryCount!,
+                    ruleCount: index.ruleCount!,
+                  ),
+                )) {
+                  throw StateError('Routing data source is unavailable');
+                }
+              });
+            } catch (_) {
+              await change!.rollback();
+              rethrow;
+            }
+            await change!.complete();
+          });
+        } finally {
+          if (change == null) await _deleteStage(stage);
+        }
+      });
+
+  Future<void> deleteGeoDat(GeoDataData row) => DataMaintenance.run(
+    () => withFiles(() async {
+      if (row.id <= 0) {
+        throw StateError('Default routing data cannot be deleted');
+      }
+      _checkName(row.name);
+      final change = await _applyFiles({
+        '${row.name}.dat': null,
+        '${row.name}.json': null,
+      });
       try {
         await _db.transaction(() async {
-          final current = await _db.geoDataDao.searchRow(original.id);
-          if (current == null || current != original) {
-            throw StateError('Routing data source changed during update');
+          final current = await _db.geoDataDao.searchRow(row.id);
+          if (current == null || current != row) {
+            throw StateError('Routing data source changed before deletion');
           }
-          if (!await _db.geoDataDao.updateRow(
-            current.copyWith(
-              timestamp: DateTime.now(),
-              categoryCount: index.categoryCount!,
-              ruleCount: index.ruleCount!,
-            ),
-          )) {
+          if (await _db.geoDataDao.deleteRow(row.id) != 1) {
             throw StateError('Routing data source is unavailable');
           }
         });
@@ -287,44 +337,15 @@ class GeoDataService {
         rethrow;
       }
       await change.complete();
-    } finally {
-      if (change == null) await _deleteStage(stage);
-    }
-  });
-
-  Future<void> deleteGeoDat(GeoDataData row) => _maintain(() async {
-    if (row.id <= 0) throw StateError('Default routing data cannot be deleted');
-    _checkName(row.name);
-    final change = await _applyFiles({
-      '${row.name}.dat': null,
-      '${row.name}.json': null,
-    });
-    try {
-      await _db.transaction(() async {
-        final current = await _db.geoDataDao.searchRow(row.id);
-        if (current == null || current != row) {
-          throw StateError('Routing data source changed before deletion');
-        }
-        if (await _db.geoDataDao.deleteRow(row.id) != 1) {
-          throw StateError('Routing data source is unavailable');
-        }
-      });
-    } catch (_) {
-      await change.rollback();
-      rethrow;
-    }
-    await change.complete();
-  });
+    }),
+  );
 
   /// Download and validate in a sibling directory, then install new files in
   /// the canonical root. The caller commits metadata with its configuration.
   Future<GeoDataImportDraft> prepareImports(List<GeoDataInput> inputs) =>
-      _maintain(() => _prepareImports(inputs));
+      DataMaintenance.run(() => _prepareImports(inputs));
 
-  Future<GeoDataImportDraft> _prepareImports(
-    List<GeoDataInput> inputs, {
-    bool disposeWithinMaintenance = false,
-  }) async {
+  Future<GeoDataImportDraft> _prepareImports(List<GeoDataInput> inputs) async {
     if (inputs.isEmpty) {
       return GeoDataImportDraft(const [], () async {}, () async {});
     }
@@ -335,8 +356,10 @@ class GeoDataService {
       }
       GeoDataInput.httpsUri(source.url);
     }
-    await _ensureRoot();
-    await _checkConflicts(sources, checkFiles: true);
+    await withFiles(() async {
+      await _ensureRoot();
+      await _checkConflicts(sources, checkFiles: true);
+    });
     final stage = await _newStage('import-');
     _activeImportStages.add(p.normalize(stage.path));
     final indexes = <String, XrayGeoList>{};
@@ -349,7 +372,7 @@ class GeoDataService {
           source.type,
         );
       }
-      await _checkConflicts(sources, checkFiles: true);
+      await withFiles(() => _checkConflicts(sources, checkFiles: true));
     } catch (_) {
       await _deleteStage(stage);
       _activeImportStages.remove(p.normalize(stage.path));
@@ -460,19 +483,13 @@ class GeoDataService {
       _activeImportStages.remove(p.normalize(stage.path));
     }
 
-    Future<void> guardedPublish() =>
-        disposeWithinMaintenance ? publish() : _maintain(publish);
-    Future<void> guardedRollback() =>
-        disposeWithinMaintenance ? rollback() : _cleanup(rollback);
-    Future<void> guardedDispose() =>
-        disposeWithinMaintenance ? dispose() : _cleanup(dispose);
     return GeoDataImportDraft(
       sources,
       commit,
-      guardedDispose,
-      publish: guardedPublish,
-      complete: complete,
-      rollback: guardedRollback,
+      () => withFiles(dispose),
+      publish: () => withFiles(publish),
+      complete: () => withFiles(complete),
+      rollback: () => withFiles(rollback),
     );
   }
 

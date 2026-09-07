@@ -4,6 +4,7 @@ import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/custom/state_db.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
@@ -23,7 +24,7 @@ class CustomRoutingService {
   static Future<void> validate(
     RoutingProfileState state, {
     Future<String> Function(String)? testXray,
-  }) async {
+  }) => GeoDataService().withFiles(() async {
     final config = state.xrayJson;
     final tags = [for (var i = 0; i < state.entryCount; i++) 'app-entry-$i'];
     config.env = XrayEnv(
@@ -42,7 +43,7 @@ class CustomRoutingService {
       JsonTool.encoder.convert(config.toJson()),
     );
     if (error.isNotEmpty) throw FormatException(error);
-  }
+  });
 
   Future<int> save(RoutingProfileState state) => DataMaintenance.run(() async {
     final name = state.name.trim();

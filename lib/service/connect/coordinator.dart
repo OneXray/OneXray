@@ -12,6 +12,7 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
@@ -440,6 +441,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   /// UI has already confirmed a disruptive change before calling this method.
   /// Metadata/unselected-asset edits use affectsRuntime:false and still commit
   /// asset plus connection values in one transaction.
+  /// Config-only edits with a baseline may wait for maintenance: the baseline
+  /// is checked again after admission. Asset writes retain fail-fast protection.
   Future<void> apply(
     ConnectionConfiguration next, {
     bool connect = false,
@@ -467,117 +470,124 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       throw const ConnectionHostException('reconnectRequired');
     }
     if (!shouldStart && !shouldStop) {
-      await db.connectionConfigDao.commit(
+      Future<void> commit() => db.connectionConfigDao.commit(
         configurationJson: next.encode(),
         writeAssets: writeAssets,
       );
+      if (writeAssets == null) {
+        await commit();
+      } else {
+        await GeoDataService().withFiles(commit);
+      }
       _publish(current);
       return;
     }
-    final cancellation = Completer<void>();
-    _cancel = cancellation;
-    final old = current.connected ? current.runtime : null;
-    if (current.connected && old == null) {
-      throw const ConnectionHostException('runtimeMetadataUnavailable');
-    }
-    state.value = ConnectionView(
-      phase: ConnectionPhase.preparing,
-      runtime: old,
-      traffic: current.traffic,
-    );
-    bool touchedHost = false;
-    try {
-      _preparingNodeIds = {...?old?.nodeIds};
-      final runtime = disconnect
-          ? null
-          : await (prepare ?? _prepare)(next, cancellation.future);
-      _checkCancelled(cancellation);
-      _pendingRuntime = runtime;
-      var running = current;
-      if (current.status != VpnStatus.disconnected) {
-        touchedHost = true;
-        state.value = ConnectionView(
-          phase: ConnectionPhase.disconnecting,
-          runtime: old,
-          traffic: current.traffic,
-        );
-        running = await _stop();
-        if (running.status != VpnStatus.disconnected) {
-          throw const ConnectionHostException('stopNotConfirmed');
-        }
+    return GeoDataService().withFiles(() async {
+      final cancellation = Completer<void>();
+      _cancel = cancellation;
+      final old = current.connected ? current.runtime : null;
+      if (current.connected && old == null) {
+        throw const ConnectionHostException('runtimeMetadataUnavailable');
       }
-      _checkCancelled(cancellation);
-      if (runtime != null) {
-        touchedHost = true;
-        state.value = ConnectionView(
-          phase: ConnectionPhase.connecting,
-          traffic: current.traffic,
-        );
-        running = await _start(runtime);
-        _checkCancelled(cancellation);
-        if (!running.connected ||
-            running.runtime?.identity != runtime.identity) {
-          throw const ConnectionHostException('startNotConfirmed');
-        }
-      }
-      await db.connectionConfigDao.commit(
-        configurationJson: (runtime?.configuration ?? next).encode(),
-        writeAssets: () async {
-          await writeAssets?.call();
-          _checkCancelled(cancellation);
-        },
+      state.value = ConnectionView(
+        phase: ConnectionPhase.preparing,
+        runtime: old,
+        traffic: current.traffic,
       );
-      _publish(running, issue: runtime?.notice);
-    } catch (error) {
-      final permission = error is ConnectionHostException
-          ? error.permission
-          : null;
-      HostConnection? failed;
-      if (touchedHost) {
-        try {
-          failed = await _stop();
-        } catch (_) {
-          try {
-            failed = await _inspect(await _known());
-          } catch (_) {
-            // The failed state remains explicit when native state is unavailable.
+      bool touchedHost = false;
+      try {
+        _preparingNodeIds = {...?old?.nodeIds};
+        final runtime = disconnect
+            ? null
+            : await (prepare ?? _prepare)(next, cancellation.future);
+        _checkCancelled(cancellation);
+        _pendingRuntime = runtime;
+        var running = current;
+        if (current.status != VpnStatus.disconnected) {
+          touchedHost = true;
+          state.value = ConnectionView(
+            phase: ConnectionPhase.disconnecting,
+            runtime: old,
+            traffic: current.traffic,
+          );
+          running = await _stop();
+          if (running.status != VpnStatus.disconnected) {
+            throw const ConnectionHostException('stopNotConfirmed');
           }
         }
-      }
-      final issue = cancellation.isCompleted
-          ? 'cancelled'
-          : error is ConnectionHostException
-          ? error.reason
-          : error is ConnectionPlatformRequirementException
-          ? error.reason
-          : 'changeFailed';
-      if (touchedHost) {
-        final status = failed?.status;
-        _lastNativeStatus = status;
-        _failureLatched = true;
-        state.value = ConnectionView(
-          phase: ConnectionPhase.failed,
-          runtime: status == VpnStatus.disconnected
-              ? null
-              : failed?.runtime ??
-                    _pendingRuntime ??
-                    state.value.runtime ??
-                    current.runtime,
-          traffic: failed?.traffic ?? current.traffic,
-          issue: issue,
-          permission: permission,
+        _checkCancelled(cancellation);
+        if (runtime != null) {
+          touchedHost = true;
+          state.value = ConnectionView(
+            phase: ConnectionPhase.connecting,
+            traffic: current.traffic,
+          );
+          running = await _start(runtime);
+          _checkCancelled(cancellation);
+          if (!running.connected ||
+              running.runtime?.identity != runtime.identity) {
+            throw const ConnectionHostException('startNotConfirmed');
+          }
+        }
+        await db.connectionConfigDao.commit(
+          configurationJson: (runtime?.configuration ?? next).encode(),
+          writeAssets: () async {
+            await writeAssets?.call();
+            _checkCancelled(cancellation);
+          },
         );
-        _syncPolling();
-      } else {
-        _publish(current, issue: issue, permission: permission);
+        _publish(running, issue: runtime?.notice);
+      } catch (error) {
+        final permission = error is ConnectionHostException
+            ? error.permission
+            : null;
+        HostConnection? failed;
+        if (touchedHost) {
+          try {
+            failed = await _stop();
+          } catch (_) {
+            try {
+              failed = await _inspect(await _known());
+            } catch (_) {
+              // The failed state remains explicit when native state is unavailable.
+            }
+          }
+        }
+        final issue = cancellation.isCompleted
+            ? 'cancelled'
+            : error is ConnectionHostException
+            ? error.reason
+            : error is ConnectionPlatformRequirementException
+            ? error.reason
+            : 'changeFailed';
+        if (touchedHost) {
+          final status = failed?.status;
+          _lastNativeStatus = status;
+          _failureLatched = true;
+          state.value = ConnectionView(
+            phase: ConnectionPhase.failed,
+            runtime: status == VpnStatus.disconnected
+                ? null
+                : failed?.runtime ??
+                      _pendingRuntime ??
+                      state.value.runtime ??
+                      current.runtime,
+            traffic: failed?.traffic ?? current.traffic,
+            issue: issue,
+            permission: permission,
+          );
+          _syncPolling();
+        } else {
+          _publish(current, issue: issue, permission: permission);
+        }
+        rethrow;
+      } finally {
+        _pendingRuntime = null;
+        _preparingNodeIds = {};
+        _cancel = null;
       }
-      rethrow;
-    } finally {
-      _pendingRuntime = null;
-      _preparingNodeIds = {};
-      _cancel = null;
-    }
-  });
+    });
+  }, waitForMaintenance: expectedConfiguration != null && writeAssets == null);
 
   void cancel() {
     if (_cancel?.isCompleted == false) _cancel!.complete();
@@ -656,25 +666,27 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     );
   });
 
-  Future<void> _run(Future<void> Function() action) =>
-      DataMaintenance.run(() async {
-        await initialize();
-        return _commands.run((_) async {
-          _failureLatched = false;
-          _commandActive = true;
-          _commandGeneration++;
-          _trafficGeneration++;
-          _resetSpeed = true;
-          _syncPolling();
-          try {
-            await action();
-          } finally {
-            _commandActive = false;
-            _syncPolling();
-            _drainNativeStatus();
-          }
-        });
-      });
+  Future<void> _run(
+    Future<void> Function() action, {
+    bool waitForMaintenance = false,
+  }) => DataMaintenance.run(() async {
+    await initialize();
+    return _commands.run((_) async {
+      _failureLatched = false;
+      _commandActive = true;
+      _commandGeneration++;
+      _trafficGeneration++;
+      _resetSpeed = true;
+      _syncPolling();
+      try {
+        await action();
+      } finally {
+        _commandActive = false;
+        _syncPolling();
+        _drainNativeStatus();
+      }
+    });
+  }, wait: waitForMaintenance);
 
   void _publish(
     HostConnection current, {

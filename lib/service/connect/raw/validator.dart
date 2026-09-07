@@ -3,6 +3,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/settings/language/service.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
 
 class XrayRawValidationResult {
   final bool isValid;
@@ -64,7 +65,7 @@ class XrayRawValidator {
   static Future<XrayRawValidationResult> validate(
     String rawText, {
     Future<String> Function(String)? testXray,
-  }) async {
+  }) => GeoDataService().withFiles(() async {
     final normalized = normalize(rawText);
     if (!normalized.isValid) {
       return normalized;
@@ -79,7 +80,7 @@ class XrayRawValidator {
     }
 
     return normalized;
-  }
+  });
 
   static Future<String> _test(
     Map<String, dynamic> jsonMap,

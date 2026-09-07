@@ -1,34 +1,31 @@
 import 'dart:async';
 
-/// Asset writes finish before restore/clear replaces their data. New work fails
-/// during maintenance rather than queuing a stale write behind the replacement.
+/// Restore/clear only. Ordinary tasks run concurrently; file publication and
+/// backups must use their own coordination instead of closing this gate.
 abstract final class DataMaintenance {
   static final _running = <Completer<void>>{};
+  static final _scopeKey = Object();
   static bool _exclusive = false;
   static Completer<void>? _exclusiveFinished;
 
-  static Future<T> run<T>(Future<T> Function() action) async {
-    if (_exclusive) {
-      throw StateError('Data maintenance is in progress');
+  /// Descendants of registered tasks may finish after replacement is requested.
+  /// Each child is tracked too, including unawaited queued probes.
+  static Future<T> run<T>(
+    Future<T> Function() action, {
+    bool wait = false,
+  }) async {
+    while (_exclusive && !_running.contains(Zone.current[_scopeKey])) {
+      if (!wait) throw StateError('Data maintenance is in progress');
+      await _exclusiveFinished!.future;
     }
     return _track(action);
-  }
-
-  /// Cleanup must not be dropped when restore/clear is already running. Wait
-  /// for that owner, then replace files without overlapping active readers.
-  static Future<T> cleanup<T>(Future<T> Function() action) async {
-    while (true) {
-      final exclusive = _exclusiveFinished;
-      if (exclusive == null) return _runExclusive(action);
-      await exclusive.future;
-    }
   }
 
   static Future<T> _track<T>(Future<T> Function() action) async {
     final finished = Completer<void>();
     _running.add(finished);
     try {
-      return await action();
+      return await runZoned(action, zoneValues: {_scopeKey: finished});
     } finally {
       _running.remove(finished);
       finished.complete();
@@ -47,7 +44,9 @@ abstract final class DataMaintenance {
     _exclusive = true;
     _exclusiveFinished = finished;
     try {
-      await Future.wait(_running.map((task) => task.future).toList());
+      while (_running.isNotEmpty) {
+        await Future.wait(_running.map((task) => task.future).toList());
+      }
       return await action();
     } finally {
       _exclusive = false;

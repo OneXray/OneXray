@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -14,6 +15,7 @@ import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 void main() {
   late AppDatabase db;
@@ -41,6 +43,72 @@ void main() {
       await db.close();
     });
   });
+
+  for (final replaceConfiguration in [false, true]) {
+    test(
+      'tunnel save waits for maintenance and rechecks its draft ($replaceConfiguration)',
+      () async {
+        final service = PolicyEditorService(
+          coordinator: coordinator,
+          platform: ConnectionPlatform.ios,
+        );
+        final draft = await service.load();
+        draft.policy['ipv6Enabled'] = false;
+        final release = Completer<void>();
+        final maintenance = DataMaintenance.exclusive(() async {
+          await release.future;
+          if (replaceConfiguration) {
+            await db.connectionConfigDao.commit(
+              configurationJson: ConnectionConfiguration(
+                policy: PlatformPolicy.fromJson({
+                  'log': {'enabled': true},
+                }),
+              ).encode(),
+            );
+          }
+        });
+        Object? failure;
+        bool? saved;
+        final saving = service
+            .save(
+              draft: draft,
+              confirm: (_) async => fail('Must not reconnect'),
+            )
+            .then<void>(
+              (value) => saved = value,
+              onError: (Object e) => failure = e,
+            );
+        try {
+          await Future<void>.delayed(Duration.zero);
+          expect(failure, isNull);
+          expect(saved, isNull, reason: 'Save should wait for maintenance');
+        } finally {
+          release.complete();
+          await maintenance;
+          await saving;
+        }
+        final stored = await coordinator.configuration;
+        if (replaceConfiguration) {
+          expect(
+            failure,
+            isA<ConnectionHostException>().having(
+              (error) => error.reason,
+              'reason',
+              'configurationChanged',
+            ),
+          );
+          expect(saved, isNull);
+          expect(stored.policy.toJson()['log']['enabled'], isTrue);
+          expect(stored.policy.ipv6Enabled, isTrue);
+        } else {
+          expect(failure, isNull);
+          expect(saved, isTrue);
+          expect(stored.policy.ipv6Enabled, isFalse);
+        }
+        expect(stops, 0);
+      },
+    );
+  }
 
   test(
     'Debug proxy toggling stays outside the saved policy and VPN lifecycle',

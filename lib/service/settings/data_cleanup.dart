@@ -23,7 +23,7 @@ final class AppDataCleanupService {
 
   Future<bool> clearFromSettings() async {
     try {
-      await DataMaintenance.exclusive(_clear);
+      await DataMaintenance.exclusive(() => GeoDataService().withFiles(_clear));
       return true;
     } catch (e, stackTrace) {
       ygLogger("clear app data error: $e\n$stackTrace");
