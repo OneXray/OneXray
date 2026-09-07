@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/mixin/page_cubit.dart';
 import 'package:onexray/service/routing/geodata_suggestions.dart';
 import 'package:onexray/service/routing/state.dart';
@@ -18,8 +17,6 @@ class RuleValueEntry {
 
 enum RoutingRuleCondition { domains, ips, port, network }
 
-const _unchangedCustomRuleValue = Object();
-
 class CustomRoutingRuleState {
   final String name;
   final String port;
@@ -27,7 +24,6 @@ class CustomRoutingRuleState {
   final List<String> ips;
   final String network;
   final RoutingRuleAction action;
-  final String? error;
   final Set<RoutingRuleCondition> expandedConditions;
 
   CustomRoutingRuleState({
@@ -37,7 +33,6 @@ class CustomRoutingRuleState {
     Iterable<String> ips = const [''],
     this.network = 'any',
     this.action = RoutingRuleAction.proxy,
-    this.error,
     Iterable<RoutingRuleCondition> expandedConditions = const [],
   }) : domains = List.unmodifiable(domains),
        ips = List.unmodifiable(ips),
@@ -50,7 +45,6 @@ class CustomRoutingRuleState {
     Iterable<String>? ips,
     String? network,
     RoutingRuleAction? action,
-    Object? error = _unchangedCustomRuleValue,
     Iterable<RoutingRuleCondition>? expandedConditions,
   }) => CustomRoutingRuleState(
     name: name ?? this.name,
@@ -59,24 +53,25 @@ class CustomRoutingRuleState {
     ips: ips ?? this.ips,
     network: network ?? this.network,
     action: action ?? this.action,
-    error: identical(error, _unchangedCustomRuleValue)
-        ? this.error
-        : error as String?,
     expandedConditions: expandedConditions ?? this.expandedConditions,
   );
 }
 
 CustomRoutingRuleState _initialRuleState(RoutingRuleState rule) {
   final values = rule.network;
-  final networks = values is String ? values.split(',') : values as List?;
+  final networks = values is String
+      ? values.split(',')
+      : values is List
+      ? values
+      : null;
   final distinctNetworks = networks?.toSet();
   return CustomRoutingRuleState(
     name: rule.ruleTag,
     port: rule.port?.toString() ?? '',
     domains: rule.domain.isEmpty ? const [''] : rule.domain,
     ips: rule.ip.isEmpty ? const [''] : rule.ip,
-    network: distinctNetworks?.length == 1
-        ? distinctNetworks!.single as String
+    network: distinctNetworks?.length == 1 && distinctNetworks!.single is String
+        ? distinctNetworks.single as String
         : 'any',
     action: rule.action,
   );
@@ -168,7 +163,7 @@ class CustomRoutingRuleController extends PageCubit<CustomRoutingRuleState> {
   }
 
   /// Incomplete fields stay in the route draft while another rule is edited.
-  /// Save still validates the complete rule through [buildRule].
+  /// libXray validates the complete profile when its parent editor saves.
   RoutingRuleState get draftRule {
     List<String> clean(List<String> values) => values
         .map((value) => value.trim())
@@ -195,26 +190,7 @@ class CustomRoutingRuleController extends PageCubit<CustomRoutingRuleState> {
     );
   }
 
-  RoutingRuleState buildRule() {
-    final rule = draftRule;
-    rule.validate();
-    return rule;
-  }
-
-  void save(BuildContext context) {
-    try {
-      Navigator.of(context).pop(buildRule());
-    } on FormatException catch (failure) {
-      final l10n = AppLocalizations.of(context)!;
-      emit(
-        state.copyWith(
-          error: failure.message.contains('port')
-              ? l10n.validationPortInvalid
-              : l10n.prototypeNoMatchConditions,
-        ),
-      );
-    }
-  }
+  void save(BuildContext context) => Navigator.of(context).pop(draftRule);
 
   void cancel(BuildContext context) => Navigator.of(context).pop();
 

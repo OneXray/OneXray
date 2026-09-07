@@ -24,6 +24,7 @@ class CustomRoutingEditorDraft {
 class CustomRoutingEditorService {
   final AppDatabase db;
   final ConnectionCoordinator coordinator;
+  final Future<String> Function(String)? testXray;
   final Future<ConnectionRuntime> Function(
     ConnectionConfiguration,
     Future<void>,
@@ -34,6 +35,7 @@ class CustomRoutingEditorService {
   CustomRoutingEditorService({
     AppDatabase? database,
     ConnectionCoordinator? coordinator,
+    this.testXray,
     this.prepare,
   }) : db = database ?? AppDatabase(),
        coordinator = coordinator ?? ConnectionCoordinator.instance;
@@ -99,6 +101,7 @@ class CustomRoutingEditorService {
     await _checkConfiguration(configuration);
     await geodata?.publish();
     try {
+      await CustomRoutingService.validate(state, testXray: testXray);
       int? savedId = original?.id;
       await coordinator.apply(
         configuration,

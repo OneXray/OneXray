@@ -17,11 +17,11 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   test(
-    'share conversion requires native counts and adds App rejections',
+    'share conversion uses libXray acceptance and native failure counts',
     () async {
       final valid = {'tag': 'Valid', 'protocol': 'freedom'};
-      final rejected = {
-        'tag': 'Invalid VMess',
+      final vmess = {
+        'tag': 'Core accepted VMess',
         'protocol': 'vmess',
         'settings': {'security': 'unknown'},
       };
@@ -29,7 +29,7 @@ void main() {
         'success': true,
         'data': <String, dynamic>{
           'config': {
-            'outbounds': [valid, rejected],
+            'outbounds': [valid, vmess],
           },
           'usableCount': 2,
           'failedCount': 3,
@@ -44,8 +44,8 @@ void main() {
       });
       addTearDown(() => messenger.setMockDecodedMessageHandler(channel, null));
       final report = await XrayShareReader().parseShareTextReport('fixture');
-      expect(report.count, 1);
-      expect(report.failureCount, 4);
+      expect(report.count, 2);
+      expect(report.failureCount, 3);
 
       response = {
         'success': false,

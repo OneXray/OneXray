@@ -20,7 +20,7 @@ void main() {
       controller.port.text = '443,1000-2000';
       controller.setNetwork('udp');
       controller.setAction(RoutingRuleAction.direct);
-      expect(controller.buildRule().toJson(), {
+      expect(controller.draftRule.toJson(), {
         'ruleTag': 'Renamed',
         'domain': ['geosite:CN'],
         'ip': ['10.0.0.0/8'],
@@ -32,32 +32,48 @@ void main() {
       expect(original.domain, ['old.example']);
       controller.port.text = '65536';
       expect(controller.draftRule.port, '65536');
-      expect(controller.buildRule, throwsFormatException);
     },
   );
 
-  test('new empty rule cannot save; explicit tcp/udp condition remains expressible', () {
-    final empty = CustomRoutingRuleController();
-    addTearDown(empty.close);
-    expect(empty.buildRule, throwsFormatException);
-    final both = CustomRoutingRuleController(
-      rule: RoutingRuleState(
-        network: const ['tcp', 'udp'],
-        action: RoutingRuleAction.block,
-      ),
-    );
-    addTearDown(both.close);
-    expect(both.buildRule().network, ['tcp', 'udp']);
-    final duplicate = CustomRoutingRuleController(
-      rule: RoutingRuleState(
-        network: const ['tcp', 'tcp'],
-        port: 443,
-        action: RoutingRuleAction.direct,
-      ),
-    );
-    addTearDown(duplicate.close);
-    expect(duplicate.state.network, 'tcp');
-    expect(duplicate.buildRule().port, 443);
+  test(
+    'incomplete drafts remain editable until the full profile is validated',
+    () {
+      final empty = CustomRoutingRuleController();
+      addTearDown(empty.close);
+      expect(empty.draftRule.toJson(), {'balancerTag': 'proxy'});
+      final both = CustomRoutingRuleController(
+        rule: RoutingRuleState(
+          network: const ['tcp', 'udp'],
+          action: RoutingRuleAction.block,
+        ),
+      );
+      addTearDown(both.close);
+      expect(both.draftRule.network, ['tcp', 'udp']);
+      final duplicate = CustomRoutingRuleController(
+        rule: RoutingRuleState(
+          network: const ['tcp', 'tcp'],
+          port: 443,
+          action: RoutingRuleAction.direct,
+        ),
+      );
+      addTearDown(duplicate.close);
+      expect(duplicate.state.network, 'tcp');
+      expect(duplicate.draftRule.port, 443);
+    },
+  );
+
+  test('unvalidated network values remain in the draft without crashing the editor', () {
+    for (final network in [
+      <String, dynamic>{'unknown': true},
+      [1],
+      'future-network',
+    ]) {
+      final controller = CustomRoutingRuleController(
+        rule: RoutingRuleState(network: network),
+      );
+      addTearDown(controller.close);
+      expect(controller.draftRule.network, network);
+    }
   });
 
   test('autocomplete separates installed domain and IP references and uses fresh indexes', () async {

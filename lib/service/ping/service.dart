@@ -197,7 +197,6 @@ class PingService {
       switch (type) {
         case CoreConfigType.outbound:
           final outbound = readOutboundFromDbData(row);
-          requireCanonicalOutbound(outbound);
           return PingBatchSource(encodeSingleOutbound(outbound));
         case CoreConfigType.raw:
           final bytes = base64Decode(row.data!);

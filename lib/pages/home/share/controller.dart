@@ -133,7 +133,6 @@ class ShareController extends PageCubit<SharePageState> {
       ),
     );
     final outbound = readOutboundFromDbData(config);
-    requireCanonicalOutbound(outbound);
     final url = await AppHostApi().convertXrayJsonToShareLinks({
       'outbounds': [outbound],
     });

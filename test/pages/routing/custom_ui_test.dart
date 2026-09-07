@@ -160,7 +160,7 @@ void main() {
   }
 
   testWidgets(
-    'new rule validates before save and cancel does not return a draft',
+    'rule save returns a draft for profile validation and cancel discards edits',
     (tester) async {
       _phone(tester);
       RoutingRuleState? result;
@@ -193,7 +193,10 @@ void main() {
       );
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
-      expect(completed, 0);
+      expect(completed, 1);
+      expect(result?.toJson(), {'ruleTag': 'New rule', 'balancerTag': 'proxy'});
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Target port'));
       await tester.pumpAndSettle();
       final port = find.byWidgetPredicate(
@@ -210,13 +213,13 @@ void main() {
         'port': '443',
         'balancerTag': 'proxy',
       });
-      expect(completed, 1);
+      expect(completed, 2);
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(result, isNull);
-      expect(completed, 2);
+      expect(completed, 3);
       expect(tester.takeException(), isNull);
     },
   );
@@ -301,7 +304,7 @@ void main() {
       await controller.editRule(context, unexpectedNavigation, 1);
       expect(controller.inlineRule!.name.text, 'C');
       expect(controller.state.rules.first.port, '65536');
-      expect(controller.previewState, isNull);
+      expect(controller.previewState!.rules.first.port, '65536');
       await controller.editRule(context, unexpectedNavigation, 0);
       expect(controller.inlineRule!.domains.single.text.text, 'edited.example');
       expect(controller.inlineRule!.port.text, '65536');
@@ -318,7 +321,7 @@ void main() {
         RoutingRuleAction.direct,
       );
       expect(controller.inlineRule!.name.text, 'New rule');
-      expect(controller.previewState, isNull);
+      expect(controller.previewState!.rules.last.domain, isEmpty);
       controller.inlineRule!.domains.single.text.text = 'new.example';
       controller.deleteRule(0);
       expect(controller.previewState!.rules, hasLength(2));
@@ -327,8 +330,8 @@ void main() {
       controller.deleteRule(1);
       expect(controller.inlineRule!.name.text, 'A edited');
       controller.inlineRule!.port.text = '65536';
-      await controller.save(context);
-      expect(controller.state.error, isNotNull);
+      await tester.pump();
+      expect(controller.profileState.rules.single.port, '65536');
       controller.inlineRule!.port.text = '443';
       controller.setInlineEditing(false);
       expect(controller.inlineRule, isNull);

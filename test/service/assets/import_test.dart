@@ -47,25 +47,57 @@ void main() {
     expect(saved.every((row) => row.delay == PingDelayConstants.unknown), true);
   });
 
-  test('manual invalid member or duplicate tag rejects the whole input before native validation', () async {
+  test(
+    'manual import delegates node values and duplicate tags to libXray',
+    () async {
+      final inputs = <Map<String, dynamic>>[];
+      final service = ServerImportService(
+        validate: (text) async {
+          inputs.add(jsonDecode(text) as Map<String, dynamic>);
+          return '';
+        },
+      );
+      final outbounds = [
+        {'tag': 'same', 'protocol': 'vmess', 'settings': <String, dynamic>{}},
+        {
+          'tag': 'same',
+          'protocol': 'vmess',
+          'settings': {'security': 'none'},
+        },
+        {'protocol': 'freedom'},
+      ];
+      final preview = await service.preview(
+        jsonEncode({'outbounds': outbounds}),
+        manual: true,
+      );
+      expect(inputs.single['outbounds'], outbounds);
+      expect(preview.rows.map((row) => row.name.value), [
+        'same',
+        'same',
+        'freedom',
+      ]);
+    },
+  );
+
+  test('libXray rejection aborts manual import before persistence', () async {
     var validations = 0;
     final service = ServerImportService(
       validate: (_) async {
         validations++;
-        return '';
+        return 'Invalid node';
       },
+      write: (_) async => throw StateError('Must not write rejected input'),
     );
     for (final source in [
-      '{"outbounds":[]}',
       '{"outbounds":[{"tag":"one","protocol":"freedom"},{}]}',
-      '{"outbounds":[{"tag":"one","protocol":"freedom"},{"tag":"one","protocol":"freedom"}]}',
+      '{"outbounds":[1]}',
     ]) {
       await expectLater(
         service.preview(source, manual: true),
         throwsFormatException,
       );
     }
-    expect(validations, 0);
+    expect(validations, 2);
   });
 
   test('OneXray node links use the existing decoder; subscriptions stay read-only form inputs', () async {

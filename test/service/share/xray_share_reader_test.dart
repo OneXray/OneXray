@@ -62,7 +62,7 @@ void main() {
     },
   );
 
-  test('skips Shadowsocks outbounds with non-canonical methods', () async {
+  test('does not revalidate Shadowsocks methods returned by libXray', () async {
     final json = jsonDecode('''
 {
   "outbounds": [
@@ -91,12 +91,13 @@ void main() {
 ''') as Map<String, dynamic>;
     final rows = await XrayShareReader().readXrayJsonOutbounds(json);
 
-    expect(rows, hasLength(1));
-    expect(rows.single.name.value, 'Canonical');
+    expect(rows.map((row) => row.name.value), ['Canonical', 'Alias']);
   });
 
-  test('skips VMess outbounds with non-canonical securities', () async {
-    final json = jsonDecode('''
+  test(
+    'preserves missing and explicit VMess security returned by libXray',
+    () async {
+      final json = jsonDecode('''
 {
   "outbounds": [
     {
@@ -118,15 +119,32 @@ void main() {
         "id": "00000000-0000-0000-0000-000000000000",
         "security": "none"
       }
+    },
+    {
+      "name": "Default",
+      "protocol": "vmess",
+      "settings": {
+        "address": "example.com",
+        "port": 443,
+        "id": "00000000-0000-0000-0000-000000000000"
+      }
     }
   ]
 }
 ''') as Map<String, dynamic>;
-    final rows = await XrayShareReader().readXrayJsonOutbounds(json);
+      final rows = await XrayShareReader().readXrayJsonOutbounds(json);
 
-    expect(rows, hasLength(1));
-    expect(rows.single.name.value, 'Canonical');
-  });
+      expect(rows.map((row) => row.name.value), [
+        'Canonical',
+        'Legacy',
+        'Default',
+      ]);
+      final saved = jsonDecode(
+        utf8.decode(base64Decode(rows.last.data.value!)),
+      );
+      expect(saved['outbounds'][0]['settings'].containsKey('security'), false);
+    },
+  );
 
   test('uses libXray tag metadata without borrowing sendThrough', () async {
     final xrayJson = <String, dynamic>{

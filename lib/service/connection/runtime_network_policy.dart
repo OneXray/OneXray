@@ -9,20 +9,12 @@ void validateLocalDnsNetworkPolicy(
   required bool requiresInterface,
 }) {
   final dns = config['dns'];
-  if (dns == null) return;
-  if (dns is! Map) throw const FormatException('dns must be an object');
+  if (dns is! Map) return;
   final servers = dns['servers'];
-  if (servers == null) return;
-  if (servers is! List) {
-    throw const FormatException('dns.servers must be an array');
-  }
+  if (servers is! List) return;
   for (final server in servers) {
     final address = server is Map ? server['address'] : server;
-    if (address is! String || address.isEmpty || address.trim() != address) {
-      throw const FormatException(
-        'DNS server address must be a nonempty string',
-      );
-    }
+    if (address is! String) continue;
     // Desktop's ordinary system resolver is already bound to the App-selected
     // interface / 8.8.8.8. FakeDNS has no remote DNS transport.
     if (address.toLowerCase() == 'localhost' ||
@@ -34,15 +26,13 @@ void validateLocalDnsNetworkPolicy(
     var local = false;
     if (address.contains('://')) {
       final uri = Uri.tryParse(address);
-      if (uri == null || !uri.hasAuthority || uri.host.isEmpty) {
-        throw const FormatException('Invalid DNS server URL');
-      }
+      if (uri == null) continue;
       host = uri.host;
       local = uri.scheme.toLowerCase().endsWith('+local');
     }
     if (host.startsWith('[')) {
       final closing = host.indexOf(']');
-      if (closing < 0) throw const FormatException('Invalid DNS IPv6 endpoint');
+      if (closing < 0) continue;
       host = host.substring(1, closing);
     }
     final ip = InternetAddress.tryParse(host);

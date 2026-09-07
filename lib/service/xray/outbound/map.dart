@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/xray/outbound/enum.dart';
 
 Map<String, dynamic> copyOutboundMap(
   Map<String, dynamic> outbound, {
@@ -99,28 +98,6 @@ String? outboundProxyTag(Map<String, dynamic> outbound) {
   return settings is Map<String, dynamic>
       ? outboundString(settings, 'tag')
       : null;
-}
-
-void requireCanonicalOutbound(Map<String, dynamic> outbound) {
-  final protocol = outboundString(outbound, 'protocol');
-  if (protocol != 'vmess' && protocol != 'shadowsocks') {
-    return;
-  }
-  final settings = outbound['settings'];
-  if (settings is! Map<String, dynamic>) {
-    throw const FormatException('Outbound settings must be an object');
-  }
-  if (protocol == 'vmess') {
-    final security = settings['security'];
-    if (security is! String || VMessSecurity.fromString(security) == null) {
-      throw FormatException('Non-canonical VMess security: $security');
-    }
-    return;
-  }
-  final method = settings['method'];
-  if (method is! String || ShadowsocksMethod.fromString(method) == null) {
-    throw FormatException('Non-canonical Shadowsocks method: $method');
-  }
 }
 
 Map<String, dynamic> _objectField(Map<String, dynamic> parent, String key) {

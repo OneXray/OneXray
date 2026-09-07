@@ -179,54 +179,73 @@ void main() {
     },
   );
 
-  test('rejects invalid names, slots, conditions and functional outbounds', () {
-    for (final name in [null, '', '   ', 12, List.filled(33, 'a').join()]) {
-      _reject({..._document(), 'name': name});
-    }
-    for (final count in [0, 4]) {
-      _reject(_document(count));
-    }
-    for (final outbound in [
-      {'tag': 'node', 'protocol': 'socks'},
-      {'tag': 'direct', 'protocol': 'blackhole'},
-      {'tag': 'direct', 'protocol': 'freedom', 'settings': null},
-      {
-        'tag': 'direct',
-        'protocol': 'freedom',
-        'settings': {'redirect': 'example.com:80'},
-      },
-    ]) {
-      _reject({
-        ..._document(),
-        'outbounds': [{}, outbound],
-      });
-    }
-    for (final key in ['domain', 'ip']) {
-      for (final value in [
-        null,
-        'example.com',
-        [1],
-        [''],
-        ['  '],
-      ]) {
-        _rejectRule({..._rule(), key: value});
+  test(
+    'rejects invalid names and shapes the ordinary editor cannot represent',
+    () {
+      for (final name in [null, '', '   ', 12, List.filled(33, 'a').join()]) {
+        _reject({..._document(), 'name': name});
       }
-    }
-    for (final port in [null, [], '', 'abc', '3-2', 0, 65536, 1.5]) {
-      _rejectRule({..._rule(), 'port': port});
-    }
-    for (final network in [
-      null,
-      '',
-      [],
-      [1],
-      'unix',
-      'TCP',
-      'tcp,other',
-    ]) {
-      _rejectRule({..._rule(), 'network': network});
-    }
-  });
+      for (final count in [0, 4]) {
+        _reject(_document(count));
+      }
+      for (final outbound in [
+        {'tag': 'node', 'protocol': 'socks'},
+        {'tag': 'direct', 'protocol': 'blackhole'},
+        {'tag': 'direct', 'protocol': 'freedom', 'settings': null},
+        {
+          'tag': 'direct',
+          'protocol': 'freedom',
+          'settings': {'redirect': 'example.com:80'},
+        },
+      ]) {
+        _reject({
+          ..._document(),
+          'outbounds': [{}, outbound],
+        });
+      }
+      for (final key in ['domain', 'ip']) {
+        for (final value in [
+          'example.com',
+          [1],
+        ]) {
+          _rejectRule({..._rule(), key: value});
+        }
+      }
+    },
+  );
+
+  test(
+    'rule values and domain strategy are passed through for libXray validation',
+    () {
+      for (final rule in [
+        {'balancerTag': 'proxy'},
+        {
+          ..._rule(),
+          'domain': [''],
+          'ip': ['  '],
+        },
+        for (final port in [[], '', 'abc', '3-2', 0, 65536, 1.5])
+          {..._rule(), 'port': port},
+        for (final network in [
+          '',
+          [],
+          [1],
+          'unix',
+          'TCP',
+          'tcp,other',
+        ])
+          {..._rule(), 'network': network},
+      ]) {
+        final document = _document();
+        (document['routing'] as Map)
+          ..['domainStrategy'] = 'IPOnDemand'
+          ..['rules'] = [rule];
+        final state = RoutingProfileDocument.parse(jsonEncode(document)).state;
+        expect(state.domainStrategy, 'IPOnDemand');
+        expect(state.rules.single.toJson(), rule);
+      }
+    },
+  );
 
   test('rejects unsafe geodata assets', () {
     for (final file in [

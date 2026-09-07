@@ -67,36 +67,32 @@ void main() {
     expect(outboundDialerProxy(outbound), 'chainProxy');
   });
 
-  test('canonical gate only rejects VMess and Shadowsocks mismatches', () {
-    for (final outbound in <Map<String, dynamic>>[
-      {
-        'protocol': 'vmess',
-        'settings': {'security': 'auto'},
-      },
-      {
-        'protocol': 'shadowsocks',
-        'settings': {'method': 'aes-256-gcm'},
-      },
-      {'protocol': 'vless'},
-    ]) {
-      expect(() => requireCanonicalOutbound(outbound), returnsNormally);
-    }
-
-    expect(
-      () => requireCanonicalOutbound({
-        'protocol': 'vmess',
-        'settings': {'security': 'none'},
-      }),
-      throwsFormatException,
-    );
-    expect(
-      () => requireCanonicalOutbound({
-        'protocol': 'shadowsocks',
-        'settings': {'method': 'plain'},
-      }),
-      throwsFormatException,
-    );
-  });
+  test(
+    'storage preserves libXray fields without a second protocol validator',
+    () {
+      for (final outbound in <Map<String, dynamic>>[
+        {
+          'protocol': 'vmess',
+          'settings': {'address': 'example.com', 'port': 443},
+        },
+        {
+          'protocol': 'vmess',
+          'settings': {'security': 'none'},
+        },
+        {
+          'protocol': 'shadowsocks',
+          'settings': {'method': 'plain'},
+        },
+        {'protocol': 'vless'},
+      ]) {
+        final saved = _savedOutbound(outboundCompanion(outbound).data.value!);
+        expect(saved, {...outbound, 'tag': outbound['protocol']});
+      }
+      final unnamed = outboundCompanion({'tag': '', 'protocol': 'freedom'});
+      expect(unnamed.name.value, 'freedom');
+      expect(_savedOutbound(unnamed.data.value!)['tag'], '');
+    },
+  );
 
   test('legacy name aliases tag only when tag is absent', () {
     final legacy = <String, dynamic>{

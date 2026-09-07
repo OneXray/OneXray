@@ -541,7 +541,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         emit(
           state.copyWith(
             error: manual
-                ? l10n.prototypeNodeJsonHint
+                ? l10n.validationJsonInvalid
                 : l10n.prototypeNoSupportedLinks,
           ),
         );

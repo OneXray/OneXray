@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/db/config_writer.dart';
@@ -316,7 +315,6 @@ class ServerImportService {
               link.xrayJson,
               nameAlias: link.name.isEmpty ? null : link.name,
             );
-            requireCanonicalOutbound(outbound);
             final error = await _validate(encodeSingleOutbound(outbound));
             if (error.isNotEmpty) {
               throw const FormatException('Invalid outbound');
@@ -406,34 +404,15 @@ class ServerImportService {
         (json['outbounds'] as List).isEmpty) {
       throw const FormatException('A non-empty outbounds array is required');
     }
-    final rows = <CoreConfigCompanion>[];
-    final tags = <String>{};
-    for (final outbound in json['outbounds'] as List) {
-      if (outbound is! Map<String, dynamic> ||
-          outbound['tag'] is! String ||
-          (outbound['tag'] as String).trim().isEmpty ||
-          !tags.add(outbound['tag'] as String) ||
-          outbound['protocol'] is! String ||
-          (outbound['protocol'] as String).trim().isEmpty) {
-        throw const FormatException(
-          'Every outbound needs a unique tag and protocol',
-        );
-      }
-      requireCanonicalOutbound(outbound);
-      rows.add(outboundCompanion(outbound));
-    }
-    final error = await _validate(
-      jsonEncode(
-        XrayJson(
-          outbounds: (json['outbounds'] as List).cast<Map<String, dynamic>>(),
-        ).toJson(),
-      ),
-    );
+    final error = await _validate(jsonEncode({'outbounds': json['outbounds']}));
     if (error.isNotEmpty) {
       // Do not display native errors containing imported credentials.
       throw const FormatException('Invalid Xray node JSON');
     }
-    return ServerImportPreview(rows, failureCount: 0);
+    return ServerImportPreview([
+      for (final outbound in json['outbounds'] as List)
+        outboundCompanion(outbound as Map<String, dynamic>),
+    ], failureCount: 0);
   }
 
   Future<ServerImportPreview> _configurationPreview(
@@ -451,6 +430,17 @@ class ServerImportService {
     final assets = [for (final content in contents) ...content.assets];
     final draft = await _transfer.prepareAssets(assets);
     try {
+      if (draft == null) {
+        for (final route in custom) {
+          await CustomRoutingService.validate(
+            RoutingProfileDocument.parse(
+              route.text,
+              allowMetadata: false,
+            ).state,
+            testXray: _validate,
+          );
+        }
+      }
       for (final raw in contents.where(
         (item) => item.kind == ConfigurationKind.raw,
       )) {
@@ -481,6 +471,15 @@ class ServerImportService {
     await dependencies?.publish();
     try {
       if (dependencies != null) {
+        for (final route in preview.customRoutes) {
+          await CustomRoutingService.validate(
+            RoutingProfileDocument.parse(
+              route.text,
+              allowMetadata: false,
+            ).state,
+            testXray: _validate,
+          );
+        }
         for (final row in preview.rows.where(
           (row) => row.type.value == 'raw',
         )) {

@@ -89,7 +89,7 @@ class XrayRawValidator {
     // Only this disposable copy gets App-owned resource paths and logging.
     final env = jsonMap['env'];
     if (env != null && env is! Map<String, dynamic>) {
-      return 'env must be an object';
+      return testXray(JsonTool.encoder.convert(jsonMap));
     }
     jsonMap['env'] = <String, dynamic>{
       if (env is Map<String, dynamic>) ...env,

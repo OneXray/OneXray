@@ -34,7 +34,7 @@ final class RoutingProfileDocument {
     }
     if (document.containsKey('geodata')) _readAssets(document['geodata']);
     document.remove('name');
-    _validateDocument(document);
+    _checkEditableFields(document);
     try {
       final xrayJson = XrayJson.fromJson(document);
       final assets = [
@@ -60,60 +60,27 @@ final class RoutingProfileDocument {
   }
 }
 
-void _validateDocument(Map<String, dynamic> document) {
-  final outbounds = document['outbounds'];
-  if (outbounds is! List) {
-    throw const FormatException('outbounds must be an array');
-  }
-  var entryCount = 0;
-  final tags = <String>{};
-  for (var index = 0; index < outbounds.length; index++) {
-    final path = 'outbounds[$index]';
-    final outbound = _object(outbounds[index], path);
-    if (outbound.isEmpty) {
-      entryCount++;
-      continue;
-    }
-    _onlyKeys(outbound, const {'tag', 'protocol', 'settings'}, path);
-    final tag = outbound['tag'];
-    final expected = switch (tag) {
-      'direct' => 'freedom',
-      'block' => 'blackhole',
-      _ => null,
-    };
-    if (expected == null || outbound['protocol'] != expected) {
-      throw FormatException('$path must be a direct or block outbound');
-    }
-    if (!tags.add(tag as String)) {
-      throw FormatException('$path duplicates a functional outbound');
-    }
-    if (outbound.containsKey('settings') &&
-        _object(outbound['settings'], '$path.settings').isNotEmpty) {
-      throw FormatException(
-        '$path.settings cannot be edited by Custom routing',
-      );
-    }
-  }
-  if (entryCount < 1 || entryCount > 3) {
-    throw const FormatException(
-      'outbounds must contain 1–3 empty object slots',
-    );
-  }
-
+// Do not silently discard fields the ordinary editor cannot represent.
+// Field values and rule semantics are validated by libXray when saving.
+void _checkEditableFields(Map<String, dynamic> document) {
   final routing = document.containsKey('routing')
       ? _object(document['routing'], 'routing')
       : <String, dynamic>{};
   _onlyKeys(routing, const {'domainStrategy', 'rules'}, 'routing');
-  if (routing.containsKey('domainStrategy') &&
-      !const {'AsIs', 'IPIfNonMatch'}.contains(routing['domainStrategy'])) {
-    throw const FormatException('Unsupported routing.domainStrategy');
-  }
   final rules = routing.containsKey('rules') ? routing['rules'] : <dynamic>[];
   if (rules is! List) {
     throw const FormatException('routing.rules must be an array');
   }
   for (var index = 0; index < rules.length; index++) {
-    _validateRule(_object(rules[index], 'routing.rules[$index]'), index);
+    _onlyKeys(_object(rules[index], 'routing.rules[$index]'), const {
+      'ruleTag',
+      'domain',
+      'ip',
+      'port',
+      'network',
+      'balancerTag',
+      'outboundTag',
+    }, 'routing.rules[$index]');
   }
 }
 
@@ -129,61 +96,6 @@ void _onlyKeys(Map<String, dynamic> value, Set<String> allowed, String path) {
     if (!allowed.contains(key)) {
       throw FormatException('Unsupported field: $path.$key');
     }
-  }
-}
-
-void _validateRule(Map<String, dynamic> rule, int index) {
-  final path = 'routing.rules[$index]';
-  _onlyKeys(rule, const {
-    'ruleTag',
-    'domain',
-    'ip',
-    'port',
-    'network',
-    'balancerTag',
-    'outboundTag',
-  }, path);
-  if (rule.containsKey('ruleTag') &&
-      (rule['ruleTag'] is! String ||
-          (rule['ruleTag'] as String).trim().isEmpty)) {
-    throw FormatException('$path.ruleTag must be a non-empty string');
-  }
-  final balancer = rule.containsKey('balancerTag');
-  final outbound = rule.containsKey('outboundTag');
-  if (balancer == outbound ||
-      (balancer && rule['balancerTag'] != 'proxy') ||
-      (outbound && !const {'direct', 'block'}.contains(rule['outboundTag']))) {
-    throw FormatException(
-      '$path must select exactly one VPN, direct or block action',
-    );
-  }
-
-  var hasCondition = false;
-  for (final key in const ['domain', 'ip']) {
-    if (!rule.containsKey(key)) continue;
-    final values = rule[key];
-    if (values is! List ||
-        values.any((value) => value is! String || value.trim().isEmpty)) {
-      throw FormatException('$path.$key must be an array of non-empty strings');
-    }
-    hasCondition = hasCondition || values.isNotEmpty;
-  }
-  if (rule.containsKey('port')) {
-    RoutingRuleState(
-      port: rule['port'],
-      action: RoutingRuleAction.proxy,
-    ).validate();
-    hasCondition = true;
-  }
-  if (rule.containsKey('network')) {
-    RoutingRuleState(
-      network: rule['network'],
-      action: RoutingRuleAction.proxy,
-    ).validate();
-    hasCondition = true;
-  }
-  if (!hasCondition) {
-    throw FormatException('$path requires at least one non-empty condition');
   }
 }
 

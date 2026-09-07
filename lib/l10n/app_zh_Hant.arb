@@ -257,7 +257,7 @@
   "prototypeAgeHybrid": "Hybrid（ML-KEM-768 + X25519）",
   "prototypeClear": "清除",
   "prototypeXrayNodeJson": "Xray 節點 JSON",
-  "prototypeNodeJsonHint": "根物件必須包含非空的 outbounds 陣列；每個 outbound 都需要唯一的 tag，以及 protocol。",
+  "prototypeNodeJsonHint": "根物件必須包含非空的 outbounds 陣列。",
   "prototypeLocalInputPrivacy": "輸入內容在本機處理，絕不會傳送給 OneXray。",
   "prototypeDetect": "偵測",
   "prototypeImportPreview": "匯入預覽",

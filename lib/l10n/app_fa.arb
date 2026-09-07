@@ -257,7 +257,7 @@
     "prototypeAgeHybrid": "ترکیبی (ML-KEM-768 + X25519)",
     "prototypeClear": "پاک کردن",
     "prototypeXrayNodeJson": "JSON گره Xray",
-    "prototypeNodeJsonHint": "شیء ریشه باید شامل آرایهٔ outbounds غیرخالی باشد. هر outbound به tag یکتا و protocol نیاز دارد.",
+    "prototypeNodeJsonHint": "شیء ریشه باید شامل آرایهٔ outbounds غیرخالی باشد.",
     "prototypeLocalInputPrivacy": "ورودی در همین دستگاه پردازش می‌شود و هرگز به OneXray ارسال نمی‌شود.",
     "prototypeDetect": "شناسایی",
     "prototypeImportPreview": "پیش‌نمایش وارد کردن",

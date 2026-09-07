@@ -22,17 +22,13 @@ CoreConfigCompanion outboundCompanion(
   String? databaseName,
 }) {
   final saved = copyOutboundMap(outbound, nameAlias: databaseName);
-  requireCanonicalOutbound(saved);
   if (!saved.containsKey('tag')) {
     final protocol = outboundString(saved, 'protocol');
     if (protocol != null && protocol.isNotEmpty) {
       saved['tag'] = protocol;
     }
   }
-  final name = outboundString(saved, 'tag') ?? '';
-  if (name.isEmpty) {
-    throw const FormatException('Outbound tag must be a non-empty string');
-  }
+  final name = outboundDisplayName(saved);
   return CoreConfigCompanion.insert(
     name: name,
     type: CoreConfigType.outbound.name,

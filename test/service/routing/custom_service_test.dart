@@ -3,10 +3,55 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/routing/custom_service.dart';
 import 'package:onexray/service/routing/state.dart';
 
 void main() {
+  test('routing validation passes native fields to libXray with local entry placeholders', () async {
+    final state = RoutingProfileState(
+      name: 'Route',
+      entryCount: 3,
+      domainStrategy: 'IPOnDemand',
+      rules: [RoutingRuleState(port: 0, network: 'TCP')],
+    );
+    final source = state.encode();
+    var calls = 0;
+    Future<String> check(String text) async {
+      calls++;
+      final config = jsonDecode(text);
+      expect(config['env']['xray.location.asset'], VpnConstants.datDir);
+      expect(config['outbounds'], [
+        for (var i = 0; i < 3; i++)
+          {'tag': 'app-entry-$i', 'protocol': 'freedom'},
+        {'tag': 'direct', 'protocol': 'freedom'},
+        {'tag': 'block', 'protocol': 'blackhole'},
+      ]);
+      expect(config['routing']['domainStrategy'], 'IPOnDemand');
+      expect(config['routing']['rules'], [state.rules.single.toJson()]);
+      expect(config['routing']['balancers'].single, {
+        'tag': 'proxy',
+        'selector': ['app-entry-0', 'app-entry-1', 'app-entry-2'],
+        'fallbackTag': 'direct',
+      });
+      return calls == 1 ? '' : 'Core rejected rule';
+    }
+
+    await CustomRoutingService.validate(state, testXray: check);
+    await expectLater(
+      CustomRoutingService.validate(state, testXray: check),
+      throwsA(
+        isA<FormatException>().having(
+          (e) => e.message,
+          'message',
+          'Core rejected rule',
+        ),
+      ),
+    );
+    expect(calls, 2);
+    expect(state.encode(), source);
+  });
+
   test(
     'names use Unicode characters and trimmed case-insensitive uniqueness',
     () async {

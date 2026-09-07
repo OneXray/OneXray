@@ -56,7 +56,7 @@ void main() {
     expect(rules[1]['outboundTag'], 'direct');
   });
 
-  test('WireGuard extraction preserves standard endpoints and rejects malformed ones', () {
+  test('WireGuard extraction preserves endpoints and leaves syntax validation to libXray', () {
     final source = wireguard([
       'node.test:51820',
       '192.0.2.1:51820',
@@ -84,16 +84,13 @@ void main() {
     ]) {
       expect(
         () => outboundAddresses(wireguard([bad])).toList(),
-        throwsFormatException,
+        returnsNormally,
       );
     }
-    expect(
-      () => outboundAddresses(wireguard([])).toList(),
-      throwsFormatException,
-    );
+    expect(() => outboundAddresses(wireguard([])).toList(), returnsNormally);
     expect(
       () => outboundAddresses({'protocol': 'wireguard'}).toList(),
-      throwsFormatException,
+      returnsNormally,
     );
   });
 

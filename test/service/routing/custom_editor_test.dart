@@ -38,6 +38,49 @@ void main() {
     addTearDown(db.close);
   });
 
+  test(
+    'libXray rejection preserves the existing profile without activation',
+    () async {
+      final id = await CustomRoutingService(db).save(_state('Work'));
+      final original = (await db.routingProfileDao.searchRow(id))!;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          start: (_) async => throw StateError('Unexpected start'),
+          stop: () async => throw StateError('Unexpected stop'),
+        ),
+      );
+      var calls = 0;
+      final service = CustomRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+        testXray: (text) async {
+          calls++;
+          expect(
+            jsonDecode(text)['routing']['rules'].single['port'],
+            'invalid',
+          );
+          return 'Core rejected port';
+        },
+      );
+      await expectLater(
+        service.save(
+          CustomRoutingEditorDraft(
+            original: original,
+            state: _state('Renamed')
+                .copyWith(rules: [RoutingRuleState(port: 'invalid')]),
+          ),
+          confirmReconnect: () async =>
+              throw StateError('Unexpected confirmation'),
+        ),
+        throwsFormatException,
+      );
+      expect(calls, 1);
+      expect(await db.routingProfileDao.searchRow(id), original);
+    },
+  );
+
   test('new templates save without servers or activation; names and three-item cap are enforced', () async {
     final coordinator = await _initialize(
       ConnectionCoordinator(
@@ -50,6 +93,7 @@ void main() {
     final service = CustomRoutingEditorService(
       database: db,
       coordinator: coordinator,
+      testXray: (_) async => '',
     );
     final before = (await coordinator.configuration).encode();
     final id = await service.save(
@@ -138,6 +182,7 @@ void main() {
       final service = CustomRoutingEditorService(
         database: db,
         coordinator: coordinator,
+        testXray: (_) async => '',
         prepare: (next, _, _) async => _runtime('b', next),
       );
       final initial = await service.load(id);
@@ -208,6 +253,7 @@ void main() {
     final service = CustomRoutingEditorService(
       database: db,
       coordinator: coordinator,
+      testXray: (_) async => '',
     );
     final original = (await service.load(id)).original!;
     expect(
@@ -248,6 +294,7 @@ void main() {
       final service = CustomRoutingEditorService(
         database: db,
         coordinator: coordinator,
+        testXray: (_) async => '',
       );
       final original = await service.load(id);
       await service.save(
@@ -280,6 +327,7 @@ void main() {
     final service = CustomRoutingEditorService(
       database: db,
       coordinator: coordinator,
+      testXray: (_) async => '',
     );
     await db.customStatement('''
       CREATE TRIGGER fail_custom_save BEFORE INSERT ON routing_profile

@@ -46,11 +46,10 @@ final class RoutingRuleState {
       port: _copyValue(rule.port),
       network: _copyValue(rule.network),
       action: action,
-    )..validate();
+    );
   }
 
   XrayRoutingRule get xrayJson {
-    validate();
     return XrayRoutingRule(
       ruleTag: ruleTag.isEmpty ? null : ruleTag,
       domain: domain.isEmpty ? null : List.of(domain),
@@ -79,26 +78,6 @@ final class RoutingRuleState {
     network: network ?? this.network,
     action: action ?? this.action,
   );
-
-  void validate() {
-    if (ruleTag.isNotEmpty && ruleTag.trim().isEmpty) {
-      throw const FormatException('ruleTag must be a non-empty string');
-    }
-    for (final values in [domain, ip]) {
-      if (values.any((value) => value.trim().isEmpty)) {
-        throw const FormatException(
-          'Domain and IP rules must be non-empty strings',
-        );
-      }
-    }
-    if (port != null) _validatePort(port!);
-    if (network != null) _validateNetwork(network!);
-    if (domain.isEmpty && ip.isEmpty && port == null && network == null) {
-      throw const FormatException(
-        'Routing rule requires at least one non-empty condition',
-      );
-    }
-  }
 }
 
 /// The ordinary Custom routing state between UI, Xray models and persistence.
@@ -224,46 +203,8 @@ final class RoutingProfileState {
     if (entryCount < 1 || entryCount > 3) {
       throw const FormatException('Custom routing requires 1–3 entry nodes');
     }
-    if (domainStrategy != 'AsIs' && domainStrategy != 'IPIfNonMatch') {
-      throw const FormatException('Unsupported routing.domainStrategy');
-    }
-    for (final rule in rules) {
-      rule.validate();
-    }
   }
 }
 
 Object? _copyValue(Object? value) =>
     value is List ? List<Object?>.unmodifiable(value) : value;
-
-void _validatePort(Object value) {
-  if (value is! int && value is! String) {
-    throw const FormatException(
-      'port must be a port or comma-separated ranges',
-    );
-  }
-  for (final part in '$value'.split(',')) {
-    final text = part.trim();
-    final bounds = text.split('-');
-    final start = int.tryParse(bounds.first);
-    final end = int.tryParse(bounds.last);
-    if (!RegExp(r'^\d+(-\d+)?$').hasMatch(text) ||
-        bounds.length > 2 ||
-        start == null ||
-        end == null ||
-        start < 1 ||
-        end > 65535 ||
-        start > end) {
-      throw const FormatException('port contains an invalid range');
-    }
-  }
-}
-
-void _validateNetwork(Object value) {
-  final values = value is String ? value.split(',') : value;
-  if (values is! List ||
-      values.isEmpty ||
-      values.any((entry) => entry != 'tcp' && entry != 'udp')) {
-    throw const FormatException('network must contain only tcp or udp');
-  }
-}

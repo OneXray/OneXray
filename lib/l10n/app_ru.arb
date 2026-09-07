@@ -257,7 +257,7 @@
   "prototypeAgeHybrid": "Гибридный (ML-KEM-768 + X25519)",
   "prototypeClear": "Очистить",
   "prototypeXrayNodeJson": "JSON узла Xray",
-  "prototypeNodeJsonHint": "Корневой объект должен содержать непустой массив outbounds. Для каждого исходящего подключения нужны уникальный tag и protocol.",
+  "prototypeNodeJsonHint": "Корневой объект должен содержать непустой массив outbounds.",
   "prototypeLocalInputPrivacy": "Данные обрабатываются на этом устройстве и не отправляются OneXray.",
   "prototypeDetect": "Распознать",
   "prototypeImportPreview": "Проверка перед импортом",

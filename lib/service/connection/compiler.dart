@@ -79,11 +79,6 @@ class RuntimeOptions {
            (key, value) => MapEntry(key, List<String>.unmodifiable(value)),
          ),
        ) {
-    for (final port in [metricsPort, socksPort]) {
-      if (port < 1 || port > 65535) {
-        throw const FormatException('Invalid runtime port');
-      }
-    }
     if (metricsPort == socksPort) {
       throw const FormatException('Runtime ports are invalid');
     }
@@ -91,10 +86,6 @@ class RuntimeOptions {
             platform == ConnectionPlatform.linux) &&
         interfaceName.isEmpty) {
       throw const FormatException('Network interface is required');
-    }
-    if (!['debug', 'info', 'warning', 'error', 'none'].contains(logLevel) ||
-        !['', 'quarter', 'half', 'full'].contains(maskAddress)) {
-      throw const FormatException('Invalid logging policy');
     }
   }
 }
@@ -356,15 +347,11 @@ class ConnectionCompiler {
 
   static Map<String, dynamic> _node(ResolvedServer node, String tag) {
     final outbound = node.outbound;
-    requireCanonicalOutbound(outbound);
     if (outboundDialerProxy(outbound)?.isNotEmpty == true ||
         outboundProxyTag(outbound)?.isNotEmpty == true) {
       throw const FormatException(
         'Normal nodes cannot reference other outbounds; use Raw for a complete configuration',
       );
-    }
-    if (outbound['protocol'] is! String) {
-      throw const FormatException('Node protocol is required');
     }
     return copyOutboundMap(outbound)..['tag'] = tag;
   }
@@ -435,23 +422,9 @@ class ConnectionCompiler {
           options.platform == ConnectionPlatform.linux,
     );
     final outbounds = _objects(config, 'outbounds');
-    if (outbounds.isEmpty) {
-      throw const FormatException('At least one outbound is required');
-    }
-    final tags = <String>{};
-    for (final outbound in outbounds) {
-      final tag = outbound['tag'];
-      if (tag != null && (tag is! String || !tags.add(tag))) {
-        throw const FormatException('Duplicate or invalid outbound tag');
-      }
-    }
     final inbounds = _objects(config, 'inbounds');
-    final inboundTags = <String>{};
     for (final inbound in inbounds) {
       final tag = inbound['tag'];
-      if (tag != null && (tag is! String || !inboundTags.add(tag))) {
-        throw const FormatException('Duplicate or invalid inbound tag');
-      }
       if (tag == 'tunIn') continue;
       if (inbound['protocol'] == 'tun') {
         throw const FormatException('Use the App-managed tunIn tunnel');
@@ -514,7 +487,7 @@ class ConnectionCompiler {
     final routing = _object(config, 'routing');
     final rules = _objects(routing, 'rules');
     if (!options.ipv6) {
-      if (tags.contains(ipv6Block)) {
+      if (outbounds.any((outbound) => outbound['tag'] == ipv6Block)) {
         throw const FormatException('Reserved IPv6 tag conflict');
       }
       outbounds.add(createBlackholeOutbound(tag: ipv6Block).toJson());
@@ -602,14 +575,7 @@ class ConnectionCompiler {
 /// resolution when IPv6 is disabled. No query or target dial occurs here.
 Iterable<String> outboundAddresses(Map<String, dynamic> outbound) sync* {
   final settings = outbound['settings'];
-  if (settings is! Map) {
-    if (outbound['protocol'] == 'wireguard') {
-      throw const FormatException(
-        'WireGuard settings must contain peer endpoints',
-      );
-    }
-    return;
-  }
+  if (settings is! Map) return;
   if (settings['address'] is String) yield settings['address'] as String;
   for (final key in ['servers', 'vnext']) {
     final entries = settings[key];
@@ -623,36 +589,13 @@ Iterable<String> outboundAddresses(Map<String, dynamic> outbound) sync* {
   }
   if (outbound['protocol'] == 'wireguard') {
     final peers = settings['peers'];
-    if (peers is! List || peers.isEmpty) {
-      throw const FormatException('WireGuard peers must contain endpoints');
-    }
-    final endpointPattern = RegExp(
-      r'^(?:\[([^\]]+)\]|([^:\s/?#@\[\]]+)):(\d+)$',
-    );
+    if (peers is! List) return;
     for (final peer in peers) {
       final endpoint = peer is Map ? peer['endpoint'] : null;
-      final match = endpoint is String
-          ? endpointPattern.firstMatch(endpoint)
-          : null;
-      final port = match == null ? null : int.tryParse(match.group(3)!);
-      if (match == null ||
-          match.end != endpoint.length ||
-          port == null ||
-          port < 1 ||
-          port > 65535) {
-        throw const FormatException(
-          'WireGuard endpoint must be host:port or [IPv6]:port',
-        );
+      final uri = endpoint is String ? Uri.tryParse('//$endpoint') : null;
+      if (uri != null && uri.host.isNotEmpty) {
+        yield uri.host;
       }
-      final ipv6Host = match.group(1);
-      if (ipv6Host != null &&
-          InternetAddress.tryParse(ipv6Host)?.type !=
-              InternetAddressType.IPv6) {
-        throw const FormatException(
-          'Invalid bracketed WireGuard IPv6 endpoint',
-        );
-      }
-      yield ipv6Host ?? match.group(2)!;
     }
   }
 }

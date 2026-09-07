@@ -256,19 +256,6 @@ class CustomRoutingRuleForm extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (state.error case final error?)
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        error,
-                        style: AppTypography.actionHelp.copyWith(
-                          color: palette.destructive,
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
           );

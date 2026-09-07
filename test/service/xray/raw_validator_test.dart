@@ -90,4 +90,20 @@ void main() {
       expect(result.normalizedText, isNull);
     },
   );
+
+  test('invalid native field shapes are reported by libXray', () async {
+    const text = '{"name":"Expert","env":false,"outbounds":[]}';
+    var calls = 0;
+    final result = await XrayRawValidator.validate(
+      text,
+      testXray: (input) async {
+        calls++;
+        expect(jsonDecode(input)['env'], false);
+        return 'Core rejected env';
+      },
+    );
+    expect(calls, 1);
+    expect(result.isValid, false);
+    expect(result.error, 'Core rejected env');
+  });
 }

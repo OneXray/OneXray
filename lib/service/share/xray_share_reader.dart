@@ -51,7 +51,6 @@ class XrayShareReader {
       }
       final outbound = copyOutboundMap(value);
       try {
-        requireCanonicalOutbound(outbound);
         res.add(outboundCompanion(outbound));
       } catch (error, stackTrace) {
         ygLogger(

@@ -805,9 +805,9 @@
   "@prototypeXrayNodeJson": {
     "description": "Approved prototype copy: Xray node JSON"
   },
-  "prototypeNodeJsonHint": "The root object must contain a non-empty outbounds array. Every outbound needs a unique tag and protocol.",
+  "prototypeNodeJsonHint": "The root object must contain a non-empty outbounds array.",
   "@prototypeNodeJsonHint": {
-    "description": "Approved prototype copy: The root object must contain a non-empty outbounds array. Every outbound needs a unique tag and protocol."
+    "description": "Approved prototype copy: The root object must contain a non-empty outbounds array."
   },
   "prototypeLocalInputPrivacy": "Input is processed on this device and is never sent to OneXray.",
   "@prototypeLocalInputPrivacy": {

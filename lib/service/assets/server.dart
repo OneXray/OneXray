@@ -83,11 +83,7 @@ class ServerAssetService {
   static bool selectable(CoreConfigData row) {
     if (measured(row) && !healthy(row)) return false;
     try {
-      final outbound = ResolvedServer.fromRow(row).outbound;
-      if (outboundString(outbound, 'protocol')?.isNotEmpty != true) {
-        return false;
-      }
-      requireCanonicalOutbound(outbound);
+      ResolvedServer.fromRow(row);
       return true;
     } on FormatException {
       return false;
@@ -131,11 +127,6 @@ class ServerAssetService {
     final outbound = jsonDecode(draft.text);
     if (outbound is! Map<String, dynamic>) {
       throw const FormatException('An outbound object is required');
-    }
-    requireCanonicalOutbound(outbound);
-    if (outbound['tag'] is! String ||
-        (outbound['tag'] as String).trim().isEmpty) {
-      throw const FormatException('A server tag is required');
     }
     if ((await _validate(encodeSingleOutbound(outbound))).isNotEmpty) {
       throw const FormatException('Invalid server configuration');
