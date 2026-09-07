@@ -167,6 +167,14 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             state,
           ),
           _switch(
+            l.directWindowsServices,
+            l.directWindowsServicesHint,
+            LucideIcons.appWindow,
+            'directWindows',
+            smart.directWindows,
+            state,
+          ),
+          _switch(
             l.prototypeResolveUnmatchedDomains,
             l.prototypeResolveUnmatchedDomainsHint,
             LucideIcons.terminal,

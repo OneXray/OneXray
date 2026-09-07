@@ -322,6 +322,57 @@ void main() {
     _fixture('custom', plan);
   });
 
+  test('Windows services share one direct rule and follow direct DNS', () {
+    expect(SmartRoutingSettings().directWindows, false);
+    expect(SmartRoutingSettings.fromJson({}).directWindows, false);
+    for (final enabled in [false, true]) {
+      for (final directDns in [false, true]) {
+        final smart = SmartRoutingSettings.fromJson(
+          SmartRoutingSettings(
+            directWindows: enabled,
+            directDns: directDns,
+          ).toJson(),
+        );
+        expect(smart.directWindows, enabled);
+        final config = ConnectionCompiler.compile(
+          settings: ConnectionSettings(smart: smart),
+          entries: [node(1)],
+          regions: catalog,
+          options: options(),
+        ).config;
+        final domains = [
+          'geosite:PRIVATE',
+          'geosite:APPLE',
+          if (enabled) ...[
+            'geosite:MICROSOFT',
+            'geosite:WINDOWS',
+            'geosite:OFFICE',
+            'geosite:BING',
+          ],
+          'geosite:CN',
+        ];
+        final rules = (config['routing']['rules'] as List).cast<Map>();
+        expect(
+          rules
+              .where((rule) => rule['outboundTag'] == 'direct')
+              .where((rule) => rule.containsKey('domain'))
+              .single['domain'],
+          domains,
+        );
+        expect(
+          rules.singleWhere(
+            (rule) => rule['ruleTag'] == 'app-smart-direct-ip',
+          )['ip'],
+          ['geoip:PRIVATE', 'geoip:CN'],
+        );
+        expect(
+          config['dns']['servers'].last['domains'],
+          directDns ? domains : isEmpty,
+        );
+      }
+    }
+  });
+
   test('Smart omits empty direct rule types', () {
     for (final (smart, expected) in [
       (

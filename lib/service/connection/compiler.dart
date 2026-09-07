@@ -142,6 +142,12 @@ class ConnectionCompiler {
     final domains = <String>{
       if (smart.directPrivate) 'geosite:PRIVATE',
       if (smart.directApple) 'geosite:APPLE',
+      if (smart.directWindows) ...[
+        'geosite:MICROSOFT',
+        'geosite:WINDOWS',
+        'geosite:OFFICE',
+        'geosite:BING',
+      ],
       ...regions.domainRules(smart.directRegions),
     }.toList();
     final ips = <String>{

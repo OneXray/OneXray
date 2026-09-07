@@ -64,9 +64,11 @@ selector 填写生成节点完整 tag，采用 round-robin，回退出站为 `di
 第二轮匹配。Custom 导入将 `type` 视为不支持的字段并直接拒绝；完整 Raw JSON 保留用户
 原文，包括用户自行填写的 `type`。
 
-智能路由将局域网、Apple 服务和所选地区的直连条件合并：域名与 IP 各输出一条规则，
+智能路由将局域网、Apple 服务、Windows 服务和所选地区的直连条件合并：域名与 IP 各输出一条规则，
 同类条件去重后以 OR 匹配，域名和 IP 不合并到同一条规则。没有对应条件时省略该类规则，
 不生成空条件规则；广告阻断仍排在这两条直连规则之前。
+Windows 服务直连开关在所有平台显示，默认关闭；开启后直连 Microsoft、Windows、Office、
+Bing 四类 Geosite 域名，与其他直连条件共用预览、保存和重连逻辑。
 
 App DNS 固定两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。direct server 的
 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不宣称已判断 IP、端口

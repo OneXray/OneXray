@@ -114,6 +114,7 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
     final labels = <String>{
       if (state.draft.directPrivate) l.prototypeLocalNetworkPrivateAddresses,
       if (state.draft.directApple) l.prototypeAppleServices,
+      if (state.draft.directWindows) l.windowsServices,
       for (final code in state.draft.directRegions)
         if (regions.contains(code.toUpperCase()))
           setupRegionLabel(l, code.toUpperCase()),

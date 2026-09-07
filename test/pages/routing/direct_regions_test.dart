@@ -58,6 +58,14 @@ void main() {
     controller.update('directApple', false);
     expect(controller.rulesFor('direct'), isEmpty);
     expect(controller.directPreview(l), l.prototypeNone);
+    controller.update('directWindows', true);
+    expect(controller.rulesFor('direct'), hasLength(1));
+    expect(controller.directPreview(l), l.windowsServices);
+    controller.update('blockAds', true);
+    expect(controller.state.draft.directWindows, true);
+    controller.update('directWindows', false);
+    expect(controller.rulesFor('direct'), isEmpty);
+    expect(controller.directPreview(l), l.prototypeNone);
   });
 
   test('direct regions use installed categories, support many selections and stay draft-only', () async {

@@ -1298,6 +1298,18 @@
   "@prototypeDirectAppleServicesHint": {
     "description": "Approved prototype copy: Keep App Store, iCloud, and other Apple services on the local connection."
   },
+  "directWindowsServices": "Direct Windows services",
+  "@directWindowsServices": {
+    "description": "Smart Routing switch for direct connections to Windows-related services."
+  },
+  "directWindowsServicesHint": "Connect directly to domains in the Microsoft, Windows, Office, and Bing categories.",
+  "@directWindowsServicesHint": {
+    "description": "The four Geosite categories covered by the Windows services switch."
+  },
+  "windowsServices": "Windows services",
+  "@windowsServices": {
+    "description": "Windows services label in the Smart Routing direct-traffic preview."
+  },
   "prototypeResolveUnmatchedDomains": "Resolve unmatched domains for IP rules",
   "@prototypeResolveUnmatchedDomains": {
     "description": "Approved prototype copy: Resolve unmatched domains for IP rules"

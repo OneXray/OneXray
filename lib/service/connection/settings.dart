@@ -46,6 +46,7 @@ class SmartRoutingSettings {
   final List<String> directRegions;
   final bool directPrivate;
   final bool directApple;
+  final bool directWindows;
   final bool resolveIpOnNoMatch;
   final bool directDns;
   final bool blockAds;
@@ -56,6 +57,7 @@ class SmartRoutingSettings {
     Iterable<String> directRegions = const ['CN'],
     this.directPrivate = true,
     this.directApple = true,
+    this.directWindows = false,
     this.resolveIpOnNoMatch = true,
     this.directDns = true,
     this.blockAds = false,
@@ -73,6 +75,7 @@ class SmartRoutingSettings {
             (value['directRegions'] as List?)?.cast<String>() ?? ['CN'],
         directPrivate: value['directPrivate'] as bool? ?? true,
         directApple: value['directApple'] as bool? ?? true,
+        directWindows: value['directWindows'] as bool? ?? false,
         resolveIpOnNoMatch: value['resolveIpOnNoMatch'] as bool? ?? true,
         directDns: value['directDns'] as bool? ?? true,
         blockAds: value['blockAds'] as bool? ?? false,
@@ -84,6 +87,7 @@ class SmartRoutingSettings {
     'directRegions': directRegions,
     'directPrivate': directPrivate,
     'directApple': directApple,
+    'directWindows': directWindows,
     'resolveIpOnNoMatch': resolveIpOnNoMatch,
     'directDns': directDns,
     'blockAds': blockAds,

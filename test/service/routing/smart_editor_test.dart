@@ -62,6 +62,7 @@ void main() {
     final smart = SmartRoutingSettings(
       entryCount: 3,
       directRegions: [],
+      directWindows: true,
       blockAds: true,
     );
     expect(
@@ -217,6 +218,17 @@ void main() {
     final original = ConnectionSettings(
       selection: const ServerSelection.server(8),
       smart: smart,
+    );
+    expect(
+      SmartRoutingEditorService.sameRuntime(
+        original,
+        SmartRoutingSettings.fromJson({
+          ...smart.toJson(),
+          'directWindows': true,
+        }),
+        regions,
+      ),
+      false,
     );
     expect(
       SmartRoutingEditorService.sameRuntime(
