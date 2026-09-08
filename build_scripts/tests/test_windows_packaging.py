@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -205,6 +206,25 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertIn("dart pub global activate fastforge", windows)
         self.assertIn('"INNO_SETUP_PATH=$installDir" >> $env:GITHUB_ENV', windows)
         self.assertNotIn('"ISCC=$compiler"', windows)
+
+    def test_winget_workflow_publishes_stable_exe_installers_only(self):
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/update-winget.yml").read_text()
+        self.assertIn("release:\n    types:\n      - released", workflow)
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn('git check-ref-format "refs/tags/$tag"', workflow)
+        self.assertIn("identifier: YuanDevLLC.OneXray", workflow)
+        self.assertIn("uses: vedantmgoyal9/winget-releaser@v2", workflow)
+        self.assertIn("max-versions-to-keep: 0", workflow)
+        self.assertIn("contents: read", workflow)
+        self.assertIn("secrets.PACKAGE_MANAGER_GITHUB_TOKEN", workflow)
+        self.assertEqual(workflow.count("if: steps.verify.outputs.should_update == 'true'"), 2)
+        pattern = re.search(r"installers-regex: '([^']+)'", workflow).group(1)
+        for name in ("OneXray-windows-amd64.exe", "OneXray-windows-arm64.exe"):
+            self.assertRegex(name, pattern)
+            self.assertIn(name, workflow)
+        for name in ("OneXray-windows-amd64.zip", "OneXray-windows-arm64.msix",
+                     "OneXrayCore.exe", "OneXray-windows-amd64.exe.sig"):
+            self.assertNotRegex(name, pattern)
 
     def test_msix_uses_store_version_without_rebuilding_windows(self):
         with (

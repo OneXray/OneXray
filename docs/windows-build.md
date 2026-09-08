@@ -50,6 +50,17 @@ GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` �
 
 选择或更换 runner 时，必须通过 GitHub Actions 验证镜像实际提供并默认选择了所需的 Visual Studio、CMake 和 Windows SDK 工具链，不能只根据 runner 标签推断。
 
+### winget
+
+[`update-winget.yml`](../.github/workflows/update-winget.yml) 沿用 v26.8.4 的发布方式：
+
+- 正式 Release 发布或从预发布转为正式版时自动触发；也可手动指定已存在的 Release tag。现有 `Publish` 流程仍只创建预发布，不直接更新 winget。
+- 跳过预发布，拒绝草稿；正式版本必须同时具备 x64 和 ARM64 的 EXE 安装包，缺失任一架构时失败。ZIP 与 MSIX 不提交到此渠道。
+- 使用 `YuanDevLLC.OneXray` 标识向 `microsoft/winget-pkgs` 提交更新 PR，不自动合并，不清理历史版本。
+- 仓库需配置 `PACKAGE_MANAGER_GITHUB_TOKEN` secret（具有 `public_repo` scope 的 classic PAT），且对 `OneXray/winget-pkgs` fork 有写权限。工作流在提交前检查令牌是否配置、fork 来源和写权限。
+
+恢复或修改工作流时只验证配置与发布条件；实际执行会创建外部 PR，不能作为本地回归测试。
+
 ## 工程约束
 
 - Windows CMake 工程使用 C++17。
@@ -121,6 +132,7 @@ $env:ONEXRAY_DEV_PUBLISHER = $certificate.Subject
 
 - 构建矩阵：`.github/workflows/build.yml`
 - Microsoft Store Bundle 与发布：`.github/workflows/publish-microsoft-store.yml`
+- winget 更新：`.github/workflows/update-winget.yml`
 - Windows CMake：`windows/CMakeLists.txt`、`windows/app.cmake`
 - App 构建编排：`build_scripts/`
 - Windows 打包：`build_scripts/app/windows.py`、`build_scripts/app/windows_msix.py`、`windows/packaging/exe/`、`pubspec.yaml`

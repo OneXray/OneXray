@@ -21,7 +21,7 @@
   `provenance-windows-<architecture>-<mode>.json`, keeping EXE and MSIX builds separate.
 - Windows additionally requires VCore integration
   revision **3**, the existing identity, architecture, file set, and hashes.
-- Both publish workflows require release metadata and per-platform receipts, a
+- `publish.yml` and `publish-microsoft-store.yml` require release metadata and per-platform receipts, a
   successful matching `Build` run, clean recorded source checkouts before the
   build, and matching package hashes. A release tag must
   resolve to the recorded App commit. Missing metadata is never a manual-build
@@ -38,6 +38,9 @@
 - These are provenance checks, not platform release acceptance. Tool versions
   remain recorded rather than all pinned; store deployment still happens inside
   the existing Apple/Android Fastlane commands. Do not run them as local tests.
+- WinGet updates run separately after a stable GitHub Release, using the
+  published EXE assets rather than Build artifacts. See [Windows builds](../docs/windows-build.md#winget)
+  for triggers, prerequisites, and the manifest PR workflow.
 
 中文要点：依赖 ref 仅解析一次，`*-sha.txt` 只写真实提交；每个平台单独记录实际工具链、
 依赖锁、原生库、GeoData 与包摘要。不能把本地未发布的提交写成上游可用版本。
