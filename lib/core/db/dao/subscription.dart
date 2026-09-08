@@ -36,19 +36,11 @@ class SubscriptionDao extends DatabaseAccessor<AppDatabase>
 
   Future<bool> updateRow(SubscriptionData entry) async {
     final result = await update(subscription).replace(entry);
-    notifyUpdates({
-      TableUpdate.onTable(coreConfig, kind: UpdateKind.update),
-      TableUpdate.onTable(subscription, kind: UpdateKind.update),
-    });
     return result;
   }
 
   Future<int> insertRow(SubscriptionCompanion entry) async {
     final result = await into(subscription).insert(entry);
-    notifyUpdates({
-      TableUpdate.onTable(coreConfig, kind: UpdateKind.update),
-      TableUpdate.onTable(subscription, kind: UpdateKind.insert),
-    });
     return result;
   }
 
@@ -66,10 +58,6 @@ class SubscriptionDao extends DatabaseAccessor<AppDatabase>
             ..where((table) => table.subId.equals(id))
             ..where((table) => table.type.equals(CoreConfigType.outbound.name)))
           .go();
-      notifyUpdates({
-        TableUpdate.onTable(coreConfig, kind: UpdateKind.delete),
-        TableUpdate.onTable(subscription, kind: UpdateKind.delete),
-      });
     }
     return result;
   });

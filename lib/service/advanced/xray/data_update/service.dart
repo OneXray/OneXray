@@ -68,7 +68,7 @@ class DataUpdateService {
     if (_paused) return;
     if (_expired(systemGeoData, now, interval)) {
       try {
-        await GeoDataService().refreshSystemGeoDat(systemGeoData);
+        await GeoDataService().updateDefaults();
       } catch (_) {
         // Keep the default pair due, but do not starve independent custom data.
         ygLogger('Default Geodata update failed');
@@ -79,7 +79,11 @@ class DataUpdateService {
     for (final geoData in customGeoData) {
       if (_paused) break;
       if (now.difference(geoData.timestamp).inHours >= interval) {
-        await GeoDataService().updateGeoDat(geoData);
+        try {
+          await GeoDataService().updateCustom(geoData);
+        } catch (_) {
+          ygLogger('Custom Geodata update failed');
+        }
       }
     }
   }

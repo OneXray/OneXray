@@ -7,7 +7,6 @@ import 'dart:io';
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/tun2socks.dart';
 import 'package:onexray/core/pigeon/constants.dart';
-import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -80,29 +79,15 @@ class ConnectionRuntimeHost {
     if (readStatus != null) {
       return (status: await readStatus(), permission: null);
     }
-    final event = Completer<VpnStatus>();
-    final subscription = AppFlutterApi().vpnStatusController.stream.listen((
-      status,
-    ) {
-      if (!event.isCompleted) event.complete(status);
-    });
-    try {
-      final result = await _host.readVpnStatus();
-      if (result.state != NativeVpnCommandState.success) {
-        throw ConnectionHostException(
-          'nativeStatusFailed',
-          permission: result.permission,
-        );
-      }
-      // Native status may wait for a core operation. Time only a missing reply
-      // event after that operation completes, not the operation itself.
-      return (
-        status: await event.future.timeout(const Duration(seconds: 5)),
+    final result = await _host.readVpnStatus();
+    if (result.state != NativeVpnCommandState.success ||
+        result.status == null) {
+      throw ConnectionHostException(
+        'nativeStatusFailed',
         permission: result.permission,
       );
-    } finally {
-      await subscription.cancel();
     }
+    return (status: result.status!, permission: result.permission);
   }
 
   static Map<String, dynamic> _jsonObject(String text) {
@@ -214,7 +199,7 @@ class ConnectionRuntimeHost {
       platform.status,
       runtime: platform.status == VpnStatus.disconnected
           ? null
-          : await readRuntime() ?? knownRuntimes.firstOrNull,
+          : knownRuntimes.firstOrNull,
       permission: platform.permission,
     );
   }

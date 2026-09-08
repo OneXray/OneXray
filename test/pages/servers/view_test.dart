@@ -10,7 +10,6 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
-import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/view.dart';
@@ -51,7 +50,6 @@ class _Controller extends ServersController {
   }) async {
     browsedOnMobile = mobile;
     activeGroupId = group.id;
-    changed();
   }
 
   @override
@@ -144,7 +142,7 @@ void main() {
                 ),
               Expanded(
                 child: ResponsiveContent(
-                  child: BlocBuilder<_Controller, ConnectPageState>(
+                  child: BlocBuilder<_Controller, ServersPageState>(
                     bloc: controller,
                     builder: (context, _) => groupPage
                         ? ServerGroupView(

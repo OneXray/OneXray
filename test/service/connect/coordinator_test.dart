@@ -42,6 +42,32 @@ void main() {
     );
   });
 
+  test(
+    'each reconciliation reads start metadata once and reuses that value',
+    () async {
+      final runtime = _runtime('a');
+      final host = ConnectionRuntimeHost(
+        readStatus: () async => VpnStatus.connected,
+      );
+      var reads = 0;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async {
+            reads++;
+            return runtime;
+          },
+          inspect: host.inspect,
+        ),
+      );
+      expect(reads, 1);
+      expect(coordinator.state.value.runtime, same(runtime));
+      await coordinator.refresh();
+      expect(reads, 2);
+      expect(coordinator.state.value.runtime, same(runtime));
+    },
+  );
+
   test('initialization trusts native disconnected status', () async {
     final coordinator = await _initialize(
       ConnectionCoordinator(

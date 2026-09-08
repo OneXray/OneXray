@@ -30,7 +30,6 @@ void main() {
       expect(tun.tunDnsIPv6, '2001:4860:4860::8888');
       expect(tun.dnsServerName, 'dns.google');
       expect(tun.enableIPv6, true);
-      expect(tun.metricsEnabled, true);
       expect(tun.includeAllNetworks, false);
       expect(tun.excludeLocalNetworks, true);
       expect(tun.excludeCellularServices, true);

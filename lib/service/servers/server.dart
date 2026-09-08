@@ -7,6 +7,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/asset_edit.dart';
 import 'package:onexray/service/connect/preparation.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
@@ -89,11 +90,7 @@ class ServerAssetService {
 
   static String protocolLabel(CoreConfigData row) {
     try {
-      return outboundTags(readOutboundFromDbData(row))
-          .split(',')
-          .map((value) => value.trim().toUpperCase())
-          .where((value) => value.isNotEmpty && value != 'NONE')
-          .join(' | ');
+      return outboundProtocolLabel(readOutboundFromDbData(row));
     } on FormatException {
       return '';
     }
@@ -128,9 +125,7 @@ class ServerAssetService {
     if ((await _validate(encodeSingleOutbound(outbound))).isNotEmpty) {
       throw const FormatException('Invalid server configuration');
     }
-    await coordinator.initialize();
-    await coordinator.refresh();
-    final configuration = await coordinator.configuration;
+    final configuration = await coordinator.readForEditing();
     final original = draft.original;
     var semanticChange = true;
     try {
@@ -143,14 +138,7 @@ class ServerAssetService {
     }
     final active =
         coordinator.state.value.runtime?.nodeIds.contains(original.id) == true;
-    final reconnect = active && semanticChange;
     final affectsRuntime = semanticChange && active;
-    var allowReconnect = false;
-    if (reconnect &&
-        coordinator.state.value.phase == ConnectionPhase.connected) {
-      allowReconnect = await confirmReconnect();
-      if (!allowReconnect) return false;
-    }
     final companion = outboundCompanion(outbound);
     final drafts = {
       original.id: ResolvedServer(
@@ -159,17 +147,16 @@ class ServerAssetService {
         outbound: outbound,
       ),
     };
-    await coordinator.apply(
+    final saved = await coordinator.saveEditedAsset(
       configuration,
-      expectedConfiguration: configuration.encode(),
-      allowReconnect: allowReconnect,
+      confirmReconnect: confirmReconnect,
       affectsRuntime: affectsRuntime,
-      prepare: reconnect
+      prepare: affectsRuntime
           ? (next, cancelled) => _prepare(next, cancelled, drafts, const {})
           : null,
       writeAssets: () async {
         if (semanticChange &&
-            !reconnect &&
+            !affectsRuntime &&
             coordinator.state.value.runtime?.nodeIds.contains(original.id) ==
                 true) {
           throw const FormatException('Server became active while editing');
@@ -193,8 +180,8 @@ class ServerAssetService {
         );
       },
     );
-    if (semanticChange) _schedule([original.id]);
-    return true;
+    if (saved && semanticChange) _schedule([original.id]);
+    return saved;
   }
 
   Future<void> favorite(int id, bool value) async {
@@ -226,8 +213,7 @@ class ServerAssetService {
     Set<int> ids = const {},
     int? sourceId,
   }) async {
-    await coordinator.initialize();
-    await coordinator.refresh();
+    final current = await coordinator.readForEditing();
     final all = await rows();
     final removed = sourceId == null
         ? ids
@@ -236,7 +222,6 @@ class ServerAssetService {
               .map((row) => row.id)
               .toSet();
     final remaining = all.where((row) => !removed.contains(row.id)).toList();
-    final current = await coordinator.configuration;
     final selection = current.connection.selection;
     final invalidSelection = switch (selection.kind) {
       SelectionKind.automatic => false,

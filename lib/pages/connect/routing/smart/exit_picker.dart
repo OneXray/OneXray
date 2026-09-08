@@ -5,9 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
-import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
+import 'package:onexray/pages/servers/catalog.dart';
 import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -54,7 +54,7 @@ class ServerExitPickerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider.value(
     value: controller,
-    child: BlocBuilder<ServerExitPickerController, ConnectPageState>(
+    child: BlocBuilder<ServerExitPickerController, ServerExitPickerState>(
       builder: (context, _) {
         final l = AppLocalizations.of(context)!;
         final palette = ColorManager.palette(context);
@@ -68,7 +68,9 @@ class ServerExitPickerView extends StatelessWidget {
           ),
           body: SafeArea(
             child: ServerLoadState(
-              controller: controller,
+              ready: controller.ready,
+              failed: controller.failed,
+              onRetry: controller.initialize,
               child: ResponsiveContent(
                 desktopMaxWidth:
                     AppLayout.routingEditorMaxWidth + AppSpacing.page * 2,

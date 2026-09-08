@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:onexray/service/servers/catalog.dart';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
@@ -12,6 +15,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
@@ -21,20 +25,37 @@ import 'package:onexray/service/connect/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  test('metrics updates leave non-traffic connection content unchanged', () {
+    final before = ConnectPageState(
+      connectionView: const ConnectionView(phase: ConnectionPhase.connected),
+    );
+    final sample = before.copyWith(
+      connectionView: const ConnectionView(
+        phase: ConnectionPhase.connected,
+        uploadSpeed: 1000,
+        downloadSpeed: 2000,
+      ),
+    );
+    expect(before.sameContentAs(sample), isTrue);
+    expect(before.sameContentAs(sample.copyWith(connectedMinutes: 1)), isFalse);
+    expect(
+      before.sameContentAs(
+        sample.copyWith(
+          connectionView: const ConnectionView(
+            phase: ConnectionPhase.disconnected,
+          ),
+        ),
+      ),
+      isFalse,
+    );
+  });
+
   test(
     'all node-list controllers react to database changes in delay order',
     () async {
       final coordinator = _Coordinator();
       final db = coordinator.db;
-      final controllers = <ConnectController>[
-        ConnectController(database: db, coordinator: coordinator),
-        ServersController(database: db, coordinator: coordinator),
-        ServerExitPickerController(
-          const ServerExitPickerParams(),
-          database: db,
-          coordinator: coordinator,
-        ),
-      ];
+      final controllers = _catalogControllers(db, coordinator);
       addTearDown(() async {
         for (final controller in controllers) {
           await controller.close();
@@ -92,10 +113,9 @@ void main() {
         isTrue,
       );
 
-      final rawInserted = Future.wait([
-        for (final controller in controllers)
-          controller.stream.firstWhere((state) => state.raws.length == 1),
-      ]);
+      final rawInserted = db.coreConfigDao.allRawRowsWithDataStream.firstWhere(
+        (rows) => rows.length == 1,
+      );
       await db.coreConfigDao.insertAssetRow(
         CoreConfigCompanion.insert(
           name: 'Raw',
@@ -119,15 +139,7 @@ void main() {
     () async {
       final coordinator = _Coordinator();
       final db = coordinator.db;
-      final controllers = <ConnectController>[
-        ConnectController(database: db, coordinator: coordinator),
-        ServersController(database: db, coordinator: coordinator),
-        ServerExitPickerController(
-          const ServerExitPickerParams(),
-          database: db,
-          coordinator: coordinator,
-        ),
-      ];
+      final controllers = _catalogControllers(db, coordinator);
       addTearDown(() async {
         for (final controller in controllers) {
           await controller.close();
@@ -643,4 +655,47 @@ ConnectionRuntime _runtime({bool expert = false}) {
       jsonEncode(invoke.toJson()),
     ),
   );
+}
+
+class _CatalogController {
+  final Future<void> Function() initialize;
+  final Future<void> Function() close;
+  final Stream<ServerCatalog> stream;
+  final ServerCatalog Function() read;
+  const _CatalogController(this.initialize, this.close, this.stream, this.read);
+  List<CoreConfigData> get servers => read().servers;
+  List<SubscriptionData> get sources => read().sources;
+}
+
+List<_CatalogController> _catalogControllers(
+  AppDatabase db,
+  ConnectionCoordinator coordinator,
+) {
+  final connect = ConnectController(database: db, coordinator: coordinator);
+  final servers = ServersController(database: db, coordinator: coordinator);
+  final exit = ServerExitPickerController(
+    const ServerExitPickerParams(),
+    database: db,
+    coordinator: coordinator,
+  );
+  return [
+    _CatalogController(
+      connect.initialize,
+      connect.close,
+      connect.stream.map((state) => state.catalog),
+      () => connect.catalog,
+    ),
+    _CatalogController(
+      servers.initialize,
+      servers.close,
+      servers.stream.map((state) => state.catalog),
+      () => servers.catalog,
+    ),
+    _CatalogController(
+      exit.initialize,
+      exit.close,
+      exit.stream.map((state) => state.catalog),
+      () => exit.catalog,
+    ),
+  ];
 }

@@ -81,10 +81,6 @@ class PingController extends PageCubit<PingPageState> {
     final customUrl = customUrlController.text.trim();
     if (state.pingState.url == PingUrl.custom) {
       final localizations = AppLocalizations.of(context)!;
-      if (customUrl.isEmpty) {
-        ContextAlert.showToast(context, localizations.prototypeEnterHttpUrl);
-        return;
-      }
       if (!PingUrl.isValidCustomUrl(customUrl)) {
         ContextAlert.showToast(context, localizations.prototypeEnterHttpUrl);
         return;
@@ -94,13 +90,7 @@ class PingController extends PageCubit<PingPageState> {
     try {
       state.pingState.customUrl = customUrl;
       await state.pingState.saveToPreferences();
-      if (context.mounted) {
-        ContextAlert.showToast(
-          context,
-          AppLocalizations.of(context)!.prototypeSettingsSaved,
-        );
-        if (ModalRoute.of(context)?.isCurrent == true) context.pop();
-      }
+      if (context.mounted) ContextAlert.settingsSaved(context, closePage: true);
     } catch (_) {
       emit(state.copyWith(error: 'unavailable'));
     } finally {

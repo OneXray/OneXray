@@ -315,9 +315,9 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<List<ConnectionRuntime>> _known() async {
     final values = <ConnectionRuntime>[
+      ?await _readRuntime(),
       ?state.value.runtime,
       ?_pendingRuntime,
-      ?await _readRuntime(),
     ];
     final identities = <String>{};
     return values.where((value) => identities.add(value.identity)).toList();

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
+import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/runtime_network_policy.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
@@ -16,14 +17,15 @@ class ResolvedServer {
   final int id;
   final int sourceId;
   final String name;
-  final String outboundJson;
+  final Map<String, dynamic> _outbound;
+  late final String outboundJson = jsonEncode(_outbound);
 
   ResolvedServer({
     required this.id,
     required this.sourceId,
     required Map<String, dynamic> outbound,
   }) : name = outboundDisplayName(outbound),
-       outboundJson = jsonEncode(outbound);
+       _outbound = JsonTool.copyMap(outbound);
 
   factory ResolvedServer.fromRow(CoreConfigData row) {
     if (row.type != 'outbound') {
@@ -36,8 +38,7 @@ class ResolvedServer {
     );
   }
 
-  Map<String, dynamic> get outbound =>
-      jsonDecode(outboundJson) as Map<String, dynamic>;
+  Map<String, dynamic> get outbound => JsonTool.copyMap(_outbound);
   Map<String, dynamic> toJson() => {
     'id': id,
     'sourceId': sourceId,
@@ -342,7 +343,9 @@ class ConnectionCompiler {
         'Normal nodes cannot reference other outbounds; use Raw for a complete configuration',
       );
     }
-    return copyOutboundMap(outbound)..['tag'] = tag;
+    return outbound
+      ..remove('name')
+      ..['tag'] = tag;
   }
 
   static Map<String, dynamic> _object(Map<String, dynamic> parent, String key) {
@@ -402,7 +405,7 @@ class ConnectionCompiler {
     Map<String, dynamic> source,
     RuntimeOptions options,
   ) {
-    final config = jsonDecode(jsonEncode(source)) as Map<String, dynamic>;
+    final config = JsonTool.copyMap(source);
     validateLocalDnsNetworkPolicy(
       config,
       requiresInterface:

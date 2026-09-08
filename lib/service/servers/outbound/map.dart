@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/json.dart';
 
@@ -7,7 +5,7 @@ Map<String, dynamic> copyOutboundMap(
   Map<String, dynamic> outbound, {
   String? nameAlias,
 }) {
-  final copied = jsonDecode(jsonEncode(outbound)) as Map<String, dynamic>;
+  final copied = JsonTool.copyMap(outbound);
   if (!copied.containsKey('tag')) {
     final legacyName = outboundString(copied, 'name');
     final fallbackTag = legacyName?.isNotEmpty == true
@@ -74,6 +72,13 @@ String outboundTags(Map<String, dynamic> outbound) => [
   outboundNetwork(outbound) ?? '',
   outboundSecurity(outbound) ?? '',
 ].join(',');
+
+String outboundProtocolLabel(Map<String, dynamic> outbound) =>
+    outboundTags(outbound)
+        .split(',')
+        .map((value) => value.trim().toUpperCase())
+        .where((value) => value.isNotEmpty && value != 'NONE')
+        .join(' | ');
 
 String? outboundDialerProxy(Map<String, dynamic> outbound) {
   final stream = outbound['streamSettings'];

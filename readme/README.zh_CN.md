@@ -5,7 +5,7 @@
 <h1 align="center">OneXray</h1>
 
 <p align="center">
-  面向自有节点、订阅与配置的私密跨平台 Xray-core 客户端。
+  自己的服务器，自己的路由，跨设备使用。
 </p>
 
 <p align="center">
@@ -16,151 +16,151 @@
 
 <p align="center">
   <a href="https://onexray.com">文档站</a> ·
-  <a href="./FIRST_RUN.zh_CN.md">开发环境</a> ·
-  <a href="https://t.me/OneXrayApp">Telegram</a> ·
-  <a href="https://github.com/OneXray/OneXray/releases/latest">版本发布</a>
+  <a href="https://github.com/OneXray/OneXray/releases">版本发布</a> ·
+  <a href="https://t.me/OneXrayApp">Telegram</a>
 </p>
 
 <p align="center">
   <a href="../README.md">English</a> · 简体中文 · <a href="./README.ru.md">Русский</a>
 </p>
 
-OneXray 支持导入您自己的兼容服务器配置或 HTTPS 订阅、管理节点、选择智能路由、全部通过 VPN 或自定义路由，并可按需使用完整 Raw JSON 配置。
+OneXray 是适用于手机、平板和桌面的开源 Xray-core 客户端。导入自己的服务器或订阅，选择流量的路由方式，通过设备的系统 VPN 连接。
 
-OneXray 仅提供客户端，不提供 VPN/代理服务器、订阅或网络服务。App 无需账户，不包含广告、Analytics、Tracking、Telemetry 或崩溃上报服务。
-
-## 界面预览
-
-<p align="center">
-  <img src="./images/home-ios.png" width="22%" alt="OneXray iOS 首页">
-  &nbsp;&nbsp;
-  <img src="./images/home-macos.png" width="70%" alt="OneXray macOS 首页">
-</p>
-
-## 核心能力
-
-- **跨平台运行**：所有支持平台均使用系统 VPN；Windows 使用由 Xray-core 支持的 VCore VPN Provider。
-- **灵活配置**：支持单个服务器出站、HTTPS 订阅、自定义路由配置和完整 Raw JSON。
-- **路由控制**：可在“连接”页面选择智能路由、全部通过 VPN 或命名的自定义路由。
-- **导入与管理**：通过二维码、图片、文件或剪贴板导入受支持的分享链接与 HTTPS 订阅。
-- **本地工具**：节点 Ping、Xray 日志、GeoData 与规则集管理、备份和恢复。
-- **平台集成**：Android Per-App VPN、Apple On Demand、桌面托盘控制和出站网卡选择。
-
-## age 加密订阅
-
-添加或编辑 HTTPS 订阅时，可在“加密”区域填写已有 age 密钥对，或选择生成
-X25519、Mihomo 兼容的 Hybrid（`ML-KEM-768 + X25519`）密钥。OneXray 只通过
-`X-Age-Public-Key` 发送已保存的公钥；私钥仅保存在本地，密钥对会在自动更新
-订阅时复用。
-
-订阅仍必须使用 HTTPS。OneXray 备份文件未加密，并会包含 age 密钥对，以保证恢复后
-订阅仍可用；请妥善保管备份 ZIP 文件。
-
-## OneXray URL Scheme
-
-OneXray 可通过专有的 `onexray://` URL 分享和导入内容：
-
-```text
-onexray://onexray.com/config/add?type=outbound|raw|custom&data=<经过百分号编码的-base64-json>#名称
-onexray://onexray.com/sub/add?url=<经过百分号编码的-https-url>[&age=x25519|hybrid]#名称
-onexray://onexray.com/dat/add?type=domain|ip&url=<经过百分号编码的-https-url>#名称
-```
-
-分享的配置引用了 OneXray 中已有的自定义 GeoData 时，对应 GeoData 链接会排列在
-配置链接之前。
-
-仅支持上面列出的类型，不接受旧版 `type=setting|profile|full`、备份或其他命令。导入 age
-订阅链接时，App 会生成一对新的本地密钥，首次下载只发送公钥，并在订阅成功
-导入后保存密钥对。
-
-Android、iOS、已安装的 macOS App 和 Microsoft Store Windows App 会直接注册该协议。
-Linux 请使用 DEB 包；ZIP 包不会自动注册协议。Mac App Store 版本与 OneXraySE
-使用相同协议，同时安装时 macOS 可能选择其中任意一个处理链接。
+**需要自行提供服务器。** OneXray 不提供 VPN 服务、代理服务器或订阅。使用前，请准备来自可信来源的兼容配置或订阅。
 
 ## 下载
 
-| 平台 | 要求 | 下载 |
+| 平台 | 系统要求 | 下载 |
 | --- | --- | --- |
-| iOS | iOS 15.0 及以上，arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773)、[IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS（Mac App Store） | macOS 13.0 及以上，Apple silicon 或 Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
-| macOS（商店外分发） | macOS 13.0 及以上，Apple silicon 或 Intel | Homebrew：`brew install --cask onexrayse`、[Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
-| Android | Android 10.0 及以上，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray)、[Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 或 Windows 11 | Microsoft Store |
-| Windows ARM64 | Windows 11 | Microsoft Store |
-| Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
-| Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb)、[ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| macOS | macOS 13+，Apple silicon 或 Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
+| macOS — OneXraySE | macOS 13+，Apple silicon 或 Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Android 手机 / 平板 | Android 10+，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [通用 APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows | Windows 10 20H2+（x64），Windows 11（ARM64） | Microsoft Store |
+| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+
+本文描述当前代码中的功能，商店和已发布版本可能有所不同。各平台的安装要求见[安装说明](#安装说明)。
+
+## 主要功能
+
+- **灵活连接**：使用自动选择、订阅、节点位置或指定服务器。查看连接状态、实时上下行速率和本次连接的流量。
+- **管理服务器**：按订阅或节点位置浏览，比较延迟和协议标签，编辑、分享和删除节点与订阅。支持从文本或文件导入分享链接、Xray JSON 节点及受支持的 Clash/Mihomo YAML 节点；iOS 和 Android 还支持扫描二维码。
+- **智能路由**：选择直连地区，让局域网与指定服务保持直连，并可选拦截常见广告域名。自动选择支持 1–3 个接入节点及负载均衡，也可指定最终出口实现链式代理。
+- **自定义规则**：按顺序配置域名、IP、端口和网络条件，选择直连、VPN 或阻断。域名和 IP 输入支持 GeoData 自动补全；路由可以独立于所选服务器导入、导出和分享。
+- **完整 JSON 配置**：专家模式将常规服务器选择区域替换为 Raw JSON 配置选择与编辑。隧道、日志、metrics 等运行设置仍由 OneXray 管理，具体边界见 [Xray 配置合同](../docs/xray-configuration.md)。
+- **维护与诊断**：手动或定期更新订阅和 GeoData，配置测速 URL 与超时，查看实际生成的 Xray 配置。除 macOS System Extension 版本外，可查看本地访问日志和错误日志。
+
+订阅支持 **age 加密**：填写已有密钥对，或在本地生成 X25519 / Hybrid（`ML-KEM-768 + X25519`）密钥。仅向订阅源发送公钥，私钥保存在设备上；订阅仍要求 HTTPS。参阅 [Age 加密订阅](../docs/age-encrypted-subscriptions.md)。
+
+## 运行截图
+
+以下为 iOS、Android、macOS 和 Windows 的真实运行截图，点击图片可查看原图。
+
+<table>
+  <tr>
+    <th width="50%">iOS · 连接</th>
+    <th width="50%">Android · 服务器</th>
+  </tr>
+  <tr>
+    <td align="center"><a href="./images/connect-ios.png"><img src="./images/connect-ios.png" width="320" alt="iOS 连接页面，展示服务器选择与本次连接流量"></a></td>
+    <td align="center"><a href="./images/servers-android.png"><img src="./images/servers-android.png" width="320" alt="Android 服务器页面，按订阅分组并展示延迟"></a></td>
+  </tr>
+</table>
+
+### macOS · 智能路由
+
+![macOS 智能路由页面，展示直连选项和路由结果预览](./images/smart-routing-macos.png)
+
+### Windows · 自定义路由
+
+![Windows 自定义路由页面，展示导入、分享、接入节点数量与有序规则](./images/custom-routing-windows.png)
+
+## 首次连接
+
+1. 完成首次初始化，并授予所需的系统权限。Windows 和 Linux 还需要明确选择 Xray 出口网卡。
+2. 选择国家或地区，用于智能路由的“直连地区”，然后导入服务器或订阅。这两步均可跳过，稍后再设置。
+3. 在“连接”页选择服务器和流量方式，然后启动 VPN。可先使用智能路由；“所有流量经过 VPN”将流量交给所选服务器，“自定义路由”则使用自己编写的规则。
+
+普通服务器导入只提取节点，不导入来源文件中的路由或 DNS 配置。完整配置应通过自定义路由或 Raw JSON 导入。
+
+## 平台专属功能
+
+| 平台 | 系统集成 |
+| --- | --- |
+| iOS / macOS | 始终开启与按需 VPN；连接指定 Wi-Fi 时自动连接或断开；独立设置蜂窝网络（iOS）或 Ethernet（macOS）的行为。 |
+| Android | 按应用分流：全部应用、仅所选应用、除所选应用外的所有应用；包含与排除列表分别保存。 |
+| Windows / Linux | 明确指定 Xray 出口网卡。 |
+| 桌面端 | 托盘控制、登录时启动、启动时隐藏，以及可选的 App 启动时连接。 |
+
+浅色 / 深色主题和界面语言默认跟随系统。支持英语、简体中文、繁体中文、俄语和波斯语，波斯语使用从右向左的布局。
 
 ## 安装说明
 
-### macOS
+<details>
+<summary>macOS：Mac App Store 或 OneXraySE</summary>
 
-Mac App Store 版本是单独的商店包。Homebrew 与 Universal ZIP 使用同一个 Developer ID `macos_se` 包，安装的 App 为 `OneXraySE.app`。
+Mac App Store 版本使用 Packet Tunnel 扩展；独立分发的 **OneXraySE** 使用 System Extension，可通过 [Homebrew](https://formulae.brew.sh/cask/onexrayse) 安装：
 
 ```shell
 brew install --cask onexrayse
-brew uninstall --cask onexrayse
 ```
 
-#### Universal ZIP
+使用 ZIP 时，解压后先将 `OneXraySE.app` 移至 `/Applications`，再打开 App。完成首次初始化，并批准 VPN 和网络扩展请求。根据 macOS 版本，授权入口可能位于“系统设置 → 通用 → 登录项与扩展”或“隐私与安全性”；如系统要求重启，请按提示操作。参阅 [Apple System Extension 安装指南](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers)。
 
-1. 下载并解压 `OneXray-macos-universal.zip`。
-2. 将 `OneXraySE.app` 移动到 `/Applications`（“应用程序”）目录。不要直接从“下载”目录或其他目录运行；macOS 要求包含 System Extension 的 App 安装在系统的“应用程序”目录中。
-3. 从“应用程序”目录打开 OneXraySE，并确认 macOS 的首次打开提示。
+更新 ZIP 版本时，先退出 OneXraySE，替换 `/Applications` 中的 App，再重新打开。如有扩展更新授权提示，请予以批准。
 
-首次连接 VPN：
+</details>
 
-1. 导入订阅或节点，选中节点，然后点击启动。
-2. 打开“系统设置 > 通用 > 登录项与扩展”。
-3. 在“扩展”区域打开“网络扩展”，启用 OneXraySE，然后点击“完成”。
-4. 如果“隐私与安全性”页面也显示批准请求，请点击“允许”；系统要求重启时请重启 Mac。
-5. 返回 OneXraySE，再次点击启动。
+<details>
+<summary>iOS：安装 IPA</summary>
 
-更新 ZIP 版本时，请先退出 OneXraySE，再用新解压的 `OneXraySE.app` 替换 `/Applications` 中的旧版本并重新打开。如果 macOS 要求批准 System Extension 更新，请按提示操作。
+通过 App Store 安装最简单。自行安装 IPA 时，必须为主 App 和 Packet Tunnel 扩展重新签名，并使用允许 Network Extension 能力的描述文件。免费的 Personal Team 不提供所需能力，需要付费 Apple Developer Program 会员。App 能正常打开，不代表 VPN 扩展已获得授权。参阅 [Apple 支持的能力](https://developer.apple.com/help/account/reference/supported-capabilities-ios/)。
 
-参阅 [Installing System Extensions and Drivers](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers) 和 [更改“登录项与扩展”设置](https://support.apple.com/guide/mac-help/change-login-items-extension-settings-mtusr003/mac)。
+</details>
 
-### Windows
+<details>
+<summary>Windows：Microsoft Store 安装包</summary>
 
-Microsoft Store 会根据当前设备架构选择 x86_64 或 ARM64 包并负责更新。打包的 VCore VPN Provider 将系统流量转发到由 Xray-core 提供支持的内部 SOCKS5 入站；该入站不会作为用户代理公开。
+当前 Windows 实现使用包含系统 VPN Provider 的 MSIX 包。Microsoft Store 选择匹配的 x64 或 ARM64 安装包并负责更新。旧版独立 EXE / ZIP 不能作为此安装包的升级来源。
 
-### Android
+</details>
 
-Android 版本支持 `arm64-v8a` 与 `x86_64`，不支持 32 位 ARM 设备。
+<details>
+<summary>Linux：安装包与权限</summary>
 
-### iOS
-
-若您的 Apple ID 无法使用 App Store，可下载 `OneXray-ios.ipa`，并通过 [AltStore](https://altstore.io/) 或其他兼容的侧载工具安装。
-
-自行安装 IPA 时，必须使用授权 Network Extension capability 的 provisioning profile，重新签名 OneXray 主 App 与 Packet Tunnel extension。Apple 不向免费的 Personal Team 账号提供该 capability，因此必须加入付费 Apple Developer Program。否则 App 可能可以打开并进行节点测速，但无法启动 VPN。参阅 [Apple Developer Forums](https://developer.apple.com/forums/thread/128767) 和 [iOS 支持的能力](https://developer.apple.com/help/account/reference/supported-capabilities-ios/)。
-
-### Linux
-
-使用 DEB 包：
+Debian / Ubuntu 用户安装对应架构的 DEB 即可；安装包会处理运行依赖、注册 OneXray 链接并授予所需网络能力：
 
 ```shell
 sudo apt install ./OneXray-linux-x86_64.deb
-sudo apt remove onexray
 ```
 
-使用 ZIP 包时，请在包含 `OneXray` 的目录中执行：
+arm64 使用 `OneXray-linux-aarch64.deb`。在 Debian / Ubuntu 上使用 ZIP 时，请在包含已解压 `OneXray` 文件夹的目录中执行：
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
 sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
-GNOME 用户需要安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) 扩展。Linux arm64 当前会将 CJK 界面语言回退为英文。
+ZIP 不会自动注册 `onexray://` 链接。GNOME 用户可能需要安装 [AppIndicator 扩展](https://github.com/ubuntu/gnome-shell-extension-appindicator)以使用托盘控制。
 
-## 参与贡献
+</details>
 
-欢迎通过以下方式参与：
+## 隐私
 
-1. 为本仓库点亮 Star。
-2. 完善 [OneXray 文档](https://github.com/OneXray/onexray.com)。
-3. 通过 [OneXray/Routing](https://github.com/OneXray/Routing) 分享路由模板。
+无需账户，不含广告、分析、跟踪、遥测或崩溃上报服务。OneXray 不收集您的流量、浏览记录、配置或连接日志。网络请求发往哪些服务器与服务，由您的配置决定；订阅源、DNS 和其他第三方服务各自适用其隐私政策。参阅[隐私政策](https://onexray.com/docs/privacy/)。
 
-本地构建 App 前，请先阅读[开发环境配置](./FIRST_RUN.zh_CN.md)。
+分享的配置、订阅 URL 和导出的日志可能包含凭据等敏感信息，请在分享前检查内容。
+
+## 文档与贡献
+
+- [使用文档](https://onexray.com)与 [Telegram 社区](https://t.me/OneXrayApp)。
+- 本地调试参阅[开发环境配置](./FIRST_RUN.zh_CN.md)，打包参阅[构建脚本](../build_scripts/README.md)。
+- [App 当前行为与工程约定](../docs/README.md)，包括[导入与 OneXray 链接](../docs/subscriptions-and-sharing.md)。
+- [反馈问题或建议](https://github.com/OneXray/OneXray/issues)：请附上平台、App / Xray-core 版本和复现步骤，不要公开私密凭据。
+
+欢迎贡献代码、翻译和[文档改进](https://github.com/OneXray/onexray.com)。
 
 ## 许可证
 
-OneXray 使用 [GNU General Public License v3.0](../LICENSE)。
+[GNU General Public License v3.0](../LICENSE)。

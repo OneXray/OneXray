@@ -5,7 +5,7 @@
 <h1 align="center">OneXray</h1>
 
 <p align="center">
-  A private, cross-platform Xray-core client for your own nodes, subscriptions, and configurations.
+  Your servers. Your routing. On every device.
 </p>
 
 <p align="center">
@@ -16,163 +16,151 @@
 
 <p align="center">
   <a href="https://onexray.com">Documentation</a> ·
-  <a href="./readme/FIRST_RUN.md">Development Setup</a> ·
-  <a href="https://t.me/OneXrayApp">Telegram</a> ·
-  <a href="https://github.com/OneXray/OneXray/releases/latest">Releases</a>
+  <a href="https://github.com/OneXray/OneXray/releases">Releases</a> ·
+  <a href="https://t.me/OneXrayApp">Telegram</a>
 </p>
 
 <p align="center">
   English · <a href="./readme/README.zh_CN.md">简体中文</a> · <a href="./readme/README.ru.md">Русский</a>
 </p>
 
-OneXray lets you bring your own compatible server configuration or HTTPS subscription, organize nodes, choose Smart, all-VPN, or custom routing, and use complete Raw JSON configurations when needed.
+OneXray is an open-source Xray-core client for phones, tablets, and desktops. Import your servers or subscriptions, choose how traffic is routed, and connect through your device's system VPN.
 
-OneXray is a client-only app. It does not provide VPN or proxy servers, subscriptions, or network access. It requires no account and contains no advertising, analytics, tracking, telemetry, or crash-reporting services.
-
-## Preview
-
-<p align="center">
-  <img src="./readme/images/home-ios.png" width="22%" alt="OneXray Home on iOS">
-  &nbsp;&nbsp;
-  <img src="./readme/images/home-macos.png" width="70%" alt="OneXray Home on macOS">
-</p>
-
-## Highlights
-
-- **Cross-platform runtime** — system TUN on every supported platform; Windows uses a packaged VCore VPN Provider backed by Xray-core.
-- **Flexible configuration** — individual server outbounds, HTTPS subscriptions, custom routing configurations, and complete Raw JSON.
-- **Routing control** — choose Smart Routing, All via VPN, or a named Custom Routing configuration from Connect.
-- **Import and organize** — supported share links and HTTPS subscriptions from QR codes, images, files, or the clipboard.
-- **Local tools** — node ping, Xray logs, GeoData and rule-set management, backup, and restore.
-- **Platform integration** — Android Per-App VPN, Apple On Demand, desktop tray controls, and outbound-interface selection.
-
-## Age-Encrypted Subscriptions
-
-When adding or editing an HTTPS subscription, open **Encryption** and either
-enter an existing age key pair or generate an X25519 or Mihomo-compatible
-Hybrid key (`ML-KEM-768 + X25519`). OneXray sends only the saved public
-recipient as `X-Age-Public-Key`; the secret key remains local and the pair is
-reused for automatic refreshes.
-
-HTTPS is still required. OneXray backups are not encrypted and include the age
-key pair so restored subscriptions remain usable; store backup ZIP files
-carefully.
-
-## OneXray URL Scheme
-
-OneXray can share and import content through its proprietary `onexray://` URLs:
-
-```text
-onexray://onexray.com/config/add?type=outbound|raw|custom&data=<percent-encoded-base64-json>#Name
-onexray://onexray.com/sub/add?url=<percent-encoded-https-url>[&age=x25519|hybrid]#Name
-onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Name
-```
-
-When a shared config references custom GeoData stored in OneXray, matching
-GeoData links are placed before the config link.
-
-Only the types shown above are supported. Legacy `type=setting|profile|full`,
-backups, and other commands are not accepted. An age subscription link generates a new
-local key pair, sends only its public key for the first download, and stores
-the pair when the subscription is imported successfully.
-
-Android, iOS, installed macOS apps, and the Microsoft Store Windows app
-register the scheme directly. On Linux, use the DEB package; ZIP packages do
-not register the scheme automatically. The Mac App Store app and OneXraySE
-share the same scheme, so installing both can make macOS choose either app as
-the handler.
+**Bring your own servers.** OneXray does not provide VPN access, proxy servers, or subscriptions. A compatible configuration or subscription from a provider you trust is required.
 
 ## Download
 
 | Platform | Requirements | Download |
 | --- | --- | --- |
-| iOS | iOS 15.0 and above, arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773), [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS (Mac App Store) | macOS 13.0 and above, Apple silicon or Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
-| macOS (Outside App Store) | macOS 13.0 and above, Apple silicon or Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
-| Android | Android 10.0 and above, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 20H2 or later | Microsoft Store |
-| Windows ARM64 | Windows 11 | Microsoft Store |
-| Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
-| Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| macOS | macOS 13+, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
+| macOS — OneXraySE | macOS 13+, Apple silicon or Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Android phones / tablets | Android 10+, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows | Windows 10 20H2+ (x64), Windows 11 (ARM64) | Microsoft Store |
+| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
-## Installation Notes
+This README describes the current codebase. Store and release builds may differ. See the [installation notes](#installation-notes) for platform-specific requirements.
 
-### macOS
+## What you can do
 
-The Mac App Store build is a separate store package. Homebrew and the Universal ZIP use the same Developer ID `macos_se` package and install `OneXraySE.app`.
+- **Connect your way.** Use automatic selection, a subscription, a location, or a specific server. See connection status, live upload/download speeds, and traffic for the current connection.
+- **Keep servers organized.** Browse by subscription or node location, compare latency and protocol labels, and edit, share, or delete servers and subscriptions. Import share links, Xray JSON nodes, and supported Clash/Mihomo YAML nodes from text or files; scan QR codes on iOS and Android.
+- **Start with Smart Routing.** Choose a direct region, keep local networks and selected services direct, and optionally block common ad domains. Select 1–3 entry servers for automatic selection and load balancing, with an optional final exit for chained connections.
+- **Write your own rules.** Custom Routing provides ordered domain, IP, port, and network conditions with direct, VPN, or block actions. Domain and IP inputs offer GeoData completion. Import, export, and share routes independently of your selected servers.
+- **Use complete configurations.** Expert mode replaces the normal server selector with a Raw JSON configuration selector and editor. OneXray still manages the tunnel, logging, metrics, and related runtime settings; see the [configuration contract](./docs/xray-configuration.md) (Chinese).
+- **Maintain your setup.** Refresh subscriptions and GeoData manually or on a schedule, configure latency-test URLs and timeouts, and inspect the generated Xray configuration. Local access/error logs are available except in the macOS System Extension build.
+
+Subscriptions can use **age encryption** with an existing key pair or locally generated X25519 / Hybrid (`ML-KEM-768 + X25519`) keys. Only the public key is sent to the subscription source; the private key stays on your device. HTTPS is required. [Age subscription details](./docs/age-encrypted-subscriptions.md) (Chinese).
+
+## Screenshots
+
+Real running screenshots from iOS, Android, macOS, and Windows. Click an image to view it at full size.
+
+<table>
+  <tr>
+    <th width="50%">iOS · Connect</th>
+    <th width="50%">Android · Servers</th>
+  </tr>
+  <tr>
+    <td align="center"><a href="./readme/images/connect-ios.png"><img src="./readme/images/connect-ios.png" width="320" alt="iOS connection page showing server selection and current-session traffic"></a></td>
+    <td align="center"><a href="./readme/images/servers-android.png"><img src="./readme/images/servers-android.png" width="320" alt="Android server page grouped by subscription with latency information"></a></td>
+  </tr>
+</table>
+
+### macOS · Smart Routing
+
+![Smart Routing on macOS, with direct-traffic options and a routing preview](./readme/images/smart-routing-macos.png)
+
+### Windows · Custom Routing
+
+![Custom Routing on Windows, with import, sharing, entry-server count, and ordered rules](./readme/images/custom-routing-windows.png)
+
+## First connection
+
+1. Complete the initial setup and grant the requested system permissions. Windows and Linux also require an explicit Xray outbound-interface selection.
+2. Choose a country or region for Smart Routing's direct region, and import your servers or subscription. Both steps can be skipped; you can finish them later.
+3. On **Connect**, select your servers and traffic method, then start the VPN. Smart Routing is a useful starting point; **All via VPN** sends traffic through your selected server, while **Custom Routing** uses your own rules.
+
+Server imports extract nodes, not the source file's routing or DNS configuration. Import complete configurations through Custom Routing or Raw JSON instead.
+
+## Platform features
+
+| Platform | Integration |
+| --- | --- |
+| iOS / macOS | Always-on and on-demand VPN; connect or disconnect on selected Wi-Fi networks; separate cellular (iOS) or Ethernet (macOS) behavior. |
+| Android | Per-app VPN: all apps, only selected apps, or all except selected apps. Inclusion and exclusion lists are saved separately. |
+| Windows / Linux | Explicit Xray outbound-interface selection. |
+| Desktop | Tray controls, launch at login, start hidden, and optional connection when the app opens. |
+
+Light and dark themes and the interface language follow the system by default. Available languages: English, Simplified Chinese, Traditional Chinese, Russian, and Persian, including right-to-left layout for Persian.
+
+## Installation notes
+
+<details>
+<summary>macOS: Mac App Store or OneXraySE</summary>
+
+The Mac App Store build uses a Packet Tunnel extension. The separately distributed **OneXraySE** uses a System Extension and is available through [Homebrew](https://formulae.brew.sh/cask/onexrayse):
 
 ```shell
 brew install --cask onexrayse
-brew uninstall --cask onexrayse
 ```
 
-#### Universal ZIP
+For the ZIP build, extract it and move `OneXraySE.app` to `/Applications` before opening it. Complete the initial setup and approve the VPN and Network Extension requests. Depending on the macOS version, approval may appear in **System Settings → General → Login Items & Extensions** or **Privacy & Security**. Follow any restart prompt. See [Apple's System Extension installation guide](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers).
 
-1. Download and extract `OneXray-macos-universal.zip`.
-2. Move `OneXraySE.app` to `/Applications`. Do not run it directly from Downloads or another folder; macOS requires an app containing a System Extension to be installed in a system Applications directory.
-3. Open OneXraySE from Applications and accept the macOS launch confirmation.
+To update the ZIP build, quit OneXraySE, replace the app in `/Applications`, and reopen it. Approve an extension update if requested.
 
-For the first VPN connection:
+</details>
 
-1. Import a subscription or node, select a node, and click Start.
-2. Open **System Settings > General > Login Items & Extensions**.
-3. Under **Extensions**, open **Network Extensions**, enable **OneXraySE**, and click **Done**.
-4. If **Privacy & Security** also shows an approval request, click **Allow** and restart the Mac if requested.
-5. Return to OneXraySE and click Start again.
+<details>
+<summary>iOS: installing an IPA</summary>
 
-To update the ZIP build, quit OneXraySE, replace the existing app in `/Applications` with the newly extracted `OneXraySE.app`, and reopen it. Approve the System Extension update if macOS asks.
+The App Store is the simplest installation route. An IPA must be re-signed together with its Packet Tunnel extension using provisioning profiles that allow Network Extension capabilities. A free Personal Team cannot provide the required capability; a paid Apple Developer Program membership is required. An app that opens successfully is not proof that its VPN extension is authorized. See [Apple's supported capabilities](https://developer.apple.com/help/account/reference/supported-capabilities-ios/).
 
-See [Installing System Extensions and Drivers](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers) and [Change Login Items & Extensions settings](https://support.apple.com/guide/mac-help/change-login-items-extension-settings-mtusr003/mac).
+</details>
 
-### Windows
+<details>
+<summary>Windows: Microsoft Store package</summary>
 
-Microsoft Store selects the x86_64 or ARM64 package for the current device and
-handles updates. The packaged VCore VPN Provider carries system traffic to an
-internal loopback SOCKS5 listener in OneXrayCore. Its Go resolver sends
-bootstrap DNS through the selected physical interface before opening the proxy
-connection. The per-session VCore Session Host owns that Core process in a
-kill-on-close Job Object; the listener is not exposed as a user proxy.
-Standalone Windows EXE and ZIP builds are obsolete and are not
-upgrade sources for the MSIX package.
+The current Windows implementation uses an MSIX package with a system VPN provider. Microsoft Store selects the matching x64 or ARM64 package and handles updates. Older standalone EXE/ZIP builds are not upgrade sources for this package.
 
-### Android
+</details>
 
-Android builds support `arm64-v8a` and `x86_64`. 32-bit ARM devices are not supported.
+<details>
+<summary>Linux: packages and permissions</summary>
 
-### iOS
-
-If the App Store is unavailable for your Apple ID, download `OneXray-ios.ipa` and install it with [AltStore](https://altstore.io/) or another compatible sideloading tool.
-
-Self-installing the IPA requires re-signing both OneXray and its Packet Tunnel extension with a provisioning profile that authorizes the Network Extension capability. Apple does not support this capability for free Personal Team accounts, so a paid Apple Developer Program membership is required. Without it, the app may open and ping nodes, but the VPN cannot start. See [Apple Developer Forums](https://developer.apple.com/forums/thread/128767) and [Supported capabilities (iOS)](https://developer.apple.com/help/account/reference/supported-capabilities-ios/).
-
-### Linux
-
-For a DEB package:
+On Debian/Ubuntu, install the DEB matching your architecture. It installs the runtime dependencies, registers OneXray links, and grants the required network capabilities:
 
 ```shell
 sudo apt install ./OneXray-linux-x86_64.deb
-sudo apt remove onexray
 ```
 
-For a ZIP package, run these commands from the directory containing `OneXray`:
+For arm64, use `OneXray-linux-aarch64.deb` instead. For the ZIP build on Debian/Ubuntu, run the following from the directory containing the extracted `OneXray` folder:
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
 sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
-GNOME users should install the [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) extension. Linux arm64 currently falls back to English for CJK locales.
+ZIP builds do not register `onexray://` links automatically. GNOME users may need the [AppIndicator extension](https://github.com/ubuntu/gnome-shell-extension-appindicator) for tray controls.
 
-## Contributing
+</details>
 
-Contributions are welcome:
+## Privacy
 
-1. Star this repository.
-2. Improve the [documentation](https://github.com/OneXray/onexray.com).
-3. Share routing templates through [OneXray/Routing](https://github.com/OneXray/Routing).
+No account, advertising, analytics, tracking, telemetry, or crash reporting. OneXray does not collect your traffic, browsing history, configurations, or connection logs. Your configuration determines which servers and services receive network requests. Subscription sources, DNS servers, and other third-party services have their own privacy policies. [Privacy policy](https://onexray.com/docs/privacy/).
 
-See [Development Setup](./readme/FIRST_RUN.md) before building the app locally.
+Shared configurations, subscription URLs, and exported logs may contain credentials or other sensitive data. Review their contents before sharing.
+
+## Documentation and contributing
+
+- [User documentation](https://onexray.com) and [Telegram community](https://t.me/OneXrayApp).
+- [Development setup](./readme/FIRST_RUN.md) for local debugging; [build scripts](./build_scripts/README.md) for packaging.
+- [Current App contracts](./docs/README.md) (Chinese), including [imports and OneXray links](./docs/subscriptions-and-sharing.md).
+- [Report a bug or request a feature](https://github.com/OneXray/OneXray/issues). Include the platform, App/Xray-core versions, and steps to reproduce; do not publish private credentials.
+
+Code, translations, and [documentation improvements](https://github.com/OneXray/onexray.com) are welcome.
 
 ## License
 
-OneXray is licensed under the [GNU General Public License v3.0](./LICENSE).
+[GNU General Public License v3.0](./LICENSE).

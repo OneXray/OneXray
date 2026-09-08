@@ -138,8 +138,16 @@ class ServerImportService {
                (await GeoDataValidator.validate(link.name, link.url)).item1),
        _writeGeoData =
            writeGeoData ??
-           ((link) =>
-               GeoDataService().insertGeoDat(link.name, link.type, link.url));
+           ((link) async {
+             await GeoDataService().add(
+               GeoDataInput(
+                 fileName: link.name,
+                 type: link.type,
+                 url: link.url,
+               ),
+             );
+             return true;
+           });
 
   static void _checkSize(String text) {
     if (text.trim().isEmpty || utf8.encode(text).length > 16 * 1024 * 1024) {

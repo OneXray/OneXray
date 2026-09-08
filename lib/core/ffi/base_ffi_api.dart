@@ -5,11 +5,8 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show protected;
 import 'package:isolate_manager/isolate_manager.dart';
 import 'package:onexray/core/ffi/generated_bindings.dart';
-import 'package:onexray/core/model/tun_json.dart';
-import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
-import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -42,40 +39,9 @@ abstract class BaseFfiApi {
     return dir.path;
   }
 
-  var _vpnStatus = VpnStatus.disconnected;
-
-  Future<NativeVpnCommandResult> readVpnStatus() async {
-    final running = await queryCoreRunning();
-    if (running != null &&
-        _vpnStatus != VpnStatus.connecting &&
-        _vpnStatus != VpnStatus.disconnecting) {
-      _vpnStatus = running ? VpnStatus.connected : VpnStatus.disconnected;
-    }
-    await AppFlutterApi().vpnStatusChanged(_vpnStatus);
-    return commandSuccess();
-  }
-
-  Future<bool?> queryCoreRunning() async => null;
-
-  Future<void> updateVpnStatus(VpnStatus status) async {
-    _vpnStatus = status;
-    await AppFlutterApi().vpnStatusChanged(_vpnStatus);
-  }
-
-  Future<NativeVpnCommandResult> startVpn() async {
-    await updateVpnStatus(VpnStatus.connecting);
-
-    final request = await StartVpnRequestReader.readFromStartFile();
-    final coreRequest = readRunXrayRequest(request);
-
-    var res = await startCore(coreRequest, request.tun);
-    if (!res) {
-      await stopVpn();
-      return commandFailed();
-    }
-    await updateVpnStatus(VpnStatus.connected);
-    return commandSuccess();
-  }
+  Future<NativeVpnCommandResult> readVpnStatus();
+  Future<NativeVpnCommandResult> startVpn();
+  Future<NativeVpnCommandResult> stopVpn();
 
   @protected
   LibXrayRunConfig readRunXrayRequest(StartVpnRequest request) {
@@ -88,10 +54,6 @@ abstract class BaseFfiApi {
       );
     }
     return LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
-  }
-
-  Future<bool> startCore(LibXrayRunConfig request, TunJson? tun) async {
-    return true;
   }
 
   Future<String?> materializeRunXrayConfig(LibXrayRunConfig request) async {
@@ -120,20 +82,6 @@ abstract class BaseFfiApi {
     }
   }
 
-  Future<bool> stopCore() async => true;
-
-  Future<NativeVpnCommandResult> stopVpn() async {
-    await updateVpnStatus(VpnStatus.disconnecting);
-    final stopped = await stopCore();
-    if (!stopped) {
-      await updateVpnStatus(VpnStatus.connected);
-      return commandFailed();
-    }
-    await Future.delayed(Duration(seconds: 1));
-    await updateVpnStatus(VpnStatus.disconnected);
-    return commandSuccess();
-  }
-
   PlatformPermissionResult _permissionNotRequired() {
     return PlatformPermissionResult(
       kind: PlatformPermissionKind.none,
@@ -142,9 +90,10 @@ abstract class BaseFfiApi {
   }
 
   @protected
-  NativeVpnCommandResult commandSuccess() {
+  NativeVpnCommandResult commandSuccess({VpnStatus? status}) {
     return NativeVpnCommandResult(
       state: NativeVpnCommandState.success,
+      status: status,
       permission: _permissionNotRequired(),
     );
   }

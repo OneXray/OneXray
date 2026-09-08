@@ -6,7 +6,6 @@ import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/view.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -40,7 +39,7 @@ class _ServersPageState extends State<ServersPage> {
   @override
   Widget build(BuildContext context) => BlocProvider.value(
     value: controller,
-    child: BlocBuilder<ServersController, ConnectPageState>(
+    child: BlocBuilder<ServersController, ServersPageState>(
       builder: (context, state) {
         final l = AppLocalizations.of(context)!;
         final mobileRoot =
@@ -93,7 +92,9 @@ class _ServersPageState extends State<ServersPage> {
           ),
           body: SafeArea(
             child: ServerLoadState(
-              controller: controller,
+              ready: controller.ready,
+              failed: controller.failed,
+              onRetry: controller.initialize,
               child: ResponsiveContent(
                 desktopMaxWidth: AppLayout.standardMaxWidth,
                 child: ServerBrowser(controller: controller, scroll: scroll),
@@ -122,7 +123,7 @@ class ServerGroupPage extends StatelessWidget {
     final controller = params.controller;
     return BlocProvider.value(
       value: controller,
-      child: BlocBuilder<ServersController, ConnectPageState>(
+      child: BlocBuilder<ServersController, ServersPageState>(
         builder: (context, _) {
           final l = AppLocalizations.of(context)!;
           final group = controller
@@ -153,25 +154,25 @@ class ServerGroupPage extends StatelessWidget {
 }
 
 class ServerLoadState extends StatelessWidget {
-  final ServersController controller;
+  final bool ready, failed;
+  final VoidCallback onRetry;
   final Widget child;
   const ServerLoadState({
     super.key,
-    required this.controller,
+    required this.ready,
+    required this.failed,
+    required this.onRetry,
     required this.child,
   });
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    if (controller.failed) {
+    if (failed) {
       return Center(
-        child: FilledButton(
-          onPressed: () => controller.initialize(),
-          child: Text(l.prototypeRetry),
-        ),
+        child: FilledButton(onPressed: onRetry, child: Text(l.prototypeRetry)),
       );
     }
-    if (!controller.ready) {
+    if (!ready) {
       return const Center(child: CircularProgressIndicator());
     }
     return child;

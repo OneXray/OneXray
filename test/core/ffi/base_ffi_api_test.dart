@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
+import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:path/path.dart' as p;
@@ -135,12 +136,18 @@ void main() {
   });
 }
 
-final class _TestFfiApi extends BaseFfiApi {
+final class _TestFfiApi extends LinuxFfiApi {
   final bool stopResult;
   final String? directory;
   final List<VpnStatus> statuses = [];
 
-  _TestFfiApi({required this.stopResult, this.directory});
+  _TestFfiApi({required this.stopResult, this.directory})
+    : super.forTesting(
+        filesDirectory: directory ?? '',
+        executablePath: '',
+        procDirectory: '',
+        signalProcess: (_, _) => false,
+      );
 
   @override
   Future<String> getTunFilesDir() async =>

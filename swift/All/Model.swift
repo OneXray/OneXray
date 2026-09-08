@@ -67,8 +67,6 @@ struct TunJson: Codable {
     var enableDot: Bool?
     var dnsServerName: String?
     var enableIPv6: Bool?
-    var metricsEnabled: Bool?
-    var tunName: String?
     var autoOutboundsInterface: String?
     var includeAllNetworks: Bool?
     var excludeLocalNetworks: Bool?

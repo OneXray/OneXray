@@ -139,21 +139,20 @@ class ConnectionPreparation {
       if (row == null) throw const FormatException('Final exit is unavailable');
       finalExit = serverDrafts[row.id] ?? ResolvedServer.fromRow(row);
     }
-    final assets = Directory(VpnConstants.datDir);
-    for (final name in ['geosite', 'geoip']) {
-      if (!await File(p.join(assets.path, '$name.dat')).exists()) {
-        throw const FormatException('Default routing data is missing');
-      }
+    var regions = const RegionCatalog.empty();
+    if (!settings.expert &&
+        settings.trafficMode == TrafficMode.smart &&
+        settings.smart.directRegions.isNotEmpty) {
+      Future<Map<String, dynamic>> readIndex(String name) async => jsonDecode(
+        await File(p.join(VpnConstants.datDir, '$name.json')).readAsString(),
+      ) as Map<String, dynamic>;
+      regions = RegionCatalog.fromJson(
+        jsonDecode(await rootBundle.loadString(RegionCatalog.assetPath))
+            as Map<String, dynamic>,
+        geositeCodes: RegionCatalog.codesFromIndex(await readIndex('geosite')),
+        geoipCodes: RegionCatalog.codesFromIndex(await readIndex('geoip')),
+      );
     }
-    Future<Map<String, dynamic>> readIndex(String name) async =>
-        jsonDecode(await File(p.join(assets.path, '$name.json')).readAsString())
-            as Map<String, dynamic>;
-    final regions = RegionCatalog.fromJson(
-      jsonDecode(await rootBundle.loadString(RegionCatalog.assetPath))
-          as Map<String, dynamic>,
-      geositeCodes: RegionCatalog.codesFromIndex(await readIndex('geosite')),
-      geoipCodes: RegionCatalog.codesFromIndex(await readIndex('geoip')),
-    );
     final rawConfig = raw == null ? null : ConnectionCompiler.parseRawJson(raw);
     final rawInbounds = rawConfig?['inbounds'] ?? [];
     if (rawInbounds is! List ||

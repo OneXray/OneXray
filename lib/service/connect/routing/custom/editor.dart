@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/asset_edit.dart';
 import 'package:onexray/service/connect/preparation.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -75,9 +76,7 @@ class CustomRoutingEditorService {
     if (original == null && (await rows).length >= 3) {
       throw const CustomRoutingEditorException('limit');
     }
-    await coordinator.initialize();
-    await coordinator.refresh();
-    final configuration = await coordinator.configuration;
+    final configuration = await coordinator.readForEditing();
     final connection = configuration.connection;
     final selected = original != null && _selects(connection, original.id);
     final running = coordinator.state.value.runtime?.configuration.connection;
@@ -92,22 +91,14 @@ class CustomRoutingEditorService {
         selected &&
         !connection.expert &&
         !sameRouting(CustomRoutingService.read(original), state);
-    var allowReconnect = false;
-    if (affectsRuntime &&
-        coordinator.state.value.phase == ConnectionPhase.connected) {
-      allowReconnect = await confirmReconnect();
-      if (!allowReconnect) return null;
-    }
-    await _checkConfiguration(configuration);
     int? savedId = original?.id;
-    await coordinator.apply(
+    final saved = await coordinator.saveEditedAsset(
       configuration,
+      confirmReconnect: confirmReconnect,
       imported: imported,
       validateAssets: () =>
           CustomRoutingService.validate(state, testXray: testXray),
       affectsRuntime: affectsRuntime,
-      allowReconnect: allowReconnect,
-      expectedConfiguration: configuration.encode(),
       prepare: affectsRuntime
           ? (next, cancelled) =>
                 prepare?.call(next, cancelled, state) ??
@@ -119,13 +110,12 @@ class CustomRoutingEditorService {
                 )
           : null,
       writeAssets: () async {
-        await _checkConfiguration(configuration);
         await _checkName(name, original?.id);
         if (original != null) await _checkOriginal(original);
         savedId = await CustomRoutingService(db).save(state);
       },
     );
-    return savedId;
+    return saved ? savedId : null;
   }
 
   Future<bool> delete(
@@ -133,9 +123,7 @@ class CustomRoutingEditorService {
     required Future<bool> Function(bool selected, bool reconnect) confirm,
   }) async {
     await _checkOriginal(original);
-    await coordinator.initialize();
-    await coordinator.refresh();
-    final configuration = await coordinator.configuration;
+    final configuration = await coordinator.readForEditing();
     final connection = configuration.connection;
     final selected = _selects(connection, original.id);
     final running = coordinator.state.value.runtime?.configuration.connection;
@@ -150,7 +138,6 @@ class CustomRoutingEditorService {
         affectsRuntime &&
         coordinator.state.value.phase == ConnectionPhase.connected;
     if (!await confirm(selected, reconnect)) return false;
-    await _checkConfiguration(configuration);
     final next = selected
         ? ConnectionConfiguration(
             connection: ConnectionSettings.fromJson({
@@ -167,7 +154,6 @@ class CustomRoutingEditorService {
       allowReconnect: reconnect,
       expectedConfiguration: configuration.encode(),
       writeAssets: () async {
-        await _checkConfiguration(configuration);
         await _checkOriginal(original);
         if (await db.routingProfileDao.deleteRow(original.id) != 1) {
           throw const CustomRoutingEditorException('missing');
@@ -182,12 +168,6 @@ class CustomRoutingEditorService {
     if (current == null ||
         current.data != original.data ||
         current.name != original.name) {
-      throw const CustomRoutingEditorException('changed');
-    }
-  }
-
-  Future<void> _checkConfiguration(ConnectionConfiguration expected) async {
-    if ((await coordinator.configuration).encode() != expected.encode()) {
       throw const CustomRoutingEditorException('changed');
     }
   }

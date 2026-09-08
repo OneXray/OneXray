@@ -31,6 +31,7 @@ import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker.dart';
 import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 import 'package:onexray/pages/servers/editor/page.dart';
 import 'package:onexray/pages/servers/subscription/page.dart';
 import 'package:onexray/pages/connect/raw_editor/page.dart';

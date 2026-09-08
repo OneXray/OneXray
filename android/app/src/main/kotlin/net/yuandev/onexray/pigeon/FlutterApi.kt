@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 class AppFlutterApi(binaryMessenger: BinaryMessenger) {
     private val flutterApi: BridgeFlutterApi = BridgeFlutterApi(binaryMessenger)
 
-    private var vpnStatus = VpnStatus.DISCONNECTED
+    @Volatile private var vpnStatus = VpnStatus.DISCONNECTED
 
     suspend fun refreshVpnStatus() {
         vpnStatusChanged(vpnStatus)
@@ -18,10 +18,14 @@ class AppFlutterApi(binaryMessenger: BinaryMessenger) {
         return vpnStatus
     }
 
+    fun setVpnStatus(status: VpnStatus) {
+        vpnStatus = status
+    }
+
     suspend fun vpnStatusChanged(status: VpnStatus) {
         XLog.d("AppFlutterApi: vpnStatusChanged $status")
         withContext(Dispatchers.Main) {
-            vpnStatus = status
+            setVpnStatus(status)
             flutterApi.vpnStatusChanged(status) {
             }
         }

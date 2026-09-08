@@ -129,9 +129,16 @@ class PlatformPermissionResult {
 }
 
 class NativeVpnCommandResult {
-  NativeVpnCommandResult({required this.state, this.permission, this.message});
+  NativeVpnCommandResult({
+    required this.state,
+    this.permission,
+    this.message,
+    this.status,
+  });
 
   final NativeVpnCommandState state;
+  // A successful readVpnStatus supplies status directly; commands may omit it.
+  final VpnStatus? status;
   final PlatformPermissionResult? permission;
   final String? message;
 }
