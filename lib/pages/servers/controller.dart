@@ -554,13 +554,7 @@ class ServersController extends ConnectController {
             setSourceError(source.id, null);
             ContextAlert.showToast(
               context,
-              result.parseFailureCount == null
-                  ? l.prototypeUsableNodes(result.count)
-                  : l.prototypeSubscriptionImportResult(
-                      source.name,
-                      result.count,
-                      result.parseFailureCount!,
-                    ),
+              l.prototypeUsableNodes(result.count),
             );
           } else {
             setSourceError(source.id, l.prototypeSubscriptionUpdateFailed);
@@ -570,10 +564,7 @@ class ServersController extends ConnectController {
             if (closeSources) navigator.pop();
             await showAppDialog<void>(
               dialogContext,
-              (_) => SourceUpdateErrorDialog(
-                sourceName: source.name,
-                failedCount: result.parseFailureCount ?? 0,
-              ),
+              (_) => SourceUpdateErrorDialog(sourceName: source.name),
             );
           }
         }, sourceId: source.id);

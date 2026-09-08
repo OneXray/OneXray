@@ -49,4 +49,33 @@ void main() {
     release.complete();
     await pending;
   });
+
+  test(
+    'pause cancels pending work and drains only the running command',
+    () async {
+      final queue = CommandSerialExecutor();
+      final release = Completer<void>();
+      final started = Completer<void>();
+      final first = queue.run(() async {
+        started.complete();
+        await release.future;
+        return 1;
+      });
+      await started.future;
+      final second = expectLater(
+        queue.run(() async => fail('Pending command must not run')),
+        throwsStateError,
+      );
+      var idle = false;
+      final pausing = queue.pause().then((_) => idle = true);
+      await expectLater(queue.run(() async => 3), throwsStateError);
+      expect(idle, isFalse);
+      release.complete();
+      expect(await first, 1);
+      await second;
+      await pausing;
+      queue.resume();
+      expect(await queue.run(() async => 4), 4);
+    },
+  );
 }

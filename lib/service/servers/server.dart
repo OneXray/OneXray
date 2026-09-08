@@ -11,7 +11,6 @@ import 'package:onexray/service/connect/preparation.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
@@ -198,29 +197,30 @@ class ServerAssetService {
     return true;
   }
 
-  Future<void> favorite(int id, bool value) => DataMaintenance.run(() async {
+  Future<void> favorite(int id, bool value) async {
     await (db.update(db.coreConfig)
           ..where((row) => row.id.equals(id) & row.type.equals('outbound')))
         .write(CoreConfigCompanion(favorite: Value(value)));
-  });
+  }
 
-  Future<int> copyLocal(CoreConfigData row, String suffix) =>
-      DataMaintenance.run(() async {
-        final current = await db.coreConfigDao.searchRow(row.id);
-        if (current == null || current.type != 'outbound') {
-          throw const FormatException('Server no longer exists');
-        }
-        final outbound = readOutboundFromDbData(current);
-        outbound['tag'] = '${outboundDisplayName(outbound)} · $suffix';
-        final id = await db.coreConfigDao.insertAssetRow(
-          outboundCompanion(outbound).copyWith(
-            countryCode: Value(current.countryCode),
-            favorite: const Value(false),
-          ),
-        );
-        _schedule([id]);
-        return id;
-      });
+  Future<int> copyLocal(CoreConfigData row, String suffix) async {
+    final id = await db.transaction(() async {
+      final current = await db.coreConfigDao.searchRow(row.id);
+      if (current == null || current.type != 'outbound') {
+        throw const FormatException('Server no longer exists');
+      }
+      final outbound = readOutboundFromDbData(current);
+      outbound['tag'] = '${outboundDisplayName(outbound)} · $suffix';
+      return db.coreConfigDao.insertAssetRow(
+        outboundCompanion(outbound).copyWith(
+          countryCode: Value(current.countryCode),
+          favorite: const Value(false),
+        ),
+      );
+    });
+    _schedule([id]);
+    return id;
+  }
 
   Future<ServerRemoval> previewRemoval({
     Set<int> ids = const {},

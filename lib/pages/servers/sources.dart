@@ -154,14 +154,9 @@ class _HelpRow extends StatelessWidget {
 }
 
 class SourceUpdateErrorDialog extends StatelessWidget {
-  const SourceUpdateErrorDialog({
-    super.key,
-    required this.sourceName,
-    required this.failedCount,
-  });
+  const SourceUpdateErrorDialog({super.key, required this.sourceName});
 
   final String sourceName;
-  final int failedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -203,32 +198,6 @@ class SourceUpdateErrorDialog extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _ImportStat(
-                    label: l.prototypeUsableNodes(0),
-                    foreground: palette.running,
-                    background: palette.runningSurface,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ImportStat(
-                    label: l.prototypeUnrecognizedNodes(failedCount),
-                    foreground: failedCount > 0
-                        ? palette.restartingText
-                        : palette.running,
-                    background: failedCount > 0
-                        ? palette.warningSurface
-                        : palette.runningSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
       actions: [
@@ -239,31 +208,6 @@ class SourceUpdateErrorDialog extends StatelessWidget {
       ],
     );
   }
-}
-
-class _ImportStat extends StatelessWidget {
-  const _ImportStat({
-    required this.label,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(AppRadii.control),
-    ),
-    child: Text(
-      label,
-      style: AppTypography.importStat.copyWith(color: foreground),
-    ),
-  );
 }
 
 class _SourceRow extends StatelessWidget {

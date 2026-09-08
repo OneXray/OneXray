@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
@@ -5,7 +7,6 @@ import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/system_state.dart';
 import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 class DataUpdateService {
   static final DataUpdateService _singleton = DataUpdateService._internal();
@@ -14,41 +15,49 @@ class DataUpdateService {
 
   DataUpdateService._internal();
 
-  var _running = false;
+  Completer<void>? _running;
+  var _paused = false;
+
+  Future<void> pauseForDataClear() {
+    _paused = true;
+    return _running?.future ?? Future.value();
+  }
+
+  void resumeAfterDataClear() => _paused = false;
 
   Future<void> checkAndRun({
     bool updateSubscription = true,
     bool updateGeoData = true,
   }) async {
-    if (_running || AppEventBus.instance.state.downloading) {
+    if (_paused || _running != null || AppEventBus.instance.state.downloading) {
       return;
     }
 
-    _running = true;
+    final finished = Completer<void>();
+    _running = finished;
     try {
       final autoUpdateState = AutoUpdateState();
       await autoUpdateState.readFromPreferences();
+      if (_paused) return;
       final shouldUpdateSubscription =
           updateSubscription && autoUpdateState.subscriptionEnabled;
       final shouldUpdateGeoData =
           updateGeoData && autoUpdateState.geoDataEnable;
       if (!shouldUpdateSubscription && !shouldUpdateGeoData) return;
-      // Scheduler callbacks may inherit a live connection command's Zone, but
-      // their writes must remain registered after that command returns.
-      await DataMaintenance.run(() async {
-        if (shouldUpdateSubscription) {
-          await SubscriptionService().refreshOutdatedSubscription(
-            autoUpdateState: autoUpdateState,
-          );
-        }
-        if (shouldUpdateGeoData) {
-          await _refreshOutdatedGeoData(autoUpdateState);
-        }
-      }, independent: true);
+      if (shouldUpdateSubscription) {
+        await SubscriptionService().refreshOutdatedSubscription(
+          autoUpdateState: autoUpdateState,
+          isCancelled: () => _paused,
+        );
+      }
+      if (shouldUpdateGeoData && !_paused) {
+        await _refreshOutdatedGeoData(autoUpdateState);
+      }
     } catch (_) {
-      ygLogger('Data update check failed');
+      if (!_paused) ygLogger('Data update check failed');
     } finally {
-      _running = false;
+      _running = null;
+      finished.complete();
     }
   }
 
@@ -56,6 +65,7 @@ class DataUpdateService {
     final interval = autoUpdateState.geoDataInterval.value;
     final now = DateTime.now();
     final systemGeoData = await SystemGeoDatState.system;
+    if (_paused) return;
     if (_expired(systemGeoData, now, interval)) {
       try {
         await GeoDataService().refreshSystemGeoDat(systemGeoData);
@@ -67,6 +77,7 @@ class DataUpdateService {
 
     final customGeoData = await AppDatabase().geoDataDao.allRows;
     for (final geoData in customGeoData) {
+      if (_paused) break;
       if (now.difference(geoData.timestamp).inHours >= interval) {
         await GeoDataService().updateGeoDat(geoData);
       }

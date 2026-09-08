@@ -224,10 +224,7 @@ void main() {
           localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: const Scaffold(
-            body: SourceUpdateErrorDialog(
-              sourceName: 'Example subscription',
-              failedCount: 3,
-            ),
+            body: SourceUpdateErrorDialog(sourceName: 'Example subscription'),
           ),
         ),
       );
@@ -241,8 +238,6 @@ void main() {
         find.text(l.prototypeSubscriptionExistingNodesKept),
         findsOneWidget,
       );
-      expect(find.text(l.prototypeUsableNodes(0)), findsOneWidget);
-      expect(find.text(l.prototypeUnrecognizedNodes(3)), findsOneWidget);
       expect(find.text(l.prototypeDone), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

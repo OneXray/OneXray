@@ -180,7 +180,7 @@ class AppHostApi {
     return [];
   }
 
-  Future<ConvertShareLinksReport> convertShareLinksToXrayJson(
+  Future<List<Map<String, dynamic>>> convertShareLinksToXrayJson(
     String text, {
     String? ageSecretKey,
   }) async {
@@ -197,26 +197,14 @@ class AppHostApi {
       ),
     );
     final data = response.data;
-    if (data == null) {
+    if (!response.success || data == null) {
       throw LibXrayInvokeException(response.error);
     }
-    if (data['config'] is! Map<String, dynamic> ||
-        data['usableCount'] is! int ||
-        data['failedCount'] is! int) {
-      throw const FormatException('Invalid import statistics');
+    final outbounds = data['outbounds'];
+    if (outbounds is! List) {
+      throw const FormatException('Invalid import outbounds');
     }
-    // An identified document may report zero usable items as a structured
-    // failure. It is useful feedback, never permission to overwrite assets.
-    final report = ConvertShareLinksReport.fromJson(data);
-    final outbounds = report.config['outbounds'];
-    if (report.usableCount < 0 ||
-        report.failedCount < 0 ||
-        outbounds is! List ||
-        outbounds.length != report.usableCount ||
-        response.success != (report.usableCount > 0)) {
-      throw const FormatException('Invalid import statistics');
-    }
-    return report;
+    return outbounds.cast<Map<String, dynamic>>();
   }
 
   Future<GenerateAgeKeyPairResponse> generateAgeKeyPair({

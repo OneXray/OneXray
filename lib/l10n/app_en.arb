@@ -721,10 +721,6 @@
   "@prototypeImportLinksHint": {
     "description": "Approved prototype copy: One link per line. Supports servers, subscriptions, and OneXray import links."
   },
-  "prototypeSubscriptionDirectImportNotice": "Subscriptions import directly; local servers and configurations are previewed first.",
-  "@prototypeSubscriptionDirectImportNotice": {
-    "description": "Approved prototype copy: Subscriptions import directly; local servers and configurations are previewed first."
-  },
   "prototypeNoSupportedLinks": "No supported links were recognized. Check the input and try again.",
   "@prototypeNoSupportedLinks": {
     "description": "Approved prototype copy: No supported links were recognized. Check the input and try again."
@@ -797,10 +793,6 @@
   "@prototypeLocalInputPrivacy": {
     "description": "Approved prototype copy: Input is processed on this device and is never sent to OneXray."
   },
-  "prototypeDetect": "Detect",
-  "@prototypeDetect": {
-    "description": "Approved prototype copy: Detect"
-  },
   "prototypeImportPreview": "Import preview",
   "@prototypeImportPreview": {
     "description": "Approved prototype copy: Import preview"
@@ -812,15 +804,6 @@
   "prototypeUsableNodes": "Usable nodes: {count}",
   "@prototypeUsableNodes": {
     "description": "Approved prototype copy: Usable nodes: {count}",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "prototypeUnrecognizedNodes": "Unrecognized nodes: {count}",
-  "@prototypeUnrecognizedNodes": {
-    "description": "Approved prototype copy: Unrecognized nodes: {count}",
     "placeholders": {
       "count": {
         "type": "int"
@@ -839,24 +822,9 @@
   "@prototypeSubscriptionExistingNodesKept": {
     "description": "Approved prototype copy: No usable nodes were recognized. Existing nodes were kept."
   },
-  "prototypeSubscriptionImportResult": "{name}: imported {count} nodes; {failed} could not be recognized",
-  "@prototypeSubscriptionImportResult": {
-    "description": "Approved prototype copy: {name}: imported {count} nodes; {failed} could not be recognized",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "count": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  },
-  "prototypeSubscriptionsImported": "{count} subscriptions imported. Only the remaining local items need confirmation.",
+  "prototypeSubscriptionsImported": "{count} subscriptions imported.",
   "@prototypeSubscriptionsImported": {
-    "description": "Approved prototype copy: {count} subscriptions imported. Only the remaining local items need confirmation.",
+    "description": "Number of subscriptions imported successfully.",
     "placeholders": {
       "count": {
         "type": "int"

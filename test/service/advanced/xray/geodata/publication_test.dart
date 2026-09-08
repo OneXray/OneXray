@@ -16,7 +16,6 @@ import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
@@ -195,7 +194,6 @@ void main() {
     try {
       await reading.future;
       releaseDownload.complete();
-      expect(await DataMaintenance.run(() async => 1), 1);
       await Future<void>.delayed(const Duration(milliseconds: 30));
       expect(published, isFalse);
     } finally {
@@ -328,8 +326,7 @@ void main() {
     }
     await started.future;
     expect(
-      await DataMaintenance.run(service.publishedFiles)
-          .timeout(const Duration(seconds: 1)),
+      await service.publishedFiles().timeout(const Duration(seconds: 1)),
       hasLength(2),
     );
 
@@ -408,10 +405,12 @@ void main() {
     await service.ensureInstalled();
     await service.add(input());
 
-    await DataMaintenance.exclusive(() async {
+    await service.pauseForDataClear();
+    await service.withFiles(() async {
       await db.geoDataDao.clear();
       await service.resetAfterDataClear();
     });
+    service.resumeAfterDataClear();
 
     expect((await db.geoDataDao.publishedRows).map((row) => row.id).toSet(), {
       -2,
@@ -696,12 +695,14 @@ void main() {
       };
       final preparing = service.prepareImports([input()]);
       await started.future;
-      await DataMaintenance.exclusive(
-        () => service.withFiles(() async {
-          await db.geoDataDao.clear();
-          await service.resetAfterDataClear();
-        }),
-      ).timeout(const Duration(seconds: 1));
+      await service.pauseForDataClear();
+      await service
+          .withFiles(() async {
+            await db.geoDataDao.clear();
+            await service.resetAfterDataClear();
+          })
+          .timeout(const Duration(seconds: 1));
+      service.resumeAfterDataClear();
       release.complete();
       final draft = await preparing;
       expect(await db.geoDataDao.allRows, isEmpty);

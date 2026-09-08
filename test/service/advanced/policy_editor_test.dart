@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -14,7 +13,6 @@ import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 void main() {
   late AppDatabase db;
@@ -43,72 +41,59 @@ void main() {
     });
   });
 
-  for (final replaceConfiguration in [false, true]) {
-    test(
-      'tunnel save waits for maintenance and rechecks its draft ($replaceConfiguration)',
-      () async {
-        final service = PolicyEditorService(
-          coordinator: coordinator,
-          platform: ConnectionPlatform.ios,
-        );
-        final draft = await service.load();
-        draft.policy['ipv6Enabled'] = false;
-        final release = Completer<void>();
-        final maintenance = DataMaintenance.exclusive(() async {
-          await release.future;
-          if (replaceConfiguration) {
-            await db.connectionConfigDao.commit(
-              configurationJson: ConnectionConfiguration(
-                policy: PlatformPolicy.fromJson({
-                  'log': {'enabled': true},
-                }),
-              ).encode(),
-            );
-          }
-        });
-        Object? failure;
-        bool? saved;
-        final saving = service
-            .save(
-              draft: draft,
-              confirm: (_) async => fail('Must not reconnect'),
-            )
-            .then<void>(
-              (value) => saved = value,
-              onError: (Object e) => failure = e,
-            );
-        try {
-          await Future<void>.delayed(Duration.zero);
-          expect(failure, isNull);
-          expect(saved, isNull, reason: 'Save should wait for maintenance');
-        } finally {
-          release.complete();
-          await maintenance;
-          await saving;
-        }
-        final stored = await coordinator.configuration;
-        if (replaceConfiguration) {
-          expect(
-            failure,
-            isA<ConnectionHostException>().having(
-              (error) => error.reason,
-              'reason',
-              'configurationChanged',
-            ),
-          );
-          expect(saved, isNull);
-          expect(stored.policy.toJson()['log']['enabled'], isTrue);
-          expect(stored.policy.ipv6Enabled, isTrue);
-        } else {
-          expect(failure, isNull);
-          expect(saved, isTrue);
-          expect(stored.policy.ipv6Enabled, isFalse);
-        }
-        expect(stops, 0);
-      },
+  test('tunnel save does not wait for a paused connection queue', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.ios,
     );
-  }
+    final draft = await service.load();
+    draft.policy['ipv6Enabled'] = false;
+    await coordinator.pauseForDataClear();
+    try {
+      await expectLater(
+        service
+            .save(draft: draft, confirm: (_) async => false)
+            .timeout(const Duration(seconds: 1)),
+        throwsStateError,
+      );
+      expect((await coordinator.configuration).policy.ipv6Enabled, isTrue);
+    } finally {
+      coordinator.resumeAfterDataClear();
+    }
+    expect(
+      await service.save(draft: draft, confirm: (_) async => false),
+      isTrue,
+    );
+    expect((await coordinator.configuration).policy.ipv6Enabled, isFalse);
+    expect(stops, 0);
+  });
 
+  test('tunnel save rechecks the draft after data was cleared', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.ios,
+    );
+    final draft = await service.load();
+    await coordinator.pauseForDataClear();
+    await db.connectionConfigDao.commit(
+      configurationJson: ConnectionConfiguration(
+        policy: PlatformPolicy.fromJson({
+          'log': {'enabled': true},
+        }),
+      ).encode(),
+    );
+    coordinator.resumeAfterDataClear();
+    await expectLater(
+      service.save(draft: draft, confirm: (_) async => false),
+      throwsA(
+        isA<ConnectionHostException>().having(
+          (error) => error.reason,
+          'reason',
+          'configurationChanged',
+        ),
+      ),
+    );
+  });
   test(
     'restoring defaults changes only the draft, not storage or VPN',
     () async {

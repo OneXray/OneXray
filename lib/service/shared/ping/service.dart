@@ -11,7 +11,6 @@ import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/state.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
@@ -51,6 +50,10 @@ class PingService {
 
   bool get isPinging => _pingingTaskCount > 0;
 
+  Future<void> pauseForDataClear() => _pingQueue.pause();
+
+  void resumeAfterDataClear() => _pingQueue.resume();
+
   /// Setup only imports. Normal startup enables background probes after native
   /// readiness checks; unmeasured DB rows are the backlog, not a second queue.
   void startAutomatic() {
@@ -65,7 +68,6 @@ class PingService {
     );
   }
 
-  // Existing jobs retain their normal queue and clear-data protection.
   void stopAutomatic() => _automaticEnabled = false;
 
   Future<void> _scheduleUnmeasured() async {
@@ -74,7 +76,7 @@ class PingService {
   }
 
   void schedulePingConfigIds(List<int> ids) {
-    if (!_automaticEnabled) return;
+    if (!_automaticEnabled || _pingQueue.isPaused) return;
     unawaited(pingConfigIds(ids));
   }
 
@@ -115,7 +117,7 @@ class PingService {
   }
 
   void schedulePingSubscriptions(Iterable<int> subIds) {
-    if (!_automaticEnabled) return;
+    if (!_automaticEnabled || _pingQueue.isPaused) return;
     final targetSubIds = subIds
         .where((id) => id > DBConstants.defaultId)
         .toSet()
@@ -134,19 +136,13 @@ class PingService {
   }
 
   Future<void> _enqueuePing(Future<void> Function() task) {
-    // Register independently while queued, including probes dispatched by an
-    // import. Clear-data waits for them even after the import has returned.
-    final next = DataMaintenance.run(() async {
-      _startPinging();
-      try {
-        await _pingQueue.run(task);
-      } finally {
-        _stopPinging();
-      }
-    }, independent: true);
+    _startPinging();
+    final next = _pingQueue.run(task).whenComplete(_stopPinging);
     unawaited(
       next.catchError((Object error, StackTrace stackTrace) {
-        ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
+        if (!_pingQueue.isPaused) {
+          ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
+        }
       }),
     );
     return next;
@@ -192,7 +188,7 @@ class PingService {
     for (final rowSlice in batches) {
       // ponytail: finish and save the current batch; native cancellation can
       // be added if stopping up to five in-flight probes immediately is needed.
-      if (isCancelled?.call() ?? false) break;
+      if (_pingQueue.isPaused || (isCancelled?.call() ?? false)) break;
       final batchRows = <CoreConfigData>[];
       final sources = <PingBatchSource>[];
       for (final row in rowSlice) {

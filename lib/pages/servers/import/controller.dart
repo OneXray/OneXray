@@ -433,7 +433,6 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
       customCount: local?.customCount ?? 0,
       geoDataCount: local?.geoDataCount ?? 0,
       subscriptionCount: state.importedSubscriptionCount,
-      failureCount: local?.failureCount,
       failedGeoData: local?.failedGeoData ?? const [],
     );
     if (detection.localText.trim().isNotEmpty &&
@@ -549,6 +548,25 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     ServerImportPreview? preview;
     try {
       preview = await service.preview(input, manual: manual);
+      if (!context.mounted) {
+        await preview.dispose();
+        return null;
+      }
+      if (!preview.hasItems) {
+        final error = AppLocalizations.of(context)!.prototypeNoSupportedLinks;
+        await preview.dispose();
+        emit(state.copyWith(error: error));
+        return null;
+      }
+      if (preview.rawCount == 0 &&
+          preview.customRoutes.isEmpty &&
+          preview.geoData.isEmpty) {
+        try {
+          return await _commit(context, preview);
+        } finally {
+          await preview.dispose();
+        }
+      }
     } catch (_) {
       if (context.mounted) {
         final l10n = AppLocalizations.of(context)!;
@@ -597,12 +615,26 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     }
     emit(state.copyWith(busy: true, error: null));
     try {
+      final result = await _commit(context, preview);
+      if (result != null && result.writeFailureCount == 0 && context.mounted) {
+        Navigator.of(context).pop(result);
+      }
+    } finally {
+      emit(state.copyWith(busy: false));
+    }
+  }
+
+  Future<ServerImportResult?> _commit(
+    BuildContext context,
+    ServerImportPreview preview,
+  ) async {
+    try {
       final result = await service.commit(preview);
       if (context.mounted) {
         final l10n = AppLocalizations.of(context)!;
         if (result.writeFailureCount > 0) {
           emit(state.copyWith(committedResult: result));
-          return;
+          return result;
         }
         _showSuccess(
           context,
@@ -621,17 +653,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
                 )
               : l10n.prototypeGeodataAdded,
         );
-        Navigator.of(context).pop(result);
       }
+      return result;
     } catch (_) {
       if (context.mounted) {
         emit(
           state.copyWith(error: AppLocalizations.of(context)!.buttonAddFailed),
         );
       }
-    } finally {
-      emit(state.copyWith(busy: false));
     }
+    return null;
   }
 
   Future<void> subscribe(BuildContext context) async {
@@ -697,22 +728,9 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         emit(state.copyWith(error: subscriptionError(l10n, result.status)));
         return;
       }
-      _showSuccess(
-        context,
-        result.parseFailureCount == null
-            ? l10n.prototypeUsableNodes(result.count)
-            : l10n.prototypeSubscriptionImportResult(
-                input.name,
-                result.count,
-                result.parseFailureCount!,
-              ),
-      );
+      _showSuccess(context, l10n.prototypeUsableNodes(result.count));
       Navigator.of(context).pop(
-        ServerImportResult(
-          count: result.count,
-          subscriptionId: result.subId,
-          failureCount: result.parseFailureCount,
-        ),
+        ServerImportResult(count: result.count, subscriptionId: result.subId),
       );
     } catch (_) {
       if (context.mounted) {

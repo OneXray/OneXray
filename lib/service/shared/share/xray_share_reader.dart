@@ -5,30 +5,16 @@ import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
 
-class ShareParseReport {
-  final List<CoreConfigCompanion> rows;
-  final int? failureCount;
-  const ShareParseReport(this.rows, {this.failureCount});
-  int get count => rows.length;
-}
-
 class XrayShareReader {
-  Future<ShareParseReport> parseShareTextReport(
+  Future<List<CoreConfigCompanion>> parseShareText(
     String text, {
     String? ageSecretKey,
   }) async {
-    final report = await AppHostApi().convertShareLinksToXrayJson(
+    final outbounds = await AppHostApi().convertShareLinksToXrayJson(
       text,
       ageSecretKey: ageSecretKey,
     );
-    final rows = await readXrayJsonOutbounds(report.config);
-    if (rows.length > report.usableCount) {
-      throw const FormatException('Import counts differ from content');
-    }
-    return ShareParseReport(
-      rows,
-      failureCount: report.failedCount + report.usableCount - rows.length,
-    );
+    return readXrayJsonOutbounds({'outbounds': outbounds});
   }
 
   @visibleForTesting

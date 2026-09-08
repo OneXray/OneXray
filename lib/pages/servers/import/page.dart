@@ -283,7 +283,7 @@ class ServerImportFormPage extends StatelessWidget {
                             ? l10n.prototypeSave
                             : l10n.prototypeAddSubscription
                       : manual
-                      ? l10n.prototypeDetect
+                      ? l10n.prototypeAdd
                       : l10n.prototypeImportLinks,
                   busy:
                       state.submitting ||
@@ -343,12 +343,6 @@ class ServerImportFormPage extends StatelessWidget {
           ),
           Text(
             l10n.prototypeImportLinksHint,
-            style: AppTypography.importHint.copyWith(
-              color: palette.mutedForeground,
-            ),
-          ),
-          Text(
-            l10n.prototypeSubscriptionDirectImportNotice,
             style: AppTypography.importHint.copyWith(
               color: palette.mutedForeground,
             ),
@@ -562,7 +556,7 @@ class ServerImportPreviewPage extends StatelessWidget {
                     ),
                   ),
                 _ImportFeedback(state: state),
-                if (preview.count > 0 || (preview.failureCount ?? 0) > 0)
+                if (preview.count > 0)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Row(
@@ -575,14 +569,6 @@ class ServerImportPreviewPage extends StatelessWidget {
                             l10n.prototypeUsableNodes(preview.count),
                           ),
                         ),
-                        if (preview.failureCount case final failureCount?)
-                          Expanded(
-                            child: _stat(
-                              context,
-                              l10n.prototypeUnrecognizedNodes(failureCount),
-                              warning: failureCount > 0,
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -620,19 +606,17 @@ class ServerImportPreviewPage extends StatelessWidget {
     ),
   );
 
-  Widget _stat(BuildContext context, String text, {bool warning = false}) {
+  Widget _stat(BuildContext context, String text) {
     final palette = ColorManager.palette(context);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: warning ? palette.warningSurface : palette.runningSurface,
+        color: palette.runningSurface,
         borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Text(
         text,
-        style: AppTypography.importStat.copyWith(
-          color: warning ? palette.restarting : palette.running,
-        ),
+        style: AppTypography.importStat.copyWith(color: palette.running),
       ),
     );
   }
@@ -746,13 +730,7 @@ class _ImportFeedback extends StatelessWidget {
           for (final item in state.subscriptionImports)
             Text(
               item.result.success
-                  ? item.result.parseFailureCount == null
-                        ? '${item.name}: ${l10n.prototypeUsableNodes(item.result.count)}'
-                        : l10n.prototypeSubscriptionImportResult(
-                            item.name,
-                            item.result.count,
-                            item.result.parseFailureCount!,
-                          )
+                  ? '${item.name}: ${l10n.prototypeUsableNodes(item.result.count)}'
                   : '${item.name}: ${ServerImportController.subscriptionError(l10n, item.result.status)}',
               style: AppTypography.importHint.copyWith(
                 color: item.result.success

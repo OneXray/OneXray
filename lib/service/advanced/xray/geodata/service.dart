@@ -15,7 +15,7 @@ import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/download.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/advanced/xray/geodata/system_state.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/shared/in_flight_operations.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
 import 'package:path/path.dart' as p;
 
@@ -62,6 +62,11 @@ class GeoDataService {
   final Future<void> Function(String, String, GeoDataType) _count;
   final Future<void> Function(String) _copyBundled;
   final _commands = CommandSerialExecutor();
+  final _updates = InFlightOperations();
+
+  Future<void> pauseForDataClear() => _updates.pause();
+
+  void resumeAfterDataClear() => _updates.resume();
   final _fileScopeKey = Object();
   Object? _fileScope;
   final _activeImportStages = <String>{};
@@ -142,7 +147,7 @@ class GeoDataService {
     await _readAll(rows);
   }
 
-  /// App data cleanup already owns [DataMaintenance.exclusive].
+  /// App data cleanup already paused updates and owns the file queue.
   Future<void> resetAfterDataClear() =>
       withFiles(() => _ensureInstalled(resetOrphanedFiles: true));
 
@@ -231,7 +236,7 @@ class GeoDataService {
       type: input.type,
       url: input.url.trim(),
     );
-    return DataMaintenance.run(() async {
+    return _updates.track(() async {
       final draft = await prepareImports([normalized]);
       try {
         await draft.save((writeMetadata) => _db.transaction(writeMetadata));
@@ -241,7 +246,7 @@ class GeoDataService {
     });
   }
 
-  Future<void> updateDefaults() => DataMaintenance.run(() async {
+  Future<void> updateDefaults() => _updates.track(() async {
     await withFiles(() => _ensureInstalled());
     final stage = await _newStage('download-');
     _FlatFileChange? change;
@@ -268,81 +273,78 @@ class GeoDataService {
     }
   });
 
-  Future<void> updateCustom(GeoDataData original) =>
-      DataMaintenance.run(() async {
-        if (original.id <= 0) {
-          throw StateError('Default routing data updates together');
-        }
-        _checkName(original.name);
-        GeoDataInput.httpsUri(original.url);
-        final stage = await _newStage('download-');
-        _FlatFileChange? change;
+  Future<void> updateCustom(GeoDataData original) => _updates.track(() async {
+    if (original.id <= 0) {
+      throw StateError('Default routing data updates together');
+    }
+    _checkName(original.name);
+    GeoDataInput.httpsUri(original.url);
+    final stage = await _newStage('download-');
+    _FlatFileChange? change;
+    try {
+      await _download(
+        original.url,
+        File(p.join(stage.path, '${original.name}.dat')),
+      );
+      final index = await _index(
+        stage.path,
+        original.name,
+        _type(original.type),
+      );
+      await withFiles(() async {
+        change = await _applyFiles(await _stageFiles(stage));
         try {
-          await _download(
-            original.url,
-            File(p.join(stage.path, '${original.name}.dat')),
-          );
-          final index = await _index(
-            stage.path,
-            original.name,
-            _type(original.type),
-          );
-          await withFiles(() async {
-            change = await _applyFiles(await _stageFiles(stage));
-            try {
-              await _db.transaction(() async {
-                final current = await _db.geoDataDao.searchRow(original.id);
-                if (current == null || current != original) {
-                  throw StateError('Routing data source changed during update');
-                }
-                if (!await _db.geoDataDao.updateRow(
-                  current.copyWith(
-                    timestamp: DateTime.now(),
-                    categoryCount: index.categoryCount!,
-                    ruleCount: index.ruleCount!,
-                  ),
-                )) {
-                  throw StateError('Routing data source is unavailable');
-                }
-              });
-            } catch (_) {
-              await change!.rollback();
-              rethrow;
+          await _db.transaction(() async {
+            final current = await _db.geoDataDao.searchRow(original.id);
+            if (current == null || current != original) {
+              throw StateError('Routing data source changed during update');
             }
-            await change!.complete();
+            if (!await _db.geoDataDao.updateRow(
+              current.copyWith(
+                timestamp: DateTime.now(),
+                categoryCount: index.categoryCount!,
+                ruleCount: index.ruleCount!,
+              ),
+            )) {
+              throw StateError('Routing data source is unavailable');
+            }
           });
-        } finally {
-          if (change == null) await _deleteStage(stage);
+        } catch (_) {
+          await change!.rollback();
+          rethrow;
+        }
+        await change!.complete();
+      });
+    } finally {
+      if (change == null) await _deleteStage(stage);
+    }
+  });
+
+  Future<void> deleteGeoDat(GeoDataData row) => withFiles(() async {
+    if (row.id <= 0) {
+      throw StateError('Default routing data cannot be deleted');
+    }
+    _checkName(row.name);
+    final change = await _applyFiles({
+      '${row.name}.dat': null,
+      '${row.name}.json': null,
+    });
+    try {
+      await _db.transaction(() async {
+        final current = await _db.geoDataDao.searchRow(row.id);
+        if (current == null || current != row) {
+          throw StateError('Routing data source changed before deletion');
+        }
+        if (await _db.geoDataDao.deleteRow(row.id) != 1) {
+          throw StateError('Routing data source is unavailable');
         }
       });
-
-  Future<void> deleteGeoDat(GeoDataData row) => DataMaintenance.run(
-    () => withFiles(() async {
-      if (row.id <= 0) {
-        throw StateError('Default routing data cannot be deleted');
-      }
-      _checkName(row.name);
-      final change = await _applyFiles({
-        '${row.name}.dat': null,
-        '${row.name}.json': null,
-      });
-      try {
-        await _db.transaction(() async {
-          final current = await _db.geoDataDao.searchRow(row.id);
-          if (current == null || current != row) {
-            throw StateError('Routing data source changed before deletion');
-          }
-          if (await _db.geoDataDao.deleteRow(row.id) != 1) {
-            throw StateError('Routing data source is unavailable');
-          }
-        });
-      } catch (_) {
-        await change.rollback();
-        rethrow;
-      }
-      await change.complete();
-    }),
-  );
+    } catch (_) {
+      await change.rollback();
+      rethrow;
+    }
+    await change.complete();
+  });
 
   /// Prepare private staging files only. A later confirmed save publishes them
   /// while the caller commits metadata with its configuration.

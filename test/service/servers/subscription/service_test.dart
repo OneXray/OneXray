@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 
@@ -171,42 +170,34 @@ void main() {
     );
   });
 
-  test(
-    'nonempty import reports usable and failed counts without persisting them',
-    () async {
-      final imported = _node('Imported');
-      final pings = <int>[];
-      final service = _service(
-        database,
-        (_) async => SubscriptionLoadResult(
-          status: SubscriptionUpdateResult.success,
-          rows: [imported],
-          parseFailureCount: 4,
-        ),
-        pings: pings,
-      );
-      final result = await service.insertSubscription(
-        const SubscriptionInput(name: 'Source', url: 'https://example.com/sub'),
-      );
+  test('nonempty import reports the number of saved nodes without persisting counts', () async {
+    final imported = _node('Imported');
+    final pings = <int>[];
+    final service = _service(
+      database,
+      (_) async => SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [imported],
+      ),
+      pings: pings,
+    );
+    final result = await service.insertSubscription(
+      const SubscriptionInput(name: 'Source', url: 'https://example.com/sub'),
+    );
 
-      expect(result.success, isTrue);
-      expect(result.count, 1);
-      expect(result.parseFailureCount, 4);
-      final source = (await database.subscriptionDao.allRows).single;
-      expect(source.toJson(), isNot(contains('count')));
-      expect(source.toJson(), isNot(contains('expanded')));
-      expect(source.toJson(), isNot(contains('parseFailureCount')));
-      final row = (await database.coreConfigDao.allOutboundRowsWithDataBySubId(
-        source.id,
-      )).single;
-      expect(row.data, imported.data.value);
-      expect(
-        jsonDecode(utf8.decode(base64Decode(row.data!)))['tag'],
-        'Imported',
-      );
-      expect(pings, [source.id]);
-    },
-  );
+    expect(result.success, isTrue);
+    expect(result.count, 1);
+    final source = (await database.subscriptionDao.allRows).single;
+    expect(source.toJson(), isNot(contains('count')));
+    expect(source.toJson(), isNot(contains('expanded')));
+    expect(source.toJson(), isNot(contains('parseFailureCount')));
+    final row = (await database.coreConfigDao.allOutboundRowsWithDataBySubId(
+      source.id,
+    )).single;
+    expect(row.data, imported.data.value);
+    expect(jsonDecode(utf8.decode(base64Decode(row.data!)))['tag'], 'Imported');
+    expect(pings, [source.id]);
+  });
 
   test(
     'refresh preserves all references and favorites, but counts only imports',
@@ -234,13 +225,11 @@ void main() {
         fixedId: originals[2].id,
         finalExitId: originals[3].id,
       );
-      int? parseFailures = 7;
       final service = _service(
         database,
         (_) async => SubscriptionLoadResult(
           status: SubscriptionUpdateResult.success,
           rows: [_node('Run A'), _node('New')],
-          parseFailureCount: parseFailures,
         ),
         readReferences: () => references,
       );
@@ -248,7 +237,6 @@ void main() {
       final result = await service.refreshSubscriptionResult(source);
       expect(result.success, isTrue);
       expect(result.count, 2);
-      expect(result.parseFailureCount, 7);
       for (final row in originals.take(5)) {
         expect(await database.coreConfigDao.searchRow(row.id), row);
       }
@@ -267,9 +255,10 @@ void main() {
         fixedId: originals[2].id,
         finalExitId: originals[3].id,
       );
-      parseFailures = null;
-      final nextResult = await service.refreshSubscriptionResult(updated);
-      expect(nextResult.parseFailureCount, isNull);
+      expect(
+        (await service.refreshSubscriptionResult(updated)).success,
+        isTrue,
+      );
       expect(await database.coreConfigDao.searchRow(originals[0].id), isNull);
       expect(await database.coreConfigDao.searchRow(originals[1].id), isNull);
       for (final row in originals.skip(2).take(3)) {
@@ -315,16 +304,6 @@ void main() {
       final empty = await service.refreshSubscriptionResult(source);
       expect(empty.success, isFalse);
       expect(empty.status, SubscriptionUpdateResult.invalidContent);
-      expect(
-        await service.updateSubscription(
-          source.id,
-          const SubscriptionInput(
-            name: 'Changed',
-            url: 'https://example.com/new',
-          ),
-        ),
-        SubscriptionUpdateResult.invalidContent,
-      );
       loaded = const SubscriptionLoadResult(
         status: SubscriptionUpdateResult.downloadFailed,
       );
@@ -349,7 +328,6 @@ void main() {
         (_) async => SubscriptionLoadResult(
           status: SubscriptionUpdateResult.success,
           rows: [_node('Conflict').copyWith(id: Value(localId))],
-          parseFailureCount: 6,
         ),
       );
       final result = await service.refreshSubscriptionResult(source);
@@ -376,14 +354,13 @@ void main() {
         return SubscriptionLoadResult(
           status: SubscriptionUpdateResult.success,
           rows: [_node('New URL')],
-          parseFailureCount: 2,
         );
       });
       final first = service.refreshSubscriptionResult(source);
       final duplicate = service.refreshSubscriptionResult(source);
       await started.future;
       expect(
-        await service.updateSubscription(
+        await service.saveSubscriptionInput(
           source.id,
           const SubscriptionInput(
             name: 'Edited source',
@@ -409,6 +386,11 @@ void main() {
       final current = (await database.subscriptionDao.searchRow(source.id))!;
       expect(current.url, 'https://example.com/new');
       expect(current.ageSecretKey, 'new-secret');
+      // Editing the source no longer downloads; its next refresh uses the edit.
+      expect(
+        (await service.refreshSubscriptionResult(current)).success,
+        isTrue,
+      );
       expect(
         (await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id))
             .single
@@ -449,36 +431,8 @@ void main() {
     },
   );
 
-  test('background refresh cannot supersede an in-flight user edit', () async {
-    final source = await _source(database);
-    final response = Completer<SubscriptionLoadResult>();
-    final started = Completer<void>();
-    final service = _service(database, (_) {
-      started.complete();
-      return response.future;
-    });
-    final edit = service.updateSubscription(
-      source.id,
-      const SubscriptionInput(name: 'Edited', url: 'https://example.com/new'),
-    );
-    await started.future;
-    final background = await service.refreshSubscriptionResult(source);
-    expect(background.superseded, isTrue);
-    response.complete(
-      SubscriptionLoadResult(
-        status: SubscriptionUpdateResult.success,
-        rows: [_node('Edited')],
-      ),
-    );
-    expect(await edit, SubscriptionUpdateResult.success);
-    expect(
-      (await database.subscriptionDao.searchRow(source.id))!.url,
-      'https://example.com/new',
-    );
-  });
-
   test(
-    'exclusive restore waits for downloads before restoring the same IDs',
+    'clear-data waits for in-flight downloads before replacing their rows',
     () async {
       final source = await _source(database);
       final oldNodeId = await database.coreConfigDao.insertRow(
@@ -493,7 +447,7 @@ void main() {
       final oldRequest = service.refreshSubscriptionResult(source);
       await started.future;
       var restoreStarted = false;
-      final restoring = DataMaintenance.exclusive(() async {
+      final restoring = service.pauseForDataClear().then((_) async {
         restoreStarted = true;
         await database.transaction(() async {
           await database.coreConfigDao.clear();

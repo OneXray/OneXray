@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -19,9 +20,9 @@ import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/shared/db/config_writer.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
-import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
+import 'package:onexray/service/connect/raw/db.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -118,6 +119,9 @@ void main() {
         showSuccessToast: notify,
         loadSubscription: (_) async => null,
         service: ServerImportService(
+          parse: (_) async => [
+            outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
+          ],
           write: (rows) async {
             writes++;
             return ConfigWriteResult(count: rows.length, ids: [1]);
@@ -126,9 +130,7 @@ void main() {
         ),
       );
       addTearDown(controller.close);
-      final preview = ServerImportPreview([
-        outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
-      ]);
+      controller.text.text = 'vless://local';
       await tester.pumpWidget(
         _app(
           Builder(
@@ -136,9 +138,9 @@ void main() {
               onPressed: () async {
                 result = await showAppDialog<ServerImportResult>(
                   context,
-                  (_) => ServerImportPreviewPage(
+                  (_) => ServerImportFormPage(
                     controller: controller,
-                    preview: preview,
+                    action: ServerImportAction.paste,
                   ),
                 );
               },
@@ -149,13 +151,155 @@ void main() {
       );
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      await _tapVisible(tester, find.text('Confirm add'));
+      await _tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Import links'),
+      );
       await tester.pumpAndSettle();
       expect(writes, 1);
+      expect(find.byType(ServerImportPreviewPage), findsNothing);
       expect(result?.count, 1);
       expect(find.byType(ShadToast), notify ? findsOneWidget : findsNothing);
       expect(tester.takeException(), isNull);
     });
+  }
+
+  for (final action in [ServerImportAction.paste, ServerImportAction.json]) {
+    testWidgets(
+      'node import stays loading through parse and commit ($action)',
+      (tester) async {
+        final parsed = Completer<void>();
+        final written = Completer<ConfigWriteResult>();
+        var writes = 0;
+        final queued = <int>[];
+        final controller = ServerImportController(
+          showSuccessToast: false,
+          loadSubscription: (_) async => null,
+          service: ServerImportService(
+            parse: (_) async {
+              await parsed.future;
+              return [
+                outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
+              ];
+            },
+            validate: (_) async {
+              await parsed.future;
+              return '';
+            },
+            write: (_) {
+              writes++;
+              return written.future;
+            },
+            schedule: queued.addAll,
+          ),
+        );
+        addTearDown(controller.close);
+        controller.text.text = 'vless://local';
+        controller.jsonText.text =
+            '{"outbounds":[{"tag":"local","protocol":"freedom"}]}';
+        ServerImportResult? result;
+        await tester.pumpWidget(
+          _app(
+            Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  result = await showAppDialog<ServerImportResult>(
+                    context,
+                    (_) => ServerImportFormPage(
+                      controller: controller,
+                      action: action,
+                    ),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+        final submit = find.widgetWithText(
+          FilledButton,
+          action == ServerImportAction.json ? 'Add' : 'Import links',
+        );
+        await _tapVisible(tester, submit);
+        await tester.pump();
+        expect(controller.state.busy, isTrue);
+        expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+        expect(find.byType(ServerImportPreviewPage), findsNothing);
+        expect(writes, 0);
+        parsed.complete();
+        await tester.pump();
+        expect(writes, 1);
+        expect(controller.state.busy, isTrue);
+        expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+        await controller.detect(tester.element(submit), action);
+        expect(writes, 1);
+        written.complete(const ConfigWriteResult(count: 1, ids: [42]));
+        await tester.pumpAndSettle();
+        expect(result?.count, 1);
+        expect(controller.state.busy, isFalse);
+        expect(queued, [42]);
+        expect(find.byType(ServerImportPreviewPage), findsNothing);
+        expect(find.byType(ServerImportFormPage), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final failure in ['empty', 'parse', 'write']) {
+    testWidgets(
+      'failed direct node import keeps input and permits retry ($failure)',
+      (tester) async {
+        var writes = 0;
+        final controller = ServerImportController(
+          loadSubscription: (_) async => null,
+          service: ServerImportService(
+            parse: (_) async {
+              if (failure == 'parse') {
+                throw const FormatException('Invalid input');
+              }
+              return failure == 'empty'
+                  ? []
+                  : [
+                      outboundCompanion({
+                        'tag': 'local',
+                        'protocol': 'freedom',
+                      }),
+                    ];
+            },
+            write: (_) async {
+              writes++;
+              throw StateError('Write failed');
+            },
+          ),
+        );
+        addTearDown(controller.close);
+        controller.text.text = 'vless://local';
+        await tester.pumpWidget(
+          _app(
+            AppDialogFrame(
+              child: ServerImportFormPage(
+                controller: controller,
+                action: ServerImportAction.paste,
+              ),
+            ),
+          ),
+        );
+        final submit = find.widgetWithText(FilledButton, 'Import links');
+        await _tapVisible(tester, submit);
+        await tester.pumpAndSettle();
+        expect(find.byType(ServerImportPreviewPage), findsNothing);
+        expect(find.byType(ServerImportFormPage), findsOneWidget);
+        expect(controller.text.text, 'vless://local');
+        expect(controller.state.error, isNotNull);
+        expect(controller.state.busy, isFalse);
+        expect(writes, failure == 'write' ? 1 : 0);
+        expect(tester.widget<FilledButton>(submit).onPressed, isNotNull);
+        expect(find.byType(ShadToast), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   test('submit availability follows text, HTTPS, and Age state', () async {
@@ -265,7 +409,7 @@ void main() {
   });
 
   testWidgets(
-    'preview Cancel unwinds form and method dialogs without a write',
+    'node import writes directly and unwinds form and method dialogs',
     (tester) async {
       _mobileViewport(tester);
       var writes = 0;
@@ -273,13 +417,14 @@ void main() {
       final controller = ServerImportController(
         loadSubscription: (_) async => null,
         service: ServerImportService(
-          parseReport: (_) async => ShareParseReport([
+          parse: (_) async => [
             outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
-          ], failureCount: 0),
+          ],
           write: (_) async {
             writes++;
-            throw StateError('Cancel cannot write');
+            return const ConfigWriteResult(count: 1, ids: [1]);
           },
+          schedule: (_) {},
         ),
       );
       addTearDown(controller.close);
@@ -294,13 +439,8 @@ void main() {
         find.widgetWithText(FilledButton, 'Import links'),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(ServerImportPreviewPage), findsOneWidget);
-      controller.closeFlow(
-        tester.element(find.byType(ServerImportPreviewPage)),
-      );
-      await tester.pumpAndSettle();
       expect(completed, isTrue);
-      expect(writes, 0);
+      expect(writes, 1);
       expect(find.byType(ServerImportPreviewPage), findsNothing);
       expect(find.byType(ServerImportFormPage), findsNothing);
       expect(find.text('Choose method'), findsNothing);
@@ -310,24 +450,20 @@ void main() {
   );
 
   testWidgets(
-    'preview Back and retry keep subscriptions; Cancel reports completed imports',
+    'configuration preview Back and retry keep subscriptions; Cancel reports completed imports',
     (tester) async {
       var imported = 0;
       var writes = 0;
       ServerImportResult? result;
-      final service = ServerImportService(
+      final service = _ConfigurationImportService(
         subscribe: (_) async {
           imported++;
           return const SubscriptionInsertResult(
             status: SubscriptionUpdateResult.success,
             subId: 7,
             count: 2,
-            parseFailureCount: 0,
           );
         },
-        parseReport: (_) async => ShareParseReport([
-          outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
-        ], failureCount: 0),
         write: (_) async {
           writes++;
           throw StateError('The user cancelled');
@@ -339,7 +475,7 @@ void main() {
       );
       addTearDown(controller.close);
       controller.text.text =
-          'https://provider.example/list#Provider\nvless://local';
+          'https://provider.example/list#Provider\n${_rawLink()}';
       await tester.pumpWidget(
         _app(
           Builder(
@@ -369,12 +505,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(ServerImportPreviewPage), findsOneWidget);
-      expect(
-        find.text(
-          '1 subscriptions imported. Only the remaining local items need confirmation.',
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('1 subscriptions imported.'), findsOneWidget);
       expect(imported, 1);
       expect(writes, 0);
       controller.closePage(
@@ -559,7 +690,6 @@ void main() {
           [
             outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
           ],
-          failureCount: 0,
           geoData: [
             const OneXrayGeoDataLink(
               name: 'Data source',
@@ -617,6 +747,36 @@ void main() {
       },
     );
   }
+}
+
+String _rawLink() => Uri(
+  scheme: 'onexray',
+  host: 'onexray.com',
+  path: '/config/add',
+  fragment: 'Expert',
+  queryParameters: {
+    'type': 'raw',
+    'data': base64Encode(
+      utf8.encode('{"name":"Expert","outbounds":[{"protocol":"freedom"}]}'),
+    ),
+  },
+).toString();
+
+// Configuration parsing is covered by service tests. Keep this navigation test
+// independent of the process-wide Geodata file queue and its async zone.
+class _ConfigurationImportService extends ServerImportService {
+  _ConfigurationImportService({super.subscribe, super.write});
+
+  @override
+  Future<ServerImportPreview> preview(
+    String text, {
+    bool manual = false,
+  }) async => ServerImportPreview([
+    XrayRawDb.configCompanion(
+      'Expert',
+      '{"name":"Expert","outbounds":[{"protocol":"freedom"}]}',
+    ),
+  ]);
 }
 
 void _mobileViewport(WidgetTester tester) {

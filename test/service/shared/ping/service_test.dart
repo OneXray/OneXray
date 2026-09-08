@@ -9,7 +9,6 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 // ignore: depend_on_referenced_packages
@@ -369,7 +368,7 @@ void main() {
   );
 
   test(
-    'queued subscription probes finish before pending maintenance',
+    'clear-data cancels queued subscription probes after the active batch',
     () async {
       final first = await db.coreConfigDao.insertRow(_node('First', subId: 11));
       final second = await db.coreConfigDao.insertRow(
@@ -393,71 +392,76 @@ void main() {
       final drained = AppEventBus.instance.stream.firstWhere(
         (state) => !state.pinging,
       );
-      final maintenance = DataMaintenance.exclusive(() async {});
+      final maintenance = service.pauseForDataClear();
       release.complete();
       await Future.wait([drained, maintenance])
           .timeout(const Duration(seconds: 2));
 
-      expect(calls, 2, reason: 'The queued subscription must not be rejected');
-      for (final id in [first, second]) {
-        expect((await db.coreConfigDao.searchRow(id))!.delay, 20);
-      }
-      expect(service.isPinging, isFalse);
-    },
-  );
-
-  test(
-    'maintenance drains registered queued work before restoring the same IDs',
-    () async {
-      final first = await db.coreConfigDao.insertRow(_node('First'));
-      final second = await db.coreConfigDao.insertRow(_node('Second'));
-      final started = Completer<void>();
-      final release = Completer<void>();
-      var calls = 0;
-      var restored = false;
-      final service = PingService.forTesting(
-        database: db,
-        runBatch: (sources, _) async {
-          calls++;
-          if (!started.isCompleted) started.complete();
-          await release.future;
-          return _successes(sources.length);
-        },
+      expect(calls, 1, reason: 'The queued subscription must not start');
+      expect((await db.coreConfigDao.searchRow(first))!.delay, 20);
+      expect(
+        (await db.coreConfigDao.searchRow(second))!.delay,
+        PingDelayConstants.unknown,
       );
-      final active = service.pingConfigIds([first]);
-      addTearDown(() async {
-        if (!release.isCompleted) release.complete();
-        await active;
-      });
-      await started.future.timeout(const Duration(seconds: 5));
-      final queued = service.pingConfigIds([second]);
-      final restoring = DataMaintenance.exclusive(() async {
-        expect(calls, 2);
-        await db.transaction(() async {
-          await db.delete(db.coreConfig).go();
-          for (final id in [first, second]) {
-            await db.coreConfigDao.insertRow(
-              _node('Restored').copyWith(id: Value(id)),
-            );
-          }
-        });
-        restored = true;
-      });
-      expect(restored, isFalse);
-      release.complete();
-      await active;
-      await queued;
-      await restoring;
-
-      expect(restored, isTrue);
+      expect(service.isPinging, isFalse);
+      service.resumeAfterDataClear();
+      await service.pingConfigIds([second]);
       expect(calls, 2);
-      for (final id in [first, second]) {
-        final row = (await db.coreConfigDao.searchRow(id))!;
-        expect(row.name, 'Restored');
-        expect(row.delay, PingDelayConstants.unknown);
-      }
     },
   );
+
+  test('clear-data discards queued work before IDs can be reused', () async {
+    final first = await db.coreConfigDao.insertRow(_node('First'));
+    final second = await db.coreConfigDao.insertRow(_node('Second'));
+    final started = Completer<void>();
+    final release = Completer<void>();
+    var calls = 0;
+    var restored = false;
+    final service = PingService.forTesting(
+      database: db,
+      runBatch: (sources, _) async {
+        calls++;
+        if (!started.isCompleted) started.complete();
+        await release.future;
+        return _successes(sources.length);
+      },
+    );
+    final active = service.pingConfigIds([first]);
+    addTearDown(() async {
+      if (!release.isCompleted) release.complete();
+      await active;
+    });
+    await started.future.timeout(const Duration(seconds: 5));
+    final queued = expectLater(
+      service.pingConfigIds([second]),
+      throwsStateError,
+    );
+    final restoring = service.pauseForDataClear().then((_) async {
+      expect(calls, 1);
+      await db.transaction(() async {
+        await db.delete(db.coreConfig).go();
+        for (final id in [first, second]) {
+          await db.coreConfigDao.insertRow(
+            _node('Restored').copyWith(id: Value(id)),
+          );
+        }
+      });
+      restored = true;
+    });
+    expect(restored, isFalse);
+    release.complete();
+    await active;
+    await queued;
+    await restoring;
+
+    expect(restored, isTrue);
+    expect(calls, 1);
+    for (final id in [first, second]) {
+      final row = (await db.coreConfigDao.searchRow(id))!;
+      expect(row.name, 'Restored');
+      expect(row.delay, PingDelayConstants.unknown);
+    }
+  });
 }
 
 List<PingBatchResult> _successes(int count) =>

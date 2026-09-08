@@ -14,21 +14,16 @@ import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/db/config_writer.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/shared/in_flight_operations.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 
 final class SubscriptionLoadResult {
-  const SubscriptionLoadResult({
-    required this.status,
-    this.rows = const [],
-    this.parseFailureCount,
-  });
+  const SubscriptionLoadResult({required this.status, this.rows = const []});
 
   final SubscriptionUpdateResult status;
   final List<CoreConfigCompanion> rows;
-  final int? parseFailureCount;
 
   bool get hasUsableRows =>
       status == SubscriptionUpdateResult.success &&
@@ -36,8 +31,7 @@ final class SubscriptionLoadResult {
       rows.every(
         (row) =>
             row.type.present && row.type.value == CoreConfigType.outbound.name,
-      ) &&
-      (parseFailureCount == null || parseFailureCount! >= 0);
+      );
 }
 
 typedef SubscriptionReferenceReader =
@@ -79,6 +73,11 @@ class SubscriptionService {
   final _generations = <int, int>{};
   final _refreshes = <int, Future<SubscriptionRefreshResult>>{};
   var _nextGeneration = 0;
+  final _downloads = InFlightOperations();
+
+  Future<void> pauseForDataClear() => _downloads.pause();
+
+  void resumeAfterDataClear() => _downloads.resume();
 
   /// The database protects persisted selections before connection initialization.
   /// The coordinator replaces this reader to also protect live/prepared nodes.
@@ -104,6 +103,7 @@ class SubscriptionService {
 
   void _schedulePing(int subId) {
     final schedule = _pingOverride;
+    if (_downloads.isPaused) return;
     if (schedule != null) {
       schedule(subId);
     } else {
@@ -131,7 +131,7 @@ class SubscriptionService {
 
   Future<SubscriptionInsertResult> insertSubscription(
     SubscriptionInput input,
-  ) => DataMaintenance.run(() => _insertAndProbeSubscription(input));
+  ) => _downloads.track(() => _insertAndProbeSubscription(input));
 
   Future<SubscriptionInsertResult> _insertAndProbeSubscription(
     SubscriptionInput input,
@@ -155,7 +155,6 @@ class SubscriptionService {
           status: loaded.status == SubscriptionUpdateResult.success
               ? SubscriptionUpdateResult.invalidContent
               : loaded.status,
-          parseFailureCount: loaded.parseFailureCount,
         );
       }
       final rows = loaded.rows;
@@ -184,7 +183,6 @@ class SubscriptionService {
           status: SubscriptionUpdateResult.success,
           subId: nextSubId,
           count: count,
-          parseFailureCount: loaded.parseFailureCount,
         );
       });
     } catch (error, stackTrace) {
@@ -197,16 +195,11 @@ class SubscriptionService {
     }
   }
 
-  Future<SubscriptionUpdateResult> updateSubscription(
-    int id,
-    SubscriptionInput input,
-  ) => DataMaintenance.run(() => _saveSubscription(id, input));
-
   /// Editing a source changes future downloads, not its current node assets.
   Future<SubscriptionUpdateResult> saveSubscriptionInput(
     int id,
     SubscriptionInput input,
-  ) => DataMaintenance.run(() async {
+  ) async {
     final uri = Uri.tryParse(input.url);
     if (input.name.trim().isEmpty ||
         uri == null ||
@@ -247,29 +240,6 @@ class SubscriptionService {
     } finally {
       _finishUpdate(id, generation);
     }
-  });
-
-  Future<SubscriptionUpdateResult> _saveSubscription(
-    int id,
-    SubscriptionInput input,
-  ) async {
-    if (input.hasIncompleteAgeKeyPair) {
-      return SubscriptionUpdateResult.invalidAgeSecretKey;
-    }
-    _refreshes.remove(id);
-    final generation = _beginUpdate(id);
-    try {
-      return await _updateSubscription(id, input, generation);
-    } on _SupersededSubscriptionUpdate {
-      return SubscriptionUpdateResult.writeFailed;
-    } catch (error, stackTrace) {
-      ygLogger(
-        'update subscription failed (${error.runtimeType})\n$stackTrace',
-      );
-      return SubscriptionUpdateResult.writeFailed;
-    } finally {
-      _finishUpdate(id, generation);
-    }
   }
 
   /// The connection layer must confirm deletion and resolve affected running or
@@ -283,80 +253,24 @@ class SubscriptionService {
     if (source == null || !await prepareDeletion(source)) {
       return 0;
     }
-    return DataMaintenance.run(() async {
-      _refreshes.remove(id);
-      final generation = _beginUpdate(id);
-      try {
-        return await db.transaction(() async {
-          _ensureCurrent(id, generation);
-          final current = await db.subscriptionDao.searchRow(id);
-          if (current != source) {
-            throw const _SupersededSubscriptionUpdate();
-          }
-          final deleted = await db.subscriptionDao.deleteRow(id);
-          _ensureCurrent(id, generation);
-          return deleted;
-        });
-      } on _SupersededSubscriptionUpdate {
-        return 0;
-      } finally {
-        _finishUpdate(id, generation);
-      }
-    });
-  }
-
-  Future<SubscriptionUpdateResult> _updateSubscription(
-    int id,
-    SubscriptionInput input,
-    int generation,
-  ) async {
-    final db = _database;
-    final subscription = await db.subscriptionDao.searchRow(id);
-    _ensureCurrent(id, generation);
-    if (subscription == null) {
-      return SubscriptionUpdateResult.notFound;
-    }
-    final ageSecretKey = input.normalizedAgeSecretKey;
-    final agePublicKey = input.normalizedAgePublicKey;
-    if (subscription.url == input.url &&
-        subscription.ageSecretKey == ageSecretKey &&
-        subscription.agePublicKey == agePublicKey) {
-      return db.transaction(() async {
-        final current = await db.subscriptionDao.searchRow(id);
+    _refreshes.remove(id);
+    final generation = _beginUpdate(id);
+    try {
+      return await db.transaction(() async {
         _ensureCurrent(id, generation);
-        if (current == null) {
-          return SubscriptionUpdateResult.notFound;
-        }
-        if (!_sameSource(current, subscription)) {
+        final current = await db.subscriptionDao.searchRow(id);
+        if (current != source) {
           throw const _SupersededSubscriptionUpdate();
         }
-        final updated = await db.subscriptionDao.updateRow(
-          current.copyWith(name: input.name),
-        );
+        final deleted = await db.subscriptionDao.deleteRow(id);
         _ensureCurrent(id, generation);
-        return updated
-            ? SubscriptionUpdateResult.success
-            : SubscriptionUpdateResult.writeFailed;
+        return deleted;
       });
+    } on _SupersededSubscriptionUpdate {
+      return 0;
+    } finally {
+      _finishUpdate(id, generation);
     }
-
-    final loaded = await _loadRows(input);
-    _ensureCurrent(id, generation);
-    if (!loaded.hasUsableRows) {
-      return loaded.status == SubscriptionUpdateResult.success
-          ? SubscriptionUpdateResult.invalidContent
-          : loaded.status;
-    }
-    final result = await _replaceSubscription(
-      subscription,
-      loaded,
-      generation,
-      editedInput: input,
-    );
-    if (result.success) {
-      _schedulePing(subscription.id);
-    }
-    return result.status;
   }
 
   Future<int> refreshSubscription(SubscriptionData subscription) async {
@@ -368,7 +282,7 @@ class SubscriptionService {
   /// success, and unavailable parse statistics remain null.
   Future<SubscriptionRefreshResult> refreshSubscriptionResult(
     SubscriptionData subscription,
-  ) => DataMaintenance.run(() => _refreshSubscriptionResult(subscription));
+  ) => _downloads.track(() => _refreshSubscriptionResult(subscription));
 
   Future<SubscriptionRefreshResult> _refreshSubscriptionResult(
     SubscriptionData subscription,
@@ -424,7 +338,6 @@ class SubscriptionService {
           status: loaded.status == SubscriptionUpdateResult.success
               ? SubscriptionUpdateResult.invalidContent
               : loaded.status,
-          parseFailureCount: loaded.parseFailureCount,
         );
       }
       final result = await _replaceSubscription(
@@ -454,9 +367,8 @@ class SubscriptionService {
   Future<SubscriptionRefreshResult> _replaceSubscription(
     SubscriptionData expected,
     SubscriptionLoadResult loaded,
-    int generation, {
-    SubscriptionInput? editedInput,
-  }) {
+    int generation,
+  ) {
     final db = _database;
     return db.transaction(() async {
       _ensureCurrent(expected.id, generation);
@@ -483,17 +395,7 @@ class SubscriptionService {
       if (count != loaded.rows.length) {
         throw StateError('replace subscription configs failed');
       }
-      final updated = current.copyWith(
-        name: editedInput?.name ?? current.name,
-        url: editedInput?.url ?? current.url,
-        ageSecretKey: editedInput == null
-            ? const Value.absent()
-            : Value(editedInput.normalizedAgeSecretKey),
-        agePublicKey: editedInput == null
-            ? const Value.absent()
-            : Value(editedInput.normalizedAgePublicKey),
-        timestamp: DateTime.now(),
-      );
+      final updated = current.copyWith(timestamp: DateTime.now());
       _ensureCurrent(expected.id, generation);
       if (!await db.subscriptionDao.updateRow(updated)) {
         throw StateError('update subscription failed');
@@ -502,7 +404,6 @@ class SubscriptionService {
       return SubscriptionRefreshResult(
         status: SubscriptionUpdateResult.success,
         count: count,
-        parseFailureCount: loaded.parseFailureCount,
       );
     });
   }
@@ -546,16 +447,15 @@ class SubscriptionService {
     }
 
     try {
-      final report = await XrayShareReader().parseShareTextReport(
+      final rows = await XrayShareReader().parseShareText(
         text,
         ageSecretKey: ageContext?.secretKey,
       );
       return SubscriptionLoadResult(
-        status: report.rows.isEmpty
+        status: rows.isEmpty
             ? SubscriptionUpdateResult.invalidContent
             : SubscriptionUpdateResult.success,
-        rows: report.rows,
-        parseFailureCount: report.failureCount,
+        rows: rows,
       );
     } on LibXrayInvokeException catch (error) {
       return SubscriptionLoadResult(status: _ageErrorStatus(error.message));
@@ -586,6 +486,7 @@ class SubscriptionService {
 
   Future<void> refreshOutdatedSubscription({
     AutoUpdateState? autoUpdateState,
+    bool Function()? isCancelled,
   }) async {
     final updateState = autoUpdateState ?? AutoUpdateState();
     if (autoUpdateState == null) {
@@ -598,8 +499,9 @@ class SubscriptionService {
     final subs = await _database.subscriptionDao.allRows;
     final now = DateTime.now();
     for (final sub in subs) {
+      if (_downloads.isPaused || (isCancelled?.call() ?? false)) break;
       if (now.difference(sub.timestamp).inHours >= interval) {
-        await _refreshSubscriptionResult(sub);
+        await refreshSubscriptionResult(sub);
       }
     }
   }

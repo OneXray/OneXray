@@ -12,7 +12,6 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 void main() {
   late AppDatabase db;
@@ -142,7 +141,7 @@ void main() {
   );
 
   test(
-    'read-only status and metrics do not enter the clear-data gate',
+    'read-only status and metrics do not enter the paused command queue',
     () async {
       final runtime = _runtime('a');
       var status = VpnStatus.connected;
@@ -165,14 +164,17 @@ void main() {
       coordinator.setTrafficVisible(true);
       await Future<void>.delayed(Duration.zero);
       final before = reads;
-      await DataMaintenance.exclusive(() async {
+      await coordinator.pauseForDataClear();
+      try {
         await coordinator.refreshTraffic();
         expect(reads, before + 1);
         status = VpnStatus.disconnected;
         await coordinator.refresh();
         expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
         expect(coordinator.state.value.issue, isNull);
-      });
+      } finally {
+        coordinator.resumeAfterDataClear();
+      }
     },
   );
 
@@ -197,7 +199,9 @@ void main() {
     final refresh = coordinator.refresh();
     await Future<void>.delayed(Duration.zero);
     holdStatus = false;
-    await DataMaintenance.exclusive(coordinator.stopForMaintenance);
+    await coordinator.pauseForDataClear();
+    await coordinator.stopForMaintenance();
+    coordinator.resumeAfterDataClear();
     traffic.complete(
       const ConnectionTraffic(uplink: 10, downlink: 20, sampledAtMs: 1000),
     );

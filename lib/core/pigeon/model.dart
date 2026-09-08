@@ -265,21 +265,6 @@ class ConvertShareLinksToXrayJsonRequest {
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
-class ConvertShareLinksReport {
-  final Map<String, dynamic> config;
-  final int usableCount;
-  final int failedCount;
-  const ConvertShareLinksReport(
-    this.config, {
-    required this.usableCount,
-    required this.failedCount,
-  });
-  factory ConvertShareLinksReport.fromJson(Map<String, dynamic> json) =>
-      _$ConvertShareLinksReportFromJson(json);
-  Map<String, dynamic> toJson() => _$ConvertShareLinksReportToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true, includeIfNull: false)
 class AgeDecryptConfig {
   String? secretKey;
 

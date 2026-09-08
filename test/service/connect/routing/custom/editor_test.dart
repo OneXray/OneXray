@@ -11,7 +11,6 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 import '../../../../support/fake_geodata_import.dart';
 
@@ -221,8 +220,10 @@ void main() {
           imported: imported,
           confirmReconnect: () async {
             expect(importEvents, isEmpty);
-            await DataMaintenance.exclusive(() async {})
-                .timeout(const Duration(seconds: 1));
+            await coordinator.pauseForDataClear().timeout(
+              const Duration(seconds: 1),
+            );
+            coordinator.resumeAfterDataClear();
             return false;
           },
         ),

@@ -252,6 +252,6 @@ void main() {
     );
     final preview = await service.preview(link.toString());
     expect(preview.hasItems, false);
-    expect(preview.failureCount, 1);
+    await expectLater(service.commit(preview), throwsFormatException);
   });
 }

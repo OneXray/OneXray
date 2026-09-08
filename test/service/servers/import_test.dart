@@ -7,16 +7,14 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/servers/import.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/db/config_writer.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
-import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/connect/raw/db.dart';
 
 void main() {
-  test('manual detection has no writes; confirmation writes once and queues the saved IDs', () async {
+  test('preparation has no writes; commit writes once and queues the saved IDs', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     final queued = <int>[];
@@ -35,7 +33,6 @@ void main() {
     final preview = await service.preview(source, manual: true);
     expect(validated, [jsonDecode(source)]);
     expect(preview.count, 2);
-    expect(preview.failureCount, 0);
     expect(await db.coreConfigDao.allOutboundRowsWithDataBySubId(0), isEmpty);
     expect(queued, isEmpty);
     final result = await service.commit(preview);
@@ -125,10 +122,6 @@ void main() {
       preview.count,
       2,
     ); // Equal labels never collapse distinct imported assets.
-    expect(
-      preview.failureCount,
-      0,
-    ); // Every OneXray link was decoded and validated locally.
     final subscription = ServerImportService.singleLink(
       'https://provider.example/list#Provider',
     );
@@ -172,10 +165,10 @@ void main() {
           subId: link.name == 'good' ? 7 : 0,
         );
       },
-      parseReport: (text) async {
+      parse: (text) async {
         events.add('preview');
         expect(text.trim(), 'vless://local');
-        return ShareParseReport([node], failureCount: 3);
+        return [node];
       },
       write: (_) async =>
           throw StateError('Cancelled local content must not write'),
@@ -193,40 +186,48 @@ void main() {
     expect(events, ['subscription:good', 'subscription:bad', 'preview']);
     expect(subscriptions.map((item) => item.result.success), [true, false]);
     expect(preview.count, 1);
-    expect(preview.failureCount, 3);
     // Cancel means commit is never called; the completed subscription is kept.
     expect(subscriptions.first.result.subId, 7);
   });
 
-  test('clear-data drains the entire imported subscription list', () async {
-    final started = Completer<void>();
-    final release = Completer<void>();
-    final events = <String>[];
-    final service = ServerImportService(
-      subscribe: (link) => DataMaintenance.run(() async {
-        if (!started.isCompleted) {
-          started.complete();
-          await release.future;
-        }
-        events.add(link.name);
-        return const SubscriptionInsertResult(
-          status: SubscriptionUpdateResult.success,
-          subId: 1,
-          count: 1,
-        );
-      }),
-    );
-    final links = service
-        .detect('https://example.com/one#one\nhttps://example.com/two#two')
-        .subscriptions;
-    final importing = service.importSubscriptions(links);
-    await started.future;
-    final clearing = DataMaintenance.exclusive(() async => events.add('clear'));
-    release.complete();
-    expect((await importing).every((result) => result.result.success), isTrue);
-    await clearing;
-    expect(events, ['one', 'two', 'clear']);
-  });
+  test(
+    'clear-data stops the imported subscription list after its active source',
+    () async {
+      final started = Completer<void>();
+      final release = Completer<void>();
+      final events = <String>[];
+      final service = ServerImportService(
+        subscribe: (link) async {
+          if (!started.isCompleted) {
+            started.complete();
+            await release.future;
+          }
+          events.add(link.name);
+          return const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.success,
+            subId: 1,
+            count: 1,
+          );
+        },
+      );
+      final links = service
+          .detect('https://example.com/one#one\nhttps://example.com/two#two')
+          .subscriptions;
+      final importing = service.importSubscriptions(links);
+      await started.future;
+      final clearing = ServerImportService.pauseForDataClear().then(
+        (_) => events.add('clear'),
+      );
+      addTearDown(ServerImportService.resumeAfterDataClear);
+      release.complete();
+      expect(
+        (await importing).every((result) => result.result.success),
+        isTrue,
+      );
+      await clearing;
+      expect(events, ['one', 'clear']);
+    },
+  );
 
   test('Raw and data sources stay read-only until confirmation and partial results remain distinct', () async {
     const raw =
@@ -268,7 +269,6 @@ void main() {
     expect(result.rawCount, 1);
     expect(result.geoDataCount, 1);
     expect(result.failedGeoData.single.name, 'failed-data');
-    expect(result.failureCount, 0);
     expect(utf8.decode(base64Decode(writes[1].data.value!)), raw);
     expect(queued, [20]); // Only the outbound, never the Raw config.
     expect(
@@ -284,20 +284,17 @@ void main() {
     );
     expect(preview.hasItems, false);
     expect(preview.rawCount, 0);
-    expect(preview.failureCount, 2);
     await expectLater(service.commit(preview), throwsFormatException);
   });
 
-  test('zero usable and unavailable counts are not guessed; structured input remains intact', () async {
-    final zero = ServerImportService(
-      parseReport: (_) async => const ShareParseReport([], failureCount: 2),
-    );
+  test('empty parsed lists cannot be imported; structured input remains intact', () async {
+    final zero = ServerImportService(parse: (_) async => []);
     final failed = await zero.preview('vless://invalid');
     expect(failed.hasItems, false);
-    expect(failed.failureCount, 2);
+    await expectLater(zero.commit(failed), throwsFormatException);
     final unknown = await ServerImportService(parse: (_) async => [])
         .preview('plain text');
-    expect(unknown.failureCount, isNull);
+    expect(unknown.hasItems, false);
     const yaml =
         'proxies:\n  - name: sample\n    description: |\n      https://not-a-subscription.example';
     final detection = zero.detect(yaml);

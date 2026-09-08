@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 
@@ -17,7 +18,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   test(
-    'share conversion uses libXray acceptance and native failure counts',
+    'share conversion reads only outbounds and uses libXray acceptance',
     () async {
       final valid = {'tag': 'Valid', 'protocol': 'freedom'};
       final vmess = {
@@ -25,14 +26,10 @@ void main() {
         'protocol': 'vmess',
         'settings': {'security': 'unknown'},
       };
-      var response = {
+      var response = <String, dynamic>{
         'success': true,
         'data': <String, dynamic>{
-          'config': {
-            'outbounds': [valid, vmess],
-          },
-          'usableCount': 2,
-          'failedCount': 3,
+          'outbounds': [valid, vmess],
         },
         'error': '',
       };
@@ -43,44 +40,31 @@ void main() {
         return [jsonEncode(response)];
       });
       addTearDown(() => messenger.setMockDecodedMessageHandler(channel, null));
-      final report = await XrayShareReader().parseShareTextReport('fixture');
-      expect(report.count, 2);
-      expect(report.failureCount, 3);
+      final rows = await XrayShareReader().parseShareText('fixture');
+      expect(rows.map((row) => row.name.value), [
+        'Valid',
+        'Core accepted VMess',
+      ]);
 
-      response = {
-        'success': false,
-        'data': {
-          'config': {'outbounds': []},
-          'usableCount': 0,
-          'failedCount': 2,
-        },
-        'error': 'no usable nodes',
-      };
-      final empty = await XrayShareReader().parseShareTextReport('fixture');
-      expect(empty.rows, isEmpty);
-      expect(empty.failureCount, 2);
-
-      response = {
-        'success': true,
-        'data': {
+      for (final data in [
+        null,
+        {
           'outbounds': [valid],
         },
-        'error': '',
-      };
-      await expectLater(
-        AppHostApi().convertShareLinksToXrayJson('fixture'),
-        throwsFormatException,
-      );
-
+      ]) {
+        response = {
+          'success': false,
+          'data': data,
+          'error': 'no valid outbound found',
+        };
+        await expectLater(
+          XrayShareReader().parseShareText('fixture'),
+          throwsA(isA<LibXrayInvokeException>()),
+        );
+      }
       response = {
         'success': true,
-        'data': {
-          'config': {
-            'outbounds': [valid],
-          },
-          'usableCount': 2,
-          'failedCount': 0,
-        },
+        'data': {'outbounds': 'not a list'},
         'error': '',
       };
       await expectLater(

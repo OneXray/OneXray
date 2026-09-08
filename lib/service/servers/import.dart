@@ -19,7 +19,7 @@ import 'package:onexray/service/shared/share/service.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/shared/in_flight_operations.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
@@ -33,7 +33,6 @@ import 'package:path/path.dart' as p;
 class ServerImportResult {
   final int count;
   final int? subscriptionId;
-  final int? failureCount;
   final int rawCount;
   final int customCount;
   final int geoDataCount;
@@ -43,7 +42,6 @@ class ServerImportResult {
   const ServerImportResult({
     required this.count,
     this.subscriptionId,
-    this.failureCount,
     this.rawCount = 0,
     this.customCount = 0,
     this.geoDataCount = 0,
@@ -55,13 +53,11 @@ class ServerImportResult {
 class ServerImportPreview {
   final List<CoreConfigCompanion> rows;
   final List<OneXrayGeoDataLink> geoData;
-  final int? failureCount;
   final List<ConfigurationContent> customRoutes;
   final List<GeoDataInput> assets;
   final GeoDataImport? _dependencies;
   ServerImportPreview(
     Iterable<CoreConfigCompanion> rows, {
-    this.failureCount,
     Iterable<OneXrayGeoDataLink> geoData = const [],
     Iterable<ConfigurationContent> customRoutes = const [],
     this._dependencies,
@@ -89,12 +85,19 @@ class ServerSubscriptionImport {
   const ServerSubscriptionImport(this.name, this.result);
 }
 
-/// Local detection is read-only. Only an explicit confirmation calls [commit].
+/// Prepares content without writes; [commit] imports it after user-initiated input.
 class ServerImportService {
+  // Pages create import instances; clear-data pauses their shared import work.
+  static final _imports = InFlightOperations();
+
+  static Future<void> pauseForDataClear() => _imports.pause();
+
+  static void resumeAfterDataClear() => _imports.resume();
+
   final AppDatabase? _database;
   final ConfigurationTransferService _transfer;
   final Future<bool> Function(String) _validateRaw;
-  final Future<ShareParseReport> Function(String) _parse;
+  final Future<List<CoreConfigCompanion>> Function(String) _parse;
   final Future<String> Function(String) _validate;
   final Future<ConfigWriteResult> Function(List<CoreConfigCompanion>) _write;
   final void Function(List<int>) _schedule;
@@ -107,7 +110,6 @@ class ServerImportService {
     AppDatabase? database,
     ConfigurationTransferService? transfer,
     Future<List<CoreConfigCompanion>> Function(String)? parse,
-    Future<ShareParseReport> Function(String)? parseReport,
     Future<String> Function(String)? validate,
     Future<ConfigWriteResult> Function(List<CoreConfigCompanion>)? write,
     void Function(List<int>)? schedule,
@@ -119,11 +121,7 @@ class ServerImportService {
        _transfer = transfer ?? ConfigurationTransferService(),
        _validateRaw = ((text) async =>
            (await XrayRawValidator.validate(text, testXray: validate)).isValid),
-       _parse =
-           parseReport ??
-           (parse == null
-               ? XrayShareReader().parseShareTextReport
-               : (text) async => ShareParseReport(await parse(text))),
+       _parse = parse ?? XrayShareReader().parseShareText,
        _validate = validate ?? AppHostApi().testXray,
        _write =
            write ??
@@ -171,9 +169,10 @@ class ServerImportService {
 
   Future<List<ServerSubscriptionImport>> importSubscriptions(
     List<OneXraySubscriptionLink> links,
-  ) => DataMaintenance.run(() async {
+  ) => _imports.track(() async {
     final results = <ServerSubscriptionImport>[];
     for (final link in links) {
+      if (_imports.isPaused) break;
       final name = link.name.trim().isEmpty
           ? Uri.parse(link.url).host
           : link.name.trim();
@@ -209,7 +208,6 @@ class ServerImportService {
         status: result.status,
         subId: row.id,
         count: result.count,
-        parseFailureCount: result.parseFailureCount,
       );
     }
     String? secretKey;
@@ -270,15 +268,11 @@ class ServerImportService {
                 text,
                 custom ? ConfigurationKind.custom : ConfigurationKind.raw,
               );
-              return _configurationPreview([], [content], [], 0);
+              return _configurationPreview([], [content], []);
             }
           }
         }
-        final report = await _parse(text);
-        return ServerImportPreview(
-          report.rows,
-          failureCount: report.failureCount,
-        );
+        return ServerImportPreview(await _parse(text));
       }
       final rows = <CoreConfigCompanion>[];
       final geoData = <OneXrayGeoDataLink>[];
@@ -290,13 +284,11 @@ class ServerImportService {
             OneXrayAppLinkParser.parse(uri),
       ];
       final usedGeoData = <OneXrayGeoDataLink>{};
-      int? failed = 0;
       for (final line in text.split('\n')) {
         final uri = Uri.tryParse(line.trim());
         final link = uri == null ? null : OneXrayAppLinkParser.parse(uri);
         if (link == null) {
           if (uri?.scheme.toLowerCase() == OneXrayAppLinkParser.scheme) {
-            failed = failed! + 1;
             continue;
           }
           other.add(line);
@@ -356,19 +348,14 @@ class ServerImportService {
             throw const FormatException('Unsupported local asset');
           }
         } catch (_) {
-          failed = failed! + 1;
+          // Skip invalid links without discarding the remaining input.
         }
       }
       if (other.any((line) => line.trim().isNotEmpty)) {
         try {
-          final report = await _parse(other.join('\n'));
-          rows.addAll(report.rows);
-          failed = report.failureCount == null
-              ? null
-              : failed! + report.failureCount!;
+          rows.addAll(await _parse(other.join('\n')));
         } catch (_) {
-          // An unsupported container has no reliable item count.
-          failed = null;
+          // Other valid App links in this input may still be imported.
         }
       }
       geoData.removeWhere(
@@ -385,12 +372,11 @@ class ServerImportService {
             !NetClient.isHttpsDownloadUri(Uri.parse(link.url)) ||
             !await _validateGeoData(link) ||
             standalone.any((item) => item.name == link.name)) {
-          failed = failed == null ? null : failed + 1;
-        } else {
-          standalone.add(link);
+          continue;
         }
+        standalone.add(link);
       }
-      return _configurationPreview(rows, configurations, standalone, failed);
+      return _configurationPreview(rows, configurations, standalone);
     }
     final json = jsonDecode(text);
     if (json is! Map<String, dynamic> ||
@@ -406,14 +392,13 @@ class ServerImportService {
     return ServerImportPreview([
       for (final outbound in json['outbounds'] as List)
         outboundCompanion(outbound as Map<String, dynamic>),
-    ], failureCount: 0);
+    ]);
   }
 
   Future<ServerImportPreview> _configurationPreview(
     List<CoreConfigCompanion> rows,
     List<ConfigurationContent> contents,
     List<OneXrayGeoDataLink> standalone,
-    int? failureCount,
   ) async {
     final custom = contents
         .where((item) => item.kind == ConfigurationKind.custom)
@@ -450,7 +435,6 @@ class ServerImportService {
         dependencies: draft,
         assets: assets,
         geoData: standalone,
-        failureCount: failureCount,
       );
     } catch (_) {
       await draft?.dispose();
@@ -459,7 +443,7 @@ class ServerImportService {
   }
 
   Future<ServerImportResult> commit(ServerImportPreview preview) =>
-      DataMaintenance.run(() async {
+      _imports.track(() async {
         if (!preview.hasItems) {
           throw const FormatException('No usable servers');
         }
@@ -521,7 +505,7 @@ class ServerImportService {
         : preview.customRoutes.isNotEmpty
         ? await GeoDataService().withFiles(() => save(() async {}))
         : await save(() async {});
-    if (result != null) {
+    if (result != null && !_imports.isPaused) {
       _schedule([
         for (var index = 0; index < result.ids.length; index++)
           if (preview.rows[index].type.value == 'outbound') result.ids[index],
@@ -530,6 +514,10 @@ class ServerImportService {
     var geoDataCount = 0;
     final failures = <OneXrayGeoDataLink>[];
     for (final link in preview.geoData) {
+      if (_imports.isPaused) {
+        failures.add(link);
+        continue;
+      }
       try {
         if (await _writeGeoData(link)) {
           geoDataCount++;
@@ -546,7 +534,6 @@ class ServerImportService {
       customCount: preview.customRoutes.length,
       geoDataCount: geoDataCount,
       failedGeoData: List.unmodifiable(failures),
-      failureCount: preview.failureCount,
     );
   }
 
