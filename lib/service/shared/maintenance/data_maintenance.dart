@@ -1,7 +1,7 @@
 import 'dart:async';
 
-/// Restore/clear only. Ordinary tasks run concurrently; file publication and
-/// backups must use their own coordination instead of closing this gate.
+/// Clear-data only. Ordinary tasks run concurrently; file publication uses
+/// its own coordination instead of closing this gate.
 abstract final class DataMaintenance {
   static final _running = <Completer<void>>{};
   static final _scopeKey = Object();

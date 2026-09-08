@@ -53,7 +53,6 @@ enum AppSecondaryDestination {
   configFileViewer("config-file-viewer"),
   autoUpdate("auto-update"),
   desktopSettings("desktop-settings"),
-  backup("backup"),
   appIcon("app-icon"),
   theme("theme"),
   language("language"),

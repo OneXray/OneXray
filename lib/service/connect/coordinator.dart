@@ -29,7 +29,7 @@ enum ConnectionPhase {
 class ConnectionView {
   final ConnectionPhase phase;
   final ConnectionRuntime? runtime;
-  final RuntimeSnapshot? traffic;
+  final ConnectionTraffic? traffic;
   final bool metricsAvailable;
   final int uploadSpeed;
   final int downloadSpeed;
@@ -78,12 +78,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     VpnStatus,
   )
   _inspectObserved;
-  late final Future<RuntimeSnapshot> Function(ConnectionRuntime) _readTraffic;
+  late final Future<ConnectionTraffic> Function(ConnectionRuntime) _readTraffic;
   late final Future<ConnectionRuntime?> Function() _readRuntime;
   final Stream<VpnStatus> _statusEvents;
   final bool Function() _needsStatusPolling;
-  late final Future<RuntimeSnapshot?> Function(ConnectionRuntime?)
-  _resetTraffic;
   final _commands = CommandSerialExecutor();
   final state = ValueNotifier(const ConnectionView());
   Future<void>? _initializing;
@@ -117,11 +115,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     Future<HostConnection> Function(Iterable<ConnectionRuntime>)? inspect,
     Future<HostConnection> Function(Iterable<ConnectionRuntime>, VpnStatus)?
     inspectObserved,
-    Future<RuntimeSnapshot> Function(ConnectionRuntime)? readTraffic,
+    Future<ConnectionTraffic> Function(ConnectionRuntime)? readTraffic,
     Future<ConnectionRuntime?> Function()? readRuntime,
     Stream<VpnStatus>? statusEvents,
     bool Function()? needsStatusPolling,
-    Future<RuntimeSnapshot?> Function(ConnectionRuntime?)? resetTraffic,
   }) : db = database ?? AppDatabase(),
        _statusEvents =
            statusEvents ?? AppFlutterApi().vpnStatusController.stream,
@@ -136,7 +133,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         ((runtimes, status) => host.inspect(runtimes, observedStatus: status));
     _readTraffic = readTraffic ?? host.query;
     _readRuntime = readRuntime ?? host.readRuntime;
-    _resetTraffic = resetTraffic ?? host.resetTraffic;
     _prepare =
         prepare ??
         ((configuration, cancelled) => ConnectionPreparation(db: db).prepare(
@@ -221,7 +217,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     }
   }
 
-  /// Page visibility is demand, not ownership of the VPN or its saved counters.
+  /// Page visibility is demand, not ownership of the VPN.
   /// In particular, a retained but offstage navigation branch has no demand.
   void setTrafficVisible(bool visible) {
     if (_closed || _trafficVisible == visible) return;
@@ -661,20 +657,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _failureLatched = true;
   }
 
-  Future<void> resetTraffic() => _run(() async {
-    final current = await _inspect(await _known());
-    final traffic = await _resetTraffic(current.runtime);
-    final previous = current.traffic ?? state.value.traffic;
-    _publish(
-      HostConnection(
-        current.status,
-        runtime: current.runtime,
-        traffic: traffic ?? previous?.withTotals(uplink: 0, downlink: 0),
-        permission: current.permission,
-      ),
-    );
-  });
-
   Future<void> _run(
     Future<void> Function() action, {
     bool waitForMaintenance = false,
@@ -728,31 +710,24 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         permission ??= old.permission;
       }
     }
-    final previous = state.value.traffic;
+    final previous = old.traffic;
     final next = current.traffic;
     final sameSession =
         current.connected &&
         old.phase == ConnectionPhase.connected &&
-        current.runtime?.identity == old.runtime?.identity &&
-        next != null &&
-        previous?.sessionId == next.sessionId;
-    // A saved 30s sample must not replace newer live counters during a status
-    // refresh. Explicit resets still publish their new totals.
-    final retainLive =
-        !liveTraffic &&
-        keepResult &&
-        _trafficWanted &&
-        old.metricsAvailable &&
-        sameSession &&
-        previous!.sampledAtMs >= next.sampledAtMs;
-    final display = retainLive ? previous : next ?? previous;
+        current.runtime != null &&
+        current.runtime?.identity == old.runtime?.identity;
+    final retainLive = !liveTraffic && sameSession && old.metricsAvailable;
+    final display = current.connected
+        ? next ?? (sameSession ? previous : null)
+        : null;
     int upload = 0, download = 0;
     if (liveTraffic &&
         !_resetSpeed &&
-        current.connected &&
-        next?.available == true &&
-        previous?.sessionId == next?.sessionId) {
-      final elapsed = next!.sampledAtMs - previous!.sampledAtMs;
+        sameSession &&
+        next != null &&
+        previous != null) {
+      final elapsed = next.sampledAtMs - previous.sampledAtMs;
       if (elapsed > 0 &&
           next.uplink >= previous.uplink &&
           next.downlink >= previous.downlink) {
@@ -776,8 +751,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           : current.runtime,
       traffic: display,
       metricsAvailable:
-          current.connected &&
-          (retainLive || (liveTraffic && next?.available == true)),
+          current.connected && (retainLive || (liveTraffic && next != null)),
       uploadSpeed: retainLive ? old.uploadSpeed : upload,
       downloadSpeed: retainLive ? old.downloadSpeed : download,
       issue:

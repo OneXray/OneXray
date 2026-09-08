@@ -316,19 +316,12 @@ ConnectionRuntime _runtime(
   ConnectionConfiguration configuration,
   List<ResolvedServer> entries,
 ) {
-  final id = List.filled(32, digit).join();
   final text = jsonEncode({
     'outbounds': entries.map((row) => row.outbound).toList(),
   });
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      text,
-      runtime: ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        token: id,
-      ),
-    ).toJson(),
+    payload: RunXrayRequest(text).toJson(),
   );
   return ConnectionRuntime.create(
     configuration: configuration,

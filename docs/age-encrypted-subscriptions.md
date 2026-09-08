@@ -29,10 +29,8 @@ OneXray 可以下载明文订阅，也可以在内存中解密标准 age armor�
 
 Age 订阅的 OneXray App Link 只包含算法类型，不携带公钥或私钥。接收端导入时会生成一对新的密钥，因此服务端必须能够根据新公钥提供响应。链接格式由 [订阅、导入与分享](subscriptions-and-sharing.md) 统一定义。
 
-## 备份与安全边界
+## 安全边界
 
-- 当前备份格式同时保存公钥和私钥；兼容的旧备份可能没有这两个字段。
-- 备份 ZIP 本身不加密。包含 Age 私钥的备份必须按敏感文件处理。
 - 日志不得记录私钥、完整密钥对、解密后的订阅正文或含密钥的请求上下文。
 - 网络请求仍应使用 HTTPS。Age 只加密响应负载，不能验证订阅 URL 是否可信。
 - 解密后的内容不写入临时明文文件，由 libXray 直接在内存中解析。
@@ -43,5 +41,4 @@ Age 订阅的 OneXray App Link 只包含算法类型，不携带公钥或私钥�
 - 下载和事务替换：`lib/service/servers/subscription/service.dart`
 - 请求头与网络行为：`lib/core/network/`
 - App Link：`lib/service/shared/share/app_link_parser.dart`、`app_link_generator.dart`；导入由 `lib/service/servers/import.dart` 处理。
-- 备份：`lib/service/settings/backup/backup.dart`
 - libXray 调用边界：`lib/core/pigeon/host_api.dart`

@@ -20,8 +20,9 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   a separate Map compilation path. Database JSON stays Base64; preserve legacy
   Raw rows above the new-item limit and keep retired Profile/Multi-node rows
   outside product flows.
-- Live traffic comes from Xray metrics; saved session counters come from
-  libXray HTTP, not file reads. The App owns cumulative totals/reset.
+- Current-session traffic and speed come only from Xray metrics HTTP while the
+  connection page is visible in the foreground. Do not persist traffic or maintain
+  device totals.
   Keep the iOS Debug local proxy separate from normal UI and business state.
 - Prefer shared theme changes in `lib/pages/theme/`. Use `AppTheme.appBarTheme`
   for AppBar styling, `ThemeData.textTheme`/`AppTypography` for typography, and
@@ -38,7 +39,7 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
 - Startup, recovery or permissions: [app startup](docs/app-startup.md).
 - Configuration, Raw JSON, connection lifecycle or statistics:
   [Xray configuration](docs/xray-configuration.md).
-- Database, migration, Geodata, updates or backup:
+- Database, migration, Geodata or updates:
   [data management](docs/data-management.md).
 - Import, links or sharing: [subscriptions and sharing](docs/subscriptions-and-sharing.md);
   for age keys/decryption, also read [age subscriptions](docs/age-encrypted-subscriptions.md).

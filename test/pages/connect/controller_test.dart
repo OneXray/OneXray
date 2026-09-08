@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
@@ -14,7 +13,6 @@ import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
@@ -312,28 +310,11 @@ void main() {
       await tester.tap(find.text('traffic-action'));
       await tester.pumpAndSettle();
       expect(find.text('Current speed'), findsOneWidget);
-      await tester.tap(find.text('Reset totals'));
-      await tester.pumpAndSettle();
-      expect(find.text('This change cannot be undone.'), findsOneWidget);
-      expect(find.text('Current speed'), findsNothing);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text('connection-home'), findsOneWidget);
-      expect(find.text('Current speed'), findsNothing);
-      expect(coordinator.resetCount, 0);
-      await tester.tap(find.text('traffic-action'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Reset totals'));
-      await tester.pumpAndSettle();
-      coordinator.resetCompletion = Completer<void>();
-      await tester.tap(find.widgetWithText(FilledButton, 'Reset totals'));
-      await tester.pump();
-      expect(find.byType(ButtonProgressIndicator), findsOneWidget);
-      expect(find.text('This change cannot be undone.'), findsOneWidget);
-      coordinator.resetCompletion!.complete();
+      expect(find.text('Total traffic'), findsNothing);
+      expect(find.text('Reset totals'), findsNothing);
+      await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
       expect(find.text('Current speed'), findsNothing);
-      expect(coordinator.resetCount, 1);
       // The backdrop remains a dismiss target outside the compact dialog.
       await tester.tap(find.text('methods-action'));
       await tester.pumpAndSettle();
@@ -491,8 +472,6 @@ class _Coordinator extends ConnectionCoordinator {
   final bool fail;
   int connectCount = 0;
   int disconnectCount = 0;
-  int resetCount = 0;
-  Completer<void>? resetCompletion;
 
   @override
   Future<void> connect() async {
@@ -502,12 +481,6 @@ class _Coordinator extends ConnectionCoordinator {
   @override
   Future<void> disconnect() async {
     disconnectCount++;
-  }
-
-  @override
-  Future<void> resetTraffic() async {
-    resetCount++;
-    await resetCompletion?.future;
   }
 
   ConnectionConfiguration saved = ConnectionConfiguration(
@@ -562,7 +535,6 @@ Widget _testApp(Widget home) => MaterialApp(
 );
 
 ConnectionRuntime _runtime({bool expert = false}) {
-  const id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   final configuration = ConnectionConfiguration(
     connection: ConnectionSettings(expert: expert),
   );
@@ -573,13 +545,7 @@ ConnectionRuntime _runtime({bool expert = false}) {
   );
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      '{}',
-      runtime: const ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        token: id,
-      ),
-    ).toJson(),
+    payload: RunXrayRequest('{}').toJson(),
   );
   return ConnectionRuntime.create(
     configuration: configuration,

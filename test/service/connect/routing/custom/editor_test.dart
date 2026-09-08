@@ -170,7 +170,9 @@ void main() {
           database: db,
           inspect: (_) async => host,
           start: (runtime) async {
-            calls.add('start:${runtime.identity[0]}');
+            calls.add(
+              runtime.identity == old.identity ? 'start:old' : 'start:new',
+            );
             throw const ConnectionHostException('startFailed');
           },
           stop: () async {
@@ -215,7 +217,7 @@ void main() {
         renamed.original!.data,
       );
       expect((await db.connectionConfigDao.read()).toJson(), before);
-      expect(calls, ['stop', 'start:b', 'stop']);
+      expect(calls, ['stop', 'start:new', 'stop']);
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
       expect(coordinator.state.value.runtime, isNull);
     },
@@ -241,7 +243,9 @@ void main() {
         inspect: (_) async => host,
         prepare: (next, _) async => _runtime('b', next),
         start: (runtime) async {
-          calls.add('start:${runtime.identity[0]}');
+          calls.add(
+            runtime.identity == old.identity ? 'start:old' : 'start:new',
+          );
           return host = HostConnection(VpnStatus.connected, runtime: runtime);
         },
         stop: () async {
@@ -268,7 +272,7 @@ void main() {
       true,
     );
     expect(await db.routingProfileDao.searchRow(id), isNull);
-    expect(calls, ['stop', 'start:b']);
+    expect(calls, ['stop', 'start:new']);
     expect(
       (await coordinator.configuration).connection.trafficMode,
       TrafficMode.smart,
@@ -369,17 +373,10 @@ ConnectionRuntime _runtime(
   String digit,
   ConnectionConfiguration configuration,
 ) {
-  final id = List.filled(32, digit).join();
   const text = '{"outbounds":[{"protocol":"freedom"}]}';
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      text,
-      runtime: ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        token: id,
-      ),
-    ).toJson(),
+    payload: RunXrayRequest(text).toJson(),
   );
   return ConnectionRuntime.create(
     configuration: configuration,

@@ -537,7 +537,7 @@ class ConnectView extends StatelessWidget {
       ConnectionPhase.disconnecting => l.prototypeDisconnecting,
       ConnectionPhase.failed => l.prototypeConnectionFailed,
     };
-    final startedAt = view.traffic?.startedAtMs;
+    final startedAt = view.runtime?.startedAt.millisecondsSinceEpoch;
     final elapsed = startedAt == null
         ? 0
         : DateTime.now()
@@ -1117,17 +1117,9 @@ class TrafficReadout extends StatelessWidget {
         ),
         _group(
           context,
-          view.phase == ConnectionPhase.connected
-              ? l.prototypeThisConnection
-              : l.prototypeLastConnection,
+          l.prototypeThisConnection,
           formatTraffic(traffic?.downlink ?? 0, connection: true),
           formatTraffic(traffic?.uplink ?? 0, connection: true),
-        ),
-        _group(
-          context,
-          l.prototypeTotalTraffic,
-          formatTraffic(traffic?.totalDownlink ?? 0, connection: true),
-          formatTraffic(traffic?.totalUplink ?? 0, connection: true),
           divider: false,
         ),
       ],

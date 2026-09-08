@@ -9,23 +9,23 @@ import 'package:onexray/pages/shared/widgets/settings_page.dart';
 const _open = Key('open-confirmation');
 const _filename =
     'OneXray-2026-09-03-user-servers-subscriptions-Age-keys-custom-routing-'
-    'Raw-JSON-and-custom-Geodata-backup.zip';
+    'Raw-JSON-and-custom-Geodata.json';
 
 enum _Action { delete, restore, export, clear }
 
 AppConfirmationDialog _dialog(AppLocalizations l, _Action action) =>
     AppConfirmationDialog(
       title: switch (action) {
-        _Action.delete => l.prototypeDeleteBackupQuestion,
-        _Action.restore => l.prototypeRestoreBackupQuestion,
-        _Action.export => l.prototypeExportBackup,
+        _Action.delete => l.prototypeDeleteRawQuestion,
+        _Action.restore => l.prototypeRestoreDefaults,
+        _Action.export => l.prototypeExportJson,
         _Action.clear => l.prototypeClearAllDataQuestion,
       },
       subject: action == _Action.clear ? null : _filename,
       content: switch (action) {
-        _Action.delete => l.prototypeDeleteBackupWarning,
-        _Action.restore => l.prototypeRestoreBackupWarning,
-        _Action.export => l.prototypeBackupTransferWarning,
+        _Action.delete => l.prototypeCannotUndo,
+        _Action.restore => l.prototypeCannotUndo,
+        _Action.export => l.prototypeCannotUndo,
         _Action.clear => l.prototypeClearAllDataWarning,
       },
       cancelLabel: l.prototypeCancel,

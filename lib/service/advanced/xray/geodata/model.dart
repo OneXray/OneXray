@@ -108,13 +108,3 @@ class GeoDataImportDraft {
 
   static Future<void> _noop() async {}
 }
-
-class GeoDataRestoreDraft {
-  final Future<void> Function() _commit;
-  final Future<void> Function() _complete;
-  final Future<void> Function() _dispose;
-  GeoDataRestoreDraft(this._commit, this._complete, this._dispose);
-  Future<void> commit() => _commit();
-  Future<void> complete() => _complete();
-  Future<void> dispose() => _dispose();
-}

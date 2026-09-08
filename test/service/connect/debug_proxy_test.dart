@@ -27,7 +27,7 @@ void main() {
   });
 
   test(
-    'only the managed TUN inbound changes; invocation and runtime survive',
+    'only the managed TUN inbound changes; other invocation fields survive',
     () {
       final runtime = _runtime();
       final original = jsonEncode(runtime.request.toJson());
@@ -53,7 +53,6 @@ void main() {
       expect(converted, source);
       expect(after.invoke.apiVersion, before.invoke.apiVersion);
       expect(after.invoke.method, before.invoke.method);
-      expect(after.request.runtime!.toJson(), before.request.runtime!.toJson());
       expect(jsonEncode(runtime.request.toJson()), original);
     },
   );
@@ -102,9 +101,7 @@ void main() {
       test(
         'persists the exact Debug invocation (existing: $existing)',
         () async {
-          final runtime = _runtime(
-            statePath: '${VpnConstants.runDir}/runtime.json',
-          );
+          final runtime = _runtime();
           final original = runtime.request.toJson();
           final start = File(VpnConstants.startPath);
           if (existing) {
@@ -137,9 +134,7 @@ void main() {
     test('propagates a write failure before starting the core', () async {
       await File(VpnConstants.runDir).writeAsString('not a directory');
       await expectLater(
-        IOSDebugProxy.prepareInvoke(
-          _runtime(statePath: '${VpnConstants.runDir}/runtime.json'),
-        ),
+        IOSDebugProxy.prepareInvoke(_runtime()),
         throwsA(isA<FileSystemException>()),
       );
     });
@@ -150,9 +145,7 @@ ConnectionRuntime _runtime({
   String? port = '18001',
   String platform = 'ios',
   bool withTun = true,
-  String statePath = '/fixture/run/runtime.json',
 }) {
-  const id = 'ffffffffffffffffffffffffffffffff';
   final config = jsonEncode({
     'inbounds': [
       if (withTun)
@@ -184,10 +177,7 @@ ConnectionRuntime _runtime({
   });
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      config,
-      runtime: ManagedRuntimeRequest(statePath: statePath, token: id),
-    ).toJson(),
+    payload: RunXrayRequest(config).toJson(),
   );
   final configuration = ConnectionConfiguration();
   return ConnectionRuntime.create(

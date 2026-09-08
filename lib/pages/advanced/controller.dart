@@ -103,7 +103,7 @@ class AdvancedController extends PageCubit<AdvancedPageState>
   void _publish() {
     if (!isPageActive) return;
     final runtime = coordinator.state.value;
-    final started = runtime.traffic?.startedAtMs;
+    final started = runtime.runtime?.startedAt.millisecondsSinceEpoch;
     var uptime = '—';
     if (runtime.phase == ConnectionPhase.connected &&
         started != null &&

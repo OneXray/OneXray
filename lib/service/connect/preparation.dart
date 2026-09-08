@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -18,23 +17,15 @@ import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:path/path.dart' as p;
 
-String newRuntimeToken() {
-  final random = Random.secure();
-  return List.generate(
-    16,
-    (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
-  ).join();
-}
-
 Future<List<int>> allocateRuntimePorts(
   List<dynamic> rawInbounds, {
   Future<List<int>> Function(int count)? getFreePorts,
 }) async {
   final allocate = getFreePorts ?? AppHostApi().getFreePorts;
   for (var attempt = 0; attempt < 5; attempt++) {
-    final candidates = await allocate(3);
-    if (candidates.length == 3 &&
-        candidates.toSet().length == 3 &&
+    final candidates = await allocate(2);
+    if (candidates.length == 2 &&
+        candidates.toSet().length == 2 &&
         candidates.every((port) => port > 0 && port <= 65535) &&
         !rawInbounds.any(
           (entry) =>
@@ -208,11 +199,6 @@ class ConnectionPreparation {
         );
       }
     }
-    final managed = ManagedRuntimeRequest(
-      statePath: p.join(VpnConstants.runDir, 'runtime.json'),
-      listen: '127.0.0.1:${ports[2]}',
-      token: newRuntimeToken(),
-    );
     final request = StartVpnRequest(
       tun,
       platform == ConnectionPlatform.windows ||
@@ -223,7 +209,7 @@ class ConnectionPreparation {
       jsonEncode(
         LibXrayInvokeRequest(
           method: LibXrayMethod.runXray,
-          payload: RunXrayRequest(compiled.xrayJson, runtime: managed).toJson(),
+          payload: RunXrayRequest(compiled.xrayJson).toJson(),
         ).toJson(),
       ),
     );

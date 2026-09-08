@@ -126,14 +126,6 @@ enum LibXrayMethod: String, Codable {
 
 struct RunXrayRequest: Codable, Hashable {
     var xrayJson: String?
-    var runtime: ManagedRuntimeRequest?
-}
-
-struct ManagedRuntimeRequest: Codable, Hashable {
-    var statePath: String
-    var inboundTag: String
-    var listen: String?
-    var token: String?
 }
 
 struct XrayEnv: Codable, Hashable {

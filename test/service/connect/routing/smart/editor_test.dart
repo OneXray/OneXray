@@ -106,7 +106,9 @@ void main() {
           inspect: (_) async => host,
           prepare: (next, _) async => _runtime('b', next),
           start: (runtime) async {
-            calls.add('start:${runtime.identity[0]}');
+            calls.add(
+              runtime.identity == old.identity ? 'start:old' : 'start:new',
+            );
             throw const ConnectionHostException('startFailed');
           },
           stop: () async {
@@ -140,7 +142,7 @@ void main() {
         throwsA(isA<ConnectionHostException>()),
       );
       expect((await db.connectionConfigDao.read()).toJson(), before);
-      expect(calls, ['stop', 'start:b', 'stop']);
+      expect(calls, ['stop', 'start:new', 'stop']);
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
       expect(coordinator.state.value.runtime, isNull);
     },
@@ -271,7 +273,6 @@ ConnectionRuntime _runtime(
   String digit,
   ConnectionConfiguration configuration,
 ) {
-  final id = List.filled(32, digit).join();
   const text = '{"outbounds":[{"protocol":"freedom"}]}';
   return ConnectionRuntime.create(
     configuration: configuration,
@@ -289,13 +290,7 @@ ConnectionRuntime _runtime(
       jsonEncode(
         LibXrayInvokeRequest(
           method: LibXrayMethod.runXray,
-          payload: RunXrayRequest(
-            text,
-            runtime: ManagedRuntimeRequest(
-              statePath: '/fixture/run/runtime.json',
-              token: id,
-            ),
-          ).toJson(),
+          payload: RunXrayRequest(text).toJson(),
         ).toJson(),
       ),
     ),

@@ -4,7 +4,7 @@ import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 
 /// Keep untrusted source URLs out of diagnostics; every redirect stays HTTPS.
-/// The per-file ceiling matches the existing backup archive limit.
+/// Bound each routing-data download before indexing and publication.
 Future<void> downloadGeoData(String url, File destination) async {
   try {
     await _downloadGeoData(url, destination);

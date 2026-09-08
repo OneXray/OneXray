@@ -58,8 +58,6 @@ class RuntimeNode {
 /// start.json retains only the small metadata required to restore the UI and
 /// protect active nodes; the Xray JSON remains solely in coreInvokeText.
 class ConnectionRuntime {
-  static final _safeToken = RegExp(r'^[a-f0-9]{32}$');
-
   final ConnectionConfiguration configuration;
   final ConnectionPlatform platform;
   final StartVpnRequest request;
@@ -67,6 +65,7 @@ class ConnectionRuntime {
   final List<RuntimeNode> entries;
   final RuntimeNode? finalExit;
   final String? notice;
+  final DateTime startedAt;
 
   ConnectionRuntime._({
     required this.configuration,
@@ -75,6 +74,7 @@ class ConnectionRuntime {
     required this.xrayJson,
     required this.entries,
     required this.finalExit,
+    required this.startedAt,
     this.notice,
   });
 
@@ -84,7 +84,9 @@ class ConnectionRuntime {
     required ConnectionPlatform platform,
     required StartVpnRequest request,
     String? notice,
+    DateTime? startedAt,
   }) {
+    startedAt ??= DateTime.now();
     final entries = [
       for (final server in compiled.entries) RuntimeNode.fromServer(server),
     ];
@@ -93,6 +95,7 @@ class ConnectionRuntime {
         : RuntimeNode.fromServer(compiled.finalExit!);
     final metadataJson = jsonEncode({
       'version': 1,
+      'startedAt': startedAt.microsecondsSinceEpoch,
       'platform': platform.name,
       'configuration': configuration.toJson(),
       'entries': [for (final entry in entries) entry.toJson()],
@@ -114,6 +117,7 @@ class ConnectionRuntime {
       entries: List.unmodifiable(entries),
       finalExit: finalExit,
       notice: notice,
+      startedAt: startedAt,
     );
   }
 
@@ -128,6 +132,7 @@ class ConnectionRuntime {
     final metadata = jsonDecode(metadataText);
     if (metadata is! Map<String, dynamic> ||
         metadata['version'] != 1 ||
+        metadata['startedAt'] is! int ||
         metadata['platform'] is! String ||
         metadata['configuration'] is! Map<String, dynamic> ||
         metadata['entries'] is! List ||
@@ -139,10 +144,7 @@ class ConnectionRuntime {
       throw const FormatException('Invalid runtime metadata');
     }
     final run = LibXrayRunConfig.fromInvokeText(invokeText).request;
-    final runtime = run.runtime;
-    if (run.xrayJson == null ||
-        runtime == null ||
-        !_safeToken.hasMatch(runtime.token ?? '')) {
+    if (run.xrayJson == null) {
       throw const FormatException('Invalid runtime request');
     }
     return ConnectionRuntime._(
@@ -151,6 +153,9 @@ class ConnectionRuntime {
       ),
       platform: ConnectionPlatform.values.byName(
         metadata['platform'] as String,
+      ),
+      startedAt: DateTime.fromMicrosecondsSinceEpoch(
+        metadata['startedAt'] as int,
       ),
       request: request,
       xrayJson: run.xrayJson!,
@@ -165,9 +170,8 @@ class ConnectionRuntime {
     );
   }
 
-  ManagedRuntimeRequest get managed =>
-      LibXrayRunConfig.fromInvokeText(request.coreInvokeText!).request.runtime!;
-  String get identity => managed.token!;
+  String get identity =>
+      '${startedAt.microsecondsSinceEpoch}:${request.metricsPort}';
   Set<int> get nodeIds => {
     for (final entry in entries) entry.id,
     if (finalExit != null) finalExit!.id,

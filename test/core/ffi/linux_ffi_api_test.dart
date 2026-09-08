@@ -50,8 +50,8 @@ void main() {
     expect(api.needsVpnStatusPolling, isFalse);
   });
 
-  test('rejects PID reuse, another executable, config changes and missing runtime argv', () async {
-    for (final mismatch in ['ticks', 'exe', 'config', 'runtime']) {
+  test('rejects PID reuse, another executable, config changes', () async {
+    for (final mismatch in ['ticks', 'exe', 'config']) {
       final fixture = await _Fixture.create();
       await fixture.writeRecord();
       final otherExecutable = File(
@@ -66,7 +66,6 @@ void main() {
         configPath: mismatch == 'config'
             ? '${fixture.config.path}.different'
             : null,
-        includeRuntime: mismatch != 'runtime',
       );
       final api = fixture.api((pid, signal) {
         fixture.signals.add((pid: pid, signal: signal));
@@ -210,11 +209,7 @@ void main() {
         startTicks: 123,
       ),
     );
-    await fixture.writeProcess(
-      42,
-      configPath: outside.path,
-      includeRuntime: false,
-    );
+    await fixture.writeProcess(42, configPath: outside.path);
     expect(await api.queryCoreRunning(), isNull);
     expect(await api.stopCore(), isFalse);
     expect(await fixture.recordFile.exists(), isTrue);
@@ -228,7 +223,6 @@ class _Fixture {
   final File executable;
   final File v2684Executable;
   final File config;
-  final File runtime;
   final DesktopCoreProcessStore store;
   final signals = <({int pid, ProcessSignal signal})>[];
 
@@ -238,7 +232,6 @@ class _Fixture {
     this.executable,
     this.v2684Executable,
     this.config,
-    this.runtime,
   ) : store = DesktopCoreProcessStore(directory: directory.path);
 
   File get recordFile =>
@@ -268,17 +261,8 @@ class _Fixture {
       p.join(directory.path, 'run', 'core-inputs', 'input-fixture'),
     ).create(recursive: true);
     final config = File(p.join(input.path, 'xray.json'));
-    final runtime = File(p.join(input.path, 'runtime-config.json'));
     await config.writeAsString('{}');
-    await runtime.writeAsString('{}');
-    return _Fixture(
-      directory,
-      proc,
-      executable,
-      v2684Executable,
-      config,
-      runtime,
-    );
+    return _Fixture(directory, proc, executable, v2684Executable, config);
   }
 
   LinuxFfiApi api(bool Function(int, ProcessSignal) signal) {
@@ -293,12 +277,7 @@ class _Fixture {
   }
 
   Future<void> writeRecord() => store.write(
-    DesktopCoreProcessRecord(
-      pid: 42,
-      configPath: config.path,
-      runtimePath: runtime.path,
-      startTicks: 123,
-    ),
+    DesktopCoreProcessRecord(pid: 42, configPath: config.path, startTicks: 123),
   );
 
   Future<void> writeProcess(
@@ -306,7 +285,6 @@ class _Fixture {
     int ticks = 123,
     String? executable,
     String? configPath,
-    bool includeRuntime = true,
   }) async {
     final folder = await Directory(p.join(proc.path, '$pid')).create();
     await Link(p.join(folder.path, 'exe'))
@@ -321,7 +299,6 @@ class _Fixture {
       'run',
       '-config',
       configPath ?? config.path,
-      if (includeRuntime) ...['-runtime', runtime.path],
       '',
     ];
     await File(p.join(folder.path, 'cmdline'))

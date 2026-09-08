@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -20,12 +19,8 @@ List<String> desktopCoreRunArguments({
   required String dns,
   required String interfaceName,
   required String configPath,
-  String? runtimePath,
 }) {
-  if (dns.isEmpty ||
-      interfaceName.isEmpty ||
-      configPath.isEmpty ||
-      runtimePath?.isEmpty == true) {
+  if (dns.isEmpty || interfaceName.isEmpty || configPath.isEmpty) {
     throw const FormatException(
       'Desktop Core DNS, interface, or config path is missing',
     );
@@ -38,7 +33,6 @@ List<String> desktopCoreRunArguments({
     interfaceName,
     '-config',
     configPath,
-    if (runtimePath != null) ...['-runtime', runtimePath],
   ];
 }
 
@@ -100,9 +94,7 @@ abstract class BaseFfiApi {
     return true;
   }
 
-  Future<({String configPath, String? runtimePath})?> materializeRunXrayConfig(
-    LibXrayRunConfig request,
-  ) async {
+  Future<String?> materializeRunXrayConfig(LibXrayRunConfig request) async {
     final runPath = p.join(await getTunFilesDir(), 'run');
     final root = Directory(p.join(runPath, 'core-inputs'));
     final type = await FileSystemEntity.type(root.path, followLinks: false);
@@ -117,18 +109,11 @@ abstract class BaseFfiApi {
       return null;
     }
 
-    final runtime = request.request.runtime;
     final directory = await root.createTemp('input-');
     try {
       final config = File(p.join(directory.path, 'xray.json'));
       await config.writeAsString(xrayJson, flush: true);
-      String? runtimePath;
-      if (runtime != null) {
-        runtimePath = p.join(directory.path, 'runtime-config.json');
-        await File(runtimePath)
-            .writeAsString(jsonEncode(runtime.toJson()), flush: true);
-      }
-      return (configPath: config.path, runtimePath: runtimePath);
+      return config.path;
     } catch (_) {
       if (await directory.exists()) await directory.delete(recursive: true);
       rethrow;

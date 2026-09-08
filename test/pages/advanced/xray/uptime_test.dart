@@ -5,7 +5,13 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/pages/advanced/controller.dart';
 import 'package:onexray/pages/advanced/tab_visibility.dart';
 import 'package:onexray/service/connect/coordinator.dart';
-import 'package:onexray/service/connect/traffic_accounting.dart';
+
+import 'dart:convert';
+
+import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/service/connect/compiler.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
 
 void main() {
   testWidgets(
@@ -16,17 +22,7 @@ void main() {
       var now = DateTime(2026, 9, 3);
       coordinator.state.value = ConnectionView(
         phase: ConnectionPhase.connected,
-        traffic: RuntimeSnapshot(
-          sessionId: 'session',
-          startedAtMs: now.millisecondsSinceEpoch - 60000,
-          endedAtMs: 0,
-          uplink: 0,
-          downlink: 0,
-          available: true,
-          sampledAtMs: now.millisecondsSinceEpoch,
-          savedAtMs: now.millisecondsSinceEpoch,
-          error: '',
-        ),
+        runtime: _runtime(now.subtract(const Duration(minutes: 1))),
       );
       final controller = _AdvancedController(
         coordinator: coordinator,
@@ -68,17 +64,7 @@ void main() {
     var now = DateTime(2026, 9, 3);
     coordinator.state.value = ConnectionView(
       phase: ConnectionPhase.connected,
-      traffic: RuntimeSnapshot(
-        sessionId: 'session',
-        startedAtMs: now.millisecondsSinceEpoch - 60000,
-        endedAtMs: 0,
-        uplink: 0,
-        downlink: 0,
-        available: true,
-        sampledAtMs: now.millisecondsSinceEpoch,
-        savedAtMs: now.millisecondsSinceEpoch,
-        error: '',
-      ),
+      runtime: _runtime(now.subtract(const Duration(minutes: 1))),
     );
     final controller = _AdvancedController(
       coordinator: coordinator,
@@ -129,3 +115,26 @@ class _AdvancedController extends AdvancedController {
   @override
   Future<void> reload() async {}
 }
+
+ConnectionRuntime _runtime(DateTime startedAt) => ConnectionRuntime.create(
+  configuration: ConnectionConfiguration(),
+  compiled: CompiledConnection(
+    xrayJson: '{}',
+    entries: const [],
+    finalExit: null,
+    nodeTags: const {},
+  ),
+  platform: ConnectionPlatform.android,
+  request: StartVpnRequest(
+    null,
+    null,
+    '18003',
+    jsonEncode(
+      LibXrayInvokeRequest(
+        method: LibXrayMethod.runXray,
+        payload: RunXrayRequest('{}').toJson(),
+      ).toJson(),
+    ),
+  ),
+  startedAt: startedAt,
+);

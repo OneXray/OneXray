@@ -42,7 +42,6 @@ import 'package:onexray/pages/settings/app_update/dialog.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/advanced/xray/data_update/page.dart';
-import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
 import 'package:onexray/pages/settings/language/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
@@ -344,7 +343,6 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     AppSecondaryDestination.desktopSettings,
     (_, _) => const DesktopSettingsPage(),
   ),
-  _route(AppSecondaryDestination.backup, (_, _) => const BackupPage()),
   _route(AppSecondaryDestination.appIcon, (_, _) => const AppIconPage()),
   _route(AppSecondaryDestination.theme, (_, _) => const ThemePage()),
   _route(AppSecondaryDestination.language, (_, _) => const LanguagePage()),

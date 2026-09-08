@@ -16,16 +16,16 @@ import 'package:onexray/service/connect/debug_proxy.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/connect/traffic_accounting.dart';
+import 'package:onexray/service/connect/traffic.dart';
 import 'package:onexray/service/shared/xray/metrics/model.dart';
 import 'package:path/path.dart' as p;
 
-export 'traffic_accounting.dart' show RuntimeSnapshot;
+export 'traffic.dart' show ConnectionTraffic;
 
 class HostConnection {
   final VpnStatus status;
   final ConnectionRuntime? runtime;
-  final RuntimeSnapshot? traffic;
+  final ConnectionTraffic? traffic;
   final PlatformPermissionResult? permission;
   const HostConnection(
     this.status, {
@@ -44,12 +44,10 @@ class ConnectionHostException implements Exception {
   String toString() => reason;
 }
 
-/// Native status owns VPN state. Xray metrics supplies live counters; libXray
-/// periodically exposes the same current session through authenticated HTTP.
+/// Native status owns VPN state. Xray metrics supplies current-session counters.
 class ConnectionRuntimeHost {
   final AppHostApi _host = AppHostApi();
   final String? _runDirectory;
-  final RuntimeSnapshotReader? _readSnapshot;
   final Future<XrayMetricsVars> Function(int port)? _metrics;
   final Future<VpnStatus> Function()? _readStatus;
   final Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
@@ -58,12 +56,9 @@ class ConnectionRuntimeHost {
   final Duration startTimeout;
   final Duration stopTimeout;
   final Duration pollInterval;
-  ConnectionRuntime? _runtime;
-  bool _runtimeOnline = true;
 
   ConnectionRuntimeHost({
     String? runDirectory,
-    RuntimeSnapshotReader? readRuntimeSnapshot,
     Future<XrayMetricsVars> Function(int port)? readMetrics,
     Future<VpnStatus> Function()? readStatus,
     Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
@@ -73,17 +68,12 @@ class ConnectionRuntimeHost {
     this.stopTimeout = const Duration(seconds: 15),
     this.pollInterval = const Duration(milliseconds: 200),
   }) : _runDirectory = runDirectory,
-       _readSnapshot = readRuntimeSnapshot,
        _readStatus = readStatus,
        _startVpn = startVpn,
        _stopVpn = stopVpn,
        _metrics = readMetrics;
 
   String get _directory => _runDirectory ?? VpnConstants.runDir;
-  late final _accounting = TrafficAccounting(
-    path: p.join(_directory, 'traffic-totals.json'),
-    readRuntimeSnapshot: _state,
-  );
 
   Future<({VpnStatus status, PlatformPermissionResult? permission})>
   _status() async {
@@ -108,61 +98,10 @@ class ConnectionRuntimeHost {
     return (status: await event, permission: result.permission);
   }
 
-  Future<RuntimeSnapshot?> _state() async {
-    final reader = _readSnapshot;
-    if (reader != null) return reader();
-    if (!_runtimeOnline) {
-      throw const ConnectionHostException('runtimeStateUnavailable');
-    }
-    final candidates = <ConnectionRuntime>[?_runtime, ?await readRuntime()];
-    final tried = <String>{};
-    for (final runtime in candidates) {
-      if (!tried.add(runtime.identity)) continue;
-      try {
-        final snapshot = await _stateFor(runtime);
-        _runtime = runtime;
-        return snapshot;
-      } on Exception {
-        // A previous endpoint may have closed during a connection switch.
-      }
-    }
-    throw const ConnectionHostException('runtimeStateUnavailable');
-  }
-
-  Future<RuntimeSnapshot> _stateFor(ConnectionRuntime runtime) async {
-    final reader = _readSnapshot;
-    if (reader != null) {
-      final snapshot = await reader();
-      if (snapshot == null) {
-        throw const ConnectionHostException('runtimeStateUnavailable');
-      }
-      return snapshot;
-    }
-    final managed = runtime.managed;
-    final address = RegExp(r'^127\.0\.0\.1:([0-9]{1,5})$')
-        .firstMatch(managed.listen ?? '');
-    final port = int.tryParse(address?.group(1) ?? '');
-    if (port == null ||
-        port < 1 ||
-        port > 65535 ||
-        !_safeToken.hasMatch(managed.token ?? '')) {
-      throw const ConnectionHostException('runtimeStateUnavailable');
-    }
-    return RuntimeSnapshot.fromJson(
-      await _httpJson(
-        Uri(scheme: 'http', host: '127.0.0.1', port: port, path: '/runtime'),
-        token: managed.token,
-        maximumBytes: 1024 * 1024,
-      ),
-    );
-  }
-
-  static final _safeToken = RegExp(r'^[a-f0-9]{32}$');
-
   static Map<String, dynamic> _jsonObject(String text) {
     final json = jsonDecode(text);
     if (json is! Map<String, dynamic>) {
-      throw const FormatException('Invalid runtime state');
+      throw const FormatException('Invalid JSON response');
     }
     return json;
   }
@@ -187,19 +126,6 @@ class ConnectionRuntimeHost {
     }
   }
 
-  Future<RuntimeSnapshot?> readSavedTraffic() => _accounting.read();
-
-  Future<RuntimeSnapshot?> resetTraffic([ConnectionRuntime? runtime]) async {
-    if (runtime != null) {
-      try {
-        await query(runtime);
-      } on Exception {
-        // An unavailable metrics endpoint must not prevent an App-only reset.
-      }
-    }
-    return _accounting.read(reset: true);
-  }
-
   Future<XrayMetricsVars> _readMetrics(int port) async {
     final reader = _metrics;
     if (reader != null) return reader(port);
@@ -221,7 +147,6 @@ class ConnectionRuntimeHost {
 
   static Future<Map<String, dynamic>> _httpJson(
     Uri uri, {
-    String? token,
     int maximumBytes = 1048576,
   }) async {
     final client = HttpClient()
@@ -230,20 +155,17 @@ class ConnectionRuntimeHost {
     try {
       final request = await client.getUrl(uri);
       request.followRedirects = false;
-      if (token != null) {
-        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
-      }
       final response = await request.close().timeout(
         const Duration(seconds: 3),
       );
       if (response.statusCode != HttpStatus.ok) {
-        throw const ConnectionHostException('runtimeQueryFailed');
+        throw const ConnectionHostException('runtimeMetricsUnavailable');
       }
       final bytes = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 3))) {
         bytes.addAll(chunk);
         if (bytes.length > maximumBytes) {
-          throw const FormatException('Invalid runtime response size');
+          throw const FormatException('Invalid metrics response size');
         }
       }
       return _jsonObject(utf8.decode(bytes));
@@ -252,102 +174,41 @@ class ConnectionRuntimeHost {
     }
   }
 
-  Future<RuntimeSnapshot> query(ConnectionRuntime runtime) async {
-    _runtime = runtime;
-    _runtimeOnline = true;
-    final before = await _stateFor(runtime);
-    if (before.endedAtMs != 0) {
-      throw const ConnectionHostException('runtimeSessionChanged');
-    }
+  Future<ConnectionTraffic> query(ConnectionRuntime runtime) async {
     final port = int.tryParse(runtime.request.metricsPort ?? '');
     if (port == null || port < 1 || port > 65535) {
       throw const ConnectionHostException('runtimeMetricsUnavailable');
     }
-    final counters = (await _readMetrics(port)).tunIn;
-    final uplink = counters?.uplink;
-    final downlink = counters?.downlink;
-    if (uplink == null || downlink == null || uplink < 0 || downlink < 0) {
-      throw const ConnectionHostException('runtimeMetricsUnavailable');
+    final metrics = await _readMetrics(port);
+    if (metrics.stats == null) {
+      throw const FormatException('Missing metrics stats');
     }
-    final after = await _stateFor(runtime);
-    if (after.sessionId != before.sessionId || after.endedAtMs != 0) {
-      throw const ConnectionHostException('runtimeSessionChanged');
+    // Xray creates inbound counters lazily, when the first connection arrives.
+    final uplink = metrics.tunIn?.uplink ?? 0;
+    final downlink = metrics.tunIn?.downlink ?? 0;
+    if (uplink < 0 || downlink < 0) {
+      throw const FormatException('Invalid metrics counters');
     }
-    return (await _accounting.read(
-      live: after.withCounters(
-        uplink: uplink,
-        downlink: downlink,
-        sampledAtMs: DateTime.now().millisecondsSinceEpoch,
-        available: true,
-        error: '',
-      ),
-    ))!;
+    return ConnectionTraffic(
+      uplink: uplink,
+      downlink: downlink,
+      sampledAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   Future<HostConnection> inspect(
     Iterable<ConnectionRuntime> knownRuntimes, {
     VpnStatus? observedStatus,
-    bool readMetrics = false,
   }) async {
     final platform = observedStatus == null
         ? await _status()
         : (status: observedStatus, permission: null);
-    final status = platform.status;
-    _runtimeOnline = status != VpnStatus.disconnected;
-    RuntimeSnapshot? saved;
-    try {
-      saved = await readSavedTraffic();
-    } on Exception {
-      // Native status remains authoritative when counters are unavailable.
-    }
-    if (status == VpnStatus.disconnected) {
-      return HostConnection(
-        status,
-        traffic: saved,
-        permission: platform.permission,
-      );
-    }
-
-    final candidates = <ConnectionRuntime>[
-      ...knownRuntimes,
-      ?await readRuntime(),
-    ];
-    ConnectionRuntime? runtime;
-    final tried = <String>{};
-    for (final candidate in candidates) {
-      if (!tried.add(candidate.identity)) continue;
-      try {
-        await _stateFor(candidate);
-        runtime = candidate;
-        _runtime = candidate;
-        break;
-      } on Exception {
-        // Keep trying the active start request after an in-flight switch.
-      }
-    }
-    if (runtime != null && readMetrics) {
-      try {
-        return HostConnection(
-          status,
-          runtime: runtime,
-          traffic: await query(runtime),
-          permission: platform.permission,
-        );
-      } on Exception {
-        // A saved counter is not a successful live sample.
-      }
-    }
     return HostConnection(
-      status,
-      runtime: runtime,
+      platform.status,
+      runtime: platform.status == VpnStatus.disconnected
+          ? null
+          : await readRuntime() ?? knownRuntimes.firstOrNull,
       permission: platform.permission,
-      traffic: saved?.withCounters(
-        uplink: saved.uplink,
-        downlink: saved.downlink,
-        sampledAtMs: saved.sampledAtMs,
-        available: false,
-        error: readMetrics ? 'runtimeMetricsUnavailable' : '',
-      ),
     );
   }
 
@@ -384,9 +245,6 @@ class ConnectionRuntimeHost {
   }
 
   Future<HostConnection> start(ConnectionRuntime runtime) async {
-    _runtime = runtime;
-    _runtimeOnline = true;
-    final requestedAt = DateTime.now().millisecondsSinceEpoch;
     final result = await _start(runtime);
     if (result.state != NativeVpnCommandState.success) {
       throw ConnectionHostException(
@@ -398,12 +256,13 @@ class ConnectionRuntimeHost {
     }
     final deadline = DateTime.now().add(startTimeout);
     while (DateTime.now().isBefore(deadline)) {
-      final current = await inspect([runtime], readMetrics: true);
-      if (current.connected &&
-          current.runtime?.identity == runtime.identity &&
-          current.traffic?.available == true &&
-          current.traffic!.startedAtMs >= requestedAt) {
-        return current;
+      final platform = await _status();
+      if (platform.status == VpnStatus.connected) {
+        return HostConnection(
+          platform.status,
+          runtime: runtime,
+          permission: platform.permission,
+        );
       }
       await Future<void>.delayed(pollInterval);
     }
@@ -423,18 +282,7 @@ class ConnectionRuntimeHost {
     while (DateTime.now().isBefore(deadline)) {
       final platform = await _status();
       if (platform.status == VpnStatus.disconnected) {
-        _runtimeOnline = false;
-        RuntimeSnapshot? saved;
-        try {
-          saved = await readSavedTraffic();
-        } on Exception {
-          // Native shutdown does not depend on traffic persistence.
-        }
-        return HostConnection(
-          platform.status,
-          traffic: saved,
-          permission: platform.permission,
-        );
+        return HostConnection(platform.status, permission: platform.permission);
       }
       await Future<void>.delayed(pollInterval);
     }

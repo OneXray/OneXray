@@ -142,7 +142,7 @@ Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建�
 `ConnectionCoordinator` 串行完成内存准备、停止旧运行、启动并确认新运行，最后提交数据库
 设置。`ConnectionRuntime` 不单独序列化；`run/start.json` 是唯一原生启动请求，其中
 `coreInvokeText` 保存实际 Xray 输入，`metadataJson` 只保存重开 App 后显示运行路径和保护
-节点所需的配置及节点信息。不另存运行计划、快照或跨进程提交日志。
+节点所需的配置、节点信息及启动时间。不另存运行计划、快照或跨进程提交日志。
 
 准备阶段先完成 Windows/Linux 出口网卡存在性检查，再对最终配置执行一次
 `libXray.testXray` 构建校验；两者均发生在停止旧运行或启动原生 VPN 之前。
@@ -153,14 +153,13 @@ Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建�
 也不恢复旧输入。若停止无法确认，原生状态仍是 VPN 状态依据，并继续显示能够确认的实际
 运行信息；metrics 或运行描述不可用不等于已断开。重试时重新查询宿主，不从缓存推断状态。
 
-清空数据和恢复备份前，若宿主已断开，且 Apple 原生权限明确返回“不需要”（iOS 模拟器），
+清空数据前，若宿主已断开，且 Apple 原生权限明确返回“不需要”（iOS 模拟器），
 则直接完成停止步骤，不调用系统 VPN 停止接口。正在运行的 iOS Debug 本地代理仍通过
 libXray 停止；真实 Apple VPN 即使已断开，也仍执行停止命令以关闭按需连接。状态查询或
 实际停止失败时继续阻止数据替换，不将失败当作空闲。
 
 Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清理整个 `run/core-inputs`，
-再创建唯一的 `core-inputs/input-*/xray.json`；托管运行同时写同目录的
-`runtime-config.json`。输入目录不复用，也不保留历史。Windows 的 `snapshotToken` 仅用于
+再创建唯一的 `core-inputs/input-*/xray.json`。输入目录不复用，也不保留历史。Windows 的 `snapshotToken` 仅用于
 VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行快照；Linux 只额外保存
 验证进程归属所需的 PID、启动时间和本次输入路径。
 
@@ -177,19 +176,13 @@ Linux 仅在接管已有进程、没有当前 `Process` 退出通知时使用相
 Tab、打开其他全页、进入后台或断开后停止。重新显示先建立速率基线，不把隐藏时间摊入
 实时速率；高级页运行时长使用独立的可见性受控本地时钟，不触发 metrics 查询。
 
-libXray 以 30 秒为目标原子覆盖本次会话的 `runtime.json`，正常停止时尽力最终保存；新会话
-直接覆盖旧会话。带 Bearer 认证的回环 `GET /runtime` 只返回当前会话计数，不提供会话
-归档、VPN 启停或累计清零；实时计数继续读取 Xray 原生 metrics。
+所有平台直接读取 Xray 的 `GET /debug/vars`，从 `stats.inbound.tunIn` 取得本次连接的
+上下行计数，并用相邻有效样本计算速率。空闲时尚未创建的计数器按零显示；请求失败保留
+内存中的当前连接计数、将速率标记为不可用，下一次成功读取重新建立基线。
 
-所有平台使用同一统计读取链路，App 不读 libXray 会话文件，macOS SE 也不再通过原生
-消息代读；libXray 自己持有文件权限，DAT 同步继续使用独立原生消息。HTTP 地址与随机
-令牌属于私有启动请求，不允许 Raw 覆盖，不写入日志或分享内容。App 重开从
-`run/start.json` 定位当前候选端点，但只有原生状态与 HTTP 当前会话能够确认实际运行。
-
-App 在 `traffic-totals.json` 中只保存设备累计、一个会话的消费水位和最后显示值。离线清零
-保留当前水位，不影响本次连接后续增量。这里不做严格计费：异常退出可能丢失尚未保存的
-尾部；若 App 未观察到两个 Core 启动之间的完整会话，该会话也可能全部丢失。统计 HTTP
-随 Core 停止，端点不可用时只显示 App 缓存，不把缓存当成当前连接事实。
+libXray 不再采样、持久化或提供独立统计 HTTP 服务；App 不保存历史/累计流量，不提供清零。
+断开后清空内存样本。App 重开通过 `run/start.json` 还原运行描述并定位 metrics 端口；
+连接是否成功只由原生状态确认，不依赖 metrics 读取结果。运行时长使用启动请求的时间。
 
 ## 实现入口
 
@@ -197,4 +190,4 @@ App 在 `traffic-totals.json` 中只保存设备累计、一个会话的消费�
 - 自定义模板与地区：`lib/service/connect/routing/`
 - 节点映射及兼容：`lib/service/servers/outbound/map.dart`、`state_db.dart`
 - Raw 存储与边界：`lib/service/connect/raw/db.dart`、`validator.dart`
-- 订阅与分享：[交换合同](subscriptions-and-sharing.md)；升级与恢复：[数据管理](data-management.md)
+- 订阅与分享：[交换合同](subscriptions-and-sharing.md)；升级与清理：[数据管理](data-management.md)

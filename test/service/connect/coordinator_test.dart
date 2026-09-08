@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
@@ -52,6 +53,91 @@ void main() {
     expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
     expect(coordinator.state.value.runtime, isNull);
   });
+
+  test(
+    'metrics samples follow page visibility and reset the speed baseline',
+    () async {
+      final runtime = _runtime('a');
+      var status = VpnStatus.connected;
+      var reads = 0;
+      var failing = false;
+      var sample = const ConnectionTraffic(
+        uplink: 100,
+        downlink: 200,
+        sampledAtMs: 1000,
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => runtime,
+          inspect: (_) async => HostConnection(status, runtime: runtime),
+          readTraffic: (_) async {
+            reads++;
+            if (failing) throw const FormatException('Unavailable metrics');
+            return sample;
+          },
+        ),
+      );
+      expect(reads, 0);
+      coordinator.setTrafficVisible(true);
+      await Future<void>.delayed(Duration.zero);
+      expect(reads, 1);
+      expect(coordinator.state.value.traffic, sample);
+      expect(coordinator.state.value.uploadSpeed, 0);
+
+      sample = const ConnectionTraffic(
+        uplink: 300,
+        downlink: 700,
+        sampledAtMs: 2000,
+      );
+      await coordinator.refreshTraffic();
+      expect(coordinator.state.value.uploadSpeed, 200);
+      expect(coordinator.state.value.downloadSpeed, 500);
+      await coordinator.refresh();
+      expect(coordinator.state.value.uploadSpeed, 200);
+
+      coordinator.setTrafficVisible(false);
+      final hiddenReads = reads;
+      await coordinator.refreshTraffic();
+      expect(reads, hiddenReads);
+      sample = const ConnectionTraffic(
+        uplink: 9000,
+        downlink: 10000,
+        sampledAtMs: 90000,
+      );
+      coordinator.setTrafficVisible(true);
+      await Future<void>.delayed(Duration.zero);
+      expect(coordinator.state.value.traffic, sample);
+      expect(coordinator.state.value.uploadSpeed, 0);
+
+      failing = true;
+      await coordinator.refreshTraffic();
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.issue, isNull);
+      expect(coordinator.state.value.traffic, sample);
+      expect(coordinator.state.value.metricsAvailable, isFalse);
+      failing = false;
+      sample = const ConnectionTraffic(
+        uplink: 9500,
+        downlink: 10500,
+        sampledAtMs: 91000,
+      );
+      await coordinator.refreshTraffic();
+      expect(coordinator.state.value.uploadSpeed, 0);
+
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.paused);
+      final backgroundReads = reads;
+      await coordinator.refreshTraffic();
+      expect(reads, backgroundReads);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
+      expect(coordinator.state.value.uploadSpeed, 0);
+      status = VpnStatus.disconnected;
+      await coordinator.refresh();
+      expect(coordinator.state.value.traffic, isNull);
+      expect(coordinator.state.value.metricsAvailable, isFalse);
+    },
+  );
 
   test('maintenance skips an idle Apple host without a system VPN', () async {
     var stopCalls = 0;
@@ -301,16 +387,10 @@ void main() {
         readRuntime: () async => null,
         inspect: (_) async =>
             HostConnection(VpnStatus.disconnected, permission: permission),
-        resetTraffic: (_) async => null,
       ),
     );
 
     await coordinator.apply(ConnectionConfiguration(), affectsRuntime: false);
-
-    expect(coordinator.state.value.issue, 'permissionRequired');
-    expect(coordinator.state.value.permission, permission);
-
-    await coordinator.resetTraffic();
 
     expect(coordinator.state.value.issue, 'permissionRequired');
     expect(coordinator.state.value.permission, permission);
@@ -584,14 +664,7 @@ ConnectionRuntime _runtime(
   );
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      xrayJson,
-      runtime: ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        listen: '127.0.0.1:18004',
-        token: List.filled(32, digit).join(),
-      ),
-    ).toJson(),
+    payload: RunXrayRequest(xrayJson).toJson(),
   );
   return ConnectionRuntime.create(
     configuration: configuration,

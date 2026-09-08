@@ -205,10 +205,6 @@ abstract final class AppTypography {
   static final updateNotesHeading = _style(14, 700);
   static final updateNotes = _style(13, 400);
   static final settingsDanger = _style(14, 600);
-  static final backupBody = _style(14, 400);
-  static final backupScopeHint = _style(12, 400);
-  static final backupAction = _style(12, 600);
-  static final backupEmptyTitle = _style(16, 700);
 
   static final geodataIntro = _style(12, 400);
   static final geodataDesktopIntro = _style(12, 400);

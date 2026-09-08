@@ -3,14 +3,14 @@ import 'package:onexray/service/connect/preparation.dart';
 
 void main() {
   test(
-    'allocates three distinct valid ports outside Raw inbound ranges',
+    'allocates two distinct valid ports outside Raw inbound ranges',
     () async {
       final candidates = [
-        [11000, 11001],
-        [11000, 11001, 11001],
-        [11000, 11001, 65536],
-        [11000, 11001, 12001],
-        [11000, 11001, 13000],
+        [11000],
+        [11000, 11000],
+        [11000, 65536],
+        [11000, 12001],
+        [11000, 13000],
       ];
       var attempts = 0;
       final ports = await allocateRuntimePorts(
@@ -18,13 +18,13 @@ void main() {
           {'port': '12000-12010,14000'},
         ],
         getFreePorts: (count) async {
-          expect(count, 3);
+          expect(count, 2);
           return candidates[attempts++];
         },
       );
 
       expect(attempts, 5);
-      expect(ports, [11000, 11001, 13000]);
+      expect(ports, [11000, 13000]);
     },
   );
 
@@ -34,7 +34,7 @@ void main() {
       allocateRuntimePorts(
         const [],
         getFreePorts: (count) async {
-          expect(count, 3);
+          expect(count, 2);
           attempts++;
           return [];
         },

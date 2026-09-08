@@ -134,19 +134,6 @@ class SettingsPage extends StatelessWidget {
                   dividerIndent: 0,
                   children: [
                     SettingRow(
-                      title: l10n.prototypeBackupRestore,
-                      minHeight: rowHeight,
-                      contentPadding: rowPadding,
-                      titleStyle: AppTypography.settingsRow,
-                      showChevron: true,
-                      onTap: state.clearingData
-                          ? null
-                          : () => controller.openSetting(
-                              context,
-                              AppSecondaryDestination.backup,
-                            ),
-                    ),
-                    SettingRow(
                       title: l10n.prototypeClearData,
                       minHeight: rowHeight,
                       contentPadding: rowPadding,

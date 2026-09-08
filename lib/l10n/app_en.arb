@@ -91,7 +91,6 @@
   "autoUpdatePageIntervalOneWeek": "One week",
   "logFileViewerContinueFollowing": "Continue following",
   "logFileViewerShowingRecent": "Showing recent log",
-  "backupPageRestore": "Restore",
   "appIconPageSetFailed": "Failed to set new App Icon",
   "desktopSettingsPageHideDockIcon": "Hide Dock icon",
   "desktopSettingsPageHideDockIconDescription": "Apply immediately to the current App session",
@@ -576,14 +575,6 @@
   "@prototypeThisConnection": {
     "description": "Approved prototype copy: This connection"
   },
-  "prototypeLastConnection": "Last connection",
-  "@prototypeLastConnection": {
-    "description": "Approved prototype copy: Last connection"
-  },
-  "prototypeTotalTraffic": "Total traffic",
-  "@prototypeTotalTraffic": {
-    "description": "Approved prototype copy: Total traffic"
-  },
   "prototypeDownload": "Download",
   "@prototypeDownload": {
     "description": "Approved prototype copy: Download"
@@ -591,18 +582,6 @@
   "prototypeUpload": "Upload",
   "@prototypeUpload": {
     "description": "Approved prototype copy: Upload"
-  },
-  "prototypeResetTotals": "Reset totals",
-  "@prototypeResetTotals": {
-    "description": "Approved prototype copy: Reset totals"
-  },
-  "prototypeTrafficTotalsReset": "Traffic totals were reset",
-  "@prototypeTrafficTotalsReset": {
-    "description": "Approved prototype copy: Traffic totals were reset"
-  },
-  "prototypeResetTrafficNotice": "This connection stays active. Only the device total is cleared.",
-  "@prototypeResetTrafficNotice": {
-    "description": "Approved prototype copy: This connection stays active. Only the device total is cleared."
   },
   "prototypeOrdinaryConnectionRunning": "The ordinary connection is still running. Select a configuration to switch.",
   "@prototypeOrdinaryConnectionRunning": {
@@ -1630,58 +1609,6 @@
   "@prototypeHideDockIconHint": {
     "description": "Approved prototype copy: Hide OneXray from the Dock"
   },
-  "prototypeBackupRestore": "Backup and restore",
-  "@prototypeBackupRestore": {
-    "description": "Approved prototype copy: Backup and restore"
-  },
-  "prototypeBackupRestoreHint": "Keep a copy of your configuration or restore from a backup.",
-  "@prototypeBackupRestoreHint": {
-    "description": "Approved prototype copy: Keep a copy of your configuration or restore from a backup."
-  },
-  "prototypeBackupContents": "Backup contents",
-  "@prototypeBackupContents": {
-    "description": "Approved prototype copy: Backup contents"
-  },
-  "prototypeBackupAssets": "User servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata.",
-  "@prototypeBackupAssets": {
-    "description": "Approved prototype copy: User servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata."
-  },
-  "prototypeBackupNoPreferences": "Appearance, language, and other app preferences are not included.",
-  "@prototypeBackupNoPreferences": {
-    "description": "Approved prototype copy: Appearance, language, and other app preferences are not included."
-  },
-  "prototypeBackupSecurityWarning": "Backup files are not encrypted and may contain server credentials, subscription URLs, and Age private keys. Keep them in a trusted location.",
-  "@prototypeBackupSecurityWarning": {
-    "description": "Approved prototype copy: Backup files are not encrypted and may contain server credentials, subscription URLs, and Age private keys. Keep them in a trusted location."
-  },
-  "prototypeBackupFiles": "Backup files",
-  "@prototypeBackupFiles": {
-    "description": "Approved prototype copy: Backup files"
-  },
-  "prototypeCreateBackup": "Create backup",
-  "@prototypeCreateBackup": {
-    "description": "Approved prototype copy: Create backup"
-  },
-  "prototypeImportBackup": "Import backup",
-  "@prototypeImportBackup": {
-    "description": "Approved prototype copy: Import backup"
-  },
-  "prototypeNoBackups": "No backups yet",
-  "@prototypeNoBackups": {
-    "description": "Approved prototype copy: No backups yet"
-  },
-  "prototypeRestoreSelectedBackup": "Restore backup",
-  "@prototypeRestoreSelectedBackup": {
-    "description": "Approved prototype copy: Restore backup"
-  },
-  "prototypeRestoreBackupQuestion": "Restore this backup?",
-  "@prototypeRestoreBackupQuestion": {
-    "description": "Approved prototype copy: Restore this backup?"
-  },
-  "prototypeRestoreBackupWarning": "Restoring replaces user servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata. Save a backup of your current data first.",
-  "@prototypeRestoreBackupWarning": {
-    "description": "Approved prototype copy: Restoring replaces user servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata. Save a backup of your current data first."
-  },
   "prototypeConfirmRestore": "Confirm restore",
   "@prototypeConfirmRestore": {
     "description": "Approved prototype copy: Confirm restore"
@@ -2693,25 +2620,13 @@
   "@prototypeClearAllDataQuestion": {
     "description": "Approved prototype copy: Clear all app data?"
   },
-  "prototypeClearAllDataWarning": "This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences. Back up your data first.",
+  "prototypeClearAllDataWarning": "This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences.",
   "@prototypeClearAllDataWarning": {
-    "description": "Approved prototype copy: This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences. Back up your data first."
+    "description": "Approved prototype copy: This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences."
   },
   "prototypeConfirmClearData": "Confirm clear data",
   "@prototypeConfirmClearData": {
     "description": "Approved prototype copy: Confirm clear data"
-  },
-  "prototypeDeleteBackupQuestion": "Delete backup?",
-  "@prototypeDeleteBackupQuestion": {
-    "description": "Approved prototype copy: Delete backup?"
-  },
-  "prototypeDeleteBackupWarning": "Remove this backup file? Your current app configuration is not affected.",
-  "@prototypeDeleteBackupWarning": {
-    "description": "Approved prototype copy: Remove this backup file? Your current app configuration is not affected."
-  },
-  "prototypeBackupTransferWarning": "This unencrypted backup can contain credentials and Age private keys. Only save or share it with a trusted destination.",
-  "@prototypeBackupTransferWarning": {
-    "description": "Approved prototype copy: This unencrypted backup can contain credentials and Age private keys. Only save or share it with a trusted destination."
   },
   "prototypeSystemApprovalRequired": "System approval required",
   "@prototypeSystemApprovalRequired": {
@@ -2827,14 +2742,6 @@
   "prototypeAboutPrivacyNotice": "OneXray does not collect or upload usage, traffic, or browsing data.",
   "@prototypeAboutPrivacyNotice": {
     "description": "Approved prototype copy: OneXray does not collect or upload usage, traffic, or browsing data."
-  },
-  "prototypeShareBackup": "Share backup",
-  "@prototypeShareBackup": {
-    "description": "Approved prototype copy: Share backup"
-  },
-  "prototypeExportBackup": "Export backup",
-  "@prototypeExportBackup": {
-    "description": "Approved prototype copy: Export backup"
   },
   "prototypeEditServerHint": "Edit its Xray outbound JSON",
   "@prototypeEditServerHint": {

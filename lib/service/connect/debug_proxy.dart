@@ -80,7 +80,7 @@ class IOSDebugProxy {
   }
 
   /// Converts a copy of the prepared host invocation; the input stays unchanged.
-  /// Keeping tunIn's tag preserves routing, metrics and the managed session.
+  /// Keeping tunIn's tag preserves routing and metrics.
   static String buildInvoke(ConnectionRuntime runtime) {
     final request = runtime.request;
     final port = int.tryParse(request.socksPort ?? '');
@@ -94,8 +94,7 @@ class IOSDebugProxy {
     }
     final config = LibXrayRunConfig.fromInvokeText(request.coreInvokeText!);
     if (config.invoke.method != LibXrayMethod.runXray ||
-        config.request.xrayJson == null ||
-        config.request.runtime?.inboundTag != 'tunIn') {
+        config.request.xrayJson == null) {
       throw const FormatException('Invalid managed Debug invocation');
     }
     final xray = jsonDecode(config.request.xrayJson!);

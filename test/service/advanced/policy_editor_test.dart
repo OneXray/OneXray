@@ -341,7 +341,6 @@ void main() {
 }
 
 ConnectionRuntime _runtime(ConnectionConfiguration configuration) {
-  const id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   const text = '{"outbounds":[{"protocol":"freedom"}]}';
   return ConnectionRuntime.create(
     configuration: configuration,
@@ -359,13 +358,7 @@ ConnectionRuntime _runtime(ConnectionConfiguration configuration) {
       jsonEncode(
         LibXrayInvokeRequest(
           method: LibXrayMethod.runXray,
-          payload: RunXrayRequest(
-            text,
-            runtime: ManagedRuntimeRequest(
-              statePath: '/fixture/run/runtime.json',
-              token: id,
-            ),
-          ).toJson(),
+          payload: RunXrayRequest(text).toJson(),
         ).toJson(),
       ),
     ),

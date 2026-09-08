@@ -172,7 +172,7 @@ class OneVpnService : VpnService() {
         return try {
             JsonTool.json.decodeFromString<StartVpnRequest>(data)
         } catch (_: IllegalArgumentException) {
-            // Decoder errors may contain the input, including runtime credentials.
+            // Decoder errors may contain the input, including node credentials.
             throw IllegalStateException("invalid VPN start request")
         }
     }
@@ -466,16 +466,8 @@ class OneVpnService : VpnService() {
                 }
                 put("env", JsonTool.json.encodeToJsonElement(env))
             }
-            val runtime = payload.runtime?.let {
-                val runDirectory = File(filesDir, "run")
-                check(runDirectory.isDirectory || runDirectory.mkdirs()) {
-                    "unable to prepare private runtime directory"
-                }
-                it.copy(statePath = File(runDirectory, "runtime.json").absolutePath)
-            }
             val updatedPayload = payload.copy(
                 xrayJson = JsonTool.json.encodeToString(updated),
-                runtime = runtime,
             )
             return JsonTool.json.encodeToString(request.copy(payload = updatedPayload))
         } catch (_: IllegalArgumentException) {

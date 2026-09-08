@@ -67,54 +67,74 @@ void main() {
     'inspect associates native status with the active start request',
     () async {
       final runtime = _runtime();
-      final traffic = _traffic(10, 20);
       final host = ConnectionRuntimeHost(
         runDirectory: directory.path,
-        readRuntimeSnapshot: () async => traffic,
+        readMetrics: (_) async => throw const FormatException(),
         readStatus: () async => VpnStatus.connected,
       );
 
       final connected = await host.inspect([runtime]);
       expect(connected.status, VpnStatus.connected);
       expect(connected.runtime?.identity, runtime.identity);
-      expect(connected.traffic?.totalUplink, 10);
+      expect(connected.traffic, isNull);
     },
   );
 
-  test('foreground metrics update the current session', () async {
-    final runtime = _runtime();
-    final host = ConnectionRuntimeHost(
-      runDirectory: directory.path,
-      readRuntimeSnapshot: () async => _traffic(10, 20),
-      readMetrics: (_) async => _metrics(15, 30),
-    );
+  test(
+    'metrics HTTP is the only source and writes no accounting files',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      final requests = <String>[];
+      server.listen((request) async {
+        requests.add(request.uri.path);
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(jsonEncode(_metrics(15, 30).toJson()));
+        await request.response.close();
+      });
+      final runtime = _runtime();
+      runtime.request.metricsPort = server.port.toString();
+      final host = ConnectionRuntimeHost(runDirectory: directory.path);
 
-    final traffic = await host.query(runtime);
-    expect(traffic.uplink, 15);
-    expect(traffic.downlink, 30);
-    expect(traffic.totalUplink, 15);
-  });
+      final traffic = await host.query(runtime);
+      expect(traffic.uplink, 15);
+      expect(traffic.downlink, 30);
+      expect(requests, ['/debug/vars']);
+      expect(await directory.list().toList(), isEmpty);
+    },
+  );
 
   test(
-    'start confirms a fresh session and stop does not restore old input',
+    'idle metrics have zero counters; malformed metrics are unavailable',
     () async {
       final runtime = _runtime();
-      await File(p.join(directory.path, 'traffic-totals.json'))
-          .writeAsString('{"version":1,"sessions":{},"resetGeneration":0}');
+      var metrics = const XrayMetricsVars(XrayMetricsStats(null));
+      final host = ConnectionRuntimeHost(readMetrics: (_) async => metrics);
+      final idle = await host.query(runtime);
+      expect(idle.uplink, 0);
+      expect(idle.downlink, 0);
+      metrics = const XrayMetricsVars(null);
+      await expectLater(host.query(runtime), throwsFormatException);
+      metrics = _metrics(-1, 0);
+      await expectLater(host.query(runtime), throwsFormatException);
+    },
+  );
+
+  test(
+    'start and stop depend on native state, not metrics availability',
+    () async {
+      final runtime = _runtime();
       var status = VpnStatus.disconnected;
-      var traffic = _traffic(0, 0, startedAtMs: 0);
+      var metricReads = 0;
       final host = ConnectionRuntimeHost(
         runDirectory: directory.path,
-        readRuntimeSnapshot: () async => traffic,
-        readMetrics: (_) async => _metrics(0, 0),
+        readMetrics: (_) async {
+          metricReads++;
+          throw const FormatException();
+        },
         readStatus: () async => status,
         startVpn: (_) async {
           status = VpnStatus.connected;
-          traffic = _traffic(
-            0,
-            0,
-            startedAtMs: DateTime.now().millisecondsSinceEpoch,
-          );
           return NativeVpnCommandResult(state: NativeVpnCommandState.success);
         },
         stopVpn: () async {
@@ -125,6 +145,8 @@ void main() {
 
       expect((await host.start(runtime)).runtime?.identity, runtime.identity);
       expect((await host.stop()).status, VpnStatus.disconnected);
+      expect(metricReads, 0);
+      expect(await directory.list().toList(), isEmpty);
     },
   );
 }
@@ -145,14 +167,7 @@ ConnectionRuntime _runtime() {
   );
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      xrayJson,
-      runtime: const ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        listen: '127.0.0.1:18004',
-        token: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
-      ),
-    ).toJson(),
+    payload: RunXrayRequest(xrayJson).toJson(),
   );
   return ConnectionRuntime.create(
     configuration: configuration,
@@ -161,19 +176,6 @@ ConnectionRuntime _runtime() {
     request: StartVpnRequest(null, null, '18003', jsonEncode(invoke.toJson())),
   );
 }
-
-RuntimeSnapshot _traffic(int up, int down, {int startedAtMs = 1}) =>
-    RuntimeSnapshot(
-      sessionId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      startedAtMs: startedAtMs,
-      endedAtMs: 0,
-      uplink: up,
-      downlink: down,
-      available: true,
-      sampledAtMs: 3,
-      savedAtMs: 4,
-      error: '',
-    );
 
 XrayMetricsVars _metrics(int up, int down) => XrayMetricsVars(
   XrayMetricsStats(XrayMetricsInboundStats(XrayTrafficCounter(up, down))),

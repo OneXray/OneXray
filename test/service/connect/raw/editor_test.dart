@@ -362,16 +362,9 @@ ConnectionRuntime _runtime(
   ConnectionConfiguration configuration,
   String text,
 ) {
-  final id = List.filled(32, digit).join();
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      text,
-      runtime: ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        token: id,
-      ),
-    ).toJson(),
+    payload: RunXrayRequest(text).toJson(),
   );
   return ConnectionRuntime.create(
     configuration: configuration,

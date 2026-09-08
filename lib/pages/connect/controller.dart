@@ -42,8 +42,6 @@ class ConnectPageState {
     this.ready = false,
     this.failed = false,
     this.pendingChange,
-    this.trafficResetConfirming = false,
-    this.trafficResetBusy = false,
     Set<int> deletingRawIds = const {},
     this.serverGroupingIndex = 0,
     this.activeServerGroupId,
@@ -75,8 +73,6 @@ class ConnectPageState {
   final bool ready;
   final bool failed;
   final String? pendingChange;
-  final bool trafficResetConfirming;
-  final bool trafficResetBusy;
   final Set<int> deletingRawIds;
 
   // ServersController extends ConnectController, so its page state lives in the
@@ -102,8 +98,6 @@ class ConnectPageState {
     bool? ready,
     bool? failed,
     Object? pendingChange = _unchanged,
-    bool? trafficResetConfirming,
-    bool? trafficResetBusy,
     Set<int>? deletingRawIds,
     int? serverGroupingIndex,
     Object? activeServerGroupId = _unchanged,
@@ -127,9 +121,6 @@ class ConnectPageState {
     pendingChange: identical(pendingChange, _unchanged)
         ? this.pendingChange
         : pendingChange as String?,
-    trafficResetConfirming:
-        trafficResetConfirming ?? this.trafficResetConfirming,
-    trafficResetBusy: trafficResetBusy ?? this.trafficResetBusy,
     deletingRawIds: deletingRawIds ?? this.deletingRawIds,
     serverGroupingIndex: serverGroupingIndex ?? this.serverGroupingIndex,
     activeServerGroupId: identical(activeServerGroupId, _unchanged)
@@ -555,60 +546,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
     }
   }
 
-  Widget _resetTrafficDialog(BuildContext context, {required bool busy}) {
-    final l = AppLocalizations.of(context)!;
-    return ConnectDialog(
-      key: const ValueKey('reset-traffic'),
-      title: l.prototypeResetTotals,
-      subtitle: l.prototypeResetTrafficNotice,
-      body: ConnectCallout(
-        icon: LucideIcons.circleAlert,
-        text: l.prototypeCannotUndo,
-        warning: true,
-      ),
-      expandLastAction: false,
-      actions: [
-        ConnectDialogButton(
-          label: l.prototypeCancel,
-          secondary: true,
-          onPressed: busy ? null : () => Navigator.of(context).pop(),
-        ),
-        ConnectDialogButton(
-          label: l.prototypeResetTotals,
-          destructive: true,
-          icon: LucideIcons.rotateCcw,
-          busy: busy,
-          onPressed: busy
-              ? null
-              : () => unawaited(_resetTrafficInDialog(context)),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _resetTrafficInDialog(BuildContext context) async {
-    if (state.trafficResetBusy) return;
-    emit(state.copyWith(trafficResetBusy: true));
-    final reset = await _clearTraffic(context);
-    if (reset && context.mounted) Navigator.of(context).pop();
-    emit(state.copyWith(trafficResetBusy: false));
-  }
-
-  Future<bool> _clearTraffic(BuildContext context) async {
-    var reset = false;
-    await run(context, () async {
-      await coordinator.resetTraffic();
-      reset = true;
-    });
-    if (reset && context.mounted) {
-      ContextAlert.showToast(
-        context,
-        AppLocalizations.of(context)!.prototypeTrafficTotalsReset,
-      );
-    }
-    return reset;
-  }
-
   Future<void> addServers(BuildContext context) =>
       context.pushScoped(AppSecondaryDestination.serversImport);
   Future<void> editRaw(BuildContext context, [int? id]) =>
@@ -834,9 +771,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
   Future<void> showTraffic(BuildContext context) async {
     if (!isPageActive || _trafficDialogOpen) return;
     _trafficDialogOpen = true;
-    emit(
-      state.copyWith(trafficResetConfirming: false, trafficResetBusy: false),
-    );
     _syncTrafficVisibility();
     try {
       await showConnectDialog<void>(
@@ -844,12 +778,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
         (dialogContext) => BlocBuilder<ConnectController, ConnectPageState>(
           bloc: this,
           builder: (_, state) {
-            if (state.trafficResetConfirming) {
-              return _resetTrafficDialog(
-                dialogContext,
-                busy: state.trafficResetBusy,
-              );
-            }
             final l = AppLocalizations.of(dialogContext)!;
             return ConnectDialog(
               title: l.prototypeTraffic,
@@ -862,13 +790,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
               ),
               actions: [
                 ConnectDialogButton(
-                  label: l.prototypeResetTotals,
-                  secondary: true,
-                  icon: LucideIcons.rotateCcw,
-                  onPressed: () =>
-                      emit(state.copyWith(trafficResetConfirming: true)),
-                ),
-                ConnectDialogButton(
                   label: l.prototypeDone,
                   onPressed: () => Navigator.of(dialogContext).pop(),
                 ),
@@ -880,12 +801,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
     } finally {
       _trafficDialogOpen = false;
       if (isPageActive) {
-        emit(
-          state.copyWith(
-            trafficResetConfirming: false,
-            trafficResetBusy: false,
-          ),
-        );
         _syncTrafficVisibility();
       }
     }

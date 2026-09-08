@@ -10,7 +10,6 @@ import 'package:onexray/service/launch/app_startup.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
-import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 final class AppDataCleanupService {
@@ -27,17 +26,6 @@ final class AppDataCleanupService {
       return true;
     } catch (e, stackTrace) {
       ygLogger("clear app data error: $e\n$stackTrace");
-      return false;
-    }
-  }
-
-  Future<bool> prepareForBackupRestore() async {
-    try {
-      await ConnectionCoordinator.instance.stopForMaintenance();
-      await _clearRuntimeFiles(preserveTraffic: true);
-      return true;
-    } catch (e, stackTrace) {
-      ygLogger("prepare backup restore error: $e\n$stackTrace");
       return false;
     }
   }
@@ -65,14 +53,10 @@ final class AppDataCleanupService {
     });
   }
 
-  Future<void> _clearRuntimeFiles({bool preserveTraffic = false}) async {
+  Future<void> _clearRuntimeFiles() async {
     final directory = Directory(VpnConstants.runDir);
     if (!await directory.exists()) return;
-    const retained = {'runtime.json', 'traffic-totals.json'};
     await for (final entry in directory.list(followLinks: false)) {
-      if (preserveTraffic && retained.contains(p.basename(entry.path))) {
-        continue;
-      }
       await entry.delete(recursive: true);
     }
   }

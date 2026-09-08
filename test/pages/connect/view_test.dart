@@ -13,7 +13,7 @@ import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:onexray/service/connect/coordinator.dart';
-import 'package:onexray/service/connect/traffic_accounting.dart';
+import 'package:onexray/service/connect/traffic.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {
@@ -116,18 +116,10 @@ void main() {
       metricsAvailable: true,
       downloadSpeed: (248.72 * 1024).round(),
       uploadSpeed: (32.8 * 1024).round(),
-      traffic: RuntimeSnapshot(
-        sessionId: 'traffic-layout',
-        startedAtMs: 0,
-        endedAtMs: 0,
+      traffic: ConnectionTraffic(
         uplink: (158.91 * 1024).round(),
         downlink: (999.99 * 1024 * 1024).round(),
-        totalUplink: (123.45 * 1024 * 1024 * 1024).round(),
-        totalDownlink: (999.99 * 1024 * 1024 * 1024 * 1024).round(),
-        available: true,
         sampledAtMs: 0,
-        savedAtMs: 0,
-        error: '',
       ),
     );
     for (final (width, scale, locale) in [
@@ -159,8 +151,6 @@ void main() {
         '32.8 KB/s',
         '158.91 KB',
         '999.99 MB',
-        '123.45 GB',
-        '999.99 TB',
       ]) {
         expect(find.text(value), findsOneWidget);
         final paragraph = tester.renderObject<RenderParagraph>(
