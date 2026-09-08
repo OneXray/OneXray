@@ -95,6 +95,15 @@ Microsoft Store MSIX 注册默认关闭的 package `StartupTask`，TaskId 为 `V
 
 App 在 XDG autostart 目录管理 `net.yuandev.onexray.desktop`。优先使用 `XDG_CONFIG_HOME`，否则使用 `$HOME/.config`；无法确定目录时报告不可用。现有条目的 `Exec`、`TryExec` 或可执行文件无效时视为失效。
 
+## 桌面窗口与退出
+
+- 关闭主窗口只隐藏窗口，不退出 App，也不停止 VPN。
+- macOS 与 Windows MSIX 的托盘同时提供 `Quit` 和 `Quit and Stop VPN`：前者只退出 App，
+  不发送停止 VPN 命令；后者通过连接协调器停止 VPN，成功后再退出。MSIX 的 VPN / Core
+  生命周期由独立的 Provider / Session Host 管理，不依赖前台 App 存活。
+- Windows EXE（含 ZIP）与 Linux 保留单个 `Quit`，先停止 VPN，再退出 App。
+- 需要停止 VPN 的退出操作如果失败，保持 App 运行并显示主窗口，保留失败状态供用户重试。
+
 ## 清理与失败边界
 
 - 清理 App 数据且准备删除用户偏好时，必须先取消当前平台登录项；取消失败时停止破坏性清理。Windows 按编译模式取消自身快捷方式或当前 MSIX 的 StartupTask，不互相清理。
