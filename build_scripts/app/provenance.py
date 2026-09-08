@@ -12,19 +12,27 @@ from pathlib import Path
 from app.command_line import dart_command, flutter_command, get_env
 
 _SHA = re.compile(r"[0-9a-f]{40}")
-_PACKAGE_SUFFIXES = {".ipa", ".pkg", ".zip", ".deb", ".msix", ".apk", ".aab"}
+_PACKAGE_SUFFIXES = {".ipa", ".pkg", ".zip", ".deb", ".msix", ".exe", ".apk", ".aab"}
 # Public packages produced by Build, excluding App Store / Play Store outputs.
 _GITHUB_RELEASE_PACKAGES = {
-    ("ios", None): ("ios/OneXray-ios.ipa",),
-    ("macos_se", None): ("macos_se/OneXray-macos-universal.zip",),
-    ("android", None): ("android-universal/OneXray-android-universal.apk",),
-    ("linux", "x86_64"): (
+    ("ios", None, None): ("ios/OneXray-ios.ipa",),
+    ("macos_se", None, None): ("macos_se/OneXray-macos-universal.zip",),
+    ("android", None, None): ("android-universal/OneXray-android-universal.apk",),
+    ("linux", "x86_64", None): (
         "linux-x64/OneXray-linux-x86_64.zip",
         "linux-x64/OneXray-linux-x86_64.deb",
     ),
-    ("linux", "aarch64"): (
+    ("linux", "aarch64", None): (
         "linux-arm64/OneXray-linux-aarch64.zip",
         "linux-arm64/OneXray-linux-aarch64.deb",
+    ),
+    ("windows", "x64", "exe"): (
+        "windows-x64/OneXray-windows-amd64.exe",
+        "windows-x64/OneXray-windows-amd64.zip",
+    ),
+    ("windows", "arm64", "exe"): (
+        "windows-arm64/OneXray-windows-arm64.exe",
+        "windows-arm64/OneXray-windows-arm64.zip",
     ),
 }
 
@@ -70,6 +78,7 @@ def begin_build(builder, target: str) -> dict:
     return {
         "formatVersion": 1,
         "target": target,
+        **({"windowsMode": builder.builder.mode} if target == "windows" else {}),
         "architecture": getattr(
             builder.builder, "target_architecture", platform.machine().lower(),
         ),
@@ -133,6 +142,8 @@ def finish_build(builder, receipt: dict) -> Path:
         tools[command[0]] = _tool(list(command), root)
     if target == "android":
         tools["gradle"] = _tool(["./gradlew", "--version"], root / "android")
+    if target == "windows" and receipt["windowsMode"] == "exe":
+        tools["innoSetup"] = _tool([os.environ.get("ISCC", "ISCC.exe"), "/?"], root)
 
     lock_files = [root / name for name in (
         "pubspec.lock", "build_scripts/uv.lock", "android/settings.gradle.kts",
@@ -166,10 +177,15 @@ def finish_build(builder, receipt: dict) -> Path:
         "macos": ("*.pkg",),
         "macos_se": ("OneXray-macos-universal*.zip",),
         "android": ("OneXray-android-universal*.apk", "app-release.aab"),
-        "windows": (f"OneXray-{builder.builder.package_suffix}.msix",),
         "linux": (f"OneXray-{builder.builder.package_suffix}.zip",
                   f"OneXray-{builder.builder.package_suffix}.deb"),
     }
+    if target == "windows":
+        extensions = ("msix",) if receipt["windowsMode"] == "msix" else ("exe", "zip")
+        patterns["windows"] = tuple(f"OneXray-{builder.builder.package_suffix}.{ext}"
+                                    for ext in extensions)
+        if not all((output / name).is_file() for name in patterns["windows"]):
+            raise ValueError("Missing Windows packages for build provenance")
     packages = {path.name: sha256(path) for pattern in patterns[target]
                 for path in output.glob(pattern) if path.is_file()}
     if not packages:
@@ -191,10 +207,12 @@ def finish_build(builder, receipt: dict) -> Path:
     if ndk and (Path(ndk) / "source.properties").is_file():
         receipt["androidNdk"] = (Path(ndk) / "source.properties").read_text()
     if target == "windows":
-        receipt["msixVersion"] = builder.builder.msix_version()
+        if receipt["windowsMode"] == "msix":
+            receipt["msixVersion"] = builder.builder.msix_version()
         receipt["vcoreArtifacts"] = json.loads((vcore / "dist/windows" /
             receipt["architecture"] / "vcore-windows-artifacts.json").read_text())
-    destination = output / f"provenance-{target}-{receipt['architecture']}.json"
+    mode_suffix = f"-{receipt['windowsMode']}" if target == "windows" else ""
+    destination = output / f"provenance-{target}-{receipt['architecture']}{mode_suffix}.json"
     destination.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
     return destination
 
@@ -250,11 +268,16 @@ def verify_release(artifacts: Path, run: dict, *, tag: str | None = None,
         dirty = receipt.get("sourceDirty")
         if not isinstance(dirty, dict) or any(dirty.get(name) is not False for name in required_sources):
             raise ValueError("Release sources must be recorded and clean before building")
-        if receipt.get("target") == "windows":
+        mode = None
+        if target == "windows":
             if sources.get("VCore") != expected["VCore"]:
                 raise ValueError("VCore checkout does not match build metadata")
-            windows_arches.add(receipt.get("architecture"))
-        key = (target, receipt.get("architecture") if target in {"windows", "linux"} else None)
+            mode = receipt.get("windowsMode")
+            if mode not in {"exe", "msix"}:
+                raise ValueError("Windows build provenance must specify EXE or MSIX mode")
+            if mode == "msix":
+                windows_arches.add(receipt.get("architecture"))
+        key = (target, receipt.get("architecture") if target in {"windows", "linux"} else None, mode)
         if key in receipts:
             raise ValueError(f"Duplicate build provenance: {key}")
         receipts[key] = receipt["packages"]
@@ -282,6 +305,10 @@ def verify_release(artifacts: Path, run: dict, *, tag: str | None = None,
     if windows_only:
         if build_target not in {"all", "windows"}:
             raise ValueError("Build target does not include Windows Store packages")
+        for architecture, name in (("x64", "OneXray-windows-amd64.msix"),
+                                   ("arm64", "OneXray-windows-arm64.msix")):
+            if name not in receipts[("windows", architecture, "msix")]:
+                raise ValueError("Store package missing from MSIX mode provenance")
         return sorted(packages)
 
     # A macOS Build also produces MAS output, but GitHub publishes only SE.

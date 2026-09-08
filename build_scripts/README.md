@@ -17,6 +17,8 @@
   `sourceDirty` records each checkout's initial tracked/untracked changes (ignored
   files excluded), before script-controlled source changes. It contains only
   booleans and does not prevent local development builds with uncommitted work.
+- Windows receipts additionally include `windowsMode` and use
+  `provenance-windows-<architecture>-<mode>.json`, keeping EXE and MSIX builds separate.
 - Windows additionally requires VCore integration
   revision **3**, the existing identity, architecture, file set, and hashes.
 - Both publish workflows require release metadata and per-platform receipts, a
@@ -31,7 +33,8 @@
   target. The verifier requires the matching receipts and all expected packages
   before emitting the exact list used for both asset replacement and upload.
   Linux requires ZIP and DEB for x64 and arm64. MAS PKG and Play AAB are not GitHub
-  assets; Windows continues through the separate Microsoft Store workflow.
+  assets. Windows requires EXE and ZIP for x64 and arm64 for GitHub; MSIX continues
+  through the separate Microsoft Store workflow, which accepts only MSIX-mode receipts.
 - These are provenance checks, not platform release acceptance. Tool versions
   remain recorded rather than all pinned; store deployment still happens inside
   the existing Apple/Android Fastlane commands. Do not run them as local tests.
@@ -43,8 +46,9 @@
 
 允许单平台发布，范围由该次 Build 的 `target.txt` 决定；`all` 必须具备全部 GitHub
 发布目标的凭证和安装包。Linux 的两种架构都需要 ZIP 与 DEB，macOS 只发布 SE ZIP，
-Android 只发布通用 APK；商店 PKG/AAB 不要求出现在 GitHub 产物目录，Windows 保留
-独立的 Microsoft Store 流程。校验成功后输出精确文件清单，删除和上传均只使用该清单，
+Android 只发布通用 APK；商店 PKG/AAB 不要求出现在 GitHub 产物目录。Windows 在 GitHub
+发布两种架构的 EXE 与 ZIP，MSIX 保留独立的 Microsoft Store 流程。Windows 凭证及其文件名
+包含运行模式，EXE 凭证不能替代 MSIX 凭证。校验成功后输出精确文件清单，删除和上传均只使用该清单，
 单平台发布不删除其他平台已有资产。`verify_release.py` 的标准输出为这份清单，失败时不输出。
 
 无需构建或安装依赖的脚本验证（Python 3.12+）：
@@ -80,7 +84,9 @@ by libXray's Go module; a sibling Xray-core checkout is not used.
 ### Prerequisites
 
 - Python 3.12 or newer and `uv`. The scripts use only the Python standard library.
-- Flutter, Dart, and Go available on `PATH`; Windows also requires Rust and the Windows SDK `makeappx`/`signtool` tools.
+- Flutter, Dart, and Go available on `PATH`; Windows also requires Rust and MSVC.
+  EXE packaging needs Inno Setup (`ISCC` may specify the compiler path);
+  MSIX needs the Windows SDK `makeappx`/`signtool` tools.
 - A toolchain for the target operating system. Apple targets require macOS,
   Xcode, CocoaPods, and Fastlane; Android requires a JDK, Android SDK/NDK, and
   Fastlane; Linux packaging requires Fastforge.
@@ -129,10 +135,17 @@ display the CLI syntax.
 | `macos` | macOS | Mac App Store build and upload. |
 | `macos_se` | macOS | Signed and notarized Developer ID universal ZIP. |
 | `android` | Android toolchain | Play internal AAB upload and universal APK. |
-| `windows` | Windows x64 or ARM64 | Microsoft Store MSIX for the selected architecture. |
+| `windows` | Windows x64 or ARM64 | EXE + ZIP by default; `--windows-mode msix` builds Microsoft Store MSIX. |
 | `linux` | Linux x64 or ARM64 | ZIP and DEB for the host architecture. |
 
 For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching Flutter, Go, Rust, and MSVC toolchains are configured. See the [Windows build documentation](../docs/windows-build.md#本地签名包) for the local signing requirements.
+
+`--windows-mode exe|msix` selects both packaging and the Flutter
+`--dart-define=ONEXRAY_WINDOWS_MODE` value. EXE and ZIP share one build;
+MSIX is compiled separately. CMake always bundles Wintun and VCore in a flat
+layout. The verified official Wintun archive is cached under workspace
+`references/windows-build/`; only the architecture-matched DLL is copied.
+Sources and distribution notes are linked on the [documentation site](https://onexray.com/docs/credits/).
 
 ### Important behavior
 
@@ -174,7 +187,8 @@ libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
 ### 前置条件
 
 - Python 3.12 或更高版本，并安装 `uv`。脚本仅使用 Python 标准库。
-- `PATH` 中可以找到 Flutter、Dart 和 Go；Windows 还需要 Rust 以及 Windows SDK 的 `makeappx`、`signtool`。
+- `PATH` 中可以找到 Flutter、Dart 和 Go；Windows 还需要 Rust 与 MSVC。
+  EXE 打包需要 Inno Setup（可用 `ISCC` 指定编译器路径），MSIX 需要 Windows SDK 的 `makeappx`、`signtool`。
 - 安装目标系统所需的工具链。Apple 平台需要 macOS、Xcode、CocoaPods 和
   Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Linux 打包需要
   Fastforge。
@@ -220,10 +234,16 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 | `macos` | macOS | 构建并上传 Mac App Store 版本。 |
 | `macos_se` | macOS | 签名、公证并生成 Developer ID 通用 ZIP。 |
 | `android` | Android 工具链 | 上传 Play internal AAB 并获取 universal APK。 |
-| `windows` | Windows x64 或 ARM64 | 为所选架构生成 Microsoft Store MSIX。 |
+| `windows` | Windows x64 或 ARM64 | 默认生成 EXE + ZIP；`--windows-mode msix` 生成 Microsoft Store MSIX。 |
 | `linux` | Linux x64 或 ARM64 | 为主机架构生成 ZIP 和 DEB。 |
 
 Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 和 MSVC 工具链就绪时设置 `ONEXRAY_WINDOWS_ARCH`。本地签名要求以 [Windows 构建文档](../docs/windows-build.md#本地签名包) 为准。
+
+`--windows-mode exe|msix` 同时控制打包格式和 Flutter 的
+`--dart-define=ONEXRAY_WINDOWS_MODE`。EXE / ZIP 共用一次构建，MSIX 单独编译；
+CMake 在两种模式下都平铺安装 Wintun 与 VCore。官方 Wintun 压缩包校验摘要后缓存在
+工作区 `references/windows-build/`，仅复制匹配架构的 DLL。来源与分发说明放在
+[文档站](https://onexray.com/zh/docs/credits/)。
 
 ### 重要行为
 
@@ -264,7 +284,9 @@ checkout Xray-core не используется.
 ### Требования
 
 - Python 3.12 или новее и `uv`. Скрипты используют только стандартную библиотеку Python.
-- Flutter, Dart и Go через `PATH`; для Windows также нужны Rust и инструменты Windows SDK `makeappx`/`signtool`.
+- Flutter, Dart и Go через `PATH`; для Windows также нужны Rust и MSVC.
+  Для EXE нужен Inno Setup (путь компилятора можно задать через `ISCC`);
+  для MSIX — инструменты Windows SDK `makeappx`/`signtool`.
 - Инструменты для целевой системы. Для Apple требуются macOS, Xcode, CocoaPods
   и Fastlane; для Android — JDK, Android SDK/NDK и Fastlane; для упаковки под
   Linux требуется Fastforge.
@@ -313,10 +335,17 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 | `macos` | macOS | Сборка и загрузка версии Mac App Store. |
 | `macos_se` | macOS | Подписанный и нотариализированный универсальный ZIP. |
 | `android` | Android toolchain | Загрузка AAB в Play internal; universal APK. |
-| `windows` | Windows x64 или ARM64 | MSIX для Microsoft Store выбранной архитектуры. |
+| `windows` | Windows x64 или ARM64 | По умолчанию EXE + ZIP; `--windows-mode msix` создаёт MSIX для Microsoft Store. |
 | `linux` | Linux x64 или ARM64 | ZIP и DEB для архитектуры хоста. |
 
 В Windows архитектура определяется по системе. CI может задать `ONEXRAY_WINDOWS_ARCH`, когда настроены Flutter, Go, Rust и MSVC. Требования к локальной подписи см. в [документации по сборке Windows](../docs/windows-build.md#本地签名包).
+
+`--windows-mode exe|msix` задаёт формат пакета и значение Flutter
+`--dart-define=ONEXRAY_WINDOWS_MODE`. EXE и ZIP используют одну сборку, MSIX
+компилируется отдельно. CMake включает Wintun и VCore в обеих конфигурациях.
+Проверенный официальный архив Wintun сохраняется в `references/windows-build/`
+рабочего каталога; копируется только DLL нужной архитектуры. Сведения об источнике
+и распространении размещены на [сайте документации](https://onexray.com/ru/docs/credits/).
 
 ### Важные особенности
 

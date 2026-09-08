@@ -469,7 +469,8 @@ jobs:
           if-no-files-found: error
 
   # =================================================================
-  # Windows x64 and arm64 — Microsoft Store .msix only
+  # Windows x64 and arm64 × EXE / MSIX.
+  #   EXE and ZIP share an exe-mode bundle; Store uses its own msix-mode build.
   #   x64 uses Windows Server 2025 with Visual Studio 2026; arm64 uses
   #   GitHub's native Windows 11 arm64 runner so Flutter, libXray, and VCore
   #   all match the target architecture.
@@ -480,6 +481,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        arch: [x64, arm64]
+        mode: [exe, msix]
         include:
           - arch: x64
             goarch: amd64
@@ -597,24 +600,55 @@ jobs:
             throw "Unexpected g++ target: $gxxTarget"
           }
 
+      - name: Install Inno Setup
+        if: matrix.mode == 'exe'
+        shell: pwsh
+        run: |
+          $toolDir = Join-Path $env:GITHUB_WORKSPACE "references/windows-build"
+          New-Item -ItemType Directory -Force -Path $toolDir | Out-Null
+          $installer = Join-Path $toolDir "innosetup-6.7.3.exe"
+          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe" -OutFile $installer
+          $expectedHash = "9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732"
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLower() -ne $expectedHash) {
+            throw "Inno Setup installer hash mismatch"
+          }
+          $installDir = Join-Path $toolDir "inno-setup"
+          $process = Start-Process -FilePath $installer -Wait -PassThru -ArgumentList `
+            "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/ALLUSERS", "/DIR=`"$installDir`""
+          if ($process.ExitCode -ne 0) { throw "Inno Setup installation failed: $($process.ExitCode)" }
+          $compiler = Join-Path $installDir "ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw "ISCC.exe was not installed" }
+          "ISCC=$compiler" >> $env:GITHUB_ENV
+
       - name: Build
-        run: uv run --project build_scripts python build_scripts/main.py OneXray windows
+        run: uv run --project build_scripts python build_scripts/main.py OneXray windows --windows-mode ${{ matrix.mode }}
 
       - name: Verify core CLI
         run: ./windows/app/OneXrayCore.exe -h
 
       - name: Upload Microsoft Store artifact
+        if: matrix.mode == 'msix'
         uses: actions/upload-artifact@v7
         with:
           name: windows-store-${{ matrix.arch }}
           path: output/OneXray-${{ matrix.package_suffix }}.msix
           if-no-files-found: error
 
+      - name: Upload EXE and ZIP artifacts
+        if: matrix.mode == 'exe'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-${{ matrix.arch }}
+          path: |
+            output/OneXray-${{ matrix.package_suffix }}.exe
+            output/OneXray-${{ matrix.package_suffix }}.zip
+          if-no-files-found: error
+
       - name: Upload build provenance
         uses: actions/upload-artifact@v7
         with:
-          name: provenance-windows-${{ matrix.arch }}
-          path: output/provenance-windows-*.json
+          name: provenance-windows-${{ matrix.arch }}-${{ matrix.mode }}
+          path: output/provenance-windows-${{ matrix.arch }}-${{ matrix.mode }}.json
           if-no-files-found: error
 
   # =================================================================

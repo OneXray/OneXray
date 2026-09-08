@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import unittest
+import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import patch
@@ -12,13 +13,17 @@ from app.windows import (
     _copy_vcore_artifacts,
     _VCORE_ARTIFACTS,
     _VCORE_IDENTITY,
+    _RUNTIME_FILES,
+    _WINTUN_VERSION,
 )
 from app.windows_msix import augment_manifest, package_with_vcore
 
 
 class WindowsPackagingTest(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
+        fixtures = Path(__file__).resolve().parents[3] / "references" / "windows-build" / "tests"
+        fixtures.mkdir(parents=True, exist_ok=True)
+        self.temp_dir = tempfile.TemporaryDirectory(dir=fixtures)
         self.addCleanup(self.temp_dir.cleanup)
 
         self.project_dir = os.path.join(self.temp_dir.name, "windows")
@@ -31,6 +36,8 @@ class WindowsPackagingTest(unittest.TestCase):
         self.builder.project = "OneXray"
         self.builder.root_dir = self.temp_dir.name
         self.builder.project_dir = self.project_dir
+        self.builder.workspace_dir = self.temp_dir.name
+        self.builder.mode = "msix"
         self.builder.output_dir = os.path.join(self.temp_dir.name, "output")
         self.builder.package_suffix = "windows-amd64"
         self.builder.target_architecture = "x64"
@@ -45,6 +52,93 @@ class WindowsPackagingTest(unittest.TestCase):
         self.builder.build_app()
 
         self.assertEqual(calls, ["msix"])
+
+    def test_exe_mode_packages_installer_and_zip_without_msix(self):
+        self.builder.mode = "exe"
+        calls = []
+        self.builder.package_msix = self.fail
+        self.builder.package_exe = lambda: calls.append("exe")
+        self.builder.package_zip = lambda: calls.append("zip")
+        self.builder.build_app()
+        self.assertEqual(calls, ["exe", "zip"])
+
+    def _bundle(self):
+        source = (Path(self.builder.root_dir) / "build/windows" /
+                  self.builder.target_architecture / "runner/Release")
+        source.mkdir(parents=True, exist_ok=True)
+        for name in ("OneXray.exe", "flutter_windows.dll", *_RUNTIME_FILES):
+            (source / name).write_bytes(_pe(self.builder._machine()))
+        for name in ("data/icudtl.dat", "data/app.so", "data/flutter_assets/AssetManifest.bin",
+                     "data/flutter_assets/assets/dat/geoip.dat", "plugin.dll"):
+            file = source / name
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(b"fixture")
+        return source
+
+    def test_zip_contains_the_complete_flat_bundle(self):
+        source = self._bundle()
+        self.builder.package_zip()
+        with zipfile.ZipFile(Path(self.builder.output_dir) / "OneXray-windows-amd64.zip") as package:
+            expected = {file.relative_to(source).as_posix() for file in source.rglob("*") if file.is_file()}
+            self.assertEqual(set(package.namelist()), expected)
+            self.assertEqual(package.read("wintun.dll"), (source / "wintun.dll").read_bytes())
+
+    def test_exe_passes_bundle_version_and_native_architecture_to_iscc(self):
+        self.builder.target_architecture = "arm64"
+        self.builder.package_suffix = "windows-arm64"
+        source = self._bundle()
+        with patch.dict(os.environ, {"ISCC": "fixture/ISCC.exe"}), patch("app.windows.run_command") as run:
+            self.builder.package_exe()
+        command = run.call_args.args[0]
+        self.assertEqual(command[0], "fixture/ISCC.exe")
+        self.assertIn(f"/DSourceDir={source}", command)
+        self.assertIn("/DAppVersion=26.7.3", command)
+        self.assertIn("/DArchitecture=arm64", command)
+        self.assertIn("/DOutputBaseFilename=OneXray-windows-arm64", command)
+
+    def test_bundle_rejects_missing_dependencies_and_wrong_architecture(self):
+        source = self._bundle()
+        for name in (*_RUNTIME_FILES, "data/app.so", "data/flutter_assets/AssetManifest.bin"):
+            with self.subTest(missing=name):
+                original = (source / name).read_bytes()
+                (source / name).unlink()
+                with self.assertRaises(FileNotFoundError):
+                    self.builder._release_bundle()
+                (source / name).write_bytes(original)
+        (source / "wintun.dll").write_bytes(_pe(0xAA64))
+        with self.assertRaisesRegex(ValueError, "wrong architecture"):
+            self.builder._release_bundle()
+
+    def test_wintun_copies_only_the_verified_architecture_dll(self):
+        archive = Path(self.builder.workspace_dir) / "references/windows-build" / f"wintun-{_WINTUN_VERSION}.zip"
+        archive.parent.mkdir(parents=True)
+        with zipfile.ZipFile(archive, "w") as package:
+            package.writestr("wintun/bin/amd64/wintun.dll", _pe(0x8664))
+            package.writestr("wintun/bin/arm64/wintun.dll", _pe(0xAA64))
+            package.writestr("wintun/LICENSE.txt", "upstream license")
+        for architecture, machine in (("x64", 0x8664), ("arm64", 0xAA64)):
+            self.builder.target_architecture = architecture
+            with patch("app.windows._WINTUN_SHA256", hashlib.sha256(archive.read_bytes()).hexdigest()):
+                self.builder.install_wintun()
+            app = Path(self.project_dir) / "app"
+            self.assertEqual([file.name for file in app.iterdir()], ["wintun.dll"])
+            self.assertEqual((app / "wintun.dll").read_bytes(), _pe(machine))
+        with patch("app.windows._WINTUN_SHA256", "0" * 64), self.assertRaisesRegex(ValueError, "hash mismatch"):
+            self.builder.install_wintun()
+
+    def test_installer_preserves_released_identity_and_scopes_cleanup(self):
+        root = Path(__file__).resolve().parents[2]
+        installer = (root / "windows/packaging/exe/inno_setup.iss").read_text()
+        self.assertIn("AppId=835d7bbd-85bb-4c73-97f8-ce0740f151a7", installer)
+        self.assertIn("PrivilegesRequired=lowest", installer)
+        self.assertIn("StartupShortcutTargetsCurrentInstall(ShortcutPath, ExpectedTarget)", installer)
+        self.assertIn("CompareText(CurrentCommand", installer)
+        self.assertNotIn("uninsdeletekey", installer)
+        self.assertNotIn("LicenseFile", installer)
+        cmake = (root / "windows/app.cmake").read_text()
+        for name in _RUNTIME_FILES:
+            self.assertIn(name, cmake)
+        self.assertNotIn("if(EXISTS", cmake)
 
     def test_msix_uses_store_version_without_rebuilding_windows(self):
         with (
@@ -138,9 +232,7 @@ class WindowsPackagingTest(unittest.TestCase):
             "runner",
             "Release",
         )
-        os.makedirs(source)
-        with open(os.path.join(source, "OneXray.exe"), "wb") as executable:
-            executable.write(b"app")
+        self._bundle()
 
         WindowsBuilder._prepare_msix_bundle(self.builder)
 
@@ -353,11 +445,7 @@ def _write_vcore_set(path):
     hashes = {}
     for name in _VCORE_ARTIFACTS:
         artifact = os.path.join(path, name)
-        contents = bytearray(0x86)
-        contents[:2] = b"MZ"
-        contents[0x3C:0x40] = (0x80).to_bytes(4, "little")
-        contents[0x80:0x84] = b"PE\0\0"
-        contents[0x84:0x86] = (0x8664).to_bytes(2, "little")
+        contents = _pe(0x8664)
         with open(artifact, "wb") as output:
             output.write(contents)
         hashes[name] = hashlib.sha256(contents).hexdigest()
@@ -370,6 +458,15 @@ def _write_vcore_set(path):
     }
     _write_manifest(path, manifest)
     return manifest
+
+
+def _pe(machine):
+    contents = bytearray(0x86)
+    contents[:2] = b"MZ"
+    contents[0x3C:0x40] = (0x80).to_bytes(4, "little")
+    contents[0x80:0x84] = b"PE\0\0"
+    contents[0x84:0x86] = machine.to_bytes(2, "little")
+    return contents
 
 
 def _write_manifest(path, manifest):

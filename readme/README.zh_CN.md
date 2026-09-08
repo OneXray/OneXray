@@ -36,7 +36,7 @@ OneXray 是适用于手机、平板和桌面的开源 Xray-core 客户端。导�
 | macOS | macOS 13+，Apple silicon 或 Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS — OneXraySE | macOS 13+，Apple silicon 或 Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android 手机 / 平板 | Android 10+，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [通用 APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows | Windows 10 20H2+（x64），Windows 11（ARM64） | Microsoft Store |
+| Windows | Windows 10 20H2+（x64），Windows 11（ARM64） | EXE / ZIP、Microsoft Store |
 | Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -120,9 +120,11 @@ brew install --cask onexrayse
 </details>
 
 <details>
-<summary>Windows：Microsoft Store 安装包</summary>
+<summary>Windows：EXE / ZIP 与 Microsoft Store</summary>
 
-当前 Windows 实现使用包含系统 VPN Provider 的 MSIX 包。Microsoft Store 选择匹配的 x64 或 ARM64 安装包并负责更新。旧版独立 EXE / ZIP 不能作为此安装包的升级来源。
+EXE 和 ZIP 使用独立 Core 与原生 TUN，启动 VPN 时通过 UAC 请求管理员授权。ZIP 必须完整解压后运行，不自动注册协议链接或创建快捷方式。
+
+Microsoft Store 使用包含系统 VPN Provider 的 MSIX 包，负责架构选择和更新。EXE / ZIP 与 MSIX 的数据目录独立，不能跨渠道覆盖升级。开发构建和模式选择见 [Windows 构建说明](../docs/windows-build.md)。
 
 </details>
 

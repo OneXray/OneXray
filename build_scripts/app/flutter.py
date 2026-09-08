@@ -16,6 +16,8 @@ class FlutterBuilder(Builder):
         project: str,
         system: str,
         build_scripts_dir: str,
+        *,
+        windows_mode: str = "exe",
     ):
         self.requested_system = system
         new_system = "macos" if system == "macos_se" else system
@@ -29,7 +31,8 @@ class FlutterBuilder(Builder):
         }
         if new_system not in builder_types:
             raise ValueError(f"unsupported system: {system}")
-        self.builder = builder_types[new_system](project, new_system, build_scripts_dir)
+        options = {"mode": windows_mode} if new_system == "windows" else {}
+        self.builder = builder_types[new_system](project, new_system, build_scripts_dir, **options)
         self.build_type = {
             "android": "appbundle",
             "ios": "ipa",
@@ -97,6 +100,8 @@ class FlutterBuilder(Builder):
         cmd = [flutter_command(), "build", self.build_type[self.system]]
         if self.system == "android":
             cmd.extend(["--target-platform", "android-arm64,android-x64"])
+        elif self.system == "windows":
+            cmd.append(f"--dart-define=ONEXRAY_WINDOWS_MODE={self.builder.mode}")
         run_command(cmd, cwd=self.root_dir)
         self.builder.build_app()
 

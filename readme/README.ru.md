@@ -36,7 +36,7 @@ OneXray — клиент Xray-core с открытым исходным кодо
 | macOS | macOS 13+, Apple silicon или Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS — OneXraySE | macOS 13+, Apple silicon или Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Телефоны / планшеты Android | Android 10+, arm64-v8a или x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Универсальный APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows | Windows 10 20H2+ (x64), Windows 11 (ARM64) | Microsoft Store |
+| Windows | Windows 10 20H2+ (x64), Windows 11 (ARM64) | EXE / ZIP, Microsoft Store |
 | Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -120,9 +120,11 @@ brew install --cask onexrayse
 </details>
 
 <details>
-<summary>Windows: пакет Microsoft Store</summary>
+<summary>Windows: EXE / ZIP и Microsoft Store</summary>
 
-Текущая реализация Windows использует MSIX-пакет с системным VPN-провайдером. Microsoft Store выбирает подходящий пакет x64 или ARM64 и устанавливает обновления. Старые отдельные сборки EXE / ZIP не являются источником обновления для этого пакета.
+EXE и ZIP используют отдельный Core с нативным TUN; запуск VPN запрашивает разрешение администратора через UAC. Полностью распакуйте ZIP перед запуском: он не регистрирует ссылки протокола и не создаёт ярлыки автоматически.
+
+Microsoft Store использует MSIX с системным VPN-провайдером, выбирает архитектуру и устанавливает обновления. EXE / ZIP и MSIX хранят данные отдельно и не заменяют друг друга при обновлении. Выбор режима и сборка описаны в [руководстве Windows](../docs/windows-build.md).
 
 </details>
 
