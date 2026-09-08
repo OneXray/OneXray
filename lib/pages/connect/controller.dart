@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/constants.dart';
@@ -15,104 +17,70 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
-import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
-import 'package:onexray/service/connect/platform_requirements.dart';
-import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 
-const _unchanged = Object();
+import 'package:onexray/service/servers/catalog.dart';
+import 'package:onexray/pages/servers/catalog.dart';
+import 'package:onexray/pages/shared/connection_action.dart';
 
-typedef PendingServerTest = ({String? groupId, bool cancelling});
+const _unchanged = Object();
 
 class ConnectPageState {
   ConnectPageState({
     ConnectionConfiguration? configuration,
     this.connectionView = const ConnectionView(),
-    List<CoreConfigData> servers = const [],
+    this.connectedMinutes = 0,
+    ServerCatalog? catalog,
     List<CoreConfigData> raws = const [],
     List<RoutingProfileState> customRoutes = const [],
-    List<SubscriptionData> sources = const [],
     this.expertView = false,
     this.ready = false,
     this.failed = false,
     this.pendingChange,
     Set<int> deletingRawIds = const {},
-    this.serverGroupingIndex = 0,
-    this.activeServerGroupId,
-    this.serverSearchQuery = '',
-    Set<String> pendingServerActions = const {},
-    Map<Object, PendingServerTest> serverTests = const {},
-    Set<int> favoritingServerIds = const {},
-    this.selectingServers,
-    Map<int, String> sourceErrors = const {},
-    this.selectedExitId,
   }) : configuration = configuration ?? ConnectionConfiguration(),
-       servers = List.unmodifiable(servers),
+       catalog = catalog ?? ServerCatalog(),
        raws = List.unmodifiable(raws),
        customRoutes = List.unmodifiable(customRoutes),
-       sources = List.unmodifiable(sources),
-       deletingRawIds = Set.unmodifiable(deletingRawIds),
-       pendingServerActions = Set.unmodifiable(pendingServerActions),
-       serverTests = Map.unmodifiable(serverTests),
-       favoritingServerIds = Set.unmodifiable(favoritingServerIds),
-       sourceErrors = Map.unmodifiable(sourceErrors);
+       deletingRawIds = Set.unmodifiable(deletingRawIds);
 
   final ConnectionConfiguration configuration;
   final ConnectionView connectionView;
-  final List<CoreConfigData> servers;
+  final int connectedMinutes;
+  final ServerCatalog catalog;
+  List<CoreConfigData> get servers => catalog.servers;
   final List<CoreConfigData> raws;
   final List<RoutingProfileState> customRoutes;
-  final List<SubscriptionData> sources;
+  List<SubscriptionData> get sources => catalog.sources;
   final bool expertView;
   final bool ready;
   final bool failed;
   final String? pendingChange;
   final Set<int> deletingRawIds;
 
-  // ServersController extends ConnectController, so its page state lives in the
-  // same Cubit state instead of introducing another notifier.
-  final int serverGroupingIndex;
-  final String? activeServerGroupId;
-  final String serverSearchQuery;
-  final Set<String> pendingServerActions;
-  final Map<Object, PendingServerTest> serverTests;
-  final Set<int> favoritingServerIds;
-  final ServerSelection? selectingServers;
-  final Map<int, String> sourceErrors;
-  final int? selectedExitId;
-
   ConnectPageState copyWith({
     ConnectionConfiguration? configuration,
     ConnectionView? connectionView,
-    List<CoreConfigData>? servers,
+    int? connectedMinutes,
+    ServerCatalog? catalog,
     List<CoreConfigData>? raws,
     List<RoutingProfileState>? customRoutes,
-    List<SubscriptionData>? sources,
     bool? expertView,
     bool? ready,
     bool? failed,
     Object? pendingChange = _unchanged,
     Set<int>? deletingRawIds,
-    int? serverGroupingIndex,
-    Object? activeServerGroupId = _unchanged,
-    String? serverSearchQuery,
-    Set<String>? pendingServerActions,
-    Map<Object, PendingServerTest>? serverTests,
-    Set<int>? favoritingServerIds,
-    Object? selectingServers = _unchanged,
-    Map<int, String>? sourceErrors,
-    Object? selectedExitId = _unchanged,
   }) => ConnectPageState(
     configuration: configuration ?? this.configuration,
     connectionView: connectionView ?? this.connectionView,
-    servers: servers ?? this.servers,
+    connectedMinutes: connectedMinutes ?? this.connectedMinutes,
+    catalog: catalog ?? this.catalog,
     raws: raws ?? this.raws,
     customRoutes: customRoutes ?? this.customRoutes,
-    sources: sources ?? this.sources,
     expertView: expertView ?? this.expertView,
     ready: ready ?? this.ready,
     failed: failed ?? this.failed,
@@ -120,25 +88,28 @@ class ConnectPageState {
         ? this.pendingChange
         : pendingChange as String?,
     deletingRawIds: deletingRawIds ?? this.deletingRawIds,
-    serverGroupingIndex: serverGroupingIndex ?? this.serverGroupingIndex,
-    activeServerGroupId: identical(activeServerGroupId, _unchanged)
-        ? this.activeServerGroupId
-        : activeServerGroupId as String?,
-    serverSearchQuery: serverSearchQuery ?? this.serverSearchQuery,
-    pendingServerActions: pendingServerActions ?? this.pendingServerActions,
-    serverTests: serverTests ?? this.serverTests,
-    favoritingServerIds: favoritingServerIds ?? this.favoritingServerIds,
-    selectingServers: identical(selectingServers, _unchanged)
-        ? this.selectingServers
-        : selectingServers as ServerSelection?,
-    sourceErrors: sourceErrors ?? this.sourceErrors,
-    selectedExitId: identical(selectedExitId, _unchanged)
-        ? this.selectedExitId
-        : selectedExitId as int?,
   );
+  bool sameContentAs(ConnectPageState other) =>
+      configuration == other.configuration &&
+      catalog == other.catalog &&
+      const ListEquality<CoreConfigData>().equals(raws, other.raws) &&
+      const ListEquality<RoutingProfileState>().equals(
+        customRoutes,
+        other.customRoutes,
+      ) &&
+      const SetEquality<int>().equals(deletingRawIds, other.deletingRawIds) &&
+      expertView == other.expertView &&
+      ready == other.ready &&
+      failed == other.failed &&
+      pendingChange == other.pendingChange &&
+      connectedMinutes == other.connectedMinutes &&
+      connectionView.phase == other.connectionView.phase &&
+      connectionView.runtime == other.connectionView.runtime &&
+      connectionView.issue == other.connectionView.issue &&
+      connectionView.permission == other.connectionView.permission;
 }
 
-class ConnectController extends PageCubit<ConnectPageState> {
+class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
   ConnectController({AppDatabase? database, ConnectionCoordinator? coordinator})
     : db = database ?? AppDatabase(),
       coordinator = coordinator ?? ConnectionCoordinator.instance,
@@ -153,13 +124,16 @@ class ConnectController extends PageCubit<ConnectPageState> {
   bool _viewInitialized = false;
   bool _pageVisible = false;
 
+  @override
+  ServerCatalog get catalog => state.catalog;
+
   ConnectionConfiguration get configuration => state.configuration;
   set configuration(ConnectionConfiguration value) =>
       emit(state.copyWith(configuration: value));
   ConnectionView get connectionView => state.connectionView;
   List<CoreConfigData> get servers => state.servers;
   set servers(List<CoreConfigData> value) =>
-      emit(state.copyWith(servers: value));
+      emit(state.copyWith(catalog: catalog.copyWith(servers: value)));
   List<CoreConfigData> get raws => state.raws;
   set raws(List<CoreConfigData> value) => emit(state.copyWith(raws: value));
   List<RoutingProfileState> get customRoutes => state.customRoutes;
@@ -167,7 +141,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
       emit(state.copyWith(customRoutes: value));
   List<SubscriptionData> get sources => state.sources;
   set sources(List<SubscriptionData> value) =>
-      emit(state.copyWith(sources: value));
+      emit(state.copyWith(catalog: catalog.copyWith(sources: value)));
   bool get expertView => state.expertView;
   set expertView(bool value) => emit(state.copyWith(expertView: value));
   bool get ready => state.ready;
@@ -181,7 +155,15 @@ class ConnectController extends PageCubit<ConnectPageState> {
 
   void _connectionChanged() {
     if (isPageActive) {
-      emit(state.copyWith(connectionView: coordinator.state.value));
+      final view = coordinator.state.value;
+      emit(
+        state.copyWith(
+          connectionView: view,
+          connectedMinutes: view.runtime == null
+              ? 0
+              : DateTime.now().difference(view.runtime!.startedAt).inMinutes,
+        ),
+      );
     }
   }
 
@@ -210,8 +192,8 @@ class ConnectController extends PageCubit<ConnectPageState> {
           }, onError: _readFailed),
         );
         _subscriptions.add(
-          db.coreConfigDao.watchOutbounds().listen((rows) {
-            servers = rows;
+          ServerCatalog.watch(db).listen((value) {
+            emit(state.copyWith(catalog: value));
           }, onError: _readFailed),
         );
         _subscriptions.add(
@@ -229,23 +211,10 @@ class ConnectController extends PageCubit<ConnectPageState> {
             }
           }, onError: _readFailed),
         );
-        _subscriptions.add(
-          db.subscriptionDao.allRowsStream.listen((rows) {
-            sources = rows;
-          }, onError: _readFailed),
-        );
       }
       ready = true;
     } catch (_) {
       failed = true;
-    }
-  }
-
-  String serverName(CoreConfigData row) {
-    try {
-      return ResolvedServer.fromRow(row).name;
-    } catch (_) {
-      return row.name;
     }
   }
 
@@ -263,20 +232,8 @@ class ConnectController extends PageCubit<ConnectPageState> {
     return _selectionName(l10n, settings.selection);
   }
 
-  String _selectionName(AppLocalizations l10n, ServerSelection selection) =>
-      switch (selection.kind) {
-        SelectionKind.automatic => l10n.prototypeAutomaticSelection,
-        SelectionKind.region => selection.region ?? '',
-        SelectionKind.source =>
-          sources.where((row) => row.id == selection.id).firstOrNull?.name ??
-              l10n.prototypeTemporarilyUnavailable,
-        SelectionKind.server =>
-          servers
-                  .where((row) => row.id == selection.id)
-                  .map(serverName)
-                  .firstOrNull ??
-              l10n.prototypeTemporarilyUnavailable,
-      };
+  String _selectionName(AppLocalizations l, ServerSelection selection) =>
+      selectionName(l, selection);
 
   int? _configuredEntryCount(ConnectionSettings settings) {
     if (settings.selection.kind == SelectionKind.server ||
@@ -297,17 +254,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
       (configuration.connection.selection.kind == SelectionKind.server
           ? null
           : l10n.prototypeChooseBySpeedAvailability);
-
-  String health(AppLocalizations l, CoreConfigData row) =>
-      row.delay == PingDelayConstants.unknown
-      ? l.prototypeNotTested
-      : !PingDelayConstants.isSuccessful(row.delay)
-      ? l.prototypeTemporarilyUnavailable
-      : row.delay <= 500
-      ? l.prototypeFastLatency(row.delay)
-      : row.delay <= 1000
-      ? l.prototypeSlowLatency(row.delay)
-      : l.prototypeAvailableLatency(row.delay);
 
   // The runtime chooses the node identity; the badge shows that node's latest
   // successful probe, not a measurement of this session or a new selection.
@@ -430,40 +376,17 @@ class ConnectController extends PageCubit<ConnectPageState> {
         ? 'method'
         : 'expert';
     try {
-      final l10n = AppLocalizations.of(context)!;
-      final current = await coordinator.configuration;
-      final next = ConnectionConfiguration(
-        connection: ConnectionSettings.fromJson({
-          ...current.connection.toJson(),
-          ...values,
-        }),
-        policy: current.policy,
+      final saved = await applyConnectionChange(
+        context,
+        coordinator,
+        values,
+        writeAssets: writeAssets,
+        label: (next) =>
+            label ?? _changeLabel(AppLocalizations.of(context)!, values, next),
       );
-      if (next.encode() == current.encode() && writeAssets == null) return true;
-      if (!context.mounted) return false;
-      final reconnect = connectionView.phase == ConnectionPhase.connected;
-      if (reconnect &&
-          !await showApplyAndReconnectDialog(
-            context,
-            label: label ?? _changeLabel(l10n, values, next.connection),
-          )) {
-        return false;
-      }
-      if (!context.mounted) return false;
-      var success = false;
-      await run(context, () async {
-        await coordinator.apply(
-          next,
-          writeAssets: writeAssets,
-          expectedConfiguration: current.encode(),
-          allowReconnect: reconnect,
-        );
-        // A successful apply may legitimately commit Automatic instead of an
-        // unavailable selection.
-        success = true;
-        configuration = await coordinator.configuration;
-      });
-      return success;
+      if (saved == null) return false;
+      configuration = saved;
+      return true;
     } finally {
       pendingChange = null;
     }
@@ -751,12 +674,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
             SelectionKind.server => row.id == settings.selection.id,
           };
           if (!matches) return false;
-          try {
-            ResolvedServer.fromRow(row);
-            return true;
-          } on FormatException {
-            return false;
-          }
+          return catalog.display(row).readable;
         }).toList()..sort((a, b) {
           final delay = a.delay.compareTo(b.delay);
           return delay == 0 ? a.id.compareTo(b.id) : delay;
@@ -765,21 +683,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
   }
 
   Future<void> run(BuildContext context, Future<void> Function() action) async {
-    try {
-      await action();
-    } catch (error) {
-      if (connectionView.issue == 'cancelled') return;
-      if (context.mounted) {
-        ContextAlert.showToast(
-          context,
-          error is ConnectionPlatformRequirementException
-              ? AppLocalizations.of(context)!.prototypeChooseInterfaceNotice
-              : error is ConnectionResolutionException
-              ? AppLocalizations.of(context)!.prototypeNotEnoughServers
-              : AppLocalizations.of(context)!.prototypeCheckNetwork,
-        );
-      }
-    }
+    await runConnectionAction(context, coordinator, action);
   }
 
   void _readFailed(Object error) {

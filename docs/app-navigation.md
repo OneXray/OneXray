@@ -98,6 +98,8 @@ Raw 新增最多三份；已有超额旧数据仍完整显示、可编辑和选�
 `lib/pages/` 和 `lib/service/` 按相同的业务归属组织：`connect`、`servers`、
 `advanced`、`settings`；`launch` 负责启动与初始化，`shared` 保存跨页面复用的实现。
 页面仍只依赖服务与 Core，服务不反向引用页面；目录位置不改变路由 URL 或导航栈。
+连接、服务器和最终出口选择页各自持有独立的页面状态，不通过 Controller 继承复用。
+节点展示数据由服务在数据库列表变化时解析；页面只共享展示与分组逻辑，单节点查询仍为一次性读取。
 
 - 路由和响应式外壳：`lib/pages/main/`
 - 连接：`connect/`；智能与自定义路由归 `connect/routing/`，Raw 编辑和运行配置也归连接。

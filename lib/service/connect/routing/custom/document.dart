@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
-import 'package:path/path.dart' as p;
+import 'package:onexray/service/advanced/xray/geodata/model.dart';
 
 /// External Custom-routing document after import-only metadata is separated.
 final class RoutingProfileDocument {
@@ -32,7 +32,7 @@ final class RoutingProfileDocument {
             embeddedName.trim().runes.length > 32)) {
       throw const FormatException('name must contain 1–32 characters');
     }
-    if (document.containsKey('geodata')) _readAssets(document['geodata']);
+    if (document.containsKey('geodata')) _checkAssets(document['geodata']);
     document.remove('name');
     _checkEditableFields(document);
     try {
@@ -99,51 +99,30 @@ void _onlyKeys(Map<String, dynamic> value, Set<String> allowed, String path) {
   }
 }
 
-List<Map<String, String>> _readAssets(Object? value) {
+void _checkAssets(Object? value) {
   final geodata = _object(value, 'geodata');
   _onlyKeys(geodata, const {'assets'}, 'geodata');
   final assets = geodata['assets'];
   if (assets is! List) {
     throw const FormatException('geodata.assets must be an array');
   }
-  final result = <Map<String, String>>[];
   final names = <String>{};
   for (var index = 0; index < assets.length; index++) {
     final path = 'geodata.assets[$index]';
     final asset = _object(assets[index], path);
     _onlyKeys(asset, const {'file', 'url'}, path);
     final file = asset['file'];
-    if (file is! String ||
-        file.length <= 4 ||
-        file != file.trim() ||
-        !file.toLowerCase().endsWith('.dat') ||
-        p.posix.basename(file) != file ||
-        p.windows.basename(file) != file ||
-        file.contains(RegExp(r'[\\/:*?"<>|\x00-\x1f\x7f]')) ||
-        RegExp(
-          r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])\.',
-          caseSensitive: false,
-        ).hasMatch(file) ||
-        const {'geosite.dat', 'geoip.dat'}.contains(file.toLowerCase())) {
+    if (file is! String) {
       throw FormatException('$path.file must be a safe custom .dat filename');
     }
+    GeoDataInput.referenceFileName(file);
     if (!names.add(file.toLowerCase())) {
       throw FormatException('$path duplicates a geodata filename');
     }
     final url = asset['url'];
-    final uri = url is String ? Uri.tryParse(url) : null;
-    if (url is! String ||
-        url.contains(RegExp(r'\s')) ||
-        uri == null ||
-        uri.scheme.toLowerCase() != 'https' ||
-        uri.host.isEmpty ||
-        uri.userInfo.isNotEmpty ||
-        uri.hasFragment) {
-      throw FormatException(
-        '$path.url must be an HTTPS URL without credentials or fragment',
-      );
+    if (url is! String) {
+      throw FormatException('$path.url must be an HTTPS URL');
     }
-    result.add({'file': file, 'url': url});
+    GeoDataInput.httpsUri(url);
   }
-  return result;
 }

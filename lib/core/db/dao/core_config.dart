@@ -142,7 +142,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     final res = await (delete(
       coreConfig,
     )..where((tbl) => tbl.id.equals(entry.id))).go();
-    notifyUpdates({TableUpdate.onTable(coreConfig, kind: UpdateKind.delete)});
     return res;
   }
 

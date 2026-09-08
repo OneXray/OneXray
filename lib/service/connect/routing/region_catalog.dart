@@ -6,6 +6,8 @@ final class RegionCatalog {
   final Map<String, List<String>> _domains;
   final Map<String, List<String>> _ips;
 
+  const RegionCatalog.empty() : _domains = const {}, _ips = const {};
+
   RegionCatalog.fromJson(
     Map<String, dynamic> mapping, {
     required Iterable<String> geositeCodes,

@@ -496,36 +496,6 @@ class GeoDataService {
     );
   }
 
-  Future<bool> insertGeoDat(
-    String name,
-    GeoDataType type,
-    String url, {
-    bool needDownload = true,
-  }) async {
-    if (!needDownload) return false;
-    try {
-      await add(GeoDataInput(fileName: name, type: type, url: url));
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> updateGeoDat(GeoDataData row) async {
-    try {
-      if (row.id < 0) {
-        await updateDefaults();
-      } else {
-        await updateCustom(row);
-      }
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<void> refreshSystemGeoDat(List<GeoDataData> _) => updateDefaults();
-
   Future<void> _publishDefaults(String directory, DateTime timestamp) async {
     await _validateDefaultFiles(directory);
     final existing = await _db.geoDataDao.publishedRows;

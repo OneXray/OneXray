@@ -167,7 +167,6 @@ sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 
 1. Поставить этому репозиторию Star.
 2. Улучшить [документацию OneXray](https://github.com/OneXray/onexray.com).
-3. Поделиться routing templates через [OneXray/Routing](https://github.com/OneXray/Routing).
 
 Перед локальной сборкой прочитайте [настройку среды разработки](./FIRST_RUN.ru.md).
 

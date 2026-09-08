@@ -8,8 +8,35 @@ import 'package:onexray/service/connect/runtime_host.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('a successful native query must include its status', () async {
+    const channel = BasicMessageChannel<Object?>(
+      'dev.flutter.pigeon.onexray.BridgeHostApi.readVpnStatus',
+      BridgeHostApi.pigeonChannelCodec,
+    );
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockDecodedMessageHandler(
+      channel,
+      (_) async => [
+        NativeVpnCommandResult(state: NativeVpnCommandState.success),
+      ],
+    );
+    addTearDown(() => messenger.setMockDecodedMessageHandler(channel, null));
+    await expectLater(
+      ConnectionRuntimeHost().inspect([]),
+      throwsA(
+        isA<ConnectionHostException>().having(
+          (error) => error.reason,
+          'reason',
+          'nativeStatusFailed',
+        ),
+      ),
+    );
+    expect(AppFlutterApi().vpnStatusController.hasListener, false);
+  }, skip: !(Platform.isMacOS || Platform.isIOS || Platform.isAndroid));
+
   test(
-    'native status can wait for a core operation without losing its event',
+    'native status returns permission and state without a callback event',
     () async {
       const channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.onexray.BridgeHostApi.readVpnStatus',
@@ -24,10 +51,10 @@ void main() {
       messenger.setMockDecodedMessageHandler(channel, (_) async {
         // A simulator state query can wait behind a libXray ping batch.
         await Future<void>.delayed(const Duration(seconds: 6));
-        AppFlutterApi().vpnStatusChanged(VpnStatus.disconnected);
         return [
           NativeVpnCommandResult(
             state: NativeVpnCommandState.success,
+            status: VpnStatus.disconnected,
             permission: permission,
           ),
         ];

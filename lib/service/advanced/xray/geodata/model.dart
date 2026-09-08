@@ -17,9 +17,18 @@ class GeoDataInput {
 
   /// New entries use one lowercase .dat suffix. Existing database basenames are
   /// never normalized: their historical '$name.dat' references remain intact.
-  String get name =>
-      canonicalFileName(fileName)
-          .substring(0, canonicalFileName(fileName).length - 4);
+  String get name {
+    final file = canonicalFileName(fileName);
+    return file.substring(0, file.length - 4);
+  }
+
+  /// References must already use the exact filename; importing cannot rename it.
+  static String referenceFileName(String file) {
+    if (canonicalFileName(file) != file) {
+      throw const FormatException('Invalid custom Geodata filename');
+    }
+    return file;
+  }
 
   static String canonicalFileName(String input) {
     final value = input.trim();

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:onexray/service/connect/coordinator.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
@@ -42,6 +44,7 @@ class _ConnectPageState extends State<ConnectPage> {
         ),
         body: SafeArea(
           child: BlocBuilder<ConnectController, ConnectPageState>(
+            buildWhen: (previous, next) => !previous.sameContentAs(next),
             builder: (context, state) {
               final l = AppLocalizations.of(context)!;
               if (state.failed) {
@@ -62,6 +65,16 @@ class _ConnectPageState extends State<ConnectPage> {
               }
               return ConnectView(
                 view: state.connectionView,
+                trafficBuilder: (desktop) =>
+                    BlocSelector<
+                      ConnectController,
+                      ConnectPageState,
+                      ConnectionView
+                    >(
+                      selector: (state) => state.connectionView,
+                      builder: (context, view) =>
+                          TrafficReadout(view: view, desktop: desktop),
+                    ),
                 hasServers: state.servers.isNotEmpty,
                 expert: state.expertView,
                 raws: state.raws,

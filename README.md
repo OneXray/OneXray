@@ -169,7 +169,6 @@ Contributions are welcome:
 
 1. Star this repository.
 2. Improve the [documentation](https://github.com/OneXray/onexray.com).
-3. Share routing templates through [OneXray/Routing](https://github.com/OneXray/Routing).
 
 See [Development Setup](./readme/FIRST_RUN.md) before building the app locally.
 

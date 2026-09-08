@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:go_router/go_router.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -95,6 +97,11 @@ class ContextAlert {
       ),
     );
     return confirmed ?? false;
+  }
+
+  static void settingsSaved(BuildContext context, {bool closePage = false}) {
+    showToast(context, AppLocalizations.of(context)!.prototypeSettingsSaved);
+    if (closePage && ModalRoute.of(context)?.isCurrent == true) context.pop();
   }
 
   static void showToast(BuildContext context, String message) {

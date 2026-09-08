@@ -15,9 +15,6 @@ class TunJson {
   String? dnsServerName;
   // all
   bool? enableIPv6;
-  bool? metricsEnabled;
-  // linux, windows
-  String? tunName;
   // linux, windows
   String? autoOutboundsInterface;
 
@@ -42,8 +39,6 @@ class TunJson {
     this.enableDot,
     this.dnsServerName,
     this.enableIPv6,
-    this.metricsEnabled,
-    this.tunName,
     this.autoOutboundsInterface,
     this.includeAllNetworks,
     this.excludeLocalNetworks,

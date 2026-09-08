@@ -83,17 +83,19 @@ class AppHostApi(
 
     override fun readVpnStatus(callback: (Result<NativeVpnCommandResult>) -> Unit) {
         scope.launch {
-            val status = flutterApi?.readVpnStatus()
-            if (status == VpnStatus.CONNECTING || status == VpnStatus.DISCONNECTING) {
-                flutterApi?.refreshVpnStatus()
+            val cached = flutterApi?.readVpnStatus()
+            val status = if (cached == VpnStatus.CONNECTING || cached == VpnStatus.DISCONNECTING) {
+                cached
             } else {
-                // A foreground reconciliation must not only echo cached broadcasts.
-                val running = VpnController.readVpnRunning(context)
-                flutterApi?.vpnStatusChanged(
-                    if (running) VpnStatus.CONNECTED else VpnStatus.DISCONNECTED
-                )
+                // Reconcile the service without broadcasting a query back as an event.
+                if (VpnController.readVpnRunning(context)) VpnStatus.CONNECTED else VpnStatus.DISCONNECTED
             }
-            callback(Result.success(commandSuccess(queryPermissionNow())))
+            flutterApi?.setVpnStatus(status)
+            callback(Result.success(NativeVpnCommandResult(
+                state = NativeVpnCommandState.SUCCESS,
+                permission = queryPermissionNow(),
+                status = status
+            )))
         }
     }
 
@@ -324,8 +326,8 @@ class AppHostApi(
 
     private fun commandFailed(permission: PlatformPermissionResult): NativeVpnCommandResult =
         NativeVpnCommandResult(
-            NativeVpnCommandState.FAILED,
-            permission,
+            state = NativeVpnCommandState.FAILED,
+            permission = permission,
         )
 
     private fun androidPermissionGranted() = PlatformPermissionResult(
@@ -341,15 +343,13 @@ class AppHostApi(
     )
 
     private fun commandSuccess(permission: PlatformPermissionResult) = NativeVpnCommandResult(
-        NativeVpnCommandState.SUCCESS,
-        permission,
-        null,
+        state = NativeVpnCommandState.SUCCESS,
+        permission = permission,
     )
 
     private fun waitingForPermission(permission: PlatformPermissionResult) = NativeVpnCommandResult(
-        NativeVpnCommandState.WAITING_FOR_PLATFORM_PERMISSION,
-        permission,
-        null,
+        state = NativeVpnCommandState.WAITING_FOR_PLATFORM_PERMISSION,
+        permission = permission,
     )
 
     private companion object {

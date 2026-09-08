@@ -7,6 +7,8 @@ import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/flutter_api.dart';
+import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:path/path.dart' as p;
@@ -33,6 +35,53 @@ class LinuxFfiApi extends BaseFfiApi {
   }) : _filesDirectory = filesDirectory,
        _processStore = DesktopCoreProcessStore(directory: filesDirectory);
 
+  var _vpnStatus = VpnStatus.disconnected;
+
+  @override
+  Future<NativeVpnCommandResult> readVpnStatus() async {
+    final running = await queryCoreRunning();
+    if (running != null &&
+        _vpnStatus != VpnStatus.connecting &&
+        _vpnStatus != VpnStatus.disconnecting) {
+      _vpnStatus = running ? VpnStatus.connected : VpnStatus.disconnected;
+    }
+    return commandSuccess(status: _vpnStatus);
+  }
+
+  Future<void> updateVpnStatus(VpnStatus status) async {
+    _vpnStatus = status;
+    await AppFlutterApi().vpnStatusChanged(_vpnStatus);
+  }
+
+  @override
+  Future<NativeVpnCommandResult> startVpn() async {
+    await updateVpnStatus(VpnStatus.connecting);
+
+    final request = await StartVpnRequestReader.readFromStartFile();
+    final coreRequest = readRunXrayRequest(request);
+
+    var res = await startCore(coreRequest, request.tun);
+    if (!res) {
+      await stopVpn();
+      return commandFailed();
+    }
+    await updateVpnStatus(VpnStatus.connected);
+    return commandSuccess();
+  }
+
+  @override
+  Future<NativeVpnCommandResult> stopVpn() async {
+    await updateVpnStatus(VpnStatus.disconnecting);
+    final stopped = await stopCore();
+    if (!stopped) {
+      await updateVpnStatus(VpnStatus.connected);
+      return commandFailed();
+    }
+    await Future.delayed(Duration(seconds: 1));
+    await updateVpnStatus(VpnStatus.disconnected);
+    return commandSuccess();
+  }
+
   //===================================
   static const _coreBin = "OneXrayCore";
   final _processManager = LocalProcessManager();
@@ -53,7 +102,6 @@ class LinuxFfiApi extends BaseFfiApi {
   Future<String> getTunFilesDir() async =>
       _filesDirectory ?? await super.getTunFilesDir();
 
-  @override
   Future<bool> startCore(LibXrayRunConfig request, TunJson? tun) async {
     try {
       if (!await _stopCoreProcess()) {
@@ -132,7 +180,6 @@ class LinuxFfiApi extends BaseFfiApi {
     }
   }
 
-  @override
   Future<bool> stopCore() => _stopCoreProcess();
 
   Future<bool> _stopCoreProcess() async {
@@ -197,7 +244,6 @@ class LinuxFfiApi extends BaseFfiApi {
     }
   }
 
-  @override
   Future<bool?> queryCoreRunning() async {
     try {
       final record = _currentRecord ?? await _processStore.read();

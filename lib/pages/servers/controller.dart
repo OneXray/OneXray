@@ -1,10 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/connect/controller.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/pages/shared/connection_action.dart';
+import 'package:onexray/pages/servers/catalog.dart';
+import 'package:onexray/service/servers/catalog.dart';
+import 'package:onexray/service/connect/routing/custom/service.dart';
+import 'package:onexray/service/connect/routing/custom/state.dart';
+
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/shared/share/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
@@ -21,22 +28,11 @@ import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 
-enum ServerGrouping { subscription, location }
+export 'catalog.dart';
 
 enum ServerAction { edit, test, copy, share, delete }
 
 enum SourceAction { update, test, edit, share, delete }
-
-class ServerExitChoice {
-  final int? id;
-  const ServerExitChoice(this.id);
-}
-
-class ServerExitPickerParams {
-  final int? selectedId;
-  final Set<int> excludedIds;
-  const ServerExitPickerParams({this.selectedId, this.excludedIds = const {}});
-}
 
 class ServerGroupParams {
   final ServersController controller;
@@ -44,39 +40,183 @@ class ServerGroupParams {
   const ServerGroupParams(this.controller, this.groupId);
 }
 
-class ServerGroup {
-  final String id;
-  final String name;
-  final String? country;
-  final SubscriptionData? source;
-  final ServerSelection selection;
-  final List<CoreConfigData> rows;
-  final List<CoreConfigData> visibleRows;
-  const ServerGroup({
-    required this.id,
-    required this.name,
-    this.country,
-    this.source,
-    required this.selection,
-    required this.rows,
-    required this.visibleRows,
-  });
+const _unchanged = Object();
+
+typedef PendingServerTest = ({String? groupId, bool cancelling});
+
+class ServersPageState {
+  ServersPageState({
+    ConnectionConfiguration? configuration,
+    this.connectionView = const ConnectionView(),
+    ServerCatalog? catalog,
+    List<RoutingProfileState> customRoutes = const [],
+    this.ready = false,
+    this.failed = false,
+    this.serverGroupingIndex = 0,
+    this.activeServerGroupId,
+    this.serverSearchQuery = '',
+    Set<String> pendingServerActions = const {},
+    Map<Object, PendingServerTest> serverTests = const {},
+    Set<int> favoritingServerIds = const {},
+    this.selectingServers,
+    Map<int, String> sourceErrors = const {},
+  }) : configuration = configuration ?? ConnectionConfiguration(),
+       catalog = catalog ?? ServerCatalog(),
+       customRoutes = List.unmodifiable(customRoutes),
+       pendingServerActions = Set.unmodifiable(pendingServerActions),
+       serverTests = Map.unmodifiable(serverTests),
+       favoritingServerIds = Set.unmodifiable(favoritingServerIds),
+       sourceErrors = Map.unmodifiable(sourceErrors);
+
+  final ConnectionConfiguration configuration;
+  final ConnectionView connectionView;
+  List<CoreConfigData> get servers => catalog.servers;
+  List<SubscriptionData> get sources => catalog.sources;
+  final ServerCatalog catalog;
+  final List<RoutingProfileState> customRoutes;
+  final bool ready;
+  final bool failed;
+
+  final int serverGroupingIndex;
+  final String? activeServerGroupId;
+  final String serverSearchQuery;
+  final Set<String> pendingServerActions;
+  final Map<Object, PendingServerTest> serverTests;
+  final Set<int> favoritingServerIds;
+  final ServerSelection? selectingServers;
+  final Map<int, String> sourceErrors;
+
+  ServersPageState copyWith({
+    ConnectionConfiguration? configuration,
+    ConnectionView? connectionView,
+    ServerCatalog? catalog,
+    List<RoutingProfileState>? customRoutes,
+    bool? ready,
+    bool? failed,
+    int? serverGroupingIndex,
+    Object? activeServerGroupId = _unchanged,
+    String? serverSearchQuery,
+    Set<String>? pendingServerActions,
+    Map<Object, PendingServerTest>? serverTests,
+    Set<int>? favoritingServerIds,
+    Object? selectingServers = _unchanged,
+    Map<int, String>? sourceErrors,
+  }) => ServersPageState(
+    configuration: configuration ?? this.configuration,
+    connectionView: connectionView ?? this.connectionView,
+    catalog: catalog ?? this.catalog,
+    customRoutes: customRoutes ?? this.customRoutes,
+    ready: ready ?? this.ready,
+    failed: failed ?? this.failed,
+    serverGroupingIndex: serverGroupingIndex ?? this.serverGroupingIndex,
+    activeServerGroupId: identical(activeServerGroupId, _unchanged)
+        ? this.activeServerGroupId
+        : activeServerGroupId as String?,
+    serverSearchQuery: serverSearchQuery ?? this.serverSearchQuery,
+    pendingServerActions: pendingServerActions ?? this.pendingServerActions,
+    serverTests: serverTests ?? this.serverTests,
+    favoritingServerIds: favoritingServerIds ?? this.favoritingServerIds,
+    selectingServers: identical(selectingServers, _unchanged)
+        ? this.selectingServers
+        : selectingServers as ServerSelection?,
+    sourceErrors: sourceErrors ?? this.sourceErrors,
+  );
 }
 
-class ServersController extends ConnectController {
+class ServersController extends PageCubit<ServersPageState>
+    with ServerLabels, ServerGroups {
   ServersController({
-    super.database,
-    super.coordinator,
+    AppDatabase? database,
+    ConnectionCoordinator? coordinator,
     ServerAssetService? assets,
     PingService? ping,
-  }) : _ping = ping ?? PingService() {
+  }) : db = database ?? AppDatabase(),
+       coordinator = coordinator ?? ConnectionCoordinator.instance,
+       _ping = ping ?? PingService(),
+       super(ServersPageState()) {
     this.assets =
-        assets ?? ServerAssetService(database: db, coordinator: coordinator);
+        assets ??
+        ServerAssetService(database: db, coordinator: this.coordinator);
+    this.coordinator.state.addListener(_connectionChanged);
+    _connectionChanged();
     search.addListener(_searchChanged);
   }
+  final AppDatabase db;
+  final ConnectionCoordinator coordinator;
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
+  @override
+  ServerCatalog get catalog => state.catalog;
+  @override
+  String get query => state.serverSearchQuery;
+  set servers(List<CoreConfigData> rows) =>
+      emit(state.copyWith(catalog: catalog.copyWith(servers: rows)));
+  set sources(List<SubscriptionData> rows) =>
+      emit(state.copyWith(catalog: catalog.copyWith(sources: rows)));
+  ConnectionConfiguration get configuration => state.configuration;
+  set configuration(ConnectionConfiguration value) =>
+      emit(state.copyWith(configuration: value));
+  List<RoutingProfileState> get customRoutes => state.customRoutes;
+  set customRoutes(List<RoutingProfileState> value) =>
+      emit(state.copyWith(customRoutes: value));
+  ConnectionView get connectionView => state.connectionView;
+  bool get ready => state.ready;
+  set ready(bool value) => emit(state.copyWith(ready: value));
+  bool get failed => state.failed;
+
+  void _connectionChanged() {
+    final next = coordinator.state.value;
+    if (next.phase != connectionView.phase ||
+        next.runtime != connectionView.runtime) {
+      emit(state.copyWith(connectionView: next));
+    }
+  }
+
+  Future<void> initialize() async {
+    emit(state.copyWith(failed: false));
+    try {
+      if (!isPageActive) return;
+      configuration = await coordinator.configuration;
+      if (_subscriptions.isEmpty) {
+        _subscriptions.add(
+          ServerCatalog.watch(db).listen(
+            (value) => emit(state.copyWith(catalog: value)),
+            onError: _readFailed,
+          ),
+        );
+        _subscriptions.add(
+          db.connectionConfigDao.watch().listen((row) {
+            configuration = ConnectionConfiguration.fromJson(
+              jsonDecode(row.configurationJson) as Map<String, dynamic>,
+            );
+          }, onError: _readFailed),
+        );
+        _subscriptions.add(
+          db.routingProfileDao.allRowsStream.listen((rows) {
+            try {
+              customRoutes = rows.map(CustomRoutingService.read).toList();
+            } catch (error) {
+              _readFailed(error);
+            }
+          }, onError: _readFailed),
+        );
+      }
+      ready = true;
+    } catch (error) {
+      _readFailed(error);
+    }
+  }
+
+  void _readFailed(Object error) => emit(state.copyWith(failed: true));
+  Future<void> addServers(BuildContext context) =>
+      context.pushScoped(AppSecondaryDestination.serversImport);
+  Future<void> run(BuildContext context, Future<void> Function() action) async {
+    await runConnectionAction(context, coordinator, action);
+  }
+
   late final ServerAssetService assets;
   final PingService _ping;
   final search = TextEditingController();
+  @override
   ServerGrouping get grouping =>
       ServerGrouping.values[state.serverGroupingIndex];
   set grouping(ServerGrouping value) =>
@@ -101,8 +241,7 @@ class ServersController extends ConnectController {
     emit(state.copyWith(sourceErrors: next));
   }
 
-  bool get busy =>
-      selecting != null || pendingChange != null || connectionView.busy;
+  bool get busy => selecting != null || connectionView.busy;
   bool serverBusy(CoreConfigData row) =>
       _pending.contains('server:${row.id}') ||
       _pending.contains('source:${row.subId}');
@@ -119,7 +258,6 @@ class ServersController extends ConnectController {
   bool selectingGroup(ServerSelection value) =>
       selecting != null &&
       jsonEncode(selecting!.toJson()) == jsonEncode(value.toJson());
-  void changed() => emit(state.copyWith(serverSearchQuery: search.text));
 
   void _searchChanged() => searchChanged(search.text);
   void searchChanged(String value) {
@@ -129,81 +267,13 @@ class ServersController extends ConnectController {
   }
 
   void groupBy(ServerGrouping value) {
-    grouping = value;
-    activeGroupId = null;
     search.clear();
-    changed();
-  }
-
-  String countryName(AppLocalizations l, String? code) {
-    final normalized = code?.toUpperCase();
-    return normalized == null || normalized.isEmpty
-        ? '—'
-        : l.countryRegionName(normalized);
-  }
-
-  String sourceName(AppLocalizations l, CoreConfigData row) =>
-      sources.where((source) => source.id == row.subId).firstOrNull?.name ??
-      l.prototypeManualAdditions;
-
-  int sourceCount(int id) => servers.where((row) => row.subId == id).length;
-
-  bool matches(AppLocalizations l, CoreConfigData row) {
-    final query = search.text.trim().toLowerCase();
-    return query.isEmpty ||
-        [
-          serverName(row),
-          countryName(l, row.countryCode),
-          row.countryCode ?? '',
-          sourceName(l, row),
-        ].any((value) => value.toLowerCase().contains(query));
-  }
-
-  List<CoreConfigData> favorites(AppLocalizations l) =>
-      servers.where((row) => row.favorite && matches(l, row)).toList();
-
-  List<ServerGroup> groups(AppLocalizations l, {bool filter = true}) {
-    final buckets = <String, List<CoreConfigData>>{};
-    for (final row in servers) {
-      final key = grouping == ServerGrouping.location
-          ? (row.countryCode?.toUpperCase() ?? '')
-          : '${row.subId}';
-      buckets.putIfAbsent(key, () => []).add(row);
-    }
-    final result = <ServerGroup>[];
-    for (final entry in buckets.entries) {
-      final source = grouping == ServerGrouping.subscription
-          ? sources.where((row) => '${row.id}' == entry.key).firstOrNull
-          : null;
-      final name = grouping == ServerGrouping.location
-          ? countryName(l, entry.key)
-          : source?.name ?? l.prototypeManualAdditions;
-      final query = search.text.trim().toLowerCase();
-      final wholeGroup = !filter || name.toLowerCase().contains(query);
-      final visible = wholeGroup
-          ? entry.value
-          : entry.value.where((row) => matches(l, row)).toList();
-      if (filter && query.isNotEmpty && visible.isEmpty && !wholeGroup) {
-        continue;
-      }
-      result.add(
-        ServerGroup(
-          id: '${grouping.name}:${entry.key}',
-          name: name,
-          country: grouping == ServerGrouping.location ? entry.key : null,
-          source: source,
-          selection: grouping == ServerGrouping.location
-              ? ServerSelection.region(entry.key)
-              : ServerSelection.source(int.parse(entry.key)),
-          rows: entry.value,
-          visibleRows: visible,
-        ),
-      );
-    }
-    if (grouping == ServerGrouping.subscription) {
-      result.sort((a, b) => a.selection.id!.compareTo(b.selection.id!));
-    }
-    return result;
+    emit(
+      state.copyWith(
+        serverGroupingIndex: value.index,
+        activeServerGroupId: null,
+      ),
+    );
   }
 
   int entryCount(ServerSelection selection) {
@@ -231,10 +301,7 @@ class ServersController extends ConnectController {
         : null;
     return count > 0 &&
         group.rows
-                .where(
-                  (row) =>
-                      row.id != finalExit && ServerAssetService.selectable(row),
-                )
+                .where((row) => row.id != finalExit && catalog.selectable(row))
                 .take(count)
                 .length >=
             count;
@@ -270,7 +337,7 @@ class ServersController extends ConnectController {
         servers.where((row) {
           if (row.id == settings.finalExitId ||
               !ServerAssetService.healthy(row) ||
-              !ServerAssetService.selectable(row)) {
+              !catalog.selectable(row)) {
             return false;
           }
           return switch (selection.kind) {
@@ -352,20 +419,14 @@ class ServersController extends ConnectController {
     return id == null ? null : 'subscription:$id';
   }
 
-  bool canChoose(CoreConfigData row, {ServerExitPickerParams? exitPicker}) =>
-      ServerAssetService.selectable(row) &&
-      (exitPicker == null
-          ? !(configuration.connection.trafficMode == TrafficMode.smart &&
-                configuration.connection.smart.finalExitId == row.id)
-          : !exitPicker.excludedIds.contains(row.id));
+  bool canChoose(CoreConfigData row) =>
+      catalog.selectable(row) && !exitConflict(row);
 
   bool exitConflict(CoreConfigData row) =>
       configuration.connection.trafficMode == TrafficMode.smart &&
       configuration.connection.smart.finalExitId == row.id;
 
   bool chosen(CoreConfigData row) => selected(ServerSelection.server(row.id));
-
-  String protocol(CoreConfigData row) => ServerAssetService.protocolLabel(row);
 
   void chooseRow(BuildContext context, CoreConfigData row) {
     if (!canChoose(row)) return;
@@ -385,7 +446,7 @@ class ServersController extends ConnectController {
     var available = 0;
     int? fastest;
     for (final row in group.rows) {
-      if (!ServerAssetService.selectable(row)) continue;
+      if (!catalog.selectable(row)) continue;
       available++;
       if (ServerAssetService.healthy(row) &&
           (fastest == null || row.delay < fastest)) {
@@ -422,7 +483,6 @@ class ServersController extends ConnectController {
     required bool mobile,
   }) async {
     activeGroupId = group.id;
-    changed();
     if (mobile) {
       await context.pushScoped(
         AppSecondaryDestination.serverGroup,
@@ -434,17 +494,19 @@ class ServersController extends ConnectController {
   Future<void> choose(BuildContext context, ServerSelection selection) async {
     if (busy) return;
     selecting = selection;
-    changed();
     try {
-      await change(context, {'selection': selection.toJson(), 'expert': false});
+      final saved = await applyConnectionChange(
+        context,
+        coordinator,
+        {'selection': selection.toJson(), 'expert': false},
+        label: (next) =>
+            selectionName(AppLocalizations.of(context)!, next.selection),
+      );
+      if (saved != null) configuration = saved;
     } finally {
       selecting = null;
-      changed();
     }
   }
-
-  void chooseExit(BuildContext context, int? id) =>
-      Navigator.of(context).pop(ServerExitChoice(id));
 
   Future<void> toggleFavorite(BuildContext context, CoreConfigData row) =>
       perform(context, () async {
@@ -694,54 +756,9 @@ class ServersController extends ConnectController {
   Future<void> disposePageResources() async {
     search.removeListener(_searchChanged);
     search.dispose();
-    await super.disposePageResources();
-  }
-}
-
-/// Final-exit selection is a local draft; only Done returns a choice.
-class ServerExitPickerController extends ServersController {
-  ServerExitPickerController(this.params, {super.database, super.coordinator}) {
-    selectedId = params.selectedId;
-  }
-
-  final ServerExitPickerParams params;
-  int? get selectedId => state.selectedExitId;
-  set selectedId(int? value) => emit(state.copyWith(selectedExitId: value));
-
-  @override
-  void groupBy(ServerGrouping value) {
-    grouping = value;
-    changed();
-  }
-
-  List<ServerGroup> selectionGroups(AppLocalizations l) =>
-      groups(l).where((group) => group.visibleRows.isNotEmpty).toList();
-
-  bool canSelect(CoreConfigData row) => canChoose(row, exitPicker: params);
-
-  void selectDraft(CoreConfigData? row) {
-    if (busy || !ready || (row != null && !canSelect(row))) return;
-    selectedId = row?.id;
-    changed();
-  }
-
-  String exitRowDetail(AppLocalizations l, CoreConfigData row) {
-    if (params.excludedIds.contains(row.id)) return l.prototypeEntryServer;
-    if (!canSelect(row)) return l.prototypeTemporarilyUnavailable;
-    final context = grouping == ServerGrouping.location
-        ? sourceName(l, row)
-        : countryName(l, row.countryCode);
-    return '$context · ${health(l, row)}';
-  }
-
-  bool get canFinish =>
-      ready &&
-      !failed &&
-      !busy &&
-      (selectedId == null ||
-          servers.any((row) => row.id == selectedId && canSelect(row)));
-
-  void complete(BuildContext context) {
-    if (canFinish) chooseExit(context, selectedId);
+    coordinator.state.removeListener(_connectionChanged);
+    for (final subscription in _subscriptions) {
+      await subscription.cancel();
+    }
   }
 }

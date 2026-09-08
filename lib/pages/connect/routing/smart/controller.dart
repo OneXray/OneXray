@@ -5,7 +5,8 @@ import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
-import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
+
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/routing/smart/editor.dart';

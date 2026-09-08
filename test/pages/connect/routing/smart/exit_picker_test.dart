@@ -11,6 +11,7 @@ import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
 import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -48,22 +49,27 @@ void main() {
   late ServerExitPickerController controller;
   final l = AppLocalizationsEn();
 
-  setUp(() {
+  setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     coordinator = ConnectionCoordinator(database: db);
-    controller =
-        ServerExitPickerController(
-            const ServerExitPickerParams(selectedId: 2, excludedIds: {1}),
-            database: db,
-            coordinator: coordinator,
-          )
-          ..servers = [
-            _server(1),
-            _server(2),
-            _server(3),
-            _server(4, delay: PingDelayConstants.error),
-          ]
-          ..ready = true;
+    controller = ServerExitPickerController(
+      const ServerExitPickerParams(selectedId: 2, excludedIds: {1}),
+      database: db,
+      coordinator: coordinator,
+    );
+    await db.coreConfigDao.insertRows([
+      for (final row in [
+        _server(1),
+        _server(2),
+        _server(3),
+        _server(4, delay: PingDelayConstants.error),
+      ])
+        row.toCompanion(false),
+    ]);
+    await controller.initialize();
+    await controller.stream.firstWhere(
+      (state) => state.catalog.servers.length == 4,
+    );
   });
 
   tearDown(() async {
@@ -72,32 +78,50 @@ void main() {
     await db.close();
   });
 
-  test('draft keeps exclusions, real health and search across grouping', () {
-    final before = controller.configuration.encode();
-    controller.selectDraft(controller.servers.first);
-    expect(controller.selectedId, 2);
-    expect(
-      controller.exitRowDetail(l, controller.servers.first),
-      l.prototypeEntryServer,
-    );
-    controller.selectDraft(controller.servers.last);
-    expect(controller.selectedId, 2);
-    expect(
-      controller.exitRowDetail(l, controller.servers.last),
-      l.prototypeTemporarilyUnavailable,
-    );
-    controller.selectDraft(controller.servers[2]);
-    expect(controller.selectedId, 3);
-    controller.search.text = 'Server 3';
-    controller.groupBy(ServerGrouping.subscription);
-    expect(controller.search.text, 'Server 3');
-    expect(controller.selectionGroups(l).single.visibleRows.single.id, 3);
-    expect(
-      controller.exitRowDetail(l, controller.servers[2]),
-      '${l.countryRegionName('SG')} · ${l.prototypeFastLatency(20)}',
-    );
-    expect(controller.configuration.encode(), before);
-  });
+  test(
+    'draft keeps exclusions, real health and search across grouping',
+    () async {
+      final before = (await coordinator.configuration).encode();
+      controller.selectDraft(
+        controller.servers.singleWhere((row) => row.id == 1),
+      );
+      expect(controller.selectedId, 2);
+      expect(
+        controller.exitRowDetail(
+          l,
+          controller.servers.singleWhere((row) => row.id == 1),
+        ),
+        l.prototypeEntryServer,
+      );
+      controller.selectDraft(
+        controller.servers.singleWhere((row) => row.id == 4),
+      );
+      expect(controller.selectedId, 2);
+      expect(
+        controller.exitRowDetail(
+          l,
+          controller.servers.singleWhere((row) => row.id == 4),
+        ),
+        l.prototypeTemporarilyUnavailable,
+      );
+      controller.selectDraft(
+        controller.servers.singleWhere((row) => row.id == 3),
+      );
+      expect(controller.selectedId, 3);
+      controller.search.text = 'Server 3';
+      controller.groupBy(ServerGrouping.subscription);
+      expect(controller.search.text, 'Server 3');
+      expect(controller.selectionGroups(l).single.visibleRows.single.id, 3);
+      expect(
+        controller.exitRowDetail(
+          l,
+          controller.servers.singleWhere((row) => row.id == 3),
+        ),
+        '${l.countryRegionName('SG')} · ${l.prototypeFastLatency(20)}',
+      );
+      expect((await coordinator.configuration).encode(), before);
+    },
+  );
 
   Future<void> open(
     WidgetTester tester,
@@ -143,7 +167,7 @@ void main() {
   testWidgets('flat selection changes only the draft until Done', (
     tester,
   ) async {
-    final before = controller.configuration.encode();
+    final before = (await coordinator.configuration).encode();
     final results = <ServerExitChoice?>[];
     await open(tester, results);
     expect(find.text(l.prototypeVpnFinalExit), findsOneWidget);
@@ -158,7 +182,7 @@ void main() {
     expect(controller.selectedId, 3);
     expect(results, isEmpty);
     expect(find.byType(ServerExitPickerView), findsOneWidget);
-    expect(controller.configuration.encode(), before);
+    expect((await coordinator.configuration).encode(), before);
     await tester.tap(find.text(l.prototypeDone));
     await tester.pumpAndSettle();
     expect(results.single?.id, 3);
@@ -204,7 +228,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(results, [null]);
 
-    controller.selectedId = controller.params.selectedId;
+    controller.selectDraft(
+      controller.servers.singleWhere((row) => row.id == 2),
+    );
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
     await tester.tap(find.text(l.prototypeNoAdditionalExit));

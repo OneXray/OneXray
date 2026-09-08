@@ -151,9 +151,7 @@ class ConfigurationTransferService {
   }
 
   static GeoDataInput _asset(String file, GeoDataType type, String url) {
-    if (GeoDataInput.canonicalFileName(file) != file) {
-      throw const FormatException('Geodata filename must match the reference');
-    }
+    GeoDataInput.referenceFileName(file);
     GeoDataInput.httpsUri(url);
     return GeoDataInput(fileName: file, type: type, url: url);
   }
@@ -266,11 +264,7 @@ Map<String, GeoDataType> geoDataReferences(Map<String, dynamic> json) {
       if (result.containsKey(file) && result[file] != type) {
         throw const FormatException('A Geodata file cannot have two types');
       }
-      if (GeoDataInput.canonicalFileName(file) != file) {
-        throw const FormatException(
-          'Geodata filename must match its reference',
-        );
-      }
+      GeoDataInput.referenceFileName(file);
       result[file] = type;
     }
   }

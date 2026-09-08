@@ -2,6 +2,7 @@ import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/native_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
@@ -29,7 +30,7 @@ class WindowsFfiApi extends BaseFfiApi {
   @override
   Future<NativeVpnCommandResult> readVpnStatus() async {
     if (_starting) {
-      return commandSuccess();
+      return commandSuccess(status: VpnStatus.connecting);
     }
     try {
       var state = await _native.getVpnStatus();
@@ -38,8 +39,7 @@ class WindowsFfiApi extends BaseFfiApi {
           !await _hasValidSession(state.snapshotToken)) {
         state = await _native.stopVpn();
       }
-      await _emitWindowsStatus(state.status);
-      return commandSuccess();
+      return commandSuccess(status: _status(state.status));
     } catch (error) {
       ygLogger('read Windows VPN status failed: $error');
       return commandFailed(error.toString());
@@ -78,7 +78,7 @@ class WindowsFfiApi extends BaseFfiApi {
         ],
       );
 
-      await updateVpnStatus(VpnStatus.connecting);
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.connecting);
       providerStartInvoked = true;
       final state = await _native.startVpn(
         configYaml,
@@ -117,7 +117,7 @@ class WindowsFfiApi extends BaseFfiApi {
 
   Future<void> _cleanupFailedStart(bool providerStartInvoked) async {
     if (!providerStartInvoked) {
-      await updateVpnStatus(VpnStatus.disconnected);
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.disconnected);
       return;
     }
     try {
@@ -146,12 +146,13 @@ class WindowsFfiApi extends BaseFfiApi {
     return paths;
   }
 
-  Future<void> _emitWindowsStatus(WindowsVpnStatus status) {
-    return updateVpnStatus(switch (status) {
-      WindowsVpnStatus.disconnecting => VpnStatus.disconnecting,
-      WindowsVpnStatus.disconnected => VpnStatus.disconnected,
-      WindowsVpnStatus.connecting => VpnStatus.connecting,
-      WindowsVpnStatus.connected => VpnStatus.connected,
-    });
-  }
+  Future<void> _emitWindowsStatus(WindowsVpnStatus status) =>
+      AppFlutterApi().vpnStatusChanged(_status(status));
+
+  static VpnStatus _status(WindowsVpnStatus status) => switch (status) {
+    WindowsVpnStatus.disconnecting => VpnStatus.disconnecting,
+    WindowsVpnStatus.disconnected => VpnStatus.disconnected,
+    WindowsVpnStatus.connecting => VpnStatus.connecting,
+    WindowsVpnStatus.connected => VpnStatus.connected,
+  };
 }

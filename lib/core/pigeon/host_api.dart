@@ -159,13 +159,12 @@ class AppHostApi {
 
   Future<List<int>> getFreePorts(int num) async {
     try {
-      final res = await _invoke(
+      final resp = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.getFreePorts,
           payload: GetFreePortsRequest(num).toJson(),
         ),
       );
-      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.data != null) {
         if (resp.success) {
           final ports = GetFreePortsResponse.fromJson(resp.data!);
@@ -185,15 +184,13 @@ class AppHostApi {
     String? ageSecretKey,
   }) async {
     final key = ageSecretKey?.trim();
-    final response = LibXrayInvokeResponseParser.parse(
-      await _invoke(
-        LibXrayInvokeRequest(
-          method: LibXrayMethod.convertShareLinksToXrayJson,
-          payload: ConvertShareLinksToXrayJsonRequest(
-            text,
-            age: key == null || key.isEmpty ? null : AgeDecryptConfig(key),
-          ).toJson(),
-        ),
+    final response = await _invoke(
+      LibXrayInvokeRequest(
+        method: LibXrayMethod.convertShareLinksToXrayJson,
+        payload: ConvertShareLinksToXrayJsonRequest(
+          text,
+          age: key == null || key.isEmpty ? null : AgeDecryptConfig(key),
+        ).toJson(),
       ),
     );
     final data = response.data;
@@ -210,13 +207,12 @@ class AppHostApi {
   Future<GenerateAgeKeyPairResponse> generateAgeKeyPair({
     AgeKeyType keyType = AgeKeyType.x25519,
   }) async {
-    final res = await _invoke(
+    final resp = await _invoke(
       LibXrayInvokeRequest(
         method: LibXrayMethod.generateAgeKeyPair,
         payload: GenerateAgeKeyPairRequest(keyType).toJson(),
       ),
     );
-    final resp = LibXrayInvokeResponseParser.parse(res);
     if (resp.success && resp.data != null) {
       final response = GenerateAgeKeyPairResponse.fromJson(resp.data!);
       if ((response.secretKey?.isNotEmpty ?? false) &&
@@ -232,13 +228,12 @@ class AppHostApi {
   ) async {
     try {
       final xrayJsonText = JsonTool.encoder.convert(xrayJson);
-      final res = await _invoke(
+      final resp = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.convertXrayJsonToShareLinks,
           payload: ConvertXrayJsonToShareLinksRequest(xrayJsonText).toJson(),
         ),
       );
-      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.data != null) {
         if (resp.success) {
           final data = ConvertXrayJsonToShareLinksResponse.fromJson(resp.data!);
@@ -253,13 +248,12 @@ class AppHostApi {
 
   Future<String> countGeoData(CountGeoDataRequest request) async {
     try {
-      final res = await _invoke(
+      final resp = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.countGeoData,
           payload: request.toJson(),
         ),
       );
-      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
         return "";
       }
@@ -272,13 +266,12 @@ class AppHostApi {
 
   Future<PingBatchResponse?> pingBatch(PingBatchRequest request) async {
     try {
-      final res = await _invoke(
+      final resp = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.pingBatch,
           payload: request.toJson(),
         ),
       );
-      final resp = LibXrayInvokeResponseParser.parse(res);
       ygLogger("pingBatch result success:${resp.success} error:${resp.error}");
       if (resp.success && resp.data != null) {
         return PingBatchResponse.fromJson(resp.data!);
@@ -291,13 +284,12 @@ class AppHostApi {
 
   Future<String> testXray(String xrayJson) async {
     try {
-      final res = await _invoke(
+      final resp = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.testXray,
           payload: TestXrayRequest(xrayJson).toJson(),
         ),
       );
-      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.success) {
         return "";
       }
@@ -310,10 +302,9 @@ class AppHostApi {
 
   Future<String> xrayVersion() async {
     try {
-      final res = await _invoke(
+      final resp = await _invoke(
         LibXrayInvokeRequest(method: LibXrayMethod.xrayVersion),
       );
-      final resp = LibXrayInvokeResponseParser.parse(res);
       if (resp.data != null) {
         if (resp.success) {
           return XrayVersionResponse.fromJson(resp.data!).version ?? "";
@@ -325,7 +316,7 @@ class AppHostApi {
     return "";
   }
 
-  Future<String> _invoke(LibXrayInvokeRequest request) async {
+  Future<LibXrayInvokeResponse> _invoke(LibXrayInvokeRequest request) async {
     final requestJson = JsonTool.encoder.convert(request.toJson());
     LibXrayInvokeLimits.validate(requestJson, "request");
     late final String responseJson;
@@ -343,7 +334,7 @@ class AppHostApi {
         "libXray ${request.method?.name ?? 'unknown'} failed: ${response.error}",
       );
     }
-    return responseJson;
+    return response;
   }
 
   Future<PlatformPermissionResult> queryPlatformPermission() async {

@@ -294,16 +294,23 @@ class PlatformPermissionResult {
 }
 
 class NativeVpnCommandResult {
-  NativeVpnCommandResult({required this.state, this.permission, this.message});
+  NativeVpnCommandResult({
+    required this.state,
+    this.status,
+    this.permission,
+    this.message,
+  });
 
   NativeVpnCommandState state;
+
+  VpnStatus? status;
 
   PlatformPermissionResult? permission;
 
   String? message;
 
   List<Object?> _toList() {
-    return <Object?>[state, permission, message];
+    return <Object?>[state, status, permission, message];
   }
 
   Object encode() {
@@ -314,8 +321,9 @@ class NativeVpnCommandResult {
     result as List<Object?>;
     return NativeVpnCommandResult(
       state: result[0]! as NativeVpnCommandState,
-      permission: result[1] as PlatformPermissionResult?,
-      message: result[2] as String?,
+      status: result[1] as VpnStatus?,
+      permission: result[2] as PlatformPermissionResult?,
+      message: result[3] as String?,
     );
   }
 
@@ -329,6 +337,7 @@ class NativeVpnCommandResult {
       return true;
     }
     return _deepEquals(state, other.state) &&
+        _deepEquals(status, other.status) &&
         _deepEquals(permission, other.permission) &&
         _deepEquals(message, other.message);
   }
@@ -339,7 +348,7 @@ class NativeVpnCommandResult {
 
   @override
   String toString() {
-    return 'NativeVpnCommandResult(state: $state, permission: $permission, message: $message)';
+    return 'NativeVpnCommandResult(state: $state, status: $status, permission: $permission, message: $message)';
   }
 }
 

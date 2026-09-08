@@ -6,6 +6,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/asset_edit.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/preparation.dart';
 import 'package:onexray/service/connect/runtime.dart';
@@ -72,9 +73,7 @@ class RawEditorService {
         (await db.coreConfigDao.allRawRowsWithData).length >= 3) {
       throw const RawEditorException('limit');
     }
-    await coordinator.initialize();
-    await coordinator.refresh();
-    final configuration = await coordinator.configuration;
+    final configuration = await coordinator.readForEditing();
     final runtime = coordinator.state.value.runtime;
     if (original != null) _checkRunningRaw(original, configuration);
     final selected =
@@ -82,7 +81,6 @@ class RawEditorService {
         configuration.connection.expert &&
         configuration.connection.rawId == original.id;
     var affectsRuntime = false;
-    var allowReconnect = false;
     if (selected) {
       final options = _comparisonOptions(configuration, runtime);
       try {
@@ -97,21 +95,15 @@ class RawEditorService {
         // A repaired old configuration cannot be classified as metadata-only.
         affectsRuntime = true;
       }
-      if (affectsRuntime &&
-          coordinator.state.value.phase == ConnectionPhase.connected) {
-        allowReconnect = await confirmReconnect();
-        if (!allowReconnect) return null;
-      }
     }
     var savedId = original?.id;
-    await coordinator.apply(
+    final saved = await coordinator.saveEditedAsset(
       configuration,
-      expectedConfiguration: configuration.encode(),
+      confirmReconnect: confirmReconnect,
       imported: imported,
       validateAssets: () async {
         if (!await validate(text)) throw const RawEditorException('invalid');
       },
-      allowReconnect: allowReconnect,
       affectsRuntime: affectsRuntime,
       prepare: affectsRuntime
           ? (next, cancelled) =>
@@ -140,7 +132,7 @@ class RawEditorService {
         }
       },
     );
-    return savedId;
+    return saved ? savedId : null;
   }
 
   Future<bool> delete(
@@ -153,9 +145,7 @@ class RawEditorService {
     confirm,
   }) async {
     await _checkOriginal(original);
-    await coordinator.initialize();
-    await coordinator.refresh();
-    final configuration = await coordinator.configuration;
+    final configuration = await coordinator.readForEditing();
     _checkRunningRaw(original, configuration);
     final connection = configuration.connection;
     final selected = connection.expert && connection.rawId == original.id;

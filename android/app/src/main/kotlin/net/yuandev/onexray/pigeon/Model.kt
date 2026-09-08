@@ -28,8 +28,6 @@ data class TunJson(
     val enableDot: Boolean?,
     val dnsServerName: String?,
     val enableIPv6: Boolean?,
-    val metricsEnabled: Boolean?,
-    val tunName: String?,
     val autoOutboundsInterface: String?,
     val includeAllNetworks: Boolean?,
     val excludeLocalNetworks: Boolean?,

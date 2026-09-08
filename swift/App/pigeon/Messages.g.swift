@@ -360,6 +360,7 @@ struct PlatformPermissionResult: Hashable, CustomStringConvertible {
 /// Generated class from Pigeon that represents data sent in messages.
 struct NativeVpnCommandResult: Hashable, CustomStringConvertible {
   var state: NativeVpnCommandState
+  var status: VpnStatus? = nil
   var permission: PlatformPermissionResult? = nil
   var message: String? = nil
 
@@ -367,11 +368,13 @@ struct NativeVpnCommandResult: Hashable, CustomStringConvertible {
   // swift-format-ignore: AlwaysUseLowerCamelCase
   static func fromList(_ pigeonVar_list: [Any?]) -> NativeVpnCommandResult? {
     let state = pigeonVar_list[0] as! NativeVpnCommandState
-    let permission: PlatformPermissionResult? = nilOrValue(pigeonVar_list[1])
-    let message: String? = nilOrValue(pigeonVar_list[2])
+    let status: VpnStatus? = nilOrValue(pigeonVar_list[1])
+    let permission: PlatformPermissionResult? = nilOrValue(pigeonVar_list[2])
+    let message: String? = nilOrValue(pigeonVar_list[3])
 
     return NativeVpnCommandResult(
       state: state,
+      status: status,
       permission: permission,
       message: message
     )
@@ -379,6 +382,7 @@ struct NativeVpnCommandResult: Hashable, CustomStringConvertible {
   func toList() -> [Any?] {
     return [
       state,
+      status,
       permission,
       message,
     ]
@@ -387,18 +391,19 @@ struct NativeVpnCommandResult: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.state, rhs.state) && MessagesPigeonInternal.deepEquals(lhs.permission, rhs.permission) && MessagesPigeonInternal.deepEquals(lhs.message, rhs.message)
+    return MessagesPigeonInternal.deepEquals(lhs.state, rhs.state) && MessagesPigeonInternal.deepEquals(lhs.status, rhs.status) && MessagesPigeonInternal.deepEquals(lhs.permission, rhs.permission) && MessagesPigeonInternal.deepEquals(lhs.message, rhs.message)
   }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine("NativeVpnCommandResult")
     MessagesPigeonInternal.deepHash(value: state, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: status, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: permission, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: message, hasher: &hasher)
   }
 
   public var description: String {
-    return "NativeVpnCommandResult(state: \(String(describing: state)), permission: \(String(describing: permission)), message: \(String(describing: message)))"
+    return "NativeVpnCommandResult(state: \(String(describing: state)), status: \(String(describing: status)), permission: \(String(describing: permission)), message: \(String(describing: message)))"
   }
 }
 

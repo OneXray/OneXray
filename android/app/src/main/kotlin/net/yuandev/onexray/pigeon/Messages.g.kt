@@ -405,6 +405,7 @@ data class PlatformPermissionResult (
 /** Generated class from Pigeon that represents data sent in messages. */
 data class NativeVpnCommandResult (
   val state: NativeVpnCommandState,
+  val status: VpnStatus? = null,
   val permission: PlatformPermissionResult? = null,
   val message: String? = null
 )
@@ -412,14 +413,16 @@ data class NativeVpnCommandResult (
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): NativeVpnCommandResult {
       val state = pigeonVar_list[0] as NativeVpnCommandState
-      val permission = pigeonVar_list[1] as PlatformPermissionResult?
-      val message = pigeonVar_list[2] as String?
-      return NativeVpnCommandResult(state, permission, message)
+      val status = pigeonVar_list[1] as VpnStatus?
+      val permission = pigeonVar_list[2] as PlatformPermissionResult?
+      val message = pigeonVar_list[3] as String?
+      return NativeVpnCommandResult(state, status, permission, message)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       state,
+      status,
       permission,
       message,
     )
@@ -432,18 +435,19 @@ data class NativeVpnCommandResult (
       return true
     }
     val other = other as NativeVpnCommandResult
-    return MessagesPigeonUtils.deepEquals(this.state, other.state) && MessagesPigeonUtils.deepEquals(this.permission, other.permission) && MessagesPigeonUtils.deepEquals(this.message, other.message)
+    return MessagesPigeonUtils.deepEquals(this.state, other.state) && MessagesPigeonUtils.deepEquals(this.status, other.status) && MessagesPigeonUtils.deepEquals(this.permission, other.permission) && MessagesPigeonUtils.deepEquals(this.message, other.message)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
     result = 31 * result + MessagesPigeonUtils.deepHash(this.state)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.status)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.permission)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.message)
     return result
   }
   override fun toString(): String {
-    return "NativeVpnCommandResult(state=$state, permission=$permission, message=$message)"
+    return "NativeVpnCommandResult(state=$state, status=$status, permission=$permission, message=$message)"
   }
 }
 

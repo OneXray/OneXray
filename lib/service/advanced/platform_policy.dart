@@ -88,8 +88,6 @@ final class PlatformPolicy {
       if (policy['ipv6Enabled'] == true) 'tunDnsIPv6': dnsIpv6Address,
       'dnsServerName': dnsServerName,
       'enableIPv6': policy['ipv6Enabled'],
-      'metricsEnabled': true,
-      'tunName': 'OneXrayTun',
     };
 
     if (platform == ConnectionPlatform.windows ||

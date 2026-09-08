@@ -157,7 +157,6 @@ GNOME 用户需要安装 [AppIndicator](https://github.com/ubuntu/gnome-shell-ex
 
 1. 为本仓库点亮 Star。
 2. 完善 [OneXray 文档](https://github.com/OneXray/onexray.com)。
-3. 通过 [OneXray/Routing](https://github.com/OneXray/Routing) 分享路由模板。
 
 本地构建 App 前，请先阅读[开发环境配置](./FIRST_RUN.zh_CN.md)。
 

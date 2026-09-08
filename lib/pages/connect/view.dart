@@ -16,6 +16,7 @@ class ConnectView extends StatelessWidget {
   const ConnectView({
     super.key,
     required this.view,
+    this.trafficBuilder,
     required this.hasServers,
     required this.expert,
     required this.raws,
@@ -39,6 +40,7 @@ class ConnectView extends StatelessWidget {
     required this.onRawActions,
   });
   final ConnectionView view;
+  final Widget Function(bool desktop)? trafficBuilder;
   final bool hasServers;
   final bool expert;
   final List<CoreConfigData> raws;
@@ -164,7 +166,7 @@ class ConnectView extends StatelessWidget {
                       ),
                     ),
                     const Divider(),
-                    TrafficReadout(view: view),
+                    trafficBuilder?.call(false) ?? TrafficReadout(view: view),
                   ],
                 ),
               ),
@@ -255,7 +257,8 @@ class ConnectView extends StatelessWidget {
                 ],
               ),
             ),
-            TrafficReadout(view: view, desktop: true),
+            trafficBuilder?.call(true) ??
+                TrafficReadout(view: view, desktop: true),
           ],
         ),
       ),
