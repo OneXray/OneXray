@@ -3,6 +3,7 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/service/connect/compiler.dart';
@@ -256,6 +257,7 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
       if (saved &&
           context.mounted &&
           ModalRoute.of(context)?.isCurrent == true) {
+        ContextAlert.showToast(context, l.prototypeSettingsSaved);
         Navigator.of(context).pop(true);
       }
     } catch (_) {

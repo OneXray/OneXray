@@ -11,6 +11,7 @@ import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -43,7 +44,7 @@ void main() {
               supportedLocales: AppLocalizations.supportedLocales,
               builder: (_, child) => ShadTheme(
                 data: AppTheme.shad(Brightness.light, mobile: mobile),
-                child: child!,
+                child: ShadToaster(child: child!),
               ),
               home: XrayRuntimePage(
                 createController: () => controller,
@@ -89,6 +90,23 @@ void main() {
             expect(controller.logsEnabled, isTrue);
             expect(controller.logPath(true), isNull);
             expect(controller.logPath(false), isNull);
+          } else {
+            final original = controller.base;
+            expect(controller.dirty, isFalse);
+            await tester.tap(find.text(l.prototypeSave));
+            await tester.pump();
+            expect(find.text(l.prototypeSettingsSaved), findsOneWidget);
+            expect(controller.saving, isFalse);
+            await tester.pump(const Duration(seconds: 5));
+            await tester.pumpAndSettle();
+
+            await tester.tap(find.text(l.prototypeRestoreDefaults));
+            await tester.pump();
+            expect(find.text(l.settingsDefaultsRestored), findsOneWidget);
+            expect(find.text(l.prototypeSettingsSaved), findsNothing);
+            expect(controller.logsEnabled, isFalse);
+            expect(controller.base, same(original));
+            expect(controller.dirty, isTrue);
           }
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox());
@@ -108,15 +126,15 @@ class _Controller extends XrayRuntimeController {
 
   @override
   Future<void> load({bool showLoading = true}) async {
+    final configuration = ConnectionConfiguration(
+      policy: PlatformPolicy.fromJson({
+        'log': {'enabled': true},
+      }),
+    );
     emit(
       state.copyWith(
-        base: ConnectionConfiguration(),
-        log: const {
-          'enabled': true,
-          'level': 'warning',
-          'recordDns': true,
-          'maskIp': false,
-        },
+        base: configuration,
+        log: configuration.policy.toJson()['log'] as Map<String, dynamic>,
         systemExtension: systemExtension,
         loading: false,
       ),

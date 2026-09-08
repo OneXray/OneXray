@@ -45,7 +45,17 @@ class ContextAlert {
       ),
     );
     if (openSettings == true) {
-      await openAppSettings();
+      try {
+        if (await openAppSettings()) return;
+      } catch (_) {
+        // Report native failures through the same feedback as a false result.
+      }
+      if (context.mounted) {
+        showToast(
+          context,
+          AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+        );
+      }
     }
   }
 

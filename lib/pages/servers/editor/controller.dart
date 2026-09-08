@@ -109,6 +109,7 @@ class ServerEditorController extends PageCubit<ServerEditorPageState> {
             : Future.value(false),
       );
       if (saved && isPageActive && context.mounted) {
+        ContextAlert.showToast(context, l.prototypeSettingsSaved);
         Navigator.of(context).pop(serverId);
       }
     } on FormatException {

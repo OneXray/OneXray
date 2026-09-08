@@ -218,6 +218,13 @@ class DesktopSettingsController extends PageCubit<DesktopSettingsPageState>
           AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,
         );
       }
+    } catch (_) {
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,
+        );
+      }
     } finally {
       emit(state.copyWith(openingSystemSettings: false));
     }

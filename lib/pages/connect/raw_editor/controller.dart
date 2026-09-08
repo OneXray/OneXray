@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
@@ -201,6 +202,10 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
           isPageActive &&
           context.mounted &&
           ModalRoute.of(context)?.isCurrent == true) {
+        ContextAlert.showToast(
+          context,
+          l10n.prototypeNameSaved(state.name.trim()),
+        );
         Navigator.of(context).pop(id);
       }
     } on RawEditorException catch (failure) {

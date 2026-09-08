@@ -16,6 +16,7 @@
   "buttonOpenSettings": "前往系統設定",
   "buttonSave": "儲存",
   "buttonSaveFailed": "保存失敗",
+  "settingsDefaultsRestored": "已還原預設設定，請儲存以套用。",
   "buttonAddFailed": "添加失敗",
   "resultSuccess": "成功",
   "resultFailed": "失敗",

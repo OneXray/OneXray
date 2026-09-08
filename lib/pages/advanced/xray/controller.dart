@@ -7,6 +7,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/controller.dart';
 import 'package:onexray/pages/advanced/xray/config/params.dart';
 import 'package:onexray/pages/advanced/xray/log/params.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
@@ -186,14 +187,14 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   }
 
   Future<void> save(BuildContext context) async {
-    if (busy ||
-        runtimeBusy ||
-        state.systemExtension ||
-        !dirty ||
-        base == null) {
+    if (busy || runtimeBusy || state.systemExtension || base == null) {
       return;
     }
     final l = AppLocalizations.of(context)!;
+    if (!dirty) {
+      ContextAlert.showToast(context, l.prototypeSettingsSaved);
+      return;
+    }
     emit(state.copyWith(saving: true, failed: false));
     try {
       final saved = await saveRuntimeLogPolicy(
@@ -223,8 +224,7 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
       if (saved && isPageActive) {
         await load(showLoading: false);
         if (context.mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(l.prototypeSettingsSaved)));
+          ContextAlert.showToast(context, l.prototypeSettingsSaved);
         }
       }
     } catch (_) {

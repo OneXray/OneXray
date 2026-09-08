@@ -16,6 +16,7 @@
     "buttonOpenSettings": "باز کردن تنظیمات سیستم",
     "buttonSave": "ذخیره",
     "buttonSaveFailed": "ذخیره ناموفق بود",
+    "settingsDefaultsRestored": "تنظیمات پیش‌فرض در ویرایشگر بازگردانده شد. برای اعمال، ذخیره کنید.",
     "buttonAddFailed": "افزودن ناموفق بود",
     "resultSuccess": "موفق",
     "resultFailed": "ناموفق",

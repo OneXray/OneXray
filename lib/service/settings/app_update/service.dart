@@ -137,7 +137,9 @@ class AppUpdateService {
   }
 
   Future<void> openUpdate(AppUpdateInfo updateInfo) async {
-    await launchUrl(updateInfo.updateUri);
+    if (!await launchUrl(updateInfo.updateUri)) {
+      throw StateError('Could not open update page');
+    }
   }
 
   Future<({Uri item1, AppUpdateDestination item2})> _resolveUpdateUri(

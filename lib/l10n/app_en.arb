@@ -22,6 +22,10 @@
   "buttonOpenSettings": "Open system settings",
   "buttonSave": "Save",
   "buttonSaveFailed": "Save failed",
+  "settingsDefaultsRestored": "Defaults restored in the editor. Save to apply.",
+  "@settingsDefaultsRestored": {
+    "description": "Restoring defaults changes the draft only; no settings have been saved yet."
+  },
   "buttonAddFailed": "Add failed",
   "resultSuccess": "successfully",
   "resultFailed": "failed",

@@ -262,6 +262,9 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
             : Future.value(false),
       );
       if (saved && isPageActive) {
+        if (context.mounted) {
+          ContextAlert.showToast(context, l.prototypeSettingsSaved);
+        }
         if (pop &&
             context.mounted &&
             ModalRoute.of(context)?.isCurrent == true) {

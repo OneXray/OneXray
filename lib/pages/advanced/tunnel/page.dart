@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -225,7 +226,10 @@ class VpnTunnelPane extends StatelessWidget {
           bottomNavigationBar: PolicyActions(
             root: true,
             controller: controller,
-            cancel: controller.restoreDefaults,
+            cancel: () {
+              controller.restoreDefaults();
+              ContextAlert.showToast(context, l.settingsDefaultsRestored);
+            },
             cancelLabel: l.prototypeRestoreDefaults,
             cancelIcon: LucideIcons.rotateCcw,
             save: () => controller.save(context, pop: false),

@@ -16,6 +16,7 @@
   "buttonOpenSettings": "前往系统设置",
   "buttonSave": "保存",
   "buttonSaveFailed": "保存失败",
+  "settingsDefaultsRestored": "已恢复默认设置，请保存以应用。",
   "buttonAddFailed": "添加失败",
   "resultSuccess": "成功",
   "resultFailed": "失败",

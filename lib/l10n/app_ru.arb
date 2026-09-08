@@ -16,6 +16,7 @@
   "buttonOpenSettings": "Открыть настройки системы",
   "buttonSave": "Сохранить",
   "buttonSaveFailed": "Сохранить ошибка",
+  "settingsDefaultsRestored": "В редакторе восстановлены настройки по умолчанию. Сохраните, чтобы применить.",
   "buttonAddFailed": "Добавить ошибка",
   "resultFailed": "Ошибка",
   "resultSuccess": "OK",

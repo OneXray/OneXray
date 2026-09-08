@@ -28,7 +28,7 @@ class AppUpdateDialog extends StatelessWidget {
             onLater: () => controller.later(context),
             onSkip: () => controller.skip(context),
             onUpdate: () => controller.update(context),
-            onOpenLink: controller.openLink,
+            onOpenLink: (href) => controller.openLink(context, href),
           );
         },
       ),

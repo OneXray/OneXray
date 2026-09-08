@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
@@ -479,6 +480,10 @@ class CustomRoutingEditorController
       if (id != null &&
           context.mounted &&
           ModalRoute.of(context)?.isCurrent == true) {
+        ContextAlert.showToast(
+          context,
+          l10n.prototypeNameSaved(state.name.trim()),
+        );
         Navigator.of(context).pop(id);
       }
     } catch (failure) {

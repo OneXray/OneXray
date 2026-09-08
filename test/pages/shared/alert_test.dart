@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -50,6 +51,23 @@ void main() {
     final toast = tester.widget<ShadToast>(find.byType(ShadToast));
     expect(toast.alignment, Alignment.bottomRight);
     expect(toast.showCloseIconOnlyWhenHovered, isFalse);
+  });
+
+  testWidgets('failed system settings launch shows a toast', (tester) async {
+    const channel = MethodChannel('flutter.baseflow.com/permissions/methods');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (_) async => false);
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    await tester.pumpWidget(
+      _AlertTestApp(onPressed: ContextAlert.showPermissionDialog),
+    );
+    await tester.tap(find.text('Show'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open system settings'));
+    await tester.pumpAndSettle();
+    final l = AppLocalizations.of(tester.element(find.text('Show')))!;
+    expect(find.text(l.prototypeTemporarilyUnavailable), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('showToast uses a full-width bottom layout on phone', (

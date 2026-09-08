@@ -225,7 +225,11 @@ class SettingsController extends PageCubit<SettingsPageState> {
     try {
       if (uri == null) {
         final review = InAppReview.instance;
-        if (await review.isAvailable()) await review.requestReview();
+        if (await review.isAvailable()) {
+          await review.requestReview();
+        } else if (context.mounted) {
+          _showUnavailable(context);
+        }
         return;
       }
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
