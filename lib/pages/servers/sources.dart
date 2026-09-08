@@ -46,6 +46,14 @@ class ServerSourcesDialog extends StatelessWidget {
                     padding: const EdgeInsets.all(24),
                     child: Text(l.prototypeNoServersYet),
                   ),
+                if (localCount > 0)
+                  _SourceRow(
+                    name: l.prototypeManualAdditions,
+                    detail:
+                        '${l.prototypeServerCount(localCount)} · ${l.prototypeLocalOnly}',
+                    status: l.prototypeStoredOnThisDevice,
+                    showDivider: controller.sources.isNotEmpty,
+                  ),
                 for (final source in controller.sources)
                   _SourceRow(
                     name: source.name,
@@ -56,8 +64,7 @@ class ServerSourcesDialog extends StatelessWidget {
                         controller.sourceErrors[source.id] ??
                         l.prototypeUpdated,
                     failed: controller.sourceErrors.containsKey(source.id),
-                    showDivider:
-                        source != controller.sources.last || localCount > 0,
+                    showDivider: source != controller.sources.last,
                     subscription: true,
                     busy: controller.sourceBusy(source.id),
                     onMore: controller.sourceBusy(source.id)
@@ -72,14 +79,6 @@ class ServerSourcesDialog extends StatelessWidget {
                             source,
                             SourceAction.update,
                           ),
-                  ),
-                if (localCount > 0)
-                  _SourceRow(
-                    name: l.prototypeManualAdditions,
-                    detail:
-                        '${l.prototypeServerCount(localCount)} · ${l.prototypeLocalOnly}',
-                    status: l.prototypeStoredOnThisDevice,
-                    showDivider: false,
                   ),
               ],
             ),

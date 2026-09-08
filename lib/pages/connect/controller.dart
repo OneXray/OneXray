@@ -230,7 +230,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
           }, onError: _readFailed),
         );
         _subscriptions.add(
-          db.select(db.subscription).watch().listen((rows) {
+          db.subscriptionDao.allRowsStream.listen((rows) {
             sources = rows;
           }, onError: _readFailed),
         );

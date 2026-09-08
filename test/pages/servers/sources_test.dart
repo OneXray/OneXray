@@ -124,6 +124,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'manual additions stay first and disappear with the last local node',
+    (tester) async {
+      controller.sources = [_source];
+      controller.servers = [_server(1, source: 7), _server(2)];
+      await pumpSources(tester);
+      final l = AppLocalizations.of(
+        tester.element(find.byType(ServerSourcesDialog)),
+      )!;
+      expect(
+        tester.getTopLeft(find.text(l.prototypeManualAdditions)).dy,
+        lessThan(tester.getTopLeft(find.text(_source.name)).dy),
+      );
+
+      controller.servers = [_server(1, source: 7)];
+      await tester.pumpAndSettle();
+      expect(find.text(l.prototypeManualAdditions), findsNothing);
+      expect(find.text(_source.name), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('menu replaces sources and closing ends the flow', (
     tester,
   ) async {

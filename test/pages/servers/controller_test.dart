@@ -104,6 +104,57 @@ void main() {
     expect(controller.protocol(one), 'VLESS | XHTTP | TLS');
   });
 
+  test(
+    'subscription groups use numeric ID order with local nodes first',
+    () async {
+      final newer = (await server('Newer', source: 10)).copyWith(delay: 10);
+      final olderFast = (await server(
+        'Older fast',
+        source: 2,
+      )).copyWith(delay: 20);
+      final olderSlow = (await server(
+        'Older slow',
+        source: 2,
+      )).copyWith(delay: 50);
+      final local = (await server('Local')).copyWith(delay: 100);
+      controller.servers = [newer, olderFast, olderSlow, local];
+      controller.sources = [
+        SubscriptionData(
+          id: 10,
+          name: 'A newer source',
+          url: 'https://example.test/newer',
+          timestamp: DateTime(2026, 9, 8),
+        ),
+        SubscriptionData(
+          id: 2,
+          name: 'Z older source',
+          url: 'https://example.test/older',
+          timestamp: DateTime(2026, 9, 8),
+        ),
+      ];
+
+      final groups = controller.groups(l);
+      expect(groups.map((group) => group.selection.id), [0, 2, 10]);
+      expect(groups.first.name, l.prototypeManualAdditions);
+      expect(groups[1].rows, [olderFast, olderSlow]);
+
+      controller.servers = [local, olderFast, olderSlow, newer];
+      expect(controller.groups(l).map((group) => group.selection.id), [
+        0,
+        2,
+        10,
+      ]);
+      controller.search.text = 'source';
+      expect(controller.groups(l).map((group) => group.selection.id), [2, 10]);
+      controller.search.clear();
+
+      controller.servers = [newer, olderFast, olderSlow];
+      expect(controller.groups(l).map((group) => group.selection.id), [2, 10]);
+      controller.servers = [];
+      expect(controller.groups(l), isEmpty);
+    },
+  );
+
   test('subscription grouping omits sources without nodes', () async {
     final one = await server('Tokyo', source: 4);
     controller.servers = [one];

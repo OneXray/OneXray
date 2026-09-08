@@ -200,6 +200,9 @@ class ServersController extends ConnectController {
         ),
       );
     }
+    if (grouping == ServerGrouping.subscription) {
+      result.sort((a, b) => a.selection.id!.compareTo(b.selection.id!));
+    }
     return result;
   }
 

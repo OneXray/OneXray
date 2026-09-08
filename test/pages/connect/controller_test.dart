@@ -114,6 +114,95 @@ void main() {
     },
   );
 
+  test(
+    'subscription lists stream inserts, edits and deletes in ID order',
+    () async {
+      final coordinator = _Coordinator();
+      final db = coordinator.db;
+      final controllers = <ConnectController>[
+        ConnectController(database: db, coordinator: coordinator),
+        ServersController(database: db, coordinator: coordinator),
+        ServerExitPickerController(
+          const ServerExitPickerParams(),
+          database: db,
+          coordinator: coordinator,
+        ),
+      ];
+      addTearDown(() async {
+        for (final controller in controllers) {
+          await controller.close();
+        }
+        coordinator.dispose();
+        await db.close();
+      });
+      for (final controller in controllers) {
+        await controller.initialize();
+      }
+      final inserted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.sources.length == 3),
+      ]);
+      await db.transaction(() async {
+        for (final id in [20, 3, 10]) {
+          await db.subscriptionDao.insertRow(
+            SubscriptionCompanion.insert(
+              id: Value(id),
+              name: 'Source $id',
+              url: 'https://example.test/subscription/$id',
+              timestamp: DateTime(2026, 9, 8),
+            ),
+          );
+        }
+      });
+      await inserted;
+      for (final controller in controllers) {
+        expect(controller.sources.map((source) => source.id), [3, 10, 20]);
+      }
+      expect((await db.subscriptionDao.allRows).map((source) => source.id), [
+        3,
+        10,
+        20,
+      ]);
+
+      final edited = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere(
+            (state) => state.sources.first.name == 'Renamed source',
+          ),
+      ]);
+      final source = (await db.subscriptionDao.searchRow(3))!;
+      await db.subscriptionDao.updateRow(
+        source.copyWith(name: 'Renamed source'),
+      );
+      await edited;
+      for (final controller in controllers) {
+        expect(controller.sources.map((source) => source.id), [3, 10, 20]);
+        expect(controller.sources.first.name, 'Renamed source');
+      }
+
+      final deleted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.sources.length == 2),
+      ]);
+      await db.subscriptionDao.deleteRow(10);
+      await deleted;
+      for (final controller in controllers) {
+        expect(controller.sources.map((source) => source.id), [3, 20]);
+      }
+
+      final cleared = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.sources.isEmpty),
+      ]);
+      await db.subscriptionDao.clear();
+      await cleared;
+      expect(
+        controllers.every((controller) => controller.sources.isEmpty),
+        isTrue,
+      );
+    },
+  );
+
   testWidgets(
     'connection labels use configured counts and only the running node probe',
     (tester) async {
