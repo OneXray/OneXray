@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/upgrade_snapshot.dart';
-import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 
@@ -33,23 +30,12 @@ class StoragePreparation {
   static Future<VpnStatus> _readStatus(
     Future<NativeVpnCommandResult> Function() command,
   ) async {
-    final result = Completer<VpnStatus>();
-    final listener = AppFlutterApi().vpnStatusController.stream.listen((
-      status,
-    ) {
-      if (!result.isCompleted) {
-        result.complete(status);
-      }
-    });
-    try {
-      final response = await command().timeout(const Duration(seconds: 15));
-      if (response.state != NativeVpnCommandState.success) {
-        throw StateError('Could not prepare VPN for database upgrade');
-      }
-      return await result.future.timeout(const Duration(seconds: 15));
-    } finally {
-      await listener.cancel();
+    final response = await command().timeout(const Duration(seconds: 15));
+    if (response.state != NativeVpnCommandState.success ||
+        response.status == null) {
+      throw StateError('Could not prepare VPN for database upgrade');
     }
+    return response.status!;
   }
 
   static Future<void> _stopBeforeUpgrade() async {
