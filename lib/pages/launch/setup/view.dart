@@ -439,7 +439,7 @@ class SetupView extends StatelessWidget {
       ),
       const Align(
         alignment: AlignmentDirectional.centerEnd,
-        child: AppActivityIndicator(),
+        child: AppActivityIndicator(pinging: false),
       ),
       if (state.hasServers) ...[
         const SizedBox(height: 24),

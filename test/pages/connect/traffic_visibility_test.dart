@@ -12,7 +12,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 void main() {
   for (final width in [390.0, 1200.0]) {
     testWidgets(
-      'traffic demand follows retained tabs, pages and dialog ($width)',
+      'traffic demand follows retained tabs, pages and disposal ($width)',
       (tester) async {
         await tester.binding.setSurfaceSize(Size(width, 844));
         addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -35,14 +35,9 @@ void main() {
                   routes: [
                     GoRoute(
                       path: '/connect',
-                      builder: (context, _) => PageVisibility(
+                      builder: (_, _) => PageVisibility(
                         onChanged: controller.setPageVisible,
-                        child: Scaffold(
-                          body: TextButton(
-                            onPressed: () => controller.showTraffic(context),
-                            child: const Text('open-traffic'),
-                          ),
-                        ),
+                        child: const Scaffold(body: Text('connection-home')),
                       ),
                       routes: [
                         GoRoute(
@@ -91,22 +86,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(coordinator.visible, isTrue);
 
-        await tester.tap(find.text('open-traffic'));
-        await tester.pumpAndSettle();
-        expect(coordinator.visible, isTrue);
-        // The traffic surface retains demand even when its owner is covered.
         controller.setPageVisible(false);
-        expect(coordinator.visible, isTrue);
-        final done = find.widgetWithText(FilledButton, 'Done');
-        await tester.ensureVisible(done);
-        await tester.pump();
-        expect(done.hitTestable(), findsOneWidget);
-        expect(tester.widget<FilledButton>(done).onPressed, isNotNull);
-        await tester.tap(done);
-        await tester.pumpAndSettle();
-        expect(done, findsNothing);
         expect(coordinator.visible, isFalse);
         controller.setPageVisible(true);
+        expect(coordinator.visible, isTrue);
         await tester.pumpWidget(const SizedBox());
         expect(coordinator.visible, isFalse);
         expect(tester.takeException(), isNull);

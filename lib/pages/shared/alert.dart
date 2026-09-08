@@ -120,7 +120,7 @@ class ContextAlert {
         padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 36, 14),
         crossAxisAlignment: CrossAxisAlignment.start,
         showCloseIconOnlyWhenHovered: false,
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 2),
       ),
     );
   }

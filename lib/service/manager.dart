@@ -15,6 +15,7 @@ import 'package:onexray/service/shared/menu/short_cut/service.dart';
 import 'package:onexray/service/shared/menu/tray/service.dart';
 import 'package:onexray/service/shared/menu/window/service.dart';
 import 'package:onexray/service/shared/notification/service.dart';
+import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/share/service.dart';
 
 abstract final class ServiceManager {
@@ -83,6 +84,7 @@ abstract final class ServiceManager {
     );
     BackgroundTaskService().init();
     _initialized = true;
+    PingService().startAutomatic();
     unawaited(_checkUpdate());
   }
 
@@ -116,6 +118,7 @@ abstract final class ServiceManager {
   }
 
   static void serviceDispose() {
+    PingService().stopAutomatic();
     _initFuture = null;
     _initialized = false;
     TrayService().dispose();

@@ -320,43 +320,6 @@ class AppHostApi {
     return _errorResult;
   }
 
-  Future<String> runXray(String coreInvokeText) async {
-    if (!AppPlatform.isIOS) {
-      return _errorResult;
-    }
-    try {
-      final request = LibXrayRunConfig.fromInvokeText(coreInvokeText);
-      final res = await _invoke(request.invoke);
-      final resp = LibXrayInvokeResponseParser.parse(res);
-      if (resp.success) {
-        return "";
-      }
-      return resp.error;
-    } catch (error, stackTrace) {
-      _reportUnexpected('runXray', error, stackTrace);
-    }
-    return _errorResult;
-  }
-
-  Future<String> stopXray() async {
-    if (!AppPlatform.isIOS) {
-      return _errorResult;
-    }
-    try {
-      final res = await _invoke(
-        LibXrayInvokeRequest(method: LibXrayMethod.stopXray),
-      );
-      final resp = LibXrayInvokeResponseParser.parse(res);
-      if (resp.success) {
-        return "";
-      }
-      return resp.error;
-    } catch (error, stackTrace) {
-      _reportUnexpected('stopXray', error, stackTrace);
-    }
-    return _errorResult;
-  }
-
   Future<String> xrayVersion() async {
     try {
       final res = await _invoke(

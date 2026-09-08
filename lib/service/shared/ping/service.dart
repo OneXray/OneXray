@@ -25,13 +25,16 @@ class PingService {
 
   PingService.forTesting({
     required AppDatabase database,
+    bool automaticEnabled = true,
     required Future<List<PingBatchResult>> Function(
       List<PingBatchSource>,
       PingState,
     )
     runBatch,
   }) : _databaseOverride = database,
-       _batchOverride = runBatch;
+       _batchOverride = runBatch {
+    _automaticEnabled = automaticEnabled;
+  }
 
   final AppDatabase? _databaseOverride;
   final Future<List<PingBatchResult>> Function(
@@ -44,10 +47,34 @@ class PingService {
 
   final _pingQueue = CommandSerialExecutor();
   var _pingingTaskCount = 0;
+  var _automaticEnabled = false;
 
   bool get isPinging => _pingingTaskCount > 0;
 
+  /// Setup only imports. Normal startup enables background probes after native
+  /// readiness checks; unmeasured DB rows are the backlog, not a second queue.
+  void startAutomatic() {
+    if (_automaticEnabled) return;
+    _automaticEnabled = true;
+    unawaited(
+      _scheduleUnmeasured().catchError((Object error, StackTrace stackTrace) {
+        ygLogger(
+          'Schedule unmeasured nodes failed (${error.runtimeType})\n$stackTrace',
+        );
+      }),
+    );
+  }
+
+  // Existing jobs retain their normal queue and clear-data protection.
+  void stopAutomatic() => _automaticEnabled = false;
+
+  Future<void> _scheduleUnmeasured() async {
+    final ids = await _database.coreConfigDao.unmeasuredOutboundIds;
+    schedulePingConfigIds(ids);
+  }
+
   void schedulePingConfigIds(List<int> ids) {
+    if (!_automaticEnabled) return;
     unawaited(pingConfigIds(ids));
   }
 
@@ -88,6 +115,7 @@ class PingService {
   }
 
   void schedulePingSubscriptions(Iterable<int> subIds) {
+    if (!_automaticEnabled) return;
     final targetSubIds = subIds
         .where((id) => id > DBConstants.defaultId)
         .toSet()

@@ -9,7 +9,6 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
-import 'package:onexray/service/connect/debug_proxy.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
@@ -109,39 +108,6 @@ void main() {
       },
     );
   }
-
-  test(
-    'Debug proxy toggling stays outside the saved policy and VPN lifecycle',
-    () async {
-      final proxy = IOSDebugProxy()..enabled = false;
-      addTearDown(() => proxy.enabled = false);
-      final service = PolicyEditorService(coordinator: coordinator);
-      final original = await service.load();
-      final stored = (await db.connectionConfigDao.read()).configurationJson;
-      final controller = PolicyEditorController(
-        draft: original,
-        service: service,
-      );
-      addTearDown(controller.close);
-
-      expect(controller.state.debugProxyEnabled, isFalse);
-      expect(controller.debugProxySupported, proxy.supported);
-      controller.setDebugProxyEnabled(true);
-      expect(controller.state.debugProxyEnabled, proxy.supported);
-      expect(proxy.enabled, proxy.supported);
-      expect(controller.value, original.policy);
-
-      controller.restoreDefaults();
-      expect(controller.state.debugProxyEnabled, proxy.supported);
-      expect(proxy.enabled, proxy.supported);
-      controller.setDebugProxyEnabled(false);
-      expect(controller.state.debugProxyEnabled, isFalse);
-      expect(proxy.enabled, isFalse);
-      expect((await db.connectionConfigDao.read()).configurationJson, stored);
-      expect(stops, 0);
-      expect(host.status, VpnStatus.disconnected);
-    },
-  );
 
   test(
     'restoring defaults changes only the draft, not storage or VPN',

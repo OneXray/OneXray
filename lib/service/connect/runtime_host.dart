@@ -12,7 +12,6 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_writer.dart';
-import 'package:onexray/service/connect/debug_proxy.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -81,21 +80,29 @@ class ConnectionRuntimeHost {
     if (readStatus != null) {
       return (status: await readStatus(), permission: null);
     }
-    if (IOSDebugProxy().running) {
-      return (status: VpnStatus.connected, permission: null);
-    }
-    final event = AppFlutterApi().vpnStatusController.stream.first.timeout(
-      const Duration(seconds: 5),
-    );
-    final result = await _host.readVpnStatus();
-    if (result.state != NativeVpnCommandState.success) {
-      unawaited(event.then<void>((_) {}, onError: (Object _) {}));
-      throw ConnectionHostException(
-        'nativeStatusFailed',
+    final event = Completer<VpnStatus>();
+    final subscription = AppFlutterApi().vpnStatusController.stream.listen((
+      status,
+    ) {
+      if (!event.isCompleted) event.complete(status);
+    });
+    try {
+      final result = await _host.readVpnStatus();
+      if (result.state != NativeVpnCommandState.success) {
+        throw ConnectionHostException(
+          'nativeStatusFailed',
+          permission: result.permission,
+        );
+      }
+      // Native status may wait for a core operation. Time only a missing reply
+      // event after that operation completes, not the operation itself.
+      return (
+        status: await event.future.timeout(const Duration(seconds: 5)),
         permission: result.permission,
       );
+    } finally {
+      await subscription.cancel();
     }
-    return (status: await event, permission: result.permission);
   }
 
   static Map<String, dynamic> _jsonObject(String text) {
@@ -215,7 +222,6 @@ class ConnectionRuntimeHost {
   Future<NativeVpnCommandResult> _start(ConnectionRuntime runtime) async {
     final startVpn = _startVpn;
     if (startVpn != null) return startVpn(runtime);
-    if (IOSDebugProxy().enabled) return IOSDebugProxy().start(runtime);
     await runtime.request.writeToStartFile();
     final policy = runtime.configuration.policy;
     final windows = runtime.platform == ConnectionPlatform.windows;
@@ -270,11 +276,7 @@ class ConnectionRuntimeHost {
   }
 
   Future<HostConnection> stop() async {
-    final result =
-        await (_stopVpn?.call() ??
-            (IOSDebugProxy().running
-                ? IOSDebugProxy().stop()
-                : _host.stopVpn()));
+    final result = await (_stopVpn?.call() ?? _host.stopVpn());
     if (result.state != NativeVpnCommandState.success) {
       throw const ConnectionHostException('stopFailed');
     }

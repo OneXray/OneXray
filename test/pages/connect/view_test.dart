@@ -80,7 +80,6 @@ void main() {
     onServer: () {},
     onMethod: () {},
     onWhy: () {},
-    onTraffic: () {},
     onRawAdd: () {},
     onRawSelect: (_) {},
     onRawActions: (_) {},
@@ -107,64 +106,84 @@ void main() {
     home: Scaffold(body: child),
   );
 
-  testWidgets('connection traffic shows complete values and units', (
-    tester,
-  ) async {
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final view = ConnectionView(
-      phase: ConnectionPhase.connected,
-      metricsAvailable: true,
-      downloadSpeed: (248.72 * 1024).round(),
-      uploadSpeed: (32.8 * 1024).round(),
-      traffic: ConnectionTraffic(
-        uplink: (158.91 * 1024).round(),
-        downlink: (999.99 * 1024 * 1024).round(),
-        sampledAtMs: 0,
-      ),
-    );
-    for (final (width, scale, locale) in [
-      (1160.0, 1.0, const Locale('en')),
-      (901.0, 1.0, const Locale('en')),
-      (390.0, 1.0, const Locale('en')),
-      (320.0, 1.0, const Locale('en')),
-      (1160.0, 1.3, const Locale('ru')),
-      (390.0, 1.3, const Locale('fa')),
-    ]) {
-      await tester.binding.setSurfaceSize(Size(width, 900));
-      await tester.pumpWidget(
-        app(
-          width > AppLayout.mobileBreakpoint
-              ? Row(
-                  children: [
-                    const SizedBox(width: AppLayout.desktopSidebarWidth),
-                    Expanded(child: screen(view: view)),
-                  ],
-                )
-              : screen(view: view),
-          locale: locale,
-          scale: scale,
+  testWidgets(
+    'connection traffic is read-only with complete values and units',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final view = ConnectionView(
+        phase: ConnectionPhase.connected,
+        metricsAvailable: true,
+        downloadSpeed: (248.72 * 1024).round(),
+        uploadSpeed: (32.8 * 1024).round(),
+        traffic: ConnectionTraffic(
+          uplink: (158.91 * 1024).round(),
+          downlink: (999.99 * 1024 * 1024).round(),
+          sampledAtMs: 0,
         ),
       );
-      await tester.pumpAndSettle();
-      for (final value in [
-        '248.72 KB/s',
-        '32.8 KB/s',
-        '158.91 KB',
-        '999.99 MB',
+      for (final (width, scale, locale) in [
+        (1160.0, 1.0, const Locale('en')),
+        (901.0, 1.0, const Locale('en')),
+        (390.0, 1.0, const Locale('en')),
+        (320.0, 1.0, const Locale('en')),
+        (1160.0, 1.3, const Locale('ru')),
+        (390.0, 1.3, const Locale('fa')),
       ]) {
-        expect(find.text(value), findsOneWidget);
-        final paragraph = tester.renderObject<RenderParagraph>(
-          find.text(value),
+        await tester.binding.setSurfaceSize(Size(width, 900));
+        await tester.pumpWidget(
+          app(
+            width > AppLayout.mobileBreakpoint
+                ? Row(
+                    children: [
+                      const SizedBox(width: AppLayout.desktopSidebarWidth),
+                      Expanded(child: screen(view: view)),
+                    ],
+                  )
+                : screen(view: view),
+            locale: locale,
+            scale: scale,
+          ),
         );
+        await tester.pumpAndSettle();
+        final l = AppLocalizations.of(
+          tester.element(find.byType(ConnectView)),
+        )!;
+        final title = find.text(l.prototypeTraffic);
+        expect(title, findsOneWidget);
         expect(
-          paragraph.didExceedMaxLines,
-          isFalse,
-          reason: '$value must not be truncated at $width / $scale / $locale',
+          find.ancestor(of: title, matching: find.byType(InkWell)),
+          findsNothing,
         );
+        final card = find
+            .ancestor(of: title, matching: find.byType(Card))
+            .first;
+        expect(
+          find.descendant(
+            of: card,
+            matching: find.byIcon(LucideIcons.chevronRightDir),
+          ),
+          findsNothing,
+        );
+        for (final value in [
+          '248.72 KB/s',
+          '32.8 KB/s',
+          '158.91 KB',
+          '999.99 MB',
+        ]) {
+          expect(find.text(value), findsOneWidget);
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.text(value),
+          );
+          expect(
+            paragraph.didExceedMaxLines,
+            isFalse,
+            reason: '$value must not be truncated at $width / $scale / $locale',
+          );
+        }
+        expect(tester.takeException(), isNull);
       }
-      expect(tester.takeException(), isNull);
-    }
-  });
+    },
+  );
 
   for (final expert in [false, true]) {
     testWidgets('desktop connection shares one panel, expert=$expert', (

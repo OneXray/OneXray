@@ -82,7 +82,6 @@ class _ConnectPageState extends State<ConnectPage> {
                 onServer: () => controller.chooseServer(context),
                 onMethod: () => controller.chooseTrafficMethod(context),
                 onWhy: () => controller.showWhy(context),
-                onTraffic: () => controller.showTraffic(context),
                 onRawAdd: () => controller.editRaw(context),
                 onRawSelect: (row) => controller.selectRaw(context, row.id),
                 onRawActions: (row) => controller.showRawActions(context, row),

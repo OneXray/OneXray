@@ -128,10 +128,12 @@ Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校�
 
 Windows 的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore Provider/Session Host 转交；
 Android、Apple、Linux 使用平台 TUN。Windows 只给 Xray 绑定所选网卡，不给 VCore 新增
-绑定要求。iOS Debug 本地代理仅替换调试入口，不改变正常持久配置或正常 UI 逻辑。
-Debug 启动时将入站替换为 SOCKS 的请求副本原子写入 `run/start.json`，再把同一份
+绑定要求。Dart 不提供 iOS Debug Proxy 开关或独立的启停分支，始终使用原生 VPN 接口。
+Swift 仅在 `targetEnvironment(simulator)` 时将请求中的 `tunIn` 改为本地 SOCKS，保留
+其 tag、嗅探和其他入站。转换后的请求原子写入 `run/start.json`，再把同一份
 `coreInvokeText` 传给 libXray；写入失败则不启动 Core。原始编译输入、数据库配置及运行
-元数据保持不变，Debug 开关本身不持久化。
+元数据保持不变。模拟器直接调用 `runXray` / `stopXray`，以 `getXrayState` 为状态来源，
+通过原有原生状态通知更新 App；真机和 macOS 仍使用系统 VPN。
 
 Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建或启动 Xray instance。
 构建器仍可能读取本地资产、证书并应用根 `env`；校验成功只说明配置可以构建，不保证
@@ -158,10 +160,9 @@ Raw 与自定义路由编辑先完成用户确认，再进入连接队列。携�
 也不恢复旧输入。若停止无法确认，原生状态仍是 VPN 状态依据，并继续显示能够确认的实际
 运行信息；metrics 或运行描述不可用不等于已断开。重试时重新查询宿主，不从缓存推断状态。
 
-清空数据前，若宿主已断开，且 Apple 原生权限明确返回“不需要”（iOS 模拟器），
-则直接完成停止步骤，不调用系统 VPN 停止接口。正在运行的 iOS Debug 本地代理仍通过
-libXray 停止；真实 Apple VPN 即使已断开，也仍执行停止命令以关闭按需连接。状态查询或
-实际停止失败时继续阻止数据替换，不将失败当作空闲。
+清空数据前统一调用原生停止接口，不在 Dart 中按模拟器权限跳过。Swift 在模拟器中停止
+libXray，未运行时同样成功；真实 Apple VPN 即使已断开，也仍执行停止命令以关闭按需
+连接。状态查询或实际停止失败时继续阻止数据替换，不将失败当作空闲。
 
 Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清理整个 `run/core-inputs`，
 再创建唯一的 `core-inputs/input-*/xray.json`。输入目录不复用，也不保留历史。Windows 的 `snapshotToken` 仅用于
@@ -177,7 +178,7 @@ VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行�
 Linux 仅在接管已有进程、没有当前 `Process` 退出通知时使用相同兜底。启停操作保留有界
 状态/就绪确认。查询回包仍广播，重复值仅抑制重复日志与重复状态处理。
 
-仅在 App 前台、连接页或其流量弹窗可见且已连接时，按秒读取 Xray 原生 metrics；切换
+仅在 App 前台、连接页可见且已连接时，按秒读取 Xray 原生 metrics；切换
 Tab、打开其他全页、进入后台或断开后停止。重新显示先建立速率基线，不把隐藏时间摊入
 实时速率；高级页运行时长使用独立的可见性受控本地时钟，不触发 metrics 查询。
 

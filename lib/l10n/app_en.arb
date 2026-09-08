@@ -1,13 +1,5 @@
 {
   "@@locale": "en",
-  "iosDebugLocalProxy": "Local proxy only",
-  "@iosDebugLocalProxy": {
-    "description": "Developer-only switch in Advanced > VPN tunnel, shown only in iOS Debug builds."
-  },
-  "iosDebugLocalProxyHint": "Applies to the next connection. Resets when the app restarts.",
-  "@iosDebugLocalProxyHint": {
-    "description": "The Debug switch is in-memory only and does not modify saved VPN settings."
-  },
   "buttonRetry": "Retry",
   "validationNameRequired": "name required",
   "validationNameDuplicate": "name has existed",

@@ -1,7 +1,5 @@
 {
   "@@locale": "zh_Hant",
-  "iosDebugLocalProxy": "僅本機代理",
-  "iosDebugLocalProxyHint": "下次連線生效，重新啟動 App 後恢復關閉。",
   "buttonRetry": "重試",
   "validationNameRequired": "請輸入名稱",
   "validationNameDuplicate": "名稱重複",

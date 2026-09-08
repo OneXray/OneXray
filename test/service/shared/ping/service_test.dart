@@ -88,6 +88,59 @@ void main() {
     expect(AppEventBus.instance.state.pinging, isFalse);
   });
 
+  test(
+    'automatic probes start after readiness and resume unmeasured rows',
+    () async {
+      final local = await db.coreConfigDao.insertRow(_node('Local'));
+      final remote = await db.coreConfigDao.insertRow(
+        _node('Remote', subId: 9),
+      );
+      final measured = await db.coreConfigDao.insertRow(
+        _node('Measured').copyWith(delay: const Value(30)),
+      );
+      await db.coreConfigDao.insertRow(
+        _node('Raw').copyWith(type: const Value('raw')),
+      );
+      await db.coreConfigDao.insertRow(
+        _node('Empty').copyWith(data: const Value(null)),
+      );
+      final batches = <int>[];
+      final service = PingService.forTesting(
+        database: db,
+        automaticEnabled: false,
+        runBatch: (sources, _) async {
+          batches.add(sources.length);
+          return _successes(sources.length);
+        },
+      );
+      service.schedulePingConfigIds([local]);
+      service.schedulePingSubscriptions([9]);
+      expect(service.isPinging, isFalse);
+      expect(AppEventBus.instance.state.pinging, isFalse);
+      expect(batches, isEmpty);
+      expect(
+        await db.coreConfigDao.unmeasuredOutboundIds,
+        unorderedEquals([local, remote]),
+      );
+
+      final drained = AppEventBus.instance.stream
+          .skipWhile((state) => !state.pinging)
+          .firstWhere((state) => !state.pinging);
+      service.startAutomatic();
+      service.startAutomatic();
+      await drained.timeout(const Duration(seconds: 5));
+      expect(batches, [1, 1]);
+      expect((await db.coreConfigDao.searchRow(measured))!.delay, 30);
+      expect(await db.coreConfigDao.unmeasuredOutboundIds, isEmpty);
+
+      service.stopAutomatic();
+      final later = await db.coreConfigDao.insertRow(_node('Later'));
+      service.schedulePingConfigIds([later]);
+      expect(service.isPinging, isFalse);
+      expect(await db.coreConfigDao.unmeasuredOutboundIds, [later]);
+    },
+  );
+
   test('five-node batch commits let selection finish while the remaining two continue', () async {
     final ids = <int>[];
     for (var index = 0; index < 7; index++) {

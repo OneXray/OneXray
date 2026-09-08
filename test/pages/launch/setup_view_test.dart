@@ -298,36 +298,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('configured servers expose an explicit Go to Home action', (
-    tester,
-  ) async {
-    _mobile(tester);
-    final actions = <SetupAction>[];
-    await tester.pumpWidget(
-      _app(
-        SetupView(
-          state: const SetupPageState(
-            step: SetupStep.servers,
-            busy: false,
-            hasServers: true,
+  testWidgets(
+    'configured servers expose Home without a speed-test loading indicator',
+    (tester) async {
+      _mobile(tester);
+      final actions = <SetupAction>[];
+      AppEventBus.instance.updatePinging(true);
+      await tester.pumpWidget(
+        _app(
+          SetupView(
+            state: const SetupPageState(
+              step: SetupStep.servers,
+              busy: false,
+              hasServers: true,
+            ),
+            requiresInterface: false,
+            supportsScan: true,
+            onAction: actions.add,
+            onAddServer: (_) {},
           ),
-          requiresInterface: false,
-          supportsScan: true,
-          onAction: actions.add,
-          onAddServer: (_) {},
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Servers added. You are ready to go to Home.'),
-      findsOneWidget,
-    );
-    expect(find.text('Add later'), findsNothing);
-    await tester.tap(find.text('Go to Home'));
-    expect(actions, [SetupAction.finish]);
-    expect(tester.takeException(), isNull);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Servers added. You are ready to go to Home.'),
+        findsOneWidget,
+      );
+      expect(find.text('Add later'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      await tester.tap(find.text('Go to Home'));
+      expect(actions, [SetupAction.finish]);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('desktop setup uses the full stepper and distributed footer', (
     tester,

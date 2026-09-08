@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/db/table/core_config.dart';
@@ -42,6 +43,17 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
           .watch()
           .map((rows) => rows.isNotEmpty)
           .distinct();
+
+  Future<List<int>> get unmeasuredOutboundIds =>
+      (selectOnly(coreConfig)
+            ..addColumns([coreConfig.id])
+            ..where(
+              coreConfig.type.equals(CoreConfigType.outbound.name) &
+                  coreConfig.data.isNotNull() &
+                  coreConfig.delay.equals(PingDelayConstants.unknown),
+            ))
+          .map((row) => row.read(coreConfig.id)!)
+          .get();
 
   Future<List<CoreConfigData>> allOutboundRowsWithDataBySubId(
     int subId,

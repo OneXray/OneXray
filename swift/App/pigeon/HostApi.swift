@@ -1,5 +1,4 @@
 import Foundation
-import LibXray
 #if os(iOS)
 import Flutter
 #elseif os(macOS)
@@ -9,14 +8,9 @@ import FlutterMacOS
 #error("Unsupported platform.")
 #endif
 
-enum AppHostApiError: Error {
-    case cgoFailed
-}
-
 @MainActor
 final class AppHostApi: @preconcurrency BridgeHostApi {
     private let flutterApi: AppFlutterApi
-    private nonisolated static let invokeLock = NSLock()
     init(flutterApi: AppFlutterApi) {
         self.flutterApi = flutterApi
     }
@@ -35,15 +29,23 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             let permission = await VPNManager.shared.queryPlatformPermission()
             let installed = VPNManager.shared.refreshVpnResult(from: permission)
             flutterApi.refreshVpn(result: installed)
-            flutterApi.vpnStatusChanged()
-            if permission.state == .failed {
+            do {
+                try await flutterApi.vpnStatusChanged()
+                if permission.state == .failed {
+                    completion(.success(NativeVpnCommandResult(
+                        state: .failed,
+                        permission: permission,
+                        message: permission.message
+                    )))
+                } else {
+                    completion(.success(commandSuccess(permission: permission)))
+                }
+            } catch {
                 completion(.success(NativeVpnCommandResult(
                     state: .failed,
                     permission: permission,
-                    message: permission.message
+                    message: "VPN status is unavailable."
                 )))
-            } else {
-                completion(.success(commandSuccess(permission: permission)))
             }
         }
     }
@@ -68,27 +70,11 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
     
     func invoke(requestJson: String, completion: @escaping (Result<String, any Error>) -> Void) {
         Task {
-            let result = await Task.detached(priority: .userInitiated) {
-                Self.invoke(requestJson)
-            }.value
-            completion(result)
-        }
-    }
-
-    private nonisolated static func invoke(_ requestJson: String) -> Result<String, any Error> {
-        // Temporary cores share process-global Xray state; the VPN uses its extension.
-        invokeLock.lock()
-        defer { invokeLock.unlock() }
-        let res = requestJson.withCString { p in
-            let p0 = UnsafeMutablePointer(mutating: p)
-            return CGoInvoke(p0)
-        }
-        if let res = res {
-            let text = String(cString: res)
-            CGoFree(res)
-            return .success(text)
-        } else {
-            return .failure(AppHostApiError.cgoFailed)
+            do {
+                completion(.success(try await LibXrayInvoker.invoke(requestJson)))
+            } catch {
+                completion(.failure(error))
+            }
         }
     }
     

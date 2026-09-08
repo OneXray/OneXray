@@ -51,6 +51,7 @@ void main() {
     final toast = tester.widget<ShadToast>(find.byType(ShadToast));
     expect(toast.alignment, Alignment.bottomRight);
     expect(toast.showCloseIconOnlyWhenHovered, isFalse);
+    expect(toast.duration, const Duration(seconds: 2));
   });
 
   testWidgets('failed system settings launch shows a toast', (tester) async {
@@ -92,6 +93,7 @@ void main() {
     expect(toast.alignment, Alignment.bottomCenter);
     expect(toast.constraints?.minWidth, 358);
     expect(toast.constraints?.maxWidth, 358);
+    expect(toast.duration, const Duration(seconds: 2));
   });
 }
 

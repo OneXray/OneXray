@@ -227,10 +227,6 @@ void main() {
                     child: const Text('methods-action'),
                   ),
                   TextButton(
-                    onPressed: () => controller.showTraffic(context),
-                    child: const Text('traffic-action'),
-                  ),
-                  TextButton(
                     onPressed: () => controller.chooseServer(context),
                     child: const Text('location-action'),
                   ),
@@ -308,14 +304,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('connection-home'), findsOneWidget);
       expect(find.text('Choose a traffic method'), findsNothing);
-      await tester.tap(find.text('traffic-action'));
-      await tester.pumpAndSettle();
-      expect(find.text('Current speed'), findsOneWidget);
-      expect(find.text('Total traffic'), findsNothing);
-      expect(find.text('Reset totals'), findsNothing);
-      await tester.tap(find.text('Done'));
-      await tester.pumpAndSettle();
-      expect(find.text('Current speed'), findsNothing);
       // The backdrop remains a dismiss target outside the compact dialog.
       await tester.tap(find.text('methods-action'));
       await tester.pumpAndSettle();

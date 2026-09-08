@@ -113,7 +113,7 @@ void main() {
                 onPressed: () => showConnectDialog<void>(
                   context,
                   (context) => ConnectDialog(
-                    title: 'Traffic',
+                    title: 'Details',
                     body: const SizedBox(height: 100),
                     actions: [
                       ConnectDialogButton(

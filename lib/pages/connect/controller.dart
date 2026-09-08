@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -12,7 +11,6 @@ import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
-import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -154,7 +152,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   bool _viewInitialized = false;
   bool _pageVisible = false;
-  bool _trafficDialogOpen = false;
 
   ConnectionConfiguration get configuration => state.configuration;
   set configuration(ConnectionConfiguration value) =>
@@ -194,9 +191,8 @@ class ConnectController extends PageCubit<ConnectPageState> {
     _syncTrafficVisibility();
   }
 
-  void _syncTrafficVisibility() => coordinator.setTrafficVisible(
-    isPageActive && (_pageVisible || _trafficDialogOpen),
-  );
+  void _syncTrafficVisibility() =>
+      coordinator.setTrafficVisible(isPageActive && _pageVisible);
 
   Future<void> initialize() async {
     failed = false;
@@ -766,44 +762,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
           return delay == 0 ? a.id.compareTo(b.id) : delay;
         });
     return rows.length < count ? [] : rows.take(count).toList();
-  }
-
-  Future<void> showTraffic(BuildContext context) async {
-    if (!isPageActive || _trafficDialogOpen) return;
-    _trafficDialogOpen = true;
-    _syncTrafficVisibility();
-    try {
-      await showConnectDialog<void>(
-        context,
-        (dialogContext) => BlocBuilder<ConnectController, ConnectPageState>(
-          bloc: this,
-          builder: (_, state) {
-            final l = AppLocalizations.of(dialogContext)!;
-            return ConnectDialog(
-              title: l.prototypeTraffic,
-              body: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: TrafficReadout(
-                  view: state.connectionView,
-                  expandedGroups: true,
-                ),
-              ),
-              actions: [
-                ConnectDialogButton(
-                  label: l.prototypeDone,
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-    } finally {
-      _trafficDialogOpen = false;
-      if (isPageActive) {
-        _syncTrafficVisibility();
-      }
-    }
   }
 
   Future<void> run(BuildContext context, Future<void> Function() action) async {

@@ -34,7 +34,6 @@ class ConnectView extends StatelessWidget {
     required this.onServer,
     required this.onMethod,
     required this.onWhy,
-    required this.onTraffic,
     required this.onRawAdd,
     required this.onRawSelect,
     required this.onRawActions,
@@ -55,7 +54,6 @@ class ConnectView extends StatelessWidget {
       onServer,
       onMethod,
       onWhy,
-      onTraffic,
       onRawAdd;
   final ValueChanged<bool> onExpert;
   final ValueChanged<CoreConfigData> onRawSelect, onRawActions;
@@ -151,30 +149,18 @@ class ConnectView extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(13, 15, 13, 1),
                 child: Column(
                   children: [
-                    InkWell(
-                      onTap: onTraffic,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 29),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                l.prototypeTraffic,
-                                style: AppTypography.connectTrafficTitle,
-                              ),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 29),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l.prototypeTraffic,
+                              style: AppTypography.connectTrafficTitle,
                             ),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Icon(
-                                LucideIcons.chevronRightDir,
-                                size: 17,
-                                color: ColorManager.palette(context)
-                                    .mutedForeground,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const Divider(),
@@ -252,32 +238,21 @@ class ConnectView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            InkWell(
-              onTap: onTraffic,
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 48),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: palette.border)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l.prototypeTraffic,
-                        style: AppTypography.connectDesktopTrafficTitle,
-                      ),
+            Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: palette.border)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.prototypeTraffic,
+                      style: AppTypography.connectDesktopTrafficTitle,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Icon(
-                        LucideIcons.chevronRightDir,
-                        size: 17,
-                        color: palette.mutedForeground,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             TrafficReadout(view: view, desktop: true),
@@ -1090,14 +1065,8 @@ class ConnectView extends StatelessWidget {
 }
 
 class TrafficReadout extends StatelessWidget {
-  const TrafficReadout({
-    super.key,
-    required this.view,
-    this.expandedGroups = false,
-    this.desktop = false,
-  });
+  const TrafficReadout({super.key, required this.view, this.desktop = false});
   final ConnectionView view;
-  final bool expandedGroups;
   final bool desktop;
   @override
   Widget build(BuildContext context) {
@@ -1139,8 +1108,6 @@ class TrafficReadout extends StatelessWidget {
       constraints: BoxConstraints(
         minHeight: desktop
             ? AppLayout.connectDesktopTrafficGroupMinHeight
-            : expandedGroups
-            ? 130
             : AppLayout.connectTrafficGroupMinHeight,
       ),
       padding: EdgeInsets.symmetric(vertical: desktop ? 22 : 10.5),

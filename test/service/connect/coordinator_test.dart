@@ -209,7 +209,7 @@ void main() {
     expect(coordinator.state.value.runtime, isNull);
   });
 
-  test('maintenance skips an idle Apple host without a system VPN', () async {
+  test('maintenance delegates simulator stops to the native host', () async {
     var stopCalls = 0;
     var statusFails = false;
     final coordinator = await _initialize(
@@ -229,12 +229,10 @@ void main() {
           );
         },
         stop: ConnectionRuntimeHost(
+          readStatus: () async => VpnStatus.disconnected,
           stopVpn: () async {
             stopCalls++;
-            return NativeVpnCommandResult(
-              state: NativeVpnCommandState.failed,
-              message: 'IPC failed',
-            );
+            return NativeVpnCommandResult(state: NativeVpnCommandState.success);
           },
         ).stop,
       ),
@@ -243,7 +241,7 @@ void main() {
     await coordinator.stopForMaintenance();
     await coordinator.stopForMaintenance();
 
-    expect(stopCalls, 0);
+    expect(stopCalls, 2);
     expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
     expect(coordinator.state.value.issue, isNull);
 
@@ -257,7 +255,7 @@ void main() {
     statusFails = false;
     await coordinator.stopForMaintenance();
 
-    expect(stopCalls, 0);
+    expect(stopCalls, 3);
     expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
     expect(coordinator.state.value.issue, isNull);
   });

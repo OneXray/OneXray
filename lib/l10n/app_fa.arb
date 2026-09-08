@@ -1,7 +1,5 @@
 {
     "@@locale": "fa",
-    "iosDebugLocalProxy": "فقط پراکسی محلی",
-    "iosDebugLocalProxyHint": "در اتصال بعدی اعمال می‌شود. با راه‌اندازی مجدد برنامه خاموش می‌شود.",
     "buttonRetry": "تلاش دوباره",
     "validationNameRequired": "نام لازم است",
     "validationNameDuplicate": "نام قبلاً وجود دارد",
