@@ -5,171 +5,162 @@
 <h1 align="center">OneXray</h1>
 
 <p align="center">
-  Приватный кроссплатформенный клиент Xray-core для ваших узлов, подписок и конфигураций.
+  Ваши серверы. Ваши правила. На всех устройствах.
 </p>
 
 <p align="center">
-  <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="Последняя версия"></a>
+  <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="Последний релиз"></a>
   <a href="../LICENSE"><img src="https://img.shields.io/github/license/OneXray/OneXray" alt="Лицензия"></a>
   <img src="https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-0A84FF" alt="Поддерживаемые платформы">
 </p>
 
 <p align="center">
   <a href="https://onexray.com">Документация</a> ·
-  <a href="./FIRST_RUN.ru.md">Среда разработки</a> ·
-  <a href="https://t.me/OneXrayApp">Telegram</a> ·
-  <a href="https://github.com/OneXray/OneXray/releases/latest">Релизы</a>
+  <a href="https://github.com/OneXray/OneXray/releases">Релизы</a> ·
+  <a href="https://t.me/OneXrayApp">Telegram</a>
 </p>
 
 <p align="center">
   <a href="../README.md">English</a> · <a href="./README.zh_CN.md">简体中文</a> · Русский
 </p>
 
-OneXray позволяет импортировать собственную совместимую конфигурацию сервера или HTTPS-подписку, организовывать узлы, выбирать умную маршрутизацию, весь трафик через VPN или пользовательскую маршрутизацию, а при необходимости использовать полную конфигурацию Raw JSON.
+OneXray — клиент Xray-core с открытым исходным кодом для телефонов, планшетов и компьютеров. Импортируйте свои серверы или подписки, выберите правила маршрутизации и подключайтесь через системный VPN устройства.
 
-OneXray является только клиентом и не предоставляет VPN/прокси-серверы, подписки или сетевой доступ. Приложение не требует учетной записи и не содержит рекламы, analytics, tracking, telemetry или сервисов crash reporting.
-
-## Предварительный просмотр
-
-<p align="center">
-  <img src="./images/home-ios.png" width="22%" alt="Главная OneXray на iOS">
-  &nbsp;&nbsp;
-  <img src="./images/home-macos.png" width="70%" alt="Главная OneXray на macOS">
-</p>
-
-## Возможности
-
-- **Кроссплатформенный запуск** — системный VPN на всех поддерживаемых платформах; Windows использует VCore VPN Provider на базе Xray-core.
-- **Гибкая конфигурация** — отдельные серверные outbound, HTTPS-подписки, пользовательские конфигурации маршрутизации и полный Raw JSON.
-- **Управление маршрутизацией** — умная маршрутизация, весь трафик через VPN или именованная пользовательская маршрутизация на странице подключения.
-- **Импорт и организация** — поддерживаемые share links и HTTPS-подписки из QR-кодов, изображений, файлов или буфера обмена.
-- **Локальные инструменты** — ping узлов, журналы Xray, управление GeoData и rule sets, backup и restore.
-- **Интеграция с платформой** — Android Per-App VPN, Apple On Demand, desktop tray и выбор исходящего интерфейса.
-
-## Подписки с age-шифрованием
-
-При добавлении или редактировании HTTPS-подписки откройте раздел
-**Encryption** и укажите существующую пару ключей age либо создайте ключ
-X25519 или совместимый с Mihomo Hybrid (`ML-KEM-768 + X25519`). OneXray
-отправляет только сохранённый публичный recipient в `X-Age-Public-Key`;
-секретный ключ хранится локально, а пара повторно используется при
-автоматическом обновлении.
-
-HTTPS остается обязательным. Резервные ZIP-файлы OneXray не зашифрованы и
-содержат пару ключей age, чтобы подписка работала после восстановления;
-храните их в безопасном месте.
-
-## URL-схема OneXray
-
-OneXray может делиться данными и импортировать их через собственные URL
-`onexray://`:
-
-```text
-onexray://onexray.com/config/add?type=outbound|raw|custom&data=<percent-encoded-base64-json>#Name
-onexray://onexray.com/sub/add?url=<percent-encoded-https-url>[&age=x25519|hybrid]#Name
-onexray://onexray.com/dat/add?type=domain|ip&url=<percent-encoded-https-url>#Name
-```
-
-Если конфигурация использует пользовательские GeoData из OneXray, их ссылки
-добавляются перед ссылкой конфигурации.
-
-Поддерживаются только перечисленные типы. Устаревшие `type=setting|profile|full`, резервные
-копии и другие команды не принимаются. Для ссылки age-подписки приложение
-создает новую локальную пару ключей, отправляет при первой загрузке только
-публичный ключ и сохраняет пару после успешного импорта.
-
-Android, iOS, установленные приложения macOS и версия Windows из Microsoft
-Store регистрируют схему напрямую. В Linux используйте DEB: ZIP-пакеты не
-регистрируют схему автоматически. Версия из Mac App Store и OneXraySE
-используют одну схему, поэтому при одновременной установке macOS может выбрать
-любое из них.
+**Серверы нужно добавить самостоятельно.** OneXray не предоставляет доступ к VPN, прокси-серверы или подписки. Для работы нужна совместимая конфигурация или подписка от провайдера, которому вы доверяете.
 
 ## Загрузка
 
 | Платформа | Требования | Загрузка |
 | --- | --- | --- |
-| iOS | iOS 15.0 и выше, arm64 | [App Store](https://apps.apple.com/us/app/onexray/id6745748773), [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS (Mac App Store) | macOS 13.0 и выше, Apple silicon или Intel | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
-| macOS (вне App Store) | macOS 13.0 и выше, Apple silicon или Intel | Homebrew: `brew install --cask onexrayse`, [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
-| Android | Android 10.0 и выше, arm64-v8a или x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray), [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x86_64 | Windows 10 или Windows 11 | Microsoft Store |
-| Windows ARM64 | Windows 11 | Microsoft Store |
-| Linux x86_64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
-| Linux arm64 | GLIBC >= 2.39 | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb), [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| macOS | macOS 13+, Apple silicon или Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
+| macOS — OneXraySE | macOS 13+, Apple silicon или Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Телефоны / планшеты Android | Android 10+, arm64-v8a или x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Универсальный APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows | Windows 10 20H2+ (x64), Windows 11 (ARM64) | Microsoft Store |
+| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+
+Этот README описывает текущую кодовую базу. Версии в магазинах и опубликованных релизах могут отличаться. Особенности платформ приведены в [примечаниях по установке](#примечания-по-установке).
+
+## Возможности
+
+- **Выбирайте способ подключения.** Используйте автоматический выбор, подписку, расположение узлов или конкретный сервер. Следите за состоянием VPN, текущей скоростью загрузки и отправки и трафиком текущего подключения.
+- **Управляйте серверами.** Просматривайте узлы по подпискам или расположению, сравнивайте задержку и протоколы, редактируйте, отправляйте и удаляйте узлы и подписки. Импортируйте ссылки, узлы Xray JSON и поддерживаемые узлы Clash/Mihomo YAML из текста или файлов; на iOS и Android можно сканировать QR-коды.
+- **Начните с умной маршрутизации.** Выберите регион прямого подключения, оставьте локальные сети и выбранные сервисы вне VPN и при необходимости блокируйте известные рекламные домены. Автоматический выбор поддерживает 1–3 входных сервера с балансировкой нагрузки; для цепочки прокси можно задать конечный выходной сервер.
+- **Создавайте свои правила.** Пользовательская маршрутизация позволяет упорядочить условия по домену, IP, порту и типу сети и выбрать действие: напрямую, через VPN или блокировать. Для доменов и IP доступно автодополнение GeoData. Маршруты можно импортировать, экспортировать и отправлять независимо от выбранных серверов.
+- **Используйте полные конфигурации.** В экспертном режиме выбор обычных серверов заменяется выбором и редактором конфигураций Raw JSON. OneXray по-прежнему управляет туннелем, журналами, метриками и связанными параметрами запуска; см. [правила работы с конфигурациями](../docs/xray-configuration.md) (на китайском).
+- **Обновляйте и проверяйте настройки.** Обновляйте подписки и GeoData вручную или по расписанию, задавайте URL и тайм-аут проверки задержки, просматривайте итоговую конфигурацию Xray. Локальные журналы доступа и ошибок доступны во всех вариантах, кроме сборки macOS с System Extension.
+
+Подписки поддерживают **шифрование age**: укажите существующую пару ключей или создайте локально ключи X25519 / Hybrid (`ML-KEM-768 + X25519`). Источнику подписки отправляется только публичный ключ; закрытый ключ остаётся на устройстве. HTTPS обязателен. [Подробнее о подписках age](../docs/age-encrypted-subscriptions.md) (на китайском).
+
+## Скриншоты
+
+Реальные снимки работающего приложения на iOS, Android, macOS и Windows. Нажмите на изображение, чтобы открыть его в полном размере.
+
+<table>
+  <tr>
+    <th width="50%">iOS · Подключение</th>
+    <th width="50%">Android · Серверы</th>
+  </tr>
+  <tr>
+    <td align="center"><a href="./images/connect-ios.png"><img src="./images/connect-ios.png" width="320" alt="Подключение на iOS: выбор сервера и трафик текущего подключения"></a></td>
+    <td align="center"><a href="./images/servers-android.png"><img src="./images/servers-android.png" width="320" alt="Серверы на Android: группировка по подпискам и задержка"></a></td>
+  </tr>
+</table>
+
+### macOS · Умная маршрутизация
+
+![Умная маршрутизация на macOS: прямые подключения и предварительный просмотр правил](./images/smart-routing-macos.png)
+
+### Windows · Пользовательская маршрутизация
+
+![Пользовательская маршрутизация на Windows: импорт, отправка, число входных серверов и порядок правил](./images/custom-routing-windows.png)
+
+## Первое подключение
+
+1. Завершите первоначальную настройку и предоставьте запрошенные системные разрешения. На Windows и Linux также нужно явно выбрать исходящий сетевой интерфейс Xray.
+2. Выберите страну или регион для прямого подключения в умной маршрутизации и импортируйте серверы или подписку. Оба шага можно пропустить и выполнить позже.
+3. На странице подключения выберите серверы и способ обработки трафика, затем запустите VPN. Для начала подойдёт умная маршрутизация. Режим «Весь трафик через VPN» направляет трафик через выбранный сервер, а пользовательская маршрутизация использует ваши правила.
+
+Обычный импорт серверов извлекает только узлы, без маршрутизации и DNS из исходного файла. Полные конфигурации импортируйте через пользовательскую маршрутизацию или Raw JSON.
+
+## Возможности платформ
+
+| Платформа | Интеграция |
+| --- | --- |
+| iOS / macOS | Постоянное подключение и VPN по требованию; подключение или отключение в выбранных сетях Wi-Fi; отдельные настройки для сотовой сети (iOS) или Ethernet (macOS). |
+| Android | VPN для всех приложений, только для выбранных или для всех, кроме выбранных. Списки включения и исключения сохраняются отдельно. |
+| Windows / Linux | Явный выбор исходящего сетевого интерфейса Xray. |
+| Компьютеры | Управление из трея, запуск при входе в систему, скрытый запуск и автоматическое подключение при открытии приложения. |
+
+Светлая / тёмная тема и язык интерфейса по умолчанию следуют системным настройкам. Доступны английский, упрощённый и традиционный китайский, русский и персидский. Для персидского поддерживается интерфейс справа налево.
 
 ## Примечания по установке
 
-### macOS
+<details>
+<summary>macOS: Mac App Store или OneXraySE</summary>
 
-Версия Mac App Store является отдельным пакетом. Homebrew и Universal ZIP используют один Developer ID пакет `macos_se` и устанавливают `OneXraySE.app`.
+Версия из Mac App Store использует расширение Packet Tunnel. Отдельная версия **OneXraySE** использует System Extension и доступна через [Homebrew](https://formulae.brew.sh/cask/onexrayse):
 
 ```shell
 brew install --cask onexrayse
-brew uninstall --cask onexrayse
 ```
 
-#### Universal ZIP
+Для ZIP-версии распакуйте архив и переместите `OneXraySE.app` в `/Applications` перед запуском. Завершите первоначальную настройку и разрешите добавление VPN и сетевого расширения. В зависимости от версии macOS запрос может находиться в **Системные настройки → Основные → Объекты входа и расширения** или **Конфиденциальность и безопасность**. Перезапустите Mac, если система попросит. См. [руководство Apple по установке System Extension](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers).
 
-1. Скачайте и распакуйте `OneXray-macos-universal.zip`.
-2. Переместите `OneXraySE.app` в `/Applications` («Программы»). Не запускайте приложение непосредственно из папки «Загрузки» или другой папки: macOS требует, чтобы приложение с System Extension находилось в системном каталоге Applications.
-3. Откройте OneXraySE из папки «Программы» и подтвердите первый запуск в macOS.
+Чтобы обновить ZIP-версию, закройте OneXraySE, замените приложение в `/Applications` и откройте его снова. При необходимости разрешите обновление расширения.
 
-При первом подключении VPN:
+</details>
 
-1. Импортируйте подписку или узел, выберите узел и нажмите кнопку запуска.
-2. Откройте **Системные настройки > Основные > Объекты входа и расширения**.
-3. В разделе **Расширения** откройте **Сетевые расширения**, включите **OneXraySE** и нажмите **Готово**.
-4. Если в разделе **Конфиденциальность и безопасность** также отображается запрос, нажмите **Разрешить** и перезапустите Mac, если это потребуется.
-5. Вернитесь в OneXraySE и снова нажмите кнопку запуска.
+<details>
+<summary>iOS: установка IPA</summary>
 
-Для обновления ZIP-версии закройте OneXraySE, замените приложение в `/Applications` на новый распакованный `OneXraySE.app` и снова откройте его. Если macOS запросит подтверждение обновления System Extension, разрешите его.
+Проще всего установить приложение из App Store. Для IPA нужно повторно подписать приложение и расширение Packet Tunnel профилями, разрешающими Network Extension. Бесплатная Personal Team не предоставляет нужную возможность; требуется платное членство в Apple Developer Program. Успешный запуск приложения не означает, что его VPN-расширение получило разрешение. См. [поддерживаемые возможности Apple](https://developer.apple.com/help/account/reference/supported-capabilities-ios/).
 
-См. [Installing System Extensions and Drivers](https://developer.apple.com/documentation/systemextensions/installing-system-extensions-and-drivers) и [Change Login Items & Extensions settings](https://support.apple.com/guide/mac-help/change-login-items-extension-settings-mtusr003/mac).
+</details>
 
-### Windows
+<details>
+<summary>Windows: пакет Microsoft Store</summary>
 
-Microsoft Store выбирает пакет x86_64 или ARM64 для текущего устройства и
-устанавливает обновления. Упакованный VCore VPN Provider передает системный
-трафик во внутренний SOCKS5-вход на базе Xray-core; этот вход не публикуется
-как пользовательский прокси.
+Текущая реализация Windows использует MSIX-пакет с системным VPN-провайдером. Microsoft Store выбирает подходящий пакет x64 или ARM64 и устанавливает обновления. Старые отдельные сборки EXE / ZIP не являются источником обновления для этого пакета.
 
-### Android
+</details>
 
-Android поддерживает `arm64-v8a` и `x86_64`. 32-битные ARM-устройства не поддерживаются.
+<details>
+<summary>Linux: пакеты и разрешения</summary>
 
-### iOS
-
-Если App Store недоступен для вашего Apple ID, скачайте `OneXray-ios.ipa` и установите его через [AltStore](https://altstore.io/) или другой совместимый инструмент sideloading.
-
-Для самостоятельной установки IPA необходимо повторно подписать OneXray и расширение Packet Tunnel с помощью provisioning profile, разрешающего Network Extension capability. Apple не предоставляет эту возможность бесплатным учетным записям Personal Team, поэтому требуется платное членство в Apple Developer Program. Без него приложение может открываться и проверять задержку узлов, но VPN не запустится. См. [Apple Developer Forums](https://developer.apple.com/forums/thread/128767) и [Поддерживаемые возможности iOS](https://developer.apple.com/help/account/reference/supported-capabilities-ios/).
-
-### Linux
-
-Для DEB-пакета:
+На Debian / Ubuntu установите DEB для своей архитектуры. Пакет устанавливает зависимости, регистрирует ссылки OneXray и выдаёт необходимые сетевые разрешения:
 
 ```shell
 sudo apt install ./OneXray-linux-x86_64.deb
-sudo apt remove onexray
 ```
 
-Для ZIP-пакета выполните команды из каталога, содержащего `OneXray`:
+Для arm64 используйте `OneXray-linux-aarch64.deb`. Для ZIP-версии на Debian / Ubuntu выполните команды из каталога, содержащего распакованную папку `OneXray`:
 
 ```shell
 sudo apt install -y procps libcap2-bin libayatana-appindicator3-1
 sudo setcap cap_net_admin,cap_net_raw+eip OneXray/OneXrayCore
 ```
 
-Пользователям GNOME следует установить расширение [AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator). Linux arm64 в настоящее время использует английский язык для CJK locale.
+ZIP-сборки не регистрируют ссылки `onexray://` автоматически. Пользователям GNOME может потребоваться [расширение AppIndicator](https://github.com/ubuntu/gnome-shell-extension-appindicator) для управления из трея.
 
-## Участие
+</details>
 
-Вы можете помочь проекту:
+## Конфиденциальность
 
-1. Поставить этому репозиторию Star.
-2. Улучшить [документацию OneXray](https://github.com/OneXray/onexray.com).
+Без учётной записи, рекламы, аналитики, отслеживания, телеметрии и отправки отчётов о сбоях. OneXray не собирает ваш трафик, историю посещений, конфигурации или журналы подключений. Ваша конфигурация определяет, какие серверы и сервисы получают сетевые запросы. У источников подписок, DNS-серверов и других сторонних сервисов действуют собственные политики конфиденциальности. [Политика конфиденциальности](https://onexray.com/docs/privacy/).
 
-Перед локальной сборкой прочитайте [настройку среды разработки](./FIRST_RUN.ru.md).
+Передаваемые конфигурации, URL подписок и экспортированные журналы могут содержать учётные и другие конфиденциальные данные. Проверяйте содержимое перед отправкой.
+
+## Документация и участие
+
+- [Руководство пользователя](https://onexray.com) и [сообщество Telegram](https://t.me/OneXrayApp).
+- [Настройка среды разработки](./FIRST_RUN.ru.md) для локальной отладки; [скрипты сборки](../build_scripts/README.md) для создания пакетов.
+- [Текущие правила работы приложения](../docs/README.md) (на китайском), включая [импорт и ссылки OneXray](../docs/subscriptions-and-sharing.md).
+- [Сообщить об ошибке или предложить функцию](https://github.com/OneXray/OneXray/issues). Укажите платформу, версии приложения и Xray-core, шаги воспроизведения; не публикуйте конфиденциальные данные.
+
+Будем рады изменениям кода, переводам и [улучшениям документации](https://github.com/OneXray/onexray.com).
 
 ## Лицензия
 
-OneXray распространяется по лицензии [GNU General Public License v3.0](../LICENSE).
+[GNU General Public License v3.0](../LICENSE).

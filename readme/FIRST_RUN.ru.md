@@ -1,166 +1,183 @@
-# Настройка Debug-окружения
+# Локальная среда разработки
 
-Этот документ предназначен для разработчиков OneXray. Он описывает минимальную настройку **локального debug-окружения** и не покрывает release, публикацию в stores, подпись или fastlane publishing.
+[English](./FIRST_RUN.md) · [简体中文](./FIRST_RUN.zh_CN.md) · [Русский](./FIRST_RUN.ru.md)
 
-## 1. Инициализация проекта
+Подготовьте одну нужную платформу и запустите OneXray в режиме Flutter Debug. Это руководство не предназначено для выпуска или публикации приложения в магазинах.
 
-Репозиторий использует последний stable Flutter SDK. После клонирования сначала установите Flutter:
+## 1. Подготовьте инструменты
 
-```shell
-# macOS / Linux
-git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$HOME/flutter/stable"
-export PATH="$HOME/flutter/stable/bin:$PATH"
+Установите [Flutter stable](https://docs.flutter.dev/install) с Dart SDK, соответствующим [pubspec.yaml](../pubspec.yaml), Git, Python 3.12+, Go согласно `go.mod` в libXray и LLVM/libclang для [генерации FFI](https://pub.dev/packages/ffigen#requirements).
 
-# Windows
-git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "%USERPROFILE%\\flutter\\stable"
-setx PATH "%USERPROFILE%\\flutter\\stable\\bin;%PATH%"
-```
+| Целевая платформа | Система сборки и дополнительные инструменты |
+| --- | --- |
+| iOS / macOS | macOS, полная установка Xcode и нужные SDK; для отладки в симуляторе установите среду iOS Simulator. |
+| Android | Android SDK, JDK (CI использует 21) и версии SDK/NDK из [android/app/build.gradle.kts](../android/app/build.gradle.kts). Задайте `ANDROID_HOME` и `ANDROID_NDK_HOME` для каталогов SDK и NDK. |
+| Linux | Linux, GCC/G++, Clang/libclang, CMake, Ninja, pkg-config и зависимости GTK/плагинов из раздела ниже. |
+| Windows | Windows, инструменты Visual Studio C++, Windows SDK, LLVM/libclang, совместимые с MinGW `gcc.exe` / `g++.exe` нужной архитектуры, Rust и `uv`. См. [сборку Windows](../docs/windows-build.md) (на китайском). |
 
-Затем выполните в корне репозитория:
+Добавьте Flutter и инструменты Go в `PATH`. Сборка Android автоматически устанавливает `gomobile`; каталог установки (`GOBIN` или `GOPATH/bin`, если GOBIN не задан) тоже должен быть в `PATH`.
 
-```shell
-flutter pub get
-```
-
-## 2. Подготовка артефактов libXray
-
-Локальная отладка OneXray зависит от артефактов, собранных из соседнего репозитория `libXray`. Основные выходные файлы:
-
-- Apple: `LibXray.xcframework`
-- Android: `libXray.aar`, `libXray-sources.jar`
-- Linux: `linux_so/libXray.so` и `bin/xray`, скопированный как `OneXrayCore`
-- Windows: `windows_dll/libXray.dll` и `bin/xray.exe`, скопированный как `OneXrayCore.exe`
-
-Сначала соберите нужные targets в `libXray`. Стандартная сборка получает
-Xray-core из зависимостей Go-модуля libXray:
+Проверьте окружение до сборки:
 
 ```shell
-cd ../libXray
-python3 build/main.py apple go
-python3 build/main.py android
-python3 build/main.py linux
-python3 build/main.py windows
+flutter doctor -v
+go version
 ```
 
-Затем скопируйте артефакты в соответствующие каталоги OneXray.
+Все команды Flutter/Dart выполняйте последовательно, в том числе в разных терминалах. Перед генерацией, анализом или тестами остановите активный `flutter run`.
+
+## 2. Получите репозитории
+
+В выбранном рабочем каталоге выполните:
+
+```shell
+git clone https://github.com/OneXray/OneXray.git
+git clone https://github.com/XTLS/libXray.git
+cd OneXray
+```
+
+**Все дальнейшие команды выполняются из корня репозитория приложения OneXray**, рядом с `pubspec.yaml`. Уже имеющиеся репозитории повторно клонировать не нужно.
+
+```text
+workspace/
+├── OneXray/    # приложение Flutter; текущий каталог
+├── libXray/    # нативные библиотеки и GeoData
+└── VCore/      # только для Windows
+```
+
+Версии зависимостей должны соответствовать выбранной версии приложения; ссылки CI определены в [Build workflow](../.github/workflows/build.yml). Не используйте старые нативные библиотеки с новым API приложения. Для стандартной сборки libXray отдельный репозиторий Xray-core не нужен.
+
+## 3. Подготовьте нативные библиотеки и GeoData
+
+Выполните только раздел для своей платформы. Эти команды libXray получают зависимости Go и подготавливают `../libXray/dat/`; они не собирают и не публикуют приложение.
 
 ### iOS / macOS
 
-Apple-платформы используют общий `LibXray.xcframework`. Скопируйте его в `swift/All/`:
-
 ```shell
-cp -R ../libXray/LibXray.xcframework swift/All/
+python3 ../libXray/build/main.py apple go
+rsync -a --delete ../libXray/LibXray.xcframework/ swift/All/LibXray.xcframework/
 ```
 
-В `swift/All/` уже есть Swift integration files, такие как `BridgeHeader.h`; обычно здесь нужно обновлять только `LibXray.xcframework`.
+Обе платформы используют этот framework, включая варианты для симулятора. Синхронизация заменяет только сгенерированный framework; остальные файлы `swift/All/` сохраняются.
+
+Проекты Xcode используют [Swift Package Manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers). В репозитории нет Podfile: не запускайте `pod install` и не добавляйте Podfile при настройке. Flutter подготавливает пакет плагинов во время сборки Apple. Если SwiftPM ранее был отключён глобально, включите его командой `flutter config --enable-swift-package-manager`.
 
 ### Android
 
-Android использует `aar` и sources jar. Скопируйте их в `android/app/libs/`:
-
 ```shell
+python3 ../libXray/build/main.py android
 mkdir -p android/app/libs
-cp ../libXray/libXray.aar android/app/libs/
-cp ../libXray/libXray-sources.jar android/app/libs/
+cp ../libXray/libXray.aar ../libXray/libXray-sources.jar android/app/libs/
 ```
+
+Команды выше предназначены для оболочки macOS/Linux; в Windows используйте соответствующие команды Python и PowerShell. Приложение поддерживает arm64-v8a и x86_64, но не 32-битный ARM. Локальная Debug-сборка использует отладочный keystore; сервисный аккаунт Play и ключ загрузки не нужны.
 
 ### Linux
 
-`linux/app.cmake` линкует `libXray.so` из `linux/app/` и устанавливает
-`OneXrayCore` в итоговый bundle. Скопируйте оба артефакта libXray под именами,
-которые ожидает OneXray:
-
-```shell
-mkdir -p linux/app
-cp ../libXray/linux_so/libXray.so linux/app/
-cp ../libXray/bin/xray linux/app/OneXrayCore
-```
-
-### Windows
-
-`windows/app.cmake` устанавливает `libXray.dll` и `OneXrayCore.exe` из
-`windows/app/`. Скопируйте оба артефакта libXray под именами, которые ожидает
-OneXray:
-
-```shell
-mkdir -p windows/app
-cp ../libXray/windows_dll/libXray.dll windows/app/
-cp ../libXray/bin/xray.exe windows/app/OneXrayCore.exe
-```
-
-## 3. Запуск отладки
-
-Запустите нужную платформу:
-
-```shell
-flutter run -d android
-flutter run -d macos
-```
-
-Перед отладкой Linux установите локальные build dependencies:
+В Debian / Ubuntu установите зависимости сборки и выполнения:
 
 ```shell
 sudo apt-get update
-sudo apt-get install -y \
-  ninja-build clang cmake pkg-config \
-  libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev \
-  libayatana-appindicator3-dev \
-  file
-flutter run -d linux
+sudo apt-get install -y build-essential clang libclang-dev cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev libayatana-appindicator3-dev libcap2-bin procps file
+python3 ../libXray/build/main.py linux
+mkdir -p linux/app
+cp ../libXray/linux_so/libXray.so linux/app/
+cp ../libXray/bin/xray linux/app/OneXrayCore
+chmod +x linux/app/OneXrayCore
 ```
 
-Перед отладкой iOS установите CocoaPods dependencies:
+Архитектура нативных файлов должна совпадать с архитектурой приложения Flutter.
+
+### Windows
+
+Если VCore ещё не подготовлен, выполните из корня приложения:
+
+```powershell
+git clone https://github.com/OneXray/VCore.git ../VCore
+```
+
+Windows нужны `libXray.dll`, `OneXrayCore.exe` и три файла VCore: `vcore.dll`, `vcore-windows-vpn-host.exe` и `vcore-windows-session-host.exe`. Копирования только libXray недостаточно.
+
+Для рабочего окружения следуйте [инструкциям по локальной подписи](../docs/windows-build.md#本地签名包) (на китайском) и [сборке пакета Windows](../build_scripts/README.md#русский). Скрипт приложения собирает обе зависимости, проверяет и копирует соответствующие артефакты VCore, копирует GeoData и создаёт MSIX. Не ограничивайтесь командой `dart run msix:create`: она не выполняет интеграцию VCore в манифест приложения.
+
+VPN и проверки запуска требуют идентичности установленного пакета. Обычный `flutter run -d windows` без пакета не является полноценным окружением для проверки VPN. Если VCore находится вне рабочего каталога, задайте его путь через `VCORE_DIR`.
+
+### Скопируйте GeoData — обязательно при ручной сборке
+
+После сборки libXray скопируйте **весь** каталог данных, включая JSON-индексы и временную метку, а не только два файла `.dat`:
 
 ```shell
-cd ios
-pod install
-cd ..
-flutter run -d ios
+mkdir -p assets/dat
+cp -R ../libXray/dat/. assets/dat/
 ```
 
-## 4. Примечания к `.env`
+Эквивалент для PowerShell:
 
-Для локального debug `.env` обычно может оставаться пустым:
+```powershell
+New-Item -ItemType Directory -Force assets/dat | Out-Null
+Copy-Item ../libXray/dat/* assets/dat/ -Force
+```
 
-- Переменные `FASTLANE_*` нужны только для release flows и не требуются для debug.
+`assets/dat/` не отслеживается Git. Без этих файлов приложение из свежего клона не сможет подготовить стандартные данные маршрутизации. Скрипт упаковки приложения для Windows уже выполняет это копирование.
 
-`source .env` и `BUILD_NUMBER` нужны только при запуске packaging scripts из репозитория.
+## 4. Сгенерируйте локальные файлы Dart
 
-## 5. Файлы, связанные с `.gitignore`
+После подготовки нативных библиотек и GeoData:
 
-Следующие пути игнорируются в `.gitignore`. В **debug-окружении** их следует понимать так:
+```shell
+flutter pub get
+flutter gen-l10n
+dart run ffigen
+```
 
-| Путь | Роль в debug setup | Примечания |
-| ---- | ------------------ | ---------- |
-| `android/fastlane/playservice.json` | Не используется | Только для публикации в Play Store. |
-| `android/keystore/` | Не используется | Только для Android release signing; локальный debug использует debug keystore. |
-| `ios/fastlane/AuthKey.p8` | Не используется | Только для iOS release. |
-| `macos/fastlane/AuthKey.p8` | Не используется | Только для Mac App Store release. |
-| `macos_se/fastlane/AuthKey.p8` | Не используется | Только для macOS SE release / notarization. |
+Файлы локализации и `lib/core/ffi/generated_bindings.dart` не отслеживаются Git. Их нужно генерировать и для Apple/Android, поскольку общий код Dart импортирует FFI-привязки. Настройки FFI и пути к заголовкам уже есть в `pubspec.yaml`; если libclang не найден, проверьте установку LLVM и `llvm-path`.
 
-## 6. Файлы, часто используемые в debug
+Сгенерированные модели, код базы данных, ресурсов и Pigeon уже включены в репозиторий. Для первого запуска повторная генерация не нужна; после изменения исходников используйте команды ниже.
 
-В локальной разработке чаще всего используются эти файлы:
+## 5. Запустите отладку
 
-| Путь | Назначение |
-| ---- | ---------- |
-| `swift/All/LibXray.xcframework` | Apple-артефакт libXray для iOS / macOS. |
-| `android/app/libs/libXray.aar` | Android package libXray. |
-| `android/app/libs/libXray-sources.jar` | Соответствующий sources jar для Android. |
-| `linux/app/libXray.so` | Shared library, которую линкует Linux desktop app. |
-| `linux/app/OneXrayCore` | Core binary для Linux desktop app. |
-| `windows/app/libXray.dll` | Dynamic library, загружаемая Windows desktop app. |
-| `windows/app/OneXrayCore.exe` | Core binary для Windows desktop app. |
+Для Android или iOS Simulator запустите устройство, выведите список и замените `DEVICE_ID` его фактическим идентификатором:
 
-Репозиторий содержит остальные несекретные настройки по умолчанию для локальной отладки.
+```shell
+flutter devices
+flutter run -d DEVICE_ID
+```
 
-## 7. Минимальная настройка
+Для macOS:
 
-Для локальной разработки и breakpoint debugging минимальные шаги такие:
+```shell
+flutter run -d macos
+```
 
-1. Установить последний stable Flutter SDK и выполнить `flutter pub get`.
-2. Собрать `libXray` и скопировать его артефакты в соответствующие каталоги OneXray.
-3. Установить platform-specific dependencies, например `pod install` на Apple platforms и `libayatana-appindicator3-dev` на Linux.
-4. Запустить приложение через `flutter run -d <device>`.
+- **iOS Simulator:** Swift автоматически использует локальный SOCKS-вход и пропускает недоступную авторизацию VPN. Переключателя Proxy в приложении нет; такая проверка не подтверждает работу системного VPN.
+- **Подпись Apple:** для своей команды разработчиков согласуйте Bundle ID целей Runner/tunnel, разрешения App Group и [идентификаторы групп в Swift](../swift/All/Constants.swift). Реальным устройствам нужны действительная подпись для разработки и возможности Network Extension; настройки подписи владельца репозитория не подходят автоматически для вашего аккаунта.
+- **Linux:** сначала соберите Debug-пакет, выдайте сетевые возможности его Core-файлу, затем запустите. Пример для x64:
+  ```shell
+  flutter build linux --debug
+  sudo setcap cap_net_admin,cap_net_raw+eip build/linux/x64/debug/bundle/OneXrayCore
+  flutter run -d linux
+  ```
+  На ARM64 замените `x64` на `arm64`. Если повторная сборка заменяет Core-файл, выдайте возможности заново.
+- **Windows:** запустите установленный MSIX-пакет для разработки из раздела Windows выше.
 
-Файлы вроде `playservice.json`, `android/keystore/` и платформенных `AuthKey.p8` относятся к release workflow, а не к bootstrap debug-окружения.
+Завершите первоначальную настройку приложения и при необходимости импортируйте свои тестовые серверы. Требования по платформам описаны в [границах проверки](../docs/refactor-validation.md#平台边界) (на китайском).
+
+## 6. После изменения исходников
+
+| Изменённые файлы | Команда из корня приложения |
+| --- | --- |
+| Переводы ARB | `flutter gen-l10n` |
+| Модели JSON/Drift или объявленные ресурсы | `dart run build_runner build --delete-conflicting-outputs` |
+| `pigeon/message.dart` | `dart run pigeon --input pigeon/message.dart` |
+| Заголовки или настройки FFI | `dart run ffigen` |
+| libXray / нативные библиотеки | Пересоберите и замените соответствующие артефакты, остановите и запустите приложение заново; hot reload не заменяет нативные библиотеки. |
+
+Выбирайте проверки по объёму изменений: `flutter analyze`, нужные `flutter test` и `git diff --check`. Временные демонстрации и тестовые данные храните в `references/` рабочего каталога; не используйте основную базу данных разработчика.
+
+## Отладка — не публикация
+
+Обычный `flutter run` не требует `.env`, `BUILD_NUMBER`, данных Fastlane, ключей App Store Connect или аккаунта загрузки Play. Подпись для разработки Apple и подпись пакета Windows — отдельные требования.
+
+Не используйте `build_scripts/main.py` как универсальную команду отладки: цели Apple/Android могут загружать сборки в магазины, а `macos_se` заменяет локальный каталог `macos/`. Перед упаковкой прочитайте [документацию сборки](../build_scripts/README.md); не запускайте `build_scripts/setup_flutter.sh` для SDK, который хотите сохранить.
+
+[Вернуться к README](./README.ru.md)
