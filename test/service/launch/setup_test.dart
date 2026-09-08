@@ -6,11 +6,17 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/launch/setup.dart';
+import 'package:onexray/service/servers/subscription/model.dart';
+import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/ping/batch.dart';
+import 'package:onexray/service/shared/ping/service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -92,16 +98,156 @@ void main() {
     },
   );
 
-  test('confirmed region persists before progress; skip preserves configuration and Raw activation', () async {
+  test(
+    'subscription import allows Home before any speed test completes',
+    () async {
+      final bus = AppEventBus();
+      addTearDown(bus.close);
+      final started = Completer<void>();
+      final release = Completer<void>();
+      Future<void>? drained;
+      addTearDown(() async {
+        if (!release.isCompleted) release.complete();
+        await drained;
+      });
+      final ping = PingService.forTesting(
+        database: db,
+        automaticEnabled: false,
+        runBatch: (sources, _) async {
+          if (!started.isCompleted) started.complete();
+          await release.future;
+          return [for (final _ in sources) const PingBatchResult(true, 20, '')];
+        },
+      );
+      final subscriptions = SubscriptionService.forTesting(
+        database: db,
+        loadRows: (_) async => SubscriptionLoadResult(
+          status: SubscriptionUpdateResult.success,
+          rows: [
+            CoreConfigCompanion.insert(
+              name: 'Setup node',
+              type: 'outbound',
+              subId: 0,
+              tags: 'socks',
+              delay: PingDelayConstants.unknown,
+              data: Value(
+                base64Encode(
+                  utf8.encode(
+                    jsonEncode({
+                      'outbounds': [
+                        {'tag': 'Setup node', 'protocol': 'freedom'},
+                      ],
+                    }),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        schedulePing: ping.schedulePingSubscription,
+      );
+      await setup.acceptPrivacy();
+      await setup.continueSystem('');
+      await setup.continueRegion(null);
+      final ready = setup.watchHasServers().firstWhere(
+        (hasServers) => hasServers,
+      );
+      final imported = await subscriptions.insertSubscription(
+        const SubscriptionInput(
+          name: 'Setup',
+          url: 'https://example.com/setup',
+        ),
+      );
+      expect(imported.success, isTrue);
+      await ready;
+      await setup.finish().timeout(const Duration(seconds: 1));
+      expect(await setup.currentStep(), SetupStep.complete);
+      expect(started.isCompleted, isFalse);
+      expect(ping.isPinging, isFalse);
+      expect(await db.coreConfigDao.unmeasuredOutboundIds, hasLength(1));
+
+      drained = bus.stream
+          .skipWhile((state) => !state.pinging)
+          .firstWhere((state) => !state.pinging)
+          .then((_) {});
+      ping.startAutomatic();
+      await started.future.timeout(const Duration(seconds: 5));
+      expect(release.isCompleted, isFalse);
+      expect(await setup.currentStep(), SetupStep.complete);
+      release.complete();
+      await drained;
+      expect(await db.coreConfigDao.unmeasuredOutboundIds, isEmpty);
+    },
+  );
+
+  test('every platform uses the native permission result', () async {
+    for (final platform in ConnectionPlatform.values) {
+      for (final nativeState in [
+        PlatformPermissionState.denied,
+        PlatformPermissionState.notRequired,
+      ]) {
+        final calls = <bool>[];
+        final service = SetupService(
+          platform: platform,
+          permission: (request) async {
+            calls.add(request);
+            return PlatformPermissionResult(
+              kind: PlatformPermissionKind.appleVpn,
+              state: nativeState,
+            );
+          },
+        );
+        for (final request in [false, true]) {
+          final result = await service.checkPermission(request: request);
+          expect(result.state, nativeState);
+        }
+        expect(calls, [false, true]);
+      }
+    }
+  });
+
+  test('setup accepts a native simulator permission exemption', () async {
+    var queries = 0;
+    final service = SetupService(
+      database: db,
+      platform: ConnectionPlatform.ios,
+      prepareLocal: () async {},
+      permission: (request) async {
+        expect(request, isFalse);
+        queries++;
+        return PlatformPermissionResult(
+          kind: PlatformPermissionKind.appleVpn,
+          state: PlatformPermissionState.notRequired,
+        );
+      },
+      readRegionCodes: () async => ['CN', 'RU'],
+    );
+    await service.acceptPrivacy();
+    await service.continueSystem('');
+    expect(await service.currentStep(), SetupStep.region);
+    await service.continueRegion(null);
+    expect(await service.currentStep(), SetupStep.servers);
+    await service.finish();
+    expect(await service.currentStep(), SetupStep.complete);
+    expect(queries, 2);
+  });
+
+  test('confirmed regions persist before progress; skip preserves configuration and Raw activation', () async {
     await setup.acceptPrivacy();
     await setup.continueSystem('');
     final expert = ConnectionConfiguration(
       connection: ConnectionSettings(expert: true, rawId: 7),
     );
     await db.connectionConfigDao.commit(configurationJson: expert.encode());
-    await setup.continueRegion('RU');
+    await expectLater(
+      setup.continueRegion(['RU', 'UNKNOWN']),
+      throwsA(isA<SetupFailure>()),
+    );
+    expect(await setup.currentStep(), SetupStep.region);
+    expect((await setup.configuration()).encode(), expert.encode());
+    await setup.continueRegion(['RU', 'CN']);
     final saved = await setup.configuration();
-    expect(saved.connection.smart.directRegions, ['RU']);
+    expect(saved.connection.smart.directRegions, ['RU', 'CN']);
     expect(saved.connection.expert, isTrue);
     expect(saved.connection.rawId, 7);
     expect(await setup.currentStep(), SetupStep.servers);
@@ -109,10 +255,15 @@ void main() {
     await setup.continueRegion(null);
     expect(writes, previousWrites);
     expect((await setup.configuration()).encode(), saved.encode());
+    await setup.continueRegion([]);
+    final cleared = await setup.configuration();
+    expect(cleared.connection.smart.directRegions, isEmpty);
+    expect(cleared.connection.expert, isTrue);
+    expect(cleared.connection.rawId, 7);
     expect(await preferences.readFirstRun(), isTrue);
     await setup.finish();
     expect(await setup.currentStep(), SetupStep.complete);
-    expect((await setup.configuration()).encode(), saved.encode());
+    expect((await setup.configuration()).encode(), cleared.encode());
   });
 
   test(
@@ -130,7 +281,7 @@ void main() {
           ),
         );
       }
-      expect(await setup.hasServers(), isFalse);
+      expect(await setup.watchHasServers().first, isFalse);
       await db.coreConfigDao.insertRow(
         CoreConfigCompanion.insert(
           name: 'Unmeasured server',
@@ -143,7 +294,7 @@ void main() {
           ),
         ),
       );
-      expect(await setup.hasServers(), isTrue);
+      expect(await setup.watchHasServers().first, isTrue);
     },
   );
 
@@ -163,7 +314,7 @@ void main() {
 
       await direct.acceptPrivacy();
       await direct.continueSystem('');
-      await direct.continueRegion('RU');
+      await direct.continueRegion(['RU']);
 
       expect((await direct.configuration()).connection.smart.directRegions, [
         'RU',

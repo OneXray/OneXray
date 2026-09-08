@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/service/event_bus/enum.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/service/shared/event_bus/enum.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 
 class LanguagePageState {
@@ -44,8 +44,12 @@ class LanguageController extends PageCubit<LanguagePageState> {
     emit(state.copyWith(saving: true));
     try {
       await AppEventBus.instance.updateLanguageCode(state.languageCode);
-      if (context.mounted && ModalRoute.of(context)?.isCurrent == true) {
-        context.pop();
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.prototypeSettingsSaved,
+        );
+        if (ModalRoute.of(context)?.isCurrent == true) context.pop();
       }
     } catch (_) {
       if (context.mounted) {

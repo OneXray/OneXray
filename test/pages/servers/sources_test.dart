@@ -1,13 +1,15 @@
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/sources.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/service/connect/coordinator.dart';
 
 const _open = Key('open-sources');
 final _source = SubscriptionData(
@@ -15,8 +17,6 @@ final _source = SubscriptionData(
   name: 'Example subscription',
   url: 'https://example.test/subscription',
   timestamp: DateTime(2026, 9, 1, 9, 42),
-  count: 99,
-  expanded: true,
 );
 
 CoreConfigData _server(int id, {int source = 0}) => CoreConfigData(
@@ -55,6 +55,10 @@ String _label(AppLocalizations l, SourceAction action) => switch (action) {
 };
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   late AppDatabase db;
   late ConnectionCoordinator coordinator;
   late _Controller controller;
@@ -80,7 +84,7 @@ void main() {
       MaterialApp(
         theme: AppTheme.material(Brightness.light, mobile: true),
         locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: AppLocalePolicy.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Builder(
@@ -120,6 +124,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'manual additions stay first and disappear with the last local node',
+    (tester) async {
+      controller.sources = [_source];
+      controller.servers = [_server(1, source: 7), _server(2)];
+      await pumpSources(tester);
+      final l = AppLocalizations.of(
+        tester.element(find.byType(ServerSourcesDialog)),
+      )!;
+      expect(
+        tester.getTopLeft(find.text(l.prototypeManualAdditions)).dy,
+        lessThan(tester.getTopLeft(find.text(_source.name)).dy),
+      );
+
+      controller.servers = [_server(1, source: 7)];
+      await tester.pumpAndSettle();
+      expect(find.text(l.prototypeManualAdditions), findsNothing);
+      expect(find.text(_source.name), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('menu replaces sources and closing ends the flow', (
     tester,
   ) async {
@@ -143,7 +169,6 @@ void main() {
     expect(find.byType(ServerSourcesDialog), findsNothing);
     expect(find.byType(SourceActionsMenu), findsOneWidget);
     expect(find.text(l.prototypeServerCount(2)), findsOneWidget);
-    expect(find.text(l.prototypeServerCount(99)), findsNothing);
     await tester.tap(find.byTooltip(l.prototypeCloseDialog));
     await tester.pumpAndSettle();
     expect(find.byType(ServerSourcesDialog), findsNothing);
@@ -196,13 +221,10 @@ void main() {
         MaterialApp(
           theme: AppTheme.material(Brightness.light, mobile: false),
           locale: const Locale('en'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: const Scaffold(
-            body: SourceUpdateErrorDialog(
-              sourceName: 'Example subscription',
-              failedCount: 3,
-            ),
+            body: SourceUpdateErrorDialog(sourceName: 'Example subscription'),
           ),
         ),
       );
@@ -216,8 +238,6 @@ void main() {
         find.text(l.prototypeSubscriptionExistingNodesKept),
         findsOneWidget,
       );
-      expect(find.text(l.prototypeUsableNodes(0)), findsOneWidget);
-      expect(find.text(l.prototypeUnrecognizedNodes(3)), findsOneWidget);
       expect(find.text(l.prototypeDone), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

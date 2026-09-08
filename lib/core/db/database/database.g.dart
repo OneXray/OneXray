@@ -617,29 +617,6 @@ class $SubscriptionTable extends Subscription
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _countMeta = const VerificationMeta('count');
-  @override
-  late final GeneratedColumn<int> count = GeneratedColumn<int>(
-    'count',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _expandedMeta = const VerificationMeta(
-    'expanded',
-  );
-  @override
-  late final GeneratedColumn<bool> expanded = GeneratedColumn<bool>(
-    'expanded',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("expanded" IN (0, 1))',
-    ),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -648,8 +625,6 @@ class $SubscriptionTable extends Subscription
     ageSecretKey,
     agePublicKey,
     timestamp,
-    count,
-    expanded,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -708,22 +683,6 @@ class $SubscriptionTable extends Subscription
     } else if (isInserting) {
       context.missing(_timestampMeta);
     }
-    if (data.containsKey('count')) {
-      context.handle(
-        _countMeta,
-        count.isAcceptableOrUnknown(data['count']!, _countMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_countMeta);
-    }
-    if (data.containsKey('expanded')) {
-      context.handle(
-        _expandedMeta,
-        expanded.isAcceptableOrUnknown(data['expanded']!, _expandedMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_expandedMeta);
-    }
     return context;
   }
 
@@ -757,14 +716,6 @@ class $SubscriptionTable extends Subscription
         DriftSqlType.dateTime,
         data['${effectivePrefix}timestamp'],
       )!,
-      count: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}count'],
-      )!,
-      expanded: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}expanded'],
-      )!,
     );
   }
 
@@ -782,8 +733,6 @@ class SubscriptionData extends DataClass
   final String? ageSecretKey;
   final String? agePublicKey;
   final DateTime timestamp;
-  final int count;
-  final bool expanded;
   const SubscriptionData({
     required this.id,
     required this.name,
@@ -791,8 +740,6 @@ class SubscriptionData extends DataClass
     this.ageSecretKey,
     this.agePublicKey,
     required this.timestamp,
-    required this.count,
-    required this.expanded,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -807,8 +754,6 @@ class SubscriptionData extends DataClass
       map['age_public_key'] = Variable<String>(agePublicKey);
     }
     map['timestamp'] = Variable<DateTime>(timestamp);
-    map['count'] = Variable<int>(count);
-    map['expanded'] = Variable<bool>(expanded);
     return map;
   }
 
@@ -824,8 +769,6 @@ class SubscriptionData extends DataClass
           ? const Value.absent()
           : Value(agePublicKey),
       timestamp: Value(timestamp),
-      count: Value(count),
-      expanded: Value(expanded),
     );
   }
 
@@ -841,8 +784,6 @@ class SubscriptionData extends DataClass
       ageSecretKey: serializer.fromJson<String?>(json['ageSecretKey']),
       agePublicKey: serializer.fromJson<String?>(json['agePublicKey']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
-      count: serializer.fromJson<int>(json['count']),
-      expanded: serializer.fromJson<bool>(json['expanded']),
     );
   }
   @override
@@ -855,8 +796,6 @@ class SubscriptionData extends DataClass
       'ageSecretKey': serializer.toJson<String?>(ageSecretKey),
       'agePublicKey': serializer.toJson<String?>(agePublicKey),
       'timestamp': serializer.toJson<DateTime>(timestamp),
-      'count': serializer.toJson<int>(count),
-      'expanded': serializer.toJson<bool>(expanded),
     };
   }
 
@@ -867,8 +806,6 @@ class SubscriptionData extends DataClass
     Value<String?> ageSecretKey = const Value.absent(),
     Value<String?> agePublicKey = const Value.absent(),
     DateTime? timestamp,
-    int? count,
-    bool? expanded,
   }) => SubscriptionData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -876,8 +813,6 @@ class SubscriptionData extends DataClass
     ageSecretKey: ageSecretKey.present ? ageSecretKey.value : this.ageSecretKey,
     agePublicKey: agePublicKey.present ? agePublicKey.value : this.agePublicKey,
     timestamp: timestamp ?? this.timestamp,
-    count: count ?? this.count,
-    expanded: expanded ?? this.expanded,
   );
   SubscriptionData copyWithCompanion(SubscriptionCompanion data) {
     return SubscriptionData(
@@ -891,8 +826,6 @@ class SubscriptionData extends DataClass
           ? data.agePublicKey.value
           : this.agePublicKey,
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
-      count: data.count.present ? data.count.value : this.count,
-      expanded: data.expanded.present ? data.expanded.value : this.expanded,
     );
   }
 
@@ -904,24 +837,14 @@ class SubscriptionData extends DataClass
           ..write('url: $url, ')
           ..write('ageSecretKey: $ageSecretKey, ')
           ..write('agePublicKey: $agePublicKey, ')
-          ..write('timestamp: $timestamp, ')
-          ..write('count: $count, ')
-          ..write('expanded: $expanded')
+          ..write('timestamp: $timestamp')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    url,
-    ageSecretKey,
-    agePublicKey,
-    timestamp,
-    count,
-    expanded,
-  );
+  int get hashCode =>
+      Object.hash(id, name, url, ageSecretKey, agePublicKey, timestamp);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -931,9 +854,7 @@ class SubscriptionData extends DataClass
           other.url == this.url &&
           other.ageSecretKey == this.ageSecretKey &&
           other.agePublicKey == this.agePublicKey &&
-          other.timestamp == this.timestamp &&
-          other.count == this.count &&
-          other.expanded == this.expanded);
+          other.timestamp == this.timestamp);
 }
 
 class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
@@ -943,8 +864,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
   final Value<String?> ageSecretKey;
   final Value<String?> agePublicKey;
   final Value<DateTime> timestamp;
-  final Value<int> count;
-  final Value<bool> expanded;
   const SubscriptionCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -952,8 +871,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.ageSecretKey = const Value.absent(),
     this.agePublicKey = const Value.absent(),
     this.timestamp = const Value.absent(),
-    this.count = const Value.absent(),
-    this.expanded = const Value.absent(),
   });
   SubscriptionCompanion.insert({
     this.id = const Value.absent(),
@@ -962,13 +879,9 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.ageSecretKey = const Value.absent(),
     this.agePublicKey = const Value.absent(),
     required DateTime timestamp,
-    required int count,
-    required bool expanded,
   }) : name = Value(name),
        url = Value(url),
-       timestamp = Value(timestamp),
-       count = Value(count),
-       expanded = Value(expanded);
+       timestamp = Value(timestamp);
   static Insertable<SubscriptionData> custom({
     Expression<int>? id,
     Expression<String>? name,
@@ -976,8 +889,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Expression<String>? ageSecretKey,
     Expression<String>? agePublicKey,
     Expression<DateTime>? timestamp,
-    Expression<int>? count,
-    Expression<bool>? expanded,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -986,8 +897,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       if (ageSecretKey != null) 'age_secret_key': ageSecretKey,
       if (agePublicKey != null) 'age_public_key': agePublicKey,
       if (timestamp != null) 'timestamp': timestamp,
-      if (count != null) 'count': count,
-      if (expanded != null) 'expanded': expanded,
     });
   }
 
@@ -998,8 +907,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Value<String?>? ageSecretKey,
     Value<String?>? agePublicKey,
     Value<DateTime>? timestamp,
-    Value<int>? count,
-    Value<bool>? expanded,
   }) {
     return SubscriptionCompanion(
       id: id ?? this.id,
@@ -1008,8 +915,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       ageSecretKey: ageSecretKey ?? this.ageSecretKey,
       agePublicKey: agePublicKey ?? this.agePublicKey,
       timestamp: timestamp ?? this.timestamp,
-      count: count ?? this.count,
-      expanded: expanded ?? this.expanded,
     );
   }
 
@@ -1034,12 +939,6 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     if (timestamp.present) {
       map['timestamp'] = Variable<DateTime>(timestamp.value);
     }
-    if (count.present) {
-      map['count'] = Variable<int>(count.value);
-    }
-    if (expanded.present) {
-      map['expanded'] = Variable<bool>(expanded.value);
-    }
     return map;
   }
 
@@ -1051,9 +950,7 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
           ..write('url: $url, ')
           ..write('ageSecretKey: $ageSecretKey, ')
           ..write('agePublicKey: $agePublicKey, ')
-          ..write('timestamp: $timestamp, ')
-          ..write('count: $count, ')
-          ..write('expanded: $expanded')
+          ..write('timestamp: $timestamp')
           ..write(')'))
         .toString();
   }
@@ -2282,8 +2179,6 @@ typedef $$SubscriptionTableCreateCompanionBuilder =
       Value<String?> ageSecretKey,
       Value<String?> agePublicKey,
       required DateTime timestamp,
-      required int count,
-      required bool expanded,
     });
 typedef $$SubscriptionTableUpdateCompanionBuilder =
     SubscriptionCompanion Function({
@@ -2293,8 +2188,6 @@ typedef $$SubscriptionTableUpdateCompanionBuilder =
       Value<String?> ageSecretKey,
       Value<String?> agePublicKey,
       Value<DateTime> timestamp,
-      Value<int> count,
-      Value<bool> expanded,
     });
 
 class $$SubscriptionTableFilterComposer
@@ -2333,16 +2226,6 @@ class $$SubscriptionTableFilterComposer
 
   ColumnFilters<DateTime> get timestamp => $composableBuilder(
     column: $table.timestamp,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get count => $composableBuilder(
-    column: $table.count,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get expanded => $composableBuilder(
-    column: $table.expanded,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2385,16 +2268,6 @@ class $$SubscriptionTableOrderingComposer
     column: $table.timestamp,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<int> get count => $composableBuilder(
-    column: $table.count,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get expanded => $composableBuilder(
-    column: $table.expanded,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$SubscriptionTableAnnotationComposer
@@ -2427,12 +2300,6 @@ class $$SubscriptionTableAnnotationComposer
 
   GeneratedColumn<DateTime> get timestamp =>
       $composableBuilder(column: $table.timestamp, builder: (column) => column);
-
-  GeneratedColumn<int> get count =>
-      $composableBuilder(column: $table.count, builder: (column) => column);
-
-  GeneratedColumn<bool> get expanded =>
-      $composableBuilder(column: $table.expanded, builder: (column) => column);
 }
 
 class $$SubscriptionTableTableManager
@@ -2472,8 +2339,6 @@ class $$SubscriptionTableTableManager
                 Value<String?> ageSecretKey = const Value.absent(),
                 Value<String?> agePublicKey = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
-                Value<int> count = const Value.absent(),
-                Value<bool> expanded = const Value.absent(),
               }) => SubscriptionCompanion(
                 id: id,
                 name: name,
@@ -2481,8 +2346,6 @@ class $$SubscriptionTableTableManager
                 ageSecretKey: ageSecretKey,
                 agePublicKey: agePublicKey,
                 timestamp: timestamp,
-                count: count,
-                expanded: expanded,
               ),
           createCompanionCallback:
               ({
@@ -2492,8 +2355,6 @@ class $$SubscriptionTableTableManager
                 Value<String?> ageSecretKey = const Value.absent(),
                 Value<String?> agePublicKey = const Value.absent(),
                 required DateTime timestamp,
-                required int count,
-                required bool expanded,
               }) => SubscriptionCompanion.insert(
                 id: id,
                 name: name,
@@ -2501,8 +2362,6 @@ class $$SubscriptionTableTableManager
                 ageSecretKey: ageSecretKey,
                 agePublicKey: agePublicKey,
                 timestamp: timestamp,
-                count: count,
-                expanded: expanded,
               ),
           withReferenceMapper: (p0) => p0
               .map(

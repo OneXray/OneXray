@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -6,10 +6,10 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/page_empty_state.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/pages/shared/widgets/responsive_content.dart';
+import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/connect/coordinator.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class ConnectView extends StatelessWidget {
@@ -34,7 +34,6 @@ class ConnectView extends StatelessWidget {
     required this.onServer,
     required this.onMethod,
     required this.onWhy,
-    required this.onTraffic,
     required this.onRawAdd,
     required this.onRawSelect,
     required this.onRawActions,
@@ -55,7 +54,6 @@ class ConnectView extends StatelessWidget {
       onServer,
       onMethod,
       onWhy,
-      onTraffic,
       onRawAdd;
   final ValueChanged<bool> onExpert;
   final ValueChanged<CoreConfigData> onRawSelect, onRawActions;
@@ -118,7 +116,7 @@ class ConnectView extends StatelessWidget {
                                 _choice(
                                   context,
                                   LucideIcons.earth,
-                                  l.prototypeConnectionLocation,
+                                  l.prototypeServers,
                                   location,
                                   onServer,
                                   detail: locationDetail ?? runningPath,
@@ -151,30 +149,18 @@ class ConnectView extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(13, 15, 13, 1),
                 child: Column(
                   children: [
-                    InkWell(
-                      onTap: onTraffic,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 29),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                l.prototypeTraffic,
-                                style: AppTypography.connectTrafficTitle,
-                              ),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 29),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l.prototypeTraffic,
+                              style: AppTypography.connectTrafficTitle,
                             ),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 3),
-                              child: Icon(
-                                LucideIcons.chevronRightDir,
-                                size: 17,
-                                color: ColorManager.palette(context)
-                                    .mutedForeground,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const Divider(),
@@ -219,7 +205,7 @@ class ConnectView extends StatelessWidget {
                   _desktopChoice(
                     context,
                     LucideIcons.earth,
-                    l.prototypeConnectionLocation,
+                    l.prototypeServers,
                     location,
                     onServer,
                     detail: locationDetail ?? runningPath,
@@ -252,32 +238,21 @@ class ConnectView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            InkWell(
-              onTap: onTraffic,
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 48),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: palette.border)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l.prototypeTraffic,
-                        style: AppTypography.connectDesktopTrafficTitle,
-                      ),
+            Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: palette.border)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.prototypeTraffic,
+                      style: AppTypography.connectDesktopTrafficTitle,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Icon(
-                        LucideIcons.chevronRightDir,
-                        size: 17,
-                        color: palette.mutedForeground,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             TrafficReadout(view: view, desktop: true),
@@ -537,7 +512,7 @@ class ConnectView extends StatelessWidget {
       ConnectionPhase.disconnecting => l.prototypeDisconnecting,
       ConnectionPhase.failed => l.prototypeConnectionFailed,
     };
-    final startedAt = view.traffic?.startedAtMs;
+    final startedAt = view.runtime?.startedAt.millisecondsSinceEpoch;
     final elapsed = startedAt == null
         ? 0
         : DateTime.now()
@@ -1090,14 +1065,8 @@ class ConnectView extends StatelessWidget {
 }
 
 class TrafficReadout extends StatelessWidget {
-  const TrafficReadout({
-    super.key,
-    required this.view,
-    this.expandedGroups = false,
-    this.desktop = false,
-  });
+  const TrafficReadout({super.key, required this.view, this.desktop = false});
   final ConnectionView view;
-  final bool expandedGroups;
   final bool desktop;
   @override
   Widget build(BuildContext context) {
@@ -1117,17 +1086,9 @@ class TrafficReadout extends StatelessWidget {
         ),
         _group(
           context,
-          view.phase == ConnectionPhase.connected
-              ? l.prototypeThisConnection
-              : l.prototypeLastConnection,
+          l.prototypeThisConnection,
           formatTraffic(traffic?.downlink ?? 0, connection: true),
           formatTraffic(traffic?.uplink ?? 0, connection: true),
-        ),
-        _group(
-          context,
-          l.prototypeTotalTraffic,
-          formatTraffic(traffic?.totalDownlink ?? 0, connection: true),
-          formatTraffic(traffic?.totalUplink ?? 0, connection: true),
           divider: false,
         ),
       ],
@@ -1147,8 +1108,6 @@ class TrafficReadout extends StatelessWidget {
       constraints: BoxConstraints(
         minHeight: desktop
             ? AppLayout.connectDesktopTrafficGroupMinHeight
-            : expandedGroups
-            ? 130
             : AppLayout.connectTrafficGroupMinHeight,
       ),
       padding: EdgeInsets.symmetric(vertical: desktop ? 22 : 10.5),
@@ -1221,45 +1180,38 @@ class TrafficReadout extends StatelessWidget {
     label: '$label $value',
     excludeSemantics: true,
     child: Padding(
-      padding: desktop
-          ? const EdgeInsetsDirectional.fromSTEB(40, 0, 18, 0)
-          : const EdgeInsetsDirectional.fromSTEB(12, 0, 8, 0),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.controlHorizontal,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsetsDirectional.only(
-              start: desktop ? 30 : 24,
-              bottom: desktop ? 10 : 5,
-            ),
-            child: Text(
-              label,
-              style:
-                  (desktop
-                          ? AppTypography.connectDesktopTrafficLabel
-                          : AppTypography.connectTrafficLabel)
-                      .copyWith(
-                        color: ColorManager.palette(context).mutedStrong,
-                      ),
-            ),
-          ),
           Row(
             children: [
               Icon(icon, size: desktop ? 24 : 19, color: color),
-              SizedBox(width: desktop ? 13 : 7),
-              Flexible(
+              const SizedBox(width: AppSpacing.actionRunGap),
+              Expanded(
                 child: Text(
-                  value,
-                  textDirection: TextDirection.ltr,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: desktop
-                      ? AppTypography.metric
-                      : AppTypography.connectTrafficValue,
+                  label,
+                  style:
+                      (desktop
+                              ? AppTypography.connectDesktopTrafficLabel
+                              : AppTypography.connectTrafficLabel)
+                          .copyWith(
+                            color: ColorManager.palette(context).mutedStrong,
+                          ),
                 ),
               ),
             ],
+          ),
+          SizedBox(height: desktop ? 10 : 5),
+          Text(
+            value,
+            textDirection: TextDirection.ltr,
+            style: desktop
+                ? AppTypography.metric
+                : AppTypography.connectTrafficValue,
           ),
         ],
       ),

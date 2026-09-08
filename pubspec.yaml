@@ -13,6 +13,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  material_ui: ^1.1.1
+
   #---------- flutter.dev plugin
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
@@ -57,7 +59,6 @@ dependencies:
   image: ^4.9.2
   zxing2: ^0.2.4
   # export
-  archive: ^4.2.0
   # state management
   flutter_bloc: ^9.1.1
   shadcn_ui: ^0.56.2

@@ -3,17 +3,17 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
 import 'package:onexray/pages/servers/controller.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/routing/custom_service.dart';
-import 'package:onexray/service/xray/outbound/state_db.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/routing/custom/service.dart';
+import 'package:onexray/service/servers/outbound/state_db.dart';
 
 void main() {
   late AppDatabase db;
@@ -83,10 +83,16 @@ void main() {
   );
 
   test('location/source grouping shares rows; searching never changes connection settings', () async {
+    expect(ServerGrouping.values, [
+      ServerGrouping.subscription,
+      ServerGrouping.location,
+    ]);
+    expect(controller.grouping, ServerGrouping.subscription);
     final one = await server('Tokyo', source: 4, favorite: true);
     final two = await server('Osaka', source: 4);
     controller.servers = [one, two];
     final before = controller.configuration.encode();
+    controller.groupBy(ServerGrouping.location);
     expect(controller.groups(l).single.rows, [one, two]);
     controller.search.text = 'Tokyo';
     expect(controller.groups(l).single.visibleRows, [one]);
@@ -98,6 +104,57 @@ void main() {
     expect(controller.protocol(one), 'VLESS | XHTTP | TLS');
   });
 
+  test(
+    'subscription groups use numeric ID order with local nodes first',
+    () async {
+      final newer = (await server('Newer', source: 10)).copyWith(delay: 10);
+      final olderFast = (await server(
+        'Older fast',
+        source: 2,
+      )).copyWith(delay: 20);
+      final olderSlow = (await server(
+        'Older slow',
+        source: 2,
+      )).copyWith(delay: 50);
+      final local = (await server('Local')).copyWith(delay: 100);
+      controller.servers = [newer, olderFast, olderSlow, local];
+      controller.sources = [
+        SubscriptionData(
+          id: 10,
+          name: 'A newer source',
+          url: 'https://example.test/newer',
+          timestamp: DateTime(2026, 9, 8),
+        ),
+        SubscriptionData(
+          id: 2,
+          name: 'Z older source',
+          url: 'https://example.test/older',
+          timestamp: DateTime(2026, 9, 8),
+        ),
+      ];
+
+      final groups = controller.groups(l);
+      expect(groups.map((group) => group.selection.id), [0, 2, 10]);
+      expect(groups.first.name, l.prototypeManualAdditions);
+      expect(groups[1].rows, [olderFast, olderSlow]);
+
+      controller.servers = [local, olderFast, olderSlow, newer];
+      expect(controller.groups(l).map((group) => group.selection.id), [
+        0,
+        2,
+        10,
+      ]);
+      controller.search.text = 'source';
+      expect(controller.groups(l).map((group) => group.selection.id), [2, 10]);
+      controller.search.clear();
+
+      controller.servers = [newer, olderFast, olderSlow];
+      expect(controller.groups(l).map((group) => group.selection.id), [2, 10]);
+      controller.servers = [];
+      expect(controller.groups(l), isEmpty);
+    },
+  );
+
   test('subscription grouping omits sources without nodes', () async {
     final one = await server('Tokyo', source: 4);
     controller.servers = [one];
@@ -107,16 +164,12 @@ void main() {
         name: 'Used source',
         url: 'https://example.test/used',
         timestamp: DateTime(2026, 9, 4),
-        count: 1,
-        expanded: true,
       ),
       SubscriptionData(
         id: 5,
         name: 'Empty source',
         url: 'https://example.test/empty',
         timestamp: DateTime(2026, 9, 4),
-        count: 0,
-        expanded: true,
       ),
     ];
 
@@ -155,6 +208,24 @@ void main() {
     );
   });
 
+  test(
+    'group summary counts eligible nodes and keeps the fastest zero delay',
+    () async {
+      final row = await server('one');
+      controller.servers = [
+        row.copyWith(delay: 500),
+        row.copyWith(delay: PingDelayConstants.unknown),
+        row.copyWith(delay: PingDelayConstants.error),
+        row.copyWith(delay: 0),
+        row.copyWith(delay: 20),
+      ];
+      expect(
+        controller.summary(l, controller.groups(l).single),
+        l.prototypeGroupAvailability(4, 5, 0),
+      );
+    },
+  );
+
   test('Use N follows normal route and excludes final exit, not the current fixed selection', () async {
     final one = await server('one');
     final two = await server('two');
@@ -189,9 +260,14 @@ void main() {
     final row = await server('one');
     for (final (delay, label, selectable) in [
       (PingDelayConstants.unknown, l.prototypeNotTested, true),
-      (0, l.prototypeAvailableLatency(0), true),
+      (0, l.prototypeFastLatency(0), true),
       (-1, l.prototypeTemporarilyUnavailable, false),
-      (320, l.prototypeSlowLatency(320), true),
+      (499, l.prototypeFastLatency(499), true),
+      (500, l.prototypeFastLatency(500), true),
+      (501, l.prototypeSlowLatency(501), true),
+      (999, l.prototypeSlowLatency(999), true),
+      (1000, l.prototypeSlowLatency(1000), true),
+      (1001, l.prototypeAvailableLatency(1001), true),
       (PingDelayConstants.error, l.prototypeTemporarilyUnavailable, false),
       (PingDelayConstants.timeout, l.prototypeTemporarilyUnavailable, false),
     ]) {
@@ -201,7 +277,7 @@ void main() {
       controller.servers = [candidate];
       expect(
         controller.automaticResult(l),
-        delay == 0 || delay == 320
+        PingDelayConstants.isSuccessful(delay)
             ? l.prototypeCurrentServerLatency('one', delay)
             : isNull,
       );

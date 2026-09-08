@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
-import 'package:onexray/service/app_update/service.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
 
 abstract final class AppDialogRoutePath {
   static const appUpdate = "/app-update";
@@ -53,7 +53,6 @@ enum AppSecondaryDestination {
   configFileViewer("config-file-viewer"),
   autoUpdate("auto-update"),
   desktopSettings("desktop-settings"),
-  backup("backup"),
   appIcon("app-icon"),
   theme("theme"),
   language("language"),

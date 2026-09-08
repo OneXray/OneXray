@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/connect/settings.dart';
 
 Future<T?> showConnectDialog<T>(BuildContext context, WidgetBuilder builder) =>
     showAppDialog<T>(context, builder);

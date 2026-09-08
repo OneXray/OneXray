@@ -1,20 +1,26 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/launch/setup/controller.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/launch/setup/view.dart';
+import 'package:onexray/pages/connect/routing/smart/regions.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/connection/platform_policy.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/launch/setup.dart';
-import 'package:onexray/service/tun_settings/interface.dart';
+import 'package:onexray/service/advanced/tunnel/interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -22,6 +28,10 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() {
     SharedPreferencesAsyncPlatform.instance =
@@ -29,7 +39,7 @@ void main() {
   });
 
   test(
-    'privacy and permission stay explicit, then ready steps advance',
+    'privacy, permission and ready steps require explicit actions',
     () async {
       final service = _SetupService();
       final controller = SetupController(service: service);
@@ -43,27 +53,44 @@ void main() {
       service.granted = true;
       await controller.requestPermission();
       expect(service.permissionRequests, 1);
+      expect(controller.state.step, SetupStep.system);
+      expect(service.savedRegion, isNull);
+      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await _idle(controller);
+      expect(controller.state.step, SetupStep.system);
+      await controller.continueSystem();
+      expect(controller.state.step, SetupStep.region);
+      expect(controller.state.regions, ['RU']);
+      expect(service.savedRegion, isNull);
+      await controller.continueRegion();
       expect(controller.state.step, SetupStep.servers);
-      expect(service.savedRegion, 'RU');
+      expect(service.savedRegion, ['RU']);
       expect(service.finishes, 0);
     },
   );
 
-  test(
-    'ready startup finishes automatically when servers already exist',
-    () async {
-      final service = _SetupService()
-        ..step = SetupStep.system
-        ..granted = true
-        ..hasNodes = true;
-      final controller = SetupController(service: service);
-      addTearDown(controller.close);
-      await _idle(controller);
-      expect(controller.state.step, SetupStep.complete);
-      expect(service.finishes, 1);
-      expect(service.permissionRequests, 0);
-    },
-  );
+  test('ready startup and existing servers never skip setup steps', () async {
+    final service = _SetupService()
+      ..step = SetupStep.system
+      ..granted = true
+      ..hasNodes = true;
+    final controller = SetupController(service: service);
+    addTearDown(controller.close);
+    await _idle(controller);
+    expect(controller.state.step, SetupStep.system);
+    expect(service.finishes, 0);
+    await controller.continueSystem();
+    expect(controller.state.step, SetupStep.region);
+    expect(service.savedRegion, isNull);
+    await controller.continueRegion();
+    expect(controller.state.step, SetupStep.servers);
+    expect(controller.state.hasServers, isTrue);
+    expect(service.finishes, 0);
+    await controller.finish();
+    expect(controller.state.step, SetupStep.complete);
+    expect(service.finishes, 1);
+    expect(service.permissionRequests, 0);
+  });
 
   test(
     'unrecognized region never uses default CN; Skip stays available',
@@ -75,8 +102,12 @@ void main() {
       final controller = SetupController(service: service);
       addTearDown(controller.close);
       await _idle(controller);
+      await controller.continueSystem();
       expect(controller.state.step, SetupStep.region);
-      expect(controller.state.region, isEmpty);
+      expect(controller.state.regions, isNull);
+      expect(service.savedRegion, isNull);
+      await controller.continueRegion();
+      expect(controller.state.step, SetupStep.region);
       expect(service.savedRegion, isNull);
       await controller.skipRegion();
       expect(controller.state.step, SetupStep.servers);
@@ -87,23 +118,42 @@ void main() {
   );
 
   test(
-    'local failures and denied permission stop automatic progress',
+    'nodes added outside setup update readiness without finishing',
     () async {
       final service = _SetupService()
-        ..step = SetupStep.system
-        ..localFailure = true;
+        ..step = SetupStep.servers
+        ..granted = true;
       final controller = SetupController(service: service);
       addTearDown(controller.close);
       await _idle(controller);
-      expect(controller.state.failure?.component, 'local');
-      expect(controller.state.step, SetupStep.system);
-      service.localFailure = false;
-      await controller.requestPermission();
-      expect(controller.state.failure?.component, 'permission');
-      expect(controller.state.step, SetupStep.system);
+      expect(controller.state.step, SetupStep.servers);
+      final ready = controller.stream.firstWhere(
+        (state) => state.hasServers && !state.busy,
+      );
+      service.hasNodes = true;
+      await ready;
+      expect(controller.state.step, SetupStep.servers);
       expect(service.finishes, 0);
+      await controller.finish();
+      expect(service.finishes, 1);
     },
   );
+
+  test('local failures and denied permission keep the required step', () async {
+    final service = _SetupService()
+      ..step = SetupStep.system
+      ..localFailure = true;
+    final controller = SetupController(service: service);
+    addTearDown(controller.close);
+    await _idle(controller);
+    expect(controller.state.failure?.component, 'local');
+    expect(controller.state.step, SetupStep.system);
+    service.localFailure = false;
+    await controller.requestPermission();
+    expect(controller.state.failure?.component, 'permission');
+    expect(controller.state.step, SetupStep.system);
+    expect(service.finishes, 0);
+  });
 
   test(
     'revoked permission stays on System even when progress was saved later',
@@ -117,6 +167,15 @@ void main() {
       expect(controller.state.step, SetupStep.system);
       expect(service.savedRegion, isNull);
       expect(service.finishes, 0);
+      service.granted = true;
+      await controller.requestPermission();
+      expect(controller.state.step, SetupStep.system);
+      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await _idle(controller);
+      expect(controller.state.step, SetupStep.system);
+      await controller.continueSystem();
+      expect(controller.state.step, SetupStep.region);
+      expect(service.savedRegion, isNull);
     },
   );
 
@@ -129,7 +188,7 @@ void main() {
   ]) {
     final interface = platform != ConnectionPlatform.ios;
     testWidgets(
-      'selecting ${interface ? 'interface' : 'region'} on ${platform.name} advances without confirmation'
+      'selecting ${interface ? 'interface' : 'region'} on ${platform.name} waits for Continue'
       ' (saved interface: "$savedInterface")',
       (tester) async {
         tester.view.physicalSize = const Size(1160, 800);
@@ -144,6 +203,10 @@ void main() {
         final controller = SetupController(service: service);
         addTearDown(controller.close);
         await _idle(controller);
+        expect(controller.state.step, SetupStep.system);
+        if (!interface || savedInterface.isNotEmpty) {
+          await controller.continueSystem();
+        }
         expect(
           controller.state.step,
           interface ? SetupStep.system : SetupStep.region,
@@ -181,6 +244,34 @@ void main() {
                   (route) =>
                       route.path == '/setup/interface' ||
                       route.path == '/setup/region',
+                )
+                .map(
+                  (route) => route.path == '/setup/region'
+                      ? GoRoute(
+                          path: route.path,
+                          redirect: route.redirect,
+                          builder: (context, state) {
+                            final page = route.builder!(
+                              context,
+                              state,
+                            ) as DirectRegionsPage;
+                            return DirectRegionsPage(
+                              selectedCodes: page.selectedCodes,
+                              loadRegions: () async => RegionCatalog.fromJson(
+                                {
+                                  'geosite': <String, dynamic>{},
+                                  'geoip': {
+                                    for (final code in ['CN', 'RU', 'US'])
+                                      code: [code],
+                                  },
+                                },
+                                geositeCodes: [],
+                                geoipCodes: ['CN', 'RU', 'US'],
+                              ),
+                            );
+                          },
+                        )
+                      : route,
                 ),
           ],
         );
@@ -191,7 +282,7 @@ void main() {
             theme: AppTheme.light,
             locale: const Locale('en'),
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: AppLocalePolicy.localizationsDelegates,
             builder: (_, child) =>
                 ShadTheme(data: AppTheme.shad(Brightness.light), child: child!),
           ),
@@ -199,7 +290,7 @@ void main() {
         await tester.pumpAndSettle();
         if (savedInterface.isNotEmpty) {
           expect(find.text(savedInterface), findsOneWidget);
-          expect(find.byType(FilledButton), findsNothing);
+          expect(find.text('Continue'), findsOneWidget);
         }
         await tester.tap(
           find
@@ -212,24 +303,52 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(
-          find.byType(interface ? SetupInterfacePage : SetupRegionPage),
+          find.byType(interface ? SetupInterfacePage : DirectRegionsPage),
           findsOneWidget,
         );
-        expect(find.text('Done'), findsNothing);
+        expect(find.text('Done'), interface ? findsNothing : findsOneWidget);
         await tester.tap(find.text(interface ? 'Ethernet' : 'Russia').last);
         await tester.pumpAndSettle();
-        expect(find.byType(SetupRegionPage), findsNothing);
+        if (!interface) {
+          expect(find.byType(DirectRegionsPage), findsOneWidget);
+          expect(controller.state.regions, isNull);
+          await tester.tap(find.text('Mainland China'));
+          await tester.tap(find.text('Done'));
+          await tester.pumpAndSettle();
+          expect(controller.state.regions, ['CN']);
+        }
+        expect(find.byType(DirectRegionsPage), findsNothing);
         expect(find.byType(SetupInterfacePage), findsNothing);
-        expect(controller.state.step, SetupStep.servers);
+        expect(
+          controller.state.step,
+          interface ? SetupStep.system : SetupStep.region,
+        );
         expect(controller.state.failure, isNull);
-        expect(service.savedRegion, 'RU');
+        expect(service.savedRegion, isNull);
+        if (interface) {
+          expect(service.savedInterface, savedInterface);
+          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+          await _idle(controller);
+          await tester.pumpAndSettle();
+          expect(controller.state.step, SetupStep.system);
+          expect(controller.state.interfaceName, 'Ethernet');
+          await tester.tap(find.text('Continue'));
+          await tester.pumpAndSettle();
+          expect(controller.state.step, SetupStep.region);
+          expect(service.savedInterface, 'Ethernet');
+          expect(service.savedRegion, isNull);
+        }
+        await tester.tap(find.text('Continue'));
+        await tester.pumpAndSettle();
+        expect(controller.state.step, SetupStep.servers);
+        expect(service.savedRegion, interface ? ['RU'] : ['CN']);
         if (interface) expect(service.savedInterface, 'Ethernet');
         expect(tester.takeException(), isNull);
       },
     );
   }
 
-  testWidgets('cancelled import stays; available nodes finish immediately', (
+  testWidgets('cancelled and successful imports stay until explicit finish', (
     tester,
   ) async {
     final service = _SetupService()
@@ -249,6 +368,10 @@ void main() {
     await controller.addServers(context, ServerImportAction.file, (_, _) async {
       service.hasNodes = true;
     });
+    expect(controller.state.step, SetupStep.servers);
+    expect(controller.state.hasServers, isTrue);
+    expect(service.finishes, 0);
+    await controller.finish();
     expect(controller.state.step, SetupStep.complete);
     expect(service.finishes, 1);
   });
@@ -262,13 +385,21 @@ Future<void> _idle(SetupController controller) async {
 
 // Controller checks only. Real persistence and preflight are covered by setup_test.
 class _SetupService extends SetupService {
-  _SetupService({super.platform = ConnectionPlatform.ios});
+  _SetupService({super.platform = ConnectionPlatform.ios}) {
+    addTearDown(_nodes.close);
+  }
   SetupStep step = SetupStep.welcome;
   bool granted = false;
   bool localFailure = false;
-  bool hasNodes = false;
+  final _nodes = StreamController<bool>.broadcast(sync: true);
+  bool _hasNodes = false;
+  set hasNodes(bool value) {
+    _hasNodes = value;
+    _nodes.add(value);
+  }
+
   String? suggestedRegion = 'RU';
-  String? savedRegion;
+  List<String>? savedRegion;
   String? savedInterface;
   int permissionRequests = 0;
   int finishes = 0;
@@ -324,13 +455,17 @@ class _SetupService extends SetupService {
   @override
   Future<String?> suggestRegion() async => suggestedRegion;
   @override
-  Future<void> continueRegion(String? region) async {
-    savedRegion = region;
+  Future<void> continueRegion(List<String>? regions) async {
+    savedRegion = regions;
     step = SetupStep.servers;
   }
 
   @override
-  Future<bool> hasServers() async => hasNodes;
+  Stream<bool> watchHasServers() {
+    scheduleMicrotask(() => _nodes.add(_hasNodes));
+    return _nodes.stream;
+  }
+
   @override
   Future<void> finish() async {
     finishes++;

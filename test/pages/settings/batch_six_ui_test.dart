@@ -1,28 +1,33 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/settings/app_update/dialog.dart';
+import 'package:onexray/pages/settings/app_update/controller.dart';
 import 'package:onexray/pages/settings/desktop/controller.dart';
 import 'package:onexray/pages/settings/desktop/page.dart';
 import 'package:onexray/pages/settings/theme/page.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/app_update/service.dart';
-import 'package:onexray/service/event_bus/enum.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
+import 'package:onexray/service/shared/event_bus/enum.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
   Widget app(Widget child) {
     return MaterialApp(
       theme: AppTheme.light,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: AppLocalePolicy.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, appChild) => ShadTheme(
         data: ShadThemeData(
           colorScheme: const ShadBlueColorScheme.light(),
           radius: const BorderRadius.all(Radius.circular(8)),
         ),
-        child: appChild ?? const SizedBox.shrink(),
+        child: ShadToaster(child: appChild ?? const SizedBox.shrink()),
       ),
       home: Scaffold(body: SafeArea(child: child)),
     );
@@ -142,6 +147,57 @@ void main() {
     expect(find.text('Skip this version'), findsOneWidget);
     expect(find.text('Go to update'), findsOneWidget);
     expect(find.byType(Scrollable), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('failed update launch reports back after the dialog closes', (
+    tester,
+  ) async {
+    final launched = Completer<bool>();
+    const channel = MethodChannel('plugins.flutter.io/url_launcher');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (_) => launched.future);
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final controller = AppUpdateDialogController(
+      AppUpdateInfo(
+        currentVersion: '1.0.0',
+        latestVersion: '2.0.0',
+        releaseNotes: '',
+        releaseUri: Uri.parse('https://example.com/release'),
+        updateUri: Uri.parse('https://example.com/update'),
+        destination: AppUpdateDestination.githubRelease,
+      ),
+    );
+    addTearDown(controller.close);
+    await tester.pumpWidget(
+      app(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (context) => AlertDialog(
+                actions: [
+                  TextButton(
+                    onPressed: () => controller.update(context),
+                    child: const Text('Update'),
+                  ),
+                ],
+              ),
+            ),
+            child: const Text('Show update'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Show update'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Update'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    launched.complete(false);
+    await tester.pumpAndSettle();
+    final l = AppLocalizations.of(tester.element(find.text('Show update')))!;
+    expect(find.text(l.prototypeTemporarilyUnavailable), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

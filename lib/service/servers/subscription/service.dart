@@ -1,0 +1,508 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart';
+import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/db/database/enum.dart';
+import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/network/model.dart';
+import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/core/tools/logger.dart';
+import 'package:onexray/service/advanced/xray/data_update/state.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/db/config_writer.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/in_flight_operations.dart';
+import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/shared/share/xray_share_reader.dart';
+import 'package:onexray/service/servers/subscription/model.dart';
+
+final class SubscriptionLoadResult {
+  const SubscriptionLoadResult({required this.status, this.rows = const []});
+
+  final SubscriptionUpdateResult status;
+  final List<CoreConfigCompanion> rows;
+
+  bool get hasUsableRows =>
+      status == SubscriptionUpdateResult.success &&
+      rows.isNotEmpty &&
+      rows.every(
+        (row) =>
+            row.type.present && row.type.value == CoreConfigType.outbound.name,
+      );
+}
+
+typedef SubscriptionReferenceReader =
+    FutureOr<SubscriptionNodeReferences> Function();
+
+final class _SupersededSubscriptionUpdate implements Exception {
+  const _SupersededSubscriptionUpdate();
+}
+
+class SubscriptionService {
+  static final SubscriptionService _singleton = SubscriptionService._internal();
+
+  factory SubscriptionService() => _singleton;
+
+  SubscriptionService._internal()
+    : _databaseOverride = null,
+      _loadRowsOverride = null,
+      _pingOverride = null {
+    referenceReader = _storedReferences;
+  }
+
+  @visibleForTesting
+  SubscriptionService.forTesting({
+    required AppDatabase database,
+    required Future<SubscriptionLoadResult> Function(SubscriptionInput)
+    loadRows,
+    required void Function(int) schedulePing,
+    SubscriptionReferenceReader? readReferences,
+  }) : _databaseOverride = database,
+       _loadRowsOverride = loadRows,
+       _pingOverride = schedulePing {
+    referenceReader = readReferences ?? _storedReferences;
+  }
+
+  final AppDatabase? _databaseOverride;
+  final Future<SubscriptionLoadResult> Function(SubscriptionInput)?
+  _loadRowsOverride;
+  final void Function(int)? _pingOverride;
+  final _generations = <int, int>{};
+  final _refreshes = <int, Future<SubscriptionRefreshResult>>{};
+  var _nextGeneration = 0;
+  final _downloads = InFlightOperations();
+
+  Future<void> pauseForDataClear() => _downloads.pause();
+
+  void resumeAfterDataClear() => _downloads.resume();
+
+  /// The database protects persisted selections before connection initialization.
+  /// The coordinator replaces this reader to also protect live/prepared nodes.
+  /// Favorites are checked in the same database transaction as replacement.
+  late SubscriptionReferenceReader referenceReader;
+
+  AppDatabase get _database => _databaseOverride ?? AppDatabase();
+
+  Future<SubscriptionNodeReferences> _storedReferences() async {
+    final value = jsonDecode(
+      (await _database.connectionConfigDao.read()).configurationJson,
+    ) as Map<String, dynamic>;
+    final settings = ConnectionSettings.fromJson(
+      value['connection'] as Map<String, dynamic>? ?? {},
+    );
+    return SubscriptionNodeReferences(
+      fixedId: settings.selection.kind == SelectionKind.server
+          ? settings.selection.id
+          : null,
+      finalExitId: settings.smart.finalExitId,
+    );
+  }
+
+  void _schedulePing(int subId) {
+    final schedule = _pingOverride;
+    if (_downloads.isPaused) return;
+    if (schedule != null) {
+      schedule(subId);
+    } else {
+      PingService().schedulePingSubscription(subId);
+    }
+  }
+
+  int _beginUpdate(int subId) {
+    final generation = ++_nextGeneration;
+    _generations[subId] = generation;
+    return generation;
+  }
+
+  void _ensureCurrent(int subId, int generation) {
+    if (_generations[subId] != generation) {
+      throw const _SupersededSubscriptionUpdate();
+    }
+  }
+
+  void _finishUpdate(int subId, int generation) {
+    if (_generations[subId] == generation) {
+      _generations.remove(subId);
+    }
+  }
+
+  Future<SubscriptionInsertResult> insertSubscription(
+    SubscriptionInput input,
+  ) => _downloads.track(() => _insertAndProbeSubscription(input));
+
+  Future<SubscriptionInsertResult> _insertAndProbeSubscription(
+    SubscriptionInput input,
+  ) async {
+    final result = await _insertSubscription(input);
+
+    if (result.success) {
+      _schedulePing(result.subId);
+    }
+
+    return result;
+  }
+
+  Future<SubscriptionInsertResult> _insertSubscription(
+    SubscriptionInput input,
+  ) async {
+    try {
+      final loaded = await _loadRows(input);
+      if (!loaded.hasUsableRows) {
+        return SubscriptionInsertResult(
+          status: loaded.status == SubscriptionUpdateResult.success
+              ? SubscriptionUpdateResult.invalidContent
+              : loaded.status,
+        );
+      }
+      final rows = loaded.rows;
+      final db = _database;
+      return await db.transaction(() async {
+        final row = SubscriptionCompanion.insert(
+          name: input.name,
+          url: input.url,
+          ageSecretKey: Value(input.normalizedAgeSecretKey),
+          agePublicKey: Value(input.normalizedAgePublicKey),
+          timestamp: DateTime.now(),
+        );
+        final nextSubId = await db.subscriptionDao.insertRow(row);
+        if (nextSubId <= DBConstants.defaultId) {
+          throw StateError('insert subscription failed');
+        }
+        final count = await ConfigWriter.writeRowsBatchInTransaction(
+          db,
+          rows,
+          nextSubId,
+        );
+        if (count != rows.length) {
+          throw StateError('insert subscription configs failed');
+        }
+        return SubscriptionInsertResult(
+          status: SubscriptionUpdateResult.success,
+          subId: nextSubId,
+          count: count,
+        );
+      });
+    } catch (error, stackTrace) {
+      ygLogger(
+        'insert subscription failed (${error.runtimeType})\n$stackTrace',
+      );
+      return const SubscriptionInsertResult(
+        status: SubscriptionUpdateResult.writeFailed,
+      );
+    }
+  }
+
+  /// Editing a source changes future downloads, not its current node assets.
+  Future<SubscriptionUpdateResult> saveSubscriptionInput(
+    int id,
+    SubscriptionInput input,
+  ) async {
+    final uri = Uri.tryParse(input.url);
+    if (input.name.trim().isEmpty ||
+        uri == null ||
+        !NetClient.isHttpsDownloadUri(uri)) {
+      return SubscriptionUpdateResult.invalidContent;
+    }
+    if (input.hasIncompleteAgeKeyPair) {
+      return SubscriptionUpdateResult.invalidAgeSecretKey;
+    }
+    _refreshes.remove(id);
+    final generation = _beginUpdate(id);
+    try {
+      return await _database.transaction(() async {
+        final row = await _database.subscriptionDao.searchRow(id);
+        _ensureCurrent(id, generation);
+        if (row == null) return SubscriptionUpdateResult.notFound;
+        if (await _database.subscriptionDao.urlExists(
+          input.url,
+          excludingId: id,
+        )) {
+          return SubscriptionUpdateResult.invalidContent;
+        }
+        final updated = await _database.subscriptionDao.updateRow(
+          row.copyWith(
+            name: input.name,
+            url: input.url,
+            ageSecretKey: Value(input.normalizedAgeSecretKey),
+            agePublicKey: Value(input.normalizedAgePublicKey),
+          ),
+        );
+        _ensureCurrent(id, generation);
+        return updated
+            ? SubscriptionUpdateResult.success
+            : SubscriptionUpdateResult.writeFailed;
+      });
+    } catch (_) {
+      return SubscriptionUpdateResult.writeFailed;
+    } finally {
+      _finishUpdate(id, generation);
+    }
+  }
+
+  /// The connection layer must confirm deletion and resolve affected running or
+  /// persisted references before approving this destructive operation.
+  Future<int> deleteSubscription(
+    int id, {
+    required Future<bool> Function(SubscriptionData) prepareDeletion,
+  }) async {
+    final db = _database;
+    final source = await db.subscriptionDao.searchRow(id);
+    if (source == null || !await prepareDeletion(source)) {
+      return 0;
+    }
+    _refreshes.remove(id);
+    final generation = _beginUpdate(id);
+    try {
+      return await db.transaction(() async {
+        _ensureCurrent(id, generation);
+        final current = await db.subscriptionDao.searchRow(id);
+        if (current != source) {
+          throw const _SupersededSubscriptionUpdate();
+        }
+        final deleted = await db.subscriptionDao.deleteRow(id);
+        _ensureCurrent(id, generation);
+        return deleted;
+      });
+    } on _SupersededSubscriptionUpdate {
+      return 0;
+    } finally {
+      _finishUpdate(id, generation);
+    }
+  }
+
+  Future<int> refreshSubscription(SubscriptionData subscription) async {
+    final result = await refreshSubscriptionResult(subscription);
+    return result.success ? result.count : 0;
+  }
+
+  /// Prefer this result for reporting: an obsolete request is not a zero-node
+  /// success, and unavailable parse statistics remain null.
+  Future<SubscriptionRefreshResult> refreshSubscriptionResult(
+    SubscriptionData subscription,
+  ) => _downloads.track(() => _refreshSubscriptionResult(subscription));
+
+  Future<SubscriptionRefreshResult> _refreshSubscriptionResult(
+    SubscriptionData subscription,
+  ) {
+    final pending = _refreshes[subscription.id];
+    if (pending != null) {
+      return pending;
+    }
+    if (_generations.containsKey(subscription.id)) {
+      // A background refresh must not cancel an in-flight user edit/deletion.
+      return Future.value(
+        const SubscriptionRefreshResult(
+          status: SubscriptionUpdateResult.writeFailed,
+          superseded: true,
+        ),
+      );
+    }
+    final generation = _beginUpdate(subscription.id);
+    late final Future<SubscriptionRefreshResult> task;
+    task = _refreshSubscription(subscription.id, generation).whenComplete(() {
+      if (identical(_refreshes[subscription.id], task)) {
+        _refreshes.remove(subscription.id);
+      }
+      _finishUpdate(subscription.id, generation);
+    });
+    _refreshes[subscription.id] = task;
+    return task;
+  }
+
+  Future<SubscriptionRefreshResult> _refreshSubscription(
+    int id,
+    int generation,
+  ) async {
+    try {
+      final subscription = await _database.subscriptionDao.searchRow(id);
+      _ensureCurrent(id, generation);
+      if (subscription == null) {
+        return const SubscriptionRefreshResult(
+          status: SubscriptionUpdateResult.notFound,
+        );
+      }
+      final loaded = await _loadRows(
+        SubscriptionInput(
+          name: subscription.name,
+          url: subscription.url,
+          ageSecretKey: subscription.ageSecretKey,
+          agePublicKey: subscription.agePublicKey,
+        ),
+      );
+      _ensureCurrent(id, generation);
+      if (!loaded.hasUsableRows) {
+        return SubscriptionRefreshResult(
+          status: loaded.status == SubscriptionUpdateResult.success
+              ? SubscriptionUpdateResult.invalidContent
+              : loaded.status,
+        );
+      }
+      final result = await _replaceSubscription(
+        subscription,
+        loaded,
+        generation,
+      );
+      if (result.success) {
+        _schedulePing(id);
+      }
+      return result;
+    } on _SupersededSubscriptionUpdate {
+      return const SubscriptionRefreshResult(
+        status: SubscriptionUpdateResult.writeFailed,
+        superseded: true,
+      );
+    } catch (error, stackTrace) {
+      ygLogger(
+        'refresh subscription failed (${error.runtimeType})\n$stackTrace',
+      );
+      return const SubscriptionRefreshResult(
+        status: SubscriptionUpdateResult.writeFailed,
+      );
+    }
+  }
+
+  Future<SubscriptionRefreshResult> _replaceSubscription(
+    SubscriptionData expected,
+    SubscriptionLoadResult loaded,
+    int generation,
+  ) {
+    final db = _database;
+    return db.transaction(() async {
+      _ensureCurrent(expected.id, generation);
+      final current = await db.subscriptionDao.searchRow(expected.id);
+      if (current == null) {
+        return const SubscriptionRefreshResult(
+          status: SubscriptionUpdateResult.notFound,
+        );
+      }
+      if (!_sameSource(current, expected)) {
+        throw const _SupersededSubscriptionUpdate();
+      }
+      final references = await referenceReader();
+      _ensureCurrent(expected.id, generation);
+      await db.subscriptionDao.deleteConfigs(
+        current.id,
+        protectedIds: references.protectedIds,
+      );
+      final count = await ConfigWriter.writeRowsBatchInTransaction(
+        db,
+        loaded.rows,
+        current.id,
+      );
+      if (count != loaded.rows.length) {
+        throw StateError('replace subscription configs failed');
+      }
+      final updated = current.copyWith(timestamp: DateTime.now());
+      _ensureCurrent(expected.id, generation);
+      if (!await db.subscriptionDao.updateRow(updated)) {
+        throw StateError('update subscription failed');
+      }
+      _ensureCurrent(expected.id, generation);
+      return SubscriptionRefreshResult(
+        status: SubscriptionUpdateResult.success,
+        count: count,
+      );
+    });
+  }
+
+  static bool _sameSource(
+    SubscriptionData current,
+    SubscriptionData expected,
+  ) =>
+      current.url == expected.url &&
+      current.ageSecretKey == expected.ageSecretKey &&
+      current.agePublicKey == expected.agePublicKey;
+
+  Future<SubscriptionLoadResult> _loadRows(SubscriptionInput input) =>
+      AppEventBus.instance.trackDownload(() => _readSubscription(input));
+
+  Future<SubscriptionLoadResult> _readSubscription(
+    SubscriptionInput input,
+  ) async {
+    if (input.hasIncompleteAgeKeyPair) {
+      return const SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.invalidAgeSecretKey,
+      );
+    }
+    final loadRows = _loadRowsOverride;
+    if (loadRows != null) {
+      return loadRows(input);
+    }
+    final ageContext = input.normalizedAgeContext;
+
+    final text = await NetClient().getText(
+      input.url,
+      httpsOnly: true,
+      requestHeaders: DownloadRequestHeaders(
+        agePublicKey: ageContext?.publicKey,
+      ),
+    );
+    if (text == null) {
+      return const SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.downloadFailed,
+      );
+    }
+
+    try {
+      final rows = await XrayShareReader().parseShareText(
+        text,
+        ageSecretKey: ageContext?.secretKey,
+      );
+      return SubscriptionLoadResult(
+        status: rows.isEmpty
+            ? SubscriptionUpdateResult.invalidContent
+            : SubscriptionUpdateResult.success,
+        rows: rows,
+      );
+    } on LibXrayInvokeException catch (error) {
+      return SubscriptionLoadResult(status: _ageErrorStatus(error.message));
+    } catch (error, stackTrace) {
+      ygLogger('parse subscription failed (${error.runtimeType})\n$stackTrace');
+      return const SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.invalidContent,
+      );
+    }
+  }
+
+  SubscriptionUpdateResult _ageErrorStatus(String error) {
+    return switch (error) {
+      LibXrayErrorMessage.invalidAgeSecretKey =>
+        SubscriptionUpdateResult.invalidAgeSecretKey,
+      LibXrayErrorMessage.missingAgeSecretKey =>
+        SubscriptionUpdateResult.missingAgeSecretKey,
+      LibXrayErrorMessage.ageDecryptFailed ||
+      LibXrayErrorMessage.malformedAgeArmor =>
+        SubscriptionUpdateResult.decryptFailed,
+      LibXrayErrorMessage.agePlaintextTooLarge =>
+        SubscriptionUpdateResult.contentTooLarge,
+      LibXrayErrorMessage.agePlaintextUnsupported =>
+        SubscriptionUpdateResult.invalidContent,
+      _ => SubscriptionUpdateResult.invalidContent,
+    };
+  }
+
+  Future<void> refreshOutdatedSubscription({
+    AutoUpdateState? autoUpdateState,
+    bool Function()? isCancelled,
+  }) async {
+    final updateState = autoUpdateState ?? AutoUpdateState();
+    if (autoUpdateState == null) {
+      await updateState.readFromPreferences();
+    }
+    if (!updateState.subscriptionEnabled) {
+      return;
+    }
+    final interval = updateState.subscriptionInterval.value;
+    final subs = await _database.subscriptionDao.allRows;
+    final now = DateTime.now();
+    for (final sub in subs) {
+      if (_downloads.isPaused || (isCancelled?.call() ?? false)) break;
+      if (now.difference(sub.timestamp).inHours >= interval) {
+        await refreshSubscriptionResult(sub);
+      }
+    }
+  }
+}

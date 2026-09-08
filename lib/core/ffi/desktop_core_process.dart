@@ -12,13 +12,11 @@ part 'desktop_core_process.g.dart';
 class DesktopCoreProcessRecord {
   final int pid;
   final String? configPath;
-  final String? runtimePath;
   final int? startTicks;
 
   const DesktopCoreProcessRecord({
     required this.pid,
     this.configPath,
-    this.runtimePath,
     this.startTicks,
   });
 

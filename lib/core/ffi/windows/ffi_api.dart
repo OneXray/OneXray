@@ -72,8 +72,7 @@ class WindowsFfiApi extends BaseFfiApi {
             arguments: desktopCoreRunArguments(
               dns: networkSettings.dnsIpv4Address,
               interfaceName: request.tun?.autoOutboundsInterface ?? '',
-              configPath: coreConfig.configPath,
-              runtimePath: coreConfig.runtimePath,
+              configPath: coreConfig,
             ),
           ),
         ],
@@ -141,9 +140,7 @@ class WindowsFfiApi extends BaseFfiApi {
     }
   }
 
-  Future<({String configPath, String? runtimePath})> _publishCoreConfig(
-    LibXrayRunConfig request,
-  ) async {
+  Future<String> _publishCoreConfig(LibXrayRunConfig request) async {
     final paths = await materializeRunXrayConfig(request);
     if (paths == null) throw const FormatException('xrayJson is empty');
     return paths;

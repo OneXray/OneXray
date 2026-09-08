@@ -1,7 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
@@ -9,7 +11,7 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
+import 'package:onexray/pages/shared/widgets/responsive_content.dart';
 
 class ServersPage extends StatefulWidget {
   const ServersPage({super.key});
@@ -51,7 +53,11 @@ class _ServersPageState extends State<ServersPage> {
               if (!mobileRoot && !empty) ...[
                 OutlinedButton.icon(
                   onPressed: () => controller.openSources(context),
-                  icon: const Icon(LucideIcons.refreshCw),
+                  icon: AppActivityBuilder(
+                    builder: (context, activity) => activity.downloading
+                        ? const ButtonProgressIndicator()
+                        : const Icon(LucideIcons.refreshCw),
+                  ),
                   label: Text(l.prototypeUpdatesAndSources),
                 ),
                 const SizedBox(width: 10),
@@ -78,8 +84,8 @@ class _ServersPageState extends State<ServersPage> {
                     ),
                     labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                     tabs: [
-                      Tab(text: l.prototypeByNodeLocation),
                       Tab(text: l.prototypeBySubscription),
+                      Tab(text: l.prototypeByNodeLocation),
                     ],
                     onTap: (index) =>
                         controller.groupBy(ServerGrouping.values[index]),
@@ -124,7 +130,10 @@ class ServerGroupPage extends StatelessWidget {
               .where((row) => row.id == params.groupId)
               .firstOrNull;
           return Scaffold(
-            appBar: AppBar(title: Text(group?.name ?? l.prototypeServers)),
+            appBar: AppBar(
+              title: Text(group?.name ?? l.prototypeServers),
+              actions: const [AppActivityIndicator(pinging: false)],
+            ),
             body: SafeArea(
               child: ResponsiveContent(
                 child: group == null

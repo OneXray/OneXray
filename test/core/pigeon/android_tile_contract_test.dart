@@ -8,7 +8,7 @@ void main() {
     final controller = File('$native/vpn/VpnController.kt').readAsStringSync();
     final tile = File('$native/tile/OneQuickSettingsTileService.kt')
         .readAsStringSync();
-    final shortcut = File('lib/service/menu/short_cut/service.dart')
+    final shortcut = File('lib/service/shared/menu/short_cut/service.dart')
         .readAsStringSync();
 
     expect(

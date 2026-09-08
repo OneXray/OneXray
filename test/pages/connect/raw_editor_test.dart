@@ -1,19 +1,25 @@
 import 'dart:async';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/raw_editor/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/json_editor.dart';
-import 'package:onexray/service/assets/raw_editor.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/geo_data/model.dart';
+import 'package:onexray/pages/shared/widgets/json_editor.dart';
+import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   testWidgets(
     'Raw save follows name and JSON while draft loading does not connect',
     (tester) async {
@@ -30,7 +36,7 @@ void main() {
       });
       await tester.pumpWidget(
         MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: const Scaffold(body: Text('Draft')),
         ),
@@ -64,7 +70,7 @@ void main() {
     });
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: AppLocalePolicy.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: const Scaffold(body: Text('Draft')),
       ),
@@ -142,7 +148,7 @@ class _PendingRawSave extends RawEditorService {
   Future<int?> save(
     RawEditorDraft draft, {
     required Future<bool> Function() confirmReconnect,
-    GeoDataImportDraft? geodata,
+    ConfigurationImportDraft? imported,
   }) {
     started.complete();
     return result.future;

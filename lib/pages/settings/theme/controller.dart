@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:go_router/go_router.dart';
-import 'package:onexray/service/event_bus/enum.dart';
-import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/shared/event_bus/enum.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 
 class ThemePageState {
   final ThemeCode themeCode;
@@ -31,10 +33,15 @@ class ThemeController extends PageCubit<ThemePageState> {
   }
 
   Future<void> save(BuildContext context) async {
-    final eventBus = AppEventBus.instance;
-    await eventBus.updateThemeCode(state.themeCode);
-    if (context.mounted) {
-      context.pop();
+    final l = AppLocalizations.of(context)!;
+    try {
+      await AppEventBus.instance.updateThemeCode(state.themeCode);
+      if (context.mounted) {
+        ContextAlert.showToast(context, l.prototypeSettingsSaved);
+        if (ModalRoute.of(context)?.isCurrent == true) context.pop();
+      }
+    } catch (_) {
+      if (context.mounted) ContextAlert.showToast(context, l.buttonSaveFailed);
     }
   }
 }

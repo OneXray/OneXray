@@ -451,19 +451,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         var updatedRequest = request
         var payload = request.payload ?? RunXrayRequest(xrayJson: nil)
         payload.xrayJson = updatedJson
-        if var runtime = payload.runtime {
-            guard let container = extensionGroupContainerURL() else {
-                throw TunnelError.noGroupContainer
-            }
-            let runDirectory = container.adaptedAppendPath(path: "run")
-            try FileManager.default.createDirectory(
-                at: runDirectory,
-                withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700]
-            )
-            runtime.statePath = runDirectory.adaptedAppendPath(path: "runtime.json").adaptedPath()
-            payload.runtime = runtime
-        }
         updatedRequest.payload = payload
         return updatedRequest
     }

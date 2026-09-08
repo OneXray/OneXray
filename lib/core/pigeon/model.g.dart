@@ -151,38 +151,10 @@ Map<String, dynamic> _$PingBatchItemRequestToJson(
 };
 
 RunXrayRequest _$RunXrayRequestFromJson(Map<String, dynamic> json) =>
-    RunXrayRequest(
-      json['xrayJson'] as String?,
-      runtime: json['runtime'] == null
-          ? null
-          : ManagedRuntimeRequest.fromJson(
-              json['runtime'] as Map<String, dynamic>,
-            ),
-    );
+    RunXrayRequest(json['xrayJson'] as String?);
 
 Map<String, dynamic> _$RunXrayRequestToJson(RunXrayRequest instance) =>
-    <String, dynamic>{
-      'xrayJson': ?instance.xrayJson,
-      'runtime': ?instance.runtime?.toJson(),
-    };
-
-ManagedRuntimeRequest _$ManagedRuntimeRequestFromJson(
-  Map<String, dynamic> json,
-) => ManagedRuntimeRequest(
-  statePath: json['statePath'] as String,
-  inboundTag: json['inboundTag'] as String? ?? 'tunIn',
-  listen: json['listen'] as String?,
-  token: json['token'] as String?,
-);
-
-Map<String, dynamic> _$ManagedRuntimeRequestToJson(
-  ManagedRuntimeRequest instance,
-) => <String, dynamic>{
-  'statePath': instance.statePath,
-  'inboundTag': instance.inboundTag,
-  'listen': ?instance.listen,
-  'token': ?instance.token,
-};
+    <String, dynamic>{'xrayJson': ?instance.xrayJson};
 
 TestXrayRequest _$TestXrayRequestFromJson(Map<String, dynamic> json) =>
     TestXrayRequest(json['xrayJson'] as String?);
@@ -237,22 +209,6 @@ ConvertShareLinksToXrayJsonRequest _$ConvertShareLinksToXrayJsonRequestFromJson(
 Map<String, dynamic> _$ConvertShareLinksToXrayJsonRequestToJson(
   ConvertShareLinksToXrayJsonRequest instance,
 ) => <String, dynamic>{'text': ?instance.text, 'age': ?instance.age?.toJson()};
-
-ConvertShareLinksReport _$ConvertShareLinksReportFromJson(
-  Map<String, dynamic> json,
-) => ConvertShareLinksReport(
-  json['config'] as Map<String, dynamic>,
-  usableCount: (json['usableCount'] as num).toInt(),
-  failedCount: (json['failedCount'] as num).toInt(),
-);
-
-Map<String, dynamic> _$ConvertShareLinksReportToJson(
-  ConvertShareLinksReport instance,
-) => <String, dynamic>{
-  'config': instance.config,
-  'usableCount': instance.usableCount,
-  'failedCount': instance.failedCount,
-};
 
 AgeDecryptConfig _$AgeDecryptConfigFromJson(Map<String, dynamic> json) =>
     AgeDecryptConfig(json['secretKey'] as String?);

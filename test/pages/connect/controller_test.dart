@@ -1,25 +1,208 @@
 import 'dart:convert';
-import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/connection/compiler.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/service/connect/compiler.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  test(
+    'all node-list controllers react to database changes in delay order',
+    () async {
+      final coordinator = _Coordinator();
+      final db = coordinator.db;
+      final controllers = <ConnectController>[
+        ConnectController(database: db, coordinator: coordinator),
+        ServersController(database: db, coordinator: coordinator),
+        ServerExitPickerController(
+          const ServerExitPickerParams(),
+          database: db,
+          coordinator: coordinator,
+        ),
+      ];
+      addTearDown(() async {
+        for (final controller in controllers) {
+          await controller.close();
+        }
+        coordinator.dispose();
+        await db.close();
+      });
+      for (final controller in controllers) {
+        await controller.initialize();
+      }
+      final inserted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.servers.length == 2),
+      ]);
+      await db.transaction(() async {
+        for (final delay in [300, 10]) {
+          await db.coreConfigDao.insertAssetRow(
+            CoreConfigCompanion.insert(
+              name: 'Node $delay',
+              type: 'outbound',
+              tags: '',
+              delay: delay,
+              subId: 0,
+            ),
+          );
+        }
+      });
+      await inserted;
+      for (final controller in controllers) {
+        expect(controller.servers.map((row) => row.delay), [10, 300]);
+      }
+      final slow = controllers.first.servers.last;
+      final reordered = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere(
+            (state) => state.servers.first.delay == 0,
+          ),
+      ]);
+      await db.coreConfigDao.updateRow(slow.copyWith(delay: 0, favorite: true));
+      await reordered;
+      for (final controller in controllers) {
+        expect(controller.servers.map((row) => row.delay), [0, 10]);
+        expect(controller.servers.first.favorite, isTrue);
+      }
+      final deleted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.servers.length == 1),
+      ]);
+      await db.coreConfigDao.deleteRow(slow);
+      await deleted;
+      expect(
+        controllers.every(
+          (controller) => controller.servers.single.delay == 10,
+        ),
+        isTrue,
+      );
+
+      final rawInserted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.raws.length == 1),
+      ]);
+      await db.coreConfigDao.insertAssetRow(
+        CoreConfigCompanion.insert(
+          name: 'Raw',
+          type: 'raw',
+          tags: '',
+          delay: 0,
+          subId: 0,
+          data: const Value('e30='),
+        ),
+      );
+      await rawInserted;
+      expect(
+        controllers.every((controller) => controller.servers.length == 1),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'subscription lists stream inserts, edits and deletes in ID order',
+    () async {
+      final coordinator = _Coordinator();
+      final db = coordinator.db;
+      final controllers = <ConnectController>[
+        ConnectController(database: db, coordinator: coordinator),
+        ServersController(database: db, coordinator: coordinator),
+        ServerExitPickerController(
+          const ServerExitPickerParams(),
+          database: db,
+          coordinator: coordinator,
+        ),
+      ];
+      addTearDown(() async {
+        for (final controller in controllers) {
+          await controller.close();
+        }
+        coordinator.dispose();
+        await db.close();
+      });
+      for (final controller in controllers) {
+        await controller.initialize();
+      }
+      final inserted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.sources.length == 3),
+      ]);
+      await db.transaction(() async {
+        for (final id in [20, 3, 10]) {
+          await db.subscriptionDao.insertRow(
+            SubscriptionCompanion.insert(
+              id: Value(id),
+              name: 'Source $id',
+              url: 'https://example.test/subscription/$id',
+              timestamp: DateTime(2026, 9, 8),
+            ),
+          );
+        }
+      });
+      await inserted;
+      for (final controller in controllers) {
+        expect(controller.sources.map((source) => source.id), [3, 10, 20]);
+      }
+      expect((await db.subscriptionDao.allRows).map((source) => source.id), [
+        3,
+        10,
+        20,
+      ]);
+
+      final edited = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere(
+            (state) => state.sources.first.name == 'Renamed source',
+          ),
+      ]);
+      final source = (await db.subscriptionDao.searchRow(3))!;
+      await db.subscriptionDao.updateRow(
+        source.copyWith(name: 'Renamed source'),
+      );
+      await edited;
+      for (final controller in controllers) {
+        expect(controller.sources.map((source) => source.id), [3, 10, 20]);
+        expect(controller.sources.first.name, 'Renamed source');
+      }
+
+      final deleted = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.sources.length == 2),
+      ]);
+      await db.subscriptionDao.deleteRow(10);
+      await deleted;
+      for (final controller in controllers) {
+        expect(controller.sources.map((source) => source.id), [3, 20]);
+      }
+
+      final cleared = Future.wait([
+        for (final controller in controllers)
+          controller.stream.firstWhere((state) => state.sources.isEmpty),
+      ]);
+      await db.subscriptionDao.clear();
+      await cleared;
+      expect(
+        controllers.every((controller) => controller.sources.isEmpty),
+        isTrue,
+      );
+    },
+  );
+
   testWidgets(
     'connection labels use configured counts and only the running node probe',
     (tester) async {
@@ -72,23 +255,24 @@ void main() {
         controller.selectionTitle(l),
         'Automatic selection · 2 entry nodes',
       );
-      expect(controller.selectionHealth(l), 'Available · 42 ms');
+      expect(controller.selectionHealth(l), 'Fast · 42 ms');
       final running = controller.servers.first;
-      for (final delay in [
-        0,
-        -1,
-        PingDelayConstants.unknown,
-        PingDelayConstants.error,
-        PingDelayConstants.timeout,
+      for (final (delay, label) in [
+        (0, 'Fast · 0 ms'),
+        (500, 'Fast · 500 ms'),
+        (501, 'Slow · 501 ms'),
+        (1000, 'Slow · 1000 ms'),
+        (1001, 'Available · 1001 ms'),
+        (-1, null),
+        (PingDelayConstants.unknown, null),
+        (PingDelayConstants.error, null),
+        (PingDelayConstants.timeout, null),
       ]) {
         controller.servers = [
           running.copyWith(delay: delay),
           controller.servers.last,
         ];
-        expect(
-          controller.selectionHealth(l),
-          delay == 0 ? 'Available · 0 ms' : isNull,
-        );
+        expect(controller.selectionHealth(l), label);
       }
       expect(
         controller.selectionDetail(l),
@@ -130,10 +314,6 @@ void main() {
                   TextButton(
                     onPressed: () => controller.chooseTrafficMethod(context),
                     child: const Text('methods-action'),
-                  ),
-                  TextButton(
-                    onPressed: () => controller.showTraffic(context),
-                    child: const Text('traffic-action'),
                   ),
                   TextButton(
                     onPressed: () => controller.chooseServer(context),
@@ -189,7 +369,7 @@ void main() {
           theme: AppTheme.material(Brightness.light, mobile: true),
           locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           builder: (_, child) => ShadTheme(
             data: AppTheme.shad(Brightness.light, mobile: true),
             child: ShadToaster(child: child!),
@@ -213,31 +393,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('connection-home'), findsOneWidget);
       expect(find.text('Choose a traffic method'), findsNothing);
-      await tester.tap(find.text('traffic-action'));
-      await tester.pumpAndSettle();
-      expect(find.text('Current speed'), findsOneWidget);
-      await tester.tap(find.text('Reset totals'));
-      await tester.pumpAndSettle();
-      expect(find.text('This change cannot be undone.'), findsOneWidget);
-      expect(find.text('Current speed'), findsNothing);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text('connection-home'), findsOneWidget);
-      expect(find.text('Current speed'), findsNothing);
-      expect(coordinator.resetCount, 0);
-      await tester.tap(find.text('traffic-action'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Reset totals'));
-      await tester.pumpAndSettle();
-      coordinator.resetCompletion = Completer<void>();
-      await tester.tap(find.widgetWithText(FilledButton, 'Reset totals'));
-      await tester.pump();
-      expect(find.byType(ButtonProgressIndicator), findsOneWidget);
-      expect(find.text('This change cannot be undone.'), findsOneWidget);
-      coordinator.resetCompletion!.complete();
-      await tester.pumpAndSettle();
-      expect(find.text('Current speed'), findsNothing);
-      expect(coordinator.resetCount, 1);
       // The backdrop remains a dismiss target outside the compact dialog.
       await tester.tap(find.text('methods-action'));
       await tester.pumpAndSettle();
@@ -283,7 +438,7 @@ void main() {
           theme: AppTheme.light,
           locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           builder: (_, child) => ShadTheme(
             data: AppTheme.shad(Brightness.light),
             child: ShadToaster(child: child!),
@@ -386,7 +541,7 @@ void main() {
 }
 
 /// Exercises the controller's result handling; native transaction
-/// behavior is covered by service/connection/coordinator_test.dart.
+/// behavior is covered by service/connect/coordinator_test.dart.
 class _Coordinator extends ConnectionCoordinator {
   _Coordinator({this.fail = false})
     : super(database: AppDatabase.forTesting(NativeDatabase.memory())) {
@@ -395,8 +550,6 @@ class _Coordinator extends ConnectionCoordinator {
   final bool fail;
   int connectCount = 0;
   int disconnectCount = 0;
-  int resetCount = 0;
-  Completer<void>? resetCompletion;
 
   @override
   Future<void> connect() async {
@@ -406,12 +559,6 @@ class _Coordinator extends ConnectionCoordinator {
   @override
   Future<void> disconnect() async {
     disconnectCount++;
-  }
-
-  @override
-  Future<void> resetTraffic() async {
-    resetCount++;
-    await resetCompletion?.future;
   }
 
   ConnectionConfiguration saved = ConnectionConfiguration(
@@ -434,6 +581,8 @@ class _Coordinator extends ConnectionCoordinator {
     bool allowReconnect = true,
     String? expectedConfiguration,
     Future<void> Function()? writeAssets,
+    Future<void> Function()? validateAssets,
+    ConfigurationImportDraft? imported,
     PrepareConnection? prepare,
   }) async {
     if (fail) {
@@ -461,12 +610,11 @@ Widget _testApp(Widget home) => MaterialApp(
   theme: AppTheme.light,
   locale: const Locale('en'),
   supportedLocales: AppLocalizations.supportedLocales,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   home: home,
 );
 
 ConnectionRuntime _runtime({bool expert = false}) {
-  const id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   final configuration = ConnectionConfiguration(
     connection: ConnectionSettings(expert: expert),
   );
@@ -477,13 +625,7 @@ ConnectionRuntime _runtime({bool expert = false}) {
   );
   final invoke = LibXrayInvokeRequest(
     method: LibXrayMethod.runXray,
-    payload: RunXrayRequest(
-      '{}',
-      runtime: const ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        token: id,
-      ),
-    ).toJson(),
+    payload: RunXrayRequest('{}').toJson(),
   );
   return ConnectionRuntime.create(
     configuration: configuration,

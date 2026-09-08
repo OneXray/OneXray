@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -6,8 +6,8 @@ import 'package:onexray/pages/settings/app_update/controller.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/service/app_update/service.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AppUpdateDialog extends StatelessWidget {
@@ -28,7 +28,7 @@ class AppUpdateDialog extends StatelessWidget {
             onLater: () => controller.later(context),
             onSkip: () => controller.skip(context),
             onUpdate: () => controller.update(context),
-            onOpenLink: controller.openLink,
+            onOpenLink: (href) => controller.openLink(context, href),
           );
         },
       ),
@@ -104,22 +104,23 @@ class AppUpdateDialogView extends StatelessWidget {
                             style: AppTypography.updateNotesHeading,
                           ),
                           const SizedBox(height: 10),
-                          MarkdownBody(
-                            data: notes,
-                            selectable: true,
-                            styleSheet:
-                                MarkdownStyleSheet.fromTheme(
-                                  Theme.of(context),
-                                ).copyWith(
-                                  p: AppTypography.updateNotes,
-                                  listBullet: AppTypography.updateNotes,
-                                  listIndent: 20,
-                                  listBulletPadding:
-                                      const EdgeInsetsDirectional.only(end: 4)
-                                          .resolve(Directionality.of(context)),
-                                  blockSpacing: 6,
-                                ),
-                            onTapLink: (_, href, _) => onOpenLink(href),
+                          // flutter_markdown_plus still uses SDK Material.
+                          // ignore: deprecated_member_use
+                          MaterialUiCompatibilityBridge(
+                            child: MarkdownBody(
+                              data: notes,
+                              selectable: true,
+                              styleSheet: MarkdownStyleSheet(
+                                p: AppTypography.updateNotes,
+                                listBullet: AppTypography.updateNotes,
+                                listIndent: 20,
+                                listBulletPadding:
+                                    const EdgeInsetsDirectional.only(end: 4)
+                                        .resolve(Directionality.of(context)),
+                                blockSpacing: 6,
+                              ),
+                              onTapLink: (_, href, _) => onOpenLink(href),
+                            ),
                           ),
                         ],
                       ),

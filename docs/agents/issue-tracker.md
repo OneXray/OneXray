@@ -7,6 +7,7 @@ Because this clone's `origin` points to `yiguo.dev`, include `--repo OneXray/One
 ## Conventions
 
 - **Language**: Use English for PR titles, descriptions, and user communication.
+- **PR scope**: Keep PR titles, descriptions, and comments self-contained. Do not mention or link to another repository's PR, including companion, dependency, or merge-order references. Describe required interface or build behavior directly.
 - **Create an issue**: `gh issue create --repo OneXray/OneXray --title "..." --body "..."`
 - **Read an issue**: `gh issue view <number> --repo OneXray/OneXray --comments`
 - **List issues**: `gh issue list --repo OneXray/OneXray --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`

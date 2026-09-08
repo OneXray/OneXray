@@ -5,7 +5,7 @@ import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/model.dart';
-import 'package:onexray/service/xray/raw/validator.dart';
+import 'package:onexray/service/connect/raw/validator.dart';
 
 void main() {
   test('TUN and start request JSON fields match the native contract', () {

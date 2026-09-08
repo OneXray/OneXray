@@ -14,6 +14,10 @@
   "buttonOpenSettings": "Open system settings",
   "buttonSave": "Save",
   "buttonSaveFailed": "Save failed",
+  "settingsDefaultsRestored": "Defaults restored in the editor. Save to apply.",
+  "@settingsDefaultsRestored": {
+    "description": "Restoring defaults changes the draft only; no settings have been saved yet."
+  },
   "buttonAddFailed": "Add failed",
   "resultSuccess": "successfully",
   "resultFailed": "failed",
@@ -79,7 +83,6 @@
   "autoUpdatePageIntervalOneWeek": "One week",
   "logFileViewerContinueFollowing": "Continue following",
   "logFileViewerShowingRecent": "Showing recent log",
-  "backupPageRestore": "Restore",
   "appIconPageSetFailed": "Failed to set new App Icon",
   "desktopSettingsPageHideDockIcon": "Hide Dock icon",
   "desktopSettingsPageHideDockIconDescription": "Apply immediately to the current App session",
@@ -366,10 +369,6 @@
   "@prototypeServersReadyForHome": {
     "description": "Approved prototype copy: Servers added. You are ready to go to Home."
   },
-  "prototypeExistingServersSkip": "This step is skipped when servers are already configured.",
-  "@prototypeExistingServersSkip": {
-    "description": "Approved prototype copy: This step is skipped when servers are already configured."
-  },
   "prototypeAddLater": "Add later",
   "@prototypeAddLater": {
     "description": "Approved prototype copy: Add later"
@@ -455,10 +454,6 @@
       }
     }
   },
-  "prototypeConnectionLocation": "Connection location",
-  "@prototypeConnectionLocation": {
-    "description": "Approved prototype copy: Connection location"
-  },
   "prototypeAutomaticSelection": "Automatic selection",
   "@prototypeAutomaticSelection": {
     "description": "Approved prototype copy: Automatic selection"
@@ -479,6 +474,15 @@
   "prototypeChooseBySpeedAvailability": "Choose by speed and availability",
   "@prototypeChooseBySpeedAvailability": {
     "description": "Approved prototype copy: Choose by speed and availability"
+  },
+  "prototypeFastLatency": "Fast · {latency} ms",
+  "@prototypeFastLatency": {
+    "description": "Node latency at or below 500 ms",
+    "placeholders": {
+      "latency": {
+        "type": "int"
+      }
+    }
   },
   "prototypeAvailableLatency": "Available · {latency} ms",
   "@prototypeAvailableLatency": {
@@ -563,14 +567,6 @@
   "@prototypeThisConnection": {
     "description": "Approved prototype copy: This connection"
   },
-  "prototypeLastConnection": "Last connection",
-  "@prototypeLastConnection": {
-    "description": "Approved prototype copy: Last connection"
-  },
-  "prototypeTotalTraffic": "Total traffic",
-  "@prototypeTotalTraffic": {
-    "description": "Approved prototype copy: Total traffic"
-  },
   "prototypeDownload": "Download",
   "@prototypeDownload": {
     "description": "Approved prototype copy: Download"
@@ -578,18 +574,6 @@
   "prototypeUpload": "Upload",
   "@prototypeUpload": {
     "description": "Approved prototype copy: Upload"
-  },
-  "prototypeResetTotals": "Reset totals",
-  "@prototypeResetTotals": {
-    "description": "Approved prototype copy: Reset totals"
-  },
-  "prototypeTrafficTotalsReset": "Traffic totals were reset",
-  "@prototypeTrafficTotalsReset": {
-    "description": "Approved prototype copy: Traffic totals were reset"
-  },
-  "prototypeResetTrafficNotice": "This connection stays active. Only the device total is cleared.",
-  "@prototypeResetTrafficNotice": {
-    "description": "Approved prototype copy: This connection stays active. Only the device total is cleared."
   },
   "prototypeOrdinaryConnectionRunning": "The ordinary connection is still running. Select a configuration to switch.",
   "@prototypeOrdinaryConnectionRunning": {
@@ -693,9 +677,9 @@
   "@prototypeCompleteXrayConfiguration": {
     "description": "Approved prototype copy: Complete Xray configuration"
   },
-  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, IPv6, and related runtime features in Raw JSON do not take effect.",
+  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, and related runtime features in Raw JSON do not take effect.",
   "@prototypeRawRuntimeOverrideNotice": {
-    "description": "Approved prototype copy: A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, IPv6, and related runtime features in Raw JSON do not take effect."
+    "description": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, and related runtime features in Raw JSON do not take effect."
   },
   "prototypeAddServersToOneXray": "Add servers to OneXray",
   "@prototypeAddServersToOneXray": {
@@ -736,10 +720,6 @@
   "prototypeImportLinksHint": "One link per line. Supports servers, subscriptions, and OneXray import links.",
   "@prototypeImportLinksHint": {
     "description": "Approved prototype copy: One link per line. Supports servers, subscriptions, and OneXray import links."
-  },
-  "prototypeSubscriptionDirectImportNotice": "Subscriptions import directly; local servers and configurations are previewed first.",
-  "@prototypeSubscriptionDirectImportNotice": {
-    "description": "Approved prototype copy: Subscriptions import directly; local servers and configurations are previewed first."
   },
   "prototypeNoSupportedLinks": "No supported links were recognized. Check the input and try again.",
   "@prototypeNoSupportedLinks": {
@@ -805,17 +785,13 @@
   "@prototypeXrayNodeJson": {
     "description": "Approved prototype copy: Xray node JSON"
   },
-  "prototypeNodeJsonHint": "The root object must contain a non-empty outbounds array. Every outbound needs a unique tag and protocol.",
+  "prototypeNodeJsonHint": "The root object must contain a non-empty outbounds array.",
   "@prototypeNodeJsonHint": {
-    "description": "Approved prototype copy: The root object must contain a non-empty outbounds array. Every outbound needs a unique tag and protocol."
+    "description": "Approved prototype copy: The root object must contain a non-empty outbounds array."
   },
   "prototypeLocalInputPrivacy": "Input is processed on this device and is never sent to OneXray.",
   "@prototypeLocalInputPrivacy": {
     "description": "Approved prototype copy: Input is processed on this device and is never sent to OneXray."
-  },
-  "prototypeDetect": "Detect",
-  "@prototypeDetect": {
-    "description": "Approved prototype copy: Detect"
   },
   "prototypeImportPreview": "Import preview",
   "@prototypeImportPreview": {
@@ -834,15 +810,6 @@
       }
     }
   },
-  "prototypeUnrecognizedNodes": "Unrecognized nodes: {count}",
-  "@prototypeUnrecognizedNodes": {
-    "description": "Approved prototype copy: Unrecognized nodes: {count}",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "prototypeServersAdded": "Servers added",
   "@prototypeServersAdded": {
     "description": "Approved prototype copy: Servers added"
@@ -855,24 +822,9 @@
   "@prototypeSubscriptionExistingNodesKept": {
     "description": "Approved prototype copy: No usable nodes were recognized. Existing nodes were kept."
   },
-  "prototypeSubscriptionImportResult": "{name}: imported {count} nodes; {failed} could not be recognized",
-  "@prototypeSubscriptionImportResult": {
-    "description": "Approved prototype copy: {name}: imported {count} nodes; {failed} could not be recognized",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "count": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  },
-  "prototypeSubscriptionsImported": "{count} subscriptions imported. Only the remaining local items need confirmation.",
+  "prototypeSubscriptionsImported": "{count} subscriptions imported.",
   "@prototypeSubscriptionsImported": {
-    "description": "Approved prototype copy: {count} subscriptions imported. Only the remaining local items need confirmation.",
+    "description": "Number of subscriptions imported successfully.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -1294,13 +1246,17 @@
   "@prototypeDirectAppleServicesHint": {
     "description": "Approved prototype copy: Keep App Store, iCloud, and other Apple services on the local connection."
   },
-  "prototypeResolveUnmatchedDomains": "Resolve unmatched domains for IP rules",
-  "@prototypeResolveUnmatchedDomains": {
-    "description": "Approved prototype copy: Resolve unmatched domains for IP rules"
+  "directWindowsServices": "Direct Windows services",
+  "@directWindowsServices": {
+    "description": "Smart Routing switch for direct connections to Windows-related services."
   },
-  "prototypeResolveUnmatchedDomainsHint": "When enabled, if no rule matches a domain request, resolve the domain to IP addresses and retry. When disabled, match the available domain or IP without extra DNS resolution for routing.",
-  "@prototypeResolveUnmatchedDomainsHint": {
-    "description": "Approved prototype copy: When enabled, if no rule matches a domain request, resolve the domain to IP addresses and retry. When disabled, match the available domain or IP without extra DNS resolution for routing."
+  "directWindowsServicesHint": "Connect directly to domains in the Microsoft and Bing categories.",
+  "@directWindowsServicesHint": {
+    "description": "The Microsoft and Bing Geosite categories covered by the Windows services switch."
+  },
+  "windowsServices": "Windows services",
+  "@windowsServices": {
+    "description": "Windows services label in the Smart Routing direct-traffic preview."
   },
   "prototypeBlockAdDomains": "Block common ad domains",
   "@prototypeBlockAdDomains": {
@@ -1612,58 +1568,6 @@
   "prototypeHideDockIconHint": "Hide OneXray from the Dock",
   "@prototypeHideDockIconHint": {
     "description": "Approved prototype copy: Hide OneXray from the Dock"
-  },
-  "prototypeBackupRestore": "Backup and restore",
-  "@prototypeBackupRestore": {
-    "description": "Approved prototype copy: Backup and restore"
-  },
-  "prototypeBackupRestoreHint": "Keep a copy of your configuration or restore from a backup.",
-  "@prototypeBackupRestoreHint": {
-    "description": "Approved prototype copy: Keep a copy of your configuration or restore from a backup."
-  },
-  "prototypeBackupContents": "Backup contents",
-  "@prototypeBackupContents": {
-    "description": "Approved prototype copy: Backup contents"
-  },
-  "prototypeBackupAssets": "User servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata.",
-  "@prototypeBackupAssets": {
-    "description": "Approved prototype copy: User servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata."
-  },
-  "prototypeBackupNoPreferences": "Appearance, language, and other app preferences are not included.",
-  "@prototypeBackupNoPreferences": {
-    "description": "Approved prototype copy: Appearance, language, and other app preferences are not included."
-  },
-  "prototypeBackupSecurityWarning": "Backup files are not encrypted and may contain server credentials, subscription URLs, and Age private keys. Keep them in a trusted location.",
-  "@prototypeBackupSecurityWarning": {
-    "description": "Approved prototype copy: Backup files are not encrypted and may contain server credentials, subscription URLs, and Age private keys. Keep them in a trusted location."
-  },
-  "prototypeBackupFiles": "Backup files",
-  "@prototypeBackupFiles": {
-    "description": "Approved prototype copy: Backup files"
-  },
-  "prototypeCreateBackup": "Create backup",
-  "@prototypeCreateBackup": {
-    "description": "Approved prototype copy: Create backup"
-  },
-  "prototypeImportBackup": "Import backup",
-  "@prototypeImportBackup": {
-    "description": "Approved prototype copy: Import backup"
-  },
-  "prototypeNoBackups": "No backups yet",
-  "@prototypeNoBackups": {
-    "description": "Approved prototype copy: No backups yet"
-  },
-  "prototypeRestoreSelectedBackup": "Restore backup",
-  "@prototypeRestoreSelectedBackup": {
-    "description": "Approved prototype copy: Restore backup"
-  },
-  "prototypeRestoreBackupQuestion": "Restore this backup?",
-  "@prototypeRestoreBackupQuestion": {
-    "description": "Approved prototype copy: Restore this backup?"
-  },
-  "prototypeRestoreBackupWarning": "Restoring replaces user servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata. Save a backup of your current data first.",
-  "@prototypeRestoreBackupWarning": {
-    "description": "Approved prototype copy: Restoring replaces user servers, subscriptions, Age keys, custom routing configurations, Raw JSON, and custom Geodata. Save a backup of your current data first."
   },
   "prototypeConfirmRestore": "Confirm restore",
   "@prototypeConfirmRestore": {
@@ -2326,9 +2230,9 @@
   "@prototypeCaptureAllTraffic": {
     "description": "Approved prototype copy: Capture all traffic"
   },
-  "prototypeCaptureAllTrafficHint": "Send all device network traffic through the VPN.",
+  "prototypeCaptureAllTrafficHint": "Send all device network traffic through the VPN.\nIncorrect configuration may cause loss of network connectivity.",
   "@prototypeCaptureAllTrafficHint": {
-    "description": "Approved prototype copy: Send all device network traffic through the VPN."
+    "description": "Description and network connectivity warning below the Apple VPN Capture all traffic switch."
   },
   "prototypeAllowLocalNetwork": "Allow local network",
   "@prototypeAllowLocalNetwork": {
@@ -2676,25 +2580,13 @@
   "@prototypeClearAllDataQuestion": {
     "description": "Approved prototype copy: Clear all app data?"
   },
-  "prototypeClearAllDataWarning": "This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences. Back up your data first.",
+  "prototypeClearAllDataWarning": "This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences.",
   "@prototypeClearAllDataWarning": {
-    "description": "Approved prototype copy: This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences. Back up your data first."
+    "description": "Approved prototype copy: This removes saved servers, subscriptions, Age keys, routing configurations, Raw JSON, custom Geodata, and app preferences."
   },
   "prototypeConfirmClearData": "Confirm clear data",
   "@prototypeConfirmClearData": {
     "description": "Approved prototype copy: Confirm clear data"
-  },
-  "prototypeDeleteBackupQuestion": "Delete backup?",
-  "@prototypeDeleteBackupQuestion": {
-    "description": "Approved prototype copy: Delete backup?"
-  },
-  "prototypeDeleteBackupWarning": "Remove this backup file? Your current app configuration is not affected.",
-  "@prototypeDeleteBackupWarning": {
-    "description": "Approved prototype copy: Remove this backup file? Your current app configuration is not affected."
-  },
-  "prototypeBackupTransferWarning": "This unencrypted backup can contain credentials and Age private keys. Only save or share it with a trusted destination.",
-  "@prototypeBackupTransferWarning": {
-    "description": "Approved prototype copy: This unencrypted backup can contain credentials and Age private keys. Only save or share it with a trusted destination."
   },
   "prototypeSystemApprovalRequired": "System approval required",
   "@prototypeSystemApprovalRequired": {
@@ -2810,14 +2702,6 @@
   "prototypeAboutPrivacyNotice": "OneXray does not collect or upload usage, traffic, or browsing data.",
   "@prototypeAboutPrivacyNotice": {
     "description": "Approved prototype copy: OneXray does not collect or upload usage, traffic, or browsing data."
-  },
-  "prototypeShareBackup": "Share backup",
-  "@prototypeShareBackup": {
-    "description": "Approved prototype copy: Share backup"
-  },
-  "prototypeExportBackup": "Export backup",
-  "@prototypeExportBackup": {
-    "description": "Approved prototype copy: Export backup"
   },
   "prototypeEditServerHint": "Edit its Xray outbound JSON",
   "@prototypeEditServerHint": {

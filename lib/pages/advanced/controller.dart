@@ -5,10 +5,10 @@ import 'package:flutter/widgets.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/platform_policy.dart';
-import 'package:onexray/service/connection/runtime.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/connect/runtime.dart';
 
 class AdvancedPageState {
   final PlatformPolicy? policy;
@@ -103,7 +103,7 @@ class AdvancedController extends PageCubit<AdvancedPageState>
   void _publish() {
     if (!isPageActive) return;
     final runtime = coordinator.state.value;
-    final started = runtime.traffic?.startedAtMs;
+    final started = runtime.runtime?.startedAt.millisecondsSinceEpoch;
     var uptime = '—';
     if (runtime.phase == ConnectionPhase.connected &&
         started != null &&

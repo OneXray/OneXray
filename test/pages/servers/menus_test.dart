@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 
 const _open = Key('open-server-menu');
 const _size = Size(390, 844);
@@ -24,7 +25,7 @@ Future<void> _pumpMenu(
     MaterialApp(
       theme: AppTheme.material(Brightness.light, mobile: true),
       locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: AppLocalePolicy.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(

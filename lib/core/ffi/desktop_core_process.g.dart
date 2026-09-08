@@ -11,7 +11,6 @@ DesktopCoreProcessRecord _$DesktopCoreProcessRecordFromJson(
 ) => DesktopCoreProcessRecord(
   pid: (json['pid'] as num).toInt(),
   configPath: json['configPath'] as String?,
-  runtimePath: json['runtimePath'] as String?,
   startTicks: (json['startTicks'] as num?)?.toInt(),
 );
 
@@ -20,6 +19,5 @@ Map<String, dynamic> _$DesktopCoreProcessRecordToJson(
 ) => <String, dynamic>{
   'pid': instance.pid,
   'configPath': ?instance.configPath,
-  'runtimePath': ?instance.runtimePath,
   'startTicks': ?instance.startTicks,
 };

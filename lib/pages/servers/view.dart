@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -7,9 +7,10 @@ import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/pages/widget/page_empty_state.dart';
-import 'package:onexray/service/connection/settings.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
+import 'package:onexray/service/connect/settings.dart';
 
 class ServerBrowser extends StatelessWidget {
   final ServersController controller;
@@ -42,8 +43,9 @@ class ServerBrowser extends StatelessWidget {
       return _mobileBrowser(context, groups, favorites);
     }
     final active = _activeGroup(groups);
-    return SingleChildScrollView(
-      controller: scroll,
+    final compact =
+        MediaQuery.sizeOf(context).width <= AppLayout.compactDesktopBreakpoint;
+    return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.page,
         AppSpacing.desktopPageTop,
@@ -55,52 +57,44 @@ class ServerBrowser extends StatelessWidget {
         children: [
           _search(context),
           const SizedBox(height: 15),
-          if (MediaQuery.sizeOf(context).width <=
-              AppLayout.compactDesktopBreakpoint)
-            Column(
+          Expanded(
+            child: Flex(
+              direction: compact ? Axis.vertical : Axis.horizontal,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _locationList(context, groups, favorites),
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scroll,
+                    child: _locationList(context, groups, favorites),
+                  ),
+                ),
                 if (active != null) ...[
-                  const SizedBox(height: 16),
-                  ServerGroupView(
-                    controller: controller,
-                    group: active,
-                    embedded: true,
+                  SizedBox(width: compact ? 0 : 16, height: compact ? 16 : 0),
+                  Expanded(
+                    child: ServerGroupView(
+                      controller: controller,
+                      group: active,
+                      embedded: true,
+                    ),
                   ),
                 ],
               ],
-            )
-          else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _locationList(context, groups, favorites)),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: active == null
-                      ? const SizedBox.shrink()
-                      : ServerGroupView(
-                          controller: controller,
-                          group: active,
-                          embedded: true,
-                        ),
-                ),
-              ],
             ),
+          ),
         ],
       ),
     );
   }
 
-  ServerGroup? _activeGroup(List<ServerGroup> groups) =>
-      groups
-          .where((group) => group.id == controller.activeGroupId)
-          .firstOrNull ??
-      groups
-          .where((group) => group.id == controller.currentGroupId)
-          .firstOrNull ??
-      groups.firstOrNull;
+  ServerGroup? _activeGroup(List<ServerGroup> groups) {
+    final active = groups
+        .where((group) => group.id == controller.activeGroupId)
+        .firstOrNull;
+    if (active != null) return active;
+    final currentId = controller.currentGroupId;
+    return groups.where((group) => group.id == currentId).firstOrNull ??
+        groups.firstOrNull;
+  }
 
   Widget _mobileBrowser(
     BuildContext context,
@@ -121,8 +115,8 @@ class ServerBrowser extends StatelessWidget {
             unselectedLabelColor: palette.mutedStrong,
             labelPadding: const EdgeInsets.symmetric(horizontal: 4),
             tabs: [
-              Tab(text: l.prototypeByNodeLocation),
               Tab(text: l.prototypeBySubscription),
+              Tab(text: l.prototypeByNodeLocation),
             ],
           ),
         ),
@@ -283,10 +277,14 @@ class ServerBrowser extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      Icon(
-                        LucideIcons.refreshCw,
-                        size: 17,
-                        color: palette.primary,
+                      AppActivityBuilder(
+                        builder: (context, activity) => activity.downloading
+                            ? const ButtonProgressIndicator()
+                            : Icon(
+                                LucideIcons.refreshCw,
+                                size: 17,
+                                color: palette.primary,
+                              ),
                       ),
                       const SizedBox(width: 9),
                       Expanded(
@@ -353,12 +351,20 @@ class ServerBrowser extends StatelessWidget {
                     color: palette.selectedSurface,
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child:
-                      controller.selectingGroup(
-                        const ServerSelection.automatic(),
-                      )
-                      ? const Center(child: ButtonProgressIndicator())
-                      : Icon(LucideIcons.zap, size: 20, color: palette.primary),
+                  child: AppActivityBuilder(
+                    builder: (context, activity) =>
+                        activity.pinging ||
+                            activity.downloading ||
+                            controller.selectingGroup(
+                              const ServerSelection.automatic(),
+                            )
+                        ? const Center(child: ButtonProgressIndicator())
+                        : Icon(
+                            LucideIcons.zap,
+                            size: 20,
+                            color: palette.primary,
+                          ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -551,8 +557,7 @@ class ServerGroupView extends StatelessWidget {
     if (embedded) {
       return card;
     }
-    return ListView(
-      key: PageStorageKey('servers:${group.id}'),
+    return Padding(
       padding: mobile
           ? const EdgeInsets.fromLTRB(15, 13, 15, 22)
           : const EdgeInsets.fromLTRB(
@@ -561,7 +566,7 @@ class ServerGroupView extends StatelessWidget {
               AppSpacing.page,
               AppSpacing.desktopPageBottom,
             ),
-      children: [card],
+      child: card,
     );
   }
 
@@ -577,44 +582,53 @@ class ServerGroupView extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(1),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              constraints: BoxConstraints(minHeight: mobile ? 0 : 88),
-              padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: palette.border)),
-              ),
-              child: mobile
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _heading(context, mobile),
-                        const SizedBox(height: 12),
-                        _actions(context, mobile),
-                      ],
-                    )
-                  : LayoutBuilder(
-                      builder: (context, constraints) => Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 12,
-                        runSpacing: 12,
+        child: ListView.builder(
+          key: PageStorageKey('servers:${group.id}'),
+          primary: !embedded,
+          padding: EdgeInsets.zero,
+          itemCount:
+              1 + (group.visibleRows.isEmpty ? 1 : group.visibleRows.length),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Container(
+                constraints: BoxConstraints(minHeight: mobile ? 0 : 88),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 17,
+                  vertical: 15,
+                ),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: palette.border)),
+                ),
+                child: mobile
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: constraints.maxWidth,
-                            ),
-                            child: _heading(context, mobile),
-                          ),
+                          _heading(context, mobile),
+                          const SizedBox(height: 12),
                           _actions(context, mobile),
                         ],
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) => Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth,
+                              ),
+                              child: _heading(context, mobile),
+                            ),
+                            _actions(context, mobile),
+                          ],
+                        ),
                       ),
-                    ),
-            ),
-            if (group.visibleRows.isEmpty)
-              Padding(
+              );
+            }
+            if (group.visibleRows.isEmpty) {
+              return Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
                   vertical: 28,
@@ -626,17 +640,19 @@ class ServerGroupView extends StatelessWidget {
                     color: palette.mutedForeground,
                   ),
                 ),
-              ),
-            for (final row in group.visibleRows)
-              ServerNodeRow(
-                controller: controller,
-                row: row,
-                detail: group.country != null
-                    ? controller.sourceName(l, row)
-                    : controller.countryName(l, row.countryCode),
-                showDivider: row != group.visibleRows.last,
-              ),
-          ],
+              );
+            }
+            final row = group.visibleRows[index - 1];
+            return ServerNodeRow(
+              key: ValueKey(row.id),
+              controller: controller,
+              row: row,
+              detail: group.country != null
+                  ? controller.sourceName(l, row)
+                  : controller.countryName(l, row.countryCode),
+              showDivider: index != group.visibleRows.length,
+            );
+          },
         ),
       ),
     );
@@ -698,6 +714,8 @@ class ServerGroupView extends StatelessWidget {
   Widget _actions(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
+    final testing = controller.testingGroup(group);
+    final cancelling = controller.cancellingGroup(group);
     return Wrap(
       alignment: WrapAlignment.end,
       spacing: 8,
@@ -705,9 +723,13 @@ class ServerGroupView extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         OutlinedButton(
-          onPressed: group.rows.isEmpty || group.rows.any(controller.serverBusy)
+          onPressed: testing
+              ? cancelling
+                    ? null
+                    : () => controller.cancelTest(group.id)
+              : group.rows.isEmpty || group.rows.any(controller.serverBusy)
               ? null
-              : () => controller.test(context, group.rows),
+              : () => controller.test(context, group.rows, groupId: group.id),
           style: OutlinedButton.styleFrom(
             minimumSize: Size(
               0,
@@ -729,12 +751,19 @@ class ServerGroupView extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (controller.testing(group.rows))
-                const ButtonProgressIndicator()
-              else
-                const Icon(LucideIcons.refreshCw, size: 16),
+              AppActivityBuilder(
+                builder: (context, activity) => activity.pinging
+                    ? const ButtonProgressIndicator()
+                    : const Icon(LucideIcons.refreshCw, size: 16),
+              ),
               const SizedBox(width: 8),
-              Text(l.prototypeTestServers),
+              Text(
+                testing
+                    ? cancelling
+                          ? l.prototypePleaseWait
+                          : l.prototypeCancel
+                    : l.prototypeTestServers,
+              ),
             ],
           ),
         ),
@@ -1021,8 +1050,22 @@ class ServerNodeRow extends StatelessWidget {
                                           ),
                                         ],
                                         const SizedBox(height: 3),
-                                        Text(
-                                          '$rowDetail · ${controller.health(l, row)}',
+                                        Text.rich(
+                                          TextSpan(
+                                            text: '$rowDetail · ',
+                                            children: [
+                                              TextSpan(
+                                                text: controller.health(l, row),
+                                                style: TextStyle(
+                                                  color:
+                                                      ColorManager.nodeLatency(
+                                                        context,
+                                                        row.delay,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                           style: AppTypography.metadata
                                               .copyWith(
                                                 color: palette.mutedForeground,
@@ -1134,11 +1177,7 @@ class ServerMenu extends StatelessWidget {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: const RoundedRectangleBorder(),
       ),
-      icon:
-          controller.serverBusy(row) &&
-              !controller.favoritingIds.contains(row.id)
-          ? const ButtonProgressIndicator()
-          : const Icon(LucideIcons.ellipsis),
+      icon: const Icon(LucideIcons.ellipsis),
     );
   }
 }
@@ -1179,9 +1218,7 @@ class SourceMenu extends StatelessWidget {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: const RoundedRectangleBorder(),
       ),
-      icon: controller.sourceBusy(source.id)
-          ? const ButtonProgressIndicator()
-          : const Icon(LucideIcons.ellipsis),
+      icon: const Icon(LucideIcons.ellipsis),
     );
   }
 }

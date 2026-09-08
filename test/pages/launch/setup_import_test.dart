@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/servers/import/page.dart';
@@ -13,6 +15,10 @@ import 'package:onexray/service/launch/setup.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   for (final mobile in [true, false]) {
     testWidgets('Setup file picker opens directly and cancels ($mobile)', (
       tester,
@@ -163,7 +169,7 @@ Future<GoRouter> _pumpSetup(
       theme: AppTheme.material(Brightness.light, mobile: mobile),
       locale: const Locale('en'),
       supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: AppLocalePolicy.localizationsDelegates,
       builder: (_, child) => ShadTheme(
         data: AppTheme.shad(Brightness.light, mobile: mobile),
         child: ShadToaster(child: child!),

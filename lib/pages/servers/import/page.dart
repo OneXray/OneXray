@@ -1,24 +1,25 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
-import 'package:onexray/pages/subscriptions/widget/form_view.dart';
+import 'package:onexray/pages/servers/subscription/form_view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/pages/widget/outbound_json_editor.dart';
-import 'package:onexray/service/assets/import.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/outbound_json_editor.dart';
+import 'package:onexray/service/servers/import.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 export 'controller.dart' show ServerImportAction;
 
-export 'package:onexray/service/assets/import.dart' show ServerImportResult;
+export 'package:onexray/service/servers/import.dart' show ServerImportResult;
 
 Future<void> openServerImportAction(
   BuildContext context,
@@ -34,14 +35,15 @@ Future<void> openServerImportAction(
 
 class ServersImportPage extends StatefulWidget {
   final String? initialText;
-  const ServersImportPage({super.key, this.initialText});
+  final ServerImportController? controller;
+  const ServersImportPage({super.key, this.initialText, this.controller});
 
   @override
   State<ServersImportPage> createState() => _ServersImportPageState();
 }
 
 class _ServersImportPageState extends State<ServersImportPage> {
-  late final controller = ServerImportController();
+  late final controller = widget.controller ?? ServerImportController();
 
   @override
   void initState() {
@@ -185,10 +187,14 @@ class _ServersImportPageState extends State<ServersImportPage> {
             ),
         child: Row(
           children: [
-            if (controller.state.openingAction == action)
-              const ButtonProgressIndicator(size: 22)
-            else
-              Icon(icon, size: 22),
+            AppActivityBuilder(
+              builder: (context, activity) =>
+                  controller.state.openingAction == action ||
+                      (controller.state.activeAction == action &&
+                          (activity.downloading || controller.state.busy))
+                  ? const ButtonProgressIndicator(size: 22)
+                  : Icon(icon, size: 22),
+            ),
             const SizedBox(width: 10),
             Expanded(child: Text(title)),
             const SizedBox(width: 10),
@@ -270,20 +276,24 @@ class ServerImportFormPage extends StatelessWidget {
                     ? null
                     : onClose ?? () => controller.closeFlow(context),
               ),
-              ConnectDialogButton(
-                label: subscription
-                    ? controller.editingSubscription
-                          ? l10n.prototypeSave
-                          : l10n.prototypeAddSubscription
-                    : manual
-                    ? l10n.prototypeDetect
-                    : l10n.prototypeImportLinks,
-                busy: state.submitting,
-                onPressed: !controller.canSubmit(action)
-                    ? null
-                    : () => subscription
-                          ? controller.subscribe(context)
-                          : controller.detect(context, action),
+              AppActivityBuilder(
+                builder: (context, activity) => ConnectDialogButton(
+                  label: subscription
+                      ? controller.editingSubscription
+                            ? l10n.prototypeSave
+                            : l10n.prototypeAddSubscription
+                      : manual
+                      ? l10n.prototypeAdd
+                      : l10n.prototypeImportLinks,
+                  busy:
+                      state.submitting ||
+                      (!controller.editingSubscription && activity.downloading),
+                  onPressed: !controller.canSubmit(action)
+                      ? null
+                      : () => subscription
+                            ? controller.subscribe(context)
+                            : controller.detect(context, action),
+                ),
               ),
             ],
           ),
@@ -333,12 +343,6 @@ class ServerImportFormPage extends StatelessWidget {
           ),
           Text(
             l10n.prototypeImportLinksHint,
-            style: AppTypography.importHint.copyWith(
-              color: palette.mutedForeground,
-            ),
-          ),
-          Text(
-            l10n.prototypeSubscriptionDirectImportNotice,
             style: AppTypography.importHint.copyWith(
               color: palette.mutedForeground,
             ),
@@ -442,7 +446,7 @@ class ServerImportPreviewPage extends StatelessWidget {
             preview.rows.length +
             preview.customRoutes.length +
             preview.geoData.length +
-            (preview.dependencies?.inputs.length ?? 0);
+            preview.assets.length;
         return PopScope(
           canPop: !state.busy && committed == null,
           onPopInvokedWithResult: (didPop, result) {
@@ -521,8 +525,7 @@ class ServerImportPreviewPage extends StatelessWidget {
                                 ? l10n.prototypeCustomRouting
                                 : l10n.prototypeNameSaved(route.name),
                           ),
-                        for (final dependency
-                            in preview.dependencies?.inputs ?? const [])
+                        for (final dependency in preview.assets)
                           _PreviewItem(
                             name: dependency.fileName,
                             description: l10n.prototypeDataSource,
@@ -553,7 +556,7 @@ class ServerImportPreviewPage extends StatelessWidget {
                     ),
                   ),
                 _ImportFeedback(state: state),
-                if (preview.count > 0 || (preview.failureCount ?? 0) > 0)
+                if (preview.count > 0)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Row(
@@ -566,14 +569,6 @@ class ServerImportPreviewPage extends StatelessWidget {
                             l10n.prototypeUsableNodes(preview.count),
                           ),
                         ),
-                        if (preview.failureCount case final failureCount?)
-                          Expanded(
-                            child: _stat(
-                              context,
-                              l10n.prototypeUnrecognizedNodes(failureCount),
-                              warning: failureCount > 0,
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -589,14 +584,20 @@ class ServerImportPreviewPage extends StatelessWidget {
                     ? null
                     : onClose ?? () => controller.closeFlow(context),
               ),
-              ConnectDialogButton(
-                label: committed == null
-                    ? l10n.prototypeConfirmAdd
-                    : l10n.prototypeDone,
-                busy: state.submitting,
-                onPressed: state.busy || !preview.hasItems
-                    ? null
-                    : () => controller.confirm(context, preview),
+              AppActivityBuilder(
+                builder: (context, activity) => ConnectDialogButton(
+                  label: committed == null
+                      ? l10n.prototypeConfirmAdd
+                      : l10n.prototypeDone,
+                  busy:
+                      state.submitting ||
+                      (committed == null &&
+                          preview.geoData.isNotEmpty &&
+                          activity.downloading),
+                  onPressed: state.busy || !preview.hasItems
+                      ? null
+                      : () => controller.confirm(context, preview),
+                ),
               ),
             ],
           ),
@@ -605,19 +606,17 @@ class ServerImportPreviewPage extends StatelessWidget {
     ),
   );
 
-  Widget _stat(BuildContext context, String text, {bool warning = false}) {
+  Widget _stat(BuildContext context, String text) {
     final palette = ColorManager.palette(context);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: warning ? palette.warningSurface : palette.runningSurface,
+        color: palette.runningSurface,
         borderRadius: BorderRadius.circular(AppRadii.control),
       ),
       child: Text(
         text,
-        style: AppTypography.importStat.copyWith(
-          color: warning ? palette.restarting : palette.running,
-        ),
+        style: AppTypography.importStat.copyWith(color: palette.running),
       ),
     );
   }
@@ -690,7 +689,13 @@ class ServerImportScannerPage extends StatelessWidget {
             ),
           ],
         ),
-        body: SafeArea(child: MobileScanner(onDetect: onDetect)),
+        body: SafeArea(
+          // mobile_scanner still uses the SDK's Material widgets.
+          // ignore: deprecated_member_use
+          child: MaterialUiCompatibilityBridge(
+            child: MobileScanner(onDetect: onDetect),
+          ),
+        ),
       ),
     ),
   );
@@ -725,13 +730,7 @@ class _ImportFeedback extends StatelessWidget {
           for (final item in state.subscriptionImports)
             Text(
               item.result.success
-                  ? item.result.parseFailureCount == null
-                        ? '${item.name}: ${l10n.prototypeUsableNodes(item.result.count)}'
-                        : l10n.prototypeSubscriptionImportResult(
-                            item.name,
-                            item.result.count,
-                            item.result.parseFailureCount!,
-                          )
+                  ? '${item.name}: ${l10n.prototypeUsableNodes(item.result.count)}'
                   : '${item.name}: ${ServerImportController.subscriptionError(l10n, item.result.status)}',
               style: AppTypography.importHint.copyWith(
                 color: item.result.success

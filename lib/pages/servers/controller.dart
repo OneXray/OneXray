@@ -1,27 +1,27 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
-import 'package:onexray/pages/home/share/params.dart';
+import 'package:onexray/pages/shared/share/params.dart';
 import 'package:onexray/pages/main/navigation.dart';
-import 'package:onexray/pages/mixin/alert.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/sources.dart';
-import 'package:onexray/pages/subscriptions/edit/params.dart';
+import 'package:onexray/pages/servers/subscription/params.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/service/assets/server.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/ping/service.dart';
-import 'package:onexray/service/subscription/service.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/service/servers/server.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/servers/subscription/service.dart';
 
-enum ServerGrouping { location, subscription }
+enum ServerGrouping { subscription, location }
 
 enum ServerAction { edit, test, copy, share, delete }
 
@@ -68,12 +68,14 @@ class ServersController extends ConnectController {
     super.database,
     super.coordinator,
     ServerAssetService? assets,
-  }) {
+    PingService? ping,
+  }) : _ping = ping ?? PingService() {
     this.assets =
         assets ?? ServerAssetService(database: db, coordinator: coordinator);
     search.addListener(_searchChanged);
   }
   late final ServerAssetService assets;
+  final PingService _ping;
   final search = TextEditingController();
   ServerGrouping get grouping =>
       ServerGrouping.values[state.serverGroupingIndex];
@@ -83,7 +85,6 @@ class ServersController extends ConnectController {
   set activeGroupId(String? value) =>
       emit(state.copyWith(activeServerGroupId: value));
   Set<String> get _pending => state.pendingServerActions;
-  Set<int> get testingIds => state.testingServerIds;
   Set<int> get favoritingIds => state.favoritingServerIds;
   ServerSelection? get selecting => state.selectingServers;
   set selecting(ServerSelection? value) =>
@@ -110,8 +111,11 @@ class ServersController extends ConnectController {
       servers.any(
         (row) => row.subId == id && _pending.contains('server:${row.id}'),
       );
-  bool testing(Iterable<CoreConfigData> rows) =>
-      rows.any((row) => testingIds.contains(row.id));
+  bool testingGroup(ServerGroup group) =>
+      state.serverTests.values.any((test) => test.groupId == group.id);
+  bool cancellingGroup(ServerGroup group) => state.serverTests.values
+      .where((test) => test.groupId == group.id)
+      .every((test) => test.cancelling);
   bool selectingGroup(ServerSelection value) =>
       selecting != null &&
       jsonEncode(selecting!.toJson()) == jsonEncode(value.toJson());
@@ -196,6 +200,9 @@ class ServersController extends ConnectController {
         ),
       );
     }
+    if (grouping == ServerGrouping.subscription) {
+      result.sort((a, b) => a.selection.id!.compareTo(b.selection.id!));
+    }
     return result;
   }
 
@@ -228,6 +235,7 @@ class ServersController extends ConnectController {
                   (row) =>
                       row.id != finalExit && ServerAssetService.selectable(row),
                 )
+                .take(count)
                 .length >=
             count;
   }
@@ -373,28 +381,21 @@ class ServersController extends ConnectController {
         }
       : {};
 
-  String health(AppLocalizations l, CoreConfigData row) =>
-      !ServerAssetService.measured(row)
-      ? l.prototypeNotTested
-      : !ServerAssetService.healthy(row)
-      ? l.prototypeTemporarilyUnavailable
-      : row.delay >= 300
-      ? l.prototypeSlowLatency(row.delay)
-      : l.prototypeAvailableLatency(row.delay);
-
   String summary(AppLocalizations l, ServerGroup group) {
-    final available = group.rows.where(ServerAssetService.selectable).length;
-    final delays =
-        group.rows
-            .where(ServerAssetService.selectable)
-            .where(ServerAssetService.healthy)
-            .map((row) => row.delay)
-            .toList()
-          ..sort();
+    var available = 0;
+    int? fastest;
+    for (final row in group.rows) {
+      if (!ServerAssetService.selectable(row)) continue;
+      available++;
+      if (ServerAssetService.healthy(row) &&
+          (fastest == null || row.delay < fastest)) {
+        fastest = row.delay;
+      }
+    }
     return l.prototypeGroupAvailability(
       available,
       group.rows.length,
-      delays.firstOrNull ?? '—',
+      fastest ?? '—',
     );
   }
 
@@ -459,17 +460,51 @@ class ServersController extends ConnectController {
         }
       }, ids: {row.id});
 
-  Future<void> test(BuildContext context, Iterable<CoreConfigData> rows) async {
+  Future<void> test(
+    BuildContext context,
+    Iterable<CoreConfigData> rows, {
+    String? groupId,
+  }) async {
     final ids = rows.map((row) => row.id).toSet();
     if (ids.isEmpty) return;
-    await perform(context, () async {
-      emit(state.copyWith(testingServerIds: {...testingIds, ...ids}));
+    await run(context, () async {
+      final request = Object();
+      emit(
+        state.copyWith(
+          serverTests: {
+            ...state.serverTests,
+            request: (groupId: groupId, cancelling: false),
+          },
+        ),
+      );
       try {
-        await PingService().pingConfigIds(ids.toList(), force: true);
+        await _ping.pingConfigIds(
+          ids.toList(),
+          force: true,
+          isCancelled: () =>
+              !isPageActive || (state.serverTests[request]?.cancelling ?? true),
+        );
       } finally {
-        emit(state.copyWith(testingServerIds: {...testingIds}..removeAll(ids)));
+        emit(
+          state.copyWith(serverTests: {...state.serverTests}..remove(request)),
+        );
       }
-    }, ids: ids);
+    });
+  }
+
+  void cancelTest(String groupId) {
+    emit(
+      state.copyWith(
+        serverTests: state.serverTests.map(
+          (id, test) => MapEntry(
+            id,
+            test.groupId == groupId
+                ? (groupId: groupId, cancelling: true)
+                : test,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> serverAction(
@@ -512,7 +547,6 @@ class ServersController extends ConnectController {
         await perform(context, () async {
           final result = await SubscriptionService().refreshSubscriptionResult(
             source,
-            false,
           );
           if (!context.mounted) return;
           final l = AppLocalizations.of(context)!;
@@ -520,13 +554,7 @@ class ServersController extends ConnectController {
             setSourceError(source.id, null);
             ContextAlert.showToast(
               context,
-              result.parseFailureCount == null
-                  ? l.prototypeUsableNodes(result.count)
-                  : l.prototypeSubscriptionImportResult(
-                      source.name,
-                      result.count,
-                      result.parseFailureCount!,
-                    ),
+              l.prototypeUsableNodes(result.count),
             );
           } else {
             setSourceError(source.id, l.prototypeSubscriptionUpdateFailed);
@@ -536,15 +564,16 @@ class ServersController extends ConnectController {
             if (closeSources) navigator.pop();
             await showAppDialog<void>(
               dialogContext,
-              (_) => SourceUpdateErrorDialog(
-                sourceName: source.name,
-                failedCount: result.parseFailureCount ?? 0,
-              ),
+              (_) => SourceUpdateErrorDialog(sourceName: source.name),
             );
           }
         }, sourceId: source.id);
       case SourceAction.test:
-        await test(context, servers.where((row) => row.subId == source.id));
+        await test(
+          context,
+          servers.where((row) => row.subId == source.id),
+          groupId: 'subscription:${source.id}',
+        );
       case SourceAction.edit:
         await context.pushScoped(
           AppSecondaryDestination.subscriptionEdit,

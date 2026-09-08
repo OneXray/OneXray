@@ -1,14 +1,17 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/launch/setup/page.dart';
-import 'package:onexray/pages/launch/setup/selectors.dart';
+import 'package:onexray/pages/connect/routing/smart/regions.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/launch/setup.dart';
+import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 Widget _app(
@@ -19,7 +22,7 @@ Widget _app(
   theme: AppTheme.material(Brightness.light, mobile: mobile),
   locale: locale,
   supportedLocales: AppLocalizations.supportedLocales,
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   builder: (context, child) => ShadTheme(
     data: AppTheme.shad(Brightness.light, mobile: mobile),
     child: child!,
@@ -42,6 +45,10 @@ void _desktop(WidgetTester tester) {
 }
 
 void main() {
+  setUp(() {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+  });
   testWidgets('system step identifies missing local network permission', (
     tester,
   ) async {
@@ -157,7 +164,7 @@ void main() {
   );
 
   testWidgets(
-    'system states expose permission actions without a Continue confirmation',
+    'system states require Continue after permission and interface setup',
     (tester) async {
       _mobile(tester);
       final actions = <SetupAction>[];
@@ -220,8 +227,108 @@ void main() {
       expect(find.text('Continue'), findsNothing);
       expect(find.byType(FilledButton), findsOneWidget);
       await show(ready);
-      expect(find.text('Continue'), findsNothing);
-      expect(find.byType(FilledButton), findsNothing);
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.byType(FilledButton), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      expect(actions.last, SetupAction.continueSystem);
+
+      await show(
+        ready.copyWith(
+          permission: PlatformPermissionResult(
+            kind: PlatformPermissionKind.appleVpn,
+            state: PlatformPermissionState.notRequired,
+          ),
+        ),
+      );
+      expect(find.text('Set up VPN'), findsNothing);
+      expect(
+        find.text('Allow OneXray to add a VPN configuration.'),
+        findsNothing,
+      );
+      expect(find.text('Authorized'), findsNothing);
+      await tester.tap(find.text('Continue'));
+      expect(actions.last, SetupAction.continueSystem);
+    },
+  );
+
+  testWidgets('suggested region waits for Continue or Skip', (tester) async {
+    _mobile(tester);
+    final actions = <SetupAction>[];
+    Future<void> show(List<String>? regions) async {
+      await tester.pumpWidget(
+        _app(
+          SetupView(
+            state: SetupPageState(
+              step: SetupStep.region,
+              busy: false,
+              regions: regions,
+              regionCodes: const ['CN', 'RU'],
+            ),
+            requiresInterface: false,
+            supportsScan: true,
+            onAction: actions.add,
+            onAddServer: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await show(null);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+          .onPressed,
+      isNull,
+    );
+    await show(['RU']);
+    expect(find.text('Russia'), findsOneWidget);
+    await tester.tap(find.text('Continue'));
+    await tester.tap(find.text('Skip'));
+    expect(actions, [SetupAction.continueRegion, SetupAction.skipRegion]);
+    final l = AppLocalizations.of(tester.element(find.byType(SetupView)))!;
+    await show([]);
+    expect(find.text(l.prototypeNoDirectRegions), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+          .onPressed,
+      isNotNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'configured servers expose Home without a speed-test loading indicator',
+    (tester) async {
+      _mobile(tester);
+      final actions = <SetupAction>[];
+      AppEventBus.instance.updatePinging(true);
+      await tester.pumpWidget(
+        _app(
+          SetupView(
+            state: const SetupPageState(
+              step: SetupStep.servers,
+              busy: false,
+              hasServers: true,
+            ),
+            requiresInterface: false,
+            supportsScan: true,
+            onAction: actions.add,
+            onAddServer: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Servers added. You are ready to go to Home.'),
+        findsOneWidget,
+      );
+      expect(find.text('Add later'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      await tester.tap(find.text('Go to Home'));
+      expect(actions, [SetupAction.finish]);
+      expect(tester.takeException(), isNull);
     },
   );
 
@@ -321,10 +428,10 @@ void main() {
   );
 
   testWidgets(
-    'region selection returns immediately; Back leaves it unchanged',
+    'shared region page supports search, single selection, Done and Back',
     (tester) async {
       _mobile(tester);
-      String? selected;
+      List<String>? selected;
       final router = GoRouter(
         routes: [
           GoRoute(
@@ -332,15 +439,25 @@ void main() {
             builder: (context, _) => Scaffold(
               body: TextButton(
                 onPressed: () async =>
-                    selected = await context.push<String>('/region'),
+                    selected = await context.push<List<String>>('/region'),
                 child: const Text('Open region'),
               ),
             ),
           ),
           GoRoute(
             path: '/region',
-            builder: (context, _) => const SetupRegionPage(
-              params: SetupRegionParams(['CN', 'RU', 'IR', 'US'], 'CN'),
+            builder: (context, _) => DirectRegionsPage(
+              selectedCodes: selected ?? const ['CN'],
+              loadRegions: () async => RegionCatalog.fromJson(
+                {
+                  'geosite': <String, dynamic>{},
+                  'geoip': {
+                    for (final code in ['CN', 'RU', 'IR', 'US']) code: [code],
+                  },
+                },
+                geositeCodes: [],
+                geoipCodes: ['CN', 'RU', 'IR', 'US'],
+              ),
             ),
           ),
         ],
@@ -352,7 +469,7 @@ void main() {
           theme: AppTheme.material(Brightness.light, mobile: true),
           locale: const Locale('en'),
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           builder: (context, child) => ShadTheme(
             data: AppTheme.shad(Brightness.light, mobile: true),
             child: child!,
@@ -362,22 +479,29 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Open region'));
       await tester.pumpAndSettle();
-      expect(find.byType(AppBar), findsNothing);
-      expect(
-        tester.getSize(find.widgetWithText(TextButton, 'Back')).height,
-        38,
-      );
+      expect(find.byType(AppBar), findsOneWidget);
       await tester.enterText(find.byType(TextField), 'Russia');
       await tester.pumpAndSettle();
       expect(find.text('Mainland China'), findsNothing);
-      await tester.tap(find.text('Back'));
+      await tester.tap(find.text('Russia').last);
+      await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
       expect(selected, isNull);
       await tester.tap(find.text('Open region'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Russia'));
       await tester.pumpAndSettle();
-      expect(selected, 'RU');
+      expect(find.byType(DirectRegionsPage), findsOneWidget);
+      expect(selected, isNull);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(selected, ['RU']);
+      await tester.tap(find.text('Open region'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Clear all'));
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(selected, isEmpty);
       expect(tester.takeException(), isNull);
     },
   );

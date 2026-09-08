@@ -1,21 +1,22 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/app_startup/service.dart';
-import 'package:onexray/service/app_update/service.dart';
-import 'package:onexray/service/background_task/service.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/platform_requirements.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/geo_data/service.dart';
+import 'package:onexray/service/launch/app_startup.dart';
+import 'package:onexray/service/settings/app_update/service.dart';
+import 'package:onexray/service/advanced/xray/data_update/scheduler.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/platform_requirements.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/launch/storage_preparation.dart';
-import 'package:onexray/service/menu/short_cut/service.dart';
-import 'package:onexray/service/menu/tray/service.dart';
-import 'package:onexray/service/menu/window/service.dart';
-import 'package:onexray/service/notification/service.dart';
-import 'package:onexray/service/share/service.dart';
+import 'package:onexray/service/shared/menu/short_cut/service.dart';
+import 'package:onexray/service/shared/menu/tray/service.dart';
+import 'package:onexray/service/shared/menu/window/service.dart';
+import 'package:onexray/service/shared/notification/service.dart';
+import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/shared/share/service.dart';
 
 abstract final class ServiceManager {
   static Future<void>? _initFuture;
@@ -83,6 +84,7 @@ abstract final class ServiceManager {
     );
     BackgroundTaskService().init();
     _initialized = true;
+    PingService().startAutomatic();
     unawaited(_checkUpdate());
   }
 
@@ -116,6 +118,7 @@ abstract final class ServiceManager {
   }
 
   static void serviceDispose() {
+    PingService().stopAutomatic();
     _initFuture = null;
     _initialized = false;
     TrayService().dispose();

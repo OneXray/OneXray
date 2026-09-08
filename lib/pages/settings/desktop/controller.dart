@@ -1,14 +1,14 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/app_startup/service.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/launch/app_startup.dart';
 import 'package:window_manager/window_manager.dart';
 
 class DesktopSettingsPageState {
@@ -213,6 +213,13 @@ class DesktopSettingsController extends PageCubit<DesktopSettingsPageState>
     try {
       final opened = await AppStartupService().openLaunchAtLoginSettings();
       if (!opened && context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
         ContextAlert.showToast(
           context,
           AppLocalizations.of(context)!.settingsPageLaunchAtLoginUnavailable,

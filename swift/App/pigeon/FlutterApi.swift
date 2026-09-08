@@ -23,8 +23,8 @@ class AppFlutterApi {
         }
     }
 
-    func vpnStatusChanged() {
-        if let status = VPNManager.shared.readStatus() {
+    func vpnStatusChanged() async throws {
+        if let status = try await VPNManager.shared.readStatus() {
             YGLog("readRunningVpn \(status.rawValue)")
             var vpnStatus: VpnStatus = .disconnected
             switch status {

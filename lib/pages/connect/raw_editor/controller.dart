@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/pages/widget/configuration_transfer.dart';
-import 'package:onexray/service/assets/raw_editor.dart';
-import 'package:onexray/service/share/configuration_transfer.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
+import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
 
 const _unchanged = Object();
@@ -125,7 +126,7 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
     try {
       final count = await transfers.service.sharingDataCount(
         state.text,
-        pending: transfers.pending,
+        assets: transfers.assets,
       );
       if (isPageActive && revision == _textRevision) {
         emit(state.copyWith(sharingDataCount: count));
@@ -192,7 +193,7 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
     try {
       final id = await service.save(
         draft,
-        geodata: transfers.pending,
+        imported: transfers.imported,
         confirmReconnect: () => context.mounted
             ? showApplyAndReconnectDialog(context, label: state.name.trim())
             : Future.value(false),
@@ -201,6 +202,10 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
           isPageActive &&
           context.mounted &&
           ModalRoute.of(context)?.isCurrent == true) {
+        ContextAlert.showToast(
+          context,
+          l10n.prototypeNameSaved(state.name.trim()),
+        );
         Navigator.of(context).pop(id);
       }
     } on RawEditorException catch (failure) {

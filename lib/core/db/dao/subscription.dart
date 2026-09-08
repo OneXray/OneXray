@@ -11,8 +11,13 @@ class SubscriptionDao extends DatabaseAccessor<AppDatabase>
     with _$SubscriptionDaoMixin {
   SubscriptionDao(super.db);
 
-  Future<List<SubscriptionData>> get allRows async =>
-      select(subscription).get();
+  Future<List<SubscriptionData>> get allRows async => (select(
+    subscription,
+  )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
+
+  Stream<List<SubscriptionData>> get allRowsStream => (select(
+    subscription,
+  )..orderBy([(table) => OrderingTerm.asc(table.id)])).watch();
 
   Future<SubscriptionData?> searchRow(int id) async {
     return (select(

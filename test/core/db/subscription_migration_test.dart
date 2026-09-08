@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/upgrade_snapshot.dart';
-import 'package:onexray/service/geo_data/service.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
@@ -117,7 +117,12 @@ void main() {
     ]);
     for (final entry in {
       'core_config': ['location_source', 'last_measured_at'],
-      'subscription': ['parse_failure_count', 'auto_update'],
+      'subscription': [
+        'parse_failure_count',
+        'auto_update',
+        'count',
+        'expanded',
+      ],
       'geo_data': ['generation'],
       'connection_config': ['revision'],
     }.entries) {
@@ -152,7 +157,7 @@ void main() {
               .get();
           expect(
             subscriptionColumns.map((row) => row.read<String>('name')),
-            isNot(contains('auto_update')),
+            isNot(anyElement(isIn(['auto_update', 'count', 'expanded']))),
           );
           final geoDataColumns = await database
               .customSelect('PRAGMA table_info(geo_data)')
@@ -205,6 +210,19 @@ void main() {
                 .read<int>('user_version'),
             3,
           );
+          final subId = await reopened.subscriptionDao.insertRow(
+            SubscriptionCompanion.insert(
+              name: 'After upgrade',
+              url: 'https://example.com/new-sub',
+              timestamp: DateTime(2026),
+            ),
+          );
+          expect(subId, greaterThan(7));
+          expect(
+            (await reopened.subscriptionDao.searchRow(subId))!.name,
+            'After upgrade',
+          );
+          await reopened.subscriptionDao.deleteRow(subId);
         } finally {
           await reopened.close();
         }
@@ -505,7 +523,7 @@ Map<String, List<List<Object?>>> _snapshot(
   final columns = {
     'core_config': 'id, name, type, tags, data, delay, sub_id',
     'subscription':
-        'id, name, url, timestamp, count, expanded, '
+        'id, name, url, timestamp, '
         '${hasAgeKeys ? 'age_secret_key, age_public_key' : 'NULL, NULL'}',
     'geo_data': 'id, name, type, url, timestamp, category_count, rule_count',
   };

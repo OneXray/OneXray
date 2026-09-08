@@ -1,0 +1,421 @@
+import 'dart:convert';
+
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/service/connect/compiler.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/runtime_host.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
+
+import '../../../../support/fake_geodata_import.dart';
+
+import 'package:onexray/service/connect/routing/custom/editor.dart';
+import 'package:onexray/service/connect/routing/custom/service.dart';
+import 'package:onexray/service/connect/routing/custom/state.dart';
+
+RoutingProfileState _state(
+  String name, {
+  int entries = 1,
+  RoutingRuleAction action = RoutingRuleAction.direct,
+}) => RoutingProfileState(
+  name: name,
+  entryCount: entries,
+  rules: [
+    RoutingRuleState(
+      ruleTag: 'Example',
+      domain: const ['domain:example.com'],
+      action: action,
+    ),
+  ],
+);
+
+void main() {
+  late AppDatabase db;
+  setUp(() {
+    db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+  });
+
+  test(
+    'libXray rejection preserves the existing profile without activation',
+    () async {
+      final id = await CustomRoutingService(db).save(_state('Work'));
+      final original = (await db.routingProfileDao.searchRow(id))!;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          start: (_) async => throw StateError('Unexpected start'),
+          stop: () async => throw StateError('Unexpected stop'),
+        ),
+      );
+      var calls = 0;
+      final service = CustomRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+        testXray: (text) async {
+          calls++;
+          expect(
+            jsonDecode(text)['routing']['rules'].single['port'],
+            'invalid',
+          );
+          return 'Core rejected port';
+        },
+      );
+      await expectLater(
+        service.save(
+          CustomRoutingEditorDraft(
+            original: original,
+            state: _state('Renamed')
+                .copyWith(rules: [RoutingRuleState(port: 'invalid')]),
+          ),
+          confirmReconnect: () async =>
+              throw StateError('Unexpected confirmation'),
+        ),
+        throwsFormatException,
+      );
+      expect(calls, 1);
+      expect(await db.routingProfileDao.searchRow(id), original);
+    },
+  );
+
+  test('new templates save without servers or activation; names and three-item cap are enforced', () async {
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        start: (_) async => throw StateError('Unexpected start'),
+        stop: () async => throw StateError('Unexpected stop'),
+      ),
+    );
+    final service = CustomRoutingEditorService(
+      database: db,
+      coordinator: coordinator,
+      testXray: (_) async => '',
+    );
+    final before = (await coordinator.configuration).encode();
+    final id = await service.save(
+      CustomRoutingEditorDraft(state: _state('  Work  ', entries: 3)),
+      confirmReconnect: () async => throw StateError('Unexpected confirmation'),
+    );
+    final row = (await db.routingProfileDao.searchRow(id!))!;
+    expect(row.name, 'Work');
+    final json = jsonDecode(utf8.decode(base64Decode(row.data))) as Map;
+    expect(json.containsKey('name'), false);
+    expect(json.containsKey('geodata'), false);
+    expect(CustomRoutingService.read(row).entryCount, 3);
+    expect((json['routing'] as Map)['rules'], [
+      {
+        'ruleTag': 'Example',
+        'domain': ['domain:example.com'],
+        'outboundTag': 'direct',
+      },
+    ]);
+    expect((await coordinator.configuration).encode(), before);
+    await expectLater(
+      service.save(
+        CustomRoutingEditorDraft(state: _state('work')),
+        confirmReconnect: () async => false,
+      ),
+      throwsA(
+        isA<CustomRoutingEditorException>().having(
+          (e) => e.reason,
+          'reason',
+          'duplicate',
+        ),
+      ),
+    );
+    for (final name in ['Two', 'Three']) {
+      await service.save(
+        CustomRoutingEditorDraft(state: _state(name)),
+        confirmReconnect: () async => false,
+      );
+    }
+    await expectLater(
+      service.save(
+        CustomRoutingEditorDraft(state: _state('Four')),
+        confirmReconnect: () async => false,
+      ),
+      throwsA(
+        isA<CustomRoutingEditorException>().having(
+          (e) => e.reason,
+          'reason',
+          'limit',
+        ),
+      ),
+    );
+    expect(await service.rows, hasLength(3));
+  });
+
+  test(
+    'active edit failure keeps the asset and does not restore the runtime',
+    () async {
+      final id = await CustomRoutingService(db).save(_state('Work'));
+      final configuration = ConnectionConfiguration(
+        connection: ConnectionSettings(
+          trafficMode: TrafficMode.custom,
+          customId: id,
+        ),
+      );
+      final old = _runtime('a', configuration);
+      await db.connectionConfigDao.commit(
+        configurationJson: configuration.encode(),
+      );
+      var host = HostConnection(VpnStatus.connected, runtime: old);
+      final calls = <String>[];
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => host,
+          start: (runtime) async {
+            calls.add(
+              runtime.identity == old.identity ? 'start:old' : 'start:new',
+            );
+            throw const ConnectionHostException('startFailed');
+          },
+          stop: () async {
+            calls.add('stop');
+            return host = const HostConnection(VpnStatus.disconnected);
+          },
+        ),
+      );
+      final service = CustomRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+        testXray: (_) async => '',
+        prepare: (next, _, _) async => _runtime('b', next),
+      );
+      final initial = await service.load(id);
+      await service.save(
+        CustomRoutingEditorDraft(
+          original: initial.original,
+          state: initial.state.copyWith(name: 'Renamed'),
+        ),
+        confirmReconnect: () async =>
+            throw StateError('Rename must not reconnect'),
+      );
+      expect(calls, isEmpty);
+      final renamed = await service.load(id);
+      final changed = CustomRoutingEditorDraft(
+        original: renamed.original,
+        state: _state(renamed.state.name, entries: 2),
+      );
+      final importEvents = <String>[];
+      final imported = ConfigurationImportDraft(
+        ConfigurationContent(
+          kind: ConfigurationKind.custom,
+          text: changed.state.encode(),
+          name: changed.state.name,
+        ),
+        FakeGeoDataImport(events: importEvents),
+      );
+      expect(
+        await service.save(
+          changed,
+          imported: imported,
+          confirmReconnect: () async {
+            expect(importEvents, isEmpty);
+            await coordinator.pauseForDataClear().timeout(
+              const Duration(seconds: 1),
+            );
+            coordinator.resumeAfterDataClear();
+            return false;
+          },
+        ),
+        isNull,
+      );
+      expect(importEvents, isEmpty);
+      expect(calls, isEmpty);
+      final before = (await db.connectionConfigDao.read()).toJson();
+      await expectLater(
+        service.save(changed, confirmReconnect: () async => true),
+        throwsA(isA<ConnectionHostException>()),
+      );
+      expect(
+        (await db.routingProfileDao.searchRow(id))!.data,
+        renamed.original!.data,
+      );
+      expect((await db.connectionConfigDao.read()).toJson(), before);
+      expect(calls, ['stop', 'start:new', 'stop']);
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect(coordinator.state.value.runtime, isNull);
+    },
+  );
+
+  test('active delete confirms and reconnects with Smart routing', () async {
+    final id = await CustomRoutingService(db).save(_state('Work'));
+    final configuration = ConnectionConfiguration(
+      connection: ConnectionSettings(
+        trafficMode: TrafficMode.custom,
+        customId: id,
+      ),
+    );
+    final old = _runtime('a', configuration);
+    await db.connectionConfigDao.commit(
+      configurationJson: configuration.encode(),
+    );
+    var host = HostConnection(VpnStatus.connected, runtime: old);
+    final calls = <String>[];
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => host,
+        prepare: (next, _) async => _runtime('b', next),
+        start: (runtime) async {
+          calls.add(
+            runtime.identity == old.identity ? 'start:old' : 'start:new',
+          );
+          return host = HostConnection(VpnStatus.connected, runtime: runtime);
+        },
+        stop: () async {
+          calls.add('stop');
+          return host = const HostConnection(VpnStatus.disconnected);
+        },
+      ),
+    );
+    final service = CustomRoutingEditorService(
+      database: db,
+      coordinator: coordinator,
+      testXray: (_) async => '',
+    );
+    final original = (await service.load(id)).original!;
+    expect(
+      await service.delete(
+        original,
+        confirm: (selected, reconnect) async {
+          expect(selected, true);
+          expect(reconnect, true);
+          return true;
+        },
+      ),
+      true,
+    );
+    expect(await db.routingProfileDao.searchRow(id), isNull);
+    expect(calls, ['stop', 'start:new']);
+    expect(
+      (await coordinator.configuration).connection.trafficMode,
+      TrafficMode.smart,
+    );
+    expect(
+      coordinator.state.value.runtime!.configuration.connection.trafficMode,
+      TrafficMode.smart,
+    );
+  });
+
+  test(
+    'unselected edits and stale drafts do not overwrite newer assets',
+    () async {
+      final id = await CustomRoutingService(db).save(_state('Work'));
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          start: (_) async => throw StateError('Unexpected start'),
+          stop: () async => throw StateError('Unexpected stop'),
+        ),
+      );
+      final service = CustomRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+        testXray: (_) async => '',
+      );
+      final original = await service.load(id);
+      await service.save(
+        CustomRoutingEditorDraft(
+          original: original.original,
+          state: _state('New name', entries: 2),
+        ),
+        confirmReconnect: () async =>
+            throw StateError('Unexpected confirmation'),
+      );
+      await expectLater(
+        service.save(original, confirmReconnect: () async => false),
+        throwsA(isA<CustomRoutingEditorException>()),
+      );
+      expect((await db.routingProfileDao.searchRow(id))!.name, 'New name');
+      expect(
+        (await coordinator.configuration).connection.trafficMode,
+        TrafficMode.smart,
+      );
+    },
+  );
+
+  test('failed Custom database save rolls staged Geodata back', () async {
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+      ),
+    );
+    final service = CustomRoutingEditorService(
+      database: db,
+      coordinator: coordinator,
+      testXray: (_) async => '',
+    );
+    await db.customStatement('''
+      CREATE TRIGGER fail_custom_save BEFORE INSERT ON routing_profile
+      BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+    final lifecycle = <String>[];
+    final imported = ConfigurationImportDraft(
+      ConfigurationContent(
+        kind: ConfigurationKind.custom,
+        text: _state('Work').encode(),
+        name: 'Work',
+      ),
+      FakeGeoDataImport(events: lifecycle),
+    );
+
+    await expectLater(
+      service.save(
+        CustomRoutingEditorDraft(state: _state('Work')),
+        confirmReconnect: () async => false,
+        imported: imported,
+      ),
+      throwsA(anything),
+    );
+
+    expect(lifecycle, ['publish', 'commit', 'rollback']);
+    expect(await db.routingProfileDao.allRows, isEmpty);
+  });
+}
+
+Future<ConnectionCoordinator> _initialize(
+  ConnectionCoordinator coordinator,
+) async {
+  addTearDown(coordinator.dispose);
+  await coordinator.initialize(poll: false, registerReferences: false);
+  return coordinator;
+}
+
+ConnectionRuntime _runtime(
+  String digit,
+  ConnectionConfiguration configuration,
+) {
+  const text = '{"outbounds":[{"protocol":"freedom"}]}';
+  final invoke = LibXrayInvokeRequest(
+    method: LibXrayMethod.runXray,
+    payload: RunXrayRequest(text).toJson(),
+  );
+  return ConnectionRuntime.create(
+    configuration: configuration,
+    compiled: CompiledConnection(
+      xrayJson: text,
+      entries: [],
+      finalExit: null,
+      nodeTags: {},
+    ),
+    platform: ConnectionPlatform.android,
+    request: StartVpnRequest(
+      configuration.policy.toTun(ConnectionPlatform.android),
+      null,
+      '18003',
+      jsonEncode(invoke.toJson()),
+    ),
+  );
+}

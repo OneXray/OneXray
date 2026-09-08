@@ -1,19 +1,19 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/servers/import/page.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/service/assets/import.dart';
-import 'package:onexray/service/share/app_link_model.dart';
-import 'package:onexray/service/subscription/model.dart';
-import 'package:onexray/service/subscription/service.dart';
-import 'package:onexray/service/subscription/validator.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/service/servers/import.dart';
+import 'package:onexray/service/shared/share/app_link_model.dart';
+import 'package:onexray/service/servers/subscription/model.dart';
+import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/servers/subscription/validator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:re_editor/re_editor.dart';
 
@@ -33,6 +33,7 @@ class ServerImportPageState {
     this.busy = false,
     this.loadingSubscription = false,
     this.openingAction,
+    this.activeAction,
     this.generatingAgeKeyType,
     this.obscureSecret = true,
     this.loadFailed = false,
@@ -53,6 +54,7 @@ class ServerImportPageState {
   final bool busy;
   final bool loadingSubscription;
   final ServerImportAction? openingAction;
+  final ServerImportAction? activeAction;
   final AgeKeyType? generatingAgeKeyType;
   final bool obscureSecret;
   final bool loadFailed;
@@ -84,6 +86,7 @@ class ServerImportPageState {
     bool? busy,
     bool? loadingSubscription,
     Object? openingAction = _unset,
+    Object? activeAction = _unset,
     Object? generatingAgeKeyType = _unset,
     bool? obscureSecret,
     bool? loadFailed,
@@ -105,6 +108,9 @@ class ServerImportPageState {
     openingAction: identical(openingAction, _unset)
         ? this.openingAction
         : openingAction as ServerImportAction?,
+    activeAction: identical(activeAction, _unset)
+        ? this.activeAction
+        : activeAction as ServerImportAction?,
     generatingAgeKeyType: identical(generatingAgeKeyType, _unset)
         ? this.generatingAgeKeyType
         : generatingAgeKeyType as AgeKeyType?,
@@ -273,7 +279,9 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   }) async {
     if (state.busy) return;
     _closingFlow = false;
-    emit(state.copyWith(error: null, committedResult: null));
+    emit(
+      state.copyWith(error: null, committedResult: null, activeAction: action),
+    );
     ServerImportResult? result;
     if (action == ServerImportAction.file ||
         action == ServerImportAction.scan) {
@@ -312,6 +320,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         ),
       );
     }
+    emit(state.copyWith(activeAction: null));
     if (!context.mounted) return;
     if (closeParent && (result != null || _closingFlow)) {
       Navigator.of(context)
@@ -338,10 +347,15 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
 
   Future<void> openText(BuildContext context, String input) async {
     _closingFlow = false;
-    final result = await _importText(context, input);
-    if ((result != null || _closingFlow) && context.mounted) {
-      Navigator.of(context)
-          .pop(result ?? state.committedResult ?? _subscriptionResult);
+    emit(state.copyWith(activeAction: ServerImportAction.paste));
+    try {
+      final result = await _importText(context, input);
+      if ((result != null || _closingFlow) && context.mounted) {
+        Navigator.of(context)
+            .pop(result ?? state.committedResult ?? _subscriptionResult);
+      }
+    } finally {
+      emit(state.copyWith(activeAction: null));
     }
   }
 
@@ -419,7 +433,6 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
       customCount: local?.customCount ?? 0,
       geoDataCount: local?.geoDataCount ?? 0,
       subscriptionCount: state.importedSubscriptionCount,
-      failureCount: local?.failureCount,
       failedGeoData: local?.failedGeoData ?? const [],
     );
     if (detection.localText.trim().isNotEmpty &&
@@ -535,13 +548,32 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     ServerImportPreview? preview;
     try {
       preview = await service.preview(input, manual: manual);
+      if (!context.mounted) {
+        await preview.dispose();
+        return null;
+      }
+      if (!preview.hasItems) {
+        final error = AppLocalizations.of(context)!.prototypeNoSupportedLinks;
+        await preview.dispose();
+        emit(state.copyWith(error: error));
+        return null;
+      }
+      if (preview.rawCount == 0 &&
+          preview.customRoutes.isEmpty &&
+          preview.geoData.isEmpty) {
+        try {
+          return await _commit(context, preview);
+        } finally {
+          await preview.dispose();
+        }
+      }
     } catch (_) {
       if (context.mounted) {
         final l10n = AppLocalizations.of(context)!;
         emit(
           state.copyWith(
             error: manual
-                ? l10n.prototypeNodeJsonHint
+                ? l10n.validationJsonInvalid
                 : l10n.prototypeNoSupportedLinks,
           ),
         );
@@ -583,12 +615,26 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     }
     emit(state.copyWith(busy: true, error: null));
     try {
+      final result = await _commit(context, preview);
+      if (result != null && result.writeFailureCount == 0 && context.mounted) {
+        Navigator.of(context).pop(result);
+      }
+    } finally {
+      emit(state.copyWith(busy: false));
+    }
+  }
+
+  Future<ServerImportResult?> _commit(
+    BuildContext context,
+    ServerImportPreview preview,
+  ) async {
+    try {
       final result = await service.commit(preview);
       if (context.mounted) {
         final l10n = AppLocalizations.of(context)!;
         if (result.writeFailureCount > 0) {
           emit(state.copyWith(committedResult: result));
-          return;
+          return result;
         }
         _showSuccess(
           context,
@@ -607,17 +653,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
                 )
               : l10n.prototypeGeodataAdded,
         );
-        Navigator.of(context).pop(result);
       }
+      return result;
     } catch (_) {
       if (context.mounted) {
         emit(
           state.copyWith(error: AppLocalizations.of(context)!.buttonAddFailed),
         );
       }
-    } finally {
-      emit(state.copyWith(busy: false));
     }
+    return null;
   }
 
   Future<void> subscribe(BuildContext context) async {
@@ -676,32 +721,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         }
         return;
       }
-      final result = await SubscriptionService().insertSubscription(
-        input,
-        false,
-      );
+      final result = await SubscriptionService().insertSubscription(input);
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
       if (!result.success) {
         emit(state.copyWith(error: subscriptionError(l10n, result.status)));
         return;
       }
-      _showSuccess(
-        context,
-        result.parseFailureCount == null
-            ? l10n.prototypeUsableNodes(result.count)
-            : l10n.prototypeSubscriptionImportResult(
-                input.name,
-                result.count,
-                result.parseFailureCount!,
-              ),
-      );
+      _showSuccess(context, l10n.prototypeUsableNodes(result.count));
       Navigator.of(context).pop(
-        ServerImportResult(
-          count: result.count,
-          subscriptionId: result.subId,
-          failureCount: result.parseFailureCount,
-        ),
+        ServerImportResult(count: result.count, subscriptionId: result.subId),
       );
     } catch (_) {
       if (context.mounted) {

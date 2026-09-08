@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/service/doc/helper.dart';
+import 'package:onexray/service/shared/doc/helper.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 

@@ -27,6 +27,7 @@
 		EB68C70C2F94D150007C293A /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C6FF2F94D150007C293A /* Logger.swift */; };
 		EB68C70D2F94D150007C293A /* LibXray.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB68C6FE2F94D150007C293A /* LibXray.xcframework */; };
 		EB68C7162F94D172007C293A /* Vpn.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7122F94D172007C293A /* Vpn.swift */; };
+		EF6C196001D54A57BBD4AAD1 /* SimulatorProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF6C196001D54A57BBD4AAD2 /* SimulatorProxy.swift */; };
 		EB68C7172F94D172007C293A /* HostApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C70F2F94D172007C293A /* HostApi.swift */; };
 		EB68C7182F94D172007C293A /* FlutterApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C70E2F94D172007C293A /* FlutterApi.swift */; };
 		EB68C7192F94D172007C293A /* Messages.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB68C7102F94D172007C293A /* Messages.g.swift */; };
@@ -108,6 +109,7 @@
 		EB68C70F2F94D172007C293A /* HostApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostApi.swift; sourceTree = "<group>"; };
 		EB68C7102F94D172007C293A /* Messages.g.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Messages.g.swift; sourceTree = "<group>"; };
 		EB68C7122F94D172007C293A /* Vpn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vpn.swift; sourceTree = "<group>"; };
+		EF6C196001D54A57BBD4AAD2 /* SimulatorProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulatorProxy.swift; sourceTree = "<group>"; };
 		EB8B84042C0751410096E1FF /* tunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = tunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB8B84062C0751410096E1FF /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
 		EB8B840B2C0751410096E1FF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -246,6 +248,7 @@
 			children = (
 				EB68C7112F94D172007C293A /* pigeon */,
 				EB68C7122F94D172007C293A /* Vpn.swift */,
+				EF6C196001D54A57BBD4AAD2 /* SimulatorProxy.swift */,
 			);
 			name = App;
 			path = ../swift/App;
@@ -435,6 +438,7 @@
 				EB68C7072F94D150007C293A /* Logger.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				EB68C7162F94D172007C293A /* Vpn.swift in Sources */,
+				EF6C196001D54A57BBD4AAD1 /* SimulatorProxy.swift in Sources */,
 				EB68C7172F94D172007C293A /* HostApi.swift in Sources */,
 				EB68C7182F94D172007C293A /* FlutterApi.swift in Sources */,
 				EB68C7192F94D172007C293A /* Messages.g.swift in Sources */,

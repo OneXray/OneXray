@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/service/event_bus/service.dart';
-import 'package:onexray/service/event_bus/state.dart';
-import 'package:onexray/service/event_bus/enum.dart';
-import 'package:onexray/service/localizations/locale.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/event_bus/state.dart';
+import 'package:onexray/service/shared/event_bus/enum.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class GoRouteApp extends StatelessWidget {
@@ -40,7 +40,7 @@ class GoRouteApp extends StatelessWidget {
           locale: state.languageCode == LanguageCode.system
               ? null
               : state.languageCode.locale,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
           supportedLocales: supportedLocales,
           localeResolutionCallback: AppLocalePolicy.resolve,
           builder: (context, child) {

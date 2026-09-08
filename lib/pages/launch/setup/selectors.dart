@@ -1,24 +1,18 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/service/tun_settings/interface.dart';
+import 'package:onexray/service/advanced/tunnel/interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SetupInterfaceParams {
   final List<OutboundInterfaceOption> interfaces;
   final String selected;
   const SetupInterfaceParams(this.interfaces, this.selected);
-}
-
-class SetupRegionParams {
-  final List<String> codes;
-  final String selected;
-  const SetupRegionParams(this.codes, this.selected);
 }
 
 String setupRegionLabel(AppLocalizations l10n, String code) =>
@@ -50,26 +44,6 @@ class SetupInterfacePage extends StatelessWidget {
   }
 }
 
-class SetupRegionPage extends StatelessWidget {
-  final SetupRegionParams params;
-  const SetupRegionPage({super.key, required this.params});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return _SetupSelector(
-      title: l10n.prototypeChooseCountryRegion,
-      description: l10n.prototypeRegionPurpose,
-      selected: params.selected,
-      searchLabel: l10n.prototypeRegionSearch,
-      choices: [
-        for (final code in params.codes)
-          _Choice(code, setupRegionLabel(l10n, code), code),
-      ],
-    );
-  }
-}
-
 class _Choice {
   final String id;
   final String label;
@@ -84,28 +58,11 @@ class _ChoiceState {
 }
 
 class _ChoiceController extends PageCubit<_ChoiceState> {
-  final List<_Choice> _all;
   _ChoiceController(List<_Choice> choices, String selected)
-    : _all = choices,
-      super(_ChoiceState(selected, choices));
+    : super(_ChoiceState(selected, choices));
 
   void select(BuildContext context, String id) {
     context.pop(id);
-  }
-
-  void search(String text) {
-    final search = text.trim().toLowerCase();
-    emit(
-      _ChoiceState(
-        state.selected,
-        _all
-            .where(
-              (choice) =>
-                  '${choice.label} ${choice.id}'.toLowerCase().contains(search),
-            )
-            .toList(),
-      ),
-    );
   }
 
   void cancel(BuildContext context) => context.pop();
@@ -115,14 +72,12 @@ class _SetupSelector extends StatelessWidget {
   final String title;
   final String description;
   final String selected;
-  final String? searchLabel;
   final List<_Choice> choices;
   const _SetupSelector({
     required this.title,
     required this.description,
     required this.selected,
     required this.choices,
-    this.searchLabel,
   });
 
   @override
@@ -216,58 +171,9 @@ class _SetupSelector extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 22),
                                 ],
-                                if (searchLabel != null) ...[
-                                  TextField(
-                                    style: AppTypography.setupSearch,
-                                    onChanged: controller.search,
-                                    decoration: InputDecoration(
-                                      hintText: searchLabel,
-                                      hintStyle: AppTypography.setupSearch
-                                          .copyWith(
-                                            color: palette.mutedForeground,
-                                          ),
-                                      prefixIcon: Icon(
-                                        LucideIcons.search,
-                                        size: 19,
-                                        color: palette.mutedForeground,
-                                      ),
-                                      prefixIconConstraints:
-                                          const BoxConstraints(
-                                            minWidth: 44,
-                                            minHeight: 46,
-                                          ),
-                                      contentPadding:
-                                          const EdgeInsetsDirectional.fromSTEB(
-                                            0,
-                                            13,
-                                            14,
-                                            13,
-                                          ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadii.card,
-                                        ),
-                                        borderSide: BorderSide(
-                                          color: palette.borderStrong,
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadii.card,
-                                        ),
-                                        borderSide: BorderSide(
-                                          color: palette.borderStrong,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
                                 if (state.choices.isEmpty)
                                   Text(
-                                    searchLabel == null
-                                        ? l10n.prototypeTemporarilyUnavailable
-                                        : l10n.prototypeNoRegionsFound,
+                                    l10n.prototypeTemporarilyUnavailable,
                                     style: AppTypography.setupSelectorDetail
                                         .copyWith(
                                           color: palette.mutedForeground,

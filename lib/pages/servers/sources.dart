@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -8,8 +8,9 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/adaptive_dialog.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
 
 class ServerSourcesDialog extends StatelessWidget {
   const ServerSourcesDialog({super.key, required this.controller});
@@ -36,10 +37,22 @@ class ServerSourcesDialog extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: AppActivityIndicator(pinging: false),
+                ),
                 if (controller.sources.isEmpty && localCount == 0)
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(l.prototypeNoServersYet),
+                  ),
+                if (localCount > 0)
+                  _SourceRow(
+                    name: l.prototypeManualAdditions,
+                    detail:
+                        '${l.prototypeServerCount(localCount)} · ${l.prototypeLocalOnly}',
+                    status: l.prototypeStoredOnThisDevice,
+                    showDivider: controller.sources.isNotEmpty,
                   ),
                 for (final source in controller.sources)
                   _SourceRow(
@@ -51,8 +64,7 @@ class ServerSourcesDialog extends StatelessWidget {
                         controller.sourceErrors[source.id] ??
                         l.prototypeUpdated,
                     failed: controller.sourceErrors.containsKey(source.id),
-                    showDivider:
-                        source != controller.sources.last || localCount > 0,
+                    showDivider: source != controller.sources.last,
                     subscription: true,
                     busy: controller.sourceBusy(source.id),
                     onMore: controller.sourceBusy(source.id)
@@ -67,14 +79,6 @@ class ServerSourcesDialog extends StatelessWidget {
                             source,
                             SourceAction.update,
                           ),
-                  ),
-                if (localCount > 0)
-                  _SourceRow(
-                    name: l.prototypeManualAdditions,
-                    detail:
-                        '${l.prototypeServerCount(localCount)} · ${l.prototypeLocalOnly}',
-                    status: l.prototypeStoredOnThisDevice,
-                    showDivider: false,
                   ),
               ],
             ),
@@ -150,14 +154,9 @@ class _HelpRow extends StatelessWidget {
 }
 
 class SourceUpdateErrorDialog extends StatelessWidget {
-  const SourceUpdateErrorDialog({
-    super.key,
-    required this.sourceName,
-    required this.failedCount,
-  });
+  const SourceUpdateErrorDialog({super.key, required this.sourceName});
 
   final String sourceName;
-  final int failedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -199,32 +198,6 @@ class SourceUpdateErrorDialog extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _ImportStat(
-                    label: l.prototypeUsableNodes(0),
-                    foreground: palette.running,
-                    background: palette.runningSurface,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ImportStat(
-                    label: l.prototypeUnrecognizedNodes(failedCount),
-                    foreground: failedCount > 0
-                        ? palette.restartingText
-                        : palette.running,
-                    background: failedCount > 0
-                        ? palette.warningSurface
-                        : palette.runningSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
       actions: [
@@ -235,31 +208,6 @@ class SourceUpdateErrorDialog extends StatelessWidget {
       ],
     );
   }
-}
-
-class _ImportStat extends StatelessWidget {
-  const _ImportStat({
-    required this.label,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(AppRadii.control),
-    ),
-    child: Text(
-      label,
-      style: AppTypography.importStat.copyWith(color: foreground),
-    ),
-  );
 }
 
 class _SourceRow extends StatelessWidget {
@@ -315,7 +263,12 @@ class _SourceRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.link2, size: 20, color: palette.primary),
+          AppActivityBuilder(
+            builder: (context, activity) =>
+                subscription && busy && activity.downloading
+                ? const ButtonProgressIndicator(size: 20)
+                : Icon(LucideIcons.link2, size: 20, color: palette.primary),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -349,9 +302,11 @@ class _SourceRow extends StatelessWidget {
                 tooltip: l.prototypeCheckForUpdates,
                 style: actionStyle,
                 onPressed: onUpdate,
-                icon: busy
-                    ? const ButtonProgressIndicator()
-                    : const Icon(LucideIcons.refreshCw),
+                icon: AppActivityBuilder(
+                  builder: (context, activity) => busy && activity.downloading
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.refreshCw),
+                ),
               ),
             ],
             const SizedBox(width: 10),

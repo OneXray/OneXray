@@ -1,6 +1,6 @@
 import 'package:onexray/core/constants/preferences.dart';
-import 'package:onexray/service/app_startup/service.dart';
-import 'package:onexray/service/event_bus/service.dart';
+import 'package:onexray/service/launch/app_startup.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 
 enum LaunchDestination { privacy, firstRun, connect }
 

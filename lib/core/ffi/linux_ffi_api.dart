@@ -72,8 +72,7 @@ class LinuxFfiApi extends BaseFfiApi {
         ...desktopCoreRunArguments(
           dns: tun?.tunDnsIPv4 ?? '',
           interfaceName: tun?.autoOutboundsInterface ?? '',
-          configPath: inputs.configPath,
-          runtimePath: inputs.runtimePath,
+          configPath: inputs,
         ),
       ];
       final process = await _processManager.start(command);
@@ -88,8 +87,7 @@ class LinuxFfiApi extends BaseFfiApi {
       }
       final record = DesktopCoreProcessRecord(
         pid: process.pid,
-        configPath: inputs.configPath,
-        runtimePath: inputs.runtimePath,
+        configPath: inputs,
         startTicks: identity.startTicks,
       );
       _currentRecord = record;
@@ -124,9 +122,8 @@ class LinuxFfiApi extends BaseFfiApi {
         if (legacyRecord == null) return false;
         return await _stopRecordedCore(legacyRecord, v2684: true);
       }
-      // A managed session belongs to the restored coordinator, not stale cleanup.
-      if (record.runtimePath != null &&
-          await _coreProcessIsRunning(record) == true) {
+      // An active Core belongs to the restored coordinator, not stale cleanup.
+      if (await _coreProcessIsRunning(record) == true) {
         return true;
       }
       return await _stopRecordedCore(record);
@@ -273,19 +270,6 @@ class LinuxFfiApi extends BaseFfiApi {
           return null;
         }
       }
-      final runtimePath = record.runtimePath;
-      if (runtimePath != null) {
-        if (v2684) return null;
-        final inputDirectory = await Directory(
-          p.join(await getTunFilesDir(), 'run', 'core-inputs'),
-        ).resolveSymbolicLinks();
-        final resolvedConfig = await File(configPath).resolveSymbolicLinks();
-        final resolvedRuntime = await File(runtimePath).resolveSymbolicLinks();
-        if (!p.isWithin(inputDirectory, resolvedRuntime) ||
-            p.dirname(resolvedRuntime) != p.dirname(resolvedConfig)) {
-          return null;
-        }
-      }
       final arguments = utf8
           .decode(
             await File(p.join(processDirectory.path, 'cmdline')).readAsBytes(),
@@ -304,8 +288,7 @@ class LinuxFfiApi extends BaseFfiApi {
         }
       } else if (arguments.length < 2 ||
           arguments[1] != 'run' ||
-          !_matchesArgument(arguments, '-config', configPath) ||
-          !_matchesArgument(arguments, '-runtime', runtimePath)) {
+          !_matchesArgument(arguments, '-config', configPath)) {
         return null;
       }
       // stat is re-read after the other /proc reads to catch an intervening reuse.
@@ -320,9 +303,7 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   static bool _isV2684Record(DesktopCoreProcessRecord record) =>
-      record.configPath == null &&
-      record.runtimePath == null &&
-      record.startTicks == null;
+      record.configPath == null && record.startTicks == null;
 
   Future<DesktopCoreProcessRecord?> _verifyV2684Core(
     DesktopCoreProcessRecord record,

@@ -1,18 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/service/connection/platform_policy.dart';
-import 'package:onexray/service/connection/platform_requirements.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/geo_data/service.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/connect/platform_requirements.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/launch/storage_preparation.dart';
-import 'package:onexray/service/routing/geodata_suggestions.dart';
-import 'package:onexray/service/tun_settings/interface.dart';
+import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
+import 'package:onexray/service/advanced/tunnel/interface.dart';
 
 enum SetupStep { welcome, system, region, servers, complete }
 
@@ -122,16 +121,17 @@ class SetupService {
     await _preferences.saveSetupStep(SetupStep.region.name);
   }
 
-  Future<void> continueRegion(String? region) async {
-    if (region != null) {
-      if (!(await regionCodes()).contains(region)) {
+  Future<void> continueRegion(List<String>? regions) async {
+    if (regions != null) {
+      final available = await regionCodes();
+      if (!regions.every(available.contains)) {
         throw const SetupFailure('region');
       }
       final previous = await configuration();
       final connection = previous.connection.toJson();
       connection['smart'] = {
         ...previous.connection.smart.toJson(),
-        'directRegions': [region],
+        'directRegions': regions,
       };
       await _save(
         ConnectionConfiguration(
@@ -144,14 +144,7 @@ class SetupService {
     await _preferences.saveSetupStep(SetupStep.servers.name);
   }
 
-  Future<bool> hasServers() async =>
-      (await (_db.select(_db.coreConfig)
-                ..where(
-                  (row) => row.type.equals('outbound') & row.data.isNotNull(),
-                )
-                ..limit(1))
-              .get())
-          .isNotEmpty;
+  Stream<bool> watchHasServers() => _db.coreConfigDao.watchHasOutbounds();
 
   Future<void> finish() async {
     if (await currentStep() != SetupStep.servers) {

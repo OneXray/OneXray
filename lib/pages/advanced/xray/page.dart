@@ -1,17 +1,19 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tab_visibility.dart';
 import 'package:onexray/pages/advanced/xray/controller.dart';
-import 'package:onexray/pages/core/log/config_file_viewer/params.dart';
-import 'package:onexray/pages/core/log/log_file_viewer/params.dart';
+import 'package:onexray/pages/advanced/xray/config/params.dart';
+import 'package:onexray/pages/advanced/xray/log/params.dart';
+import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/page_action_bar.dart';
-import 'package:onexray/pages/widget/setting_row.dart';
-import 'package:onexray/pages/widget/settings_page.dart';
+import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
+import 'package:onexray/pages/shared/widgets/setting_row.dart';
+import 'package:onexray/pages/shared/widgets/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 /// Embedded in the root Advanced tab. Child details use the root router.
@@ -56,7 +58,15 @@ class XrayRuntimePage extends StatelessWidget {
                     spacing: 13,
                     children: [
                       OutlinedButton.icon(
-                        onPressed: disabled ? null : controller.restoreDefaults,
+                        onPressed: disabled
+                            ? null
+                            : () {
+                                controller.restoreDefaults();
+                                ContextAlert.showToast(
+                                  context,
+                                  l.settingsDefaultsRestored,
+                                );
+                              },
                         icon: const Icon(LucideIcons.rotateCcw, size: 16),
                         label: Text(l.prototypeRestoreDefaults),
                       ),
@@ -122,7 +132,12 @@ class XrayRuntimePage extends StatelessWidget {
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: mobile ? 13 : 14,
                                 ),
-                                trailing: _chevron(context),
+                                trailing: AppActivityBuilder(
+                                  builder: (context, activity) =>
+                                      activity.downloading
+                                      ? const ButtonProgressIndicator()
+                                      : _chevron(context),
+                                ),
                                 onTap: () => onGeodata(context),
                               ),
                             ],
@@ -138,7 +153,12 @@ class XrayRuntimePage extends StatelessWidget {
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: mobile ? 13 : 14,
                                 ),
-                                trailing: _chevron(context),
+                                trailing: AppActivityBuilder(
+                                  builder: (context, activity) =>
+                                      activity.downloading
+                                      ? const ButtonProgressIndicator()
+                                      : _chevron(context),
+                                ),
                                 onTap: () => onUpdates(context),
                               ),
                             ],
@@ -164,7 +184,12 @@ class XrayRuntimePage extends StatelessWidget {
                                         ),
                                       ),
                                 ),
-                                trailing: _chevron(context),
+                                trailing: AppActivityBuilder(
+                                  builder: (context, activity) =>
+                                      activity.pinging
+                                      ? const ButtonProgressIndicator()
+                                      : _chevron(context),
+                                ),
                                 onTap: () => onSpeedTest(context),
                               ),
                             ],

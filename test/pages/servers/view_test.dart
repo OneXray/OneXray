@@ -1,23 +1,43 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/view.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/widget/responsive_content.dart';
-import 'package:onexray/pages/widget/page_empty_state.dart';
-import 'package:onexray/service/connection/coordinator.dart';
+import 'package:onexray/pages/shared/widgets/responsive_content.dart';
+import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/ping/batch.dart';
+import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/servers/outbound/state_db.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:shadcn_ui/shadcn_ui.dart'
+    show ShadTheme, ShadToaster, ShadToast;
 
 class _Controller extends ServersController {
-  _Controller({required super.database, required super.coordinator});
+  _Controller({
+    required super.database,
+    required super.coordinator,
+    super.ping,
+  });
 
   bool? browsedOnMobile;
   bool helpOpened = false;
@@ -73,6 +93,10 @@ void main() {
   late ScrollController scroll;
 
   setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    final bus = AppEventBus();
+    addTearDown(bus.close);
     db = AppDatabase.forTesting(NativeDatabase.memory());
     coordinator = ConnectionCoordinator(database: db);
     controller = _Controller(database: db, coordinator: coordinator)
@@ -91,6 +115,8 @@ void main() {
     WidgetTester tester,
     double width, {
     Locale locale = const Locale('en'),
+    Brightness brightness = Brightness.light,
+    bool groupPage = false,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 900);
@@ -99,10 +125,14 @@ void main() {
     final mobile = width <= AppLayout.mobileBreakpoint;
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.material(Brightness.light, mobile: mobile),
+        theme: AppTheme.material(brightness, mobile: mobile),
         locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: AppLocalePolicy.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => ShadTheme(
+          data: AppTheme.shad(brightness),
+          child: ShadToaster(child: child!),
+        ),
         home: Scaffold(
           body: Row(
             children: [
@@ -116,8 +146,14 @@ void main() {
                 child: ResponsiveContent(
                   child: BlocBuilder<_Controller, ConnectPageState>(
                     bloc: controller,
-                    builder: (context, _) =>
-                        ServerBrowser(controller: controller, scroll: scroll),
+                    builder: (context, _) => groupPage
+                        ? ServerGroupView(
+                            controller: controller,
+                            group: controller
+                                .groups(AppLocalizations.of(context)!)
+                                .first,
+                          )
+                        : ServerBrowser(controller: controller, scroll: scroll),
                   ),
                 ),
               ),
@@ -129,9 +165,277 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  for (final brightness in Brightness.values) {
+    for (final width in [427.0, 1160.0]) {
+      testWidgets(
+        'node latency colors preserve metadata ($brightness, $width)',
+        (tester) async {
+          final palette = AppColorTokens.fallback(brightness).palette;
+          final samples = [
+            (0, palette.runningBadge),
+            (500, palette.runningBadge),
+            (501, palette.restartingText),
+            (1000, palette.restartingText),
+            (1001, palette.primaryHover),
+            (PingDelayConstants.unknown, palette.mutedForeground),
+            (PingDelayConstants.error, palette.mutedForeground),
+            (PingDelayConstants.timeout, palette.mutedForeground),
+          ];
+          controller.servers = [
+            for (final (index, (delay, _)) in samples.indexed)
+              _server(index + 1, 'JP').copyWith(delay: delay),
+          ];
+          await pumpBrowser(
+            tester,
+            width,
+            brightness: brightness,
+            groupPage: true,
+          );
+          final l = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+          for (final (index, (delay, color)) in samples.indexed) {
+            final label = controller.health(l, controller.servers[index]);
+            final prefix = '${l.countryRegionName('JP')} · ';
+            final text = tester.widget<Text>(
+              find.descendant(
+                of: find.byKey(ValueKey(index + 1)),
+                matching: find.text('$prefix$label'),
+              ),
+            );
+            final span = text.textSpan! as TextSpan;
+            expect(span.text, prefix);
+            expect(text.style!.color, palette.mutedForeground);
+            expect(span.children!.single.style!.color, color);
+            if (PingDelayConstants.isSuccessful(delay)) {
+              for (final background in [
+                palette.card,
+                palette.selectedSurface,
+              ]) {
+                final foregroundLuminance = color.computeLuminance() + 0.05;
+                final backgroundLuminance =
+                    background.computeLuminance() + 0.05;
+                final contrast = foregroundLuminance > backgroundLuminance
+                    ? foregroundLuminance / backgroundLuminance
+                    : backgroundLuminance / foregroundLuminance;
+                expect(contrast, greaterThanOrEqualTo(4.5));
+              }
+            }
+          }
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  for (final width in [427.0, 1160.0]) {
+    for (final grouping in ServerGrouping.values) {
+      testWidgets(
+        'group test can be cancelled without locking menus: $grouping at $width',
+        (tester) async {
+          controller.groupBy(grouping);
+          controller.sources = [
+            SubscriptionData(
+              id: 4,
+              name: 'Source',
+              url: 'https://example.test/sub',
+              timestamp: DateTime(2026),
+            ),
+          ];
+          controller.servers = [_server(1, 'JP').copyWith(subId: 4)];
+          await pumpBrowser(tester, width, groupPage: true);
+          final l = AppLocalizations.of(
+            tester.element(find.byType(ServerGroupView)),
+          )!;
+          final group = controller.groups(l).single;
+          controller.emit(
+            controller.state.copyWith(
+              serverTests: {
+                Object(): (groupId: group.id, cancelling: false),
+                Object(): (groupId: null, cancelling: false),
+              },
+            ),
+          );
+          AppEventBus.instance.updatePinging(true);
+          expect(controller.testingGroup(group), isTrue);
+          await tester.pump();
+          await tester.pump();
+
+          for (final menu in [
+            find.byType(ServerMenu),
+            find.byType(SourceMenu),
+          ]) {
+            for (final element in menu.evaluate()) {
+              final button = tester.widget<IconButton>(
+                find.descendant(
+                  of: find.byWidget(element.widget),
+                  matching: find.byType(IconButton),
+                ),
+              );
+              expect(button.onPressed, isNotNull);
+              expect(button.icon, isA<Icon>());
+              expect((button.icon as Icon).icon, LucideIcons.ellipsis);
+            }
+          }
+          expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+          await tester.tap(
+            find.widgetWithText(OutlinedButton, l.prototypeCancel),
+          );
+          await tester.pump();
+          await tester.pump();
+          expect(controller.cancellingGroup(group), isTrue);
+          expect(controller.state.serverTests.values.last.cancelling, isFalse);
+          expect(
+            tester
+                .widget<OutlinedButton>(
+                  find.widgetWithText(OutlinedButton, l.prototypePleaseWait),
+                )
+                .onPressed,
+            isNull,
+          );
+
+          controller.emit(controller.state.copyWith(serverTests: {}));
+          AppEventBus.instance.updatePinging(false);
+          await tester.pumpAndSettle();
+          expect(
+            find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+            findsOneWidget,
+          );
+          expect(find.byType(ButtonProgressIndicator), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  for (final (width, groupPage) in [
+    (427.0, false),
+    (427.0, true),
+    (1160.0, false),
+    (1160.0, true),
+  ]) {
+    testWidgets('automatic probing shows loading ($width, group: $groupPage)', (
+      tester,
+    ) async {
+      late Completer<void> started;
+      late Completer<void> release;
+      late PingService ping;
+      var batches = 0;
+      final row = await tester.runAsync(() async {
+        started = Completer<void>();
+        release = Completer<void>();
+        ping = PingService.forTesting(
+          database: db,
+          runBatch: (_, _) async {
+            batches++;
+            if (!started.isCompleted) started.complete();
+            await release.future;
+            return const [PingBatchResult(true, 20, '', countryCode: 'JP')];
+          },
+        );
+        final id = await db.coreConfigDao.insertRow(
+          outboundCompanion({'tag': 'Imported', 'protocol': 'socks'}),
+        );
+        return db.coreConfigDao.searchRow(id);
+      });
+      await controller.close();
+      controller = _Controller(
+        database: db,
+        coordinator: coordinator,
+        ping: ping,
+      )..servers = [row!];
+      await pumpBrowser(tester, width, groupPage: groupPage);
+      final l = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+      try {
+        await tester.runAsync(() async {
+          ping.schedulePingConfigIds([row.id]);
+          await started.future.timeout(const Duration(seconds: 5));
+        });
+        await tester.pump();
+        await tester.pump();
+        expect(ping.isPinging, isTrue);
+        expect(AppEventBus.instance.state.pinging, isTrue);
+        expect(controller.state.serverTests, isEmpty);
+        expect(
+          find.byType(ButtonProgressIndicator),
+          width > AppLayout.mobileBreakpoint && !groupPage
+              ? findsNWidgets(2)
+              : findsOneWidget,
+        );
+        if (groupPage || width > AppLayout.mobileBreakpoint) {
+          expect(
+            tester
+                .widget<IconButton>(
+                  find.descendant(
+                    of: find.byType(ServerMenu),
+                    matching: find.byType(IconButton),
+                  ),
+                )
+                .onPressed,
+            isNotNull,
+          );
+          await tester.runAsync(() async {
+            await tester.tap(
+              find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+            );
+          });
+          await tester.pump();
+          expect(find.byType(ShadToast), findsNothing);
+          expect(controller.state.serverTests, hasLength(1));
+          expect(batches, 1);
+        }
+        if (groupPage) {
+          // A queued group must not reject single-node requests. Cancelling
+          // that group must leave both node requests queued and independent.
+          for (var index = 0; index < 2; index++) {
+            await tester.runAsync(() async {
+              await tester.tap(
+                find.byTooltip('${l.prototypeMoreActions}: Imported'),
+              );
+            });
+            await tester.pump(const Duration(seconds: 1));
+            await tester.runAsync(() async {
+              await tester.tap(find.text(l.prototypeTestAgain));
+            });
+            await tester.pump(const Duration(seconds: 1));
+          }
+          expect(controller.state.serverTests, hasLength(3));
+          expect(find.byType(ShadToast), findsNothing);
+          expect(batches, 1);
+          await tester.tap(
+            find.widgetWithText(OutlinedButton, l.prototypeCancel),
+          );
+          await tester.pump();
+          expect(
+            controller.state.serverTests.values.map((test) => test.cancelling),
+            [true, false, false],
+          );
+        }
+      } finally {
+        await tester.runAsync(() async {
+          release.complete();
+          // Wait for the scheduled task's database write and event update.
+          await ping
+              .pingConfigIds([row.id])
+              .timeout(const Duration(seconds: 5));
+        });
+      }
+      await tester.pumpAndSettle();
+      expect(
+        batches,
+        groupPage
+            ? 3
+            : width > AppLayout.mobileBreakpoint
+            ? 2
+            : 1,
+      );
+      expect(controller.state.serverTests, isEmpty);
+      expect(find.byType(ButtonProgressIndicator), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final locale in const [Locale('en'), Locale('ru'), Locale('fa')]) {
     testWidgets(
-      'desktop tabs use equal-width cards and one scroll surface: $locale',
+      'desktop tabs use equal-width cards and independent scrolls: $locale',
       (tester) async {
         await pumpBrowser(tester, 1160, locale: locale);
         final browser = find.byType(ServerBrowser);
@@ -148,9 +452,9 @@ void main() {
                   widget.axisDirection == AxisDirection.down,
             ),
           ),
-          findsOneWidget,
+          findsNWidgets(2),
         );
-        expect(find.byType(ServerNodeRow), findsNWidgets(2));
+        expect(find.byType(ServerNodeRow), findsNWidgets(3));
         expect(
           find.byType(TabBar),
           findsNothing,
@@ -158,10 +462,11 @@ void main() {
         expect(find.byType(VerticalDivider), findsNothing);
         expect(find.byType(PopupMenuButton<ServerAction>), findsNothing);
 
-        controller.groupBy(ServerGrouping.subscription);
+        controller.groupBy(ServerGrouping.location);
         await tester.pumpAndSettle();
         expect(group, findsOneWidget);
         expect(tester.getSize(group).width, closeTo(columnWidth, 1));
+        expect(find.byType(ServerNodeRow), findsNWidgets(2));
         expect(tester.takeException(), isNull);
       },
     );
@@ -170,6 +475,7 @@ void main() {
   testWidgets(
     'compact desktop stacks cards and browsing updates the shared detail',
     (tester) async {
+      controller.groupBy(ServerGrouping.location);
       await pumpBrowser(tester, 900);
       final group = find.byType(ServerGroupView);
       expect(tester.getSize(group).width, closeTo(900 - 190 - 56, 1));
@@ -191,11 +497,101 @@ void main() {
     expect(find.byType(TabBar), findsOneWidget);
     expect(find.byType(ServerGroupView), findsNothing);
     final l = AppLocalizations.of(tester.element(find.byType(ServerBrowser)))!;
+    expect(controller.grouping, ServerGrouping.subscription);
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.tabs.map((tab) => (tab as Tab).text), [
+      l.prototypeBySubscription,
+      l.prototypeByNodeLocation,
+    ]);
+    expect(
+      DefaultTabController.of(tester.element(find.byType(TabBar))).index,
+      0,
+    );
+    await tester.tap(find.widgetWithText(Tab, l.prototypeByNodeLocation));
+    await tester.pumpAndSettle();
+    expect(controller.grouping, ServerGrouping.location);
     await tester.tap(find.text(l.countryRegionName('SG')));
     await tester.pumpAndSettle();
     expect(controller.browsedOnMobile, isTrue);
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in [427.0, 900.0, 1160.0]) {
+    testWidgets('node lists build lazily and scroll independently at $width', (
+      tester,
+    ) async {
+      final mobile = width <= AppLayout.mobileBreakpoint;
+      controller.groupBy(ServerGrouping.location);
+      controller.servers = [
+        for (var id = 1; id <= 200; id++) _server(id, 'JP'),
+        for (final (index, country) in [
+          'AR',
+          'AT',
+          'AU',
+          'BE',
+          'BR',
+          'CA',
+          'CH',
+          'DE',
+          'DK',
+          'ES',
+          'FI',
+          'FR',
+          'GB',
+          'HK',
+          'IE',
+          'IN',
+          'IT',
+          'KR',
+          'NL',
+          'SG',
+        ].indexed)
+          _server(201 + index, country),
+      ];
+      await pumpBrowser(tester, width, groupPage: mobile);
+      final group = find.byType(ServerGroupView);
+      final rows = find.descendant(
+        of: group,
+        matching: find.byType(ServerNodeRow),
+      );
+      final groupScroll = find.descendant(
+        of: group,
+        matching: find.byType(Scrollable),
+      );
+      final list = tester.widget<ListView>(
+        find.descendant(of: group, matching: find.byType(ListView)),
+      );
+      expect(list.childrenDelegate, isA<SliverChildBuilderDelegate>());
+      expect(list.shrinkWrap, isFalse);
+      expect(rows.evaluate().length, inInclusiveRange(1, 25));
+      expect(find.byKey(const ValueKey(200)), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey(200)),
+        1000,
+        scrollable: groupScroll,
+        maxScrolls: 40,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey(200)), findsOneWidget);
+      expect(rows.evaluate().length, lessThan(25));
+      final last = tester.widget<ServerNodeRow>(
+        find.byKey(const ValueKey(200)),
+      );
+      expect(last.showDivider, isFalse);
+      if (!mobile) {
+        expect(scroll.offset, 0);
+        final position = tester.state<ScrollableState>(groupScroll).position;
+        final offset = position.pixels;
+        expect(offset, greaterThan(0));
+        scroll.jumpTo(200);
+        await tester.pumpAndSettle();
+        expect(scroll.offset, 200);
+        expect(position.pixels, offset);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('empty server browser replaces browsing controls with actions', (
     tester,

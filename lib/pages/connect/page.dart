@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/connect/view.dart';
@@ -37,6 +38,7 @@ class _ConnectPageState extends State<ConnectPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(AppLocalizations.of(context)!.prototypeConnect),
+          actions: const [AppActivityIndicator()],
         ),
         body: SafeArea(
           child: BlocBuilder<ConnectController, ConnectPageState>(
@@ -80,7 +82,6 @@ class _ConnectPageState extends State<ConnectPage> {
                 onServer: () => controller.chooseServer(context),
                 onMethod: () => controller.chooseTrafficMethod(context),
                 onWhy: () => controller.showWhy(context),
-                onTraffic: () => controller.showTraffic(context),
                 onRawAdd: () => controller.editRaw(context),
                 onRawSelect: (row) => controller.selectRaw(context, row.id),
                 onRawActions: (row) => controller.showRawActions(context, row),

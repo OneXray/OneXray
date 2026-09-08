@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
-import 'package:onexray/service/assets/server.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/servers/server.dart';
 import 'package:re_editor/re_editor.dart';
 
 @immutable
@@ -109,6 +109,7 @@ class ServerEditorController extends PageCubit<ServerEditorPageState> {
             : Future.value(false),
       );
       if (saved && isPageActive && context.mounted) {
+        ContextAlert.showToast(context, l.prototypeSettingsSaved);
         Navigator.of(context).pop(serverId);
       }
     } on FormatException {

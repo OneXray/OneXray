@@ -1,32 +1,32 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/navigation.dart';
-import 'package:onexray/pages/mixin/alert.dart';
-import 'package:onexray/pages/mixin/page_cubit.dart';
+import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
-import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/service/assets/raw_editor.dart';
-import 'package:onexray/service/connection/compiler.dart';
-import 'package:onexray/service/connection/coordinator.dart';
-import 'package:onexray/service/connection/platform_requirements.dart';
-import 'package:onexray/service/connection/resolver.dart';
-import 'package:onexray/service/connection/runtime.dart';
-import 'package:onexray/service/connection/settings.dart';
-import 'package:onexray/service/routing/custom_service.dart';
-import 'package:onexray/service/routing/state.dart';
+import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/connect/compiler.dart';
+import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/platform_requirements.dart';
+import 'package:onexray/service/connect/resolver.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/routing/custom/service.dart';
+import 'package:onexray/service/connect/routing/custom/state.dart';
 
 const _unchanged = Object();
+
+typedef PendingServerTest = ({String? groupId, bool cancelling});
 
 class ConnectPageState {
   ConnectPageState({
@@ -40,14 +40,12 @@ class ConnectPageState {
     this.ready = false,
     this.failed = false,
     this.pendingChange,
-    this.trafficResetConfirming = false,
-    this.trafficResetBusy = false,
     Set<int> deletingRawIds = const {},
     this.serverGroupingIndex = 0,
     this.activeServerGroupId,
     this.serverSearchQuery = '',
     Set<String> pendingServerActions = const {},
-    Set<int> testingServerIds = const {},
+    Map<Object, PendingServerTest> serverTests = const {},
     Set<int> favoritingServerIds = const {},
     this.selectingServers,
     Map<int, String> sourceErrors = const {},
@@ -59,7 +57,7 @@ class ConnectPageState {
        sources = List.unmodifiable(sources),
        deletingRawIds = Set.unmodifiable(deletingRawIds),
        pendingServerActions = Set.unmodifiable(pendingServerActions),
-       testingServerIds = Set.unmodifiable(testingServerIds),
+       serverTests = Map.unmodifiable(serverTests),
        favoritingServerIds = Set.unmodifiable(favoritingServerIds),
        sourceErrors = Map.unmodifiable(sourceErrors);
 
@@ -73,8 +71,6 @@ class ConnectPageState {
   final bool ready;
   final bool failed;
   final String? pendingChange;
-  final bool trafficResetConfirming;
-  final bool trafficResetBusy;
   final Set<int> deletingRawIds;
 
   // ServersController extends ConnectController, so its page state lives in the
@@ -83,7 +79,7 @@ class ConnectPageState {
   final String? activeServerGroupId;
   final String serverSearchQuery;
   final Set<String> pendingServerActions;
-  final Set<int> testingServerIds;
+  final Map<Object, PendingServerTest> serverTests;
   final Set<int> favoritingServerIds;
   final ServerSelection? selectingServers;
   final Map<int, String> sourceErrors;
@@ -100,14 +96,12 @@ class ConnectPageState {
     bool? ready,
     bool? failed,
     Object? pendingChange = _unchanged,
-    bool? trafficResetConfirming,
-    bool? trafficResetBusy,
     Set<int>? deletingRawIds,
     int? serverGroupingIndex,
     Object? activeServerGroupId = _unchanged,
     String? serverSearchQuery,
     Set<String>? pendingServerActions,
-    Set<int>? testingServerIds,
+    Map<Object, PendingServerTest>? serverTests,
     Set<int>? favoritingServerIds,
     Object? selectingServers = _unchanged,
     Map<int, String>? sourceErrors,
@@ -125,9 +119,6 @@ class ConnectPageState {
     pendingChange: identical(pendingChange, _unchanged)
         ? this.pendingChange
         : pendingChange as String?,
-    trafficResetConfirming:
-        trafficResetConfirming ?? this.trafficResetConfirming,
-    trafficResetBusy: trafficResetBusy ?? this.trafficResetBusy,
     deletingRawIds: deletingRawIds ?? this.deletingRawIds,
     serverGroupingIndex: serverGroupingIndex ?? this.serverGroupingIndex,
     activeServerGroupId: identical(activeServerGroupId, _unchanged)
@@ -135,7 +126,7 @@ class ConnectPageState {
         : activeServerGroupId as String?,
     serverSearchQuery: serverSearchQuery ?? this.serverSearchQuery,
     pendingServerActions: pendingServerActions ?? this.pendingServerActions,
-    testingServerIds: testingServerIds ?? this.testingServerIds,
+    serverTests: serverTests ?? this.serverTests,
     favoritingServerIds: favoritingServerIds ?? this.favoritingServerIds,
     selectingServers: identical(selectingServers, _unchanged)
         ? this.selectingServers
@@ -161,7 +152,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   bool _viewInitialized = false;
   bool _pageVisible = false;
-  bool _trafficDialogOpen = false;
 
   ConnectionConfiguration get configuration => state.configuration;
   set configuration(ConnectionConfiguration value) =>
@@ -201,9 +191,8 @@ class ConnectController extends PageCubit<ConnectPageState> {
     _syncTrafficVisibility();
   }
 
-  void _syncTrafficVisibility() => coordinator.setTrafficVisible(
-    isPageActive && (_pageVisible || _trafficDialogOpen),
-  );
+  void _syncTrafficVisibility() =>
+      coordinator.setTrafficVisible(isPageActive && _pageVisible);
 
   Future<void> initialize() async {
     failed = false;
@@ -221,12 +210,9 @@ class ConnectController extends PageCubit<ConnectPageState> {
           }, onError: _readFailed),
         );
         _subscriptions.add(
-          (db.select(db.coreConfig)
-                ..where((row) => row.type.equals('outbound')))
-              .watch()
-              .listen((rows) {
-                servers = rows;
-              }, onError: _readFailed),
+          db.coreConfigDao.watchOutbounds().listen((rows) {
+            servers = rows;
+          }, onError: _readFailed),
         );
         _subscriptions.add(
           db.coreConfigDao.allRawRowsWithDataStream.listen((rows) {
@@ -244,7 +230,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
           }, onError: _readFailed),
         );
         _subscriptions.add(
-          db.select(db.subscription).watch().listen((rows) {
+          db.subscriptionDao.allRowsStream.listen((rows) {
             sources = rows;
           }, onError: _readFailed),
         );
@@ -312,6 +298,17 @@ class ConnectController extends PageCubit<ConnectPageState> {
           ? null
           : l10n.prototypeChooseBySpeedAvailability);
 
+  String health(AppLocalizations l, CoreConfigData row) =>
+      row.delay == PingDelayConstants.unknown
+      ? l.prototypeNotTested
+      : !PingDelayConstants.isSuccessful(row.delay)
+      ? l.prototypeTemporarilyUnavailable
+      : row.delay <= 500
+      ? l.prototypeFastLatency(row.delay)
+      : row.delay <= 1000
+      ? l.prototypeSlowLatency(row.delay)
+      : l.prototypeAvailableLatency(row.delay);
+
   // The runtime chooses the node identity; the badge shows that node's latest
   // successful probe, not a measurement of this session or a new selection.
   String? selectionHealth(AppLocalizations l10n) {
@@ -324,7 +321,7 @@ class ConnectController extends PageCubit<ConnectPageState> {
     if (row == null || !PingDelayConstants.isSuccessful(row.delay)) {
       return null;
     }
-    return l10n.prototypeAvailableLatency(row.delay);
+    return health(l10n, row);
   }
 
   String homeMethodTitle(AppLocalizations l10n) =>
@@ -543,60 +540,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
     } finally {
       emit(state.copyWith(deletingRawIds: {...deletingRawIds}..remove(row.id)));
     }
-  }
-
-  Widget _resetTrafficDialog(BuildContext context, {required bool busy}) {
-    final l = AppLocalizations.of(context)!;
-    return ConnectDialog(
-      key: const ValueKey('reset-traffic'),
-      title: l.prototypeResetTotals,
-      subtitle: l.prototypeResetTrafficNotice,
-      body: ConnectCallout(
-        icon: LucideIcons.circleAlert,
-        text: l.prototypeCannotUndo,
-        warning: true,
-      ),
-      expandLastAction: false,
-      actions: [
-        ConnectDialogButton(
-          label: l.prototypeCancel,
-          secondary: true,
-          onPressed: busy ? null : () => Navigator.of(context).pop(),
-        ),
-        ConnectDialogButton(
-          label: l.prototypeResetTotals,
-          destructive: true,
-          icon: LucideIcons.rotateCcw,
-          busy: busy,
-          onPressed: busy
-              ? null
-              : () => unawaited(_resetTrafficInDialog(context)),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _resetTrafficInDialog(BuildContext context) async {
-    if (state.trafficResetBusy) return;
-    emit(state.copyWith(trafficResetBusy: true));
-    final reset = await _clearTraffic(context);
-    if (reset && context.mounted) Navigator.of(context).pop();
-    emit(state.copyWith(trafficResetBusy: false));
-  }
-
-  Future<bool> _clearTraffic(BuildContext context) async {
-    var reset = false;
-    await run(context, () async {
-      await coordinator.resetTraffic();
-      reset = true;
-    });
-    if (reset && context.mounted) {
-      ContextAlert.showToast(
-        context,
-        AppLocalizations.of(context)!.prototypeTrafficTotalsReset,
-      );
-    }
-    return reset;
   }
 
   Future<void> addServers(BuildContext context) =>
@@ -819,66 +762,6 @@ class ConnectController extends PageCubit<ConnectPageState> {
           return delay == 0 ? a.id.compareTo(b.id) : delay;
         });
     return rows.length < count ? [] : rows.take(count).toList();
-  }
-
-  Future<void> showTraffic(BuildContext context) async {
-    if (!isPageActive || _trafficDialogOpen) return;
-    _trafficDialogOpen = true;
-    emit(
-      state.copyWith(trafficResetConfirming: false, trafficResetBusy: false),
-    );
-    _syncTrafficVisibility();
-    try {
-      await showConnectDialog<void>(
-        context,
-        (dialogContext) => BlocBuilder<ConnectController, ConnectPageState>(
-          bloc: this,
-          builder: (_, state) {
-            if (state.trafficResetConfirming) {
-              return _resetTrafficDialog(
-                dialogContext,
-                busy: state.trafficResetBusy,
-              );
-            }
-            final l = AppLocalizations.of(dialogContext)!;
-            return ConnectDialog(
-              title: l.prototypeTraffic,
-              body: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: TrafficReadout(
-                  view: state.connectionView,
-                  expandedGroups: true,
-                ),
-              ),
-              actions: [
-                ConnectDialogButton(
-                  label: l.prototypeResetTotals,
-                  secondary: true,
-                  icon: LucideIcons.rotateCcw,
-                  onPressed: () =>
-                      emit(state.copyWith(trafficResetConfirming: true)),
-                ),
-                ConnectDialogButton(
-                  label: l.prototypeDone,
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-    } finally {
-      _trafficDialogOpen = false;
-      if (isPageActive) {
-        emit(
-          state.copyWith(
-            trafficResetConfirming: false,
-            trafficResetBusy: false,
-          ),
-        );
-        _syncTrafficVisibility();
-      }
-    }
   }
 
   Future<void> run(BuildContext context, Future<void> Function() action) async {

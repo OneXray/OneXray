@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/db/table/core_config.dart';
@@ -23,6 +24,36 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
             ..where((table) => table.type.equals(CoreConfigType.raw.name))
             ..orderBy([(table) => OrderingTerm.asc(table.id)]))
           .watch();
+
+  Stream<List<CoreConfigData>> watchOutbounds() =>
+      (select(coreConfig)
+            ..where((row) => row.type.equals(CoreConfigType.outbound.name))
+            ..orderBy([(row) => OrderingTerm.asc(row.delay)]))
+          .watch();
+
+  Stream<bool> watchHasOutbounds() =>
+      (selectOnly(coreConfig)
+            ..addColumns([coreConfig.id])
+            ..where(
+              coreConfig.type.equals(CoreConfigType.outbound.name) &
+                  coreConfig.data.isNotNull(),
+            )
+            ..orderBy([OrderingTerm.asc(coreConfig.delay)])
+            ..limit(1))
+          .watch()
+          .map((rows) => rows.isNotEmpty)
+          .distinct();
+
+  Future<List<int>> get unmeasuredOutboundIds =>
+      (selectOnly(coreConfig)
+            ..addColumns([coreConfig.id])
+            ..where(
+              coreConfig.type.equals(CoreConfigType.outbound.name) &
+                  coreConfig.data.isNotNull() &
+                  coreConfig.delay.equals(PingDelayConstants.unknown),
+            ))
+          .map((row) => row.read(coreConfig.id)!)
+          .get();
 
   Future<List<CoreConfigData>> allOutboundRowsWithDataBySubId(
     int subId,
@@ -111,7 +142,6 @@ class CoreConfigDao extends DatabaseAccessor<AppDatabase>
     final res = await (delete(
       coreConfig,
     )..where((tbl) => tbl.id.equals(entry.id))).go();
-    // Subscription.count records the last successful import, not retained rows.
     notifyUpdates({TableUpdate.onTable(coreConfig, kind: UpdateKind.delete)});
     return res;
   }

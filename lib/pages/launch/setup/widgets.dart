@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
-import 'package:onexray/pages/widget/page_action_bar.dart';
-import 'package:onexray/pages/widget/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
 
 /// Small setup forms fill the viewport but still scroll on a short screen or
 /// with a larger system text size. Long selector lists use slivers instead.

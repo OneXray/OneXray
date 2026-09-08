@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:onexray/core/db/database/constants.dart';
 
 @immutable
 class AppPalette {
-  // The backup confirmation overlay is shared by both prototype themes.
+  // The confirmation overlay is shared by both prototype themes.
   static const restoreOverlay = Color.fromRGBO(5, 12, 30, 0.4);
 
   const AppPalette({
@@ -374,6 +375,17 @@ class ColorManager {
 
   static Color secondaryText(BuildContext context) {
     return tokens(context).secondaryText;
+  }
+
+  static Color nodeLatency(BuildContext context, int delay) {
+    final colors = palette(context);
+    if (!PingDelayConstants.isSuccessful(delay)) return colors.mutedForeground;
+    // These tones remain legible as small text on normal and selected cards.
+    return delay <= 500
+        ? colors.runningBadge
+        : delay <= 1000
+        ? colors.restartingText
+        : colors.primaryHover;
   }
 
   static Color tagBackground(BuildContext context) {
