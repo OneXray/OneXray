@@ -1,6 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/pigeon/constants.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/debug_proxy.dart';
@@ -8,6 +13,8 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('local proxy support requires both iOS and a debug build', () {
     for (final debug in [false, true]) {
       for (final ios in [false, true]) {
@@ -67,12 +74,83 @@ void main() {
       throwsFormatException,
     );
   });
+
+  group('Debug start request persistence', () {
+    const directoryChannel = BasicMessageChannel<Object?>(
+      'dev.flutter.pigeon.onexray.BridgeHostApi.getTunFilesDir',
+      BridgeHostApi.pigeonChannelCodec,
+    );
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    late Directory directory;
+
+    setUp(() async {
+      final fixtures = await Directory('../references/onexray-tests').absolute
+          .create(recursive: true);
+      directory = await fixtures.createTemp('debug-proxy-start-');
+      addTearDown(() async {
+        messenger.setMockDecodedMessageHandler(directoryChannel, null);
+        await directory.delete(recursive: true);
+      });
+      messenger.setMockDecodedMessageHandler(directoryChannel, (_) async {
+        return [directory.path];
+      });
+      await AppHostApi().initTunFilesDir();
+    });
+
+    for (final existing in [false, true]) {
+      test(
+        'persists the exact Debug invocation (existing: $existing)',
+        () async {
+          final runtime = _runtime(
+            statePath: '${VpnConstants.runDir}/runtime.json',
+          );
+          final original = runtime.request.toJson();
+          final start = File(VpnConstants.startPath);
+          if (existing) {
+            await start.parent.create(recursive: true);
+            await start.writeAsString(jsonEncode(original));
+          }
+
+          final invoke = await IOSDebugProxy.prepareInvoke(runtime);
+
+          expect(await start.exists(), isTrue);
+          final saved = StartVpnRequest.fromJson(
+            jsonDecode(await start.readAsString()) as Map<String, dynamic>,
+          );
+          expect(saved.coreInvokeText, invoke);
+          expect(saved.toJson(), {...original, 'coreInvokeText': invoke});
+          final xray = LibXrayRunConfig.fromInvokeText(invoke)
+              .request
+              .xrayJson!;
+          expect(jsonDecode(xray)['inbounds'][0]['protocol'], 'socks');
+          expect(runtime.request.toJson(), original);
+          expect(
+            jsonDecode(runtime.xrayJson)['inbounds'][0]['protocol'],
+            'tun',
+          );
+          expect(await File('${start.path}.tmp').exists(), isFalse);
+        },
+      );
+    }
+
+    test('propagates a write failure before starting the core', () async {
+      await File(VpnConstants.runDir).writeAsString('not a directory');
+      await expectLater(
+        IOSDebugProxy.prepareInvoke(
+          _runtime(statePath: '${VpnConstants.runDir}/runtime.json'),
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+    });
+  }, skip: Platform.isLinux || Platform.isWindows);
 }
 
 ConnectionRuntime _runtime({
   String? port = '18001',
   String platform = 'ios',
   bool withTun = true,
+  String statePath = '/fixture/run/runtime.json',
 }) {
   const id = 'ffffffffffffffffffffffffffffffff';
   final config = jsonEncode({
@@ -108,10 +186,7 @@ ConnectionRuntime _runtime({
     method: LibXrayMethod.runXray,
     payload: RunXrayRequest(
       config,
-      runtime: const ManagedRuntimeRequest(
-        statePath: '/fixture/run/runtime.json',
-        token: id,
-      ),
+      runtime: ManagedRuntimeRequest(statePath: statePath, token: id),
     ).toJson(),
   );
   final configuration = ConnectionConfiguration();

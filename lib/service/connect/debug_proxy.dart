@@ -4,12 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
 
-/// Developer-only host adaptation. Never persisted or exposed as a VPN mode.
+/// Developer-only host adaptation. The switch is never persisted as a VPN mode.
 /// The connection coordinator serializes start/stop; this emits no VPN events.
 class IOSDebugProxy {
   static final IOSDebugProxy _instance = IOSDebugProxy._();
@@ -37,7 +38,8 @@ class IOSDebugProxy {
     if (!enabled) return _failed('debugProxyUnavailable');
     if (_running) return _failed('debugProxyAlreadyRunning');
     try {
-      final error = await AppHostApi().runXray(buildInvoke(runtime));
+      final invoke = await prepareInvoke(runtime);
+      final error = await AppHostApi().runXray(invoke);
       if (error.isNotEmpty) return _failed(error);
       _running = true;
       return NativeVpnCommandResult(state: NativeVpnCommandState.success);
@@ -67,6 +69,15 @@ class IOSDebugProxy {
         state: NativeVpnCommandState.failed,
         message: message,
       );
+
+  /// Saves the adapted request before handing the same invocation to the core.
+  static Future<String> prepareInvoke(ConnectionRuntime runtime) async {
+    final invoke = buildInvoke(runtime);
+    final request = StartVpnRequest.fromJson(runtime.request.toJson())
+      ..coreInvokeText = invoke;
+    await request.writeToStartFile();
+    return invoke;
+  }
 
   /// Converts a copy of the prepared host invocation; the input stays unchanged.
   /// Keeping tunIn's tag preserves routing, metrics and the managed session.

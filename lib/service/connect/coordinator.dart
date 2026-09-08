@@ -608,6 +608,15 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   Future<void> stopForMaintenance() async {
     try {
       final current = await _inspect(await _known());
+      // An idle iOS simulator has no system VPN to stop. Real Apple VPNs must
+      // still run their stop command to disable on-demand reconnection.
+      if (current.status == VpnStatus.disconnected &&
+          current.permission?.kind == PlatformPermissionKind.appleVpn &&
+          current.permission?.state == PlatformPermissionState.notRequired) {
+        _failureLatched = false;
+        _publish(current);
+        return;
+      }
       state.value = ConnectionView(
         phase: ConnectionPhase.disconnecting,
         runtime: current.runtime,

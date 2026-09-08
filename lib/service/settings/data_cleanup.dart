@@ -68,11 +68,7 @@ final class AppDataCleanupService {
   Future<void> _clearRuntimeFiles({bool preserveTraffic = false}) async {
     final directory = Directory(VpnConstants.runDir);
     if (!await directory.exists()) return;
-    const retained = {
-      'runtime.json',
-      'runtime.json.lock',
-      'traffic-totals.json',
-    };
+    const retained = {'runtime.json', 'traffic-totals.json'};
     await for (final entry in directory.list(followLinks: false)) {
       if (preserveTraffic && retained.contains(p.basename(entry.path))) {
         continue;

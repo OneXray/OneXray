@@ -53,6 +53,129 @@ void main() {
     expect(coordinator.state.value.runtime, isNull);
   });
 
+  test('maintenance skips an idle Apple host without a system VPN', () async {
+    var stopCalls = 0;
+    var statusFails = false;
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async {
+          if (statusFails) {
+            throw const ConnectionHostException('nativeStatusFailed');
+          }
+          return HostConnection(
+            VpnStatus.disconnected,
+            permission: PlatformPermissionResult(
+              kind: PlatformPermissionKind.appleVpn,
+              state: PlatformPermissionState.notRequired,
+            ),
+          );
+        },
+        stop: ConnectionRuntimeHost(
+          stopVpn: () async {
+            stopCalls++;
+            return NativeVpnCommandResult(
+              state: NativeVpnCommandState.failed,
+              message: 'IPC failed',
+            );
+          },
+        ).stop,
+      ),
+    );
+
+    await coordinator.stopForMaintenance();
+    await coordinator.stopForMaintenance();
+
+    expect(stopCalls, 0);
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.issue, isNull);
+
+    statusFails = true;
+    await expectLater(
+      coordinator.stopForMaintenance(),
+      throwsA(isA<ConnectionHostException>()),
+    );
+    expect(coordinator.state.value.phase, ConnectionPhase.failed);
+
+    statusFails = false;
+    await coordinator.stopForMaintenance();
+
+    expect(stopCalls, 0);
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.issue, isNull);
+  });
+
+  for (final permission in [
+    null,
+    for (final state in PlatformPermissionState.values)
+      if (state != PlatformPermissionState.notRequired)
+        PlatformPermissionResult(
+          kind: PlatformPermissionKind.appleVpn,
+          state: state,
+        ),
+    PlatformPermissionResult(
+      kind: PlatformPermissionKind.androidVpn,
+      state: PlatformPermissionState.notRequired,
+    ),
+  ]) {
+    test(
+      'maintenance still stops a normal idle host (${permission?.kind.name}/${permission?.state.name})',
+      () async {
+        var stopCalls = 0;
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            readRuntime: () async => null,
+            inspect: (_) async =>
+                HostConnection(VpnStatus.disconnected, permission: permission),
+            stop: () async {
+              stopCalls++;
+              return const HostConnection(VpnStatus.disconnected);
+            },
+          ),
+        );
+
+        await coordinator.stopForMaintenance();
+
+        expect(stopCalls, 1);
+        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      },
+    );
+  }
+
+  test('maintenance never ignores a running Debug core stop failure', () async {
+    var stopCalls = 0;
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async => HostConnection(
+          VpnStatus.connected,
+          runtime: _runtime('a'),
+          permission: PlatformPermissionResult(
+            kind: PlatformPermissionKind.appleVpn,
+            state: PlatformPermissionState.notRequired,
+          ),
+        ),
+        stop: () async {
+          stopCalls++;
+          throw const ConnectionHostException('stopFailed');
+        },
+      ),
+    );
+
+    await expectLater(
+      coordinator.stopForMaintenance(),
+      throwsA(isA<ConnectionHostException>()),
+    );
+
+    expect(stopCalls, 1);
+    expect(coordinator.state.value.phase, ConnectionPhase.failed);
+    expect(coordinator.state.value.runtime, isNotNull);
+    expect(coordinator.state.value.issue, 'stopFailed');
+  });
+
   test('initialization exposes a missing platform permission', () async {
     final permission = PlatformPermissionResult(
       kind: PlatformPermissionKind.androidVpn,

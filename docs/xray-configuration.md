@@ -129,6 +129,9 @@ Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校�
 Windows 的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore Provider/Session Host 转交；
 Android、Apple、Linux 使用平台 TUN。Windows 只给 Xray 绑定所选网卡，不给 VCore 新增
 绑定要求。iOS Debug 本地代理仅替换调试入口，不改变正常持久配置或正常 UI 逻辑。
+Debug 启动时将入站替换为 SOCKS 的请求副本原子写入 `run/start.json`，再把同一份
+`coreInvokeText` 传给 libXray；写入失败则不启动 Core。原始编译输入、数据库配置及运行
+元数据保持不变，Debug 开关本身不持久化。
 
 Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建或启动 Xray instance。
 构建器仍可能读取本地资产、证书并应用根 `env`；校验成功只说明配置可以构建，不保证
@@ -149,6 +152,11 @@ Raw 配置校验使用 libXray 的 `testXray` 加载并构建配置，不创建�
 资产写入或数据库提交失败时，协调器尽力停止本次运行并进入 `failed`；不重新启动旧连接，
 也不恢复旧输入。若停止无法确认，原生状态仍是 VPN 状态依据，并继续显示能够确认的实际
 运行信息；metrics 或运行描述不可用不等于已断开。重试时重新查询宿主，不从缓存推断状态。
+
+清空数据和恢复备份前，若宿主已断开，且 Apple 原生权限明确返回“不需要”（iOS 模拟器），
+则直接完成停止步骤，不调用系统 VPN 停止接口。正在运行的 iOS Debug 本地代理仍通过
+libXray 停止；真实 Apple VPN 即使已断开，也仍执行停止命令以关闭按需连接。状态查询或
+实际停止失败时继续阻止数据替换，不将失败当作空闲。
 
 Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清理整个 `run/core-inputs`，
 再创建唯一的 `core-inputs/input-*/xray.json`；托管运行同时写同目录的
