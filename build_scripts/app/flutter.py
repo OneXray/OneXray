@@ -93,7 +93,9 @@ class FlutterBuilder(Builder):
         run_command([dart_command(), "run", "ffigen"], cwd=self.root_dir)
 
     def build_app(self):
-        if self.system in ("ios", "macos"):
+        if self.system in ("ios", "macos") or (
+            self.system == "windows" and self.builder.mode == "exe"
+        ):
             self.builder.build_app()
             return
 

@@ -98,7 +98,7 @@ git clone https://github.com/OneXray/VCore.git ../VCore
 
 Windows 两种模式都需要 `libXray.dll`、`OneXrayCore.exe`、`wintun.dll`，以及三个 VCore 文件：`vcore.dll`、`vcore-windows-vpn-host.exe`、`vcore-windows-session-host.exe`。仅复制 libXray 不足以运行。
 
-依照 [Windows 构建说明](../docs/windows-build.md)与[构建脚本](../build_scripts/README.md#简体中文)准备依赖。脚本构建两个 Core，校验并复制匹配的 VCore、Wintun 和 GeoData。默认生成 EXE + ZIP，EXE 安装包需要 Inno Setup：
+依照 [Windows 构建说明](../docs/windows-build.md)与[构建脚本](../build_scripts/README.md#简体中文)准备依赖。脚本构建两个 Core，校验并复制匹配的 VCore、Wintun 和 GeoData。默认通过 Fastforge 生成 EXE + ZIP，EXE 安装包还需要 Inno Setup：
 
 ```powershell
 $env:BUILD_NUMBER = "1"

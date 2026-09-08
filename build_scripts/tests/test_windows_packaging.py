@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import shutil
 import tempfile
 import unittest
 import zipfile
@@ -43,6 +44,12 @@ class WindowsPackagingTest(unittest.TestCase):
         self.builder.target_architecture = "x64"
         self.builder._prepare_msix_bundle = lambda: None
         os.makedirs(self.builder.output_dir)
+        self.config_path = Path(self.project_dir) / "packaging/exe/make_config.yaml"
+        self.config_path.parent.mkdir(parents=True)
+        shutil.copy2(
+            Path(__file__).resolve().parents[2] / "windows/packaging/exe/make_config.yaml",
+            self.config_path,
+        )
 
     def test_build_app_packages_only_msix(self):
         calls = []
@@ -57,10 +64,9 @@ class WindowsPackagingTest(unittest.TestCase):
         self.builder.mode = "exe"
         calls = []
         self.builder.package_msix = self.fail
-        self.builder.package_exe = lambda: calls.append("exe")
-        self.builder.package_zip = lambda: calls.append("zip")
+        self.builder.package_exe_and_zip = lambda: calls.append("exe,zip")
         self.builder.build_app()
-        self.assertEqual(calls, ["exe", "zip"])
+        self.assertEqual(calls, ["exe,zip"])
 
     def _bundle(self):
         source = (Path(self.builder.root_dir) / "build/windows" /
@@ -75,26 +81,73 @@ class WindowsPackagingTest(unittest.TestCase):
             file.write_bytes(b"fixture")
         return source
 
-    def test_zip_contains_the_complete_flat_bundle(self):
-        source = self._bundle()
-        self.builder.package_zip()
-        with zipfile.ZipFile(Path(self.builder.output_dir) / "OneXray-windows-amd64.zip") as package:
-            expected = {file.relative_to(source).as_posix() for file in source.rglob("*") if file.is_file()}
-            self.assertEqual(set(package.namelist()), expected)
-            self.assertEqual(package.read("wintun.dll"), (source / "wintun.dll").read_bytes())
+    def test_fastforge_builds_both_formats_with_explicit_mode_and_architecture(self):
+        original_config = self.config_path.read_bytes()
+        pubspec = Path(self.pubspec_path).read_bytes()
+        for target, package_arch, inno_arch, processor_arch in (
+            ("x64", "amd64", "x64os", "AMD64"),
+            ("arm64", "arm64", "arm64", "ARM64"),
+        ):
+            with self.subTest(architecture=target):
+                self.builder.target_architecture = target
+                self.builder.package_suffix = f"windows-{package_arch}"
 
-    def test_exe_passes_bundle_version_and_native_architecture_to_iscc(self):
+                def package(*args, **kwargs):
+                    config = self.config_path.read_text()
+                    self.assertIn(f"architectures_allowed: {inno_arch}\n", config)
+                    self.assertIn(f"architectures_install_in_64bit_mode: {inno_arch}\n", config)
+                    self.assertEqual(self.builder.read_version(), "26.7.3")
+                    self._bundle()
+                    dist = Path(self.builder.root_dir) / "dist" / self.builder.read_version()
+                    dist.mkdir(parents=True, exist_ok=True)
+                    for extension in ("exe", "zip"):
+                        (dist / f"OneXray-windows-{package_arch}.{extension}").write_bytes(
+                            f"Fastforge {target} {extension}".encode()
+                        )
+                    (dist / "unrelated.msix").write_bytes(b"not an EXE-mode artifact")
+
+                with patch.object(self.builder, "fastforge_build", side_effect=package) as fastforge:
+                    self.builder.package_exe_and_zip()
+                fastforge.assert_called_once_with(
+                    "exe,zip",
+                    arguments=(
+                        "--build-dart-define", "ONEXRAY_WINDOWS_MODE=exe",
+                        "--flutter-build-args", "build-number=412",
+                        "--artifact-name", f"OneXray-windows-{package_arch}." + "{{ext}}",
+                    ),
+                    env={"PROCESSOR_ARCHITECTURE": processor_arch},
+                )
+                for extension in ("exe", "zip"):
+                    self.assertEqual(
+                        (Path(self.builder.output_dir) / f"OneXray-windows-{package_arch}.{extension}").read_bytes(),
+                        f"Fastforge {target} {extension}".encode(),
+                    )
+                self.assertFalse((Path(self.builder.output_dir) / "unrelated.msix").exists())
+                self.assertEqual(self.config_path.read_bytes(), original_config)
+                self.assertEqual(Path(self.pubspec_path).read_bytes(), pubspec)
+
+    def test_fastforge_failure_restores_configuration_without_collecting_packages(self):
         self.builder.target_architecture = "arm64"
-        self.builder.package_suffix = "windows-arm64"
-        source = self._bundle()
-        with patch.dict(os.environ, {"ISCC": "fixture/ISCC.exe"}), patch("app.windows.run_command") as run:
-            self.builder.package_exe()
-        command = run.call_args.args[0]
-        self.assertEqual(command[0], "fixture/ISCC.exe")
-        self.assertIn(f"/DSourceDir={source}", command)
-        self.assertIn("/DAppVersion=26.7.3", command)
-        self.assertIn("/DArchitecture=arm64", command)
-        self.assertIn("/DOutputBaseFilename=OneXray-windows-arm64", command)
+        original_config = self.config_path.read_bytes()
+        original_pubspec = Path(self.pubspec_path).read_bytes()
+        with patch.object(self.builder, "fastforge_build", side_effect=RuntimeError("packaging failed")):
+            with self.assertRaisesRegex(RuntimeError, "packaging failed"):
+                self.builder.package_exe_and_zip()
+        self.assertEqual(self.config_path.read_bytes(), original_config)
+        self.assertEqual(Path(self.pubspec_path).read_bytes(), original_pubspec)
+        self.assertEqual(list(Path(self.builder.output_dir).iterdir()), [])
+
+    def test_fastforge_requires_both_outputs_for_the_current_version(self):
+        self._bundle()
+        dist = Path(self.builder.root_dir) / "dist"
+        for version, extensions in (("old-version", ("exe", "zip")), ("26.7.3", ("exe",))):
+            directory = dist / version
+            directory.mkdir(parents=True)
+            for extension in extensions:
+                (directory / f"OneXray-windows-amd64.{extension}").write_bytes(b"fixture")
+        with patch.object(self.builder, "fastforge_build"), self.assertRaisesRegex(FileNotFoundError, "Fastforge package missing"):
+            self.builder.package_exe_and_zip()
+        self.assertEqual(list(Path(self.builder.output_dir).iterdir()), [])
 
     def test_bundle_rejects_missing_dependencies_and_wrong_architecture(self):
         source = self._bundle()
@@ -129,8 +182,13 @@ class WindowsPackagingTest(unittest.TestCase):
     def test_installer_preserves_released_identity_and_scopes_cleanup(self):
         root = Path(__file__).resolve().parents[2]
         installer = (root / "windows/packaging/exe/inno_setup.iss").read_text()
-        self.assertIn("AppId=835d7bbd-85bb-4c73-97f8-ce0740f151a7", installer)
-        self.assertIn("PrivilegesRequired=lowest", installer)
+        config = (root / "windows/packaging/exe/make_config.yaml").read_text()
+        self.assertIn("app_id: 835d7bbd-85bb-4c73-97f8-ce0740f151a7", config)
+        self.assertIn("executable_name: OneXray.exe", config)
+        self.assertIn("privileges_required: lowest", config)
+        self.assertIn("AppId={{APP_ID}}", installer)
+        self.assertIn("PrivilegesRequired={{PRIVILEGES_REQUIRED}}", installer)
+        self.assertIn("AppVersion={{APP_VERSION}}", installer)
         self.assertIn("StartupShortcutTargetsCurrentInstall(ShortcutPath, ExpectedTarget)", installer)
         self.assertIn("CompareText(CurrentCommand", installer)
         self.assertNotIn("uninsdeletekey", installer)
@@ -139,6 +197,14 @@ class WindowsPackagingTest(unittest.TestCase):
         for name in _RUNTIME_FILES:
             self.assertIn(name, cmake)
         self.assertNotIn("if(EXISTS", cmake)
+
+    def test_exe_workflow_installs_fastforge_and_configures_inno_setup(self):
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/build.yml").read_text()
+        windows = workflow.split("\n  windows:", 1)[1].split("\n  linux:", 1)[0]
+        self.assertIn("name: Install Fastforge\n        if: matrix.mode == 'exe'", windows)
+        self.assertIn("dart pub global activate fastforge", windows)
+        self.assertIn('"INNO_SETUP_PATH=$installDir" >> $env:GITHUB_ENV', windows)
+        self.assertNotIn('"ISCC=$compiler"', windows)
 
     def test_msix_uses_store_version_without_rebuilding_windows(self):
         with (

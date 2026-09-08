@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from app.command_line import dart_command, flutter_command, get_env
+from app.command_line import dart_command, fastforge_command, flutter_command, get_env
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PACKAGE_SUFFIXES = {".ipa", ".pkg", ".zip", ".deb", ".msix", ".exe", ".apk", ".aab"}
@@ -143,7 +143,13 @@ def finish_build(builder, receipt: dict) -> Path:
     if target == "android":
         tools["gradle"] = _tool(["./gradlew", "--version"], root / "android")
     if target == "windows" and receipt["windowsMode"] == "exe":
-        tools["innoSetup"] = _tool([os.environ.get("ISCC", "ISCC.exe"), "/?"], root)
+        tools["fastforge"] = _tool([fastforge_command(), "--version"], root)
+        compiler = Path(os.environ.get(
+            "INNO_SETUP_PATH", r"C:\Program Files (x86)\Inno Setup 6",
+        )) / "ISCC.exe"
+        tools["innoSetup"] = _tool(
+            [str(compiler) if compiler.is_file() else "ISCC.exe", "/?"], root,
+        )
 
     lock_files = [root / name for name in (
         "pubspec.lock", "build_scripts/uv.lock", "android/settings.gradle.kts",

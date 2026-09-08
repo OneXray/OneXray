@@ -321,6 +321,10 @@ class ProvenanceTest(unittest.TestCase):
         manifest = vcore / "dist/windows/x64/vcore-windows-artifacts.json"
         manifest.parent.mkdir(parents=True)
         manifest.write_text('{"formatVersion":1}')
+        inno_directory = self.artifacts / "Inno Setup"
+        inno_directory.mkdir()
+        compiler = inno_directory / "ISCC.exe"
+        compiler.write_bytes(b"compiler fixture")
         for extension in ("msix", "exe", "zip"):
             (output / f"OneXray-windows-amd64.{extension}").write_bytes(extension.encode())
         builder = SimpleNamespace(
@@ -334,13 +338,24 @@ class ProvenanceTest(unittest.TestCase):
         )
         for mode, extensions in (("exe", ("exe", "zip")), ("msix", ("msix",))):
             builder.builder.mode = mode
-            with mock.patch("app.provenance.source_revision", return_value="a" * 40), mock.patch("app.provenance._output", return_value=""), mock.patch("app.provenance._tool", return_value={"version": "fixture"}):
+            with (
+                mock.patch("app.provenance.source_revision", return_value="a" * 40),
+                mock.patch("app.provenance._output", return_value=""),
+                mock.patch("app.provenance.fastforge_command", return_value="fastforge.bat"),
+                mock.patch.dict("os.environ", {"INNO_SETUP_PATH": str(inno_directory)}),
+                mock.patch("app.provenance._tool", return_value={"version": "fixture"}) as tool,
+            ):
                 receipt = begin_build(builder, "windows")
                 destination = finish_build(builder, receipt)
             self.assertEqual(receipt["windowsMode"], mode)
             self.assertEqual(destination.name, f"provenance-windows-x64-{mode}.json")
             self.assertEqual(set(receipt["packages"]), {f"OneXray-windows-amd64.{ext}" for ext in extensions})
             self.assertEqual("msixVersion" in receipt, mode == "msix")
+            self.assertEqual("fastforge" in receipt["tools"], mode == "exe")
+            self.assertEqual("innoSetup" in receipt["tools"], mode == "exe")
+            if mode == "exe":
+                tool.assert_any_call(["fastforge.bat", "--version"], root)
+                tool.assert_any_call([str(compiler), "/?"], root)
             self.assertIn("OneXray/windows/app/wintun.dll", receipt["fileSha256"])
 
 

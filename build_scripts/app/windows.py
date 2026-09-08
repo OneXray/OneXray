@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import struct
 import zipfile
@@ -131,8 +132,7 @@ class WindowsBuilder(Builder):
         if self.mode == "msix":
             self.package_msix()
         else:
-            self.package_exe()
-            self.package_zip()
+            self.package_exe_and_zip()
 
     def _machine(self) -> int:
         return 0x8664 if self.target_architecture == "x64" else 0xAA64
@@ -151,27 +151,51 @@ class WindowsBuilder(Builder):
                 raise FileNotFoundError(f"Windows release data missing: {source / name}")
         return source
 
-    def package_exe(self):
-        source = self._release_bundle()
-        compiler = os.environ.get("ISCC") or shutil.which("ISCC.exe")
-        if not compiler:
-            raise FileNotFoundError("Inno Setup compiler not found; set ISCC to ISCC.exe")
-        run_command(
-            [compiler, f"/DAppVersion={self.read_version().split('+', maxsplit=1)[0]}",
-             f"/DSourceDir={source}", f"/DOutputDir={self.output_dir}",
-             f"/DOutputBaseFilename={self.project}-{self.package_suffix}",
-             f"/DArchitecture={'x64os' if self.target_architecture == 'x64' else 'arm64'}",
-             str(Path(self.project_dir) / "packaging" / "exe" / "inno_setup.iss")],
-            cwd=self.root_dir,
-        )
+    def package_exe_and_zip(self):
+        config_path = Path(self.project_dir) / "packaging/exe/make_config.yaml"
+        original_config = config_path.read_bytes()
+        pubspec_path = Path(self.root_dir) / "pubspec.yaml"
+        original_pubspec = pubspec_path.read_bytes()
+        marketing_version, _, build_number = self.read_version().partition("+")
+        config = original_config.decode("utf-8")
+        architecture = "x64os" if self.target_architecture == "x64" else "arm64"
+        for key in ("architectures_allowed", "architectures_install_in_64bit_mode"):
+            config, count = re.subn(
+                rf"(?m)^{key}:.*$", f"{key}: {architecture}", config, count=1,
+            )
+            if count != 1:
+                raise ValueError(f"Fastforge EXE configuration is missing {key}")
 
-    def package_zip(self):
-        source = self._release_bundle()
-        destination = Path(self.output_dir) / f"{self.project}-{self.package_suffix}.zip"
-        with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as package:
-            for file in sorted(source.rglob("*")):
-                if file.is_file():
-                    package.write(file, file.relative_to(source).as_posix())
+        try:
+            config_path.write_bytes(config.encode("utf-8"))
+            # Inno Setup needs a numeric version; keep Flutter's build number
+            # explicitly, while Fastforge builds once for both package targets.
+            self.write_version(marketing_version)
+            self.fastforge_build(
+                "exe,zip",
+                arguments=(
+                    "--build-dart-define", "ONEXRAY_WINDOWS_MODE=exe",
+                    "--flutter-build-args", f"build-number={build_number or self.build_number}",
+                    "--artifact-name", f"{self.project}-{self.package_suffix}." + "{{ext}}",
+                ),
+                # Fastforge resolves the bundle directory from this variable.
+                env={"PROCESSOR_ARCHITECTURE": "AMD64" if architecture == "x64os" else "ARM64"},
+            )
+        finally:
+            config_path.write_bytes(original_config)
+            pubspec_path.write_bytes(original_pubspec)
+
+        self._release_bundle()
+        packages = [
+            Path(self.root_dir) / "dist" / marketing_version /
+            f"{self.project}-{self.package_suffix}.{extension}"
+            for extension in ("exe", "zip")
+        ]
+        for package in packages:
+            if not package.is_file():
+                raise FileNotFoundError(f"Fastforge package missing: {package}")
+        for package in packages:
+            shutil.copy2(package, self.output_dir)
 
     def package_msix(self):
         self._prepare_msix_bundle()

@@ -600,6 +600,10 @@ jobs:
             throw "Unexpected g++ target: $gxxTarget"
           }
 
+      - name: Install Fastforge
+        if: matrix.mode == 'exe'
+        run: dart pub global activate fastforge
+
       - name: Install Inno Setup
         if: matrix.mode == 'exe'
         shell: pwsh
@@ -618,7 +622,7 @@ jobs:
           if ($process.ExitCode -ne 0) { throw "Inno Setup installation failed: $($process.ExitCode)" }
           $compiler = Join-Path $installDir "ISCC.exe"
           if (-not (Test-Path $compiler)) { throw "ISCC.exe was not installed" }
-          "ISCC=$compiler" >> $env:GITHUB_ENV
+          "INNO_SETUP_PATH=$installDir" >> $env:GITHUB_ENV
 
       - name: Build
         run: uv run --project build_scripts python build_scripts/main.py OneXray windows --windows-mode ${{ matrix.mode }}

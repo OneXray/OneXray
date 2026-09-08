@@ -85,7 +85,8 @@ by libXray's Go module; a sibling Xray-core checkout is not used.
 
 - Python 3.12 or newer and `uv`. The scripts use only the Python standard library.
 - Flutter, Dart, and Go available on `PATH`; Windows also requires Rust and MSVC.
-  EXE packaging needs Inno Setup (`ISCC` may specify the compiler path);
+  EXE / ZIP packaging needs Fastforge, plus Inno Setup for EXE
+  (`INNO_SETUP_PATH` may specify its installation directory);
   MSIX needs the Windows SDK `makeappx`/`signtool` tools.
 - A toolchain for the target operating system. Apple targets require macOS,
   Xcode, CocoaPods, and Fastlane; Android requires a JDK, Android SDK/NDK, and
@@ -95,8 +96,8 @@ by libXray's Go module; a sibling Xray-core checkout is not used.
 - A positive integer in the `BUILD_NUMBER` environment variable. It is added to
   the configured `build_number.base` (currently `400`).
 
-Create the Python environment with `uv`. Fastforge is only needed for Linux
-packaging:
+Create the Python environment with `uv`. Fastforge is needed for Linux and
+Windows EXE / ZIP packaging:
 
 ```bash
 uv sync --project build_scripts
@@ -141,8 +142,9 @@ display the CLI syntax.
 For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching Flutter, Go, Rust, and MSVC toolchains are configured. See the [Windows build documentation](../docs/windows-build.md#本地签名包) for the local signing requirements.
 
 `--windows-mode exe|msix` selects both packaging and the Flutter
-`--dart-define=ONEXRAY_WINDOWS_MODE` value. EXE and ZIP share one build;
-MSIX is compiled separately. CMake always bundles Wintun and VCore in a flat
+`--dart-define=ONEXRAY_WINDOWS_MODE` value. One Fastforge invocation builds and
+packages EXE and ZIP from the same bundle; MSIX is compiled separately without
+Fastforge. CMake always bundles Wintun and VCore in a flat
 layout. The verified official Wintun archive is cached under workspace
 `references/windows-build/`; only the architecture-matched DLL is copied.
 Sources and distribution notes are linked on the [documentation site](https://onexray.com/docs/credits/).
@@ -188,7 +190,7 @@ libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
 
 - Python 3.12 或更高版本，并安装 `uv`。脚本仅使用 Python 标准库。
 - `PATH` 中可以找到 Flutter、Dart 和 Go；Windows 还需要 Rust 与 MSVC。
-  EXE 打包需要 Inno Setup（可用 `ISCC` 指定编译器路径），MSIX 需要 Windows SDK 的 `makeappx`、`signtool`。
+  EXE / ZIP 打包需要 Fastforge，EXE 还需要 Inno Setup（可用 `INNO_SETUP_PATH` 指定安装目录）；MSIX 需要 Windows SDK 的 `makeappx`、`signtool`。
 - 安装目标系统所需的工具链。Apple 平台需要 macOS、Xcode、CocoaPods 和
   Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Linux 打包需要
   Fastforge。
@@ -196,7 +198,7 @@ libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
 - 设置正整数环境变量 `BUILD_NUMBER`。脚本会将它加到配置中的
   `build_number.base`（当前为 `400`）上。
 
-使用 `uv` 创建 Python 环境。只有 Linux 打包需要 Fastforge：
+使用 `uv` 创建 Python 环境。Linux 和 Windows EXE / ZIP 打包需要 Fastforge：
 
 ```bash
 uv sync --project build_scripts
@@ -240,7 +242,8 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 和 MSVC 工具链就绪时设置 `ONEXRAY_WINDOWS_ARCH`。本地签名要求以 [Windows 构建文档](../docs/windows-build.md#本地签名包) 为准。
 
 `--windows-mode exe|msix` 同时控制打包格式和 Flutter 的
-`--dart-define=ONEXRAY_WINDOWS_MODE`。EXE / ZIP 共用一次构建，MSIX 单独编译；
+`--dart-define=ONEXRAY_WINDOWS_MODE`。一次 Fastforge 调用完成 EXE / ZIP 的共同编译与打包，
+MSIX 单独编译，不使用 Fastforge；
 CMake 在两种模式下都平铺安装 Wintun 与 VCore。官方 Wintun 压缩包校验摘要后缓存在
 工作区 `references/windows-build/`，仅复制匹配架构的 DLL。来源与分发说明放在
 [文档站](https://onexray.com/zh/docs/credits/)。
@@ -285,7 +288,8 @@ checkout Xray-core не используется.
 
 - Python 3.12 или новее и `uv`. Скрипты используют только стандартную библиотеку Python.
 - Flutter, Dart и Go через `PATH`; для Windows также нужны Rust и MSVC.
-  Для EXE нужен Inno Setup (путь компилятора можно задать через `ISCC`);
+  Для EXE / ZIP нужен Fastforge, а для EXE дополнительно Inno Setup
+  (каталог установки можно задать через `INNO_SETUP_PATH`);
   для MSIX — инструменты Windows SDK `makeappx`/`signtool`.
 - Инструменты для целевой системы. Для Apple требуются macOS, Xcode, CocoaPods
   и Fastlane; для Android — JDK, Android SDK/NDK и Fastlane; для упаковки под
@@ -295,8 +299,8 @@ checkout Xray-core не используется.
 - Положительное целое число в переменной окружения `BUILD_NUMBER`. Оно
   прибавляется к параметру `build_number.base` (сейчас `400`).
 
-Создайте среду Python с помощью `uv`. Fastforge требуется только для упаковки
-Linux:
+Создайте среду Python с помощью `uv`. Fastforge требуется для упаковки Linux
+и Windows EXE / ZIP:
 
 ```bash
 uv sync --project build_scripts
@@ -341,8 +345,9 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 В Windows архитектура определяется по системе. CI может задать `ONEXRAY_WINDOWS_ARCH`, когда настроены Flutter, Go, Rust и MSVC. Требования к локальной подписи см. в [документации по сборке Windows](../docs/windows-build.md#本地签名包).
 
 `--windows-mode exe|msix` задаёт формат пакета и значение Flutter
-`--dart-define=ONEXRAY_WINDOWS_MODE`. EXE и ZIP используют одну сборку, MSIX
-компилируется отдельно. CMake включает Wintun и VCore в обеих конфигурациях.
+`--dart-define=ONEXRAY_WINDOWS_MODE`. Один вызов Fastforge собирает приложение
+и упаковывает EXE и ZIP; MSIX компилируется отдельно без Fastforge.
+CMake включает Wintun и VCore в обеих конфигурациях.
 Проверенный официальный архив Wintun сохраняется в `references/windows-build/`
 рабочего каталога; копируется только DLL нужной архитектуры. Сведения об источнике
 и распространении размещены на [сайте документации](https://onexray.com/ru/docs/credits/).

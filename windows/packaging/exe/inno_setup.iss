@@ -1,24 +1,24 @@
-; Invoked directly by build_scripts; EXE and ZIP use the same Flutter bundle.
+; Fastforge renders this template; EXE and ZIP share one Flutter build.
 [Setup]
-AppId=835d7bbd-85bb-4c73-97f8-ce0740f151a7
-AppName=OneXray
-AppVersion={#AppVersion}
-AppPublisher=YuanDevLLC
-AppPublisherURL=https://onexray.com
+AppId={{APP_ID}}
+AppName={{DISPLAY_NAME}}
+AppVersion={{APP_VERSION}}
+AppPublisher={{PUBLISHER_NAME}}
+AppPublisherURL={{PUBLISHER_URL}}
 AppSupportURL=https://github.com/OneXray/OneXray/issues
 AppUpdatesURL=https://onexray.com
-DefaultDirName={autopf}\OneXray
+DefaultDirName={{INSTALL_DIR_NAME}}
 DisableProgramGroupPage=yes
-OutputDir={#OutputDir}
-OutputBaseFilename={#OutputBaseFilename}
+OutputDir=.
+OutputBaseFilename={{OUTPUT_BASE_FILENAME}}
 Compression=lzma2
 SolidCompression=yes
-SetupIconFile=..\..\runner\resources\app_icon.ico
-UninstallDisplayIcon={app}\OneXray.exe
+SetupIconFile={{SETUP_ICON_FILE}}
+UninstallDisplayIcon={app}\{{EXECUTABLE_NAME}}
 WizardStyle=modern
-PrivilegesRequired=lowest
-ArchitecturesAllowed={#Architecture}
-ArchitecturesInstallIn64BitMode={#Architecture}
+PrivilegesRequired={{PRIVILEGES_REQUIRED}}
+ArchitecturesAllowed={{ARCHITECTURES_ALLOWED}}
+ArchitecturesInstallIn64BitMode={{ARCHITECTURES_INSTALL_IN_64BIT_MODE}}
 MinVersion=10.0.19042
 CloseApplications=yes
 RestartApplications=no
@@ -27,23 +27,23 @@ RestartApplications=no
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: {% if CREATE_DESKTOP_ICON != true %}unchecked{% else %}checkedonce{% endif %}
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{{SOURCE_DIR}}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\OneXray"; Filename: "{app}\OneXray.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\OneXray"; Filename: "{app}\OneXray.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\{{DISPLAY_NAME}}"; Filename: "{app}\{{EXECUTABLE_NAME}}"; WorkingDir: "{app}"
+Name: "{autodesktop}\{{DISPLAY_NAME}}"; Filename: "{app}\{{EXECUTABLE_NAME}}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\onexray"; ValueType: string; ValueName: ""; ValueData: "URL:OneXray Protocol"
 Root: HKCU; Subkey: "Software\Classes\onexray"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCU; Subkey: "Software\Classes\onexray\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\OneXray.exe"",0"
-Root: HKCU; Subkey: "Software\Classes\onexray\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\OneXray.exe"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\onexray\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\{{EXECUTABLE_NAME}}"",0"
+Root: HKCU; Subkey: "Software\Classes\onexray\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{{EXECUTABLE_NAME}}"" ""%1"""
 
 [Run]
-Filename: "{app}\OneXray.exe"; Description: "{cm:LaunchProgram,OneXray}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{{EXECUTABLE_NAME}}"; Description: "{cm:LaunchProgram,{{DISPLAY_NAME}}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 function StartupShortcutTargetsCurrentInstall(const ShortcutPath,
@@ -71,8 +71,8 @@ var
 begin
   if CurUninstallStep <> usUninstall then
     Exit;
-  ExpectedTarget := ExpandConstant('{app}\OneXray.exe');
-  ShortcutPath := ExpandConstant('{userstartup}\OneXray.lnk');
+  ExpectedTarget := ExpandConstant('{app}\{{EXECUTABLE_NAME}}');
+  ShortcutPath := ExpandConstant('{userstartup}\{{DISPLAY_NAME}}.lnk');
   if StartupShortcutTargetsCurrentInstall(ShortcutPath, ExpectedTarget) and
      not DeleteFile(ShortcutPath) then
     Log('Unable to remove the OneXray startup shortcut.');

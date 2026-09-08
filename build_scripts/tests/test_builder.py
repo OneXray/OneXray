@@ -55,11 +55,31 @@ class BuilderTest(unittest.TestCase):
             self.assertEqual(builder.builder.mode, mode)
             with mock.patch("app.flutter.flutter_command", return_value="flutter"), mock.patch("app.flutter.run_command") as run, mock.patch.object(builder.builder, "build_app") as package:
                 builder.build_app()
-            run.assert_called_once_with(
-                ["flutter", "build", "windows", f"--dart-define=ONEXRAY_WINDOWS_MODE={mode}"],
-                cwd=builder.root_dir,
-            )
+            if mode == "exe":
+                # Fastforge owns the one Flutter build shared by EXE and ZIP.
+                run.assert_not_called()
+            else:
+                run.assert_called_once_with(
+                    ["flutter", "build", "windows", "--dart-define=ONEXRAY_WINDOWS_MODE=msix"],
+                    cwd=builder.root_dir,
+                )
             package.assert_called_once()
+
+    def test_fastforge_passes_build_options_and_uses_skip_clean_flag(self):
+        arguments = ("--build-dart-define", "ONEXRAY_WINDOWS_MODE=exe")
+        env = {"PROCESSOR_ARCHITECTURE": "ARM64"}
+        with (
+            mock.patch("app.builder.platform.system", return_value="Windows"),
+            mock.patch("app.builder.fastforge_command", return_value="fastforge.bat"),
+            mock.patch("app.builder.run_command") as run,
+        ):
+            self.builder.fastforge_build("exe,zip", arguments=arguments, env=env)
+        run.assert_called_once_with(
+            ["fastforge.bat", "package", "--platform", "windows",
+             "--targets", "exe,zip", "--skip-clean", *arguments],
+            cwd=self.builder.root_dir,
+            env=env,
+        )
 
     def test_core_binary_is_copied_from_libxray(self):
         workspace = self.root_dir / "workspace"

@@ -98,7 +98,7 @@ git clone https://github.com/OneXray/VCore.git ../VCore
 
 Both Windows modes need `libXray.dll`, `OneXrayCore.exe`, `wintun.dll`, and all three VCore files: `vcore.dll`, `vcore-windows-vpn-host.exe`, and `vcore-windows-session-host.exe`. Copying only libXray is not enough.
 
-Follow the [Windows build guide](../docs/windows-build.md) (Chinese) and [build scripts](../build_scripts/README.md#english) to prepare dependencies. The script builds both cores, verifies and copies matching VCore and Wintun binaries, and copies GeoData. The default command produces EXE + ZIP; Inno Setup is required for the EXE installer:
+Follow the [Windows build guide](../docs/windows-build.md) (Chinese) and [build scripts](../build_scripts/README.md#english) to prepare dependencies. The script builds both cores, verifies and copies matching VCore and Wintun binaries, and copies GeoData. The default command uses Fastforge to produce EXE + ZIP; Inno Setup is also required for the EXE installer:
 
 ```powershell
 $env:BUILD_NUMBER = "1"
