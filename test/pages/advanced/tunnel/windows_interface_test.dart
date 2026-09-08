@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
@@ -24,7 +25,11 @@ PolicyEditorService _service(ConnectionPlatform platform) {
     coordinator.dispose();
     await db.close();
   });
-  return PolicyEditorService(coordinator: coordinator, platform: platform);
+  return PolicyEditorService(
+    coordinator: coordinator,
+    platform: platform,
+    windowsMode: WindowsMode.msix,
+  );
 }
 
 Widget _app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(

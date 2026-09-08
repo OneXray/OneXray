@@ -1,50 +1,27 @@
-import 'package:onexray/core/ffi/base_ffi_api.dart';
-import 'package:onexray/core/ffi/windows/model.dart';
-import 'package:onexray/core/ffi/windows/native_api.dart';
-import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/core/pigeon/flutter_api.dart';
-import 'package:onexray/core/pigeon/model.dart';
-import 'package:onexray/core/pigeon/model_reader.dart';
-import 'package:onexray/core/pigeon/model_writer.dart';
-import 'package:onexray/core/tools/logger.dart';
+import 'dart:io';
 
-class WindowsFfiApi extends BaseFfiApi {
-  static final WindowsFfiApi _singleton = WindowsFfiApi._internal();
+import 'package:flutter/foundation.dart';
+import 'package:onexray/core/ffi/base_ffi_api.dart';
+import 'package:onexray/core/ffi/windows/exe_ffi_api.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
+import 'package:onexray/core/ffi/windows/model.dart';
+import 'package:onexray/core/ffi/windows/msix_ffi_api.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:path/path.dart' as p;
+
+abstract class WindowsFfiApi extends BaseFfiApi {
+  static final WindowsFfiApi _singleton = switch (windowsBuildMode) {
+    WindowsMode.exe => WindowsExeFfiApi(),
+    WindowsMode.msix => WindowsMsixFfiApi(),
+  };
 
   factory WindowsFfiApi() => _singleton;
 
-  WindowsFfiApi._internal();
+  WindowsFfiApi.base();
 
-  static const _coreRelativePath = 'OneXrayCore.exe';
+  Future<void> ensureRuntime();
 
-  final _native = WindowsNativeApi();
-  bool _starting = false;
-  String? _packageLocalDataDir;
-
-  void usePackageLocalDataDir(String path) => _packageLocalDataDir = path;
-
-  @override
-  Future<String> getTunFilesDir() async =>
-      _packageLocalDataDir ?? await super.getTunFilesDir();
-
-  @override
-  Future<NativeVpnCommandResult> readVpnStatus() async {
-    if (_starting) {
-      return commandSuccess(status: VpnStatus.connecting);
-    }
-    try {
-      var state = await _native.getVpnStatus();
-      if ((state.status == WindowsVpnStatus.connected ||
-              state.status == WindowsVpnStatus.connecting) &&
-          !await _hasValidSession(state.snapshotToken)) {
-        state = await _native.stopVpn();
-      }
-      return commandSuccess(status: _status(state.status));
-    } catch (error) {
-      ygLogger('read Windows VPN status failed: $error');
-      return commandFailed(error.toString());
-    }
-  }
+  Future<bool?> cleanupStaleCore() async => null;
 
   @override
   Future<NativeVpnCommandResult> startVpn({
@@ -55,104 +32,15 @@ class WindowsFfiApi extends BaseFfiApi {
       allowLocalNetwork: true,
       excludedCidrs: [],
     ),
-  }) async {
-    if (configYaml == null || configYaml.isEmpty || networkSettings == null) {
-      return commandFailed('Windows VPN settings are missing');
-    }
+  });
 
-    _starting = true;
-    var providerStartInvoked = false;
-    try {
-      final request = await StartVpnRequestReader.readFromStartFile();
-      final coreConfig = await _publishCoreConfig(readRunXrayRequest(request));
-      final backend = WindowsSessionBackend(
-        processes: [
-          WindowsManagedProcess(
-            executableRelativePath: _coreRelativePath,
-            arguments: desktopCoreRunArguments(
-              dns: networkSettings.dnsIpv4Address,
-              interfaceName: request.tun?.autoOutboundsInterface ?? '',
-              configPath: coreConfig,
-            ),
-          ),
-        ],
-      );
-
-      await AppFlutterApi().vpnStatusChanged(VpnStatus.connecting);
-      providerStartInvoked = true;
-      final state = await _native.startVpn(
-        configYaml,
-        networkSettings,
-        policy: policy,
-        sessionBackend: backend,
-      );
-      final token = state.snapshotToken;
-      if (token == null) {
-        throw const FormatException('Windows VPN start returned no token');
+  @protected
+  Future<void> checkRuntimeFiles(List<String> names) async {
+    for (final name in names) {
+      if (!await File(p.join(p.dirname(Platform.resolvedExecutable), name))
+          .exists()) {
+        throw StateError('Windows runtime file is unavailable: $name');
       }
-      request.snapshotToken = token;
-      await request.writeToStartFile();
-      await _emitWindowsStatus(state.status);
-      return commandSuccess();
-    } catch (error, stackTrace) {
-      ygLogger('start Windows VPN failed: $error\n$stackTrace');
-      await _cleanupFailedStart(providerStartInvoked);
-      return commandFailed(error.toString());
-    } finally {
-      _starting = false;
     }
   }
-
-  @override
-  Future<NativeVpnCommandResult> stopVpn() async {
-    try {
-      final state = await _native.stopVpn();
-      await _emitWindowsStatus(state.status);
-      return commandSuccess();
-    } catch (error, stackTrace) {
-      ygLogger('stop Windows VPN failed: $error\n$stackTrace');
-      return commandFailed(error.toString());
-    }
-  }
-
-  Future<void> _cleanupFailedStart(bool providerStartInvoked) async {
-    if (!providerStartInvoked) {
-      await AppFlutterApi().vpnStatusChanged(VpnStatus.disconnected);
-      return;
-    }
-    try {
-      final state = await _native.stopVpn();
-      await _emitWindowsStatus(state.status);
-    } catch (error) {
-      ygLogger('failed to clean up Windows VPN start: $error');
-    }
-  }
-
-  Future<bool> _hasValidSession(String? snapshotToken) async {
-    if (snapshotToken == null) {
-      return false;
-    }
-    try {
-      final request = await StartVpnRequestReader.readFromStartFile();
-      return request.snapshotToken == snapshotToken;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<String> _publishCoreConfig(LibXrayRunConfig request) async {
-    final paths = await materializeRunXrayConfig(request);
-    if (paths == null) throw const FormatException('xrayJson is empty');
-    return paths;
-  }
-
-  Future<void> _emitWindowsStatus(WindowsVpnStatus status) =>
-      AppFlutterApi().vpnStatusChanged(_status(status));
-
-  static VpnStatus _status(WindowsVpnStatus status) => switch (status) {
-    WindowsVpnStatus.disconnecting => VpnStatus.disconnecting,
-    WindowsVpnStatus.disconnected => VpnStatus.disconnected,
-    WindowsVpnStatus.connecting => VpnStatus.connecting,
-    WindowsVpnStatus.connected => VpnStatus.connected,
-  };
 }

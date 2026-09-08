@@ -186,7 +186,7 @@ class VpnTunnelPane extends StatelessWidget {
                       l.prototypeAndroidVpnDescription,
                       TunnelDestination.android,
                     ),
-                  if (controller.platform == ConnectionPlatform.windows)
+                  if (controller.supportsWindowsSystemVpn)
                     _platformEntry(
                       context,
                       controller,

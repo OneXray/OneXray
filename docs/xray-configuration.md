@@ -84,7 +84,8 @@ direct server 的 domains 从当前 direct 规则提取，且不作为通用 fal
 
 关闭 IPv6 时，Apple、Android 不配置隧道 IPv6 地址、路由和 DNS，传给 Native 的 TUN
 参数也不携带 IPv6 地址和 DNS。Linux 由 Xray-core 创建网卡，其 `tunIn.settings` 中同样
-省略 IPv6 网卡参数。Windows 的 tun2socks / VCore 配置不受此次简化影响，保持原有处理。
+省略 IPv6 网卡参数。Windows EXE 使用相同的原生 TUN 参数规则；MSIX 的 tun2socks / VCore
+配置保持原有处理。
 
 除此之外，Dart 编译只将 DNS 查询策略设为 `UseIPv4`，开启时为 `UseIP`：普通模式设置
 每个 DNS server 的 `queryStrategy`，Raw 同时设置根级和对象形式 server 的查询策略。
@@ -126,9 +127,11 @@ Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校�
 额外入站，但 App 接管 `tunIn`、metrics、统计、日志、DNS 查询策略、运行路径及适用
 平台的出口网卡；额外 TUN、保留端口冲突或无法满足平台网络策略的配置明确失败。
 
-Windows 的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore Provider/Session Host 转交；
-Android、Apple、Linux 使用平台 TUN。Windows 只给 Xray 绑定所选网卡，不给 VCore 新增
-绑定要求。Dart 不提供 iOS Debug Proxy 开关或独立的启停分支，始终使用原生 VPN 接口。
+Windows 默认 EXE 模式的 `tunIn` 使用 Xray 原生 TUN 和 Wintun，网关、DNS、系统路由及
+出口网卡由 App 生成；MSIX 模式的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore
+Provider/Session Host 转交。普通和 Raw 使用相同的运行入站选择，保留 `tunIn` 标签。
+Android、Apple、Linux 使用平台 TUN。两种 Windows 模式都给 Xray 绑定所选网卡，不给
+VCore 新增绑定要求。Dart 不提供 iOS Debug Proxy 开关或独立的启停分支，始终使用原生 VPN 接口。
 Swift 仅在 `targetEnvironment(simulator)` 时将请求中的 `tunIn` 改为本地 SOCKS，保留
 其 tag、嗅探和其他入站。转换后的请求原子写入 `run/start.json`，再把同一份
 `coreInvokeText` 传给 libXray；写入失败则不启动 Core。原始编译输入、数据库配置及运行
@@ -169,9 +172,12 @@ libXray，未运行时同样成功；真实 Apple VPN 即使已断开，也仍�
 连接。状态查询或实际停止失败时继续阻止数据替换，不将失败当作空闲。
 
 Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清理整个 `run/core-inputs`，
-再创建唯一的 `core-inputs/input-*/xray.json`。输入目录不复用，也不保留历史。Windows 的 `snapshotToken` 仅用于
-VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行快照；Linux 只额外保存
-验证进程归属所需的 PID、启动时间和本次输入路径。
+再创建唯一的 `core-inputs/input-*/xray.json`。输入目录不复用，也不保留历史。Windows MSIX 的
+`snapshotToken` 仅用于 VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行快照。
+Windows EXE 与 Linux 只额外保存验证进程归属所需的 PID、启动时间和本次输入路径。
+EXE 使用 Win32 进程状态，验证路径、创建时间和当前 Windows session 后才停止目标；不按
+进程名批量结束 Core。v26.8.4 的 PID-only 记录仅接管同一安装目录下旧 bin 路径的 Core。
+EXE 的 UAC 和有界退出等待在 worker isolate 内执行，不阻塞 Flutter UI。
 
 普通运行环境的 `xray.location.asset` 与 `xray.location.cert` 始终指向唯一、平铺的
 `VpnConstants.datDir`，VPN 准备和启动不复制资产。发布事务与 macOS System Extension

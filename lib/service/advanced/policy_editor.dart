@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/runtime.dart';
@@ -24,12 +25,18 @@ class PolicyEditorDraft {
 class PolicyEditorService {
   final ConnectionCoordinator coordinator;
   final ConnectionPlatform platform;
+  final WindowsMode windowsMode;
 
   PolicyEditorService({
     ConnectionCoordinator? coordinator,
     ConnectionPlatform? platform,
+    WindowsMode? windowsMode,
   }) : coordinator = coordinator ?? ConnectionCoordinator.instance,
-       platform = platform ?? connectionPlatform;
+       platform = platform ?? connectionPlatform,
+       windowsMode = windowsMode ?? windowsBuildMode;
+
+  bool get supportsWindowsSystemVpn =>
+      platform == ConnectionPlatform.windows && windowsMode == WindowsMode.msix;
 
   Future<PolicyEditorDraft> load() async {
     await coordinator.initialize();
@@ -48,17 +55,19 @@ class PolicyEditorService {
 
   PlatformPolicy validate(PolicyEditorDraft draft) {
     final value = draft.copy().policy;
-    value['windows']['excludedCidrs'] =
-        (value['windows']['excludedCidrs'] as List)
-            .cast<String>()
-            .map((value) => value.trim())
-            .where((value) => value.isNotEmpty)
-            .toList();
+    if (supportsWindowsSystemVpn) {
+      value['windows']['excludedCidrs'] =
+          (value['windows']['excludedCidrs'] as List)
+              .cast<String>()
+              .map((value) => value.trim())
+              .where((value) => value.isNotEmpty)
+              .toList();
+    }
     final policy = PlatformPolicy.fromJson(value);
     if (requiresInterface && policy.xrayOutboundInterfaceName.trim().isEmpty) {
       throw const FormatException('Network interface is required');
     }
-    if (platform == ConnectionPlatform.windows) {
+    if (supportsWindowsSystemVpn) {
       policy.toWindowsPolicy();
     }
     return policy;
@@ -74,7 +83,12 @@ class PolicyEditorService {
     if ((await coordinator.configuration).encode() != draft.original.encode()) {
       throw const ConnectionHostException('configurationChanged');
     }
-    final changed = !sameRuntime(draft.original.policy, policy, platform);
+    final changed = !sameRuntime(
+      draft.original.policy,
+      policy,
+      platform,
+      windowsMode: windowsMode,
+    );
     final disconnect =
         platform == ConnectionPlatform.android && emptyAndroidScope(policy);
     var allowed = false;
@@ -101,8 +115,9 @@ class PolicyEditorService {
   static bool sameRuntime(
     PlatformPolicy a,
     PlatformPolicy b,
-    ConnectionPlatform platform,
-  ) {
+    ConnectionPlatform platform, {
+    WindowsMode? windowsMode,
+  }) {
     Object effective(PlatformPolicy policy) {
       final json = policy.toJson();
       final result = <String, dynamic>{
@@ -123,7 +138,8 @@ class PolicyEditorService {
         result['apple'] = policy.toTun(platform).toJson();
       } else {
         result['interface'] = policy.xrayOutboundInterfaceName;
-        if (platform == ConnectionPlatform.windows) {
+        if (platform == ConnectionPlatform.windows &&
+            (windowsMode ?? windowsBuildMode) == WindowsMode.msix) {
           result['windows'] = json['windows'];
         }
       }

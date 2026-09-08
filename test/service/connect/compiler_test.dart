@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/compiler.dart';
@@ -27,10 +28,12 @@ final catalog = RegionCatalog.fromJson(
 
 RuntimeOptions options({
   ConnectionPlatform platform = ConnectionPlatform.android,
+  WindowsMode windowsMode = WindowsMode.exe,
   bool ipv6 = true,
   String interfaceName = '',
 }) => RuntimeOptions(
   platform: platform,
+  windowsMode: windowsMode,
   sessionDirectory: '/unused-session',
   metricsPort: 18186,
   socksPort: 18187,
@@ -49,6 +52,58 @@ ResolvedServer node(int id, {String? address}) => ResolvedServer(
 );
 
 void main() {
+  test(
+    'Windows EXE/MSIX select the same managed inbound in normal and Raw',
+    () {
+      for (final mode in WindowsMode.values) {
+        for (final ipv6 in [false, true]) {
+          for (final raw in [false, true]) {
+            final config = ConnectionCompiler.compile(
+              settings: ConnectionSettings(expert: raw),
+              entries: raw ? [] : [node(1)],
+              raw: raw
+                  ? {
+                      'inbounds': [
+                        {'tag': 'tunIn', 'protocol': 'socks', 'port': 10080},
+                      ],
+                      'outbounds': [
+                        {'protocol': 'freedom'},
+                      ],
+                    }
+                  : null,
+              regions: catalog,
+              options: options(
+                platform: ConnectionPlatform.windows,
+                windowsMode: mode,
+                ipv6: ipv6,
+                interfaceName: 'Ethernet 2',
+              ),
+            ).config;
+            final inbound = (config['inbounds'] as List).single;
+            expect(inbound['tag'], 'tunIn');
+            if (mode == WindowsMode.msix) {
+              expect(inbound['protocol'], 'socks');
+              expect(inbound['listen'], '127.0.0.1');
+              expect(inbound['port'], '18187');
+              expect(inbound['settings'], {'auth': 'noauth', 'udp': true});
+            } else {
+              expect(inbound['protocol'], 'tun');
+              expect(inbound.containsKey('port'), false);
+              expect(inbound['settings'], {
+                'name': 'OneXrayTun',
+                'mtu': VpnConstants.tunMtu,
+                'gateway': ['198.18.0.1/15', if (ipv6) 'fc00::1/64'],
+                'dns': ['8.8.8.8', if (ipv6) '2001:4860:4860::8888'],
+                'autoSystemRoutingTable': ['0.0.0.0/0', if (ipv6) '::/0'],
+                'autoOutboundsInterface': 'Ethernet 2',
+              });
+            }
+          }
+        }
+      }
+    },
+  );
+
   test(
     'normal 1/2/3 nodes always use full selectors and immutable mappings',
     () {
@@ -751,17 +806,10 @@ void main() {
         ),
         true,
       );
-      expect(
-        plan.config['inbounds'].first['protocol'],
-        platform == ConnectionPlatform.windows ? 'socks' : 'tun',
-      );
+      expect(plan.config['inbounds'].first['protocol'], 'tun');
       final settings = plan.config['inbounds'].first['settings'];
-      if (platform == ConnectionPlatform.windows) {
-        expect(settings, {'auth': 'noauth', 'udp': true});
-      } else {
-        expect(settings['autoOutboundsInterface'], 'selected-interface');
-        expect(settings['autoSystemRoutingTable'], ['0.0.0.0/0']);
-      }
+      expect(settings['autoOutboundsInterface'], 'selected-interface');
+      expect(settings['autoSystemRoutingTable'], ['0.0.0.0/0']);
       expect(XrayJson.fromJson(plan.config).toJson(), plan.config);
     }
   });

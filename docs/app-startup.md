@@ -53,8 +53,8 @@ Setup 内不自动跳过或前进：隐私仍需主动同意；系统准备、�
 
 - 原生桥初始化必须返回非空的绝对数据根目录；Apple App Group 容器不可用等错误在任何数据库或 Geodata 访问前直接失败，不能退化为相对目录。
 - Android 与 Apple 平台查询系统 VPN 授权；Android 17 及以上还检查 `ACCESS_LOCAL_NETWORK`，macOS System Extension 还查询扩展授权状态。
-- Windows 检查包身份、VCore 和 `OneXrayCore.exe`；Linux 检查 Core 可执行权限、`/dev/net/tun` 以及 `cap_net_admin` / `cap_net_raw`。
-- Windows/Linux 每次实际连接前按已保存名称检查 Xray 出口网卡：未设置或当前列表中不存在时，在触碰现有 VPN 与原生启动命令前失败并提示重新选择。连接建立后不持续监测网卡状态。
+- Windows 默认 EXE 模式检查 libXray、Core 和 Wintun，使用用户 Application Support 数据根目录；MSIX 模式检查包身份与 VCore，使用 package 数据根目录，失败不回退到非打包目录。Linux 检查 Core 可执行权限、`/dev/net/tun` 以及 `cap_net_admin` / `cap_net_raw`。
+- Windows/Linux 每次实际连接前按已保存名称检查 Xray 出口网卡：先停止旧运行，再检查网卡；未设置或当前列表中不存在时，在启动新 VPN 前失败并提示重新选择。连接建立后不持续监测网卡状态。
 - 正常启动及回到前台只查询，不主动弹出系统授权界面。缺少 VPN、Android 局域网或 System Extension 授权时，连接首页保持可用并提供继续授权入口；只有用户触发后才请求授权。
 - Android 通知权限仍由 `NotificationService` 在服务初始化时管理。扫码相机权限属于扫描动作，在进入扫码功能时请求，不属于启动前置条件。
 
@@ -80,9 +80,16 @@ Android 17 及以上在同一授权动作中依次请求 VPN 和局域网权限�
 
 ### Windows
 
-Microsoft Store MSIX 注册默认关闭的 package `StartupTask`，TaskId 为 `VCoreStartup`。Dart 通过 `vcore.dll` 的 `VCoreWindowsVpnInvoke` 查询、申请启用和关闭任务；用户或策略阻止启用时，设置页引导打开 `ms-settings:startupapps`。
+编译期 `ONEXRAY_WINDOWS_MODE` 默认 `exe`，可显式设为 `msix`；不提供用户设置或自动模式降级。
+EXE 安装包和 ZIP 共用 EXE 模式。EXE 使用当前用户 Startup Folder 的 OneXray 快捷方式，保留
+v26.8.4 的登录项行为；只修改自身或已失效的 OneXray 快捷方式，不覆盖另一份有效安装的登录项。
+ZIP 不改变数据根目录，也不自动注册 URL 协议。EXE 只在实际启动或需要提权停止 Core 时请求 UAC，
+普通初始化不为权限检查启动 Core，Flutter 主进程不要求管理员权限。
 
-该功能要求 package identity，未打包的 `flutter run windows` 中不可用。Windows 实现不读取或迁移 Startup Folder 快捷方式、注册表登录项及旧版偏好。StartupTask 只负责登录后启动 App；是否隐藏窗口和是否连接 VPN 仍分别由对应偏好决定。
+Microsoft Store MSIX 注册默认关闭的 package `StartupTask`，TaskId 为 `VCoreStartup`。Dart 通过
+`vcore.dll` 查询、申请启用和关闭任务；用户或策略阻止启用时，设置页引导打开 `ms-settings:startupapps`。
+该模式要求 package identity，不读取或迁移 EXE 快捷方式。两种登录项都只负责登录后启动 App；
+是否隐藏窗口和是否连接 VPN 仍分别由对应偏好决定。
 
 ### Linux
 
@@ -90,7 +97,7 @@ App 在 XDG autostart 目录管理 `net.yuandev.onexray.desktop`。优先使用 
 
 ## 清理与失败边界
 
-- 清理 App 数据且准备删除用户偏好时，必须先取消当前平台登录项；取消失败时停止破坏性清理。Windows 只操作当前 MSIX 的 StartupTask。
+- 清理 App 数据且准备删除用户偏好时，必须先取消当前平台登录项；取消失败时停止破坏性清理。Windows 按编译模式取消自身快捷方式或当前 MSIX 的 StartupTask，不互相清理。
 - 清理成功后由清理流程重新发布内置 Geodata 与数据库元数据，再直接返回连接首页；不重置隐私和首次初始化标记，也不借助 Setup 或重启恢复运行不变量。
 - 登录项注册状态由操作系统事实决定，不能只依据 Preferences 显示。
 - 自动连接只执行一次。重复的服务就绪事件不得重复启动 Core。
