@@ -106,7 +106,10 @@ void main() {
       var restored = false;
       final importing = DataMaintenance.run(() async {
         await releaseImport.future;
-        probe = DataMaintenance.run(() => releaseProbe.future);
+        probe = DataMaintenance.run(
+          () => releaseProbe.future,
+          independent: true,
+        );
       });
       final restore = DataMaintenance.exclusive(() async => restored = true);
       releaseImport.complete();

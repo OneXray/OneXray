@@ -12,7 +12,7 @@ import 'package:onexray/pages/connect/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connect/coordinator.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
@@ -408,7 +408,7 @@ class _PendingCustomSave extends CustomRoutingEditorService {
   Future<int?> save(
     CustomRoutingEditorDraft draft, {
     required Future<bool> Function() confirmReconnect,
-    GeoDataImportDraft? geodata,
+    ConfigurationImportDraft? imported,
   }) {
     started.complete();
     return result.future;

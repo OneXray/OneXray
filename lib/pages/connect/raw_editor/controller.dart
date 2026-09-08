@@ -126,7 +126,7 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
     try {
       final count = await transfers.service.sharingDataCount(
         state.text,
-        pending: transfers.pending,
+        assets: transfers.assets,
       );
       if (isPageActive && revision == _textRevision) {
         emit(state.copyWith(sharingDataCount: count));
@@ -193,7 +193,7 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
     try {
       final id = await service.save(
         draft,
-        geodata: transfers.pending,
+        imported: transfers.imported,
         confirmReconnect: () => context.mounted
             ? showApplyAndReconnectDialog(context, label: state.name.trim())
             : Future.value(false),

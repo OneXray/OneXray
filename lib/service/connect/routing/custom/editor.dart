@@ -4,10 +4,9 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/preparation.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 class CustomRoutingEditorException implements Exception {
   final String reason;
@@ -58,8 +57,8 @@ class CustomRoutingEditorService {
   Future<int?> save(
     CustomRoutingEditorDraft draft, {
     required Future<bool> Function() confirmReconnect,
-    GeoDataImportDraft? geodata,
-  }) => DataMaintenance.run(() async {
+    ConfigurationImportDraft? imported,
+  }) async {
     final name = draft.state.name.trim();
     if (name.isEmpty || name.runes.length > 32) {
       throw const CustomRoutingEditorException('name');
@@ -100,40 +99,34 @@ class CustomRoutingEditorService {
       if (!allowReconnect) return null;
     }
     await _checkConfiguration(configuration);
-    await geodata?.publish();
-    try {
-      await CustomRoutingService.validate(state, testXray: testXray);
-      int? savedId = original?.id;
-      await coordinator.apply(
-        configuration,
-        affectsRuntime: affectsRuntime,
-        allowReconnect: allowReconnect,
-        expectedConfiguration: configuration.encode(),
-        prepare: affectsRuntime
-            ? (next, cancelled) =>
-                  prepare?.call(next, cancelled, state) ??
-                  ConnectionPreparation(db: db).prepare(
-                    next,
-                    cancelled: cancelled,
-                    customDraft: state,
-                    onResolved: coordinator.reportResolvedNodes,
-                  )
-            : null,
-        writeAssets: () async {
-          await _checkConfiguration(configuration);
-          await _checkName(name, original?.id);
-          if (original != null) await _checkOriginal(original);
-          await geodata?.commit();
-          savedId = await CustomRoutingService(db).save(state);
-        },
-      );
-      await geodata?.complete();
-      return savedId;
-    } catch (error, stackTrace) {
-      await geodata?.rollback();
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-  });
+    int? savedId = original?.id;
+    await coordinator.apply(
+      configuration,
+      imported: imported,
+      validateAssets: () =>
+          CustomRoutingService.validate(state, testXray: testXray),
+      affectsRuntime: affectsRuntime,
+      allowReconnect: allowReconnect,
+      expectedConfiguration: configuration.encode(),
+      prepare: affectsRuntime
+          ? (next, cancelled) =>
+                prepare?.call(next, cancelled, state) ??
+                ConnectionPreparation(db: db).prepare(
+                  next,
+                  cancelled: cancelled,
+                  customDraft: state,
+                  onResolved: coordinator.reportResolvedNodes,
+                )
+          : null,
+      writeAssets: () async {
+        await _checkConfiguration(configuration);
+        await _checkName(name, original?.id);
+        if (original != null) await _checkOriginal(original);
+        savedId = await CustomRoutingService(db).save(state);
+      },
+    );
+    return savedId;
+  }
 
   Future<bool> delete(
     RoutingProfileData original, {

@@ -27,24 +27,23 @@ class ConfigurationContent {
 
 class ConfigurationImportDraft {
   final ConfigurationContent content;
-  final GeoDataImportDraft? geodata;
-  const ConfigurationImportDraft(this.content, this.geodata);
+  final GeoDataImport? _geodata;
+  const ConfigurationImportDraft(this.content, this._geodata);
   String get text => content.text;
   String get name => content.name;
-  Future<void> publish() async => geodata?.publish();
-  Future<void> commit() async => geodata?.commit();
-  Future<void> complete() async => geodata?.complete();
-  Future<void> rollback() async => geodata?.rollback();
-  Future<void> dispose() async => geodata?.dispose();
+  Future<T> save<T>(
+    Future<T> Function(Future<void> Function() writeMetadata) action,
+  ) => _geodata?.save(action) ?? action(() async {});
+  Future<void> dispose() async => _geodata?.dispose();
 }
 
 /// Editor transfers preserve Raw source and never save a configuration. Custom
 /// manifests are consumed into a staged Geodata transaction, not persisted JSON.
 class ConfigurationTransferService {
-  final Future<GeoDataImportDraft> Function(List<GeoDataInput>) _prepare;
+  final Future<GeoDataImport> Function(List<GeoDataInput>) _prepare;
   final Future<GeoDataData?> Function(String) _lookup;
   ConfigurationTransferService({
-    Future<GeoDataImportDraft> Function(List<GeoDataInput>)? prepare,
+    Future<GeoDataImport> Function(List<GeoDataInput>)? prepare,
     Future<GeoDataData?> Function(String)? lookup,
   }) : _prepare = prepare ?? GeoDataService().prepareImports,
        _lookup =
@@ -61,7 +60,7 @@ class ConfigurationTransferService {
     );
   }
 
-  Future<GeoDataImportDraft?> prepareAssets(List<GeoDataInput> inputs) async =>
+  Future<GeoDataImport?> prepareAssets(List<GeoDataInput> inputs) async =>
       inputs.isEmpty ? null : _prepare(inputs);
 
   static ConfigurationContent read(String input, ConfigurationKind kind) {
@@ -163,16 +162,16 @@ class ConfigurationTransferService {
     required ConfigurationKind kind,
     required String name,
     required String text,
-    GeoDataImportDraft? pending,
+    List<GeoDataInput> assets = const [],
   }) async {
     if (kind == ConfigurationKind.raw) return text;
     final state = RoutingProfileDocument.parse(text, name: name).state;
-    final assets = await _dependencies(state.xrayJson.toJson(), pending);
+    final dependencies = await _dependencies(state.xrayJson.toJson(), assets);
     final xrayJson = state.xrayJson;
-    if (assets.isNotEmpty) {
+    if (dependencies.isNotEmpty) {
       xrayJson.geodata = XrayGeoData(
         assets: [
-          for (final asset in assets)
+          for (final asset in dependencies)
             XrayGeoDataAsset(file: asset.fileName, url: asset.url),
         ],
       );
@@ -185,18 +184,18 @@ class ConfigurationTransferService {
     required ConfigurationKind kind,
     required String name,
     required String text,
-    GeoDataImportDraft? pending,
+    List<GeoDataInput> assets = const [],
   }) async {
     final json = await exportJson(
       kind: kind,
       name: name,
       text: text,
-      pending: pending,
+      assets: assets,
     );
     final links = <String>[];
     if (kind == ConfigurationKind.raw) {
       final decoded = jsonDecode(text) as Map<String, dynamic>;
-      for (final asset in await _dependencies(decoded, pending)) {
+      for (final asset in await _dependencies(decoded, assets)) {
         links.add(
           Uri(
             scheme: OneXrayAppLinkParser.scheme,
@@ -222,20 +221,20 @@ class ConfigurationTransferService {
 
   Future<int> sharingDataCount(
     String text, {
-    GeoDataImportDraft? pending,
+    List<GeoDataInput> assets = const [],
   }) async => (await _dependencies(
     jsonDecode(text) as Map<String, dynamic>,
-    pending,
+    assets,
   )).length;
 
   Future<List<GeoDataInput>> _dependencies(
     Map<String, dynamic> json,
-    GeoDataImportDraft? pending,
+    List<GeoDataInput> assets,
   ) async {
     final result = <GeoDataInput>[];
     for (final entry in geoDataReferences(json).entries) {
       GeoDataInput? input;
-      for (final asset in pending?.inputs ?? const <GeoDataInput>[]) {
+      for (final asset in assets) {
         if (asset.fileName == entry.key && asset.type == entry.value) {
           input = asset;
         }

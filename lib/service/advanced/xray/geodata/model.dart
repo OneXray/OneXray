@@ -78,33 +78,3 @@ class PublishedGeoData {
   String reference(String code) =>
       builtIn ? '${row.name}:$code' : 'ext:$fileName:$code';
 }
-
-/// Downloaded files remain staged until the surrounding save starts. The
-/// caller publishes them before validation, commits metadata in its database
-/// transaction, then either completes or rolls the publication back.
-class GeoDataImportDraft {
-  final Future<void> Function() _publish;
-  final Future<void> Function() _commit;
-  final Future<void> Function() _complete;
-  final Future<void> Function() _rollback;
-  final Future<void> Function() _dispose;
-  final List<GeoDataInput> inputs;
-  GeoDataImportDraft(
-    this.inputs,
-    this._commit,
-    this._dispose, {
-    Future<void> Function()? publish,
-    Future<void> Function()? complete,
-    Future<void> Function()? rollback,
-  }) : _publish = publish ?? _noop,
-       _complete = complete ?? _noop,
-       _rollback = rollback ?? _noop;
-
-  Future<void> publish() => _publish();
-  Future<void> commit() => _commit();
-  Future<void> complete() => _complete();
-  Future<void> rollback() => _rollback();
-  Future<void> dispose() => _dispose();
-
-  static Future<void> _noop() async {}
-}

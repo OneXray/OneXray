@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -6,6 +7,7 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/servers/import.dart';
+import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/db/config_writer.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
@@ -194,6 +196,36 @@ void main() {
     expect(preview.failureCount, 3);
     // Cancel means commit is never called; the completed subscription is kept.
     expect(subscriptions.first.result.subId, 7);
+  });
+
+  test('clear-data drains the entire imported subscription list', () async {
+    final started = Completer<void>();
+    final release = Completer<void>();
+    final events = <String>[];
+    final service = ServerImportService(
+      subscribe: (link) => DataMaintenance.run(() async {
+        if (!started.isCompleted) {
+          started.complete();
+          await release.future;
+        }
+        events.add(link.name);
+        return const SubscriptionInsertResult(
+          status: SubscriptionUpdateResult.success,
+          subId: 1,
+          count: 1,
+        );
+      }),
+    );
+    final links = service
+        .detect('https://example.com/one#one\nhttps://example.com/two#two')
+        .subscriptions;
+    final importing = service.importSubscriptions(links);
+    await started.future;
+    final clearing = DataMaintenance.exclusive(() async => events.add('clear'));
+    release.complete();
+    expect((await importing).every((result) => result.result.success), isTrue);
+    await clearing;
+    expect(events, ['one', 'two', 'clear']);
   });
 
   test('Raw and data sources stay read-only until confirmation and partial results remain distinct', () async {

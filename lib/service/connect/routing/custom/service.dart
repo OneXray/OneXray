@@ -3,7 +3,6 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/json.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/custom/state_db.dart';
@@ -45,7 +44,7 @@ class CustomRoutingService {
     if (error.isNotEmpty) throw FormatException(error);
   });
 
-  Future<int> save(RoutingProfileState state) => DataMaintenance.run(() async {
+  Future<int> save(RoutingProfileState state) async {
     final name = state.name.trim();
     if (name.isEmpty || name.runes.length > 32) {
       throw const FormatException(
@@ -70,5 +69,5 @@ class CustomRoutingService {
       await database.routingProfileDao.updateRow(value.updateData(previous));
       return value.id!;
     });
-  });
+  }
 }

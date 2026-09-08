@@ -10,8 +10,7 @@ import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/preparation.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/raw/db.dart';
 import 'package:onexray/service/connect/raw/validator.dart';
 
@@ -65,36 +64,9 @@ class RawEditorService {
   Future<int?> save(
     RawEditorDraft draft, {
     required Future<bool> Function() confirmReconnect,
-    GeoDataImportDraft? geodata,
-  }) => DataMaintenance.run(() async {
-    await geodata?.publish();
-    try {
-      final result = await _save(
-        draft,
-        confirmReconnect: confirmReconnect,
-        geodata: geodata,
-      );
-      if (result == null) {
-        await geodata?.rollback();
-      } else {
-        await geodata?.complete();
-      }
-      return result;
-    } catch (error, stackTrace) {
-      await geodata?.rollback();
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-  });
-
-  Future<int?> _save(
-    RawEditorDraft draft, {
-    required Future<bool> Function() confirmReconnect,
-    GeoDataImportDraft? geodata,
+    ConfigurationImportDraft? imported,
   }) async {
     final text = namedText(draft.name, draft.text);
-    if (!await validate(text)) {
-      throw const RawEditorException('invalid');
-    }
     final original = draft.original;
     if (original == null &&
         (await db.coreConfigDao.allRawRowsWithData).length >= 3) {
@@ -135,6 +107,10 @@ class RawEditorService {
     await coordinator.apply(
       configuration,
       expectedConfiguration: configuration.encode(),
+      imported: imported,
+      validateAssets: () async {
+        if (!await validate(text)) throw const RawEditorException('invalid');
+      },
       allowReconnect: allowReconnect,
       affectsRuntime: affectsRuntime,
       prepare: affectsRuntime
@@ -148,7 +124,6 @@ class RawEditorService {
                 )
           : null,
       writeAssets: () async {
-        await geodata?.commit();
         if (original == null) {
           savedId = await db.coreConfigDao.insertAssetRow(
             XrayRawDb.configCompanion(draft.name.trim(), text),
@@ -260,10 +235,10 @@ class RawEditorService {
     return const JsonEncoder.withIndent('  ').convert(json);
   }
 
-  Future<bool> validate(String text) => DataMaintenance.run(() async {
+  Future<bool> validate(String text) async {
     if (_validate != null) return _validate(text);
     return (await XrayRawValidator.validate(text)).isValid;
-  });
+  }
 
   RuntimeOptions _comparisonOptions(
     ConnectionConfiguration configuration,

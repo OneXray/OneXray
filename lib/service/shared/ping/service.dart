@@ -12,6 +12,7 @@ import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/state.dart';
 import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+import 'package:onexray/service/shared/command_serial_executor.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
 
@@ -41,7 +42,7 @@ class PingService {
 
   AppDatabase get _database => _databaseOverride ?? AppDatabase();
 
-  Future<void> _pingQueue = Future.value();
+  final _pingQueue = CommandSerialExecutor();
   var _pingingTaskCount = 0;
 
   bool get isPinging => _pingingTaskCount > 0;
@@ -105,21 +106,21 @@ class PingService {
   }
 
   Future<void> _enqueuePing(Future<void> Function() task) {
-    final previous = _pingQueue;
-    // Register while queued, not after waiting: restore must not finish and
-    // then receive a stale job against restored rows with the same IDs.
+    // Register independently while queued, including probes dispatched by an
+    // import. Clear-data waits for them even after the import has returned.
     final next = DataMaintenance.run(() async {
       _startPinging();
       try {
-        await previous;
-        await task();
+        await _pingQueue.run(task);
       } finally {
         _stopPinging();
       }
-    });
-    _pingQueue = next.catchError((Object error, StackTrace stackTrace) {
-      ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
-    });
+    }, independent: true);
+    unawaited(
+      next.catchError((Object error, StackTrace stackTrace) {
+        ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
+      }),
+    );
     return next;
   }
 

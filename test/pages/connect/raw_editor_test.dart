@@ -12,7 +12,7 @@ import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/json_editor.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
 import 'package:onexray/service/connect/coordinator.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {
@@ -148,7 +148,7 @@ class _PendingRawSave extends RawEditorService {
   Future<int?> save(
     RawEditorDraft draft, {
     required Future<bool> Function() confirmReconnect,
-    GeoDataImportDraft? geodata,
+    ConfigurationImportDraft? imported,
   }) {
     started.complete();
     return result.future;

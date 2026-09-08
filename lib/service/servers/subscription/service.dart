@@ -18,7 +18,6 @@ import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
-import 'package:onexray/service/servers/subscription/validator.dart';
 
 final class SubscriptionLoadResult {
   const SubscriptionLoadResult({
@@ -128,40 +127,6 @@ class SubscriptionService {
     if (_generations[subId] == generation) {
       _generations.remove(subId);
     }
-  }
-
-  Future<int> importSubscriptions(List<SubscriptionImportEntry> entries) =>
-      DataMaintenance.run(() => _importSubscriptions(entries));
-
-  Future<int> _importSubscriptions(
-    List<SubscriptionImportEntry> entries,
-  ) async {
-    var imported = 0;
-    final importedSubIds = <int>[];
-    for (final entry in entries) {
-      final name = entry.name.isEmpty ? "anonymous" : entry.name;
-      try {
-        final checked = await SubscriptionValidator.validate(name, entry.url);
-        if (!checked.item1) {
-          continue;
-        }
-        final result = await _insertSubscription(
-          SubscriptionInput(name: name, url: entry.url),
-        );
-        if (result.success) {
-          imported += 1;
-          importedSubIds.add(result.subId);
-        }
-      } catch (error, stackTrace) {
-        ygLogger(
-          'import subscription failed (${error.runtimeType})\n$stackTrace',
-        );
-      }
-    }
-    for (final subId in importedSubIds) {
-      _schedulePing(subId);
-    }
-    return imported;
   }
 
   Future<SubscriptionInsertResult> insertSubscription(
@@ -312,31 +277,32 @@ class SubscriptionService {
   Future<int> deleteSubscription(
     int id, {
     required Future<bool> Function(SubscriptionData) prepareDeletion,
-  }) => DataMaintenance.run(() => _deleteSubscription(id, prepareDeletion));
-
-  Future<int> _deleteSubscription(
-    int id,
-    Future<bool> Function(SubscriptionData) prepareDeletion,
-  ) async {
+  }) async {
     final db = _database;
     final source = await db.subscriptionDao.searchRow(id);
     if (source == null || !await prepareDeletion(source)) {
       return 0;
     }
-    _refreshes.remove(id);
-    final generation = _beginUpdate(id);
-    try {
-      return await db.transaction(() async {
-        _ensureCurrent(id, generation);
-        final deleted = await db.subscriptionDao.deleteRow(id);
-        _ensureCurrent(id, generation);
-        return deleted;
-      });
-    } on _SupersededSubscriptionUpdate {
-      return 0;
-    } finally {
-      _finishUpdate(id, generation);
-    }
+    return DataMaintenance.run(() async {
+      _refreshes.remove(id);
+      final generation = _beginUpdate(id);
+      try {
+        return await db.transaction(() async {
+          _ensureCurrent(id, generation);
+          final current = await db.subscriptionDao.searchRow(id);
+          if (current != source) {
+            throw const _SupersededSubscriptionUpdate();
+          }
+          final deleted = await db.subscriptionDao.deleteRow(id);
+          _ensureCurrent(id, generation);
+          return deleted;
+        });
+      } on _SupersededSubscriptionUpdate {
+        return 0;
+      } finally {
+        _finishUpdate(id, generation);
+      }
+    });
   }
 
   Future<SubscriptionUpdateResult> _updateSubscription(
@@ -620,12 +586,7 @@ class SubscriptionService {
 
   Future<void> refreshOutdatedSubscription({
     AutoUpdateState? autoUpdateState,
-  }) =>
-      DataMaintenance.run(() => _refreshOutdatedSubscription(autoUpdateState));
-
-  Future<void> _refreshOutdatedSubscription(
-    AutoUpdateState? autoUpdateState,
-  ) async {
+  }) async {
     final updateState = autoUpdateState ?? AutoUpdateState();
     if (autoUpdateState == null) {
       await updateState.readFromPreferences();

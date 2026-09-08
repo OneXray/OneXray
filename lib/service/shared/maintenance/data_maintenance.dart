@@ -8,12 +8,15 @@ abstract final class DataMaintenance {
   static bool _exclusive = false;
   static Completer<void>? _exclusiveFinished;
 
-  /// Descendants of registered tasks may finish after replacement is requested.
-  /// Each child is tracked too, including unawaited queued probes.
+  /// Register a complete business operation, not each helper it awaits.
+  /// Independently queued work must remain tracked after its parent returns.
   static Future<T> run<T>(
     Future<T> Function() action, {
     bool wait = false,
+    bool independent = false,
   }) async {
+    final admitted = _running.contains(Zone.current[_scopeKey]);
+    if (admitted && !independent) return action();
     while (_exclusive && !_running.contains(Zone.current[_scopeKey])) {
       if (!wait) throw StateError('Data maintenance is in progress');
       await _exclusiveFinished!.future;

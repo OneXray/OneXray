@@ -10,7 +10,11 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+
+import '../../../../support/fake_geodata_import.dart';
+
 import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
@@ -202,10 +206,29 @@ void main() {
         original: renamed.original,
         state: _state(renamed.state.name, entries: 2),
       );
+      final importEvents = <String>[];
+      final imported = ConfigurationImportDraft(
+        ConfigurationContent(
+          kind: ConfigurationKind.custom,
+          text: changed.state.encode(),
+          name: changed.state.name,
+        ),
+        FakeGeoDataImport(events: importEvents),
+      );
       expect(
-        await service.save(changed, confirmReconnect: () async => false),
+        await service.save(
+          changed,
+          imported: imported,
+          confirmReconnect: () async {
+            expect(importEvents, isEmpty);
+            await DataMaintenance.exclusive(() async {})
+                .timeout(const Duration(seconds: 1));
+            return false;
+          },
+        ),
         isNull,
       );
+      expect(importEvents, isEmpty);
       expect(calls, isEmpty);
       final before = (await db.connectionConfigDao.read()).toJson();
       await expectLater(
@@ -338,20 +361,20 @@ void main() {
       BEGIN SELECT RAISE(FAIL, 'fixture'); END
     ''');
     final lifecycle = <String>[];
-    final geodata = GeoDataImportDraft(
-      const [],
-      () async => lifecycle.add('commit'),
-      () async {},
-      publish: () async => lifecycle.add('publish'),
-      complete: () async => lifecycle.add('complete'),
-      rollback: () async => lifecycle.add('rollback'),
+    final imported = ConfigurationImportDraft(
+      ConfigurationContent(
+        kind: ConfigurationKind.custom,
+        text: _state('Work').encode(),
+        name: 'Work',
+      ),
+      FakeGeoDataImport(events: lifecycle),
     );
 
     await expectLater(
       service.save(
         CustomRoutingEditorDraft(state: _state('Work')),
         confirmReconnect: () async => false,
-        geodata: geodata,
+        imported: imported,
       ),
       throwsA(anything),
     );

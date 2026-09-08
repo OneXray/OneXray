@@ -57,21 +57,24 @@ class ServerImportPreview {
   final List<OneXrayGeoDataLink> geoData;
   final int? failureCount;
   final List<ConfigurationContent> customRoutes;
-  final GeoDataImportDraft? dependencies;
+  final List<GeoDataInput> assets;
+  final GeoDataImport? _dependencies;
   ServerImportPreview(
     Iterable<CoreConfigCompanion> rows, {
     this.failureCount,
     Iterable<OneXrayGeoDataLink> geoData = const [],
     Iterable<ConfigurationContent> customRoutes = const [],
-    this.dependencies,
+    this._dependencies,
+    Iterable<GeoDataInput> assets = const [],
   }) : rows = List.unmodifiable(rows),
        geoData = List.unmodifiable(geoData),
-       customRoutes = List.unmodifiable(customRoutes);
+       customRoutes = List.unmodifiable(customRoutes),
+       assets = List.unmodifiable(assets);
   int get count => rows.where((row) => row.type.value == 'outbound').length;
   int get rawCount => rows.where((row) => row.type.value == 'raw').length;
   bool get hasItems =>
       rows.isNotEmpty || geoData.isNotEmpty || customRoutes.isNotEmpty;
-  Future<void> dispose() async => dependencies?.dispose();
+  Future<void> dispose() async => _dependencies?.dispose();
 }
 
 class ServerImportDetection {
@@ -90,7 +93,7 @@ class ServerSubscriptionImport {
 class ServerImportService {
   final AppDatabase? _database;
   final ConfigurationTransferService _transfer;
-  final Future<bool> Function(String, GeoDataImportDraft?) _validateRaw;
+  final Future<bool> Function(String) _validateRaw;
   final Future<ShareParseReport> Function(String) _parse;
   final Future<String> Function(String) _validate;
   final Future<ConfigWriteResult> Function(List<CoreConfigCompanion>) _write;
@@ -114,12 +117,8 @@ class ServerImportService {
     Future<bool> Function(OneXrayGeoDataLink)? writeGeoData,
   }) : _database = database,
        _transfer = transfer ?? ConfigurationTransferService(),
-       _validateRaw = validate == null
-           ? ((text, _) => RawEditorService().validate(text))
-           : ((text, _) async => (await XrayRawValidator.validate(
-               text,
-               testXray: validate,
-             )).isValid),
+       _validateRaw = ((text) async =>
+           (await XrayRawValidator.validate(text, testXray: validate)).isValid),
        _parse =
            parseReport ??
            (parse == null
@@ -172,7 +171,7 @@ class ServerImportService {
 
   Future<List<ServerSubscriptionImport>> importSubscriptions(
     List<OneXraySubscriptionLink> links,
-  ) async {
+  ) => DataMaintenance.run(() async {
     final results = <ServerSubscriptionImport>[];
     for (final link in links) {
       final name = link.name.trim().isEmpty
@@ -192,7 +191,7 @@ class ServerImportService {
       }
     }
     return List.unmodifiable(results);
-  }
+  });
 
   static Future<SubscriptionInsertResult> _importSubscription(
     OneXraySubscriptionLink link,
@@ -440,7 +439,7 @@ class ServerImportService {
         (item) => item.kind == ConfigurationKind.raw,
       )) {
         final text = RawEditorService.namedText(raw.name, raw.text);
-        if (draft == null && !await _validateRaw(text, null)) {
+        if (draft == null && !await _validateRaw(text)) {
           throw const FormatException('Invalid Raw');
         }
         rows.add(XrayRawDb.configCompanion(raw.name.trim(), text));
@@ -449,6 +448,7 @@ class ServerImportService {
         rows,
         customRoutes: custom,
         dependencies: draft,
+        assets: assets,
         geoData: standalone,
         failureCount: failureCount,
       );
@@ -463,66 +463,64 @@ class ServerImportService {
         if (!preview.hasItems) {
           throw const FormatException('No usable servers');
         }
-        final dependencies = preview.dependencies;
-        await dependencies?.publish();
-        try {
-          if (dependencies != null) {
-            for (final route in preview.customRoutes) {
-              await CustomRoutingService.validate(
-                RoutingProfileDocument.parse(
-                  route.text,
-                  allowMetadata: false,
-                ).state,
-                testXray: _validate,
-              );
-            }
-            for (final row in preview.rows.where(
-              (row) => row.type.value == 'raw',
-            )) {
-              final data = row.data.value;
-              if (data == null ||
-                  !await _validateRaw(
-                    utf8.decode(base64Decode(data)),
-                    dependencies,
-                  )) {
-                throw const FormatException('Invalid Raw');
-              }
-            }
-          }
-          return await _commitPreview(preview);
-        } catch (error, stackTrace) {
-          await dependencies?.rollback();
-          Error.throwWithStackTrace(error, stackTrace);
-        }
+        return _commitPreview(preview);
       });
 
   Future<ServerImportResult> _commitPreview(ServerImportPreview preview) async {
     late final db = _database ?? AppDatabase();
-    Future<ConfigWriteResult?> write() async {
-      await preview.dependencies?.commit();
-      final result = preview.rows.isEmpty ? null : await _write(preview.rows);
-      if (result != null &&
-          (result.count != preview.rows.length ||
-              result.ids.length != preview.rows.length)) {
-        throw StateError('Incomplete asset write');
+    Future<ConfigWriteResult?> save(
+      Future<void> Function() writeMetadata,
+    ) async {
+      if (preview._dependencies != null) {
+        for (final route in preview.customRoutes) {
+          await CustomRoutingService.validate(
+            RoutingProfileDocument.parse(
+              route.text,
+              allowMetadata: false,
+            ).state,
+            testXray: _validate,
+          );
+        }
+        for (final row in preview.rows.where(
+          (row) => row.type.value == 'raw',
+        )) {
+          final data = row.data.value;
+          if (data == null ||
+              !await _validateRaw(utf8.decode(base64Decode(data)))) {
+            throw const FormatException('Invalid Raw');
+          }
+        }
       }
-      for (final custom in preview.customRoutes) {
-        await CustomRoutingService(db).save(
-          RoutingProfileDocument.parse(
-            custom.text,
-            name: custom.name,
-            allowMetadata: false,
-          ).state,
-        );
+      Future<ConfigWriteResult?> write() async {
+        await writeMetadata();
+        final result = preview.rows.isEmpty ? null : await _write(preview.rows);
+        if (result != null &&
+            (result.count != preview.rows.length ||
+                result.ids.length != preview.rows.length)) {
+          throw StateError('Incomplete asset write');
+        }
+        for (final custom in preview.customRoutes) {
+          await CustomRoutingService(db).save(
+            RoutingProfileDocument.parse(
+              custom.text,
+              name: custom.name,
+              allowMetadata: false,
+            ).state,
+          );
+        }
+        return result;
       }
-      return result;
+
+      return preview._dependencies != null || preview.customRoutes.isNotEmpty
+          ? db.transaction(write)
+          : write();
     }
 
-    final result =
-        preview.dependencies != null || preview.customRoutes.isNotEmpty
-        ? await GeoDataService().withFiles(() => db.transaction(write))
-        : await write();
-    await preview.dependencies?.complete();
+    final result = preview._dependencies != null
+        ? await preview._dependencies.save(save)
+        : preview.customRoutes.isNotEmpty
+        ? await GeoDataService().withFiles(() => save(() async {}))
+        : await save(() async {});
     if (result != null) {
       _schedule([
         for (var index = 0; index < result.ids.length; index++)

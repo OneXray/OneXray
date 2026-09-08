@@ -4,21 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
 
 void main() {
-  test('serializes commands and advances generations', () async {
+  test('serializes commands and returns their results', () async {
     final executor = CommandSerialExecutor();
     final firstGate = Completer<void>();
     final events = <String>[];
 
-    final first = executor.run((generation) async {
-      events.add('start-$generation');
+    final first = executor.run(() async {
+      events.add('start-1');
       await firstGate.future;
-      events.add('end-$generation');
-      return generation;
+      events.add('end-1');
+      return 1;
     });
-    final second = executor.run((generation) async {
-      events.add('start-$generation');
-      events.add('end-$generation');
-      return generation;
+    final second = executor.run(() async {
+      events.add('start-2');
+      events.add('end-2');
+      return 2;
     });
 
     await Future<void>.delayed(Duration.zero);
@@ -30,21 +30,23 @@ void main() {
     expect(events, ['start-1', 'end-1', 'start-2', 'end-2']);
   });
 
-  test(
-    'continues after a failed command and invalidates old generations',
-    () async {
-      final executor = CommandSerialExecutor();
+  test('continues after a failed command', () async {
+    final executor = CommandSerialExecutor();
 
-      await expectLater(
-        executor.run<void>((_) async => throw StateError('failed')),
-        throwsStateError,
-      );
-      final generation = await executor.run((generation) async => generation);
-      expect(generation, 2);
-      expect(executor.isCurrent(generation), isTrue);
+    await expectLater(
+      executor.run<void>(() async => throw StateError('failed')),
+      throwsStateError,
+    );
+    expect(await executor.run(() async => 2), 2);
+  });
 
-      executor.invalidate();
-      expect(executor.isCurrent(generation), isFalse);
-    },
-  );
+  test('independent queues do not block each other', () async {
+    final first = CommandSerialExecutor();
+    final second = CommandSerialExecutor();
+    final release = Completer<void>();
+    final pending = first.run(() => release.future);
+    expect(await second.run(() async => 1), 1);
+    release.complete();
+    await pending;
+  });
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -11,6 +12,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 void main() {
   late AppDatabase db;
@@ -138,6 +140,74 @@ void main() {
       expect(coordinator.state.value.metricsAvailable, isFalse);
     },
   );
+
+  test(
+    'read-only status and metrics do not enter the clear-data gate',
+    () async {
+      final runtime = _runtime('a');
+      var status = VpnStatus.connected;
+      var reads = 0;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => runtime,
+          inspect: (_) async => HostConnection(status, runtime: runtime),
+          readTraffic: (_) async {
+            reads++;
+            return const ConnectionTraffic(
+              uplink: 10,
+              downlink: 20,
+              sampledAtMs: 1000,
+            );
+          },
+        ),
+      );
+      coordinator.setTrafficVisible(true);
+      await Future<void>.delayed(Duration.zero);
+      final before = reads;
+      await DataMaintenance.exclusive(() async {
+        await coordinator.refreshTraffic();
+        expect(reads, before + 1);
+        status = VpnStatus.disconnected;
+        await coordinator.refresh();
+        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+        expect(coordinator.state.value.issue, isNull);
+      });
+    },
+  );
+
+  test('clear-data stop ignores late status and metrics responses', () async {
+    final runtime = _runtime('a');
+    final traffic = Completer<ConnectionTraffic>();
+    final statusReply = Completer<HostConnection>();
+    var holdStatus = false;
+    var host = HostConnection(VpnStatus.connected, runtime: runtime);
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => runtime,
+        inspect: (_) => holdStatus ? statusReply.future : Future.value(host),
+        readTraffic: (_) => traffic.future,
+        stop: () async => host = const HostConnection(VpnStatus.disconnected),
+      ),
+    );
+    coordinator.setTrafficVisible(true);
+    await Future<void>.delayed(Duration.zero);
+    holdStatus = true;
+    final refresh = coordinator.refresh();
+    await Future<void>.delayed(Duration.zero);
+    holdStatus = false;
+    await DataMaintenance.exclusive(coordinator.stopForMaintenance);
+    traffic.complete(
+      const ConnectionTraffic(uplink: 10, downlink: 20, sampledAtMs: 1000),
+    );
+    statusReply.complete(HostConnection(VpnStatus.connected, runtime: runtime));
+    await refresh;
+    await Future<void>.delayed(Duration.zero);
+    expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    expect(coordinator.state.value.traffic, isNull);
+    expect(coordinator.state.value.runtime, isNull);
+  });
 
   test('maintenance skips an idle Apple host without a system VPN', () async {
     var stopCalls = 0;

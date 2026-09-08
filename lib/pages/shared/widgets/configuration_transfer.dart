@@ -23,13 +23,13 @@ class ConfigurationTransferState {
   final bool busy;
   final ConfigurationTransferAction? action;
   final String? notice;
-  final GeoDataImportDraft? pending;
+  final List<GeoDataInput> assets;
 
   const ConfigurationTransferState({
     this.busy = false,
     this.action,
     this.notice,
-    this.pending,
+    this.assets = const [],
   });
 
   ConfigurationTransferState copyWith({
@@ -38,13 +38,12 @@ class ConfigurationTransferState {
     bool clearAction = false,
     String? notice,
     bool clearNotice = false,
-    GeoDataImportDraft? pending,
-    bool clearPending = false,
+    List<GeoDataInput>? assets,
   }) => ConfigurationTransferState(
     busy: busy ?? this.busy,
     action: clearAction ? null : action ?? this.action,
     notice: clearNotice ? null : notice ?? this.notice,
-    pending: clearPending ? null : pending ?? this.pending,
+    assets: assets ?? this.assets,
   );
 }
 
@@ -71,7 +70,8 @@ class ConfigurationTransferController
   bool get busy => state.busy;
   ConfigurationTransferAction? get action => state.action;
   String? get notice => state.notice;
-  GeoDataImportDraft? get pending => state.pending;
+  ConfigurationImportDraft? get imported => _draft;
+  List<GeoDataInput> get assets => state.assets;
 
   Future<void> import(BuildContext context, {required bool clipboard}) async {
     if (busy) return;
@@ -118,8 +118,7 @@ class ConfigurationTransferController
           notice: kind == ConfigurationKind.raw
               ? l10n.prototypeJsonImportedIntoEditor
               : l10n.prototypeCustomImportedIntoEditor,
-          pending: _draft?.geodata,
-          clearPending: _draft?.geodata == null,
+          assets: _draft?.content.assets ?? const [],
         ),
       );
     } catch (_) {
@@ -137,8 +136,7 @@ class ConfigurationTransferController
         state.copyWith(
           busy: false,
           clearAction: true,
-          pending: _draft?.geodata,
-          clearPending: _draft?.geodata == null,
+          assets: _draft?.content.assets ?? const [],
         ),
       );
     }
@@ -178,7 +176,7 @@ class ConfigurationTransferController
           kind: kind,
           name: name,
           text: text,
-          pending: pending,
+          assets: assets,
         );
         if (!context.mounted || !isPageActive) return;
         if (AppPlatform.isLinux) {
@@ -209,7 +207,7 @@ class ConfigurationTransferController
           kind: kind,
           name: name,
           text: text,
-          pending: pending,
+          assets: assets,
         );
         if (!isPageActive || !context.mounted) return;
         final basename = name.trim().replaceAll(

@@ -15,6 +15,7 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -503,6 +504,8 @@ class _Coordinator extends ConnectionCoordinator {
     bool allowReconnect = true,
     String? expectedConfiguration,
     Future<void> Function()? writeAssets,
+    Future<void> Function()? validateAssets,
+    ConfigurationImportDraft? imported,
     PrepareConnection? prepare,
   }) async {
     if (fail) {

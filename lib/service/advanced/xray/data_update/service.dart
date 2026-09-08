@@ -5,6 +5,7 @@ import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/system_state.dart';
 import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 
 class DataUpdateService {
   static final DataUpdateService _singleton = DataUpdateService._internal();
@@ -32,14 +33,18 @@ class DataUpdateService {
       final shouldUpdateGeoData =
           updateGeoData && autoUpdateState.geoDataEnable;
       if (!shouldUpdateSubscription && !shouldUpdateGeoData) return;
-      if (shouldUpdateSubscription) {
-        await SubscriptionService().refreshOutdatedSubscription(
-          autoUpdateState: autoUpdateState,
-        );
-      }
-      if (shouldUpdateGeoData) {
-        await _refreshOutdatedGeoData(autoUpdateState);
-      }
+      // Scheduler callbacks may inherit a live connection command's Zone, but
+      // their writes must remain registered after that command returns.
+      await DataMaintenance.run(() async {
+        if (shouldUpdateSubscription) {
+          await SubscriptionService().refreshOutdatedSubscription(
+            autoUpdateState: autoUpdateState,
+          );
+        }
+        if (shouldUpdateGeoData) {
+          await _refreshOutdatedGeoData(autoUpdateState);
+        }
+      }, independent: true);
     } catch (_) {
       ygLogger('Data update check failed');
     } finally {

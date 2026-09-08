@@ -19,6 +19,16 @@ import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
 import 'package:path/path.dart' as p;
 
+/// Runs a confirmed save against staged dependencies. The callback includes
+/// writeMetadata in the same database transaction as its configuration write.
+/// File publication, rollback and cleanup remain private to this module.
+abstract interface class GeoDataImport {
+  Future<T> save<T>(
+    Future<T> Function(Future<void> Function() writeMetadata) action,
+  );
+  Future<void> dispose();
+}
+
 /// All installed Geodata lives directly in one flat directory. Downloads and
 /// rollback backups use short-lived sibling directories only.
 class GeoDataService {
@@ -83,7 +93,7 @@ class GeoDataService {
         identical(Zone.current[_fileScopeKey], _fileScope)) {
       return action();
     }
-    return _commands.run((_) async {
+    return _commands.run(() async {
       final scope = Object();
       _fileScope = scope;
       try {
@@ -99,17 +109,15 @@ class GeoDataService {
 
   Future<void> ensureInstalled({
     bool resetOrphanedFiles = false,
-  }) => DataMaintenance.run(
-    () => withFiles(() async {
-      // Cold startup must recover import journals. Later checks only read valid
-      // files, so opening Home or Geodata cannot drain/reject background probes.
-      if (_installationPrepared && await _checkInstalled()) {
-        return;
-      }
-      await _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles);
-      _installationPrepared = true;
-    }),
-  );
+  }) => withFiles(() async {
+    // Cold startup must recover import journals. Later checks only read valid
+    // files, so opening Home or Geodata cannot drain/reject background probes.
+    if (_installationPrepared && await _checkInstalled()) {
+      return;
+    }
+    await _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles);
+    _installationPrepared = true;
+  });
 
   Future<bool> _checkInstalled() async {
     final rows = await _db.geoDataDao.publishedRows;
@@ -224,16 +232,12 @@ class GeoDataService {
       url: input.url.trim(),
     );
     return DataMaintenance.run(() async {
-      final draft = await _prepareImports([normalized]);
-      await withFiles(() async {
-        try {
-          await draft.publish();
-          await draft.commit();
-          await draft.complete();
-        } finally {
-          await draft.dispose();
-        }
-      });
+      final draft = await prepareImports([normalized]);
+      try {
+        await draft.save((writeMetadata) => _db.transaction(writeMetadata));
+      } finally {
+        await draft.dispose();
+      }
     });
   }
 
@@ -340,14 +344,11 @@ class GeoDataService {
     }),
   );
 
-  /// Download and validate in a sibling directory, then install new files in
-  /// the canonical root. The caller commits metadata with its configuration.
-  Future<GeoDataImportDraft> prepareImports(List<GeoDataInput> inputs) =>
-      DataMaintenance.run(() => _prepareImports(inputs));
-
-  Future<GeoDataImportDraft> _prepareImports(List<GeoDataInput> inputs) async {
+  /// Prepare private staging files only. A later confirmed save publishes them
+  /// while the caller commits metadata with its configuration.
+  Future<GeoDataImport> prepareImports(List<GeoDataInput> inputs) async {
     if (inputs.isEmpty) {
-      return GeoDataImportDraft(const [], () async {}, () async {});
+      throw ArgumentError.value(inputs, 'inputs', 'No Geodata dependencies');
     }
     final sources = List<GeoDataInput>.unmodifiable(inputs);
     for (final source in sources) {
@@ -483,13 +484,13 @@ class GeoDataService {
       _activeImportStages.remove(p.normalize(stage.path));
     }
 
-    return GeoDataImportDraft(
-      sources,
-      commit,
-      () => withFiles(dispose),
-      publish: () => withFiles(publish),
-      complete: () => withFiles(complete),
-      rollback: () => withFiles(rollback),
+    return _GeoDataImportDraft(
+      this,
+      publish: publish,
+      writeMetadata: commit,
+      complete: complete,
+      rollback: rollback,
+      dispose: dispose,
     );
   }
 
@@ -884,6 +885,42 @@ class GeoDataService {
       );
     }
   }
+}
+
+final class _GeoDataImportDraft implements GeoDataImport {
+  final GeoDataService _files;
+  final Future<void> Function() _publish;
+  final Future<void> Function() _writeMetadata;
+  final Future<void> Function() _complete;
+  final Future<void> Function() _rollback;
+  final Future<void> Function() _dispose;
+
+  _GeoDataImportDraft(
+    this._files, {
+    required this._publish,
+    required this._writeMetadata,
+    required this._complete,
+    required this._rollback,
+    required this._dispose,
+  });
+
+  @override
+  Future<T> save<T>(
+    Future<T> Function(Future<void> Function() writeMetadata) action,
+  ) => _files.withFiles(() async {
+    await _publish();
+    try {
+      final result = await action(_writeMetadata);
+      await _complete();
+      return result;
+    } catch (error, stackTrace) {
+      await _rollback();
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  });
+
+  @override
+  Future<void> dispose() => _files.withFiles(_dispose);
 }
 
 final class _FlatFileChange {

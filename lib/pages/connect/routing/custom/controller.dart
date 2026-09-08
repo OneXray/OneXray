@@ -475,7 +475,7 @@ class CustomRoutingEditorController
         confirmReconnect: () => context.mounted
             ? showApplyAndReconnectDialog(context, label: state.name.trim())
             : Future.value(false),
-        geodata: transfer.pending,
+        imported: transfer.imported,
       );
       if (id != null &&
           context.mounted &&

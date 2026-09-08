@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/servers/import.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
+
+import '../../../support/fake_geodata_import.dart';
+
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/shared/share/app_link_generator.dart';
@@ -159,12 +161,11 @@ void main() {
       var disposed = 0;
       final service = ConfigurationTransferService(
         lookup: (_) async => null,
-        prepare: (inputs) async => GeoDataImportDraft(
-          inputs,
-          () async {
+        prepare: (inputs) async => FakeGeoDataImport(
+          writeMetadata: () async {
             writes++;
           },
-          () async {
+          onDispose: () async {
             disposed++;
           },
         ),
@@ -179,11 +180,11 @@ void main() {
           kind: ConfigurationKind.custom,
           name: draft.name,
           text: draft.text,
-          pending: draft.geodata,
+          assets: draft.content.assets,
         ),
       );
       expect(exported['geodata']['assets'].single['file'], 'rules.dat');
-      await draft.commit();
+      await draft.save((writeMetadata) => writeMetadata());
       await draft.dispose();
       expect(writes, 1);
       expect(disposed, 1);
@@ -201,10 +202,9 @@ void main() {
       schedule: (_) => throw StateError('Routes are not nodes'),
       transfer: ConfigurationTransferService(
         lookup: db.geoDataDao.searchRowByName,
-        prepare: (inputs) async => GeoDataImportDraft(
-          inputs,
-          () async {
-            lifecycle.add('commit');
+        prepare: (inputs) async => FakeGeoDataImport(
+          events: lifecycle,
+          writeMetadata: () async {
             await db.geoDataDao.insertRow(
               GeoDataCompanion.insert(
                 name: 'rules',
@@ -216,10 +216,6 @@ void main() {
               ),
             );
           },
-          () async {},
-          publish: () async => lifecycle.add('publish'),
-          complete: () async => lifecycle.add('complete'),
-          rollback: () async => lifecycle.add('rollback'),
         ),
       ),
     );

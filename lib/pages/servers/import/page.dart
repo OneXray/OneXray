@@ -452,7 +452,7 @@ class ServerImportPreviewPage extends StatelessWidget {
             preview.rows.length +
             preview.customRoutes.length +
             preview.geoData.length +
-            (preview.dependencies?.inputs.length ?? 0);
+            preview.assets.length;
         return PopScope(
           canPop: !state.busy && committed == null,
           onPopInvokedWithResult: (didPop, result) {
@@ -531,8 +531,7 @@ class ServerImportPreviewPage extends StatelessWidget {
                                 ? l10n.prototypeCustomRouting
                                 : l10n.prototypeNameSaved(route.name),
                           ),
-                        for (final dependency
-                            in preview.dependencies?.inputs ?? const [])
+                        for (final dependency in preview.assets)
                           _PreviewItem(
                             name: dependency.fileName,
                             description: l10n.prototypeDataSource,

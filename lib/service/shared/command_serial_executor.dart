@@ -2,20 +2,12 @@ import 'dart:async';
 
 final class CommandSerialExecutor {
   Future<void> _tail = Future<void>.value();
-  var _generation = 0;
 
-  bool isCurrent(int generation) => generation == _generation;
-
-  void invalidate() {
-    _generation++;
-  }
-
-  Future<T> run<T>(Future<T> Function(int generation) command) {
+  Future<T> run<T>(Future<T> Function() command) {
     final completer = Completer<T>();
     _tail = _tail.then((_) async {
-      final generation = ++_generation;
       try {
-        completer.complete(await command(generation));
+        completer.complete(await command());
       } catch (error, stackTrace) {
         completer.completeError(error, stackTrace);
       }

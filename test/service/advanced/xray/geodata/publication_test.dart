@@ -582,26 +582,23 @@ void main() {
       expect(await data.exists(), isFalse);
       expect(await index.exists(), isFalse);
 
-      await draft.publish();
-      expect(await data.readAsString(), 'one');
-      expect(await index.exists(), isTrue);
-      await expectFlatRoot();
-
       await expectLater(
-        db.transaction(() async {
-          await draft.commit();
-          throw StateError('Config save failed');
+        draft.save((writeMetadata) async {
+          expect(await data.readAsString(), 'one');
+          expect(await index.exists(), isTrue);
+          await expectFlatRoot();
+          return db.transaction(() async {
+            await writeMetadata();
+            throw StateError('Config save failed');
+          });
         }),
         throwsStateError,
       );
-      await draft.rollback();
       expect(await db.geoDataDao.allRows, isEmpty);
       expect(await data.exists(), isFalse);
       expect(await index.exists(), isFalse);
 
-      await draft.publish();
-      await db.transaction(draft.commit);
-      await draft.complete();
+      await draft.save((writeMetadata) => db.transaction(writeMetadata));
       await draft.dispose();
       expect((await db.geoDataDao.allRows).single.name, 'custom');
       expect(await data.readAsString(), 'one');
@@ -625,34 +622,44 @@ void main() {
     },
   );
 
-  test('draft cleanup preserves a case-insensitive committed name', () async {
-    await service.ensureInstalled();
-    final draft = await service.prepareImports([input()]);
-    await draft.publish();
-    await db.geoDataDao.insertRow(
-      GeoDataCompanion.insert(
-        name: 'CUSTOM',
-        type: 'domain',
-        url: 'https://example.com/CUSTOM.dat',
-        timestamp: DateTime(2020),
-        categoryCount: 1,
-        ruleCount: 2,
-      ),
-    );
+  test(
+    'import completion preserves a case-insensitive committed name',
+    () async {
+      await service.ensureInstalled();
+      final draft = await service.prepareImports([input()]);
+      await draft.save(
+        (_) => db.geoDataDao.insertRow(
+          GeoDataCompanion.insert(
+            name: 'CUSTOM',
+            type: 'domain',
+            url: 'https://example.com/CUSTOM.dat',
+            timestamp: DateTime(2020),
+            categoryCount: 1,
+            ruleCount: 2,
+          ),
+        ),
+      );
 
-    await draft.dispose();
+      await draft.dispose();
 
-    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
-    expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isTrue);
-  });
+      expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
+      expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isTrue);
+    },
+  );
 
   test('startup removes an interrupted unpublished import', () async {
     await service.ensureInstalled();
     final draft = await service.prepareImports([input()]);
-    await draft.publish();
-    expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
-
-    await createService(db).ensureInstalled();
+    await expectLater(
+      draft.save((_) async {
+        expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
+        // A new process observes the published files before the old save commits.
+        await createService(db).ensureInstalled();
+        throw StateError('Interrupted save');
+      }),
+      throwsStateError,
+    );
+    await draft.dispose();
 
     expect(await db.geoDataDao.allRows, isEmpty);
     expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
@@ -662,10 +669,12 @@ void main() {
   test('startup finishes an import committed before cleanup', () async {
     await service.ensureInstalled();
     final draft = await service.prepareImports([input()]);
-    await draft.publish();
-    await db.transaction(draft.commit);
-
-    await createService(db).ensureInstalled();
+    await draft.save((writeMetadata) async {
+      await db.transaction(writeMetadata);
+      // Simulate cold startup after SQL commit but before staging cleanup.
+      await createService(db).ensureInstalled();
+    });
+    await draft.dispose();
 
     expect((await db.geoDataDao.allRows).single.name, 'custom');
     expect(
@@ -674,6 +683,78 @@ void main() {
     );
     expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isTrue);
   });
+
+  test(
+    'staging an import does not block clear-data or repopulate it',
+    () async {
+      await service.ensureInstalled();
+      final started = Completer<void>();
+      final release = Completer<void>();
+      beforeDownload = () async {
+        if (!started.isCompleted) started.complete();
+        await release.future;
+      };
+      final preparing = service.prepareImports([input()]);
+      await started.future;
+      await DataMaintenance.exclusive(
+        () => service.withFiles(() async {
+          await db.geoDataDao.clear();
+          await service.resetAfterDataClear();
+        }),
+      ).timeout(const Duration(seconds: 1));
+      release.complete();
+      final draft = await preparing;
+      expect(await db.geoDataDao.allRows, isEmpty);
+      expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
+      await draft.dispose();
+    },
+  );
+
+  test('cancelled import never publishes files or metadata', () async {
+    await service.ensureInstalled();
+    final before = await rootBytes();
+    final draft = await service.prepareImports([input()]);
+    await draft.dispose();
+    expect(await rootBytes(), before);
+    expect(await db.geoDataDao.allRows, isEmpty);
+    expect(
+      await workspace
+          .list()
+          .where(
+            (entry) =>
+                p.basename(entry.path).startsWith('.onexray-geodata-import-'),
+          )
+          .toList(),
+      isEmpty,
+    );
+  });
+
+  test(
+    'readers wait for the whole import save, not individual phases',
+    () async {
+      await service.ensureInstalled();
+      final draft = await service.prepareImports([input()]);
+      final published = Completer<void>();
+      final release = Completer<void>();
+      final saving = draft.save((writeMetadata) async {
+        published.complete();
+        await release.future;
+        await db.transaction(writeMetadata);
+      });
+      await published.future;
+      var read = false;
+      final reading = service.publishedFiles().then((files) {
+        read = true;
+        return files;
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(read, isFalse);
+      release.complete();
+      await saving;
+      expect((await reading).any((file) => file.row.name == 'custom'), isTrue);
+      await draft.dispose();
+    },
+  );
 
   test('reserved IDs never overwrite existing records', () async {
     await db.geoDataDao.insertRow(

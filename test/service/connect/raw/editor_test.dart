@@ -11,7 +11,11 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
+
+import '../../../support/fake_geodata_import.dart';
+
 import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/connect/raw/db.dart';
 
@@ -126,9 +130,32 @@ void main() {
       text: renamed.text.replaceFirst('freedom', 'blackhole'),
     );
     final before = await db.connectionConfigDao.read();
+    final importEvents = <String>[];
+    final imported = ConfigurationImportDraft(
+      ConfigurationContent(
+        kind: ConfigurationKind.raw,
+        text: changed.text,
+        name: changed.name,
+      ),
+      FakeGeoDataImport(events: importEvents),
+    );
     expect(
-      await service.save(changed, confirmReconnect: () async => false),
+      await service.save(
+        changed,
+        imported: imported,
+        confirmReconnect: () async {
+          expect(importEvents, isEmpty);
+          await DataMaintenance.exclusive(() async {})
+              .timeout(const Duration(seconds: 1));
+          return false;
+        },
+      ),
       isNull,
+    );
+    expect(
+      importEvents,
+      isEmpty,
+      reason: 'Cancellation must not publish dependencies',
     );
     expect(calls, isEmpty);
     expect(
@@ -326,20 +353,20 @@ void main() {
       WHEN NEW.type = 'raw' BEGIN SELECT RAISE(FAIL, 'fixture'); END
     ''');
     final lifecycle = <String>[];
-    final geodata = GeoDataImportDraft(
-      const [],
-      () async => lifecycle.add('commit'),
-      () async {},
-      publish: () async => lifecycle.add('publish'),
-      complete: () async => lifecycle.add('complete'),
-      rollback: () async => lifecycle.add('rollback'),
+    final imported = ConfigurationImportDraft(
+      const ConfigurationContent(
+        kind: ConfigurationKind.raw,
+        text: _text,
+        name: 'original',
+      ),
+      FakeGeoDataImport(events: lifecycle),
     );
 
     await expectLater(
       service.save(
         const RawEditorDraft(name: 'original', text: _text),
         confirmReconnect: () async => false,
-        geodata: geodata,
+        imported: imported,
       ),
       throwsA(anything),
     );

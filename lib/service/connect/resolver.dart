@@ -4,7 +4,6 @@ import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/settings.dart';
-import 'package:onexray/service/shared/maintenance/data_maintenance.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 
@@ -57,7 +56,7 @@ class ConnectionResolver {
     ConnectionSettings settings, {
     RoutingProfileState? custom,
     Future<void>? cancelled,
-  }) => DataMaintenance.run(() => _resolve(settings, custom, cancelled));
+  }) => _resolve(settings, custom, cancelled);
 
   Future<List<ResolvedServer>> _resolve(
     ConnectionSettings settings,
