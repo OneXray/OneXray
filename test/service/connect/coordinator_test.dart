@@ -563,6 +563,101 @@ void main() {
     );
   });
 
+  test('reconnect validates and prepares only after stopping', () async {
+    final old = _runtime('a');
+    final next = _runtime('b', entryIds: const [2]);
+    var host = HostConnection(VpnStatus.connected, runtime: old);
+    final calls = <String>[];
+    final phases = <ConnectionPhase>[];
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => host.runtime,
+        inspect: (_) async => host,
+        prepare: (_, _) async {
+          calls.add('prepare');
+          expect(host.status, VpnStatus.disconnected);
+          return next;
+        },
+        stop: () async {
+          calls.add('stop');
+          host = const HostConnection(VpnStatus.disconnected);
+          return host;
+        },
+        start: (runtime) async {
+          calls.add('start');
+          host = HostConnection(VpnStatus.connected, runtime: runtime);
+          return host;
+        },
+      ),
+    );
+    coordinator.state.addListener(
+      () => phases.add(coordinator.state.value.phase),
+    );
+
+    await coordinator.apply(
+      next.configuration,
+      validateAssets: () async {
+        calls.add('validate');
+        expect(host.status, VpnStatus.disconnected);
+      },
+    );
+
+    expect(calls, ['stop', 'validate', 'prepare', 'start']);
+    expect(phases, [
+      ConnectionPhase.disconnecting,
+      ConnectionPhase.preparing,
+      ConnectionPhase.connecting,
+      ConnectionPhase.connected,
+    ]);
+    expect(coordinator.state.value.runtime?.identity, next.identity);
+    expect(
+      (await coordinator.configuration).encode(),
+      next.configuration.encode(),
+    );
+  });
+
+  for (final stopThrows in [false, true]) {
+    test('failed stop prevents all startup work: throws=$stopThrows', () async {
+      final old = _runtime('a');
+      final calls = <String>[];
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => old,
+          inspect: (_) async =>
+              HostConnection(VpnStatus.connected, runtime: old),
+          prepare: (_, _) async {
+            calls.add('prepare');
+            return _runtime('b');
+          },
+          stop: () async {
+            if (stopThrows) throw const ConnectionHostException('stopFailed');
+            return HostConnection(VpnStatus.connected, runtime: old);
+          },
+          start: (runtime) async {
+            calls.add('start');
+            return HostConnection(VpnStatus.connected, runtime: runtime);
+          },
+        ),
+      );
+
+      await expectLater(
+        coordinator.apply(
+          ConnectionConfiguration(),
+          validateAssets: () async {
+            calls.add('validate');
+          },
+        ),
+        throwsA(isA<ConnectionHostException>()),
+      );
+
+      expect(calls, isEmpty);
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect(coordinator.state.value.runtime?.identity, old.identity);
+    });
+  }
+
   test('preparation validation failure never starts the VPN host', () async {
     var starts = 0;
     final coordinator = await _initialize(
@@ -655,25 +750,29 @@ void main() {
   );
 
   test(
-    'preparation failure leaves an untouched running connection active',
+    'preparation failure after stopping does not restore the old connection',
     () async {
       final old = _runtime('a');
+      var host = HostConnection(VpnStatus.connected, runtime: old);
       var starts = 0;
       var stops = 0;
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          readRuntime: () async => old,
-          inspect: (_) async =>
-              HostConnection(VpnStatus.connected, runtime: old),
-          prepare: (_, _) async => throw const FormatException('bad input'),
+          readRuntime: () async => host.runtime,
+          inspect: (_) async => host,
+          prepare: (_, _) async {
+            expect(host.status, VpnStatus.disconnected);
+            throw const FormatException('bad input');
+          },
           start: (_) async {
             starts++;
             throw StateError('must not start');
           },
           stop: () async {
             stops++;
-            throw StateError('must not stop');
+            host = const HostConnection(VpnStatus.disconnected);
+            return host;
           },
         ),
       );
@@ -683,10 +782,10 @@ void main() {
         throwsFormatException,
       );
 
-      expect(coordinator.state.value.phase, ConnectionPhase.connected);
-      expect(coordinator.state.value.runtime?.identity, old.identity);
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect(coordinator.state.value.runtime, isNull);
       expect(starts, 0);
-      expect(stops, 0);
+      expect(stops, 2);
     },
   );
 }

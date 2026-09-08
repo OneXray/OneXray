@@ -462,13 +462,13 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       throw const ConnectionHostException('reconnectRequired');
     }
     Future<void> save(Future<void> Function() writeMetadata) async {
-      await validateAssets?.call();
       Future<void> write() async {
         await writeMetadata();
         await writeAssets?.call();
       }
 
       if (!shouldStart && !shouldStop) {
+        await validateAssets?.call();
         await db.connectionConfigDao.commit(
           configurationJson: next.encode(),
           writeAssets: write,
@@ -482,19 +482,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       if (current.connected && old == null) {
         throw const ConnectionHostException('runtimeMetadataUnavailable');
       }
-      state.value = ConnectionView(
-        phase: ConnectionPhase.preparing,
-        runtime: old,
-        traffic: current.traffic,
-      );
       bool touchedHost = false;
       try {
         _preparingNodeIds = {...?old?.nodeIds};
-        final runtime = disconnect
-            ? null
-            : await (prepare ?? _prepare)(next, cancellation.future);
         _checkCancelled(cancellation);
-        _pendingRuntime = runtime;
         var running = current;
         if (current.status != VpnStatus.disconnected) {
           touchedHost = true;
@@ -509,11 +500,24 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           }
         }
         _checkCancelled(cancellation);
+        if (!disconnect) {
+          state.value = ConnectionView(
+            phase: ConnectionPhase.preparing,
+            traffic: running.traffic,
+          );
+        }
+        await validateAssets?.call();
+        _checkCancelled(cancellation);
+        final runtime = disconnect
+            ? null
+            : await (prepare ?? _prepare)(next, cancellation.future);
+        _checkCancelled(cancellation);
+        _pendingRuntime = runtime;
         if (runtime != null) {
           touchedHost = true;
           state.value = ConnectionView(
             phase: ConnectionPhase.connecting,
-            traffic: current.traffic,
+            traffic: running.traffic,
           );
           running = await _start(runtime);
           _checkCancelled(cancellation);

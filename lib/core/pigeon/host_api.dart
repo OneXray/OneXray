@@ -339,7 +339,9 @@ class AppHostApi {
     LibXrayInvokeLimits.validate(responseJson, "response");
     final response = LibXrayInvokeResponseParser.parse(responseJson);
     if (!response.success) {
-      ygLogger("libXray ${request.method?.name ?? 'unknown'} failed");
+      ygLogger(
+        "libXray ${request.method?.name ?? 'unknown'} failed: ${response.error}",
+      );
     }
     return responseJson;
   }
