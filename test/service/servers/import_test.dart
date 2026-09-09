@@ -287,20 +287,26 @@ void main() {
     await expectLater(service.commit(preview), throwsFormatException);
   });
 
-  test('empty parsed lists cannot be imported; structured input remains intact', () async {
-    final zero = ServerImportService(parse: (_) async => []);
-    final failed = await zero.preview('vless://invalid');
-    expect(failed.hasItems, false);
-    await expectLater(zero.commit(failed), throwsFormatException);
-    final unknown = await ServerImportService(parse: (_) async => [])
-        .preview('plain text');
-    expect(unknown.hasItems, false);
-    const yaml =
-        'proxies:\n  - name: sample\n    description: |\n      https://not-a-subscription.example';
-    final detection = zero.detect(yaml);
-    expect(detection.subscriptions, isEmpty);
-    expect(detection.localText, yaml);
-  });
+  test(
+    'empty parsed lists cannot be imported; JSON input remains intact',
+    () async {
+      final zero = ServerImportService(parse: (_) async => []);
+      final failed = await zero.preview('vless://invalid');
+      expect(failed.hasItems, false);
+      await expectLater(zero.commit(failed), throwsFormatException);
+      final unknown = await ServerImportService(parse: (_) async => [])
+          .preview('plain text');
+      expect(unknown.hasItems, false);
+      const json = '''
+  {
+    "outbounds": [{"tag": "https://not-a-subscription.example", "protocol": "freedom"}]
+  }
+''';
+      final detection = zero.detect(json);
+      expect(detection.subscriptions, isEmpty);
+      expect(detection.localText, json);
+    },
+  );
 }
 
 String _configLink(String type, String json) => Uri(

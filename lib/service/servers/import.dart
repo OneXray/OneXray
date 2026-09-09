@@ -155,10 +155,12 @@ class ServerImportService {
     }
   }
 
-  /// Classify before any writes. JSON/YAML/base64 stay intact for the native parser.
+  /// Classify before any writes. JSON/base64 stay intact for the native parser.
   ServerImportDetection detect(String text) {
     _checkSize(text);
-    if (_structuredInput(text)) return ServerImportDetection(const [], text);
+    if (text.trimLeft().startsWith('{')) {
+      return ServerImportDetection(const [], text);
+    }
     final subscriptions = <OneXraySubscriptionLink>[];
     final local = <String>[];
     for (final line in text.split('\n')) {
@@ -256,28 +258,26 @@ class ServerImportService {
   }) async {
     _checkSize(text);
     if (!manual) {
-      if (_structuredInput(text)) {
-        if (text.trimLeft().startsWith('{')) {
-          final json = jsonDecode(text);
-          if (json is Map<String, dynamic>) {
-            final outbounds = json['outbounds'];
-            final custom =
-                outbounds is List &&
-                outbounds.any(
-                  (item) =>
-                      item == null ||
-                      (item is Map && (item.isEmpty || item['tag'] == '')),
-                );
-            final raw = json.keys.any(
-              const {'inbounds', 'routing', 'dns', 'fakedns'}.contains,
-            );
-            if (custom || raw) {
-              final content = ConfigurationTransferService.read(
-                text,
-                custom ? ConfigurationKind.custom : ConfigurationKind.raw,
+      if (text.trimLeft().startsWith('{')) {
+        final json = jsonDecode(text);
+        if (json is Map<String, dynamic>) {
+          final outbounds = json['outbounds'];
+          final custom =
+              outbounds is List &&
+              outbounds.any(
+                (item) =>
+                    item == null ||
+                    (item is Map && (item.isEmpty || item['tag'] == '')),
               );
-              return _configurationPreview([], [content], []);
-            }
+          final raw = json.keys.any(
+            const {'inbounds', 'routing', 'dns', 'fakedns'}.contains,
+          );
+          if (custom || raw) {
+            final content = ConfigurationTransferService.read(
+              text,
+              custom ? ConfigurationKind.custom : ConfigurationKind.raw,
+            );
+            return _configurationPreview([], [content], []);
           }
         }
         return ServerImportPreview(await _parse(text));
@@ -555,10 +555,6 @@ class ServerImportService {
         caseSensitive: false,
       ).hasMatch(name);
 
-  static bool _structuredInput(String text) =>
-      text.trimLeft().startsWith('{') ||
-      RegExp(r'^proxies\s*:', multiLine: true).hasMatch(text);
-
   /// Recognizes one link without importing it.
   static OneXrayAppLink? singleLink(String text) {
     final uri = Uri.tryParse(text.trim());
@@ -577,7 +573,7 @@ class ServerImportService {
       type: FileType.custom,
       allowedExtensions: jsonOnly
           ? ['json', 'txt']
-          : ['json', 'txt', 'yaml', 'yml', 'png', 'jpg', 'jpeg', 'webp'],
+          : ['json', 'txt', 'png', 'jpg', 'jpeg', 'webp'],
     );
     if (file == null) {
       return null;

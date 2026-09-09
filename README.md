@@ -46,7 +46,7 @@ This README describes the current codebase. Store and release builds may differ.
 ## What you can do
 
 - **Connect your way.** Use automatic selection, a subscription, a location, or a specific server. See connection status, live upload/download speeds, and traffic for the current connection.
-- **Keep servers organized.** Browse by subscription or node location, compare latency and protocol labels, and edit, share, or delete servers and subscriptions. Import share links, Xray JSON nodes, and supported Clash/Mihomo YAML nodes from text or files; scan QR codes on iOS and Android.
+- **Keep servers organized.** Browse by subscription or node location, compare latency and protocol labels, and edit, share, or delete servers and subscriptions. Import share links and Xray JSON nodes from text or files; scan QR codes on iOS and Android.
 - **Start with Smart Routing.** Choose a direct region, keep local networks and selected services direct, and optionally block common ad domains. Select 1–3 entry servers for automatic selection and load balancing, with an optional final exit for chained connections.
 - **Write your own rules.** Custom Routing provides ordered domain, IP, port, and network conditions with direct, VPN, or block actions. Domain and IP inputs offer GeoData completion. Import, export, and share routes independently of your selected servers.
 - **Use complete configurations.** Expert mode replaces the normal server selector with a Raw JSON configuration selector and editor. OneXray still manages the tunnel, logging, metrics, and related runtime settings; see the [configuration contract](./docs/xray-configuration.md) (Chinese).
