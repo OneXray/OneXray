@@ -5,6 +5,17 @@ import 'package:onexray/core/desktop_startup/windows_exe_adapter.dart';
 import 'package:path/path.dart' as path;
 
 void main() {
+  test('reports a missing startup shortcut as disabled', () async {
+    final store = _FakeWindowsLaunchAtLoginStore();
+    final adapter = WindowsExeLaunchAtLoginAdapter(store: store);
+
+    final result = await adapter.query();
+
+    expect(result.state.name, 'disabled');
+    expect(result.message, isNull);
+    expect(store.shortcut, isNull);
+  });
+
   test('reports the current Startup Folder shortcut as enabled', () async {
     final executable = Platform.resolvedExecutable;
     final store = _FakeWindowsLaunchAtLoginStore(
@@ -126,37 +137,37 @@ void main() {
     expect(store.shortcut?.target, executable);
   });
 
-  test('enabling preserves an unreadable startup shortcut', () async {
-    final executable = Platform.resolvedExecutable;
-    final store = _FakeWindowsLaunchAtLoginStore(shortcutUnreadable: true);
-    final adapter = WindowsExeLaunchAtLoginAdapter(
-      executable: executable,
-      store: store,
-    );
+  for (final (action, enabled) in [
+    ('query', null),
+    ('enabling', true),
+    ('disabling', false),
+  ]) {
+    test('$action preserves an unreadable startup shortcut', () async {
+      final executable = Platform.resolvedExecutable;
+      final shortcut = _shortcut(executable);
+      final store = _FakeWindowsLaunchAtLoginStore(
+        shortcut: shortcut,
+        shortcutUnreadable: true,
+      );
+      final adapter = WindowsExeLaunchAtLoginAdapter(
+        executable: executable,
+        store: store,
+      );
 
-    expect((await adapter.query()).state.name, 'error');
+      final result = enabled == null
+          ? await adapter.query()
+          : await adapter.setEnabled(enabled);
 
-    final result = await adapter.setEnabled(true);
-
-    expect(result.state.name, 'error');
-    expect(result.message, contains('cannot be read'));
-    expect(store.shortcut, isNull);
-    expect(store.shortcutUnreadable, isTrue);
-  });
-
-  test('disabling preserves an unreadable startup shortcut', () async {
-    final executable = Platform.resolvedExecutable;
-    final store = _FakeWindowsLaunchAtLoginStore(shortcutUnreadable: true);
-    final adapter = WindowsExeLaunchAtLoginAdapter(
-      executable: executable,
-      store: store,
-    );
-
-    final result = await adapter.setEnabled(false);
-
-    expect(result.state.name, 'error');
-    expect(store.shortcutUnreadable, isTrue);
-  });
+      expect(result.state.name, 'error');
+      expect(
+        result.message,
+        'The existing startup shortcut cannot be read: '
+        'FormatException: invalid shortcut',
+      );
+      expect(store.shortcut, same(shortcut));
+      expect(store.shortcutUnreadable, isTrue);
+    });
+  }
 }
 
 String _createOtherOneXrayExecutable() {

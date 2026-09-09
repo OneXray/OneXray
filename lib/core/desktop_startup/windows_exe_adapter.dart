@@ -47,17 +47,8 @@ final class WindowsExeLaunchAtLoginAdapter extends LaunchAtLoginAdapter {
   @override
   Future<LaunchAtLoginStatus> query() async {
     try {
-      WindowsStartupShortcut? shortcut;
-      if (_store.shortcutExists()) {
-        try {
-          shortcut = _store.readShortcut();
-        } catch (error, stackTrace) {
-          ygLogger('read startup shortcut failed: $error\n$stackTrace');
-          return LaunchAtLoginStatus.error(
-            'The existing startup shortcut cannot be read: $error',
-          );
-        }
-      }
+      final (:shortcut, :failure) = _readShortcut();
+      if (failure != null) return failure;
 
       if (_isValidCurrentShortcut(shortcut)) {
         if (File(_executable).existsSync()) {
@@ -91,6 +82,24 @@ final class WindowsExeLaunchAtLoginAdapter extends LaunchAtLoginAdapter {
     }
   }
 
+  ({WindowsStartupShortcut? shortcut, LaunchAtLoginStatus? failure})
+  _readShortcut() {
+    if (!_store.shortcutExists()) {
+      return (shortcut: null, failure: null);
+    }
+    try {
+      return (shortcut: _store.readShortcut(), failure: null);
+    } catch (error, stackTrace) {
+      ygLogger('read startup shortcut failed: $error\n$stackTrace');
+      return (
+        shortcut: null,
+        failure: LaunchAtLoginStatus.error(
+          'The existing startup shortcut cannot be read: $error',
+        ),
+      );
+    }
+  }
+
   Future<LaunchAtLoginStatus> _enable() async {
     if (!File(_executable).existsSync()) {
       return const LaunchAtLoginStatus.error(
@@ -98,17 +107,8 @@ final class WindowsExeLaunchAtLoginAdapter extends LaunchAtLoginAdapter {
       );
     }
 
-    WindowsStartupShortcut? existingShortcut;
-    if (_store.shortcutExists()) {
-      try {
-        existingShortcut = _store.readShortcut();
-      } catch (error, stackTrace) {
-        ygLogger('read startup shortcut failed: $error\n$stackTrace');
-        return LaunchAtLoginStatus.error(
-          'The existing startup shortcut cannot be read: $error',
-        );
-      }
-    }
+    final (shortcut: existingShortcut, :failure) = _readShortcut();
+    if (failure != null) return failure;
     if (existingShortcut != null && !_canReplaceShortcut(existingShortcut)) {
       return const LaunchAtLoginStatus.error(
         'The OneXray startup shortcut belongs to another executable.',
@@ -121,17 +121,8 @@ final class WindowsExeLaunchAtLoginAdapter extends LaunchAtLoginAdapter {
   }
 
   Future<LaunchAtLoginStatus> _disable() async {
-    WindowsStartupShortcut? existingShortcut;
-    if (_store.shortcutExists()) {
-      try {
-        existingShortcut = _store.readShortcut();
-      } catch (error, stackTrace) {
-        ygLogger('read startup shortcut failed: $error\n$stackTrace');
-        return LaunchAtLoginStatus.error(
-          'The existing startup shortcut cannot be read: $error',
-        );
-      }
-    }
+    final (shortcut: existingShortcut, :failure) = _readShortcut();
+    if (failure != null) return failure;
     if (existingShortcut != null && _canReplaceShortcut(existingShortcut)) {
       _store.deleteShortcut();
     }
