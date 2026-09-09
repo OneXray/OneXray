@@ -158,6 +158,23 @@ class BuilderTest(unittest.TestCase):
 
         self.assertEqual(destination.read_bytes(), b"OneXray")
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows executable lookup")
+    def test_run_command_finds_windows_pub_tool_outside_parent_path(self):
+        pub_cache = self.root_dir / "Pub cache"
+        tool = pub_cache / "bin" / "onexray-pub-test.bat"
+        tool.parent.mkdir(parents=True)
+        tool.write_text('@echo off\n>"%RESULT%" echo %~1\n', encoding="utf-8")
+        result = self.root_dir / "result.txt"
+
+        with mock.patch.dict("os.environ", {"PATH": "", "PUB_CACHE": str(pub_cache)}):
+            run_command(
+                [tool.name, "argument with spaces"],
+                cwd=str(self.root_dir),
+                env={"RESULT": str(result)},
+            )
+
+        self.assertEqual(result.read_text().strip(), "argument with spaces")
+
     def test_run_command_applies_working_directory_and_environment(self):
         result = self.root_dir / "result.txt"
         run_command(

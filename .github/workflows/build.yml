@@ -600,9 +600,27 @@ jobs:
             throw "Unexpected g++ target: $gxxTarget"
           }
 
+      - name: Test build scripts
+        working-directory: OneXray/build_scripts
+        env:
+          PYTHONUTF8: "1"
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
       - name: Install Fastforge
         if: matrix.mode == 'exe'
-        run: dart pub global activate fastforge
+        shell: pwsh
+        run: |
+          dart pub global activate fastforge
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $pubCache = $env:PUB_CACHE
+          if (-not $pubCache) {
+            $pubCache = Join-Path $env:LOCALAPPDATA "Pub\Cache"
+          }
+          (Join-Path $pubCache "bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify Fastforge
+        if: matrix.mode == 'exe'
+        run: python -c "import subprocess; subprocess.run(['fastforge.bat', '--version'], check=True)"
 
       - name: Install Inno Setup
         if: matrix.mode == 'exe'

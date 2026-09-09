@@ -91,8 +91,13 @@ def run_command(
     env: dict[str, str] | None = None,
     redact: bool = False,
 ):
+    command_env = get_env(env)
+    if is_windows() and not os.path.dirname(cmd[0]):
+        # Windows does not use the child PATH to locate the executable.
+        if executable := shutil.which(cmd[0], path=command_env["PATH"]):
+            cmd = [os.path.abspath(executable), *cmd[1:]]
     print("[redacted command]" if redact else cmd, flush=True)
-    subprocess.run(cmd, cwd=cwd, env=get_env(env), check=True)
+    subprocess.run(cmd, cwd=cwd, env=command_env, check=True)
 
 
 def cp_dir_files(src_dir: str, dst_dir: str):

@@ -203,7 +203,16 @@ class WindowsPackagingTest(unittest.TestCase):
         workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/build.yml").read_text()
         windows = workflow.split("\n  windows:", 1)[1].split("\n  linux:", 1)[0]
         self.assertIn("name: Install Fastforge\n        if: matrix.mode == 'exe'", windows)
-        self.assertIn("dart pub global activate fastforge", windows)
+        fastforge = windows.split("      - name: Install Fastforge\n", 1)[1].split("\n      - name:", 1)[0]
+        self.assertIn("dart pub global activate fastforge", fastforge)
+        self.assertIn("shell: pwsh", fastforge)
+        self.assertIn("$env:PUB_CACHE", fastforge)
+        self.assertIn("$env:LOCALAPPDATA", fastforge)
+        self.assertIn("$env:GITHUB_PATH", fastforge)
+        self.assertIn("name: Verify Fastforge\n        if: matrix.mode == 'exe'", windows)
+        self.assertIn("subprocess.run(['fastforge.bat', '--version'], check=True)", windows)
+        self.assertIn("working-directory: OneXray/build_scripts", windows)
+        self.assertIn("python -m unittest discover -s tests", windows)
         self.assertIn('"INNO_SETUP_PATH=$installDir" >> $env:GITHUB_ENV', windows)
         self.assertNotIn('"ISCC=$compiler"', windows)
 
