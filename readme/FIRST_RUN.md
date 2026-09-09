@@ -96,11 +96,16 @@ From the App root, clone VCore if needed:
 git clone https://github.com/OneXray/VCore.git ../VCore
 ```
 
-Windows needs `libXray.dll`, `OneXrayCore.exe`, and all three VCore files: `vcore.dll`, `vcore-windows-vpn-host.exe`, and `vcore-windows-session-host.exe`. Copying only libXray is not enough.
+Both Windows modes need `libXray.dll`, `OneXrayCore.exe`, `wintun.dll`, and all three VCore files: `vcore.dll`, `vcore-windows-vpn-host.exe`, and `vcore-windows-session-host.exe`. Copying only libXray is not enough.
 
-For an executable development setup, follow the [local signing instructions](../docs/windows-build.md#本地签名包) (Chinese) and the [Windows packaging workflow](../build_scripts/README.md#english). The App build script builds both dependencies, validates and copies matching VCore artifacts, copies GeoData, and creates the MSIX. Do not use bare `dart run msix:create`: it omits the App's VCore manifest integration.
+Follow the [Windows build guide](../docs/windows-build.md) (Chinese) and [build scripts](../build_scripts/README.md#english) to prepare dependencies. The script builds both cores, verifies and copies matching VCore and Wintun binaries, and copies GeoData. The default command uses Fastforge to produce EXE + ZIP; Inno Setup is also required for the EXE installer:
 
-VPN and startup checks require an installed package identity. An unpackaged `flutter run -d windows` is not a complete VPN test environment. `VCORE_DIR` may point to an existing VCore checkout outside this workspace.
+```powershell
+$env:BUILD_NUMBER = "1"
+uv run --project build_scripts python build_scripts/main.py OneXray windows
+```
+
+Once dependencies are present in `windows/app/`, `flutter run -d windows` uses EXE mode and requests UAC only when needed for Core. For MSIX, build with `--windows-mode msix` and follow the [local signing instructions](../docs/windows-build.md#本地签名包); an installed package identity is required. Bare `dart run msix:create` omits VCore manifest integration. `VCORE_DIR` may point to an existing checkout outside this workspace.
 
 ### Copy GeoData — required for manual builds
 
@@ -158,7 +163,7 @@ flutter run -d macos
   flutter run -d linux
   ```
   Use `arm64` instead of `x64` on ARM64. Reapply capabilities if rebuilding replaces the Core binary.
-- **Windows:** launch the installed development MSIX from the Windows setup above.
+- **Windows:** use `flutter run -d windows` for EXE mode; for MSIX, launch the installed development package prepared above.
 
 Complete the App's initial setup and import your own test servers when needed. See the repository's [validation boundaries](../docs/refactor-validation.md#平台边界) (Chinese) for platform-specific verification requirements.
 

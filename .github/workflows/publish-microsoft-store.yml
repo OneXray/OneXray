@@ -68,7 +68,7 @@ jobs:
             --jq '.artifacts[].name')"
 
           for artifact in release-metadata windows-store-x64 windows-store-arm64 \
-            provenance-windows-x64 provenance-windows-arm64; do
+            provenance-windows-x64-msix provenance-windows-arm64-msix; do
             if ! grep -Fxq "$artifact" <<<"$artifact_names"; then
               echo "Build run $BUILD_RUN_ID is missing artifact: $artifact" >&2
               exit 1

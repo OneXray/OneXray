@@ -2,13 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
-import 'package:onexray/core/desktop_startup/windows_adapter.dart';
+import 'package:onexray/core/desktop_startup/windows_msix_adapter.dart';
 import 'package:onexray/core/ffi/windows/native_api.dart';
 
 void main() {
   test('maps the packaged StartupTask state', () async {
-    final adapter = WindowsLaunchAtLoginAdapter(
-      packageAvailable: true,
+    final adapter = WindowsMsixLaunchAtLoginAdapter(
       native: WindowsNativeApi.forTest((_) async {
         return jsonEncode({
           'success': true,
@@ -23,8 +22,7 @@ void main() {
 
   test('preserves Windows user approval requirements', () async {
     String? request;
-    final adapter = WindowsLaunchAtLoginAdapter(
-      packageAvailable: true,
+    final adapter = WindowsMsixLaunchAtLoginAdapter(
       native: WindowsNativeApi.forTest((value) async {
         request = value;
         return jsonEncode({
@@ -42,17 +40,17 @@ void main() {
     expect((jsonDecode(request!)['payload'] as Map)['enabled'], isTrue);
   });
 
-  test('is unavailable without package identity', () async {
-    var invoked = false;
-    final adapter = WindowsLaunchAtLoginAdapter(
-      packageAvailable: false,
+  test('preserves the native unavailable state', () async {
+    final adapter = WindowsMsixLaunchAtLoginAdapter(
       native: WindowsNativeApi.forTest((_) async {
-        invoked = true;
-        throw StateError('must not invoke');
+        return jsonEncode({
+          'success': true,
+          'data': {'state': 'unavailable'},
+          'error': '',
+        });
       }),
     );
 
     expect((await adapter.query()).state, LaunchAtLoginState.unavailable);
-    expect(invoked, isFalse);
   });
 }

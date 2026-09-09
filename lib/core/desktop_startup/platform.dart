@@ -2,7 +2,9 @@ import 'package:onexray/core/desktop_startup/adapter.dart';
 import 'package:onexray/core/desktop_startup/linux_adapter.dart';
 import 'package:onexray/core/desktop_startup/macos_adapter.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
-import 'package:onexray/core/desktop_startup/windows_adapter.dart';
+import 'package:onexray/core/desktop_startup/windows_exe_adapter.dart';
+import 'package:onexray/core/desktop_startup/windows_msix_adapter.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/tools/platform.dart';
 
 final class DesktopStartupPlatform {
@@ -40,7 +42,10 @@ final class DesktopStartupPlatform {
       return MacOSLaunchAtLoginAdapter();
     }
     if (AppPlatform.isWindows) {
-      return WindowsLaunchAtLoginAdapter();
+      return switch (windowsBuildMode) {
+        WindowsMode.exe => WindowsExeLaunchAtLoginAdapter(),
+        WindowsMode.msix => WindowsMsixLaunchAtLoginAdapter(),
+      };
     }
     if (AppPlatform.isLinux) {
       return LinuxLaunchAtLoginAdapter();

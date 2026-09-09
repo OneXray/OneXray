@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -39,6 +40,54 @@ void main() {
       coordinator.dispose();
       await db.close();
     });
+  });
+
+  test('EXE ignores hidden MSIX settings for validation and reconnection', () {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.windows,
+      windowsMode: WindowsMode.exe,
+    );
+    final original = ConnectionConfiguration(
+      policy: PlatformPolicy.fromJson({
+        'xrayOutboundInterfaceName': 'Ethernet',
+        'ipv6Enabled': false,
+      }),
+    );
+    final draft = PolicyEditorDraft(original);
+    draft.policy['windows']['alwaysOn'] = true;
+    draft.policy['windows']['excludedCidrs'] = ['invalid', 'fd00::/64'];
+    final policy = service.validate(draft);
+    expect(service.supportsWindowsSystemVpn, false);
+    expect(
+      () => policy.toTun(
+        ConnectionPlatform.windows,
+        windowsMode: WindowsMode.exe,
+      ),
+      returnsNormally,
+    );
+    expect(
+      PolicyEditorService.sameRuntime(
+        original.policy,
+        policy,
+        ConnectionPlatform.windows,
+        windowsMode: WindowsMode.exe,
+      ),
+      true,
+    );
+    expect(
+      PolicyEditorService.sameRuntime(
+        original.policy,
+        policy,
+        ConnectionPlatform.windows,
+        windowsMode: WindowsMode.msix,
+      ),
+      false,
+    );
+    final controller = PolicyEditorController(draft: draft, service: service);
+    addTearDown(controller.close);
+    expect(controller.supportsWindowsSystemVpn, false);
+    expect(controller.ipv6Conflict, false);
   });
 
   test('tunnel save does not wait for a paused connection queue', () async {
@@ -269,6 +318,7 @@ void main() {
       final service = PolicyEditorService(
         coordinator: coordinator,
         platform: ConnectionPlatform.windows,
+        windowsMode: WindowsMode.msix,
       );
       final original = ConnectionConfiguration(
         policy: PlatformPolicy.fromJson({

@@ -105,6 +105,7 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
   }
 
   ConnectionPlatform get platform => service.platform;
+  bool get supportsWindowsSystemVpn => service.supportsWindowsSystemVpn;
   PolicyEditorDraft? get draft => state.draft;
   bool get busy => state.busy;
   String? get error => state.error;
@@ -174,7 +175,7 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
 
   bool get ipv6Conflict =>
       draft != null &&
-      platform == ConnectionPlatform.windows &&
+      supportsWindowsSystemVpn &&
       value['ipv6Enabled'] == false &&
       strings('windows', 'excludedCidrs').any((value) => value.contains(':'));
 
@@ -225,7 +226,7 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
     } on FormatException {
       emit(
         state.copyWith(
-          error: platform == ConnectionPlatform.windows
+          error: supportsWindowsSystemVpn
               ? l.prototypeBypassNetworkInputHint
               : l.buttonSaveFailed,
         ),

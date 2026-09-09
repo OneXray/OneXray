@@ -96,11 +96,16 @@ chmod +x linux/app/OneXrayCore
 git clone https://github.com/OneXray/VCore.git ../VCore
 ```
 
-Windows нужны `libXray.dll`, `OneXrayCore.exe` и три файла VCore: `vcore.dll`, `vcore-windows-vpn-host.exe` и `vcore-windows-session-host.exe`. Копирования только libXray недостаточно.
+Оба режима Windows требуют `libXray.dll`, `OneXrayCore.exe`, `wintun.dll` и три файла VCore: `vcore.dll`, `vcore-windows-vpn-host.exe` и `vcore-windows-session-host.exe`. Копирования только libXray недостаточно.
 
-Для рабочего окружения следуйте [инструкциям по локальной подписи](../docs/windows-build.md#本地签名包) (на китайском) и [сборке пакета Windows](../build_scripts/README.md#русский). Скрипт приложения собирает обе зависимости, проверяет и копирует соответствующие артефакты VCore, копирует GeoData и создаёт MSIX. Не ограничивайтесь командой `dart run msix:create`: она не выполняет интеграцию VCore в манифест приложения.
+Подготовьте зависимости по [руководству Windows](../docs/windows-build.md) (на китайском) и [скриптам сборки](../build_scripts/README.md#русский). Скрипт собирает оба Core, проверяет и копирует VCore, Wintun и GeoData. По умолчанию Fastforge создаёт EXE + ZIP; для EXE дополнительно нужен Inno Setup:
 
-VPN и проверки запуска требуют идентичности установленного пакета. Обычный `flutter run -d windows` без пакета не является полноценным окружением для проверки VPN. Если VCore находится вне рабочего каталога, задайте его путь через `VCORE_DIR`.
+```powershell
+$env:BUILD_NUMBER = "1"
+uv run --project build_scripts python build_scripts/main.py OneXray windows
+```
+
+После подготовки `windows/app/` команда `flutter run -d windows` использует режим EXE и запрашивает UAC только при необходимости для Core. Для MSIX используйте `--windows-mode msix` и [локальную подпись](../docs/windows-build.md#本地签名包); требуется идентичность установленного пакета. Одна команда `dart run msix:create` не добавляет интеграцию VCore. Если VCore находится вне рабочего каталога, задайте `VCORE_DIR`.
 
 ### Скопируйте GeoData — обязательно при ручной сборке
 
@@ -158,7 +163,7 @@ flutter run -d macos
   flutter run -d linux
   ```
   На ARM64 замените `x64` на `arm64`. Если повторная сборка заменяет Core-файл, выдайте возможности заново.
-- **Windows:** запустите установленный MSIX-пакет для разработки из раздела Windows выше.
+- **Windows:** для EXE используйте `flutter run -d windows`; для MSIX запустите установленный пакет для разработки.
 
 Завершите первоначальную настройку приложения и при необходимости импортируйте свои тестовые серверы. Требования по платформам описаны в [границах проверки](../docs/refactor-validation.md#平台边界) (на китайском).
 

@@ -110,7 +110,13 @@ class Builder:
     def after_build(self):
         pass
 
-    def fastforge_build(self, targets: str):
+    def fastforge_build(
+        self,
+        targets: str,
+        *,
+        arguments: tuple[str, ...] = (),
+        env: dict[str, str] | None = None,
+    ):
         run_command(
             [
                 fastforge_command(),
@@ -120,9 +126,10 @@ class Builder:
                 "--targets",
                 targets,
                 "--skip-clean",
-                "true",
+                *arguments,
             ],
             cwd=self.root_dir,
+            env=env,
         )
 
     def read_version(self) -> str:

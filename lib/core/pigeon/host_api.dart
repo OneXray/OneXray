@@ -4,7 +4,6 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
-import 'package:onexray/core/ffi/windows/native_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/invoke_limits.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -18,7 +17,6 @@ class AppHostApi {
   Future<AppleVpnCapabilities> appleVpnCapabilities() =>
       _api.appleVpnCapabilities();
   final _api = BridgeHostApi();
-  final _windows = WindowsNativeApi();
 
   static final AppHostApi _singleton = AppHostApi._internal();
 
@@ -29,9 +27,6 @@ class AppHostApi {
   // ===============
   final _errorResult = "error";
   var _tunFilesDir = "";
-  var _windowsPackageAvailable = false;
-
-  bool get windowsPackageAvailable => _windowsPackageAvailable;
   bool get needsVpnStatusPolling =>
       AppPlatform.isWindows ||
       (AppPlatform.isLinux && LinuxFfiApi().needsVpnStatusPolling);
@@ -40,16 +35,7 @@ class AppHostApi {
     if (AppPlatform.isLinux) {
       _setTunFilesDir(await LinuxFfiApi().getTunFilesDir());
     } else if (AppPlatform.isWindows) {
-      try {
-        final environment = await _windows.getEnvironment();
-        _setTunFilesDir(environment.packageLocalDataDir);
-        WindowsFfiApi().usePackageLocalDataDir(_tunFilesDir);
-        _windowsPackageAvailable = true;
-      } catch (error, stackTrace) {
-        _windowsPackageAvailable = false;
-        _reportUnexpected('getWindowsEnvironment', error, stackTrace);
-        _setTunFilesDir(await WindowsFfiApi().getTunFilesDir());
-      }
+      _setTunFilesDir(await WindowsFfiApi().getTunFilesDir());
     } else {
       _setTunFilesDir(await _api.getTunFilesDir());
     }
@@ -64,11 +50,13 @@ class AppHostApi {
   }
 
   Future<bool?> cleanupStaleDesktopCore() async {
-    if (!AppPlatform.isLinux) {
+    if (!AppPlatform.isLinux && !AppPlatform.isWindows) {
       return null;
     }
     try {
-      return await LinuxFfiApi().cleanupStaleCore();
+      return AppPlatform.isWindows
+          ? await WindowsFfiApi().cleanupStaleCore()
+          : await LinuxFfiApi().cleanupStaleCore();
     } catch (error, stackTrace) {
       _reportUnexpected('cleanupStaleDesktopCore', error, stackTrace);
       return false;
@@ -123,9 +111,6 @@ class AppHostApi {
     if (AppPlatform.isLinux) {
       return LinuxFfiApi().startVpn();
     } else if (AppPlatform.isWindows) {
-      if (!_windowsPackageAvailable) {
-        return _commandFailed('Windows package identity is unavailable');
-      }
       return WindowsFfiApi().startVpn(
         configYaml: windowsConfigYaml,
         networkSettings: windowsNetworkSettings,

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:onexray/core/ffi/windows/model.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/ffi/windows/tun2socks.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -209,7 +210,9 @@ class ConnectionRuntimeHost {
     if (startVpn != null) return startVpn(runtime);
     await runtime.request.writeToStartFile();
     final policy = runtime.configuration.policy;
-    final windows = runtime.platform == ConnectionPlatform.windows;
+    final windows =
+        runtime.platform == ConnectionPlatform.windows &&
+        windowsBuildMode == WindowsMode.msix;
     return _host.startVpn(
       windowsConfigYaml: windows
           ? buildWindowsTun2SocksConfig(

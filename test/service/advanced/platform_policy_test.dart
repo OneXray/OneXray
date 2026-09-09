@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/settings.dart';
 
@@ -275,7 +276,10 @@ void main() {
       final ipv4Policy = PlatformPolicy.fromJson(ipv4);
       expect(() => ipv4Policy.toWindowsPolicy(), throwsFormatException);
       expect(
-        () => ipv4Policy.toTun(ConnectionPlatform.windows),
+        () => ipv4Policy.toTun(
+          ConnectionPlatform.windows,
+          windowsMode: WindowsMode.msix,
+        ),
         throwsFormatException,
       );
       expect(() => ipv4Policy.toTun(ConnectionPlatform.ios), returnsNormally);
@@ -311,7 +315,7 @@ void main() {
         expect(
           () => PlatformPolicy.fromJson({
             'windows': {'excludedCidrs': cidrs},
-          }),
+          }).toWindowsPolicy(),
           throwsFormatException,
         );
       }

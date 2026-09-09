@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/service/connect/coordinator.dart';
@@ -23,6 +24,10 @@ final class TrayService with TrayListener {
   var _initialized = false;
   ConnectionPhase? _lastPhase;
   bool? _lastCanDisconnect;
+
+  bool get _canQuitWithoutStoppingVpn =>
+      AppPlatform.isMacOS ||
+      (AppPlatform.isWindows && windowsBuildMode == WindowsMode.msix);
 
   void init() {
     if (!AppPlatform.isDesktop || _initialized) {
@@ -93,7 +98,7 @@ final class TrayService with TrayListener {
         label: appLocalizationsNoContext().menuBarQuitApp,
       ),
     );
-    if (AppPlatform.isMacOS) {
+    if (_canQuitWithoutStoppingVpn) {
       items.add(
         MenuItem(
           key: _TrayMenuKey.quitAndStopVpn.name,
@@ -166,14 +171,18 @@ final class TrayService with TrayListener {
           await windowManager.focus();
           break;
         case _TrayMenuKey.quitApp:
-          if (AppPlatform.isLinux || AppPlatform.isWindows) {
+          if (!_canQuitWithoutStoppingVpn) {
             await ConnectionCoordinator.instance.disconnect();
           }
-          ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+          await ServicesBinding.instance.exitApplication(
+            AppExitType.cancelable,
+          );
           break;
         case _TrayMenuKey.quitAndStopVpn:
           await ConnectionCoordinator.instance.disconnect();
-          ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+          await ServicesBinding.instance.exitApplication(
+            AppExitType.cancelable,
+          );
           break;
       }
     } catch (_) {

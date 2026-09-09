@@ -32,7 +32,7 @@ class ProvenanceTest(unittest.TestCase):
             "repository": {"full_name": "OneXray/OneXray"},
         }
 
-    def receipt(self, architecture, *, target="windows", paths=None):
+    def receipt(self, architecture, *, target="windows", paths=None, mode="msix"):
         suffix = "amd64" if architecture == "x64" else "arm64"
         paths = paths or [f"windows-store-{architecture}/OneXray-windows-{suffix}.msix"]
         packages = [self.artifacts / path for path in paths]
@@ -48,7 +48,10 @@ class ProvenanceTest(unittest.TestCase):
             "fileSha256": {"pubspec.lock": "d" * 64},
             "packages": {package.name: sha256(package) for package in packages},
         }
-        destination = self.artifacts / f"provenance-{target}-{architecture}.json"
+        if target == "windows":
+            receipt["windowsMode"] = mode
+        mode_suffix = f"-{mode}" if target == "windows" else ""
+        destination = self.artifacts / f"provenance-{target}-{architecture}{mode_suffix}.json"
         destination.write_text(json.dumps(receipt))
         return destination, packages
 
@@ -63,16 +66,20 @@ class ProvenanceTest(unittest.TestCase):
                                  "linux-x64/OneXray-linux-x86_64.deb"]),
             ("linux", "aarch64", ["linux-arm64/OneXray-linux-aarch64.zip",
                                   "linux-arm64/OneXray-linux-aarch64.deb"]),
+            ("windows", "x64", ["windows-x64/OneXray-windows-amd64.exe",
+                                 "windows-x64/OneXray-windows-amd64.zip"]),
+            ("windows", "arm64", ["windows-arm64/OneXray-windows-arm64.exe",
+                                   "windows-arm64/OneXray-windows-arm64.zip"]),
         ):
             if build_target not in {"all", "macos" if target == "macos_se" else target}:
                 continue
-            manifest, files = self.receipt(architecture, target=target, paths=paths)
+            manifest, files = self.receipt(architecture, target=target, paths=paths, mode="exe")
             manifests.append(manifest)
             packages.extend(files)
         return manifests, packages
 
     def test_single_platform_builds_publish_only_their_complete_package_set(self):
-        for target in ("ios", "macos", "android", "linux"):
+        for target in ("ios", "macos", "android", "linux", "windows"):
             manifests, packages = self.public_receipts(target)
             try:
                 with self.subTest(target=target):
@@ -87,7 +94,7 @@ class ProvenanceTest(unittest.TestCase):
 
     def test_all_build_requires_every_public_package_and_target_receipt(self):
         manifests, packages = self.public_receipts("all")
-        self.assertEqual(len(packages), 7)
+        self.assertEqual(len(packages), 11)
         self.assertEqual(verify_release(self.artifacts, self.run), packages)
         for path in manifests + packages:
             original = path.read_bytes()
@@ -133,6 +140,39 @@ class ProvenanceTest(unittest.TestCase):
         self.receipt("x64")
         self.receipt("arm64")
         self.assertEqual(verify_release(self.artifacts, self.run), packages)
+
+    def test_windows_modes_have_separate_receipts_and_channels(self):
+        manifests, packages = self.public_receipts("windows")
+        msix_manifests = []
+        msix_packages = []
+        for arch in ("x64", "arm64"):
+            manifest, files = self.receipt(arch)
+            msix_manifests.append(manifest)
+            msix_packages.extend(files)
+        self.assertEqual(len(set(manifests + msix_manifests)), 4)
+        self.assertEqual(verify_release(self.artifacts, self.run), packages)
+        self.assertEqual(verify_release(self.artifacts, self.run, windows_only=True), sorted(msix_packages))
+        # EXE cannot qualify a Store artifact by merely recording its filename/hash.
+        for path in msix_manifests:
+            path.unlink()
+        for manifest, package in zip(manifests, msix_packages):
+            receipt = json.loads(manifest.read_text())
+            receipt["packages"][package.name] = sha256(package)
+            manifest.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, "Both Windows"):
+            verify_release(self.artifacts, self.run, windows_only=True)
+
+    def test_missing_or_duplicate_windows_mode_is_rejected(self):
+        manifest, _ = self.receipt("x64")
+        receipt = json.loads(manifest.read_text())
+        receipt.pop("windowsMode")
+        manifest.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, "specify EXE or MSIX"):
+            verify_release(self.artifacts, self.run, windows_only=True)
+        manifest, _ = self.receipt("x64")
+        (self.artifacts / "provenance-duplicate.json").write_bytes(manifest.read_bytes())
+        with self.assertRaisesRegex(ValueError, "Duplicate"):
+            verify_release(self.artifacts, self.run, windows_only=True)
 
     def test_cli_emits_only_verified_files_and_nothing_on_failure(self):
         _, packages = self.public_receipts("ios")
@@ -269,6 +309,54 @@ class ProvenanceTest(unittest.TestCase):
         self.assertEqual(receipt["fileSha256"]["OneXray/assets/geodata/regions.json"], sha256(regions))
         self.assertEqual(receipt["fileSha256"]["OneXray/linux/app/libXray.so"], sha256(library))
         self.assertEqual(receipt["version"], "26.9.1+401")
+
+    def test_windows_receipt_records_only_the_built_mode(self):
+        root = self.artifacts / "OneXray"
+        output = self.artifacts / "output"
+        vcore = self.artifacts / "VCore"
+        native = root / "windows/app"
+        native.mkdir(parents=True)
+        output.mkdir()
+        (native / "wintun.dll").write_bytes(b"official fixture")
+        manifest = vcore / "dist/windows/x64/vcore-windows-artifacts.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text('{"formatVersion":1}')
+        inno_directory = self.artifacts / "Inno Setup"
+        inno_directory.mkdir()
+        compiler = inno_directory / "ISCC.exe"
+        compiler.write_bytes(b"compiler fixture")
+        for extension in ("msix", "exe", "zip"):
+            (output / f"OneXray-windows-amd64.{extension}").write_bytes(extension.encode())
+        builder = SimpleNamespace(
+            root_dir=str(root), output_dir=str(output), workspace_dir=str(self.artifacts),
+            project_dir=str(root / "windows"), system="windows", build_number=401,
+            builder=SimpleNamespace(package_suffix="windows-amd64", target_architecture="x64",
+                                    _vcore_dir=lambda: str(vcore), msix_version=lambda: "26.9.1.0"),
+            project_config={"core.dir": "libXray", "core.lib.dst.dir.windows": "app",
+                            "core.lib.src.files.windows": ["libXray.dll"]},
+            read_version=lambda: "26.9.1+401",
+        )
+        for mode, extensions in (("exe", ("exe", "zip")), ("msix", ("msix",))):
+            builder.builder.mode = mode
+            with (
+                mock.patch("app.provenance.source_revision", return_value="a" * 40),
+                mock.patch("app.provenance._output", return_value=""),
+                mock.patch("app.provenance.fastforge_command", return_value="fastforge.bat"),
+                mock.patch.dict("os.environ", {"INNO_SETUP_PATH": str(inno_directory)}),
+                mock.patch("app.provenance._tool", return_value={"version": "fixture"}) as tool,
+            ):
+                receipt = begin_build(builder, "windows")
+                destination = finish_build(builder, receipt)
+            self.assertEqual(receipt["windowsMode"], mode)
+            self.assertEqual(destination.name, f"provenance-windows-x64-{mode}.json")
+            self.assertEqual(set(receipt["packages"]), {f"OneXray-windows-amd64.{ext}" for ext in extensions})
+            self.assertEqual("msixVersion" in receipt, mode == "msix")
+            self.assertEqual("fastforge" in receipt["tools"], mode == "exe")
+            self.assertEqual("innoSetup" in receipt["tools"], mode == "exe")
+            if mode == "exe":
+                tool.assert_any_call(["fastforge.bat", "--version"], root)
+                tool.assert_any_call([str(compiler), "/?"], root)
+            self.assertIn("OneXray/windows/app/wintun.dll", receipt["fileSha256"])
 
 
 if __name__ == "__main__":

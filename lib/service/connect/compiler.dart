@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/tools/json.dart';
@@ -49,6 +50,7 @@ class ResolvedServer {
 
 class RuntimeOptions {
   final ConnectionPlatform platform;
+  final WindowsMode windowsMode;
   final String sessionDirectory;
   final int metricsPort;
   final int socksPort;
@@ -62,6 +64,7 @@ class RuntimeOptions {
 
   RuntimeOptions({
     required this.platform,
+    WindowsMode? windowsMode,
     required this.sessionDirectory,
     required this.metricsPort,
     required this.socksPort,
@@ -72,7 +75,7 @@ class RuntimeOptions {
     this.logLevel = 'warning',
     this.dnsLog = true,
     this.maskAddress = '',
-  }) {
+  }) : windowsMode = windowsMode ?? windowsBuildMode {
     if (metricsPort == socksPort) {
       throw const FormatException('Runtime ports are invalid');
     }
@@ -82,6 +85,9 @@ class RuntimeOptions {
       throw const FormatException('Network interface is required');
     }
   }
+
+  bool get usesWindowsSystemVpn =>
+      platform == ConnectionPlatform.windows && windowsMode == WindowsMode.msix;
 }
 
 class CompiledConnection {
@@ -369,17 +375,23 @@ class ConnectionCompiler {
   }
 
   static XrayInbound _runtimeInbound(RuntimeOptions options) {
-    if (options.platform == ConnectionPlatform.windows) {
+    if (options.usesWindowsSystemVpn) {
       return createSocksInbound('${options.socksPort}');
     }
-    final linux = options.platform == ConnectionPlatform.linux;
+    final nativeTun =
+        options.platform == ConnectionPlatform.linux ||
+        options.platform == ConnectionPlatform.windows;
     return createTunInbound(
-      gateway: linux ? ['198.18.0.1/15', if (options.ipv6) 'fc00::1/64'] : null,
-      dns: linux ? ['8.8.8.8', if (options.ipv6) '2001:4860:4860::8888'] : null,
-      autoSystemRoutingTable: linux
+      gateway: nativeTun
+          ? ['198.18.0.1/15', if (options.ipv6) 'fc00::1/64']
+          : null,
+      dns: nativeTun
+          ? ['8.8.8.8', if (options.ipv6) '2001:4860:4860::8888']
+          : null,
+      autoSystemRoutingTable: nativeTun
           ? ['0.0.0.0/0', if (options.ipv6) '::/0']
           : null,
-      autoOutboundsInterface: linux ? options.interfaceName : null,
+      autoOutboundsInterface: nativeTun ? options.interfaceName : null,
     );
   }
 
@@ -421,7 +433,7 @@ class ConnectionCompiler {
         throw const FormatException('Use the App-managed tunIn tunnel');
       }
       if (portIncludes(inbound['port'], options.metricsPort) ||
-          (options.platform == ConnectionPlatform.windows &&
+          (options.usesWindowsSystemVpn &&
               portIncludes(inbound['port'], options.socksPort))) {
         throw const FormatException(
           'Raw inbound conflicts with an App-managed port',

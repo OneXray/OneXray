@@ -96,11 +96,16 @@ chmod +x linux/app/OneXrayCore
 git clone https://github.com/OneXray/VCore.git ../VCore
 ```
 
-Windows 需要 `libXray.dll`、`OneXrayCore.exe`，以及三个 VCore 文件：`vcore.dll`、`vcore-windows-vpn-host.exe`、`vcore-windows-session-host.exe`。仅复制 libXray 不足以运行。
+Windows 两种模式都需要 `libXray.dll`、`OneXrayCore.exe`、`wintun.dll`，以及三个 VCore 文件：`vcore.dll`、`vcore-windows-vpn-host.exe`、`vcore-windows-session-host.exe`。仅复制 libXray 不足以运行。
 
-可运行的开发环境需按照[本地签名说明](../docs/windows-build.md#本地签名包)和 [Windows 打包流程](../build_scripts/README.md#简体中文)准备。App 构建脚本会构建两个依赖、校验并复制匹配的 VCore 产物、复制 GeoData，最后生成 MSIX。不要仅运行 `dart run msix:create`，它缺少 App 的 VCore manifest 集成步骤。
+依照 [Windows 构建说明](../docs/windows-build.md)与[构建脚本](../build_scripts/README.md#简体中文)准备依赖。脚本构建两个 Core，校验并复制匹配的 VCore、Wintun 和 GeoData。默认通过 Fastforge 生成 EXE + ZIP，EXE 安装包还需要 Inno Setup：
 
-VPN 和启动检查需要已安装的包身份；未打包的 `flutter run -d windows` 不是完整的 VPN 调试环境。已有 VCore 不在工作空间内时，可通过 `VCORE_DIR` 指定其位置。
+```powershell
+$env:BUILD_NUMBER = "1"
+uv run --project build_scripts python build_scripts/main.py OneXray windows
+```
+
+`windows/app/` 依赖就绪后，`flutter run -d windows` 默认使用 EXE 模式，仅在 Core 操作需要时请求 UAC。MSIX 使用 `--windows-mode msix` 构建并按[本地签名说明](../docs/windows-build.md#本地签名包)安装，需要有效包身份；单独运行 `dart run msix:create` 不包含 VCore manifest 集成。已有 VCore 不在工作空间内时，通过 `VCORE_DIR` 指定位置。
 
 ### 复制 GeoData：手动构建必做
 
@@ -158,7 +163,7 @@ flutter run -d macos
   flutter run -d linux
   ```
   ARM64 将路径中的 `x64` 改为 `arm64`。重新构建替换 Core 文件后，需要重新授予能力。
-- **Windows**：从系统启动前文安装的 MSIX 开发包。
+- **Windows**：EXE 模式使用 `flutter run -d windows`；MSIX 模式从系统启动前文安装的开发包。
 
 完成 App 首次初始化，按需导入自己的测试服务器。平台验证要求见[验证边界](../docs/refactor-validation.md#平台边界)。
 

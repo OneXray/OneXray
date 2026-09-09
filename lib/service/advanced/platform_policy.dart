@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:onexray/core/ffi/windows/model.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/service/connect/settings.dart';
 
@@ -58,7 +59,6 @@ final class PlatformPolicy {
     if (!{'error', 'warning', 'info', 'debug'}.contains(log['level'])) {
       throw const FormatException('Invalid Xray log level');
     }
-    _validateExclusions(policy['windows']['excludedCidrs'] as List<String>);
     return PlatformPolicy._(policy);
   }
 
@@ -79,7 +79,7 @@ final class PlatformPolicy {
   static const dnsServerName = 'dns.google';
 
   /// Compiles for a real start. Inactive platform drafts remain in [toJson].
-  TunJson toTun(ConnectionPlatform platform) {
+  TunJson toTun(ConnectionPlatform platform, {WindowsMode? windowsMode}) {
     final policy = toJson();
     final tun = <String, dynamic>{
       'tunIPv4': tunIpv4Address,
@@ -99,7 +99,8 @@ final class PlatformPolicy {
       tun['autoOutboundsInterface'] = interfaceName;
     }
 
-    if (platform == ConnectionPlatform.windows) {
+    if (platform == ConnectionPlatform.windows &&
+        (windowsMode ?? windowsBuildMode) == WindowsMode.msix) {
       toWindowsPolicy();
     } else if (platform == ConnectionPlatform.android) {
       final android = policy['android'] as Map<String, dynamic>;
