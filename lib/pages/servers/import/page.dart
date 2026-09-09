@@ -21,18 +21,6 @@ export 'controller.dart' show ServerImportAction;
 
 export 'package:onexray/service/servers/import.dart' show ServerImportResult;
 
-Future<void> openServerImportAction(
-  BuildContext context,
-  ServerImportAction action,
-) async {
-  final controller = ServerImportController(showSuccessToast: false);
-  try {
-    await controller.open(context, action, closeParent: false);
-  } finally {
-    await controller.close();
-  }
-}
-
 class ServersImportPage extends StatefulWidget {
   final String? initialText;
   final ServerImportController? controller;

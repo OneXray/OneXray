@@ -49,49 +49,37 @@ class SetupDesktopBody extends StatelessWidget {
     required this.progress,
     required this.children,
     this.bodyTop = 48,
-    this.expandContent = true,
   });
 
   final Widget progress;
   final List<Widget> children;
   final double bodyTop;
-  final bool expandContent;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final body = Padding(
-        padding: const EdgeInsetsDirectional.only(
-          start: AppSpacing.setupDesktopHorizontal,
-          top: AppSpacing.setupDesktopTop,
-          end: AppSpacing.setupDesktopHorizontal,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('OneXray', style: AppTypography.setupBrand),
-            const SizedBox(height: 10),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: AppLayout.setupProgressMaxWidth,
-                ),
-                child: progress,
+  Widget build(BuildContext context) => SingleChildScrollView(
+    child: Padding(
+      padding: const EdgeInsetsDirectional.only(
+        start: AppSpacing.setupDesktopHorizontal,
+        top: AppSpacing.setupDesktopTop,
+        end: AppSpacing.setupDesktopHorizontal,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('OneXray', style: AppTypography.setupBrand),
+          const SizedBox(height: 10),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppLayout.setupProgressMaxWidth,
               ),
+              child: progress,
             ),
-            if (expandContent) Expanded(child: _content()) else _content(),
-          ],
-        ),
-      );
-      return SingleChildScrollView(
-        child: expandContent
-            ? ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(child: body),
-              )
-            : body,
-      );
-    },
+          ),
+          _content(),
+        ],
+      ),
+    ),
   );
 
   Widget _content() => Align(

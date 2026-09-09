@@ -12,18 +12,24 @@ class BackgroundTaskService with WidgetsBindingObserver {
 
   factory BackgroundTaskService() => _singleton;
 
-  BackgroundTaskService._internal();
+  BackgroundTaskService._internal() : _updates = DataUpdateService();
+
+  BackgroundTaskService.forTesting(this._updates);
+
+  final DataUpdateService _updates;
 
   //==========================
   Timer? _timer;
+  Timer? _connectedCheck;
   StreamSubscription<VpnStatus>? _vpnStatusSubscription;
   var _vpnConnected = false;
   var _observingLifecycle = false;
 
-  void init() {
+  void init({bool vpnConnected = false}) {
     if (_timer != null) {
       return;
     }
+    _vpnConnected = vpnConnected;
     WidgetsBinding.instance.addObserver(this);
     _observingLifecycle = true;
     _vpnStatusSubscription ??= AppFlutterApi().vpnStatusController.stream
@@ -31,7 +37,7 @@ class BackgroundTaskService with WidgetsBindingObserver {
     final interval = const Duration(hours: 1);
     _timer = Timer.periodic(interval, (_) => checkDataUpdate());
 
-    // Check for updates immediately on startup
+    // Subscriptions may update offline; Geodata needs a confirmed connection.
     unawaited(checkDataUpdate());
   }
 
@@ -42,6 +48,8 @@ class BackgroundTaskService with WidgetsBindingObserver {
     }
     _timer?.cancel();
     _timer = null;
+    _connectedCheck?.cancel();
+    _connectedCheck = null;
     _vpnStatusSubscription?.cancel();
     _vpnStatusSubscription = null;
     _vpnConnected = false;
@@ -56,9 +64,10 @@ class BackgroundTaskService with WidgetsBindingObserver {
     bool updateSubscription = true,
     bool updateGeoData = true,
   }) async {
-    await DataUpdateService().checkAndRun(
+    await _updates.checkAndRun(
       updateSubscription: updateSubscription,
-      updateGeoData: updateGeoData,
+      updateGeoData: updateGeoData && _vpnConnected,
+      isVpnConnected: () => _vpnConnected,
     );
   }
 
@@ -67,19 +76,16 @@ class BackgroundTaskService with WidgetsBindingObserver {
       case VpnStatus.connected:
         if (_vpnConnected) return;
         _vpnConnected = true;
-        unawaited(_checkDataUpdateAfterVpnConnected());
+        _connectedCheck = Timer(const Duration(seconds: 3), () {
+          _connectedCheck = null;
+          unawaited(checkDataUpdate());
+        });
         break;
       default:
         _vpnConnected = false;
+        _connectedCheck?.cancel();
+        _connectedCheck = null;
         break;
     }
-  }
-
-  Future<void> _checkDataUpdateAfterVpnConnected() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (!_vpnConnected) {
-      return;
-    }
-    await checkDataUpdate();
   }
 }

@@ -6,39 +6,63 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/db/database/upgrade_snapshot.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
-  test('an interrupted empty first creation retries, but an unknown populated DB does not', () async {
+  test('an interrupted empty first creation retries', () async {
     final directory = await _fixtureDirectory('onexray-empty-db-test-');
     addTearDown(() => directory.delete(recursive: true));
     final file = File('${directory.path}/db.sqlite');
     sqlite.sqlite3.open(file.path).close();
-    var stopCalled = false;
+
+    final database = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(database.close);
+    expect(await database.subscriptionDao.allRows, isEmpty);
     expect(
-      await prepareUpgradeSnapshot(
-        file,
-        stopRunning: () async {
-          stopCalled = true;
-        },
-      ),
-      null,
-    );
-    expect(stopCalled, isFalse);
-    final unknown = sqlite.sqlite3.open(file.path);
-    unknown.execute('CREATE TABLE important_data (value TEXT)');
-    unknown.close();
-    await expectLater(
-      prepareUpgradeSnapshot(file, stopRunning: () async {}),
-      throwsStateError,
+      (await database.customSelect('PRAGMA user_version').getSingle())
+          .read<int>('user_version'),
+      3,
     );
   });
 
   test(
-    'upgrade snapshot includes committed WAL and precedes schema writes',
+    'an unknown populated schema 0 database is rejected unchanged',
+    () async {
+      final directory = await _fixtureDirectory('onexray-unknown-db-test-');
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/db.sqlite');
+      final unknown = sqlite.sqlite3.open(file.path);
+      unknown.execute('CREATE TABLE important_data (value TEXT)');
+      unknown.execute("INSERT INTO important_data VALUES ('Keep me')");
+      unknown.close();
+
+      final database = AppDatabase.forTesting(NativeDatabase(file));
+      await expectLater(database.subscriptionDao.allRows, throwsStateError);
+      await database.close();
+
+      final check = sqlite.sqlite3.open(file.path);
+      try {
+        expect(check.userVersion, 0);
+        expect(
+          check.select('SELECT value FROM important_data').single['value'],
+          'Keep me',
+        );
+        expect(
+          check
+              .select("SELECT name FROM sqlite_master WHERE type = 'table'")
+              .map((row) => row['name']),
+          ['important_data'],
+        );
+      } finally {
+        check.close();
+      }
+    },
+  );
+
+  test(
+    'upgrade preserves committed WAL data without creating a snapshot',
     () async {
       final file = await _legacyDatabase(2);
       final writer = sqlite.sqlite3.open(file.path);
@@ -48,49 +72,19 @@ void main() {
       writer.execute(
         "UPDATE core_config SET name = 'WAL-only name' WHERE id = 11",
       );
-      var stopped = false;
-      final snapshot = await prepareUpgradeSnapshot(
-        file,
-        stopRunning: () async {
-          stopped = true;
-        },
-      );
-      expect(stopped, isTrue);
-      expect(snapshot, isNotNull);
-      expect(snapshot!.path, contains('.pre-v3-'));
-      final saved = sqlite.sqlite3.open(snapshot.path);
-      try {
-        expect(saved.userVersion, 2);
-        expect(
-          saved
-              .select('SELECT name FROM core_config WHERE id = 11')
-              .single['name'],
-          'WAL-only name',
-        );
-        expect(
-          _snapshot(saved, hasAgeKeys: true),
-          _snapshot(writer, hasAgeKeys: true),
-        );
-      } finally {
-        saved.close();
-      }
-      expect(writer.userVersion, 2);
-    },
-  );
+      final before = _snapshot(writer, hasAgeKeys: true);
 
-  test(
-    'failure to stop aborts snapshot and leaves the original database intact',
-    () async {
-      final file = await _legacyDatabase(1);
-      final before = _snapshotFile(file, hasAgeKeys: false);
-      await expectLater(
-        prepareUpgradeSnapshot(
-          file,
-          stopRunning: () async => throw StateError('Stop failed'),
-        ),
-        throwsStateError,
+      final database = AppDatabase.forTesting(NativeDatabase(file));
+      addTearDown(database.close);
+      expect(
+        (await database
+                .customSelect('SELECT name FROM core_config WHERE id = 11')
+                .getSingle())
+            .read<String>('name'),
+        'WAL-only name',
       );
-      expect(_snapshotFile(file, hasAgeKeys: false), before);
+      expect(writer.userVersion, 3);
+      expect(_snapshot(writer, hasAgeKeys: true), _afterUpgrade(before));
       expect(
         file.parent.listSync().where(
           (entry) => entry.path.contains('.pre-v3-'),
@@ -195,13 +189,6 @@ void main() {
         }
 
         expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
-        expect(
-          await prepareUpgradeSnapshot(
-            file,
-            stopRunning: () async => fail('Current schema must not stop VPN'),
-          ),
-          isNull,
-        );
         final reopened = AppDatabase.forTesting(NativeDatabase(file));
         try {
           expect(await reopened.coreConfigDao.allRawRowsWithData, hasLength(4));
@@ -383,13 +370,6 @@ void main() {
       legacy.userVersion = 7;
       legacy.close();
       final before = _snapshotFile(file, hasAgeKeys: true);
-      await expectLater(
-        prepareUpgradeSnapshot(
-          file,
-          stopRunning: () async => fail('Unsupported schema must not stop VPN'),
-        ),
-        throwsStateError,
-      );
       final database = AppDatabase.forTesting(NativeDatabase(file));
       await expectLater(database.subscriptionDao.allRows, throwsStateError);
       await database.close();

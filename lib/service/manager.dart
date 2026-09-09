@@ -82,7 +82,11 @@ abstract final class ServiceManager {
       "AppStartupService",
       () => AppStartupService().handleServicesReady(),
     );
-    BackgroundTaskService().init();
+    BackgroundTaskService().init(
+      vpnConnected:
+          ConnectionCoordinator.instance.state.value.phase ==
+          ConnectionPhase.connected,
+    );
     _initialized = true;
     PingService().startAutomatic();
     unawaited(_checkUpdate());

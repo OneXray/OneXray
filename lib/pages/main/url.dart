@@ -66,10 +66,7 @@ abstract final class RouterPath {
     debugLogDiagnostics: true,
     routes: [
       GoRoute(path: RouterPath.splash, builder: (_, _) => const SplashPage()),
-      GoRoute(
-        path: RouterPath.setup,
-        builder: (_, _) => const SetupPage(addServers: openServerImportAction),
-      ),
+      GoRoute(path: RouterPath.setup, builder: (_, _) => const SetupPage()),
       GoRoute(
         path: '/setup/privacy',
         builder: (_, _) => const SetupPrivacyPage(),

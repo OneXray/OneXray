@@ -26,6 +26,7 @@ class DataUpdateService {
   void resumeAfterDataClear() => _paused = false;
 
   Future<void> checkAndRun({
+    required bool Function() isVpnConnected,
     bool updateSubscription = true,
     bool updateGeoData = true,
   }) async {
@@ -50,8 +51,8 @@ class DataUpdateService {
           isCancelled: () => _paused,
         );
       }
-      if (shouldUpdateGeoData && !_paused) {
-        await _refreshOutdatedGeoData(autoUpdateState);
+      if (shouldUpdateGeoData && !_paused && isVpnConnected()) {
+        await _refreshOutdatedGeoData(autoUpdateState, isVpnConnected);
       }
     } catch (_) {
       if (!_paused) ygLogger('Data update check failed');
@@ -61,11 +62,14 @@ class DataUpdateService {
     }
   }
 
-  Future<void> _refreshOutdatedGeoData(AutoUpdateState autoUpdateState) async {
+  Future<void> _refreshOutdatedGeoData(
+    AutoUpdateState autoUpdateState,
+    bool Function() isVpnConnected,
+  ) async {
     final interval = autoUpdateState.geoDataInterval.value;
     final now = DateTime.now();
     final systemGeoData = await SystemGeoDatState.system;
-    if (_paused) return;
+    if (_paused || !isVpnConnected()) return;
     if (_expired(systemGeoData, now, interval)) {
       try {
         await GeoDataService().updateDefaults();
@@ -75,9 +79,10 @@ class DataUpdateService {
       }
     }
 
+    if (_paused || !isVpnConnected()) return;
     final customGeoData = await AppDatabase().geoDataDao.allRows;
     for (final geoData in customGeoData) {
-      if (_paused) break;
+      if (_paused || !isVpnConnected()) break;
       if (now.difference(geoData.timestamp).inHours >= interval) {
         try {
           await GeoDataService().updateCustom(geoData);
