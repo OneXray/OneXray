@@ -732,9 +732,9 @@
   "@prototypeSubscriptionLink": {
     "description": "Approved prototype copy: Subscription link"
   },
-  "prototypeSubscriptionDescription": "A subscription is a server list supplied by your provider. OneXray can check it for updates later.",
+  "prototypeSubscriptionDescription": "A subscription is a server list supplied by your provider. OneXray can check it for updates later. Only VLESS / v2rayN share formats are supported.",
   "@prototypeSubscriptionDescription": {
-    "description": "Approved prototype copy: A subscription is a server list supplied by your provider. OneXray can check it for updates later."
+    "description": "Subscription explanation and supported share formats, shown in both the add and edit forms."
   },
   "prototypeAgeEncryption": "Age encryption",
   "@prototypeAgeEncryption": {

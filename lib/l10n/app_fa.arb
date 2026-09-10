@@ -242,7 +242,7 @@
     "prototypeNoSupportedLinks": "هیچ پیوند پشتیبانی‌شده‌ای شناسایی نشد. ورودی را بررسی و دوباره امتحان کنید.",
     "prototypeSubscriptionName": "نام اشتراک",
     "prototypeSubscriptionLink": "پیوند اشتراک",
-    "prototypeSubscriptionDescription": "اشتراک، فهرست سرورهای ارائه‌دهندهٔ شماست. OneXray می‌تواند بعداً به‌روزرسانی‌های آن را بررسی کند.",
+    "prototypeSubscriptionDescription": "اشتراک، فهرست سرورهای ارائه‌دهندهٔ شماست. OneXray می‌تواند بعداً به‌روزرسانی‌های آن را بررسی کند. فقط قالب‌های پیوند اشتراک \u2066VLESS / v2rayN\u2069 پشتیبانی می‌شوند.",
     "prototypeAgeEncryption": "رمزگذاری Age",
     "prototypeAgeOptional": "اختیاری · نیازمند پشتیبانی ارائه‌دهنده",
     "prototypeAgeSupportNotice": "کلیدهای Age را فقط زمانی وارد کنید که ارائه‌دهندهٔ اشتراک شما از اشتراک رمزگذاری‌شده پشتیبانی کند. Age جایگزین HTTPS نیست.",

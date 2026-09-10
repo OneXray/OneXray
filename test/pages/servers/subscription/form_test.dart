@@ -33,7 +33,8 @@ void main() {
         value: controller,
         child: BlocBuilder<ServerImportController, ServerImportPageState>(
           builder: (context, state) => SubscriptionFormView(
-            supportText: 'Supported formats',
+            supportText: AppLocalizations.of(context)!
+                .prototypeSubscriptionDescription,
             nameLabel: 'Name',
             nameHint: 'Example Service',
             nameController: name,
@@ -100,7 +101,7 @@ void main() {
     await tester.pumpWidget(app(form()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Supported formats'), findsOneWidget);
+    expect(find.textContaining('Only VLESS / v2rayN'), findsOneWidget);
     expect(find.text('HTTPS only'), findsOneWidget);
     expect(find.byType(ShadInput), findsNWidgets(4));
     expect(
@@ -174,7 +175,7 @@ void main() {
 
   for (final locale in AppLocalizations.supportedLocales) {
     for (final width in [390.0, 1000.0]) {
-      testWidgets('HWID consent and full disclosure fit at $width ($locale)', (
+      testWidgets('format notice and HWID disclosure fit at $width ($locale)', (
         tester,
       ) async {
         await tester.binding.setSurfaceSize(Size(width, 800));
@@ -185,6 +186,12 @@ void main() {
         final l = AppLocalizations.of(
           tester.element(find.byType(SubscriptionFormView)),
         )!;
+        expect(l.prototypeSubscriptionDescription, contains('VLESS / v2rayN'));
+        final formatNotice = tester.widget<Text>(
+          find.text(l.prototypeSubscriptionDescription),
+        );
+        expect(formatNotice.maxLines, isNull);
+        expect(formatNotice.overflow, isNull);
         final disclosure = tester.widget<Text>(
           find.text(l.subscriptionHwidDescription),
         );

@@ -242,7 +242,7 @@
   "prototypeNoSupportedLinks": "未辨識到支援的連結，請檢查後重試。",
   "prototypeSubscriptionName": "訂閱名稱",
   "prototypeSubscriptionLink": "訂閱連結",
-  "prototypeSubscriptionDescription": "訂閱是服務供應商提供的伺服器清單，OneXray 後續可以檢查更新。",
+  "prototypeSubscriptionDescription": "訂閱是服務供應商提供的伺服器清單，OneXray 後續可以檢查更新。僅支援 VLESS / v2rayN 分享協定。",
   "prototypeAgeEncryption": "Age 加密",
   "prototypeAgeOptional": "非必要 · 需要供應商支援",
   "prototypeAgeSupportNotice": "僅在訂閱供應商支援 Age 加密時填寫金鑰；Age 不能替代 HTTPS。",
