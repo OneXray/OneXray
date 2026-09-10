@@ -14,6 +14,14 @@ Material 控件和主题统一使用 `material_ui`，与 `go_router` 的页面�
 不显示成功提示。恢复默认只修改编辑草稿，提示仍需保存，不隐式写入数据库或重连。
 导航、选项切换、草稿内增删等已有直接视觉反馈的操作不重复提示；系统跳转失败时显示 toast。
 
+Outgoing sharing uses the shared `ShareAction` around the existing buttons.
+Only the active share button shows loading and rejects duplicate activation;
+other page actions remain independent. A native share result never closes the
+share page or claims delivery. Linux shows an explicit copy label and icon with
+the existing two-second copy toast. Raw/custom sharing keeps its sensitive-data
+confirmation. Page departure suppresses late dialogs and feedback; losing window
+focus alone is not cancellation. See [sharing](subscriptions-and-sharing.md#outgoing-system-sharing).
+
 ## 公共主题与布局
 
 原型公共配置按语义映射到 [主题目录](../lib/pages/theme/)，App 不在运行时读取原型 JSON。

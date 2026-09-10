@@ -54,7 +54,6 @@
   "sharePageSaveQRCode": "Save QR image",
   "sharePageShowQRCode": "Show QR code",
   "sharePageLink": "Link",
-  "sharePageShareLink": "Share",
   "sharePageCopyLink": "Copy share link",
   "settingsPageDesktop": "Desktop",
   "desktopSettingsPageSectionStartup": "Startup",
@@ -644,10 +643,6 @@
   "@prototypeExportJson": {
     "description": "Approved prototype copy: Export JSON"
   },
-  "prototypeShareSheetOpened": "Share sheet opened",
-  "@prototypeShareSheetOpened": {
-    "description": "Approved prototype copy: Share sheet opened"
-  },
   "prototypeConfigurationLinksCopied": "Configuration share links copied",
   "@prototypeConfigurationLinksCopied": {
     "description": "Approved prototype copy: Configuration share links copied"
@@ -655,10 +650,6 @@
   "prototypeOriginalJsonExported": "Original JSON exported",
   "@prototypeOriginalJsonExported": {
     "description": "Approved prototype copy: Original JSON exported"
-  },
-  "prototypeCannotShareConfiguration": "Could not share or export this configuration.",
-  "@prototypeCannotShareConfiguration": {
-    "description": "Approved prototype copy: Could not share or export this configuration."
   },
   "prototypeSharingDataSourceLinks": "Sharing includes {count} routing data source links, not the data files.",
   "@prototypeSharingDataSourceLinks": {
@@ -2632,9 +2623,6 @@
   },
   "@sharePageCopyLink": {
     "description": "Approved prototype copy: Copy share link"
-  },
-  "@sharePageShareLink": {
-    "description": "Approved prototype copy: Share"
   },
   "@sharePageShowQRCode": {
     "description": "Approved prototype copy: Show QR code"

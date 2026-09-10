@@ -1,24 +1,24 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/core/tools/file.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/pages/shared/share/action.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/share/outgoing_share.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:share_plus/share_plus.dart';
 
-enum ConfigurationTransferAction { file, clipboard, export, share }
+enum ConfigurationTransferAction { file, clipboard, export }
 
 class ConfigurationTransferState {
   final bool busy;
@@ -145,28 +145,37 @@ class ConfigurationTransferController
     }
   }
 
-  Future<void> export(BuildContext context, {required bool share}) async {
+  Future<ShareText> prepareShareText() async {
+    final name = readName();
+    final text = readText();
+    final dependencies = List<GeoDataInput>.of(assets);
+    final links = await service.shareLinks(
+      kind: kind,
+      name: name,
+      text: text,
+      assets: dependencies,
+    );
+    return ShareText(title: name, text: links);
+  }
+
+  Future<void> exportJson(BuildContext context) async {
     if (busy) return;
     final l10n = AppLocalizations.of(context)!;
     emit(
       state.copyWith(
         busy: true,
-        action: share
-            ? ConfigurationTransferAction.share
-            : ConfigurationTransferAction.export,
+        action: ConfigurationTransferAction.export,
         clearNotice: true,
       ),
     );
     try {
       if (!await ContextAlert.showConfirmDialog(
             context,
-            title: share ? l10n.prototypeShare : l10n.prototypeExportJson,
+            title: l10n.prototypeExportJson,
             content: kind == ConfigurationKind.raw
                 ? l10n.prototypeRawJsonShareWarning
                 : l10n.prototypeCustomShareWarning,
-            confirmLabel: share
-                ? l10n.prototypeShare
-                : l10n.prototypeExportJson,
+            confirmLabel: l10n.prototypeExportJson,
           ) ||
           !context.mounted ||
           !isPageActive) {
@@ -174,62 +183,29 @@ class ConfigurationTransferController
       }
       final name = readName();
       final text = readText();
-      if (share) {
-        final links = await service.shareLinks(
-          kind: kind,
-          name: name,
-          text: text,
-          assets: assets,
+      final json = await service.exportJson(
+        kind: kind,
+        name: name,
+        text: text,
+        assets: assets,
+      );
+      if (!isPageActive || !context.mounted) return;
+      final basename = name.trim().replaceAll(
+        RegExp(r'[\\/:*?"<>|\x00-\x1f]'),
+        '_',
+      );
+      if (await FileTool.saveData(
+        Uint8List.fromList(utf8.encode(json)),
+        '${basename.isEmpty ? 'xray' : basename}.json',
+        'json',
+      )) {
+        emit(
+          state.copyWith(
+            notice: kind == ConfigurationKind.raw
+                ? l10n.prototypeOriginalJsonExported
+                : l10n.prototypeCustomJsonExported,
+          ),
         );
-        if (!context.mounted || !isPageActive) return;
-        if (AppPlatform.isLinux) {
-          await Clipboard.setData(ClipboardData(text: links));
-          emit(state.copyWith(notice: l10n.prototypeConfigurationLinksCopied));
-        } else {
-          final box = context.findRenderObject() as RenderBox?;
-          final result = await SharePlus.instance.share(
-            ShareParams(
-              title: name,
-              text: links,
-              sharePositionOrigin: box == null
-                  ? null
-                  : box.localToGlobal(Offset.zero) & box.size,
-            ),
-          );
-          if (result.status == ShareResultStatus.unavailable) {
-            await Clipboard.setData(ClipboardData(text: links));
-            emit(
-              state.copyWith(notice: l10n.prototypeConfigurationLinksCopied),
-            );
-          } else if (result.status == ShareResultStatus.success) {
-            emit(state.copyWith(notice: l10n.prototypeShareSheetOpened));
-          }
-        }
-      } else {
-        final json = await service.exportJson(
-          kind: kind,
-          name: name,
-          text: text,
-          assets: assets,
-        );
-        if (!isPageActive || !context.mounted) return;
-        final basename = name.trim().replaceAll(
-          RegExp(r'[\\/:*?"<>|\x00-\x1f]'),
-          '_',
-        );
-        if (await FileTool.saveData(
-          Uint8List.fromList(utf8.encode(json)),
-          '${basename.isEmpty ? 'xray' : basename}.json',
-          'json',
-        )) {
-          emit(
-            state.copyWith(
-              notice: kind == ConfigurationKind.raw
-                  ? l10n.prototypeOriginalJsonExported
-                  : l10n.prototypeCustomJsonExported,
-            ),
-          );
-        }
       }
     } catch (error) {
       emit(
@@ -237,7 +213,10 @@ class ConfigurationTransferController
           notice: appFailureMessage(
             l10n,
             error,
-            operation: l10n.prototypeCannotShareConfiguration,
+            operation: l10n.actionResult(
+              l10n.prototypeExportJson,
+              l10n.resultFailed,
+            ),
           ),
         ),
       );
@@ -263,11 +242,13 @@ class ConfigurationTransferTools extends StatelessWidget {
   final ConfigurationTransferController controller;
   final bool disabled;
   final List<Widget> children;
+  final OutgoingShare? outgoingShare;
   const ConfigurationTransferTools({
     super.key,
     required this.controller,
     this.disabled = false,
     this.children = const [],
+    this.outgoingShare,
   });
 
   @override
@@ -327,20 +308,27 @@ class ConfigurationTransferTools extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: busy || empty
                           ? null
-                          : () => controller.export(context, share: false),
+                          : () => controller.exportJson(context),
                       icon: state.action == ConfigurationTransferAction.export
                           ? const ButtonProgressIndicator()
                           : const Icon(LucideIcons.download, size: 16),
                       label: Text(l10n.prototypeExportJson),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: busy || empty
-                          ? null
-                          : () => controller.export(context, share: true),
-                      icon: state.action == ConfigurationTransferAction.share
-                          ? const ButtonProgressIndicator()
-                          : const Icon(LucideIcons.share2, size: 16),
-                      label: Text(l10n.prototypeShare),
+                    ShareAction(
+                      enabled: !busy && !empty,
+                      prepare: controller.prepareShareText,
+                      warning: controller.kind == ConfigurationKind.raw
+                          ? l10n.prototypeRawJsonShareWarning
+                          : l10n.prototypeCustomShareWarning,
+                      copiedMessage: l10n.prototypeConfigurationLinksCopied,
+                      outgoing: outgoingShare,
+                      builder: (_, action) => OutlinedButton.icon(
+                        onPressed: action.onPressed,
+                        icon: action.busy
+                            ? const ButtonProgressIndicator()
+                            : Icon(action.icon, size: 16),
+                        label: Text(action.label),
+                      ),
                     ),
                     ...children,
                   ],

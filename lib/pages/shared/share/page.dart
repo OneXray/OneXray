@@ -1,9 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
+import 'package:onexray/pages/shared/share/action.dart';
 import 'package:onexray/pages/shared/share/controller.dart';
 import 'package:onexray/pages/shared/share/params.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -11,15 +12,23 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/service/shared/share/outgoing_share.dart';
 
 class SharePage extends StatelessWidget {
-  const SharePage({super.key, required this.params});
+  const SharePage({
+    super.key,
+    required this.params,
+    this.database,
+    this.outgoingShare,
+  });
 
   final SharePageParams params;
+  final AppDatabase? database;
+  final OutgoingShare? outgoingShare;
 
   @override
   Widget build(BuildContext context) => BlocProvider(
-    create: (_) => ShareController(params),
+    create: (_) => ShareController(params, database: database),
     child: BlocBuilder<ShareController, SharePageState>(
       builder: (context, state) {
         final l = AppLocalizations.of(context)!;
@@ -36,16 +45,19 @@ class SharePage extends StatelessWidget {
               secondary: true,
               onPressed: () => Navigator.of(context).pop(),
             ),
-            ConnectDialogButton(
-              label: AppPlatform.isLinux
-                  ? l.sharePageCopyLink
-                  : l.prototypeShare,
-              icon: LucideIcons.share2,
-              busy: state.sharing,
-              onPressed:
-                  state.loading || state.sharing || state.selectedLink.isEmpty
-                  ? null
-                  : () => controller.shareSelectedLink(context),
+            ShareAction(
+              enabled: !state.loading && state.selectedLink.isNotEmpty,
+              prepare: () => ShareText(
+                title: controller.state.name,
+                text: controller.state.selectedLink,
+              ),
+              outgoing: outgoingShare,
+              builder: (_, action) => ConnectDialogButton(
+                label: action.label,
+                icon: action.icon,
+                busy: action.busy,
+                onPressed: action.onPressed,
+              ),
             ),
           ],
         );

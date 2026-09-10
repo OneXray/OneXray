@@ -60,6 +60,35 @@ prepare 阶段不发布正式文件，完成用户确认后的保存通过统一
 分享或导出前提示敏感数据风险；不要把 Age 私钥、完整配置或解密正文写入日志。
 超额旧 Raw 与升级边界见 [数据管理](data-management.md)。
 
+## Outgoing system sharing
+
+`OutgoingShare` dispatches prepared text through `share_plus` on iOS, Android,
+macOS and Windows. Linux uses an explicit clipboard action instead of the
+plugin's mail fallback. Windows EXE and MSIX use the same dispatch policy.
+Text, link ordering and configuration encoding stay with the existing content
+generators; dispatch does not download Geodata, persist data or start a VPN.
+Native title and subject use the display name, falling back to `OneXray` when
+the name is empty. Links remain text, not URI-metadata or temporary-file shares.
+
+The shared page action owns button-local loading, re-entry prevention, the
+existing Raw/custom sensitive-content warning and invocation-error feedback.
+It measures the actual button immediately before dispatch. Missing or unusable
+geometry is omitted so the native plugin can position its own UI. Closing or
+hiding the originating page during preparation prevents a late share dialog;
+leaving during native sharing does not wait for or cancel the OS operation.
+Late results do not navigate or display feedback on an unrelated page.
+
+Native `success`, `dismissed` and `unavailable` are all quiet completions, not
+delivery receipts. None causes a success/failure toast, clipboard fallback,
+retry or automatic page dismissal. A thrown error retains its concrete cause.
+Explicit Linux copy shows the existing two-second toast only after the write
+succeeds, and keeps the page open. No global share queue, lifecycle polling or
+synthetic native timeout is added.
+
+QR image saving and JSON/log/runtime-configuration exports remain explicit
+file-save operations. Incoming App Links and configuration import transactions
+are independent of outgoing system sharing.
+
 ## 实现入口
 
 - 新导入：`lib/service/servers/import.dart`、`lib/pages/servers/import/`
@@ -68,3 +97,5 @@ prepare 阶段不发布正式文件，完成用户确认后的保存通过统一
 - 链接：`lib/service/shared/share/app_link_parser.dart`、`app_link_generator.dart`
 - Raw/Custom 交换：`lib/service/shared/share/configuration_transfer.dart`
 - 节点/订阅分享页：`lib/pages/shared/share/`
+- Outgoing dispatch: `lib/service/shared/share/outgoing_share.dart`
+- Shared UI action: `lib/pages/shared/share/action.dart`
