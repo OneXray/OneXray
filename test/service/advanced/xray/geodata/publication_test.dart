@@ -121,6 +121,32 @@ void main() {
     url: 'https://example.com/$name',
   );
 
+  test('manual update-all keeps the default pair and updates independent custom data', () async {
+    await service.ensureInstalled();
+    final draft = await service.prepareImports([input()]);
+    await draft.save((writeMetadata) => writeMetadata());
+    final defaults = {
+      for (final name in ['geosite', 'geoip'])
+        name: await File(p.join(datRoot.path, '$name.dat')).readAsString(),
+    };
+    revision = 'two';
+    failDownload = 'geosite';
+    final errors = await service.updateAll();
+    expect(errors.keys, [-1]);
+    for (final entry in defaults.entries) {
+      expect(
+        await File(p.join(datRoot.path, '${entry.key}.dat')).readAsString(),
+        entry.value,
+      );
+    }
+    expect(
+      await File(p.join(datRoot.path, 'custom.dat')).readAsString(),
+      'two',
+    );
+    expect(AppEventBus.instance.state.downloading, isFalse);
+    await expectFlatRoot();
+  });
+
   test(
     'Geodata download does not block tunnel save or installed reads',
     () async {

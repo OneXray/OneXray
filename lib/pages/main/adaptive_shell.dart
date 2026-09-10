@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/page.dart';
 import 'package:onexray/pages/main/advanced.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/main/menu_actions.dart';
 import 'package:onexray/pages/settings/page.dart';
 import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -17,6 +20,7 @@ import 'package:onexray/service/shared/event_bus/state.dart';
 import 'package:onexray/service/manager.dart';
 import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/shared/menu/short_cut/service.dart';
+import 'package:onexray/service/shared/menu/tray/service.dart';
 import 'package:onexray/service/shared/share/service.dart';
 
 class AdaptiveMainShell extends StatefulWidget {
@@ -35,6 +39,7 @@ class AdaptiveMainShell extends StatefulWidget {
 
 class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
   Future<void>? _servicesReady;
+  bool _menusAttached = false;
 
   StatefulNavigationShell get navigationShell => widget.navigationShell;
 
@@ -42,14 +47,10 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _servicesReady ??= _initializeServices();
+    if (_menusAttached) _refreshQuickActions();
   }
 
   Future<void> _initializeServices() {
-    ShortCutService().onConnectionFailure = () {
-      if (mounted) {
-        context.goPrimaryRoot(AppPrimaryDestination.connect);
-      }
-    };
     ShareService().onIncomingShare = (text) async {
       if (mounted) {
         await context.pushScoped(
@@ -59,6 +60,31 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
       }
     };
     return (widget.initializeServices ?? ServiceManager.serviceInit)(context);
+  }
+
+  void _refreshQuickActions() {
+    unawaited(ShortCutService().refresh(AppLocalizations.of(context)!));
+  }
+
+  void _attachMenus() {
+    if (_menusAttached) return;
+    _menusAttached = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      TrayService().onConfigurationChange = (values, label, validate) =>
+          applyTrayConfiguration(context, values, label, validate);
+      ShortCutService().attach(
+        (action) => handleMobileQuickAction(context, action),
+      );
+      _refreshQuickActions();
+    });
+  }
+
+  @override
+  void dispose() {
+    ShortCutService().detach();
+    TrayService().onConfigurationChange = null;
+    super.dispose();
   }
 
   void _retry() {
@@ -104,6 +130,7 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
             ),
           );
         }
+        _attachMenus();
         return BlocSelector<AppEventBus, AppEventBusState, AppUpdateInfo?>(
           selector: (state) => state.appUpdateInfo,
           builder: (context, appUpdateInfo) => LayoutBuilder(

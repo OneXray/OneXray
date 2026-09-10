@@ -1,4 +1,7 @@
 {
+  "menuShortcutChooseConfiguration": "Switch configuration",
+  "menuShortcutUpdateSubscriptions": "Update subscriptions",
+  "menuBarReconnect": "Reconnect",
   "@@locale": "en",
   "buttonRetry": "Retry",
   "validationNameRequired": "name required",

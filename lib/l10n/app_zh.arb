@@ -1,4 +1,7 @@
 {
+  "menuShortcutChooseConfiguration": "切换配置",
+  "menuShortcutUpdateSubscriptions": "更新订阅",
+  "menuBarReconnect": "重新连接",
   "@@locale": "zh",
   "buttonRetry": "重试",
   "validationNameRequired": "请输入名称",

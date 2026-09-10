@@ -9,6 +9,9 @@ import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/servers/subscription/failure.dart';
+import 'package:onexray/l10n/localizations/app_localizations_en.dart';
+import 'package:onexray/core/errors/failure.dart';
 
 void main() {
   late AppDatabase database;
@@ -18,6 +21,92 @@ void main() {
     addTearDown(bus.close);
     database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
+  });
+
+  test(
+    'manual refresh-all joins repeats and continues after a failed source',
+    () async {
+      final first = await _source(database);
+      final secondId = await database.subscriptionDao.insertRow(
+        SubscriptionCompanion.insert(
+          name: 'Second',
+          url: 'https://example.com/second',
+          timestamp: DateTime.now(),
+        ),
+      );
+      final existing = await database.coreConfigDao.insertRow(
+        _node('Keep', subId: first.id),
+      );
+      final started = Completer<void>();
+      final release = Completer<void>();
+      var calls = 0;
+      final pings = <int>[];
+      final service = _service(database, (input) async {
+        expect(AppEventBus.instance.state.downloading, isTrue);
+        calls++;
+        if (input.name == first.name) {
+          started.complete();
+          await release.future;
+          return const SubscriptionLoadResult(
+            status: SubscriptionUpdateResult.invalidContent,
+          );
+        }
+        return SubscriptionLoadResult(
+          status: SubscriptionUpdateResult.success,
+          rows: [_node('New')],
+        );
+      }, pings: pings);
+      final refreshing = service.refreshAll();
+      await started.future;
+      expect(identical(refreshing, service.refreshAll()), isTrue);
+      release.complete();
+      final results = await refreshing;
+      expect(results.values.map((row) => row.success), [false, true]);
+      expect(calls, 2);
+      expect(pings, [secondId]);
+      expect(await database.coreConfigDao.searchRow(existing), isNotNull);
+      expect(AppEventBus.instance.state.downloading, isFalse);
+      final message = subscriptionRefreshMessage(AppLocalizationsEn(), results);
+      expect(message, contains('Source:'));
+      expect(message, contains('Second:'));
+      expect(message, contains(AppLocalizationsEn().prototypeUsableNodes(1)));
+    },
+  );
+
+  test('clear-data stops the refresh-all batch and releases loading', () async {
+    await _source(database);
+    await database.subscriptionDao.insertRow(
+      SubscriptionCompanion.insert(
+        name: 'Later',
+        url: 'https://example.com/later',
+        timestamp: DateTime.now(),
+      ),
+    );
+    final started = Completer<void>();
+    final release = Completer<void>();
+    var calls = 0;
+    final service = _service(database, (_) async {
+      calls++;
+      started.complete();
+      await release.future;
+      return SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [_node('New')],
+      );
+    });
+    final refreshing = service.refreshAll();
+    final cancelled = expectLater(
+      refreshing,
+      throwsA(isA<AppFailure>().having((e) => e.code, 'code', 'cancelled')),
+    );
+    await started.future;
+    final paused = service.pauseForDataClear();
+    release.complete();
+    await cancelled;
+    await paused;
+    expect(calls, 1);
+    expect(AppEventBus.instance.state.downloading, isFalse);
+    service.resumeAfterDataClear();
   });
 
   test(

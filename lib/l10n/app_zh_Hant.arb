@@ -1,4 +1,7 @@
 {
+  "menuShortcutChooseConfiguration": "切換設定",
+  "menuShortcutUpdateSubscriptions": "更新訂閱",
+  "menuBarReconnect": "重新連線",
   "@@locale": "zh_Hant",
   "buttonRetry": "重試",
   "validationNameRequired": "請輸入名稱",

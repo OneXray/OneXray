@@ -1,4 +1,7 @@
 {
+  "menuShortcutChooseConfiguration": "تغییر پیکربندی",
+  "menuShortcutUpdateSubscriptions": "به‌روزرسانی اشتراک‌ها",
+  "menuBarReconnect": "اتصال مجدد",
     "@@locale": "fa",
     "buttonRetry": "تلاش دوباره",
     "validationNameRequired": "نام لازم است",

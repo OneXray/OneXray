@@ -78,6 +78,7 @@ class SubscriptionService {
   final void Function(int)? _pingOverride;
   final _generations = <int, int>{};
   final _refreshes = <int, Future<SubscriptionRefreshResult>>{};
+  Future<Map<SubscriptionData, SubscriptionRefreshResult>>? _refreshAll;
   var _nextGeneration = 0;
   final _downloads = InFlightOperations();
 
@@ -289,6 +290,27 @@ class SubscriptionService {
     final result = await refreshSubscriptionResult(subscription);
     return result.success ? result.count : 0;
   }
+
+  /// Explicit refresh, independent of the automatic-update interval. Keep the
+  /// whole batch visible to loading/clear-data without waiting for probes.
+  Future<Map<SubscriptionData, SubscriptionRefreshResult>> refreshAll() =>
+      _refreshAll ??= _downloads
+          .track(
+            () => AppEventBus.instance.trackDownload(() async {
+              final results = <SubscriptionData, SubscriptionRefreshResult>{};
+              for (final source in await _database.subscriptionDao.allRows) {
+                if (_downloads.isPaused) {
+                  throw const AppFailure(FailureCategory.conflict, 'cancelled');
+                }
+                results[source] = await refreshSubscriptionResult(source);
+              }
+              if (_downloads.isPaused) {
+                throw const AppFailure(FailureCategory.conflict, 'cancelled');
+              }
+              return results;
+            }),
+          )
+          .whenComplete(() => _refreshAll = null);
 
   /// Prefer this result for reporting: an obsolete request is not a zero-node
   /// success, and unavailable parse statistics remain null.

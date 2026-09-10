@@ -189,27 +189,22 @@ class GeoDataController extends PageCubit<GeoDataPageState> {
   Future<void> updateAll(BuildContext context) async {
     if (!state.canUpdateAll) return;
     final l = AppLocalizations.of(context)!;
-    final targets = state.custom;
-    final errors = <int, String>{};
     emit(state.copyWith(updatingAll: true, errors: const {}));
     try {
-      try {
-        await service.updateDefaults();
-      } catch (error) {
-        errors[-1] = appFailureMessage(l, error);
-      }
-      for (final file in targets) {
-        try {
-          await service.updateCustom(file.row);
-        } catch (error) {
-          errors[file.row.id] = appFailureMessage(l, error);
-        }
-      }
+      final errors = {
+        for (final entry in (await service.updateAll()).entries)
+          entry.key: appFailureMessage(l, entry.value),
+      };
+      emit(state.copyWith(errors: errors));
       if (errors.isEmpty && context.mounted) {
         _message(context, l.prototypeAllGeodataUpdated);
       }
+    } catch (error) {
+      if (!failureCancelled(error)) {
+        emit(state.copyWith(errors: {-1: appFailureMessage(l, error)}));
+      }
     } finally {
-      emit(state.copyWith(updatingAll: false, errors: errors));
+      emit(state.copyWith(updatingAll: false));
     }
   }
 

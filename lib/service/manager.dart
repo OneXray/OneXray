@@ -73,12 +73,6 @@ abstract final class ServiceManager {
       () => NotificationService().asyncInit(),
     );
     await _runInit("TrayService", () => TrayService().init());
-    if (context.mounted) {
-      await _runInit(
-        "ShortCutService",
-        () => ShortCutService().asyncInit(context),
-      );
-    }
     await _runInit("WindowService", () => WindowService().asyncInit());
     await _runInit("ShareService", () => ShareService().init());
     await _runInit(
@@ -130,7 +124,7 @@ abstract final class ServiceManager {
     _initialized = false;
     TrayService().dispose();
     ShareService().dispose();
-    ShortCutService().dispose();
+    ShortCutService().detach();
     WindowService().dispose();
     BackgroundTaskService().dispose();
   }

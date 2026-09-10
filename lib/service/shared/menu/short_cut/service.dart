@@ -1,101 +1,104 @@
-import 'package:material_ui/material_ui.dart';
-import 'package:quick_actions/quick_actions.dart';
-import 'package:onexray/service/settings/language/service.dart';
-import 'package:onexray/service/connect/coordinator.dart';
-import 'package:onexray/service/connect/failure.dart';
+import 'dart:async';
+
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/service/shared/notification/service.dart';
-import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/service/launch/app_startup.dart';
+import 'package:quick_actions/quick_actions.dart';
 
-final class ShortCutService {
-  static final ShortCutService _singleton = ShortCutService._internal();
-
-  factory ShortCutService() => _singleton;
-
-  ShortCutService._internal();
-
-  //==========================
-  final quickActions = const QuickActions();
-  VoidCallback? onConnectionFailure;
-
-  Future<void> asyncInit(BuildContext context) async {
-    if (!AppPlatform.isMobile) {
-      return;
-    }
-    await quickActions.initialize(_onShortCutClick);
-    var playIcon = "play_light";
-    var pauseIcon = "pause_light";
-    if (context.mounted) {
-      if (Theme.of(context).brightness == Brightness.dark) {
-        playIcon = "play_dark";
-        pauseIcon = "pause_dark";
-      }
-    }
-
-    await quickActions.setShortcutItems(<ShortcutItem>[
-      ShortcutItem(
-        type: _ShortCutKey.startVpn.name,
-        localizedTitle: appLocalizationsNoContext().menuBarStartVpn,
-        icon: playIcon,
-      ),
-      ShortcutItem(
-        type: _ShortCutKey.stopVpn.name,
-        localizedTitle: appLocalizationsNoContext().menuBarStopVpn,
-        icon: pauseIcon,
-      ),
-    ]);
-  }
-
-  void dispose() {
-    onConnectionFailure = null;
-  }
-
-  Future<void> _onShortCutClick(String action) async {
-    final key = _ShortCutKey.fromString(action);
-    if (key == null) {
-      return;
-    }
-
-    try {
-      switch (key) {
-        case _ShortCutKey.startVpn:
-          await ConnectionCoordinator.instance.connect();
-          break;
-        case _ShortCutKey.stopVpn:
-          await ConnectionCoordinator.instance.disconnect();
-          break;
-      }
-    } catch (error) {
-      if (connectionFailureReason(error) == 'cancelled') return;
-      if (key == _ShortCutKey.startVpn) {
-        try {
-          await NotificationService().pushNotification(
-            connectionFailureMessage(appLocalizationsNoContext(), error: error),
-          );
-        } catch (notificationError) {
-          ygLogger(
-            'Shortcut connection notification failed: $notificationError',
-          );
-        }
-      }
-      // The shortcut already opened the App; let its UI show the failed action.
-      onConnectionFailure?.call();
-    }
-  }
+enum ShortCutAction {
+  startVpn,
+  stopVpn,
+  chooseConfiguration,
+  updateSubscriptions,
 }
 
-enum _ShortCutKey {
-  startVpn("startVpn"),
-  stopVpn("stopVpn");
+/// Mobile launcher integration only. The shell attaches business actions after
+/// normal startup; a cold-launch action must not race automatic Connect.
+final class ShortCutService {
+  static final ShortCutService _instance = ShortCutService._();
+  factory ShortCutService() => _instance;
+  ShortCutService._()
+    : _suppressAutoConnect = AppStartupService().suppressConnectOnAppLaunch;
+  ShortCutService.forTesting({required this._suppressAutoConnect});
 
-  const _ShortCutKey(this.name);
+  final void Function() _suppressAutoConnect;
 
-  final String name;
+  final _quickActions = const QuickActions();
+  Future<void>? _initializing;
+  Future<void> Function(ShortCutAction)? _handler;
+  ShortCutAction? _pending;
+  final _running = <ShortCutAction>{};
 
-  @override
-  String toString() => name;
+  Future<void> initialize() async {
+    if (!AppPlatform.isMobile) return;
+    try {
+      await (_initializing ??= _quickActions.initialize(receive));
+    } catch (error, stackTrace) {
+      _initializing = null;
+      ygLogger('Initialize quick actions failed: $error\n$stackTrace');
+    }
+  }
 
-  static _ShortCutKey? fromString(String name) =>
-      _ShortCutKey.values.firstWhereOrNull((value) => value.name == name);
+  Future<void> receive(String type) async {
+    final action = ShortCutAction.values
+        .where((item) => item.name == type)
+        .firstOrNull;
+    if (action == null) return;
+    final handler = _handler;
+    if (handler == null) {
+      _pending = action;
+      _suppressAutoConnect();
+      return;
+    }
+    if (!_running.add(action)) return;
+    try {
+      await handler(action);
+    } catch (error, stackTrace) {
+      ygLogger('Quick action failed: $error\n$stackTrace');
+    } finally {
+      _running.remove(action);
+    }
+  }
+
+  void attach(Future<void> Function(ShortCutAction) handler) {
+    _handler = handler;
+    final pending = _pending;
+    _pending = null;
+    if (pending != null) unawaited(receive(pending.name));
+  }
+
+  void detach() => _handler = null;
+
+  static List<ShortcutItem> items(AppLocalizations l) => [
+    ShortcutItem(
+      type: ShortCutAction.startVpn.name,
+      localizedTitle: l.menuBarStartVpn,
+      icon: 'start_vpn',
+    ),
+    ShortcutItem(
+      type: ShortCutAction.stopVpn.name,
+      localizedTitle: l.menuBarStopVpn,
+      icon: 'stop_vpn',
+    ),
+    ShortcutItem(
+      type: ShortCutAction.chooseConfiguration.name,
+      localizedTitle: l.menuShortcutChooseConfiguration,
+      icon: 'choose_configuration',
+    ),
+    ShortcutItem(
+      type: ShortCutAction.updateSubscriptions.name,
+      localizedTitle: l.menuShortcutUpdateSubscriptions,
+      icon: 'update_subscriptions',
+    ),
+  ];
+
+  Future<void> refresh(AppLocalizations l) async {
+    if (!AppPlatform.isMobile) return;
+    try {
+      await _quickActions.setShortcutItems(items(l));
+    } catch (error, stackTrace) {
+      ygLogger('Publish quick actions failed: $error\n$stackTrace');
+    }
+  }
 }

@@ -1,4 +1,7 @@
 {
+  "menuShortcutChooseConfiguration": "Сменить конфигурацию",
+  "menuShortcutUpdateSubscriptions": "Обновить подписки",
+  "menuBarReconnect": "Переподключиться",
   "@@locale": "ru",
   "buttonRetry": "Повторить",
   "validationNameRequired": "Имя?",
